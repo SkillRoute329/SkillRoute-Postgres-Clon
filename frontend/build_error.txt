@@ -1,0 +1,6 @@
+
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+src/pages/admin/AdminBalances.tsx(130,11): error TS6133: 'handleDownloadPDF' is declared but its value is never read.
+src/services/pdf.ts(61,13): error TS6133: 'totalPaid' is declared but its value is never read.

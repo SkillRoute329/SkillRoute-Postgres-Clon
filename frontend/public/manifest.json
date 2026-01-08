@@ -1,0 +1,21 @@
+{
+    "name": "Gestión de Turnos - TransformaFácil",
+    "short_name": "Turnos App",
+    "description": "Aplicación para la gestión de turnos y conductores.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#0f172a",
+    "icons": [
+        {
+            "src": "/pwa-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/pwa-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

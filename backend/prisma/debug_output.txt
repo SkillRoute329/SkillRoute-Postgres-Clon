@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "name": "Turno Micro",
+    "baseValue": "3500.00",
+    "extraHourValue": "850.00",
+    "createdBy": null,
+    "createdAt": "2026-01-01T23:47:24.229Z",
+    "updatedAt": "2026-01-05T01:07:42.560Z"
+  },
+  {
+    "id": 2,
+    "name": "Turno Maniobra",
+    "baseValue": "2700.00",
+    "extraHourValue": "0.00",
+    "createdBy": null,
+    "createdAt": "2026-01-01T23:47:24.252Z",
+    "updatedAt": "2026-01-01T23:47:24.252Z"
+  },
+  {
+    "id": 3,
+    "name": "Turno Conductor",
+    "baseValue": "2600.00",
+    "extraHourValue": "650.00",
+    "createdBy": null,
+    "createdAt": "2026-01-01T23:47:24.255Z",
+    "updatedAt": "2026-01-01T23:47:24.255Z"
+  },
+  {
+    "id": 4,
+    "name": "Inspección",
+    "baseValue": "3500.00",
+    "extraHourValue": "500.00",
+    "createdBy": null,
+    "createdAt": "2026-01-01T23:47:24.257Z",
+    "updatedAt": "2026-01-05T01:17:17.176Z"
+  },
+  {
+    "id": 5,
+    "name": "Turno Guarda",
+    "baseValue": "2400.00",
+    "extraHourValue": "600.00",
+    "createdBy": null,
+    "createdAt": "2026-01-01T23:47:24.259Z",
+    "updatedAt": "2026-01-01T23:47:24.259Z"
+  }
+]

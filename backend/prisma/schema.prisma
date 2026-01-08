@@ -1,0 +1,201 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enumeraciones
+enum Role {
+  SuperAdmin
+  Admin
+  User
+}
+
+enum ShiftStatus {
+  Created
+  Public
+  Assigned
+  Completed
+  Cancelled
+}
+
+// 0. Tenants (Empresas)
+model Tenant {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users                   User[]
+  shiftCategories         ShiftCategory[]
+  shifts                  Shift[]
+  customFieldDefinitions  CustomFieldDefinition[]
+  systemConfigs           SystemConfig[]
+  payments                Payment[]
+}
+
+// 1. Usuarios
+model User {
+  id             Int       @id @default(autoincrement())
+  tenantId       Int       @default(1) // Default for migration
+  internalNumber String
+  firstName      String
+  lastName       String
+  fullName       String    @db.VarChar(255)
+  email          String?
+  passwordHash   String
+  role           Role      @default(User)
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  lastLogin      DateTime?
+
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+  shiftsCreated   Shift[]   @relation("CreatedBy")
+  shiftsAssigned  Shift[]   @relation("AssignedTo")
+  approvals       Shift[]   @relation("ApprovedBy")
+  transactions    ShiftTransaction[]
+  payments        Payment[]
+
+  @@unique([tenantId, internalNumber]) // Internal number is unique per tenant
+  @@unique([tenantId, email])          // Email is unique per tenant (or globally if preferred, but per tenant implies isolation)
+}
+
+// 2. Categorías de turnos
+model ShiftCategory {
+  id             Int      @id @default(autoincrement())
+  tenantId       Int      @default(1)
+  name           String
+  baseValue      Decimal  @db.Decimal(10, 2)
+  extraHourValue Decimal  @db.Decimal(10, 2)
+  createdBy      Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  shifts         Shift[]  @relation("CategoryToShift")
+  priceHistory   ShiftCategoryPriceHistory[]
+
+  @@unique([tenantId, name]) // Name must be unique within the tenant
+}
+
+model ShiftCategoryPriceHistory {
+  id             Int           @id @default(autoincrement())
+  categoryId     Int
+  baseValue      Decimal       @db.Decimal(10, 2)
+  extraHourValue Decimal       @db.Decimal(10, 2)
+  effectiveDate  DateTime      @db.Date
+  createdAt      DateTime      @default(now())
+
+  category       ShiftCategory @relation(fields: [categoryId], references: [id])
+}
+
+// 3. Turnos
+model Shift {
+  id                       Int           @id @default(autoincrement())
+  tenantId                 Int           @default(1)
+  categoryId               Int
+  serviceNumber            String
+  date                     DateTime      @db.Date
+  time                     String        @db.VarChar(5)
+  endTime                  String?       @db.VarChar(5)
+  line                     String
+  relief                   String?
+  carNumber                String
+  extraHours               Decimal       @default(0.00) @db.Decimal(5, 2)
+  tip                      Boolean       @default(false)
+  tipValue                 Decimal       @default(0.00) @db.Decimal(10, 2)
+  totalValue               Decimal       @db.Decimal(10, 2)
+  transformaFacil          Boolean       @default(false)
+  transformaFacilDiscount  Decimal       @default(0.00) @db.Decimal(10, 2)
+  isPaid                   Boolean       @default(false)
+  customValues             Json?
+  status                   ShiftStatus   @default(Created)
+  createdBy                Int
+  assignedTo               Int?
+  approvedBy               Int?
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+  deletedAt                DateTime?     // Soft Delete
+
+  tenant                   Tenant        @relation(fields: [tenantId], references: [id])
+  category                 ShiftCategory @relation("CategoryToShift", fields: [categoryId], references: [id])
+  creator                  User          @relation("CreatedBy", fields: [createdBy], references: [id])
+  assignee                 User?         @relation("AssignedTo", fields: [assignedTo], references: [id])
+  approver                 User?         @relation("ApprovedBy", fields: [approvedBy], references: [id])
+  transactions             ShiftTransaction[]
+}
+
+// 4. Transacciones
+model ShiftTransaction {
+  id                Int      @id @default(autoincrement())
+  shiftId           Int
+  userId            Int
+  type              String
+  amount            Decimal  @db.Decimal(10, 2)
+  transactionDate   DateTime @default(now())
+
+  shift             Shift    @relation(fields: [shiftId], references: [id])
+  user              User     @relation(fields: [userId], references: [id])
+}
+
+// 5. Campos Dinámicos
+model CustomFieldDefinition {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int      @default(1)
+  name        String
+  label       String
+  type        String
+  required    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+// 6. Configuración del Sistema
+model SystemConfig {
+  key         String
+  tenantId    Int      @default(1)
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  @@id([tenantId, key]) // Key is unique per tenant
+}
+
+// 7. Pagos Parciales
+model Payment {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int      @default(1)
+  userId    Int
+  amount    Decimal  @db.Decimal(10, 2)
+  date      DateTime @default(now())
+  isClosed  Boolean  @default(false)
+  notes     String?
+  deletedAt DateTime? // Soft Delete
+  
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+// 8. Audit Logs (Logs de Acciones Críticas)
+model ActionLog {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
+  userId      Int?
+  action      String   // e.g., 'CREATE_SHIFT', 'DELETE_SHIFT', 'LOGIN'
+  details     String?  // JSON or Text details
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  user        User?    @relation(fields: [userId], references: [id])
+}

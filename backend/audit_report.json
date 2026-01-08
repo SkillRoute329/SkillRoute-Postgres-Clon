@@ -1,0 +1,36 @@
+{
+  "login": {
+    "status": "OK",
+    "userId": 1
+  },
+  "shifts": {
+    "status": "OK",
+    "statusCode": 200,
+    "items": 5
+  },
+  "balances": {
+    "status": "OK",
+    "statusCode": 200,
+    "items": 14
+  },
+  "categories": {
+    "status": "OK",
+    "statusCode": 200,
+    "items": 8
+  },
+  "notifications": {
+    "status": "OK",
+    "statusCode": 200,
+    "items": 50
+  },
+  "users": {
+    "status": "OK",
+    "statusCode": 200,
+    "items": 14
+  },
+  "systemConfig": {
+    "status": "OK",
+    "statusCode": 200,
+    "items": "Obj"
+  }
+}
