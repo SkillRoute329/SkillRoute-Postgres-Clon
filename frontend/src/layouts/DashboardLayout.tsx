@@ -11,7 +11,8 @@ import {
     PlusCircle,
     Users,
     MessageCircle,
-    QrCode
+    QrCode,
+    Share2
 } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
@@ -52,6 +53,18 @@ const DashboardLayout = () => {
         if (window.innerWidth < 1024) {
             setIsSidebarOpen(false);
         }
+    };
+
+    const handleShareApp = async () => {
+        const url = window.location.origin + '/login';
+        try {
+            await navigator.clipboard.writeText(url);
+            alert('Enlace copiado al portapapeles: ' + url);
+        } catch (err) {
+            console.error('Error al copiar:', err);
+            prompt('Copia este enlace para compartir:', url);
+        }
+        handleMobileLinkClick();
     };
 
     return (
@@ -116,6 +129,16 @@ const DashboardLayout = () => {
                     <SidebarLink to="/dashboard/market" icon={LayoutDashboard} onClick={handleMobileLinkClick}>Turnos Públicos</SidebarLink>
                     <SidebarLink to="/dashboard/my-shifts" icon={CalendarClock} onClick={handleMobileLinkClick}>Mis Turnos</SidebarLink>
                     <SidebarLink to="/dashboard/my-balance" icon={Wallet} onClick={handleMobileLinkClick}>Mi Balance</SidebarLink>
+
+                    <div className="border-t border-slate-800 my-2 pt-2">
+                        <button
+                            onClick={handleShareApp}
+                            className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white w-full transition-all duration-200"
+                        >
+                            <Share2 className="w-5 h-5" />
+                            <span className="font-medium">Compartir App</span>
+                        </button>
+                    </div>
                 </nav>
 
                 <div className="p-4 border-t border-slate-800">
