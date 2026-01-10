@@ -16,19 +16,15 @@ export const login = async (req: Request, res: Response) => {
 
         if (result.rowCount === 0) {
 
-            return res.status(401).json({ message: 'Credenciales inválidas' });
+            return res.status(401).json({ message: 'Usuario no encontrado' });
         }
 
         const user = result.rows[0];
 
-
-
         const passwordMatch = await bcrypt.compare(password, user.passwordHash);
 
-
         if (!passwordMatch) {
-
-            return res.status(401).json({ message: 'Credenciales inválidas' });
+            return res.status(401).json({ message: 'Contraseña incorrecta' });
         }
         if (!user.tenantId) {
             console.error(`Login failed: User ${user.internalNumber} has no tenantId`);
