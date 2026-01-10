@@ -1,9 +1,8 @@
-import pool from '../db';
-
 export const ensureSchemaIntegrity = async () => {
     console.log('🛡️ [Schema] Verificando integridad de la base de datos...');
-    const client = await pool.connect();
+    let client;
     try {
+        client = await pool.connect();
         await client.query('BEGIN');
 
         // 1. Ensure Notification Table Exists
@@ -58,11 +57,9 @@ export const ensureSchemaIntegrity = async () => {
         await client.query('COMMIT');
         console.log('✅ [Schema] Integridad verificada. Tablas y columnas críticas aseguradas.');
     } catch (error) {
-        await client.query('ROLLBACK');
+        if (client) await client.query('ROLLBACK');
         console.error('❌ [Schema] Error verificando integridad:', error);
-        // We don't throw here to avoid crashing if it's just a permission issue, 
-        // but we verify logs.
     } finally {
-        client.release();
+        if (client) client.release();
     }
 };

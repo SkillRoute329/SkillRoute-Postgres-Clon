@@ -40,7 +40,7 @@ app.get('/api/health', async (req, res) => {
 
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.3.0',
+    version: '1.3.1',
     timestamp: new Date().toISOString(),
     desc: 'Deep Diagnostic Build'
   });
@@ -146,11 +146,23 @@ const startServer = async () => {
   app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`📡 Servidor listo en puerto ${PORT}`);
     console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔢 Versión API: 1.3.0`); // Match package.json
+    console.log(`🔢 Versión API: 1.3.1 (Resilient Boot)`); // Match package.json
   });
 };
 
-// Start Server Chain
-runMigration()
-  .then(seedDatabase)
-  .then(startServer);
+// Start Server Chain with Error Recovery
+const boot = async () => {
+  try {
+    console.log('🚀 Iniciando secuencia de arranque...');
+    await runMigration();
+    await seedDatabase();
+    console.log('✅ Migración y Seed completados.');
+  } catch (err) {
+    console.error('⚠️ Error en fase de migración/seed (Continuando arranque):', err);
+  }
+
+  // Always start server, even if DB setup failed temporarily
+  startServer();
+};
+
+boot();
