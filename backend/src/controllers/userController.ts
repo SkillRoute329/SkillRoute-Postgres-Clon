@@ -1,18 +1,29 @@
 import { Request, Response } from 'express';
-import pool from '../db';
 import bcrypt from 'bcrypt';
 
 export const getAllUsers = async (req: Request, res: Response) => {
     try {
-        // [MODIFIED] Extract tenantId from authenticated user
         const tenantId = (req as any).user.tenantId;
 
-        // [MODIFIED] Added WHERE clause for tenant isolation
-        // Old Query: SELECT ... FROM "User" ORDER BY ...
-        const query = 'SELECT id, "internalNumber", "firstName", "lastName", "fullName", "phoneNumber", "whatsappLink", role, "isActive", "createdAt", "lastLogin" FROM "User" WHERE "tenantId" = $1 ORDER BY "createdAt" DESC';
+        const users = await prisma.user.findMany({
+            where: { tenantId },
+            orderBy: { createdAt: 'desc' },
+            select: {
+                id: true,
+                internalNumber: true,
+                firstName: true,
+                lastName: true,
+                fullName: true,
+                phoneNumber: true,
+                whatsappLink: true,
+                role: true,
+                isActive: true,
+                createdAt: true,
+                lastLogin: true
+            }
+        });
 
-        const result = await pool.query(query, [tenantId]);
-        res.json(result.rows);
+        res.json(users);
     } catch (error) {
         console.error('User Get Error:', error);
         res.status(500).json({ message: 'Error al obtener usuarios' });
