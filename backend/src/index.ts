@@ -119,7 +119,8 @@ runMigration()
   .then(seedDatabase)
   .then(() => {
     app.listen(Number(PORT), '0.0.0.0', () => {
-      console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
+      console.log(`🚀 Servidor accesible en http://0.0.0.0:${PORT}`);
+      console.log(`ℹ️  Listening on all network interfaces (0.0.0.0)`);
       console.log(`Entorno: ${process.env.NODE_ENV || 'development'}`);
     });
   });
