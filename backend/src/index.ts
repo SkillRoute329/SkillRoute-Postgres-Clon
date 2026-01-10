@@ -118,6 +118,15 @@ const seedDatabase = async () => {
       await pool.query(`INSERT INTO "User" ("tenantId", "internalNumber", "firstName", "lastName", "fullName", "passwordHash", "role", "isActive") VALUES (1, 'admin', 'Admin', 'System', 'Admin System', $1, 'Admin', true)`, [hash]);
       console.log('✅ Admin initialized.');
     }
+
+    // --- SEED SUPERADMIN (329) ---
+    const superAdminRes = await pool.query('SELECT id FROM "User" WHERE "internalNumber" = $1', ['329']);
+    if (superAdminRes.rowCount === 0) {
+      const salt = await bcrypt.genSalt(10);
+      const hash = await bcrypt.hash('123456', salt);
+      await pool.query(`INSERT INTO "User" ("tenantId", "internalNumber", "firstName", "lastName", "fullName", "passwordHash", "role", "isActive") VALUES (1, '329', 'Super', 'Admin', 'Super Admin', $1, 'SuperAdmin', true)`, [hash]);
+      console.log('✅ SuperAdmin (329) initialized.');
+    }
   } catch (error) {
     console.error('❌ Error seeding:', error);
   }
