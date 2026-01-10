@@ -36,7 +36,7 @@ export const createUser = async (req: Request, res: Response) => {
         const query = `
             INSERT INTO "User" 
             ("internalNumber", "firstName", "lastName", "fullName", "phoneNumber", "whatsappLink", "passwordHash", "role", "isActive", "tenantId")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8::"Role", true, $9)
             RETURNING id, "internalNumber", "firstName", "lastName", "fullName", "phoneNumber", "whatsappLink", role, "isActive", "createdAt"
         `;
 
@@ -59,7 +59,7 @@ export const createUser = async (req: Request, res: Response) => {
         if (error.code === '23505') { // Unique violation
             return res.status(409).json({ message: 'El número de interno ya existe' });
         }
-        res.status(500).json({ message: 'Error al crear usuario' });
+        res.status(500).json({ message: 'Error al crear usuario', details: error.message });
     }
 };
 
