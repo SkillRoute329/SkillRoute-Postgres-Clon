@@ -13,17 +13,9 @@ RUN npm run build
 
 # --- BACKEND ---
 # --- BACKEND ---
-WORKDIR /app/backend
-# Instalar Chromium y dependencias para Puppeteer
-RUN apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont
-
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+# WORKDIR /app/backend
+# RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
+# ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 RUN npm install
 RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
 
