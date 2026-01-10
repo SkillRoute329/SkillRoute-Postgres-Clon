@@ -33,13 +33,23 @@ export const createUser = async (req: Request, res: Response) => {
 
         const tenantId = (req as any).user.tenantId;
 
+        // DIAGNOSTIC 
+        const testQuery = 'SELECT count(*) FROM public."User"';
+        const testRes = await pool.query(testQuery);
+        console.log('Diagnostic Select User Count:', testRes.rows[0].count);
+
+        if (true) {
+            return res.status(200).json({ message: 'Diagnostic Pass', count: testRes.rows[0].count });
+        }
+
+        /*
         const query = `
             INSERT INTO public."User" 
             ("internalNumber", "firstName", "lastName", "fullName", "phoneNumber", "whatsappLink", "passwordHash", "role", "isActive", "tenantId")
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8::"Role", true, $9)
             RETURNING id, "internalNumber", "firstName", "lastName", "fullName", "phoneNumber", "whatsappLink", role, "isActive", "createdAt"
         `;
-
+        
         const values = [
             String(internalNumber).trim(),
             firstName,
@@ -54,6 +64,7 @@ export const createUser = async (req: Request, res: Response) => {
 
         const result = await pool.query(query, values);
         res.status(201).json(result.rows[0]);
+        */
     } catch (error: any) {
         console.error('User Create Error:', error);
         if (error.code === '23505') { // Unique violation
