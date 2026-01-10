@@ -33,7 +33,24 @@ export const createUser = async (req: Request, res: Response) => {
 
         const tenantId = (req as any).user.tenantId;
 
-        // DIAGNOSTIC 
+        // DEEP DIAGNOSTIC 
+        try {
+            const schemaRes = await pool.query("SELECT current_database(), current_schema()");
+            const tablesRes = await pool.query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
+
+            console.log('DB Info:', schemaRes.rows[0]);
+            console.log('Tables:', tablesRes.rows.map(r => r.table_name));
+
+            return res.status(200).json({
+                message: 'Diagnostic Info',
+                db: schemaRes.rows[0],
+                tables: tablesRes.rows.map(r => r.table_name)
+            });
+        } catch (diagErr: any) {
+            return res.status(500).json({ message: 'Diagnostic Error', error: diagErr.message });
+        }
+
+        /*
         const testQuery = 'SELECT count(*) FROM public."User"';
         const testRes = await pool.query(testQuery);
         console.log('Diagnostic Select User Count:', testRes.rows[0].count);
@@ -41,6 +58,7 @@ export const createUser = async (req: Request, res: Response) => {
         if (true) {
             return res.status(200).json({ message: 'Diagnostic Pass', count: testRes.rows[0].count });
         }
+        */
 
         /*
         const query = `
