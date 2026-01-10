@@ -15,8 +15,9 @@ WORKDIR /app/backend
 RUN npm install
 RUN rm -rf dist
 RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
-RUN echo "--- CHECK SRC ---" && head -n 20 src/index.ts
-RUN npm run build
+RUN echo "🔍 VERIFICANDO FUENTE:" && head -n 10 src/index.ts
+RUN npx tsc
+RUN grep "VERSION 1.0.2" dist/index.js || (echo "❌ ERROR: La compilación no actualizó el código" && exit 1)
 
 # --- FINAL ---
 WORKDIR /app/backend
