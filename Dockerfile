@@ -11,16 +11,21 @@ RUN npm install
 RUN npm run build
 
 # --- BACKEND ---
+# --- BACKEND ---
 WORKDIR /app/backend
 RUN npm install
-RUN rm -rf dist
+# Limpieza agresiva
+RUN rm -rf dist tsconfig.tsbuildinfo
 RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
-RUN echo "🔍 VERIFICANDO FUENTE:" && head -n 10 src/index.ts
-RUN npx tsc
-RUN grep "VERSION 1.0.2" dist/index.js || (echo "❌ ERROR: La compilación no actualizó el código" && exit 1)
+# Compilación
+RUN npm run build
+
+# --- DIAGNÓSTICO FINAL DEL BUILD ---
+RUN echo "📂 ESTRUCTURA FINAL DE DIST:" && ls -R dist
 
 # --- FINAL ---
 WORKDIR /app/backend
 ENV NODE_ENV=production
 EXPOSE 3000
-CMD ["sh", "-c", "echo '📂 --- INSPECCION DE ARCHIVOS ---' && ls -F /app/frontend/dist/ || echo '❌ LA CARPETA NO EXISTE' && echo '-----------------------------' && node dist/index.js"]
+# COMANDO DE ARRANQUE A PRUEBA DE FALLOS
+CMD ["sh", "-c", "echo '🚀 INICIANDO...' && FILE=$(find dist -name 'index.js' | head -n 1) && echo \"📄 Ejecutando archivo encontrado: $FILE\" && node $FILE"]
