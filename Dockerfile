@@ -56,3 +56,5 @@ EXPOSE 4000
 
 # Start command
 CMD ["node", "dist/index.js"]
+
+# Dockerfile verified and re-saved
