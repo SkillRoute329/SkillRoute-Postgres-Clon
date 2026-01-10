@@ -18,6 +18,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Serve Frontend Static Files (BEFORE API Routes for performance/priority if name collision, but usually after)
+// User requirement: "Agrega esta línea antes de las rutas"
+const frontendPath = path.resolve(__dirname, '../../frontend/dist');
+app.use(express.static(frontendPath));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/shifts', shiftRoutes);
@@ -38,22 +43,10 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Serve Frontend Static Files
-const frontendPath = path.resolve(__dirname, '../../frontend/dist');
-app.use(express.static(frontendPath));
-
-// Handle React Routing (SPA) - Catch all requests usually excludes API paths
-app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
-    return next();
-  }
-  const indexPath = path.join(frontendPath, 'index.html');
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    // Fallback or next if index.html not found (e.g. dev mode without build)
-    next();
-  }
+// Handle React Routing (SPA) - Catch all requests
+// Should be last
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 import fs from 'fs';
