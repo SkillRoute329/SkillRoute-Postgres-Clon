@@ -33,6 +33,7 @@ export const createUser = async (req: Request, res: Response) => {
 
         const tenantId = (req as any).user.tenantId;
 
+        /*
         // DEEP DIAGNOSTIC 
         try {
             const schemaRes = await pool.query("SELECT current_database(), current_schema()");
@@ -49,6 +50,7 @@ export const createUser = async (req: Request, res: Response) => {
         } catch (diagErr: any) {
             return res.status(500).json({ message: 'Diagnostic Error', error: diagErr.message });
         }
+        */
 
         /*
         const testQuery = 'SELECT count(*) FROM public."User"';
@@ -60,14 +62,13 @@ export const createUser = async (req: Request, res: Response) => {
         }
         */
 
-        /*
         const query = `
             INSERT INTO public."User" 
             ("internalNumber", "firstName", "lastName", "fullName", "phoneNumber", "whatsappLink", "passwordHash", "role", "isActive", "tenantId")
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8::"Role", true, $9)
             RETURNING id, "internalNumber", "firstName", "lastName", "fullName", "phoneNumber", "whatsappLink", role, "isActive", "createdAt"
         `;
-        
+
         const values = [
             String(internalNumber).trim(),
             firstName,
@@ -82,13 +83,12 @@ export const createUser = async (req: Request, res: Response) => {
 
         const result = await pool.query(query, values);
         res.status(201).json(result.rows[0]);
-        */
     } catch (error: any) {
         console.error('User Create Error:', error);
         if (error.code === '23505') { // Unique violation
             return res.status(409).json({ message: 'El número de interno ya existe' });
         }
-        res.status(500).json({ message: `CRITICAL FAIL: ${error.message}` });
+        res.status(500).json({ message: 'Error al crear usuario', details: error.message });
     }
 };
 
