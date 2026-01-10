@@ -34,7 +34,7 @@ export const createUser = async (req: Request, res: Response) => {
         const tenantId = (req as any).user.tenantId;
 
         const query = `
-            INSERT INTO "User" 
+            INSERT INTO public."User" 
             ("internalNumber", "firstName", "lastName", "fullName", "phoneNumber", "whatsappLink", "passwordHash", "role", "isActive", "tenantId")
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8::"Role", true, $9)
             RETURNING id, "internalNumber", "firstName", "lastName", "fullName", "phoneNumber", "whatsappLink", role, "isActive", "createdAt"
