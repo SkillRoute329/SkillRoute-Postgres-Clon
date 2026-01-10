@@ -1,7 +1,13 @@
-console.log('🔄 INICIANDO VERSIÓN 1.0.1 - CACHÉ INVALIDADA');
+
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
 import dotenv from 'dotenv';
+import bcrypt from 'bcrypt';
+import pool from './db';
+
+// Routes
 import authRoutes from './routes/authRoutes';
 import shiftRoutes from './routes/shiftRoutes';
 import categoryRoutes from './routes/categoryRoutes';
@@ -10,23 +16,31 @@ import userRoutes from './routes/userRoutes';
 import systemConfigRoutes from './routes/systemConfigRoutes';
 import whatsappRoutes from './routes/whatsappRoutes';
 import healthRoutes from './routes/healthRoutes';
-import bcrypt from 'bcrypt';
+
+// --- LOG DE VERIFICACIÓN OBLIGATORIO ---
+console.log('🚀 INICIANDO VERSION 1.0.2 - UPDATE FORZADO 🚀');
 
 dotenv.config();
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
-// Serve Frontend Static Files (BEFORE API Routes)
-// Robust Path Detection for Docker/Railway
-import path from 'path';
-import fs from 'fs';
+// --- RUTA ABSOLUTA AL FRONTEND (Docker) ---
+const frontendPath = '/app/frontend/dist';
 
-// (Old static serving removed for override)
+// 1. Verificar existencia (Diagnóstico)
+if (fs.existsSync(frontendPath)) {
+  console.log(`✅ Frontend encontrado en: ${frontendPath}`);
+  console.log('📂 Archivos:', fs.readdirSync(frontendPath));
+} else {
+  console.error(`❌ ERROR: No se encuentra frontend en ${frontendPath}`);
+}
 
-// Routes
+// 2. Servir estáticos
+app.use(express.static(frontendPath));
+
+// --- AQUÍ TUS RUTAS DE API ---
 app.use('/api/auth', authRoutes);
 app.use('/api/shifts', shiftRoutes);
 app.use('/api/categories', categoryRoutes);
@@ -34,35 +48,28 @@ app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/system-config', systemConfigRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
-app.use('/api', healthRoutes); // Mount at /api to match requested /api/_healthcheck
+app.use('/api', healthRoutes);
 
-const PORT = process.env.PORT || 4000;
-
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    message: 'TransformaFacil 2.0 Backend - alive!',
-    date: new Date().toISOString()
-  });
+// 3. Catch-all para SPA (Al final de todo)
+app.get('*', (req, res) => {
+  console.log(`📥 Sirviendo index.html para: ${req.url}`);
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
-// (Old catch-all removed for override)
+const PORT = process.env.PORT || 3000;
 
-
-import pool from './db';
-
+// Internal Utils (Migration/Seed)
 const runMigration = async () => {
   try {
     console.log('🔄 Checking for database migrations...');
     const migrationPath = path.resolve(__dirname, '../../migration.sql');
-
     if (fs.existsSync(migrationPath)) {
       console.log(`📄 Found migration file at: ${migrationPath}`);
       const sql = fs.readFileSync(migrationPath, 'utf8');
       await pool.query(sql);
       console.log('✅ Database migration executed successfully.');
     } else {
-      console.log('⚠️ No migration.sql file found at project root. Skipping migration.');
+      console.log('⚠️ No migration.sql file found. Skipping.');
     }
   } catch (error) {
     console.error('❌ Error executing database migration:', error);
@@ -71,77 +78,28 @@ const runMigration = async () => {
 
 const seedDatabase = async () => {
   try {
-    console.log('🌱 Checking for database seeds...');
-
-    // 1. Seed Tenant
     const tenantRes = await pool.query('SELECT id FROM "Tenant" WHERE id = 1');
     if (tenantRes.rowCount === 0) {
-      console.log('🌱 Seeding default Tenant...');
-      await pool.query(`
-                INSERT INTO "Tenant" (id, name, slug, "isActive")
-                VALUES (1, 'TransformaFacil', 'default', true)
-            `);
+      await pool.query(`INSERT INTO "Tenant" (id, name, slug, "isActive") VALUES (1, 'TransformaFacil', 'default', true)`);
     }
-
-    // 2. Seed Admin User
     const userRes = await pool.query('SELECT id FROM "User" WHERE "internalNumber" = $1', ['admin']);
     if (userRes.rowCount === 0) {
-      console.log('🌱 Seeding Admin User...');
-      // Hash for '123456'
       const salt = await bcrypt.genSalt(10);
       const hash = await bcrypt.hash('123456', salt);
-
-      await pool.query(`
-                INSERT INTO "User" ("tenantId", "internalNumber", "firstName", "lastName", "fullName", "passwordHash", "role", "isActive")
-                VALUES (1, 'admin', 'Admin', 'System', 'Admin System', $1, 'Admin', true)
-             `, [hash]);
-      console.log('✅ Admin user created (user: admin, pass: 123456)');
-    } else {
-      console.log('ℹ️ Admin user already exists.');
+      await pool.query(`INSERT INTO "User" ("tenantId", "internalNumber", "firstName", "lastName", "fullName", "passwordHash", "role", "isActive") VALUES (1, 'admin', 'Admin', 'System', 'Admin System', $1, 'Admin', true)`, [hash]);
+      console.log('✅ Admin initialized.');
     }
-
   } catch (error) {
-    console.error('❌ Error seeding database:', error);
+    console.error('❌ Error seeding:', error);
   }
 };
 
-// --- DIAGNÓSTICO DE ARCHIVOS ---
-const frontendPath = '/app/frontend/dist';
-// Hardcoded absolute path for Docker as validation
-console.log(`🔍 [DIAGNOSTICO] Buscando Frontend en: ${frontendPath}`);
-
-if (fs.existsSync(frontendPath)) {
-  console.log('✅ Carpeta encontrada. Contenido:', fs.readdirSync(frontendPath));
-
-  // 1. Servir estáticos
-  app.use(express.static(frontendPath));
-  console.log('✅ Middleware estático registrado.');
-
-  // 2. Ruta Comodín (SPA)
-  // IMPORTANT: Check BEFORE listen.
-  app.get('*', (req, res) => {
-    console.log(`📥 Petición a: ${req.url} -> Sirviendo index.html`);
-    res.sendFile(path.join(frontendPath, 'index.html'));
-  });
-  console.log('✅ Ruta comodín (*) registrada.');
-
-} else {
-  console.log('❌ ¡ERROR CRÍTICO! La carpeta NO existe.');
-  // Debug info
-  console.log('📂 Contenido de /app:', fs.existsSync('/app') ? fs.readdirSync('/app') : 'nada');
-  if (fs.existsSync('/app/frontend')) {
-    console.log('📂 Contenido de /app/frontend:', fs.readdirSync('/app/frontend'));
-  }
-}
-// --- FIN DIAGNÓSTICO ---
-
-// Execute migration, then seed, then start server
+// Start Server Chain
 runMigration()
   .then(seedDatabase)
   .then(() => {
     app.listen(Number(PORT), '0.0.0.0', () => {
-      console.log(`🚀 Servidor accesible en http://0.0.0.0:${PORT}`);
-      console.log(`ℹ️  Listening on all network interfaces (0.0.0.0)`);
-      console.log(`Entorno: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`📡 Servidor escuchando en puerto ${PORT}`);
+      console.log(`🌍 Entorno: ${process.env.NODE_ENV}`);
     });
   });
