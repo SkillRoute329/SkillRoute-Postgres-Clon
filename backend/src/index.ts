@@ -14,7 +14,7 @@ import notificationRoutes from './routes/notificationRoutes';
 import userRoutes from './routes/userRoutes';
 import systemConfigRoutes from './routes/systemConfigRoutes';
 import whatsappRoutes from './routes/whatsappRoutes';
-import healthRoutes from './routes/healthRoutes';
+import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
@@ -40,7 +40,7 @@ app.get('/api/health', async (req, res) => {
 
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.3.1',
+    version: '1.3.2',
     timestamp: new Date().toISOString(),
     desc: 'Deep Diagnostic Build'
   });
@@ -146,7 +146,7 @@ const startServer = async () => {
   app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`📡 Servidor listo en puerto ${PORT}`);
     console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔢 Versión API: 1.3.1 (Resilient Boot)`); // Match package.json
+    console.log(`🔢 Versión API: 1.3.2 (Resilient Boot + Import Fix)`); // Match package.json
   });
 };
 

@@ -1,3 +1,5 @@
+import pool from '../db';
+
 export const ensureSchemaIntegrity = async () => {
     console.log('🛡️ [Schema] Verificando integridad de la base de datos...');
     let client;
