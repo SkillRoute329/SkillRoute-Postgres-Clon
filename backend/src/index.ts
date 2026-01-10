@@ -77,8 +77,7 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
-import fs from 'fs';
-import path from 'path';
+
 import pool from './db';
 
 const runMigration = async () => {
