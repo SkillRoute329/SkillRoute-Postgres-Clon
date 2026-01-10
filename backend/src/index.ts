@@ -94,6 +94,19 @@ const runMigration = async () => {
 
 const seedDatabase = async () => {
   try {
+    // --- DEFENSIVE CHECK: Ensure tables exist ---
+    const tableCheck = await pool.query(`SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE  table_schema = 'public'
+            AND    table_name   = 'Tenant'
+        );`);
+
+    if (!tableCheck.rows[0].exists) {
+      console.error('⚠️ [SEED] TABLA "Tenant" NO ENCONTRADA. Saltando seeding para evitar crash.');
+      console.error('👉 Sugerencia: Revisa que migration.sql se haya copiado y ejecutado correctamente.');
+      return;
+    }
+
     const tenantRes = await pool.query('SELECT id FROM "Tenant" WHERE id = 1');
     if (tenantRes.rowCount === 0) {
       await pool.query(`INSERT INTO "Tenant" (id, name, slug, "isActive") VALUES (1, 'TransformaFacil', 'default', true)`);

@@ -2,6 +2,7 @@ FROM node:22-alpine
 WORKDIR /app
 
 COPY package.json ./
+COPY migration.sql ./
 COPY backend ./backend
 COPY frontend ./frontend
 
