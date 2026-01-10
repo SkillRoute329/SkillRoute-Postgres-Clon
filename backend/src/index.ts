@@ -18,20 +18,27 @@ import healthRoutes from './routes/healthRoutes';
 
 // Cargar env vars
 dotenv.config();
+console.log('🔥 INICIANDO SISTEMA INTEGRAL v2.0 - AUTOMATIZADO 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 1. Middlewares Básicos
 app.use(cors());
 app.use(express.json());
 
-// 2. RUTA DE DIAGNÓSTICO (Para saber que el server vive)
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', db_connected: true, timestamp: new Date() });
+// --- RUTA DE SALUD (CRÍTICA PARA EL BOT) ---
+app.get('/api/health', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query('SELECT NOW()');
+    client.release();
+    res.json({ status: 'ok', db: 'connected', time: result.rows[0].now });
+  } catch (err) {
+    res.status(500).json({ status: 'error', db: err.message });
+  }
 });
 
-// --- API ROUTES (Antes de estáticos) ---
+// --- API ROUTES ---
 app.use('/api/auth', authRoutes);
 app.use('/api/shifts', shiftRoutes);
 app.use('/api/categories', categoryRoutes);
@@ -39,32 +46,32 @@ app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/system-config', systemConfigRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
-app.use('/api', healthRoutes);
+// app.use('/api', healthRoutes); // Covered by custom check above
 
-// ---------------------------------------------------------
-// 3. SERVIR FRONTEND (Configuración Blindada)
-// ---------------------------------------------------------
+// --- SERVICIO DE FRONTEND (A PRUEBA DE FALLOS) ---
 const FRONTEND_PATH = '/app/frontend/dist';
+const FRONTEND_INDEX = path.join(FRONTEND_PATH, 'index.html');
 
 if (fs.existsSync(FRONTEND_PATH)) {
-  console.log(`✅ [STATIC] Sirviendo Frontend desde: ${FRONTEND_PATH}`);
-
-  // Servir archivos estáticos (JS, CSS, Imágenes)
+  console.log(`✅ [STATIC] Frontend detectado en: ${FRONTEND_PATH}`);
   app.use(express.static(FRONTEND_PATH));
 
-  // CUALQUIER otra ruta que no sea API -> Devolver index.html (Para React Router)
+  // Catch-all para SPA: Si no es API, devuelve index.html
   app.get('*', (req, res) => {
-    const indexPath = path.join(FRONTEND_PATH, 'index.html');
-    if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
+    if (req.url.startsWith('/api')) {
+      return res.status(404).json({ error: 'Endpoint API no encontrado' });
+    }
+    if (fs.existsSync(FRONTEND_INDEX)) {
+      res.sendFile(FRONTEND_INDEX);
     } else {
-      res.status(500).send('❌ Error Crítico: index.html no encontrado.');
+      res.status(500).send('❌ ERROR CRÍTICO: Frontend build existe pero index.html no.');
     }
   });
 
 } else {
-  console.error(`❌ [STATIC] ERROR FATAL: No encuentro la carpeta en ${FRONTEND_PATH}`);
-  app.get('/', (req, res) => res.send('Backend Online (Frontend no encontrado en el servidor).'));
+  console.error(`❌ [STATIC] FATAL: La carpeta ${FRONTEND_PATH} NO EXISTE.`);
+  // Crear ruta de emergencia
+  app.get('/', (req, res) => res.send('BACKEND ONLINE - Frontend no encontrado. Revisa el Build.'));
 }
 
 // Internal Utils (Migration/Seed)
@@ -103,12 +110,11 @@ const seedDatabase = async () => {
   }
 };
 
-// 4. Arrancar Servidor (Con Migraciones)
+// Start Server Chain
 runMigration()
   .then(seedDatabase)
   .then(() => {
     app.listen(Number(PORT), '0.0.0.0', () => {
-      console.log(`📡 Servidor escuchando en puerto ${PORT}`);
-      console.log(`🌍 Entorno: ${process.env.NODE_ENV}`);
+      console.log(`📡 Servidor listo en puerto ${PORT}`);
     });
   });
