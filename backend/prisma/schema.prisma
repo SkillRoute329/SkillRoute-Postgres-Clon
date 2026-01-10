@@ -38,6 +38,7 @@ model Tenant {
   customFieldDefinitions  CustomFieldDefinition[]
   systemConfigs           SystemConfig[]
   payments                Payment[]
+  actionLogs              ActionLog[]
 }
 
 // 1. Usuarios
@@ -61,6 +62,7 @@ model User {
   approvals       Shift[]   @relation("ApprovedBy")
   transactions    ShiftTransaction[]
   payments        Payment[]
+  actionLogs      ActionLog[]
 
   @@unique([tenantId, internalNumber]) // Internal number is unique per tenant
   @@unique([tenantId, email])          // Email is unique per tenant (or globally if preferred, but per tenant implies isolation)
