@@ -84,7 +84,7 @@ const DashboardLayout = () => {
                 </div>
 
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
-                    {role === 'Admin' && (
+                    {(role === 'Admin' || role === 'SuperAdmin') && (
                         <div className="mb-6">
                             <div className={clsx("text-xs font-semibold text-slate-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>Administración</div>
                             <SidebarLink to="/dashboard/admin/shifts" icon={CalendarClock} onClick={handleMobileLinkClick}>Gestión Turnos</SidebarLink>
