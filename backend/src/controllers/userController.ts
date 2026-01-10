@@ -59,7 +59,7 @@ export const createUser = async (req: Request, res: Response) => {
         if (error.code === '23505') { // Unique violation
             return res.status(409).json({ message: 'El número de interno ya existe' });
         }
-        res.status(500).json({ message: 'Error al crear usuario', details: error.message });
+        res.status(500).json({ message: `CRITICAL FAIL: ${error.message}` });
     }
 };
 
