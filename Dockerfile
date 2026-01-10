@@ -13,8 +13,10 @@ RUN npm run build
 # --- BACKEND ---
 WORKDIR /app/backend
 RUN npm install
+RUN rm -rf dist
 RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
-RUN rm -rf dist && npm run build
+RUN echo "--- CHECK SRC ---" && head -n 20 src/index.ts
+RUN npm run build
 
 # --- FINAL ---
 WORKDIR /app/backend
