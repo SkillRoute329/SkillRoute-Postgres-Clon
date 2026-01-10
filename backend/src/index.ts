@@ -1,4 +1,3 @@
-
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -17,30 +16,22 @@ import systemConfigRoutes from './routes/systemConfigRoutes';
 import whatsappRoutes from './routes/whatsappRoutes';
 import healthRoutes from './routes/healthRoutes';
 
-// --- LOG DE VERIFICACIÓN OBLIGATORIO ---
-console.log('🚀 INICIANDO VERSION 1.0.2 - UPDATE FORZADO 🚀');
-
+// Cargar env vars
 dotenv.config();
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
+// 1. Middlewares Básicos
 app.use(cors());
 app.use(express.json());
 
-// --- RUTA ABSOLUTA AL FRONTEND (Docker) ---
-const frontendPath = '/app/frontend/dist';
+// 2. RUTA DE DIAGNÓSTICO (Para saber que el server vive)
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', db_connected: true, timestamp: new Date() });
+});
 
-// 1. Verificar existencia (Diagnóstico)
-if (fs.existsSync(frontendPath)) {
-  console.log(`✅ Frontend encontrado en: ${frontendPath}`);
-  console.log('📂 Archivos:', fs.readdirSync(frontendPath));
-} else {
-  console.error(`❌ ERROR: No se encuentra frontend en ${frontendPath}`);
-}
-
-// 2. Servir estáticos
-app.use(express.static(frontendPath));
-
-// --- AQUÍ TUS RUTAS DE API ---
+// --- API ROUTES (Antes de estáticos) ---
 app.use('/api/auth', authRoutes);
 app.use('/api/shifts', shiftRoutes);
 app.use('/api/categories', categoryRoutes);
@@ -50,13 +41,31 @@ app.use('/api/system-config', systemConfigRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api', healthRoutes);
 
-// 3. Catch-all para SPA (Al final de todo)
-app.get('*', (req, res) => {
-  console.log(`📥 Sirviendo index.html para: ${req.url}`);
-  res.sendFile(path.join(frontendPath, 'index.html'));
-});
+// ---------------------------------------------------------
+// 3. SERVIR FRONTEND (Configuración Blindada)
+// ---------------------------------------------------------
+const FRONTEND_PATH = '/app/frontend/dist';
 
-const PORT = process.env.PORT || 3000;
+if (fs.existsSync(FRONTEND_PATH)) {
+  console.log(`✅ [STATIC] Sirviendo Frontend desde: ${FRONTEND_PATH}`);
+
+  // Servir archivos estáticos (JS, CSS, Imágenes)
+  app.use(express.static(FRONTEND_PATH));
+
+  // CUALQUIER otra ruta que no sea API -> Devolver index.html (Para React Router)
+  app.get('*', (req, res) => {
+    const indexPath = path.join(FRONTEND_PATH, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(500).send('❌ Error Crítico: index.html no encontrado.');
+    }
+  });
+
+} else {
+  console.error(`❌ [STATIC] ERROR FATAL: No encuentro la carpeta en ${FRONTEND_PATH}`);
+  app.get('/', (req, res) => res.send('Backend Online (Frontend no encontrado en el servidor).'));
+}
 
 // Internal Utils (Migration/Seed)
 const runMigration = async () => {
@@ -94,7 +103,7 @@ const seedDatabase = async () => {
   }
 };
 
-// Start Server Chain
+// 4. Arrancar Servidor (Con Migraciones)
 runMigration()
   .then(seedDatabase)
   .then(() => {
