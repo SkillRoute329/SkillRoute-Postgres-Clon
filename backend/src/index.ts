@@ -9,6 +9,7 @@ import userRoutes from './routes/userRoutes';
 import systemConfigRoutes from './routes/systemConfigRoutes';
 import whatsappRoutes from './routes/whatsappRoutes';
 import healthRoutes from './routes/healthRoutes';
+import bcrypt from 'bcrypt';
 
 dotenv.config();
 
@@ -44,9 +45,6 @@ import pool from './db';
 const runMigration = async () => {
   try {
     console.log('🔄 Checking for database migrations...');
-    // Look for migration.sql in project root (relative to dist/src or backend root)
-    // Adjust path: from dist/index.js (backend/dist), root is ../../
-    // If running with tsx (backend/src), root is ../../
     const migrationPath = path.resolve(__dirname, '../../migration.sql');
 
     if (fs.existsSync(migrationPath)) {
@@ -59,16 +57,51 @@ const runMigration = async () => {
     }
   } catch (error) {
     console.error('❌ Error executing database migration:', error);
-    // We generally want to continue even if migration fails, or maybe exit? 
-    // For self-healing, maybe continuing is better if it's just a duplicate column error, 
-    // but if it's connection error, app won't work anyway.
   }
 };
 
-// Execute migration then start server
-runMigration().then(() => {
-  app.listen(Number(PORT), '0.0.0.0', () => {
-    console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
-    console.log(`Entorno: ${process.env.NODE_ENV || 'development'}`);
+const seedDatabase = async () => {
+  try {
+    console.log('🌱 Checking for database seeds...');
+
+    // 1. Seed Tenant
+    const tenantRes = await pool.query('SELECT id FROM "Tenant" WHERE id = 1');
+    if (tenantRes.rowCount === 0) {
+      console.log('🌱 Seeding default Tenant...');
+      await pool.query(`
+                INSERT INTO "Tenant" (id, name, slug, "isActive")
+                VALUES (1, 'TransformaFacil', 'default', true)
+            `);
+    }
+
+    // 2. Seed Admin User
+    const userRes = await pool.query('SELECT id FROM "User" WHERE "internalNumber" = $1', ['admin']);
+    if (userRes.rowCount === 0) {
+      console.log('🌱 Seeding Admin User...');
+      // Hash for '123456'
+      const salt = await bcrypt.genSalt(10);
+      const hash = await bcrypt.hash('123456', salt);
+
+      await pool.query(`
+                INSERT INTO "User" ("tenantId", "internalNumber", "firstName", "lastName", "fullName", "passwordHash", "role", "isActive")
+                VALUES (1, 'admin', 'Admin', 'System', 'Admin System', $1, 'Admin', true)
+             `, [hash]);
+      console.log('✅ Admin user created (user: admin, pass: 123456)');
+    } else {
+      console.log('ℹ️ Admin user already exists.');
+    }
+
+  } catch (error) {
+    console.error('❌ Error seeding database:', error);
+  }
+};
+
+// Execute migration, then seed, then start server
+runMigration()
+  .then(seedDatabase)
+  .then(() => {
+    app.listen(Number(PORT), '0.0.0.0', () => {
+      console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
+      console.log(`Entorno: ${process.env.NODE_ENV || 'development'}`);
+    });
   });
-});
