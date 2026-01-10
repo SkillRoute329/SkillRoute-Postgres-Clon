@@ -9,7 +9,7 @@
         "start": "cd backend && npm start"
     },
     "engines": {
-        "node": "18.x"
+        "node": "22.x"
     },
     "keywords": [
         "railway"
