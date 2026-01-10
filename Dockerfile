@@ -14,10 +14,10 @@ RUN npm run build
 WORKDIR /app/backend
 RUN npm install
 RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
-RUN npm run build
+RUN rm -rf dist && npm run build
 
 # --- FINAL ---
 WORKDIR /app/backend
 ENV NODE_ENV=production
 EXPOSE 3000
-CMD ["npm", "start"]
+CMD ["sh", "-c", "echo '📂 --- INSPECCION DE ARCHIVOS ---' && ls -F /app/frontend/dist/ || echo '❌ LA CARPETA NO EXISTE' && echo '-----------------------------' && node dist/index.js"]
