@@ -40,7 +40,7 @@ app.get('/api/health', async (req, res) => {
 
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.1.2',
+    version: '1.2.0',
     timestamp: new Date().toISOString(),
     desc: 'Deep Diagnostic Build'
   });
