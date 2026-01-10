@@ -50,6 +50,8 @@ model User {
   lastName       String
   fullName       String    @db.VarChar(255)
   email          String?
+  phoneNumber    String?
+  whatsappLink   String?
   passwordHash   String
   role           Role      @default(User)
   isActive       Boolean   @default(true)
