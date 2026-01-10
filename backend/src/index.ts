@@ -37,7 +37,38 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.listen(Number(PORT), '0.0.0.0', () => {
-  console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
-  console.log(`Entorno: ${process.env.NODE_ENV || 'development'}`);
+import fs from 'fs';
+import path from 'path';
+import pool from './db';
+
+const runMigration = async () => {
+  try {
+    console.log('🔄 Checking for database migrations...');
+    // Look for migration.sql in project root (relative to dist/src or backend root)
+    // Adjust path: from dist/index.js (backend/dist), root is ../../
+    // If running with tsx (backend/src), root is ../../
+    const migrationPath = path.resolve(__dirname, '../../migration.sql');
+
+    if (fs.existsSync(migrationPath)) {
+      console.log(`📄 Found migration file at: ${migrationPath}`);
+      const sql = fs.readFileSync(migrationPath, 'utf8');
+      await pool.query(sql);
+      console.log('✅ Database migration executed successfully.');
+    } else {
+      console.log('⚠️ No migration.sql file found at project root. Skipping migration.');
+    }
+  } catch (error) {
+    console.error('❌ Error executing database migration:', error);
+    // We generally want to continue even if migration fails, or maybe exit? 
+    // For self-healing, maybe continuing is better if it's just a duplicate column error, 
+    // but if it's connection error, app won't work anyway.
+  }
+};
+
+// Execute migration then start server
+runMigration().then(() => {
+  app.listen(Number(PORT), '0.0.0.0', () => {
+    console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
+    console.log(`Entorno: ${process.env.NODE_ENV || 'development'}`);
+  });
 });
