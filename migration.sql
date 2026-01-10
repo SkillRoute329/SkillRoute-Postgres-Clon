@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS "User" (
     "fullName" VARCHAR(255) NOT NULL,
     "email" TEXT,
     "passwordHash" TEXT NOT NULL,
+    "phoneNumber" TEXT,
+    "whatsappLink" TEXT,
     "role" "Role" NOT NULL DEFAULT 'User',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -163,11 +165,24 @@ CREATE TABLE IF NOT EXISTS "ActionLog" (
     FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
+-- 9. Notifications
+CREATE TABLE IF NOT EXISTS "Notification" (
+    "id" SERIAL PRIMARY KEY,
+    "userId" INTEGER NOT NULL,
+    "title" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "type" TEXT NOT NULL DEFAULT 'INFO',
+    "link" TEXT,
+    "isRead" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
 -- EXISTING ALTERS and FIXES
 ALTER TABLE "Shift" ADD COLUMN IF NOT EXISTS "endTime" VARCHAR(5);
 ALTER TABLE "ShiftCategory" ADD COLUMN IF NOT EXISTS "extraHourValue" DECIMAL(10, 2) DEFAULT 0;
 UPDATE "ShiftCategory" SET "extraHourValue" = 0 WHERE "extraHourValue" IS NULL;
 
--- NEW COLUMNS FOR USER
+-- NEW COLUMNS FOR USER (Redundant if table recreated, but safe due to IF NOT EXISTS)
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "phoneNumber" TEXT;
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "whatsappLink" TEXT;
