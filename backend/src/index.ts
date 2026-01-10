@@ -38,6 +38,14 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+app.get('/api/version', (req, res) => {
+  res.json({
+    version: '1.1.2',
+    timestamp: new Date().toISOString(),
+    desc: 'Deep Diagnostic Build'
+  });
+});
+
 // --- API ROUTES ---
 app.use('/api/auth', authRoutes);
 app.use('/api/shifts', shiftRoutes);
