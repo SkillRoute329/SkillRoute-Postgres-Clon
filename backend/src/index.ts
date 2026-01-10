@@ -18,9 +18,37 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve Frontend Static Files (BEFORE API Routes for performance/priority if name collision, but usually after)
-// User requirement: "Agrega esta línea antes de las rutas"
-const frontendPath = path.resolve(__dirname, '../../frontend/dist');
+// Serve Frontend Static Files (BEFORE API Routes)
+// Robust Path Detection for Docker/Railway
+import path from 'path';
+import fs from 'fs';
+
+let frontendPath = path.resolve(__dirname, '../../frontend/dist'); // Default local
+
+// Check for Docker absolute path
+const dockerPath = '/app/frontend/dist';
+if (fs.existsSync(dockerPath)) {
+  console.log('🐳 Detected Docker environment. Using absolute path:', dockerPath);
+  frontendPath = dockerPath;
+}
+
+// Audit Frontend Files
+console.log(`🔍 Buscando frontend en: ${frontendPath}`);
+try {
+  if (fs.existsSync(frontendPath)) {
+    const files = fs.readdirSync(frontendPath);
+    console.log(`📂 Archivos encontrados (${files.length}):`, files.join(', '));
+    if (files.length === 0) console.warn('⚠️ ADVERTENCIA: La carpeta existe pero está vacía.');
+  } else {
+    console.error(`❌ ERROR CRÍTICO: La carpeta de frontend NO EXISTE en: ${frontendPath}`);
+    // Attempt to debug context
+    console.log('ℹ️ Current __dirname:', __dirname);
+    try { console.log('ℹ️ /app contents:', fs.readdirSync('/app').join(', ')); } catch { }
+  }
+} catch (error) {
+  console.error('❌ Error al auditar carpeta:', error);
+}
+
 app.use(express.static(frontendPath));
 
 // Routes
