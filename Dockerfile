@@ -18,5 +18,6 @@ RUN npm run build
 
 # --- FINAL ---
 WORKDIR /app/backend
+ENV NODE_ENV=production
 EXPOSE 3000
 CMD ["npm", "start"]

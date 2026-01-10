@@ -23,14 +23,9 @@ app.use(express.json());
 import path from 'path';
 import fs from 'fs';
 
-let frontendPath = path.resolve(__dirname, '../../frontend/dist'); // Default local
-
-// Check for Docker absolute path
-const dockerPath = '/app/frontend/dist';
-if (fs.existsSync(dockerPath)) {
-  console.log('🐳 Detected Docker environment. Using absolute path:', dockerPath);
-  frontendPath = dockerPath;
-}
+// Serve Frontend Static Files (BEFORE API Routes)
+// FORCE Absolute Path for Docker/Railway
+const frontendPath = '/app/frontend/dist';
 
 // Audit Frontend Files
 console.log(`🔍 Buscando frontend en: ${frontendPath}`);
@@ -38,12 +33,9 @@ try {
   if (fs.existsSync(frontendPath)) {
     const files = fs.readdirSync(frontendPath);
     console.log(`📂 Archivos encontrados (${files.length}):`, files.join(', '));
-    if (files.length === 0) console.warn('⚠️ ADVERTENCIA: La carpeta existe pero está vacía.');
   } else {
-    console.error(`❌ ERROR CRÍTICO: La carpeta de frontend NO EXISTE en: ${frontendPath}`);
-    // Attempt to debug context
-    console.log('ℹ️ Current __dirname:', __dirname);
-    try { console.log('ℹ️ /app contents:', fs.readdirSync('/app').join(', ')); } catch { }
+    console.warn(`❌ ERROR: La carpeta ${frontendPath} no existe. (Esto es normal si estás en local Windows, pero fatal en Docker)`);
+    // Fallback for local dev if needed, or just let it fail/warn
   }
 } catch (error) {
   console.error('❌ Error al auditar carpeta:', error);
@@ -74,7 +66,7 @@ app.get('/health', (req, res) => {
 // Handle React Routing (SPA) - Catch all requests
 // Should be last
 app.get('*', (req, res) => {
-  res.sendFile(path.join(frontendPath, 'index.html'));
+  res.sendFile('/app/frontend/dist/index.html');
 });
 
 
