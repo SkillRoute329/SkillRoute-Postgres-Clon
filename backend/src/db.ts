@@ -1,33 +1,24 @@
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
-// Cargar variables de entorno si estamos en local (en prod ya están cargadas)
 dotenv.config();
 
-// 1. Obtener la URL real
-const connectionString = process.env.DATABASE_URL;
+// URL DE EMERGENCIA (Proporcionada por el usuario para Railway Internal)
+const FALLBACK_URL = "postgresql://postgres:RbkBdQlSGNNeNWSfuFBvFyWpmniwdXcP@postgres.railway.internal:5432/railway";
 
-// 2. Log de Diagnóstico (Ocultando la contraseña)
-if (connectionString) {
-    const masked = connectionString.replace(/:([^:@]+)@/, ':****@');
-    console.log(`🔌 [DB] Intentando conectar a: ${masked}`);
-} else {
-    console.error('❌ [DB] FATAL: No existe DATABASE_URL. Usando localhost (Fallará en Prod).');
+// Usar variable de entorno O el fallback explícito
+const connectionString = process.env.DATABASE_URL || FALLBACK_URL;
+
+console.log('🔌 [DB] Iniciando conexión...');
+if (!process.env.DATABASE_URL) {
+    console.warn('⚠️ [DB] ADVERTENCIA: DATABASE_URL no detectada. Usando URL de respaldo interna.');
 }
 
-// 3. Configurar el Pool
 const pool = new Pool({
-    connectionString: connectionString, // Si es undefined, fallará visiblemente en lugar de usar default silencioso
-    ssl: process.env.NODE_ENV === 'production' && connectionString && !connectionString.includes('localhost')
-        ? { rejectUnauthorized: false } // Necesario para algunas nubes, seguro para Railway interno
-        : undefined
+    connectionString: connectionString,
+    ssl: false // Red interna de Railway no requiere SSL estricto habitualmente
 });
 
-pool.on('connect', () => {
-    console.log('✅ [DB] ¡Conexión exitosa a la Base de Datos!');
-});
-
-pool.on('error', (err) => {
-    console.error('🔥 [DB] Error en la conexión:', err);
-});
+pool.on('connect', () => console.log('✅ [DB] Conectado exitosamente a Postgres.'));
+pool.on('error', (err) => console.error('🔥 [DB] Error en cliente de base de datos:', err));
 
 export default pool;

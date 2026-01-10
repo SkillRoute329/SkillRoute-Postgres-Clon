@@ -13,6 +13,16 @@ RUN npm run build
 # --- BACKEND ---
 # --- BACKEND ---
 WORKDIR /app/backend
+# Instalar Chromium y dependencias para Puppeteer
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
+
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 RUN npm install
 # Limpieza agresiva
 RUN rm -rf dist tsconfig.tsbuildinfo

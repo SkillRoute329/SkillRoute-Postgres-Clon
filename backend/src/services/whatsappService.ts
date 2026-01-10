@@ -25,7 +25,8 @@ class WhatsAppService {
                     '--no-zygote',
                     '--disable-gpu'
                 ],
-                headless: true
+                headless: true,
+                executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
             }
         });
 
