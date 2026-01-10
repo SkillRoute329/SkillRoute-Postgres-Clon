@@ -23,6 +23,7 @@
   ],
   "exclude": [
     "node_modules",
+    "prisma/seed.ts",
     "dist",
     "**/*.spec.ts", // si usas tests en el futuro
     "eslint.config.mjs", // importante
