@@ -15,7 +15,10 @@ if (!process.env.DATABASE_URL) {
 
 const pool = new Pool({
     connectionString: connectionString,
-    ssl: false // Red interna de Railway no requiere SSL estricto habitualmente
+    ssl: false,
+    max: 20, // Limit pool size
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000
 });
 
 pool.on('connect', () => console.log('✅ [DB] Conectado exitosamente a Postgres.'));

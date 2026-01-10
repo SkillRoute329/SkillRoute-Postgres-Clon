@@ -30,8 +30,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
     }
 };
 
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import prisma from '../prisma';
 
 export const createUser = async (req: Request, res: Response) => {
     const { internalNumber, firstName, lastName, phoneNumber, whatsappLink, password, role } = req.body;
