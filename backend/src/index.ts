@@ -38,6 +38,24 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Serve Frontend Static Files
+const frontendPath = path.resolve(__dirname, '../../frontend/dist');
+app.use(express.static(frontendPath));
+
+// Handle React Routing (SPA) - Catch all requests usually excludes API paths
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
+    return next();
+  }
+  const indexPath = path.join(frontendPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    // Fallback or next if index.html not found (e.g. dev mode without build)
+    next();
+  }
+});
+
 import fs from 'fs';
 import path from 'path';
 import pool from './db';
