@@ -1,3 +1,4 @@
+console.log('🔄 INICIANDO VERSIÓN 1.0.1 - CACHÉ INVALIDADA');
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
