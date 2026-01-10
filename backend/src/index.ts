@@ -23,25 +23,7 @@ app.use(express.json());
 import path from 'path';
 import fs from 'fs';
 
-// Serve Frontend Static Files (BEFORE API Routes)
-// FORCE Absolute Path for Docker/Railway
-const frontendPath = '/app/frontend/dist';
-
-// Audit Frontend Files
-console.log(`🔍 Buscando frontend en: ${frontendPath}`);
-try {
-  if (fs.existsSync(frontendPath)) {
-    const files = fs.readdirSync(frontendPath);
-    console.log(`📂 Archivos encontrados (${files.length}):`, files.join(', '));
-  } else {
-    console.warn(`❌ ERROR: La carpeta ${frontendPath} no existe. (Esto es normal si estás en local Windows, pero fatal en Docker)`);
-    // Fallback for local dev if needed, or just let it fail/warn
-  }
-} catch (error) {
-  console.error('❌ Error al auditar carpeta:', error);
-}
-
-app.use(express.static(frontendPath));
+// (Old static serving removed for override)
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -63,11 +45,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Handle React Routing (SPA) - Catch all requests
-// Should be last
-app.get('*', (req, res) => {
-  res.sendFile('/app/frontend/dist/index.html');
-});
+// (Old catch-all removed for override)
 
 
 import pool from './db';
@@ -125,6 +103,36 @@ const seedDatabase = async () => {
     console.error('❌ Error seeding database:', error);
   }
 };
+
+// --- DIAGNÓSTICO DE ARCHIVOS ---
+const frontendPath = '/app/frontend/dist';
+// Hardcoded absolute path for Docker as validation
+console.log(`🔍 [DIAGNOSTICO] Buscando Frontend en: ${frontendPath}`);
+
+if (fs.existsSync(frontendPath)) {
+  console.log('✅ Carpeta encontrada. Contenido:', fs.readdirSync(frontendPath));
+
+  // 1. Servir estáticos
+  app.use(express.static(frontendPath));
+  console.log('✅ Middleware estático registrado.');
+
+  // 2. Ruta Comodín (SPA)
+  // IMPORTANT: Check BEFORE listen.
+  app.get('*', (req, res) => {
+    console.log(`📥 Petición a: ${req.url} -> Sirviendo index.html`);
+    res.sendFile(path.join(frontendPath, 'index.html'));
+  });
+  console.log('✅ Ruta comodín (*) registrada.');
+
+} else {
+  console.log('❌ ¡ERROR CRÍTICO! La carpeta NO existe.');
+  // Debug info
+  console.log('📂 Contenido de /app:', fs.existsSync('/app') ? fs.readdirSync('/app') : 'nada');
+  if (fs.existsSync('/app/frontend')) {
+    console.log('📂 Contenido de /app/frontend:', fs.readdirSync('/app/frontend'));
+  }
+}
+// --- FIN DIAGNÓSTICO ---
 
 // Execute migration, then seed, then start server
 runMigration()
