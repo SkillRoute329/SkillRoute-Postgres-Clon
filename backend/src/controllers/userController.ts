@@ -19,73 +19,39 @@ export const getAllUsers = async (req: Request, res: Response) => {
     }
 };
 
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
 export const createUser = async (req: Request, res: Response) => {
     const { internalNumber, firstName, lastName, phoneNumber, whatsappLink, password, role } = req.body;
 
     try {
-        // Validations
         if (!internalNumber || !firstName || !lastName || !password) {
-            return res.status(400).json({ message: 'Campos requeridos: internalNumber, firstName, lastName, password' });
+            return res.status(400).json({ message: 'Campos requeridos' });
         }
 
-        const fullName = `${firstName} ${lastName}`;
         const passwordHash = await bcrypt.hash(password, 10);
-
         const tenantId = (req as any).user.tenantId;
 
-        /*
-        // DEEP DIAGNOSTIC 
-        try {
-            const schemaRes = await pool.query("SELECT current_database(), current_schema()");
-            const tablesRes = await pool.query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
+        const newUser = await prisma.user.create({
+            data: {
+                internalNumber: String(internalNumber).trim(),
+                firstName,
+                lastName,
+                fullName: `${firstName} ${lastName}`,
+                phoneNumber: phoneNumber || null,
+                whatsappLink: whatsappLink || null,
+                passwordHash,
+                role: role || 'User',
+                isActive: true,
+                tenantId: tenantId
+            }
+        });
 
-            console.log('DB Info:', schemaRes.rows[0]);
-            console.log('Tables:', tablesRes.rows.map(r => r.table_name));
-
-            return res.status(200).json({
-                message: 'Diagnostic Info',
-                db: schemaRes.rows[0],
-                tables: tablesRes.rows.map(r => r.table_name)
-            });
-        } catch (diagErr: any) {
-            return res.status(500).json({ message: 'Diagnostic Error', error: diagErr.message });
-        }
-        */
-
-        /*
-        const testQuery = 'SELECT count(*) FROM public."User"';
-        const testRes = await pool.query(testQuery);
-        console.log('Diagnostic Select User Count:', testRes.rows[0].count);
-
-        if (true) {
-            return res.status(200).json({ message: 'Diagnostic Pass', count: testRes.rows[0].count });
-        }
-        */
-
-        const query = `
-            INSERT INTO public."User" 
-            ("internalNumber", "firstName", "lastName", "fullName", "phoneNumber", "whatsappLink", "passwordHash", "role", "isActive", "tenantId")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8::"Role", true, $9)
-            RETURNING id, "internalNumber", "firstName", "lastName", "fullName", "phoneNumber", "whatsappLink", role, "isActive", "createdAt"
-        `;
-
-        const values = [
-            String(internalNumber).trim(),
-            firstName,
-            lastName,
-            fullName,
-            phoneNumber || null,
-            whatsappLink || null,
-            passwordHash,
-            role || 'User',
-            tenantId
-        ];
-
-        const result = await pool.query(query, values);
-        res.status(201).json(result.rows[0]);
+        res.status(201).json(newUser);
     } catch (error: any) {
         console.error('User Create Error:', error);
-        if (error.code === '23505') { // Unique violation
+        if (error.code === 'P2002') { // Unique constraint
             return res.status(409).json({ message: 'El número de interno ya existe' });
         }
         res.status(500).json({ message: 'Error al crear usuario', details: error.message });
