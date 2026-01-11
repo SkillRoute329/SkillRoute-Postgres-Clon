@@ -21,12 +21,17 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '18.2-MIGRATION-FORCE';
+const VERSION = '18.4-DEBUG-PORT';
+
+console.log(`🔌 [INIT] Starting Server Version: ${VERSION}`);
+console.log(`🔌 [INIT] Environment PORT: ${process.env.PORT}`);
+console.log(`🔌 [INIT] Final PORT being used: ${PORT}`);
 
 app.use(cors());
 app.use(express.json());
 
 // --- CRITICAL: START LISTENING ASAP FOR RAILWAY HEALTHCHECK ---
+console.log('🔌 [INIT] Attempting to listen...');
 app.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`📡 [SERVER] LISTENING ON PORT ${PORT} - VERSION ${VERSION}`);
 });
