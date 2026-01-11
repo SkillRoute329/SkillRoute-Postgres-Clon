@@ -1,3 +1,6 @@
+[setup]
+pkgs = ["nodejs_22"]
+
 [build]
 installCommand = "cd backend && npm install"
 buildCommand = "cd backend && npx prisma generate && npm run build"
