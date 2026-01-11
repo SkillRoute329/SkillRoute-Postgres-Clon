@@ -2,15 +2,10 @@
 FROM node:20-slim AS builder
 WORKDIR /app
 
-# Copy all files
+# Copy ALL files
 COPY . .
 
-# Build Frontend
-WORKDIR /app/frontend
-RUN npm install
-RUN npm run build
-
-# Build Backend
+# Build Backend ONLY (Skip frontend for now to ensure backend update)
 WORKDIR /app/backend
 RUN npm install
 RUN npx prisma generate
@@ -28,13 +23,12 @@ COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/backend/node_modules ./backend/node_modules
 COPY --from=builder /app/backend/package.json ./backend/package.json
 COPY --from=builder /app/backend/prisma ./backend/prisma
-COPY --from=builder /app/frontend/dist ./frontend/dist
 COPY --from=builder /app/migration.sql ./migration.sql
 
 # Environment
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV CACHE_BUST=v11.0-FORCE-DEPLOY
+ENV CACHE_BUST=v12.1-BACKEND-ONLY-NUCLEAR
 
 EXPOSE 3000
 
