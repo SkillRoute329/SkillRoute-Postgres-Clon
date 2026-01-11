@@ -1,8 +1,9 @@
-FROM node:22-alpine
+FROM node:20-alpine
 WORKDIR /app
 
 COPY package.json ./
 COPY migration.sql ./
+COPY .dockerignore ./
 COPY backend ./backend
 COPY frontend ./frontend
 
@@ -24,7 +25,7 @@ COPY migration.sql ./
 RUN npm install
 
 # --- CACHE BUSTER ---
-ENV CACHE_BUST=v8.1-FORCE
+ENV CACHE_BUST=v8.3-CLEAN-BUILD
 
 # Generate Prisma Client
 RUN npx prisma generate
@@ -35,5 +36,6 @@ RUN npm run build
 # --- FINAL ---
 WORKDIR /app/backend
 ENV NODE_ENV=production
+ENV DEBUG=prisma:client,prisma:engine
 EXPOSE 3000
 CMD ["node", "dist/index.js"]
