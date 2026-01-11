@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 VERSIÓN 8.3 - SAFE TABLES 🔥');
+console.log('🔥 VERSIÓN 8.4 - DEBIAN REBUILD 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,7 +41,7 @@ app.get('/api/health', async (req, res) => {
 app.get('/api/version', (req, res) => {
   const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
   res.json({
-    version: '8.3',
+    version: '8.4',
     pkgVersion: pkg.version,
     timestamp: new Date().toISOString(),
     desc: 'Safe Tables - Auto Pilot V8.3'
@@ -232,7 +232,7 @@ const diagnoseSchema = async () => {
 };
 // Start Server Chain with Error Recovery
 const boot = async () => {
-  console.log("🚀 VERSIÓN 8.3 - SAFE TABLES (Final Sync)");
+  console.log("🚀 VERSIÓN 8.4 - DEBIAN STABLE");
   try {
     await diagnoseSchema(); // Run diagnostic first
     console.log('🚀 Iniciando secuencia de arranque...');

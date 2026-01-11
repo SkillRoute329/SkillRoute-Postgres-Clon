@@ -1,5 +1,15 @@
-FROM node:20-alpine
+FROM node:20-bookworm-slim
 WORKDIR /app
+
+# Install system dependencies for Prisma and Puppeteer
+RUN apt-get update && apt-get install -y \
+    openssl \
+    ca-certificates \
+    chromium \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 COPY package.json ./
 COPY migration.sql ./
@@ -14,18 +24,14 @@ RUN npm run build
 
 # --- BACKEND ---
 WORKDIR /app/backend
-# Install runtime dependencies (OpenSSL is needed for Prisma)
-RUN apk add --no-cache openssl chromium nss freetype harfbuzz ca-certificates ttf-freefont
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-
 # Copy migration file from root
 COPY migration.sql ./
 
-# Install Dependencies (Pure JS now, no build tools needed)
+# Install Dependencies
 RUN npm install
 
 # --- CACHE BUSTER ---
-ENV CACHE_BUST=v8.3-CLEAN-BUILD
+ENV CACHE_BUST=v8.4-DEBIAN-BUILD
 
 # Generate Prisma Client
 RUN npx prisma generate
