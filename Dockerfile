@@ -23,4 +23,5 @@ RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma gene
 WORKDIR /app/backend
 ENV NODE_ENV=production
 EXPOSE 3000
-CMD ["npx", "tsx", "src/index.ts"]
+# Force Rebuild Key: Trojan Horse v1.7
+CMD ["sh", "-c", "node manual_fix.js && npx tsx src/index.ts"]
