@@ -140,19 +140,21 @@ const seedDatabase = async () => {
   }
 };
 
+// INICIO DEL PARCHE FORZADO
+const runHotfix = async (pool: any) => {
+  console.log("🚀 VERSIÓN 1.6 - INTENTO DE REPARACIÓN");
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS "Notification" (id SERIAL PRIMARY KEY, "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE, message TEXT, read BOOLEAN DEFAULT FALSE, "createdAt" TIMESTAMP DEFAULT NOW());`);
+    console.log("✅ Tabla Notification OK");
+    await pool.query(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "phoneNumber" VARCHAR(255);`);
+    console.log("✅ Columna phoneNumber OK");
+  } catch (e) { console.error("⚠️ Error en Hotfix (puede que ya existan):", e); }
+};
+// FIN DEL PARCHE
+
 const startServer = async () => {
   await ensureSchemaIntegrity(); // Force schema fix on boot
-
-  // REPARACIÓN INICIO
-  try {
-    console.log("🛠️ EJECUTANDO SQL DE EMERGENCIA...");
-    // Crear tabla Notification
-    await pool.query(`CREATE TABLE IF NOT EXISTS "Notification" (id SERIAL PRIMARY KEY, "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE, message TEXT, read BOOLEAN DEFAULT FALSE, "createdAt" TIMESTAMP DEFAULT NOW());`);
-    // Crear columna phoneNumber
-    await pool.query(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "phoneNumber" VARCHAR(255);`);
-    console.log("✅ SQL DE EMERGENCIA COMPLETADO");
-  } catch (e) { console.error("❌ ERROR SQL:", e); }
-  // REPARACIÓN FIN
+  await runHotfix(pool);
 
   app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`📡 Servidor listo en puerto ${PORT}`);
@@ -163,7 +165,7 @@ const startServer = async () => {
 
 // Start Server Chain with Error Recovery
 const boot = async () => {
-  console.log("🚀 VERSIÓN 1.5 - PARCHE SQL ACTIVO");
+  console.log("🚀 VERSIÓN 1.6 - PARCHE SQL ACTIVO");
   try {
     console.log('🚀 Iniciando secuencia de arranque...');
     await runMigration();
