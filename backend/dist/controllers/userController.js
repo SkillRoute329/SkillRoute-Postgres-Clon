@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteUser = exports.updateUser = exports.createUser = exports.getAllUsers = void 0;
 const db_1 = __importDefault(require("../db"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const prisma_1 = __importDefault(require("../prisma"));
 const getAllUsers = async (req, res) => {
     try {
         const tenantId = req.user.tenantId;
@@ -34,7 +35,6 @@ const getAllUsers = async (req, res) => {
     }
 };
 exports.getAllUsers = getAllUsers;
-const prisma_1 = __importDefault(require("../prisma"));
 const createUser = async (req, res) => {
     const { internalNumber, firstName, lastName, phoneNumber, whatsappLink, password, role } = req.body;
     try {

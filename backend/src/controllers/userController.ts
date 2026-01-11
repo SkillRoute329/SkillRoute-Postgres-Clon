@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import pool from '../db';
 import bcrypt from 'bcryptjs';
+import prisma from '../prisma';
 
 export const getAllUsers = async (req: Request, res: Response) => {
     try {
@@ -31,7 +32,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
     }
 };
 
-import prisma from '../prisma';
+
 
 export const createUser = async (req: Request, res: Response) => {
     const { internalNumber, firstName, lastName, phoneNumber, whatsappLink, password, role } = req.body;
