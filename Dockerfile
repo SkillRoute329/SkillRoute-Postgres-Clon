@@ -48,10 +48,10 @@ COPY . .
 # Generate Prisma client
 RUN cd backend && npx prisma generate
 
-# Build the simple server for isolation testing
-RUN cd backend && npm run build:simple
+# Build everything (Standard)
+RUN cd backend && npm run build
 
 EXPOSE 3000
 
-# Start the simple server directly
-CMD ["node", "backend/dist/simple-server.js"]
+# Start the SAFE BOOT application directly
+CMD ["node", "backend/dist/index.js"]

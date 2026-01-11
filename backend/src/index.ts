@@ -1,123 +1,114 @@
-console.error('🔥 [BOOT] SYSTEM STARTING... IF YOU SEE THIS, ENTRY POINT IS REACHED.');
 import express from 'express';
 import cors from 'cors';
+import { PrismaClient } from '@prisma/client';
 import path from 'path';
 import fs from 'fs';
-import dotenv from 'dotenv';
-import bcrypt from 'bcryptjs';
-import pool from './db';
+import 'dotenv/config';
 
-// Routes
-import authRoutes from './routes/authRoutes';
+// Import routes (Validated against file system)
 import shiftRoutes from './routes/shiftRoutes';
+import userRoutes from './routes/userRoutes';
+import healthRoutes from './routes/healthRoutes';
+import authRoutes from './routes/authRoutes';
 import categoryRoutes from './routes/categoryRoutes';
 import notificationRoutes from './routes/notificationRoutes';
-import userRoutes from './routes/userRoutes';
 import systemConfigRoutes from './routes/systemConfigRoutes';
-// import whatsappRoutes from './routes/whatsappRoutes';
-// import { whatsAppService } from './services/whatsappService';
 
-// Load env vars
-dotenv.config();
+// Commented out missing or temporarily disabled routes
+// import tenantRoutes from './routes/tenantRoutes'; // MISSING FILE
+// import reportRoutes from './routes/reportRoutes'; // MISSING FILE
+// import settingsRoutes from './routes/settingsRoutes'; // MISSING FILE
+// import backupRoutes from './routes/backupRoutes'; // MISSING FILE
+// import whatsappRoutes from './routes/whatsappRoutes'; // OPTIONAL
+
+import { runMigration, seedDatabase } from './migration';
+
+// --- CRITICAL ERROR TRAP ---
+process.on('uncaughtException', (err) => {
+  console.error('🔥 [CRITICAL] UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🔥 [CRITICAL] UNHANDLED REJECTION:', reason);
+});
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '18.8-INLINE-SCRIPT';
+const VERSION = '19.1-SAFE-BOOT';
 
-console.error(`🔥 [BOOT] Version: ${VERSION}`);
-console.error(`🔥 [BOOT] PORT Env: ${process.env.PORT}`);
-console.log(`🔌 [INIT] Final PORT being used: ${PORT}`);
+// 1. IMMEDIATE LOGGING
+console.log(`🚀 [BOOT] Initializing ${VERSION}...`);
+console.log(`🌍 [BOOT] Env PORT: ${process.env.PORT}`);
 
+// 2. MIDDLEWARE SETUP
 app.use(cors());
 app.use(express.json());
 
-// --- CRITICAL: START LISTENING ASAP FOR RAILWAY HEALTHCHECK ---
-console.log('🔌 [INIT] Attempting to listen...');
-app.listen(Number(PORT), '0.0.0.0', () => {
-  console.log(`📡 [SERVER] LISTENING ON PORT ${PORT} - VERSION ${VERSION}`);
-});
-
-// --- BASE ROUTES ---
+// 3. HEALTH CHECK (Priority #1)
 app.get('/api/health', (req, res) => {
-  console.log('📡 [HEALTH] Health check received from ' + req.ip);
-  try {
-    res.status(200).json({ status: 'ok', server: 'TransformaFacil', version: VERSION });
-  } catch (error) {
-    console.error('❌ [HEALTH] Error sending response:', error);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
-  }
+  console.log('💓 [HEALTH] Heartbeat from ' + req.ip);
+  res.status(200).json({ status: 'ok', version: VERSION, step: 'early-boot' });
 });
 
 app.get('/api/version', (req, res) => {
-  res.json({
-    version: VERSION,
-    timestamp: new Date().toISOString(),
-    desc: 'Stable Build - Asynchronous Boot'
-  });
+  res.json({ version: VERSION });
 });
 
-// --- API ROUTES ---
-app.use('/api/auth', authRoutes);
-app.use('/api/shifts', shiftRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/system-config', systemConfigRoutes);
-// app.use('/api/whatsapp', whatsappRoutes);
+// 4. ROUTE REGISTRATION
+try {
+  app.use('/api/auth', authRoutes);
+  app.use('/api/shifts', shiftRoutes);
+  app.use('/api/users', userRoutes);
+  app.use('/api/categories', categoryRoutes);
+  app.use('/api/notifications', notificationRoutes);
+  app.use('/api/system-config', systemConfigRoutes);
+  app.use('/api/health-check', healthRoutes); // Renamed to avoid collision with /api/health
 
-// --- FRONTEND SERVICE ---
-const FRONTEND_PATH = path.join(process.cwd(), '../frontend/dist');
-const FRONTEND_INDEX = path.join(FRONTEND_PATH, 'index.html');
-
-if (fs.existsSync(FRONTEND_PATH)) {
-  console.log(`✅ [STATIC] Serving frontend from: ${FRONTEND_PATH}`);
-  app.use(express.static(FRONTEND_PATH));
-  app.get('*', (req, res) => {
-    if (req.url.startsWith('/api')) return res.status(404).json({ error: 'API endpoint not found' });
-    if (fs.existsSync(FRONTEND_INDEX)) res.sendFile(FRONTEND_INDEX);
-    else res.status(500).send('❌ ERROR: build index.html missing.');
-  });
-} else {
-  console.error(`❌ [STATIC] Frontend folder NOT found at ${FRONTEND_PATH}`);
-  app.get('/', (req, res) => res.send(`BACKEND ONLINE (${VERSION}) - Frontend missing. Run build.`));
+  // Missing routes commented out
+  // app.use('/api/tenants', tenantRoutes);
+  // app.use('/api/reports', reportRoutes);
+  // app.use('/api/settings', settingsRoutes);
+  // app.use('/api/backups', backupRoutes);
+} catch (error) {
+  console.error('❌ [ROUTING] Error registering routes:', error);
 }
 
-// --- ASYNCHRONOUS BOOT OPERATIONS ---
-const runMigration = async () => {
-  try {
-    const migrationPath = path.resolve(__dirname, '../migration.sql');
-    if (fs.existsSync(migrationPath)) {
-      console.log('🔄 [BOOT] Executing migration.sql...');
-      const sql = fs.readFileSync(migrationPath, 'utf8');
-      await pool.query(sql);
-      console.log('✅ [BOOT] Migration success.');
-    }
-  } catch (error) {
-    console.error('❌ [BOOT] Migration error:', error);
+// Serve Frontend
+const frontendPath = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(frontendPath));
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(frontendPath, 'index.html'));
   }
-};
+});
 
-const seedDatabase = async () => {
+// 5. START SERVER IMMEDIATELY (Don't wait for DB)
+const server = app.listen(Number(PORT), '0.0.0.0', () => {
+  console.log(`✅ [SERVER] LISTENING ON PORT ${PORT} (Early Bind)`);
+  deferredBoot();
+});
+
+async function deferredBoot() {
+  console.log('⏳ [BOOT] Starting deferred initialization tasks in 2 seconds...');
+  await new Promise(r => setTimeout(r, 2000));
+
   try {
-    console.log('🔄 [BOOT] Seeding database...');
-    const tenantRes = await pool.query('SELECT id FROM "Tenant" WHERE id = 1');
-    if (tenantRes.rowCount === 0) {
-      await pool.query(`INSERT INTO "Tenant" (id, name, slug, "isActive") VALUES (1, 'TransformaFacil', 'default', true)`);
-    }
-    console.log('✅ [BOOT] Seeding success.');
+    console.log('🔄 [DB] Connecting to Prisma...');
+    const prisma = new PrismaClient();
+    await prisma.$connect();
+    console.log('✅ [DB] Prisma Connected Successfully.');
+
+    console.log('🔄 [MIGRATION] Checking migrations...');
+    await runMigration();
+
+    console.log('🔄 [SEED] Checking seeds...');
+    await seedDatabase();
+
+    console.log('🏁 [BOOT] Heavy tasks completed.');
+
   } catch (error) {
-    console.error('❌ [BOOT] Seeding error:', error);
+    console.error('💥 [BOOT FAIL] Error during deferred boot:', error);
   }
-};
+}
 
-const boot = async () => {
-  console.log(`🚀 [BOOT] Starting background operations for ${VERSION}...`);
-  // Run these but don't block the healthcheck
-  await runMigration();
-  await seedDatabase();
-  // whatsAppService.start();
-  console.log('🏁 [BOOT] Background operations completed.');
-};
-
-// Fire build operations in background
-boot().catch(err => console.error('🔥 [FATAL] Boot sequence failed:', err));
+export default app;
