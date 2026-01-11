@@ -20,7 +20,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '17.0-STABLE-RECOVERY';
+const VERSION = '17.2-RUNTIME-FIXED';
 
 app.use(cors());
 app.use(express.json());
