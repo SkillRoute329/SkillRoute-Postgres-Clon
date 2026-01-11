@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 VERSIÓN 3.4 - LOWERCASE SQL FIX 🔥');
+console.log('🔥 VERSIÓN 3.5 - SCHEMA DEBUGGER ACTIVE 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -174,6 +174,31 @@ const startServer = async () => {
       res.send("✅ ÉXITO: Base de datos reparada correctamente.");
     } catch (error: any) {
       res.status(500).send("❌ ERROR: " + error.message);
+    }
+  });
+
+  // --- DEBUG SCHEMA ENDPOINT ---
+  app.get('/api/debug-schema', async (req, res) => {
+    try {
+      const debugData: any = {};
+      const tables = ['User', 'Shift', 'ShiftCategory', 'Notification', 'Tenant'];
+      // Check lowercase variants too just in case
+      const allTables = [...tables, ...tables.map(t => t.toLowerCase())];
+
+      const client = await pool.connect();
+      for (const table of allTables) {
+        const result = await client.query(
+          `SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_name = $1`,
+          [table]
+        );
+        if (result.rowCount > 0) {
+          debugData[table] = result.rows.map((r: any) => r.column_name);
+        }
+      }
+      client.release();
+      res.json(debugData);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
   });
   // --------------------------
