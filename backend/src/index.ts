@@ -35,13 +35,13 @@ app.get('/api/version', (req, res) => {
     const pkgPath = path.join(__dirname, '../package.json');
     const pkg = fs.existsSync(pkgPath) ? JSON.parse(fs.readFileSync(pkgPath, 'utf8')) : { version: '1.8.0' };
     res.json({
-      version: '16.0-NIXPACKS-FORCE',
+      version: '16.1-FIXED-FRONTEND',
       pkgVersion: pkg.version,
       timestamp: new Date().toISOString(),
       desc: 'Ultimate Stable - Safe Tables'
     });
   } catch (err) {
-    res.json({ version: '16.0-NIXPACKS-FORCE', error: 'Pkg not found' });
+    res.json({ version: '16.1-FIXED-FRONTEND', error: 'Pkg not found' });
   }
 });
 
