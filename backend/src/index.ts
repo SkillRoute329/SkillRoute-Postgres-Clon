@@ -20,7 +20,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '17.4-NODE-23-FIX';
+const VERSION = '17.5-DOCKER-STABLE';
 
 app.use(cors());
 app.use(express.json());

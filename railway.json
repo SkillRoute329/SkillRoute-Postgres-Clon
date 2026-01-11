@@ -1,7 +1,5 @@
 {
-    "build": {
-        "builder": "NIXPACKS"
-    },
+    "build": {},
     "deploy": {
         "healthcheckPath": "/api/health",
         "healthcheckTimeout": 120,
