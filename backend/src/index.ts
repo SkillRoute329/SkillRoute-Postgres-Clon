@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 VERSIÓN 5.1 - BCRYPT BUILD FIX 🔥');
+console.log('🔥 VERSIÓN 6.0 - DEBIAN NUCLEAR OPTION 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,7 +40,7 @@ app.get('/api/health', async (req, res) => {
 
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '5.1',
+    version: '6.0',
     timestamp: new Date().toISOString(),
     desc: 'Production Stable'
   });
@@ -230,7 +230,7 @@ const diagnoseSchema = async () => {
 };
 // Start Server Chain with Error Recovery
 const boot = async () => {
-  console.log("🚀 VERSIÓN 5.1 - NATIVE DEPS FIXED");
+  console.log("🚀 VERSIÓN 6.0 - DEBIAN STABLE STARTUP");
   try {
     await diagnoseSchema(); // Run diagnostic first
     console.log('🚀 Iniciando secuencia de arranque...');
