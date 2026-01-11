@@ -143,37 +143,14 @@ const seedDatabase = async () => {
 const startServer = async () => {
   await ensureSchemaIntegrity(); // Force schema fix on boot
 
-  // --- BLOQUE DE REPARACIÓN DE EMERGENCIA ---
+  // REPARACIÓN INICIO
   try {
-    console.log("🛠️ FORZANDO REPARACIÓN DE ESQUEMA MANUALMENTE...");
-
-    // 1. Forzar creación de tabla Notification
-    await pool.query(`
-          CREATE TABLE IF NOT EXISTS "Notification" (
-              id SERIAL PRIMARY KEY,
-              "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE,
-              message TEXT NOT NULL,
-              read BOOLEAN DEFAULT FALSE,
-              "createdAt" TIMESTAMP DEFAULT NOW()
-          );
-      `);
-    console.log("✅ Tabla Notification verificada/creada.");
-
-    // 2. Forzar columna phoneNumber
-    await pool.query(`
-          DO $$ 
-          BEGIN 
-              IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='User' AND column_name='phoneNumber') THEN 
-                  ALTER TABLE "User" ADD COLUMN "phoneNumber" VARCHAR(255); 
-              END IF; 
-          END $$;
-      `);
-    console.log("✅ Columna phoneNumber verificada/creada.");
-
-  } catch (err) {
-    console.error("❌ ERROR EN REPARACIÓN MANUAL:", err);
-  }
-  // --- FIN BLOQUE DE REPARACIÓN ---
+    console.log("🛠️ EJECUTANDO SQL DE EMERGENCIA...");
+    await pool.query(`CREATE TABLE IF NOT EXISTS "Notification" (id SERIAL PRIMARY KEY, "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE, message TEXT, read BOOLEAN DEFAULT FALSE, "createdAt" TIMESTAMP DEFAULT NOW());`);
+    await pool.query(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "phoneNumber" VARCHAR(255);`);
+    console.log("✅ SQL DE EMERGENCIA COMPLETADO");
+  } catch (e) { console.error("❌ ERROR SQL:", e); }
+  // REPARACIÓN FIN
 
   app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`📡 Servidor listo en puerto ${PORT}`);
@@ -184,6 +161,7 @@ const startServer = async () => {
 
 // Start Server Chain with Error Recovery
 const boot = async () => {
+  console.log("🚀 VERSIÓN 1.5 - PARCHE SQL ACTIVO");
   try {
     console.log('🚀 Iniciando secuencia de arranque...');
     await runMigration();
