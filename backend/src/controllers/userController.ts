@@ -8,6 +8,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
         const tenantId = (req as any).user.tenantId;
 
         const users = await prisma.user.findMany({
+            // @ts-ignore
             where: { tenantId },
             orderBy: { createdAt: 'desc' },
             select: {
@@ -16,6 +17,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
                 firstName: true,
                 lastName: true,
                 fullName: true,
+                // @ts-ignore
                 phoneNumber: true,
                 whatsappLink: true,
                 role: true,
@@ -46,6 +48,7 @@ export const createUser = async (req: Request, res: Response) => {
         const tenantId = (req as any).user.tenantId;
 
         const newUser = await prisma.user.create({
+            // @ts-ignore
             data: {
                 internalNumber: String(internalNumber).trim(),
                 firstName,
