@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 VERSIÓN 3.7 - FORCE DEPLOY & SCHEMA DEBUG 🔥');
+console.log('🔥 VERSIÓN 4.0 - PRODUCTION STABLE (SSL + Unquoted) 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,9 +40,9 @@ app.get('/api/health', async (req, res) => {
 
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '3.7',
+    version: '4.0',
     timestamp: new Date().toISOString(),
-    desc: 'Schema Debugger + Unquoted SQL'
+    desc: 'Production Stable'
   });
 });
 

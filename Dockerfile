@@ -16,11 +16,11 @@ RUN npm run build
 WORKDIR /app/backend
 RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-RUN npm install
-RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
+# Copy migration file from root
+COPY migration.sql ./
 
 # --- CACHE BUSTER ---
-ENV CACHE_BUST=v3.7
+ENV CACHE_BUST=v4.0
 
 # Construir TypeScript (Esto ahora se ejecutará SÍ o SÍ)
 RUN npm run build
@@ -29,4 +29,4 @@ RUN npm run build
 WORKDIR /app/backend
 ENV NODE_ENV=production
 EXPOSE 3000
-CMD ["npm", "run", "start"]
+CMD ["node", "dist/index.js"]

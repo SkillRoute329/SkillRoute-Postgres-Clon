@@ -15,7 +15,7 @@ if (!process.env.DATABASE_URL) {
 
 const pool = new Pool({
     connectionString: connectionString,
-    ssl: false,
+    ssl: { rejectUnauthorized: false },
     max: 20, // Limit pool size
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000
