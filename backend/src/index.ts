@@ -41,9 +41,11 @@ app.get('/api/version', (req, res) => {
       desc: 'Ultimate Stable - Safe Tables'
     });
   } catch (err) {
-    res.json({ version: '8.5', error: 'Pkg not found' });
+    res.json({ version: '13.0-SIMPLE-FORCE', error: 'Pkg not found' });
   }
 });
+
+app.get('/api/force-ping-v13', (req, res) => res.send('PONG-V13'));
 
 // --- API ROUTES ---
 app.use('/api/auth', authRoutes);
