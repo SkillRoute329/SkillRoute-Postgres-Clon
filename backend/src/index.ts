@@ -34,7 +34,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '19.1-SAFE-BOOT';
+const VERSION = '19.2-PARTIAL-RESTORE';
 
 // 1. IMMEDIATE LOGGING
 console.log(`🚀 [BOOT] Initializing ${VERSION}...`);
@@ -64,11 +64,9 @@ try {
   app.use('/api/system-config', systemConfigRoutes);
   app.use('/api/health-check', healthRoutes); // Renamed to avoid collision with /api/health
 
-  // Missing routes commented out
-  // app.use('/api/tenants', tenantRoutes);
-  // app.use('/api/reports', reportRoutes);
-  // app.use('/api/settings', settingsRoutes);
-  // app.use('/api/backups', backupRoutes);
+  // WhatsApp Routes (File exists, safe to uncomment)
+  // Note: The service itself is still deferred in boot
+  // app.use('/api/whatsapp', whatsappRoutes); // Import missing atop, adding here
 } catch (error) {
   console.error('❌ [ROUTING] Error registering routes:', error);
 }
