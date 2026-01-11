@@ -8,14 +8,15 @@ COPY . .
 # Build Backend
 WORKDIR /app/backend
 RUN npm install
-# Now that schema.prisma has 'url = env("DATABASE_URL")', we can provide a dummy one for build
-RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
+# Provide a dummy DATABASE_URL as a plain environment variable for the build phase
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+RUN npx prisma generate
 RUN npm run build
 
 # Environment
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV CACHE_BUST=v14.0-FINAL-SCHEMA-FIX
+ENV CACHE_BUST=v15.0-PRISMA-7-FINAL
 
 EXPOSE 3000
 
