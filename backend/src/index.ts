@@ -17,7 +17,7 @@ import whatsappRoutes from './routes/whatsappRoutes';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 VERSIÓN 8.5 - ULTIMATE BYPASS 🔥');
+console.log('💎 VERSIÓN 10.0 - NIX FORCE 💎');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,7 +35,7 @@ app.get('/api/version', (req, res) => {
     const pkgPath = path.join(__dirname, '../package.json');
     const pkg = fs.existsSync(pkgPath) ? JSON.parse(fs.readFileSync(pkgPath, 'utf8')) : { version: '1.8.0' };
     res.json({
-      version: '9.0-BACKEND-ONLY',
+      version: '10.0-NIX-FORCE',
       pkgVersion: pkg.version,
       timestamp: new Date().toISOString(),
       desc: 'Ultimate Stable - Safe Tables'
@@ -55,7 +55,7 @@ app.use('/api/system-config', systemConfigRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 
 // --- SERVICIO DE FRONTEND ---
-const FRONTEND_PATH = '/app/frontend/dist';
+const FRONTEND_PATH = path.join(process.cwd(), '../frontend/dist');
 const FRONTEND_INDEX = path.join(FRONTEND_PATH, 'index.html');
 
 if (fs.existsSync(FRONTEND_PATH)) {

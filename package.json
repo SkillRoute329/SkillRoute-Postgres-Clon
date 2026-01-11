@@ -1,12 +1,12 @@
 {
     "name": "transformafacil-monorepo",
-    "version": "8.5.0",
+    "version": "10.0.0",
     "private": true,
-    "description": "Root package for Railway deployment",
+    "description": "Root package for Railway deployment - NIXPACKS FORCE",
     "scripts": {
         "install:all": "cd frontend && npm install && cd ../backend && npm install",
-        "build": "cd frontend && npm install && npm run build && cd ../backend && npm install && npm run build",
-        "start": "echo 'BOOTING 9.0' && cd backend && node dist/index.js"
+        "build": "echo 'BUILDING FRONTEND...' && cd frontend && npm install && npm run build && echo 'BUILDING BACKEND...' && cd ../backend && npm install && npx prisma generate && npm run build",
+        "start": "cd backend && node dist/index.js"
     },
     "engines": {
         "node": "20.x"
