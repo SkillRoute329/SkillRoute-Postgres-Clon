@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y \
     libu2f-udev \
     xdg-utils \
     fonts-liberation \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy root package files

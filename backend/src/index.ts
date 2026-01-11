@@ -14,14 +14,15 @@ import categoryRoutes from './routes/categoryRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import systemConfigRoutes from './routes/systemConfigRoutes';
 
-// Commented out missing or temporarily disabled routes
-// import tenantRoutes from './routes/tenantRoutes'; // MISSING FILE
-// import reportRoutes from './routes/reportRoutes'; // MISSING FILE
-// import settingsRoutes from './routes/settingsRoutes'; // MISSING FILE
-// import backupRoutes from './routes/backupRoutes'; // MISSING FILE
-// import whatsappRoutes from './routes/whatsappRoutes'; // OPTIONAL
+// Restored routes
+import tenantRoutes from './routes/tenantRoutes';
+import reportRoutes from './routes/reportRoutes';
+import settingsRoutes from './routes/settingsRoutes';
+import backupRoutes from './routes/backupRoutes';
+import whatsappRoutes from './routes/whatsappRoutes';
 
 import { runMigration, seedDatabase } from './migration';
+import { whatsAppService } from './services/whatsappService';
 
 // --- CRITICAL ERROR TRAP ---
 process.on('uncaughtException', (err) => {
@@ -34,7 +35,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '19.2-PARTIAL-RESTORE';
+const VERSION = '19.3-FULL-RESTORE';
 
 // 1. IMMEDIATE LOGGING
 console.log(`🚀 [BOOT] Initializing ${VERSION}...`);
@@ -64,9 +65,13 @@ try {
   app.use('/api/system-config', systemConfigRoutes);
   app.use('/api/health-check', healthRoutes); // Renamed to avoid collision with /api/health
 
-  // WhatsApp Routes (File exists, safe to uncomment)
-  // Note: The service itself is still deferred in boot
-  // app.use('/api/whatsapp', whatsappRoutes); // Import missing atop, adding here
+  // Full Feature Set
+  app.use('/api/tenants', tenantRoutes);
+  app.use('/api/reports', reportRoutes);
+  app.use('/api/settings', settingsRoutes);
+  app.use('/api/backups', backupRoutes);
+  app.use('/api/whatsapp', whatsappRoutes);
+
 } catch (error) {
   console.error('❌ [ROUTING] Error registering routes:', error);
 }
@@ -103,6 +108,9 @@ async function deferredBoot() {
     await seedDatabase();
 
     console.log('🏁 [BOOT] Heavy tasks completed.');
+
+    console.log('📱 [WHATSAPP] Starting service...');
+    whatsAppService.start();
 
   } catch (error) {
     console.error('💥 [BOOT FAIL] Error during deferred boot:', error);
