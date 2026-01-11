@@ -46,6 +46,9 @@ RUN cd frontend && npm install
 # Copy the rest of the code
 COPY . .
 
+# ENV to force cache invalidation
+ENV CACHE_BUST=v19.4
+
 # Generate Prisma client
 RUN cd backend && npx prisma generate
 

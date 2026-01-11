@@ -35,10 +35,11 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '19.3-FULL-RESTORE';
+const VERSION = '19.4-CACHE-BUST-FINAL';
+const BOOT_ID = Math.floor(Math.random() * 1000000).toString();
 
 // 1. IMMEDIATE LOGGING
-console.log(`🚀 [BOOT] Initializing ${VERSION}...`);
+console.log(`🚀 [ARRANQUE] INICIANDO SISTEMA COMPLETO v${VERSION} (ID: ${BOOT_ID})`);
 console.log(`🌍 [BOOT] Env PORT: ${process.env.PORT}`);
 
 // 2. MIDDLEWARE SETUP
