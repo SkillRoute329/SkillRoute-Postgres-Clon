@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS "Notification" (
+    id SERIAL PRIMARY KEY,
+    "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    read BOOLEAN DEFAULT FALSE,
+    "createdAt" TIMESTAMP DEFAULT NOW()
+);

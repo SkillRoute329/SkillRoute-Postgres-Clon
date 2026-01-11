@@ -86,9 +86,9 @@ if (fs.existsSync(FRONTEND_PATH)) {
 const runMigration = async () => {
   try {
     console.log('🔄 Checking for database migrations...');
-    const migrationPath = path.resolve(__dirname, '../../migration.sql');
+    const migrationPath = path.resolve(__dirname, '../migration.sql');
     if (fs.existsSync(migrationPath)) {
-      console.log(`📄 Found migration file at: ${migrationPath}`);
+      console.log(`📄 Found migration file at: ${migrationPath} (dirname: ${__dirname})`);
       const sql = fs.readFileSync(migrationPath, 'utf8');
       await pool.query(sql);
       console.log('✅ Database migration executed successfully.');
