@@ -165,17 +165,13 @@ CREATE TABLE IF NOT EXISTS "ActionLog" (
     FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
--- 9. Notifications
+-- 9. Notifications (SIMPLE VERSION AS REQUESTED)
 CREATE TABLE IF NOT EXISTS "Notification" (
-    "id" SERIAL PRIMARY KEY,
-    "userId" INTEGER NOT NULL,
-    "title" TEXT NOT NULL,
-    "message" TEXT NOT NULL,
-    "type" TEXT NOT NULL DEFAULT 'INFO',
-    "link" TEXT,
-    "isRead" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    id SERIAL PRIMARY KEY,
+    "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    read BOOLEAN DEFAULT FALSE,
+    "createdAt" TIMESTAMP DEFAULT NOW()
 );
 
 -- EXISTING ALTERS and FIXES
@@ -183,6 +179,13 @@ ALTER TABLE "Shift" ADD COLUMN IF NOT EXISTS "endTime" VARCHAR(5);
 ALTER TABLE "ShiftCategory" ADD COLUMN IF NOT EXISTS "extraHourValue" DECIMAL(10, 2) DEFAULT 0;
 UPDATE "ShiftCategory" SET "extraHourValue" = 0 WHERE "extraHourValue" IS NULL;
 
--- NEW COLUMNS FOR USER (Redundant if table recreated, but safe due to IF NOT EXISTS)
-ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "phoneNumber" TEXT;
+-- NEW COLUMNS FOR USER
+-- Force phoneNumber creation
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='User' AND column_name='phoneNumber') THEN 
+        ALTER TABLE "User" ADD COLUMN "phoneNumber" VARCHAR(255); 
+    END IF; 
+END $$;
+
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "whatsappLink" TEXT;
