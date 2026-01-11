@@ -78,8 +78,8 @@ export const updateUser = async (req: Request, res: Response) => {
 
         let query = `
             UPDATE "User" 
-            SET "internalNumber" = $1, "firstName" = $2, "lastName" = $3, "fullName" = $4, 
-                phonenumber = $5, "whatsappLink" = $6, "role" = $7, "isActive" = $8
+            SET internalnumber = $1, firstname = $2, lastname = $3, fullname = $4, 
+                phonenumber = $5, whatsapplink = $6, role = $7, isactive = $8
         `;
 
         const values: any[] = [
@@ -98,14 +98,14 @@ export const updateUser = async (req: Request, res: Response) => {
         // Only update password if provided
         if (password) {
             const passwordHash = await bcrypt.hash(password, 10);
-            query += `, "passwordHash" = $${paramCount}`;
+            query += `, passwordhash = $${paramCount}`;
             values.push(passwordHash);
             paramCount++;
         }
 
         const tenantId = (req as any).user.tenantId;
 
-        query += ` WHERE id = $${paramCount} AND "tenantId" = $${paramCount + 1} RETURNING id, "internalNumber", "firstName", "lastName", "fullName", phonenumber as "phoneNumber", "whatsappLink", role, "isActive", "createdAt"`;
+        query += ` WHERE id = $${paramCount} AND tenantid = $${paramCount + 1} RETURNING id, internalnumber as "internalNumber", firstname as "firstName", lastname as "lastName", fullname as "fullName", phonenumber as "phoneNumber", whatsapplink as "whatsappLink", role, isactive as "isActive", createdat as "createdAt"`;
         values.push(Number(id), tenantId);
 
         const result = await pool.query(query, values);

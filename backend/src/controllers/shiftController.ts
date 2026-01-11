@@ -13,20 +13,20 @@ export const getAllShifts = async (req: Request, res: Response) => {
         let queryText = `
       SELECT s.*, 
              c.name as "categoryName",
-             u1."fullName" as "creatorName",
-             u1."internalNumber" as "creatorInternalNumber",
-             u1."lastName" as "creatorLastName",
-             u1."firstName" as "creatorFirstName",
-             u2."fullName" as "assigneeName",
-             u2."internalNumber" as "assigneeInternalNumber",
-             u2."lastName" as "assigneeLastName",
-             u2."firstName" as "assigneeFirstName",
+             u1.fullname as "creatorName",
+             u1.internalnumber as "creatorInternalNumber",
+             u1.lastname as "creatorLastName",
+             u1.firstname as "creatorFirstName",
+             u2.fullname as "assigneeName",
+             u2.internalnumber as "assigneeInternalNumber",
+             u2.lastname as "assigneeLastName",
+             u2.firstname as "assigneeFirstName",
              u2.phonenumber as "assigneePhone"
       FROM "Shift" s
-      LEFT JOIN "ShiftCategory" c ON s."categoryId" = c.id
-      LEFT JOIN "User" u1 ON s."createdBy" = u1.id
-      LEFT JOIN "User" u2 ON s."assignedTo" = u2.id
-      WHERE s."tenantId" = $1 AND s."deletedAt" IS NULL
+      LEFT JOIN "ShiftCategory" c ON s.categoryid = c.id
+      LEFT JOIN "User" u1 ON s.createdby = u1.id
+      LEFT JOIN "User" u2 ON s.assignedto = u2.id
+      WHERE s.tenantid = $1 AND s.deletedat IS NULL
     `;
 
         let shouldPaginate = !isNaN(page) && page > 0;

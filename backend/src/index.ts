@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 VERSIÓN 3.3 - PRISMA MAPPING FIX 🔥');
+console.log('🔥 VERSIÓN 3.4 - LOWERCASE SQL FIX 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
