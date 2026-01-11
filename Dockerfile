@@ -36,8 +36,11 @@ COPY package.json ./
 COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
 
-# Install dependencies (using --legacy-peer-deps to avoid conflicts in monorepo)
-RUN npm install --legacy-peer-deps
+# Install dependencies explicitly for each part of the monorepo
+# This is crucial because the root package.json does not use workspaces
+RUN npm install
+RUN cd backend && npm install
+RUN cd frontend && npm install
 
 # Copy the rest of the code
 COPY . .
