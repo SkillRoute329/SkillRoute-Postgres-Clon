@@ -6,7 +6,7 @@ export const getNotifications = async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
     try {
         const result = await pool.query(
-            'SELECT * FROM "Notification" WHERE "userId" = $1 ORDER BY "createdAt" DESC LIMIT 50',
+            'SELECT id, userid as "userId", message, read, "createdAt" FROM "Notification" WHERE userid = $1 ORDER BY "createdAt" DESC LIMIT 50',
             [userId]
         );
         res.json(result.rows);
@@ -21,7 +21,7 @@ export const markAsRead = async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
         await pool.query(
-            'UPDATE "Notification" SET "read" = TRUE WHERE "id" = $1 AND "userId" = $2',
+            'UPDATE "Notification" SET read = TRUE WHERE id = $1 AND userid = $2',
             [id, userId]
         );
         res.json({ message: 'Marked as read' });
@@ -35,7 +35,7 @@ export const markAsRead = async (req: Request, res: Response) => {
 export const createNotification = async (userId: number, message: string) => {
     try {
         await pool.query(
-            'INSERT INTO "Notification" ("userId", "message", "read") VALUES ($1, $2, FALSE)',
+            'INSERT INTO "Notification" (userid, message, read) VALUES ($1, $2, FALSE)',
             [userId, message]
         );
     } catch (error) {

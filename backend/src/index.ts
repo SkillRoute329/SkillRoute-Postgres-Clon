@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 VERSIÓN 3.1 - CACHE ROMPIDA EXITOSAMENTE 🔥');
+console.log('🔥 VERSIÓN 3.2 - CASE SENSITIVITY FIX 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -181,7 +181,7 @@ const startServer = async () => {
   app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`📡 Servidor listo en puerto ${PORT}`);
     console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔢 Versión API: 1.8.0 (Emergency Route Fix)`);
+    console.log(`🔢 Versión API: 3.2 (Fix Case Sensitivity)`);
   });
 };
 

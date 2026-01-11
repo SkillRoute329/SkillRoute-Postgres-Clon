@@ -79,7 +79,7 @@ export const updateUser = async (req: Request, res: Response) => {
         let query = `
             UPDATE "User" 
             SET "internalNumber" = $1, "firstName" = $2, "lastName" = $3, "fullName" = $4, 
-                "phoneNumber" = $5, "whatsappLink" = $6, "role" = $7, "isActive" = $8
+                phonenumber = $5, "whatsappLink" = $6, "role" = $7, "isActive" = $8
         `;
 
         const values: any[] = [
@@ -105,7 +105,7 @@ export const updateUser = async (req: Request, res: Response) => {
 
         const tenantId = (req as any).user.tenantId;
 
-        query += ` WHERE id = $${paramCount} AND "tenantId" = $${paramCount + 1} RETURNING id, "internalNumber", "firstName", "lastName", "fullName", "phoneNumber", "whatsappLink", role, "isActive", "createdAt"`;
+        query += ` WHERE id = $${paramCount} AND "tenantId" = $${paramCount + 1} RETURNING id, "internalNumber", "firstName", "lastName", "fullName", phonenumber as "phoneNumber", "whatsappLink", role, "isActive", "createdAt"`;
         values.push(Number(id), tenantId);
 
         const result = await pool.query(query, values);

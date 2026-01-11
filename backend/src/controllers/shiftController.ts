@@ -21,7 +21,7 @@ export const getAllShifts = async (req: Request, res: Response) => {
              u2."internalNumber" as "assigneeInternalNumber",
              u2."lastName" as "assigneeLastName",
              u2."firstName" as "assigneeFirstName",
-             u2."phoneNumber" as "assigneePhone"
+             u2.phonenumber as "assigneePhone"
       FROM "Shift" s
       LEFT JOIN "ShiftCategory" c ON s."categoryId" = c.id
       LEFT JOIN "User" u1 ON s."createdBy" = u1.id
@@ -233,7 +233,7 @@ export const updateShiftStatus = async (req: Request, res: Response) => {
 
             try {
                 // Fetch assignee phone
-                const userRes = await pool.query('SELECT "phoneNumber", "firstName", "fullName" FROM "User" WHERE id = $1', [assignedTo]);
+                const userRes = await pool.query('SELECT phonenumber as "phoneNumber", "firstName", "fullName" FROM "User" WHERE id = $1', [assignedTo]);
                 const assignee = userRes.rows[0];
 
 
