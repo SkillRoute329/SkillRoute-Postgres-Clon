@@ -1,9 +1,9 @@
 import pool from '../db';
 
 export const ensureSchemaIntegrity = async () => {
-    console.log('🛡️ [Schema] Verificando integridad de la base de datos...');
     let client;
     try {
+        console.log('🔧 [SchemaFixer] Intentando crear tabla Notification si no existe...');
         client = await pool.connect();
         await client.query('BEGIN');
 
