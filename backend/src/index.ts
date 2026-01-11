@@ -14,15 +14,15 @@ import categoryRoutes from './routes/categoryRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import userRoutes from './routes/userRoutes';
 import systemConfigRoutes from './routes/systemConfigRoutes';
-import whatsappRoutes from './routes/whatsappRoutes';
-import { whatsAppService } from './services/whatsappService';
+// import whatsappRoutes from './routes/whatsappRoutes';
+// import { whatsAppService } from './services/whatsappService';
 
 // Load env vars
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '18.5-DEBUG-ENTRY';
+const VERSION = '18.6-NO-WHATSAPP';
 
 console.error(`🔥 [BOOT] Version: ${VERSION}`);
 console.error(`🔥 [BOOT] PORT Env: ${process.env.PORT}`);
@@ -63,7 +63,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/system-config', systemConfigRoutes);
-app.use('/api/whatsapp', whatsappRoutes);
+// app.use('/api/whatsapp', whatsappRoutes);
 
 // --- FRONTEND SERVICE ---
 const FRONTEND_PATH = path.join(process.cwd(), '../frontend/dist');
@@ -115,7 +115,7 @@ const boot = async () => {
   // Run these but don't block the healthcheck
   await runMigration();
   await seedDatabase();
-  whatsAppService.start();
+  // whatsAppService.start();
   console.log('🏁 [BOOT] Background operations completed.');
 };
 
