@@ -81,7 +81,7 @@ export const updateUser = async (req: Request, res: Response) => {
         const fullName = `${firstName} ${lastName}`;
 
         let query = `
-            UPDATE "user" 
+            UPDATE "User" 
             SET internalnumber = $1, firstname = $2, lastname = $3, fullname = $4, 
                 phonenumber = $5, whatsapplink = $6, role = $7, isactive = $8
         `;
@@ -134,7 +134,7 @@ export const deleteUser = async (req: Request, res: Response) => {
     try {
         const tenantId = (req as any).user.tenantId;
 
-        const query = 'DELETE FROM "user" WHERE id = $1 AND tenantid = $2 RETURNING id, fullname as "fullName"';
+        const query = 'DELETE FROM "User" WHERE id = $1 AND tenantid = $2 RETURNING id, fullname as "fullName"';
         const result = await pool.query(query, [Number(id), tenantId]);
 
         if (result.rowCount === 0) {

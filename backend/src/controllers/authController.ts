@@ -11,7 +11,7 @@ export const login = async (req: Request, res: Response) => {
         const cleanInternal = String(internalNumber).trim();
 
 
-        const query = `SELECT * FROM "user" WHERE internalnumber = $1`;
+        const query = `SELECT * FROM "User" WHERE internalnumber = $1`;
         const result = await pool.query(query, [cleanInternal]);
 
         if (result.rowCount === 0) {

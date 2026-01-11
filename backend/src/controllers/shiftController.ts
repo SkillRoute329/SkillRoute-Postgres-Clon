@@ -22,10 +22,10 @@ export const getAllShifts = async (req: Request, res: Response) => {
              u2.lastname as "assigneeLastName",
              u2.firstname as "assigneeFirstName",
              u2.phonenumber as "assigneePhone"
-      FROM shift s
-      LEFT JOIN shiftcategory c ON s.categoryid = c.id
-      LEFT JOIN "user" u1 ON s.createdby = u1.id
-      LEFT JOIN "user" u2 ON s.assignedto = u2.id
+      FROM "Shift" s
+      LEFT JOIN "ShiftCategory" c ON s.categoryid = c.id
+      LEFT JOIN "User" u1 ON s.createdby = u1.id
+      LEFT JOIN "User" u2 ON s.assignedto = u2.id
       WHERE s.tenantid = $1 AND s.deletedat IS NULL
     `;
 
@@ -45,7 +45,7 @@ export const getAllShifts = async (req: Request, res: Response) => {
         // Quick Total Count (only if paginating, to let frontend know total pages)
         let totalCount = 0;
         if (shouldPaginate) {
-            const countRes = await pool.query('SELECT COUNT(*) FROM shift WHERE tenantid = $1 AND deletedat IS NULL', [tenantId]);
+            const countRes = await pool.query('SELECT COUNT(*) FROM "Shift" WHERE tenantid = $1 AND deletedat IS NULL', [tenantId]);
             totalCount = parseInt(countRes.rows[0].count);
         }
 
@@ -96,7 +96,7 @@ export const createShift = async (req: Request, res: Response) => {
 
         // ADMIN OVERRIDE: If Admin assigns a "ceding user" (via internal number)
         if ((user?.role === 'Admin' || user?.role === 'SuperAdmin') && cedingInternalNumber) {
-            const cedingUserQuery = 'SELECT id FROM "user" WHERE internalnumber = $1';
+            const cedingUserQuery = 'SELECT id FROM "User" WHERE internalnumber = $1';
             const cedingUserResult = await pool.query(cedingUserQuery, [cedingInternalNumber]);
 
             if ((cedingUserResult.rowCount ?? 0) > 0) {
@@ -135,7 +135,7 @@ export const createShift = async (req: Request, res: Response) => {
         }
 
         const query = `
-      INSERT INTO shift 
+      INSERT INTO "Shift" 
       (categoryid, servicenumber, date, time, endtime, line, relief, carnumber, extrahours, tip, tipvalue, totalvalue, transformafacil, createdby, status, updatedat, tenantid)
       VALUES ($1, $2, $3::DATE, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), $16)
       RETURNING *
@@ -175,7 +175,7 @@ export const updateShiftStatus = async (req: Request, res: Response) => {
 
     try {
         // Validation: Check current state before update to prevent race conditions
-        const checkQuery = 'SELECT assignedto as "assignedTo", status FROM shift WHERE id = $1';
+        const checkQuery = 'SELECT assignedto as "assignedTo", status FROM "Shift" WHERE id = $1';
         const checkResult = await pool.query(checkQuery, [Number(id)]);
 
         if (checkResult.rowCount === 0) {
@@ -193,7 +193,7 @@ export const updateShiftStatus = async (req: Request, res: Response) => {
             }
         }
 
-        let query = 'UPDATE shift SET status = $1, updatedat = NOW()';
+        let query = 'UPDATE "Shift" SET status = $1, updatedat = NOW()';
         const values = [status];
         let paramCount = 2;
 
@@ -233,7 +233,7 @@ export const updateShiftStatus = async (req: Request, res: Response) => {
 
             try {
                 // Fetch assignee phone
-                const userRes = await pool.query('SELECT phonenumber as "phoneNumber", firstname as "firstName", fullname as "fullName" FROM "user" WHERE id = $1', [assignedTo]);
+                const userRes = await pool.query('SELECT phonenumber as "phoneNumber", firstname as "firstName", fullname as "fullName" FROM "User" WHERE id = $1', [assignedTo]);
                 const assignee = userRes.rows[0];
 
 
@@ -245,7 +245,7 @@ export const updateShiftStatus = async (req: Request, res: Response) => {
 
 
                     // Fetch category Name for better message
-                    const catRes = await pool.query('SELECT name FROM shiftcategory WHERE id = $1', [updatedShift.categoryid]);
+                    const catRes = await pool.query('SELECT name FROM "ShiftCategory" WHERE id = $1', [updatedShift.categoryid]);
                     const categoryName = catRes.rows[0]?.name || '';
 
                     const message = `👋 Hola ${assignee.firstName || assignee.fullName || 'Chofer'}, se te ha asignado un nuevo turno (Automático):\n` +
@@ -279,7 +279,7 @@ export const deleteShift = async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
         const tenantId = (req as any).user.tenantId; // Ensure tenant isolation
-        const query = 'UPDATE shift SET deletedat = NOW() WHERE id = $1 AND tenantid = $2 RETURNING *';
+        const query = 'UPDATE "Shift" SET deletedat = NOW() WHERE id = $1 AND tenantid = $2 RETURNING *';
         const result = await pool.query(query, [Number(id), tenantId]);
 
         if (result.rowCount === 0) {
@@ -307,7 +307,7 @@ export const updateShift = async (req: Request, res: Response) => {
         const shiftEndTime = req.body.endTime || '';
 
         const query = `
-      UPDATE shift 
+      UPDATE "Shift" 
       SET categoryid = $1, servicenumber = $2, date = $3, time = $4, endtime = $5,
           line = $6, relief = $7, carnumber = $8, extrahours = $9, 
           tip = $10, tipvalue = $11, totalvalue = $12, transformafacil = $13,
@@ -359,7 +359,7 @@ export const getBalances = async (req: Request, res: Response) => {
           s.assignedto as user_id,
           0 as cedidos,
           COALESCE(SUM(s.totalvalue), 0) as tomados
-        FROM shift s
+        FROM "Shift" s
         WHERE s.status IN ('Assigned', 'Completed') AND s.ispaid = false
           AND s.tenantid = $1 AND s.deletedat IS NULL
         GROUP BY s.assignedto
@@ -371,7 +371,7 @@ export const getBalances = async (req: Request, res: Response) => {
           s.createdby as user_id,
           COALESCE(SUM(s.totalvalue), 0) as cedidos,
           0 as tomados
-        FROM shift s
+        FROM "Shift" s
         WHERE s.assignedto IS NOT NULL 
           AND s.assignedto != s.createdby 
           AND s.status IN ('Assigned', 'Completed')
@@ -386,7 +386,7 @@ export const getBalances = async (req: Request, res: Response) => {
             p.userid as user_id,
             COALESCE(SUM(p.amount), 0) as cedidos,
             0 as tomados
-        FROM payment p
+        FROM "Payment" p
         WHERE p.isclosed = false
           AND p.tenantid = $1
         GROUP BY p.userid
@@ -407,7 +407,7 @@ export const getBalances = async (req: Request, res: Response) => {
         COALESCE(ab.cedidos, 0) as cedidos,
         COALESCE(ab.tomados, 0) as tomados,
         (COALESCE(ab.tomados, 0) - COALESCE(ab.cedidos, 0)) as balance
-      FROM "user" u
+      FROM "User" u
       LEFT JOIN AggregatedBalances ab ON u.id = ab.user_id
       WHERE u.role != 'SuperAdmin' 
         AND u.tenantid = $1
@@ -419,15 +419,15 @@ export const getBalances = async (req: Request, res: Response) => {
         // Calculate Global Totals
         const globalsQuery = `
       SELECT 
-        (SELECT COALESCE(SUM(totalvalue), 0) FROM shift WHERE status = 'Assigned' AND tenantid = $1) as total_tomados,
+        (SELECT COALESCE(SUM(totalvalue), 0) FROM "Shift" WHERE status = 'Assigned' AND tenantid = $1) as total_tomados,
         
-        (SELECT COALESCE(SUM(totalvalue), 0) FROM shift WHERE status = 'Public' AND tenantid = $1) as total_publicos_value,
+        (SELECT COALESCE(SUM(totalvalue), 0) FROM "Shift" WHERE status = 'Public' AND tenantid = $1) as total_publicos_value,
 
-        (SELECT COALESCE(SUM(totalvalue), 0) FROM shift WHERE assignedto IS NOT NULL AND assignedto != createdby AND tenantid = $1) as total_cedidos_value,
+        (SELECT COALESCE(SUM(totalvalue), 0) FROM "Shift" WHERE assignedto IS NOT NULL AND assignedto != createdby AND tenantid = $1) as total_cedidos_value,
 
         -- A Cubrir (Admin): Total Payout Liability.
         (SELECT COALESCE(SUM(totalvalue - COALESCE(transformafacildiscount, 0)), 0) 
-         FROM shift 
+         FROM "Shift" 
          WHERE transformafacil = true 
          AND (status = 'Assigned' OR status = 'Public' OR status = 'Created')
          AND tenantid = $1
@@ -471,8 +471,8 @@ export const getUnpaidShifts = async (req: Request, res: Response) => {
                 ELSE 'UNKNOWN'
              END as "transactionType"
 
-      FROM shift s
-      JOIN "user" u ON s.createdby = u.id
+      FROM "Shift" s
+      JOIN "User" u ON s.createdby = u.id
       WHERE 
         s.ispaid = false
         AND s.tenantid = $2
@@ -502,7 +502,7 @@ export const registerPayment = async (req: Request, res: Response) => {
         }
 
         const query = `
-      INSERT INTO payment (userid, amount, notes, isclosed, tenantid)
+      INSERT INTO "Payment" (userid, amount, notes, isclosed, tenantid)
       VALUES ($1, $2, $3, false, $4)
       RETURNING *
     `;
@@ -532,7 +532,7 @@ export const payBalance = async (req: Request, res: Response) => {
 
             // 1. Close all Shifts (Debts/Credits)
             const shiftsQuery = `
-              UPDATE shift 
+              UPDATE "Shift" 
               SET ispaid = true, updatedat = NOW()
               WHERE 
                 ispaid = false 
@@ -547,7 +547,7 @@ export const payBalance = async (req: Request, res: Response) => {
 
             // 2. Close all Payments (Advances)
             const paymentsQuery = `
-              UPDATE payment
+              UPDATE "Payment"
               SET isclosed = true
               WHERE userid = $1 AND isclosed = false AND tenantid = $2
             `;

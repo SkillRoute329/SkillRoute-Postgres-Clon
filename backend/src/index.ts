@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 VERSIÓN 8.1 - FORCE DEPLOY 🔥');
+console.log('🔥 VERSIÓN 8.2 - SAFE TABLES 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -230,7 +230,7 @@ const diagnoseSchema = async () => {
 };
 // Start Server Chain with Error Recovery
 const boot = async () => {
-  console.log("🚀 VERSIÓN 8.1 - FORCE DEPLOY");
+  console.log("🚀 VERSIÓN 8.2 - SAFE TABLES (Quoted Tables + Lowercase Cols)");
   try {
     await diagnoseSchema(); // Run diagnostic first
     console.log('🚀 Iniciando secuencia de arranque...');
