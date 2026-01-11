@@ -33,7 +33,13 @@ app.listen(Number(PORT), '0.0.0.0', () => {
 
 // --- BASE ROUTES ---
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', server: 'TransformaFacil', version: VERSION });
+  console.log('📡 [HEALTH] Health check received from ' + req.ip);
+  try {
+    res.status(200).json({ status: 'ok', server: 'TransformaFacil', version: VERSION });
+  } catch (error) {
+    console.error('❌ [HEALTH] Error sending response:', error);
+    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+  }
 });
 
 app.get('/api/version', (req, res) => {
