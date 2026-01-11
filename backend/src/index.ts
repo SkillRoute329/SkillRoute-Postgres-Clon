@@ -21,7 +21,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '17.8-ASYNC-WA';
+const VERSION = '18.2-MIGRATION-FORCE';
 
 app.use(cors());
 app.use(express.json());
