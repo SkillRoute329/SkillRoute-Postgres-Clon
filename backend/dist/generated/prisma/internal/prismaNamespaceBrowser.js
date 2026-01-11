@@ -84,4 +84,3 @@ exports.TransactionIsolationLevel = {
     RepeatableRead: 'RepeatableRead',
     Serializable: 'Serializable'
 };
-//# sourceMappingURL=prismaNamespaceBrowser.js.map

@@ -113,4 +113,3 @@ exports.TransactionIsolationLevel = runtime.makeStrictEnum({
     Serializable: 'Serializable'
 });
 exports.defineExtension = runtime.Extensions.defineExtension;
-//# sourceMappingURL=prismaNamespace.js.map

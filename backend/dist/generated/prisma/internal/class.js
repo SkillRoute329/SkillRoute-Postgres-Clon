@@ -74,4 +74,3 @@ config.compilerWasm = {
 function getPrismaClientClass() {
     return runtime.getPrismaClient(config);
 }
-//# sourceMappingURL=class.js.map

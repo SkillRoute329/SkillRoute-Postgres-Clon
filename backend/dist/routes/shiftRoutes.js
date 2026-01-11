@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const shiftController_1 = require("../controllers/shiftController");
+const authMiddleware_1 = require("../middleware/authMiddleware");
+const router = (0, express_1.Router)();
+router.get('/balances', authMiddleware_1.authenticate, shiftController_1.getBalances);
+router.get('/unpaid/:userId', authMiddleware_1.authenticate, shiftController_1.getUnpaidShifts);
+router.post('/pay', authMiddleware_1.authenticate, shiftController_1.payBalance);
+router.post('/payment', authMiddleware_1.authenticate, shiftController_1.registerPayment);
+router.get('/', authMiddleware_1.authenticate, shiftController_1.getAllShifts);
+router.post('/', authMiddleware_1.authenticate, shiftController_1.createShift);
+router.patch('/:id/status', authMiddleware_1.authenticate, shiftController_1.updateShiftStatus);
+router.put('/:id', authMiddleware_1.authenticate, shiftController_1.updateShift);
+router.delete('/:id', authMiddleware_1.authenticate, shiftController_1.deleteShift);
+exports.default = router;

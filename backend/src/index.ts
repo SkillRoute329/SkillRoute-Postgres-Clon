@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 VERSIÓN 7.0 - PURE JS ARCHITECTURE 🔥');
+console.log('🔥 VERSIÓN 7.1 - PURE JS ARCHITECTURE 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -230,7 +230,7 @@ const diagnoseSchema = async () => {
 };
 // Start Server Chain with Error Recovery
 const boot = async () => {
-  console.log("🚀 VERSIÓN 7.0 - FINAL STABLE");
+  console.log("🚀 VERSIÓN 7.1 - FINAL STABLE");
   try {
     await diagnoseSchema(); // Run diagnostic first
     console.log('🚀 Iniciando secuencia de arranque...');
