@@ -22,17 +22,17 @@ export const getAllShifts = async (req: Request, res: Response) => {
              u2.lastname as "assigneeLastName",
              u2.firstname as "assigneeFirstName",
              u2.phonenumber as "assigneePhone"
-      FROM "Shift" s
-      LEFT JOIN "ShiftCategory" c ON s.categoryid = c.id
-      LEFT JOIN "User" u1 ON s.createdby = u1.id
-      LEFT JOIN "User" u2 ON s.assignedto = u2.id
+      FROM shift s
+      LEFT JOIN shiftcategory c ON s.categoryid = c.id
+      LEFT JOIN "user" u1 ON s.createdby = u1.id
+      LEFT JOIN "user" u2 ON s.assignedto = u2.id
       WHERE s.tenantid = $1 AND s.deletedat IS NULL
     `;
 
         let shouldPaginate = !isNaN(page) && page > 0;
         const queryParams: any[] = [tenantId]; // $1 is tenantId
 
-        queryText += ` ORDER BY s."createdAt" DESC`;
+        queryText += ` ORDER BY s.createdat DESC`;
 
         if (shouldPaginate) {
             queryText += ` LIMIT $2 OFFSET $3`; // Using $2 and $3 because $1 is tenantId
@@ -356,40 +356,40 @@ export const getBalances = async (req: Request, res: Response) => {
       WITH UserBalances AS (
         -- 1. Shifts TAKEN (Realizados)
         SELECT 
-          s."assignedTo" as user_id,
+          s.assignedto as user_id,
           0 as cedidos,
-          COALESCE(SUM(s."totalValue"), 0) as tomados
-        FROM "Shift" s
-        WHERE s."status" IN ('Assigned', 'Completed') AND s."isPaid" = false
-          AND s."tenantId" = $1 AND s."deletedAt" IS NULL
-        GROUP BY s."assignedTo"
+          COALESCE(SUM(s.totalvalue), 0) as tomados
+        FROM shift s
+        WHERE s.status IN ('Assigned', 'Completed') AND s.ispaid = false
+          AND s.tenantid = $1 AND s.deletedat IS NULL
+        GROUP BY s.assignedto
 
         UNION ALL
 
         -- 2. Shifts GIVEN (Cedidos)
         SELECT 
-          s."createdBy" as user_id,
-          COALESCE(SUM(s."totalValue"), 0) as cedidos,
+          s.createdby as user_id,
+          COALESCE(SUM(s.totalvalue), 0) as cedidos,
           0 as tomados
-        FROM "Shift" s
-        WHERE s."assignedTo" IS NOT NULL 
-          AND s."assignedTo" != s."createdBy" 
-          AND s."status" IN ('Assigned', 'Completed')
-          AND s."isPaid" = false
-          AND s."tenantId" = $1 AND s."deletedAt" IS NULL
-        GROUP BY s."createdBy"
+        FROM shift s
+        WHERE s.assignedto IS NOT NULL 
+          AND s.assignedto != s.createdby 
+          AND s.status IN ('Assigned', 'Completed')
+          AND s.ispaid = false
+          AND s.tenantid = $1 AND s.deletedat IS NULL
+        GROUP BY s.createdby
 
         UNION ALL
 
         -- 3. Partial Payments
         SELECT
-            p."userId" as user_id,
-            COALESCE(SUM(p."amount"), 0) as cedidos,
+            p.userid as user_id,
+            COALESCE(SUM(p.amount), 0) as cedidos,
             0 as tomados
-        FROM "Payment" p
-        WHERE p."isClosed" = false
-          AND p."tenantId" = $1
-        GROUP BY p."userId"
+        FROM payment p
+        WHERE p.isclosed = false
+          AND p.tenantid = $1
+        GROUP BY p.userid
       ),
       AggregatedBalances AS (
         SELECT 
@@ -401,17 +401,17 @@ export const getBalances = async (req: Request, res: Response) => {
       )
       SELECT 
         u.id as user_id,
-        u."internalNumber",
-        u."firstName",
-        u."lastName",
+        u.internalnumber as "internalNumber",
+        u.firstname as "firstName",
+        u.lastname as "lastName",
         COALESCE(ab.cedidos, 0) as cedidos,
         COALESCE(ab.tomados, 0) as tomados,
         (COALESCE(ab.tomados, 0) - COALESCE(ab.cedidos, 0)) as balance
-      FROM "User" u
+      FROM "user" u
       LEFT JOIN AggregatedBalances ab ON u.id = ab.user_id
-      WHERE u."role" != 'SuperAdmin' 
-        AND u."tenantId" = $1
-      ORDER BY u."internalNumber" ASC
+      WHERE u.role != 'SuperAdmin' 
+        AND u.tenantid = $1
+      ORDER BY u.internalnumber ASC
     `;
 
         const result = await pool.query(query, [tenantId]);

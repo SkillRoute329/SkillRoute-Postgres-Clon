@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 VERSIÓN 3.5 - SCHEMA DEBUGGER ACTIVE 🔥');
+console.log('🔥 VERSIÓN 3.6 - BLIND CASE FIX (Unquoted) 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;

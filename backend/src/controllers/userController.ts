@@ -77,7 +77,7 @@ export const updateUser = async (req: Request, res: Response) => {
         const fullName = `${firstName} ${lastName}`;
 
         let query = `
-            UPDATE "User" 
+            UPDATE "user" 
             SET internalnumber = $1, firstname = $2, lastname = $3, fullname = $4, 
                 phonenumber = $5, whatsapplink = $6, role = $7, isactive = $8
         `;
