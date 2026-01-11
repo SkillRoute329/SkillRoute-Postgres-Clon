@@ -35,7 +35,7 @@ app.get('/api/version', (req, res) => {
     const pkgPath = path.join(__dirname, '../package.json');
     const pkg = fs.existsSync(pkgPath) ? JSON.parse(fs.readFileSync(pkgPath, 'utf8')) : { version: '1.8.0' };
     res.json({
-      version: '11.0-ULTRA-FORCE',
+      version: '11.1-CHECK-GITHUB-ACTION',
       pkgVersion: pkg.version,
       timestamp: new Date().toISOString(),
       desc: 'Ultimate Stable - Safe Tables'
