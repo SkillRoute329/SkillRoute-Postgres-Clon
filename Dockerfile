@@ -20,7 +20,7 @@ RUN npm install
 RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
 
 # --- CACHE BUSTER ---
-ENV CACHE_BUST=v3.1
+ENV CACHE_BUST=v3.7
 
 # Construir TypeScript (Esto ahora se ejecutará SÍ o SÍ)
 RUN npm run build

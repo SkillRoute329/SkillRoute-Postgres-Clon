@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 VERSIÓN 3.6 - BLIND CASE FIX (Unquoted) 🔥');
+console.log('🔥 VERSIÓN 3.7 - FORCE DEPLOY & SCHEMA DEBUG 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,9 +40,9 @@ app.get('/api/health', async (req, res) => {
 
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.3.4',
+    version: '3.7',
     timestamp: new Date().toISOString(),
-    desc: 'Deep Diagnostic Build'
+    desc: 'Schema Debugger + Unquoted SQL'
   });
 });
 
