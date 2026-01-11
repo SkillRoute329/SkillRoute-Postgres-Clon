@@ -55,4 +55,10 @@ RUN npm run build
 EXPOSE 3000
 
 # Start the application
-CMD ["sh", "-c", "ls -la backend/dist && node backend/dist/index.js"]
+# Copy startup script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Start the application using the script
+CMD ["/app/start.sh"]
+
