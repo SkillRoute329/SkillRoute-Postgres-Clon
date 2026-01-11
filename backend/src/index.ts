@@ -35,13 +35,13 @@ app.get('/api/version', (req, res) => {
     const pkgPath = path.join(__dirname, '../package.json');
     const pkg = fs.existsSync(pkgPath) ? JSON.parse(fs.readFileSync(pkgPath, 'utf8')) : { version: '1.8.0' };
     res.json({
-      version: '13.3-PRISMA-FIX',
+      version: '14.0-SCHEMA-FIXED',
       pkgVersion: pkg.version,
       timestamp: new Date().toISOString(),
       desc: 'Ultimate Stable - Safe Tables'
     });
   } catch (err) {
-    res.json({ version: '13.3-PRISMA-FIX', error: 'Pkg not found' });
+    res.json({ version: '14.0-SCHEMA-FIXED', error: 'Pkg not found' });
   }
 });
 
