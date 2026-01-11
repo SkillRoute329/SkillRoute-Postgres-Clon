@@ -22,7 +22,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '18.7-DEBUG-SCRIPT';
+const VERSION = '18.8-INLINE-SCRIPT';
 
 console.error(`🔥 [BOOT] Version: ${VERSION}`);
 console.error(`🔥 [BOOT] PORT Env: ${process.env.PORT}`);

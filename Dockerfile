@@ -55,10 +55,16 @@ RUN npm run build
 EXPOSE 3000
 
 # Start the application
-# Copy startup script
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
+# Create startup script inline to ensure LF line endings (fix Windows CRLF issue)
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'echo "📢 [STARTING] Launching Start Script..."' >> /app/start.sh && \
+    echo 'echo "📂 [DIAGNOSTIC] Current Directory: $(pwd)"' >> /app/start.sh && \
+    echo 'echo "📂 [DIAGNOSTIC] Listing /app/backend/dist:"' >> /app/start.sh && \
+    echo 'ls -R /app/backend/dist || echo "❌ /app/backend/dist NOT FOUND!"' >> /app/start.sh && \
+    echo 'echo "🚀 [EXEC] Starting Node process..."' >> /app/start.sh && \
+    echo 'exec node /app/backend/dist/index.js 2>&1' >> /app/start.sh && \
+    chmod +x /app/start.sh
 
-# Start the application using the script
+# Start the application using the generated script
 CMD ["/app/start.sh"]
 
