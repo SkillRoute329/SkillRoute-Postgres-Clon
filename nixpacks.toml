@@ -1,9 +1,0 @@
-[build]
-installCommand = "npm install"
-buildCommand = "npm run build"
-
-[start]
-command = "npm start"
-
-[phases.setup]
-nixPkgs = ["nodejs", "openssl"]
