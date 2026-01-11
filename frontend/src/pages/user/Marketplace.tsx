@@ -97,9 +97,10 @@ const Marketplace = () => {
                             <ShiftCard
                                 key={shift.id}
                                 shift={shift}
-                                onUpdate={loadPublicShifts}
-                                showTakeButton
-                                onTake={() => handleTakeShift(shift.id)}
+                                variant="public"
+                                onAction={(action, id) => {
+                                    if (action === 'take') handleTakeShift(id);
+                                }}
                             />
                         ))
                     ) : (
