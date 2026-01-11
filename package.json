@@ -1,6 +1,6 @@
 {
     "name": "transformafacil-monorepo",
-    "version": "10.0.0",
+    "version": "12.0.0",
     "private": true,
     "description": "Root package for Railway deployment - NIXPACKS FORCE",
     "scripts": {
