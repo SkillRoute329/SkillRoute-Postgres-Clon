@@ -19,4 +19,4 @@ ENV CACHE_BUST=v13.0-SIMPLE-FORCE
 EXPOSE 3000
 
 # Start
-CMD ["npm", "start"]
+CMD ["node", "dist/index.js"]
