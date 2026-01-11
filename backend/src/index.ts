@@ -153,13 +153,35 @@ const runHotfix = async (pool: any) => {
 // FIN DEL PARCHE
 
 const startServer = async () => {
-  await ensureSchemaIntegrity(); // Force schema fix on boot
-  await runHotfix(pool);
+  // --- RUTA DE EMERGENCIA (Solicitada por Usuario) ---
+  app.get('/api/emergency-fix-v1', async (req, res) => {
+    try {
+      const client = await pool.connect();
+      // 1. Crear Tabla
+      await client.query(`
+            CREATE TABLE IF NOT EXISTS "Notification" (
+                id SERIAL PRIMARY KEY,
+                "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE,
+                message TEXT NOT NULL,
+                read BOOLEAN DEFAULT FALSE,
+                "createdAt" TIMESTAMP DEFAULT NOW()
+            );
+        `);
+      // 2. Crear Columna
+      await client.query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='User' AND column_name='phoneNumber') THEN ALTER TABLE "User" ADD COLUMN "phoneNumber" VARCHAR(255); END IF; END $$;`);
+
+      client.release();
+      res.send("✅ ÉXITO: Base de datos reparada correctamente.");
+    } catch (error: any) {
+      res.status(500).send("❌ ERROR: " + error.message);
+    }
+  });
+  // --------------------------
 
   app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`📡 Servidor listo en puerto ${PORT}`);
     console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔢 Versión API: 1.3.3 (Dockerfile Fix)`); // Match package.json
+    console.log(`🔢 Versión API: 1.8.0 (Emergency Route Fix)`);
   });
 };
 
