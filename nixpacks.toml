@@ -1,5 +1,5 @@
 [setup]
-pkgs = ["nodejs_22"]
+pkgs = ["nodejs_23"]
 
 [build]
 installCommand = "cd backend && npm install"

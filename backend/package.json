@@ -3,6 +3,9 @@
   "version": "17.0.0",
   "description": "",
   "main": "index.js",
+  "engines": {
+    "node": "23.x"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "npx prisma generate && tsc",
