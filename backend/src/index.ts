@@ -1,3 +1,4 @@
+console.error('🔥 [BOOT] SYSTEM STARTING... IF YOU SEE THIS, ENTRY POINT IS REACHED.');
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -21,10 +22,10 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '18.4-DEBUG-PORT';
+const VERSION = '18.5-DEBUG-ENTRY';
 
-console.log(`🔌 [INIT] Starting Server Version: ${VERSION}`);
-console.log(`🔌 [INIT] Environment PORT: ${process.env.PORT}`);
+console.error(`🔥 [BOOT] Version: ${VERSION}`);
+console.error(`🔥 [BOOT] PORT Env: ${process.env.PORT}`);
 console.log(`🔌 [INIT] Final PORT being used: ${PORT}`);
 
 app.use(cors());
