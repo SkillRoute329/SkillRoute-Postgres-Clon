@@ -74,6 +74,9 @@ async function run() {
 
         // 5. Check Shifts (SQL Check)
         await testEndpoint('Get Shifts (SQL Check)', '/shifts?page=1&limit=5');
+
+        // 6. Check Notifications (Specific Error Check)
+        await testEndpoint('Get Notifications (Case Sensitivity Check)', '/notifications');
     }
 }
 

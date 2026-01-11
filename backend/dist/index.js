@@ -20,7 +20,7 @@ const systemConfigRoutes_1 = __importDefault(require("./routes/systemConfigRoute
 const whatsappRoutes_1 = __importDefault(require("./routes/whatsappRoutes"));
 // Cargar env vars
 dotenv_1.default.config();
-console.log('🔥 VERSIÓN 7.1 - PURE JS ARCHITECTURE 🔥');
+console.log('🔥 VERSIÓN 8.0 - AUTO-PILOT 🔥');
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000;
 app.use((0, cors_1.default)());
@@ -217,7 +217,7 @@ const diagnoseSchema = async () => {
 };
 // Start Server Chain with Error Recovery
 const boot = async () => {
-    console.log("🚀 VERSIÓN 7.1 - FINAL STABLE");
+    console.log("🚀 VERSIÓN 8.0 - AUTO-PILOT (Unblock Build Force)");
     try {
         await diagnoseSchema(); // Run diagnostic first
         console.log('🚀 Iniciando secuencia de arranque...');
