@@ -19,9 +19,14 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 RUN npm install
 RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
 
+# --- CACHE BUSTER ---
+ENV CACHE_BUST=v3.1
+
+# Construir TypeScript (Esto ahora se ejecutará SÍ o SÍ)
+RUN npm run build
+
 # --- FINAL ---
 WORKDIR /app/backend
 ENV NODE_ENV=production
 EXPOSE 3000
-# Force Rebuild Key: Trojan Horse v1.7
-CMD ["sh", "-c", "node manual_fix.js && npx tsx src/index.ts"]
+CMD ["npm", "run", "start"]

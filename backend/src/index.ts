@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 INICIANDO VERSIÓN 3.0 - COMPILACIÓN FORZADA 🔥');
+console.log('🔥 VERSIÓN 3.1 - CACHE ROMPIDA EXITOSAMENTE 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -187,7 +187,7 @@ const startServer = async () => {
 
 // Start Server Chain with Error Recovery
 const boot = async () => {
-  console.log("🚀 VERSIÓN 3.0 - PARCHE SQL ACTIVO");
+  console.log("🚀 VERSIÓN 3.1 - PARCHE SQL ACTIVO");
   try {
     console.log('🚀 Iniciando secuencia de arranque...');
     await runMigration();
