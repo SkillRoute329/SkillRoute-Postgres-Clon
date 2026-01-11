@@ -17,10 +17,14 @@ WORKDIR /app/backend
 RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont openssl
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 # Copy migration file from root
+# Copy migration file from root
 COPY migration.sql ./
 
+# Install Dependencies (CRITICAL FIX)
+RUN npm install
+
 # --- CACHE BUSTER ---
-ENV CACHE_BUST=v4.2
+ENV CACHE_BUST=v5.0
 
 # Explicitly generate Prisma Client for the added binary targets
 RUN npx prisma generate

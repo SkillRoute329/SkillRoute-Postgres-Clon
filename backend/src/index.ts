@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 VERSIÓN 4.2 - ALPINE BINARY TARGETS FIXED 🔥');
+console.log('🔥 VERSIÓN 5.0 - NPM INSTALL RESTORED 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,7 +40,7 @@ app.get('/api/health', async (req, res) => {
 
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '4.2',
+    version: '5.0',
     timestamp: new Date().toISOString(),
     desc: 'Production Stable'
   });
@@ -230,7 +230,7 @@ const diagnoseSchema = async () => {
 };
 // Start Server Chain with Error Recovery
 const boot = async () => {
-  console.log("🚀 VERSIÓN 4.2 - ALPINE FIX STARTUP");
+  console.log("🚀 VERSIÓN 5.0 - DEPLOYMENT RECOVERY");
   try {
     await diagnoseSchema(); // Run diagnostic first
     console.log('🚀 Iniciando secuencia de arranque...');
