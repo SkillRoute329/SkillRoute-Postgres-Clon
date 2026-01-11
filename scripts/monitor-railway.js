@@ -23,6 +23,7 @@ const interval = setInterval(() => {
             });
         } else {
             console.log(`[${now}] ⏳ Estado: ${res.statusCode} (Intento ${retryCount}/${MAX_RETRIES})`);
+            console.log('💡 TIP: Si esto falla mucho tiempo, corre "railway logs" en tu terminal para ver errores reales.');
         }
     });
 

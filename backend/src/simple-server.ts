@@ -2,10 +2,11 @@
 import express from 'express';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000; // FORCE 3000 FOR DOCKER DEBUGGING
 
 console.log('🚀 [SIMPLE-SERVER] Starting minimal server...');
-console.log(`🌍 [SIMPLE-SERVER] Env PORT: ${process.env.PORT}`);
+console.log(`🌍 [SIMPLE-SERVER] Forced PORT: ${PORT}`);
+console.log(`🌍 [SIMPLE-SERVER] Original Env PORT: ${process.env.PORT}`);
 
 app.get('/', (req, res) => {
     console.log('Creates a log entry when root is hit');
