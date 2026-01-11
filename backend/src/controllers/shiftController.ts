@@ -214,7 +214,7 @@ export const updateShiftStatus = async (req: Request, res: Response) => {
 
         // Automatic Notifications
         if (status === 'Public' && currentShift.status !== 'Public') {
-            await createNotification(updatedShift.createdBy, 'Turno Aprobado', `Tu turno #${updatedShift.serviceNumber} ha sido aprobado y publicado.`, 'SUCCESS');
+            await createNotification(updatedShift.createdBy, `Turno Aprobado: Tu turno #${updatedShift.serviceNumber} ha sido aprobado y publicado.`);
         }
 
         // Notify if assigned or reassigned
@@ -223,10 +223,10 @@ export const updateShiftStatus = async (req: Request, res: Response) => {
 
             if (isReassignment) {
                 // Notify previous owner if needed? Maybe later.
-                await createNotification(assignedTo, 'Turno Reasignado', `Se te ha reasignado el turno servicio #${updatedShift.serviceNumber}.`, 'INFO');
+                await createNotification(assignedTo, `Turno Reasignado: Se te ha reasignado el turno servicio #${updatedShift.serviceNumber}.`);
             } else if (!currentShift.assignedTo) {
-                await createNotification(assignedTo, 'Nuevo Turno Asignado', `Se te ha asignado el turno servicio #${updatedShift.serviceNumber}.`, 'INFO');
-                await createNotification(updatedShift.createdBy, 'Turno Tomado', `Tu turno #${updatedShift.serviceNumber} ha sido tomado por otro usuario.`, 'INFO');
+                await createNotification(assignedTo, `Nuevo Turno Asignado: Se te ha asignado el turno servicio #${updatedShift.serviceNumber}.`);
+                await createNotification(updatedShift.createdBy, `Turno Tomado: Tu turno #${updatedShift.serviceNumber} ha sido tomado por otro usuario.`);
             }
 
             // --- WhatsApp Integration ---

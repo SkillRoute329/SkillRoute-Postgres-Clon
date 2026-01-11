@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import pool from '../db';
 import bcrypt from 'bcrypt';
 
 export const getAllUsers = async (req: Request, res: Response) => {

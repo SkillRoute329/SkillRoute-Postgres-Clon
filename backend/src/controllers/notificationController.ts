@@ -21,7 +21,7 @@ export const markAsRead = async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
         await pool.query(
-            'UPDATE "Notification" SET "isRead" = TRUE WHERE "id" = $1 AND "userId" = $2',
+            'UPDATE "Notification" SET "read" = TRUE WHERE "id" = $1 AND "userId" = $2',
             [id, userId]
         );
         res.json({ message: 'Marked as read' });
@@ -31,12 +31,12 @@ export const markAsRead = async (req: Request, res: Response) => {
     }
 };
 
-// Helper internal function
-export const createNotification = async (userId: number, title: string, message: string, type: string = 'INFO', link: string = '') => {
+// Helper internal function (Simplified Schema)
+export const createNotification = async (userId: number, message: string) => {
     try {
         await pool.query(
-            'INSERT INTO "Notification" ("userId", "title", "message", "type", "link") VALUES ($1, $2, $3, $4, $5)',
-            [userId, title, message, type, link]
+            'INSERT INTO "Notification" ("userId", "message", "read") VALUES ($1, $2, FALSE)',
+            [userId, message]
         );
     } catch (error) {
         console.error('Error creating internal notification:', error);
