@@ -7,3 +7,8 @@ node_modules
 .wwebjs_auth/
 .wwebjs_cache/
 session-admin-bot/
+
+# Build artifacts
+dist/
+coverage/
+*.log
