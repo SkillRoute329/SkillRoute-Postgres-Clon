@@ -40,7 +40,7 @@ app.get('/api/health', async (req, res) => {
 
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.3.2',
+    version: '1.3.3',
     timestamp: new Date().toISOString(),
     desc: 'Deep Diagnostic Build'
   });
@@ -146,7 +146,7 @@ const startServer = async () => {
   app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`📡 Servidor listo en puerto ${PORT}`);
     console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔢 Versión API: 1.3.2 (Resilient Boot + Import Fix)`); // Match package.json
+    console.log(`🔢 Versión API: 1.3.3 (Dockerfile Fix)`); // Match package.json
   });
 };
 
