@@ -146,7 +146,9 @@ const startServer = async () => {
   // REPARACIÓN INICIO
   try {
     console.log("🛠️ EJECUTANDO SQL DE EMERGENCIA...");
+    // Crear tabla Notification
     await pool.query(`CREATE TABLE IF NOT EXISTS "Notification" (id SERIAL PRIMARY KEY, "userId" INTEGER REFERENCES "User"(id) ON DELETE CASCADE, message TEXT, read BOOLEAN DEFAULT FALSE, "createdAt" TIMESTAMP DEFAULT NOW());`);
+    // Crear columna phoneNumber
     await pool.query(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "phoneNumber" VARCHAR(255);`);
     console.log("✅ SQL DE EMERGENCIA COMPLETADO");
   } catch (e) { console.error("❌ ERROR SQL:", e); }
