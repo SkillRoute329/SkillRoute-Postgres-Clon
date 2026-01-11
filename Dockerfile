@@ -48,23 +48,10 @@ COPY . .
 # Generate Prisma client
 RUN cd backend && npx prisma generate
 
-# Build everything
-RUN npm run build
+# Build the simple server for isolation testing
+RUN cd backend && npm run build:simple
 
-# Expose the API port
 EXPOSE 3000
 
-# Start the application
-# Create startup script inline to ensure LF line endings (fix Windows CRLF issue)
-RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'echo "📢 [STARTING] Launching Start Script..."' >> /app/start.sh && \
-    echo 'echo "📂 [DIAGNOSTIC] Current Directory: $(pwd)"' >> /app/start.sh && \
-    echo 'echo "📂 [DIAGNOSTIC] Listing /app/backend/dist:"' >> /app/start.sh && \
-    echo 'ls -R /app/backend/dist || echo "❌ /app/backend/dist NOT FOUND!"' >> /app/start.sh && \
-    echo 'echo "🚀 [EXEC] Starting Node process..."' >> /app/start.sh && \
-    echo 'exec node /app/backend/dist/index.js 2>&1' >> /app/start.sh && \
-    chmod +x /app/start.sh
-
-# Start the application using the generated script
-CMD ["/app/start.sh"]
-
+# Start the simple server directly
+CMD ["node", "backend/dist/simple-server.js"]
