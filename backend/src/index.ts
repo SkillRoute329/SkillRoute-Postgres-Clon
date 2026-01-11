@@ -14,13 +14,14 @@ import notificationRoutes from './routes/notificationRoutes';
 import userRoutes from './routes/userRoutes';
 import systemConfigRoutes from './routes/systemConfigRoutes';
 import whatsappRoutes from './routes/whatsappRoutes';
+import { whatsAppService } from './services/whatsappService';
 
 // Load env vars
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '17.7-MONOREPO-FIX';
+const VERSION = '17.8-ASYNC-WA';
 
 app.use(cors());
 app.use(express.json());
@@ -102,6 +103,7 @@ const boot = async () => {
   // Run these but don't block the healthcheck
   await runMigration();
   await seedDatabase();
+  whatsAppService.start();
   console.log('🏁 [BOOT] Background operations completed.');
 };
 

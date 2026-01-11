@@ -30,6 +30,11 @@ class WhatsAppService {
             }
         });
 
+        // this.initialize(); // DEFERRED: Call start() explicitly after server boot
+    }
+
+    public start() {
+        console.log('🚀 [WA] Starting WhatsApp Service...');
         this.initialize();
     }
 
