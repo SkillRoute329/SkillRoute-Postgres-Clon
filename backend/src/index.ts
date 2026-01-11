@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 VERSIÓN 3.2 - CASE SENSITIVITY FIX 🔥');
+console.log('🔥 VERSIÓN 3.3 - PRISMA MAPPING FIX 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -181,14 +181,33 @@ const startServer = async () => {
   app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`📡 Servidor listo en puerto ${PORT}`);
     console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔢 Versión API: 3.2 (Fix Case Sensitivity)`);
+    console.log(`🔢 Versión API: 3.3 (Prisma Map + Schema Diag)`);
   });
 };
 
+const diagnoseSchema = async () => {
+  console.log("🔍 [DIAG] Analizando Esquema de Base de Datos...");
+  try {
+    const tables = ['User', 'Shift', 'Notification', 'user', 'shift', 'notification'];
+    for (const table of tables) {
+      const res = await pool.query(
+        `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = $1`,
+        [table]
+      );
+      if (res.rowCount > 0) {
+        console.log(`📊 Tabla found: '${table}'`);
+        console.log(JSON.stringify(res.rows.map((r: any) => r.column_name)));
+      }
+    }
+  } catch (e) {
+    console.error("❌ [DIAG] Error analizando esquema:", e);
+  }
+};
 // Start Server Chain with Error Recovery
 const boot = async () => {
-  console.log("🚀 VERSIÓN 3.1 - PARCHE SQL ACTIVO");
+  console.log("🚀 VERSIÓN 3.3 - PARCHE PRISMA ACTIVO");
   try {
+    await diagnoseSchema(); // Run diagnostic first
     console.log('🚀 Iniciando secuencia de arranque...');
     await runMigration();
     await seedDatabase();
