@@ -14,13 +14,13 @@ RUN npm run build
 # --- BACKEND ---
 # --- BACKEND ---
 WORKDIR /app/backend
-RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
+RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont openssl
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 # Copy migration file from root
 COPY migration.sql ./
 
 # --- CACHE BUSTER ---
-ENV CACHE_BUST=v4.0
+ENV CACHE_BUST=v4.1
 
 # Construir TypeScript (Esto ahora se ejecutará SÍ o SÍ)
 RUN npm run build
