@@ -31,7 +31,7 @@ COPY migration.sql ./
 RUN npm install
 
 # --- CACHE BUSTER ---
-ENV CACHE_BUST=v8.4-DEBIAN-BUILD
+ENV CACHE_BUST=v8.5-ULTIMATE-BYPASS
 
 # Generate Prisma Client
 RUN npx prisma generate
