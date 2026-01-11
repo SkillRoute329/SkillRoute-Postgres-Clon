@@ -16,11 +16,17 @@ RUN apt-get update && apt-get install -y \
     libxdamage1 \
     libxext6 \
     libxfixes3 \
-    librandr2 \
+    libxrandr2 \
     libgbm1 \
     libasound2 \
     libpangocairo-1.0-0 \
     libpango-1.0-0 \
+    libgtk-3-0 \
+    libxss1 \
+    libxcursor1 \
+    libu2f-udev \
+    xdg-utils \
+    fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy root package files
