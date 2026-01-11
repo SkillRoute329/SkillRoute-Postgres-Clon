@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "npx prisma generate && tsc",
-    "start": "node dist/index.js & node scripts/verify-deploy.js",
+    "prestart": "rm -rf dist && npx tsc",
+    "start": "node dist/index.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "generate": "prisma generate"

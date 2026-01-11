@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 INICIANDO SISTEMA INTEGRAL v2.0 - AUTOMATIZADO 🔥');
+console.log('🔥 INICIANDO VERSIÓN 3.0 - COMPILACIÓN FORZADA 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -187,7 +187,7 @@ const startServer = async () => {
 
 // Start Server Chain with Error Recovery
 const boot = async () => {
-  console.log("🚀 VERSIÓN 1.6 - PARCHE SQL ACTIVO");
+  console.log("🚀 VERSIÓN 3.0 - PARCHE SQL ACTIVO");
   try {
     console.log('🚀 Iniciando secuencia de arranque...');
     await runMigration();
