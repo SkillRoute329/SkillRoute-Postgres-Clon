@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import pool from '../db';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 export const login = async (req: Request, res: Response) => {
@@ -11,7 +11,7 @@ export const login = async (req: Request, res: Response) => {
         const cleanInternal = String(internalNumber).trim();
 
 
-        const query = `SELECT * FROM "User" WHERE "internalNumber" = $1`;
+        const query = `SELECT * FROM "user" WHERE internalnumber = $1`;
         const result = await pool.query(query, [cleanInternal]);
 
         if (result.rowCount === 0) {

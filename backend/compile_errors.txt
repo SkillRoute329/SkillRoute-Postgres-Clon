@@ -1,0 +1,5 @@
+src/controllers/userController.ts(9,22): error TS2353: Object literal may only specify known properties, and 'tenantId' does not exist in type 'UserWhereInput'.
+src/controllers/userController.ts(17,17): error TS2353: Object literal may only specify known properties, and 'phoneNumber' does not exist in type 'UserSelect<DefaultArgs>'.
+src/controllers/userController.ts(52,17): error TS2353: Object literal may only specify known properties, and 'phoneNumber' does not exist in type '(Without<UserCreateInput, UserUncheckedCreateInput> & UserUncheckedCreateInput) | (Without<...> & UserCreateInput)'.
+src/controllers/userController.ts(110,30): error TS2304: Cannot find name 'pool'.
+src/controllers/userController.ts(133,30): error TS2304: Cannot find name 'pool'.

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import pool from '../db';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export const getAllUsers = async (req: Request, res: Response) => {
     try {
@@ -130,7 +130,7 @@ export const deleteUser = async (req: Request, res: Response) => {
     try {
         const tenantId = (req as any).user.tenantId;
 
-        const query = 'DELETE FROM "User" WHERE id = $1 AND "tenantId" = $2 RETURNING id, "fullName"';
+        const query = 'DELETE FROM "user" WHERE id = $1 AND tenantid = $2 RETURNING id, fullname as "fullName"';
         const result = await pool.query(query, [Number(id), tenantId]);
 
         if (result.rowCount === 0) {

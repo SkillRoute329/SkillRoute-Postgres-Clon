@@ -12,23 +12,24 @@ RUN npm install
 RUN npm run build
 
 # --- BACKEND ---
-# --- BACKEND ---
 WORKDIR /app/backend
-RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont openssl python3 make g++
+# Install runtime dependencies (OpenSSL is needed for Prisma)
+RUN apk add --no-cache openssl chromium nss freetype harfbuzz ca-certificates ttf-freefont
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 # Copy migration file from root
 COPY migration.sql ./
 
-# Install Dependencies (CRITICAL FIX)
+# Install Dependencies (Pure JS now, no build tools needed)
 RUN npm install
 
 # --- CACHE BUSTER ---
-ENV CACHE_BUST=v5.1
+ENV CACHE_BUST=v7.0
 
-# Explicitly generate Prisma Client for the added binary targets
+# Generate Prisma Client
 RUN npx prisma generate
 
-# Construir TypeScript
+# Build TypeScript
 RUN npm run build
 
 # --- FINAL ---

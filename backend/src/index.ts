@@ -3,7 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import pool from './db';
 
 // Routes
@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 VERSIÓN 6.0 - DEBIAN NUCLEAR OPTION 🔥');
+console.log('🔥 VERSIÓN 7.0 - PURE JS ARCHITECTURE 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,7 +40,7 @@ app.get('/api/health', async (req, res) => {
 
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '6.0',
+    version: '7.0',
     timestamp: new Date().toISOString(),
     desc: 'Production Stable'
   });
@@ -230,7 +230,7 @@ const diagnoseSchema = async () => {
 };
 // Start Server Chain with Error Recovery
 const boot = async () => {
-  console.log("🚀 VERSIÓN 6.0 - DEBIAN STABLE STARTUP");
+  console.log("🚀 VERSIÓN 7.0 - FINAL STABLE");
   try {
     await diagnoseSchema(); // Run diagnostic first
     console.log('🚀 Iniciando secuencia de arranque...');
