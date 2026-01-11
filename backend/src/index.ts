@@ -18,7 +18,7 @@ import { ensureSchemaIntegrity } from './utils/schemaFixer';
 
 // Cargar env vars
 dotenv.config();
-console.log('🔥 VERSIÓN 4.1 - PRODUCTION STABLE (SSL + Unquoted + OpenSSL) 🔥');
+console.log('🔥 VERSIÓN 4.2 - ALPINE BINARY TARGETS FIXED 🔥');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,7 +40,7 @@ app.get('/api/health', async (req, res) => {
 
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '4.1',
+    version: '4.2',
     timestamp: new Date().toISOString(),
     desc: 'Production Stable'
   });
@@ -206,7 +206,7 @@ const startServer = async () => {
   app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`📡 Servidor listo en puerto ${PORT}`);
     console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔢 Versión API: 4.1 (Stable)`);
+    console.log(`🔢 Versión API: 4.2 (Alpine Fixed)`);
   });
 };
 
@@ -230,7 +230,7 @@ const diagnoseSchema = async () => {
 };
 // Start Server Chain with Error Recovery
 const boot = async () => {
-  console.log("🚀 VERSIÓN 4.1 - UNIFIED FINAL PATCH");
+  console.log("🚀 VERSIÓN 4.2 - ALPINE FIX STARTUP");
   try {
     await diagnoseSchema(); // Run diagnostic first
     console.log('🚀 Iniciando secuencia de arranque...');

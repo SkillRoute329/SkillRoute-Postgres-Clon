@@ -20,9 +20,12 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 COPY migration.sql ./
 
 # --- CACHE BUSTER ---
-ENV CACHE_BUST=v4.1
+ENV CACHE_BUST=v4.2
 
-# Construir TypeScript (Esto ahora se ejecutará SÍ o SÍ)
+# Explicitly generate Prisma Client for the added binary targets
+RUN npx prisma generate
+
+# Construir TypeScript
 RUN npm run build
 
 # --- FINAL ---
