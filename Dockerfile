@@ -14,9 +14,8 @@ RUN npm run build
 # --- BACKEND ---
 # --- BACKEND ---
 WORKDIR /app/backend
-RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont openssl
+RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont openssl python3 make g++
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-# Copy migration file from root
 # Copy migration file from root
 COPY migration.sql ./
 
@@ -24,7 +23,7 @@ COPY migration.sql ./
 RUN npm install
 
 # --- CACHE BUSTER ---
-ENV CACHE_BUST=v5.0
+ENV CACHE_BUST=v5.1
 
 # Explicitly generate Prisma Client for the added binary targets
 RUN npx prisma generate
