@@ -79,12 +79,21 @@ try {
 
 // Serve Frontend
 const frontendPath = path.join(__dirname, '../../frontend/dist');
-app.use(express.static(frontendPath));
-app.get('*', (req, res) => {
-  if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(frontendPath, 'index.html'));
-  }
-});
+
+// Validate Frontend Build
+if (fs.existsSync(frontendPath)) {
+  console.log(`✅ [STATIC] Serving Frontend from: ${frontendPath}`);
+  app.use(express.static(frontendPath));
+
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(frontendPath, 'index.html'));
+    }
+  });
+} else {
+  console.error(`❌ [STATIC] Frontend build NOT found at: ${frontendPath}`);
+  console.error('   Make sure to run "npm run build" in the root directory.');
+}
 
 // 5. START SERVER IMMEDIATELY (Don't wait for DB)
 const server = app.listen(Number(PORT), '0.0.0.0', () => {
