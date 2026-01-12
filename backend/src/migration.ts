@@ -43,9 +43,19 @@ export async function seedDatabase() {
 
         for (const cat of categories) {
             await prisma.shiftCategory.upsert({
-                where: { name: cat.name },
+                where: {
+                    tenantId_name: {
+                        tenantId: 1,
+                        name: cat.name
+                    }
+                },
                 update: {}, // Don't overwrite if exists
-                create: { name: cat.name, baseValue: cat.baseValue, extraHourValue: cat.extraHourValue }
+                create: {
+                    tenantId: 1,
+                    name: cat.name,
+                    baseValue: cat.baseValue,
+                    extraHourValue: cat.extraHourValue
+                }
             });
         }
         console.log('✅ [SEED] Categories Verified.');
