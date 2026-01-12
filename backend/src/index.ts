@@ -21,7 +21,7 @@ import settingsRoutes from './routes/settingsRoutes';
 import backupRoutes from './routes/backupRoutes';
 import whatsappRoutes from './routes/whatsappRoutes';
 
-import { runMigration, seedDatabase } from './migration';
+import { runMigration, seedDatabase } from './setup_db';
 import { whatsAppService } from './services/whatsappService';
 
 // --- CRITICAL ERROR TRAP ---
@@ -35,7 +35,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = 'v19.6-FINAL-FIX';
+const VERSION = 'v19.7-RENAME-FIX';
 const BOOT_ID = Math.floor(Math.random() * 1000000).toString();
 
 // 1. IMMEDIATE LOGGING
