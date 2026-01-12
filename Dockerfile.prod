@@ -48,10 +48,10 @@ COPY . .
 
 # ENV to force cache invalidation
 # ENV to force cache invalidation
-ENV CACHE_BUST=v19.5
+ENV CACHE_BUST=v19.8
 
 # Debug Echo
-RUN echo "🚀 BUILDING VERSION v19.5 - IF YOU SEE THIS, IT IS THE NEW DOCKERFILE"
+RUN echo "🚀 BUILDING VERSION v19.8 - IF YOU SEE THIS, IT IS THE NEW DOCKERFILE"
 
 # Generate Prisma client
 RUN cd backend && npx prisma generate
@@ -62,4 +62,4 @@ RUN cd backend && npm run build
 EXPOSE 3000
 
 # Start the SAFE BOOT application directly
-CMD ["node", "backend/dist/index.js"]
+CMD ["sh", "-c", "cd backend && node dist/index.js"]
