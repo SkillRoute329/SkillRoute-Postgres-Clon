@@ -62,4 +62,4 @@ RUN cd backend && npm run build
 EXPOSE 3000
 
 # Start the SAFE BOOT application directly
-CMD ["sh", "-c", "cd backend && node dist/index.js"]
+CMD ["node", "backend/dist/index.js"]
