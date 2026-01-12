@@ -35,7 +35,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = 'v19.7-RENAME-FIX';
+const VERSION = 'v19.8-CWD-FIX';
 const BOOT_ID = Math.floor(Math.random() * 1000000).toString();
 
 // 1. IMMEDIATE LOGGING
