@@ -49,6 +49,7 @@ COPY . .
 # ENV to force cache invalidation
 # ENV to force cache invalidation
 ENV CACHE_BUST=v19.8
+ENV PRISMA_CLIENT_ENGINE_TYPE=binary
 
 # Debug Echo
 RUN echo "🚀 BUILDING VERSION v19.8 - IF YOU SEE THIS, IT IS THE NEW DOCKERFILE"
