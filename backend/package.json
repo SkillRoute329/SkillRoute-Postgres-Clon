@@ -27,7 +27,7 @@
     "esbuild": "^0.27.2",
     "eslint": "^9.0.0",
     "globals": "^15.0.0",
-    "prisma": "^7.2.0",
+    "prisma": "5.10.2",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.0.0",
@@ -37,7 +37,7 @@
     "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^7.2.0",
+    "@prisma/client": "5.10.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/pg": "^8.16.0",
