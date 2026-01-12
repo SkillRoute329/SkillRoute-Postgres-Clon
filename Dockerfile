@@ -47,7 +47,11 @@ RUN cd frontend && npm install
 COPY . .
 
 # ENV to force cache invalidation
-ENV CACHE_BUST=v19.4
+# ENV to force cache invalidation
+ENV CACHE_BUST=v19.5
+
+# Debug Echo
+RUN echo "🚀 BUILDING VERSION v19.5 - IF YOU SEE THIS, IT IS THE NEW DOCKERFILE"
 
 # Generate Prisma client
 RUN cd backend && npx prisma generate
