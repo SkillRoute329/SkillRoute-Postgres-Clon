@@ -12,8 +12,16 @@ const prisma = new PrismaClient();
  * where schema changes might occur. For strict production, 'migrate deploy' is better.
  */
 export async function runMigration() {
-    console.log('🔄 [MIGRATION] Starting Database Push...');
+    console.log('🔄 [MIGRATION] Checking Database Compatibility...');
+
+    if (process.env.NODE_ENV === 'production') {
+        console.log('⚠️ [MIGRATION] Production environment detected. Skipping "db push".');
+        console.log('   Please run "prisma migrate deploy" manually if needed, or rely on release phase.');
+        return;
+    }
+
     try {
+        console.log('🔄 [MIGRATION] Starting Database Push (Dev Mode)...');
         // --accept-data-loss is risky but necessary for auto-healing if schema drifted.
         await execPromise('npx prisma db push --accept-data-loss');
         console.log('✅ [MIGRATION] Database Push Completed.');
