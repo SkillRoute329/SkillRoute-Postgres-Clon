@@ -118,6 +118,18 @@ async function deferredBoot() {
 
   try {
     console.log('🔄 [DB] Connecting to Prisma...');
+
+    // --- DEBUG: VERIFY DATABASE URL HOST ---
+    try {
+      const dbUrl = process.env.DATABASE_URL || '';
+      const maskedUrl = dbUrl.replace(/:[^:@]*@/, ':****@');
+      console.log(`🔍 [DEBUG] DATABASE_URL (Masked): ${maskedUrl}`);
+      if (dbUrl.includes('ferrocarril')) {
+        console.error('🚨 [CRITICAL] URL CONTAINS "FERROCARRIL" - TRANSLATION ERROR DETECTED!');
+      }
+    } catch (e) { /* ignore logging errors */ }
+    // ---------------------------------------
+
     const prisma = new PrismaClient();
     await prisma.$connect();
     console.log('✅ [DB] Prisma Connected Successfully.');
