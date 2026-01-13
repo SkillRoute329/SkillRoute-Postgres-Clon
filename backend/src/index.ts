@@ -35,12 +35,23 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = 'v19.8-CWD-FIX';
+const VERSION = 'v20.0-CERTIFIED';
 const BOOT_ID = Math.floor(Math.random() * 1000000).toString();
 
-// 1. IMMEDIATE LOGGING
-console.log(`🚀 [ARRANQUE] INICIANDO SISTEMA COMPLETO v${VERSION} (ID: ${BOOT_ID})`);
-console.log(`🌍 [BOOT] Env PORT: ${process.env.PORT}`);
+// 1. FAIL-FAST VALIDATION (CRITICAL FOR PRODUCTION)
+console.log(`🚀 [BOOT] Starting System v${VERSION}`);
+
+const requiredEnvs = ['DATABASE_URL', 'JWT_SECRET'];
+const missingEnvs = requiredEnvs.filter(env => !process.env[env]);
+
+if (missingEnvs.length > 0) {
+  console.error(`❌ [FATAL] Missing Critical Environment Variables: ${missingEnvs.join(', ')}`);
+  console.error('   Application cannot start. Please configure these variables in Render/Railway.');
+  process.exit(1);
+}
+
+// 2. MIDDLEWARE SETUP
+console.log(`🌍 [BOOT] Env PORT: ${process.env.PORT} | Detected: ${PORT}`);
 
 // 2. MIDDLEWARE SETUP
 app.use(cors());

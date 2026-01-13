@@ -5,6 +5,9 @@
     "description": "Root package for Railway deployment - NIXPACKS FORCE",
     "scripts": {
         "install:all": "cd frontend && npm install && cd ../backend && npm install",
+        "certify": "node scripts/certify.js",
+        "deploy:prepare": "node scripts/deploy_prepare.js",
+        "deploy:verify": "node scripts/verify_remote.js",
         "build": "echo 'BUILDING FRONTEND...' && cd frontend && npm run build && echo 'BUILDING BACKEND...' && cd ../backend && npx prisma generate && npm run build",
         "start": "cd backend && node dist/index.js"
     },
