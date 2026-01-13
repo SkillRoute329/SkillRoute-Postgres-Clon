@@ -9,13 +9,6 @@
         "restartPolicyMaxRetries": 5
     },
     "nixpacks": {
-        "phases": {
-            "install": {
-                "cmds": [
-                    "npm run install:all"
-                ]
-            }
-        },
         "variables": {
             "NPM_CONFIG_PRODUCTION": "false"
         }

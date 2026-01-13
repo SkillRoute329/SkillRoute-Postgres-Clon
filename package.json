@@ -8,7 +8,6 @@
         "certify": "node scripts/certify.js",
         "postinstall": "npm run install:all",
         "deploy:prepare": "node scripts/deploy_prepare.js",
-        "deploy:prepare": "node scripts/deploy_prepare.js",
         "deploy:verify": "node scripts/verify_remote.js",
         "build": "echo 'BUILDING FRONTEND...' && cd frontend && npm run build && echo 'BUILDING BACKEND...' && cd ../backend && npx prisma generate && npm run build",
         "start": "cd backend && node dist/index.js"
