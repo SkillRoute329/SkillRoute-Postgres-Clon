@@ -1,63 +1,53 @@
 import { Request, Response } from 'express';
-import pool from '../db';
+import { PrismaClient } from '@prisma/client';
 import { createNotification } from './notificationController';
+import pool from '../db'; // Keeping pool for complex legacy queries (Balances/Payouts) temporarily
+
+const prisma = new PrismaClient();
 
 export const getAllShifts = async (req: Request, res: Response) => {
     try {
         const page = parseInt(req.query.page as string);
         const limit = parseInt(req.query.limit as string) || 20;
-        const offset = (page - 1) * limit;
-
         const tenantId = (req as any).user.tenantId;
 
-        let queryText = `
-      SELECT s.*, 
-             c.name as "categoryName",
-             u1.fullname as "creatorName",
-             u1.internalnumber as "creatorInternalNumber",
-             u1.lastname as "creatorLastName",
-             u1.firstname as "creatorFirstName",
-             u2.fullname as "assigneeName",
-             u2.internalnumber as "assigneeInternalNumber",
-             u2.lastname as "assigneeLastName",
-             u2.firstname as "assigneeFirstName",
-             u2.phonenumber as "assigneePhone"
-      FROM "Shift" s
-      LEFT JOIN "ShiftCategory" c ON s.categoryid = c.id
-      LEFT JOIN "User" u1 ON s.createdby = u1.id
-      LEFT JOIN "User" u2 ON s.assignedto = u2.id
-      WHERE s.tenantid = $1 AND s.deletedat IS NULL
-    `;
+        const shouldPaginate = !isNaN(page) && page > 0;
 
-        let shouldPaginate = !isNaN(page) && page > 0;
-        const queryParams: any[] = [tenantId]; // $1 is tenantId
+        // Count for pagination
+        const totalCount = shouldPaginate
+            ? await prisma.shift.count({ where: { tenantId, deletedAt: null } })
+            : 0;
 
-        queryText += ` ORDER BY s.createdat DESC`;
+        // Fetch Shifts with Relations
+        const shifts = await prisma.shift.findMany({
+            where: {
+                tenantId,
+                deletedAt: null
+            },
+            include: {
+                category: { select: { name: true } },
+                creator: { select: { internalNumber: true, firstName: true, lastName: true, fullName: true } },
+                assignee: { select: { internalNumber: true, firstName: true, lastName: true, fullName: true, phoneNumber: true } }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: shouldPaginate ? limit : undefined,
+            skip: shouldPaginate ? (page - 1) * limit : undefined
+        });
 
-        if (shouldPaginate) {
-            queryText += ` LIMIT $2 OFFSET $3`; // Using $2 and $3 because $1 is tenantId
-            queryParams.push(limit, offset);
-        }
-
-        const result = await pool.query(queryText, queryParams);
-        const rowCount = result.rowCount;
-
-        // Quick Total Count (only if paginating, to let frontend know total pages)
-        let totalCount = 0;
-        if (shouldPaginate) {
-            const countRes = await pool.query('SELECT COUNT(*) FROM "Shift" WHERE tenantid = $1 AND deletedat IS NULL', [tenantId]);
-            totalCount = parseInt(countRes.rows[0].count);
-        }
-
-        // Format to match frontend expectations
-        const shifts = result.rows.map(s => ({
+        // Map to flat structure expected by frontend (preserving compatibility)
+        const formattedShifts = shifts.map(s => ({
             ...s,
-            category: s.categoryName,
+            categoryName: s.category?.name,
+            creatorName: s.creator?.fullName,
+            creatorInternalNumber: s.creator?.internalNumber,
+            assigneeName: s.assignee?.fullName,
+            assigneeInternalNumber: s.assignee?.internalNumber,
+            assigneePhone: s.assignee?.phoneNumber
         }));
 
         if (shouldPaginate) {
             res.json({
-                data: shifts,
+                data: formattedShifts,
                 meta: {
                     currentPage: page,
                     totalPages: Math.ceil(totalCount / limit),
@@ -65,13 +55,12 @@ export const getAllShifts = async (req: Request, res: Response) => {
                 }
             });
         } else {
-            // Legacy/No-Pagination Mode (Direct Array)
-            res.json(shifts);
+            res.json(formattedShifts);
         }
 
     } catch (error) {
         console.error('Shift Get Error:', error);
-        res.status(500).json({ message: 'Error al obtener turnos' });
+        res.status(500).json({ message: 'Error al obtener turnos', details: String(error) });
     }
 };
 
@@ -79,93 +68,77 @@ export const createShift = async (req: Request, res: Response) => {
     const {
         categoryId, serviceNumber, date, time, line, relief,
         carNumber, extraHours, tip, tipValue, totalValue,
-        transformaFacil, cedingInternalNumber // New field
+        transformaFacil, cedingInternalNumber
     } = req.body;
 
     try {
-
-
         const catId = Number(categoryId);
         if (isNaN(catId)) {
             return res.status(400).json({ message: 'Categoría inválida' });
         }
 
-        // Get requesting user info
         const user = (req as any).user;
-        let createdBy = user?.id || 1;
+        let createdBy = user?.id;
 
-        // ADMIN OVERRIDE: If Admin assigns a "ceding user" (via internal number)
+        // Strict Tenant Check
+        const tenantId = user?.tenantId;
+        if (!tenantId) {
+            return res.status(401).json({ message: 'Error de sesión: Tenant ID no encontrado.' });
+        }
+
+        // ADMIN OVERRIDE: If Admin assigns a "ceding user"
         if ((user?.role === 'Admin' || user?.role === 'SuperAdmin') && cedingInternalNumber) {
-            const cedingUserQuery = 'SELECT id FROM "User" WHERE internalnumber = $1';
-            const cedingUserResult = await pool.query(cedingUserQuery, [cedingInternalNumber]);
+            const cedingUser = await prisma.user.findFirst({
+                where: { internalNumber: cedingInternalNumber, tenantId }
+            });
 
-            if ((cedingUserResult.rowCount ?? 0) > 0) {
-                createdBy = cedingUserResult.rows[0].id;
-
+            if (cedingUser) {
+                createdBy = cedingUser.id;
             } else {
                 return res.status(404).json({ message: `No se encontró el usuario con interno ${cedingInternalNumber}` });
             }
         }
 
-        // Format date properly for PostgreSQL DATE type
-        if (!date) {
-            return res.status(400).json({ message: 'La fecha es requerida' });
-        }
-        if (!req.body.endTime) {
-            return res.status(400).json({ message: 'La hora de fin es requerida' });
+        if (!date || !req.body.endTime) {
+            return res.status(400).json({ message: 'Fecha y Hora Fin requeridas' });
         }
 
         let shiftDate = date;
-        // If it looks like a full ISO string (has T), extract YYYY-MM-DD
         if (date.includes('T')) {
-            shiftDate = new Date(date).toISOString().split('T')[0];
+            shiftDate = new Date(date).toISOString(); // Prisma handles ISO strings well
+        } else {
+            // Ensure valid ISO for Prisma
+            shiftDate = new Date(date).toISOString();
         }
 
-        // Validate time
-        const shiftTime = time || '00:00';
-
-        // Determine initial status
-        // Admin/SuperAdmin shifts are auto-approved (Public)
         const initialStatus = (user?.role === 'Admin' || user?.role === 'SuperAdmin') ? 'Public' : 'Created';
 
-        // Strict Tenant Check
-        const tenantId = user?.tenantId;
-        if (!tenantId) {
-            return res.status(401).json({ message: 'Error de sesión: Tenant ID no encontrado. Por favor reloguee.' });
-        }
+        const shift = await prisma.shift.create({
+            data: {
+                tenantId,
+                categoryId: catId,
+                serviceNumber: serviceNumber || '',
+                date: shiftDate,
+                time: time || '00:00',
+                endTime: req.body.endTime || '',
+                line: line || '',
+                relief: relief || '',
+                carNumber: carNumber || '',
+                extraHours: Number(extraHours) || 0,
+                tip: Boolean(tip),
+                tipValue: Number(tipValue) || 0,
+                totalValue: Number(totalValue) || 0,
+                transformaFacil: Boolean(transformaFacil),
+                createdBy: Number(createdBy),
+                status: initialStatus
+            }
+        });
 
-        const query = `
-      INSERT INTO "Shift" 
-      (categoryid, servicenumber, date, time, endtime, line, relief, carnumber, extrahours, tip, tipvalue, totalvalue, transformafacil, createdby, status, updatedat, tenantid)
-      VALUES ($1, $2, $3::DATE, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), $16)
-      RETURNING *
-    `;
-        const values = [
-            catId,
-            serviceNumber || '',
-            shiftDate,
-            shiftTime,
-            req.body.endTime || '',
-            line || '',
-            relief || '',
-            carNumber || '',
-            Number(extraHours) || 0,
-            Boolean(tip),
-            Number(tipValue) || 0,
-            Number(totalValue) || 0,
-            Boolean(transformaFacil),
-            Number(createdBy),
-            initialStatus,
-            tenantId
-        ];
+        res.status(201).json(shift);
 
-
-
-        const result = await pool.query(query, values);
-        res.status(201).json(result.rows[0]);
     } catch (error) {
         console.error('Shift Create Error Details:', error);
-        res.status(500).json({ message: 'Error al crear turno', details: error instanceof Error ? error.message : 'Unknown' });
+        res.status(500).json({ message: 'Error al crear turno', details: String(error) });
     }
 };
 
