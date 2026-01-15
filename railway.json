@@ -23,7 +23,27 @@
                     "harfbuzz",
                     "ca-certificates",
                     "ttf-freefont",
-                    "postgresql"
+                    "postgresql",
+                    "atk",
+                    "cups",
+                    "dbus",
+                    "libdrm",
+                    "gtk3",
+                    "pango",
+                    "cairo",
+                    "at-spi2-atk",
+                    "at-spi2-core",
+                    "alsa-lib",
+                    "mesa",
+                    "libx11",
+                    "libxcomposite",
+                    "libxdamage",
+                    "libxext",
+                    "libxfixes",
+                    "libxrandr",
+                    "libxrender",
+                    "libxtst",
+                    "libxcb"
                 ]
             }
         },

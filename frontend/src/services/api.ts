@@ -70,7 +70,7 @@ export const ShiftService = {
 
         return data.map((s: any) => ({
             ...s,
-            category: s.category || s.categoryName || 'Desconocido',
+            category: (typeof s.category === 'object' ? s.category?.name : s.category) || s.categoryName || 'Desconocido',
         }));
     },
 
