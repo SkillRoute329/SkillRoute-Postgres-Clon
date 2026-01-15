@@ -11,46 +11,49 @@
     "nixpacks": {
         "phases": {
             "setup": {
-                "nixPkgs": [
-                    "nodejs_22",
-                    "npm-9_x",
-                    "openssl",
-                    "chromium",
-                    "glib",
-                    "nss",
-                    "freetype",
-                    "fontconfig",
-                    "harfbuzz",
-                    "ca-certificates",
-                    "ttf-freefont",
-                    "postgresql",
-                    "atk",
-                    "cups",
-                    "dbus",
-                    "libdrm",
-                    "gtk3",
-                    "pango",
-                    "cairo",
-                    "at-spi2-atk",
-                    "at-spi2-core",
-                    "alsa-lib",
-                    "mesa",
-                    "libx11",
-                    "libxcomposite",
-                    "libxdamage",
-                    "libxext",
-                    "libxfixes",
-                    "libxrandr",
-                    "libxrender",
-                    "libxtst",
-                    "libxcb"
-                ]
-            }
-        },
-        "variables": {
-            "NPM_CONFIG_PRODUCTION": "false",
-            "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true",
-            "PUPPETEER_EXECUTABLE_PATH": "/usr/bin/chromium"
+                "nodejs_22",
+                "npm-9_x",
+                "openssl",
+                "postgresql",
+                "chromium",
+                "glib",
+                "nss",
+                "nspr",
+                "freetype",
+                "fontconfig",
+                "harfbuzz",
+                "expat",
+                "libuuid",
+                "libdrm",
+                "mesa",
+                "alsa-lib",
+                "cups",
+                "dbus",
+                "at-spi2-atk",
+                "at-spi2-core",
+                "cairo",
+                "pango",
+                "gdk-pixbuf",
+                "gtk3",
+                "xorg.libX11",
+                "xorg.libXcomposite",
+                "xorg.libXdamage",
+                "xorg.libXext",
+                "xorg.libXfixes",
+                "xorg.libXrandr",
+                "xorg.libXrender",
+                "xorg.libXScrnSaver",
+                "xorg.libXtst",
+                "xorg.libxcb",
+                "xorg.libXcursor",
+                "xorg.libXi"
+            ]
         }
+    },
+    "variables": {
+        "NPM_CONFIG_PRODUCTION": "false",
+        "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true",
+        "PUPPETEER_EXECUTABLE_PATH": "/usr/bin/chromium"
     }
+}
 }
