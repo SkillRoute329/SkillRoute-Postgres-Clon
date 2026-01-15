@@ -9,8 +9,27 @@
         "restartPolicyMaxRetries": 5
     },
     "nixpacks": {
+        "phases": {
+            "setup": {
+                "nixPkgs": [
+                    "nodejs_22",
+                    "npm-9_x",
+                    "openssl",
+                    "chromium",
+                    "glib",
+                    "nss",
+                    "freetype",
+                    "fontconfig",
+                    "harfbuzz",
+                    "ca-certificates",
+                    "ttf-freefont"
+                ]
+            }
+        },
         "variables": {
-            "NPM_CONFIG_PRODUCTION": "false"
+            "NPM_CONFIG_PRODUCTION": "false",
+            "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true",
+            "PUPPETEER_EXECUTABLE_PATH": "/usr/bin/chromium"
         }
     }
 }

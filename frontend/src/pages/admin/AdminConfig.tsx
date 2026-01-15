@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Save, Settings, DollarSign, AlertCircle, Clock, Plus, X, Calendar, Edit, Trash } from 'lucide-react';
+import { Save, Settings, DollarSign, AlertCircle, Clock, Plus, X, Calendar, Edit, Trash, FileText, Database, Download } from 'lucide-react';
 import { ShiftService } from '../../services/api';
 import clsx from 'clsx';
 
@@ -170,10 +170,50 @@ const AdminConfig = () => {
         }
     };
 
-    // Helper
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);
         return date.toLocaleDateString('es-AR', { timeZone: 'UTC' });
+    };
+
+    const handleDownloadReport = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/reports/shifts-pdf', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error('Error generating report');
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `reporte_turnos_${new Date().toISOString().split('T')[0]}.pdf`;
+            a.click();
+        } catch (error) {
+            console.error(error);
+            alert('Error al generar el reporte PDF');
+        }
+    };
+
+    const handleDownloadBackup = async () => {
+        if (!confirm('Generar un backup puede tomar unos segundos. ¿Continuar?')) return;
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/backups/download', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error('Error downloading backup');
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            // The backend sets Content-Disposition, but we can force a name too if needed.
+            // Usually the browser respects the header if we just navigate, but with blob we define it.
+            a.download = `backup_${new Date().toISOString().split('T')[0]}.sql`;
+            a.click();
+        } catch (error) {
+            console.error(error);
+            alert('Error al descargar el backup SQL');
+        }
     };
 
     if (isLoading) return <div className="text-white text-center py-20">Cargando configuración...</div>;
@@ -258,6 +298,48 @@ const AdminConfig = () => {
                         {categories.length === 0 && (
                             <div className="text-center py-8 text-slate-500 italic">No hay categorías configuradas.</div>
                         )}
+                    </div>
+                </div>
+
+                {/* 3. System Maintenance Card */}
+                <div className="glass-panel p-6 rounded-2xl border border-slate-800 lg:col-span-2">
+                    <div className="flex items-center gap-2 text-blue-400 mb-6">
+                        <Database className="w-5 h-5" />
+                        <h2 className="font-bold text-lg">Mantenimiento del Sistema</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-800/50 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-white font-bold mb-1 flex items-center gap-2">
+                                    <FileText className="w-4 h-4 text-emerald-400" />
+                                    Reporte de Turnos
+                                </h3>
+                                <p className="text-sm text-slate-500">Descarga un PDF con todos los turnos registrados.</p>
+                            </div>
+                            <button
+                                onClick={handleDownloadReport}
+                                className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors border border-slate-700 flex items-center gap-2 text-sm font-medium"
+                            >
+                                <Download className="w-4 h-4" /> PDF
+                            </button>
+                        </div>
+
+                        <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-800/50 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-white font-bold mb-1 flex items-center gap-2">
+                                    <Database className="w-4 h-4 text-blue-400" />
+                                    Copia de Seguridad
+                                </h3>
+                                <p className="text-sm text-slate-500">Descarga un dump SQL completo de la DB.</p>
+                            </div>
+                            <button
+                                onClick={handleDownloadBackup}
+                                className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors border border-slate-700 flex items-center gap-2 text-sm font-medium"
+                            >
+                                <Download className="w-4 h-4" /> SQL
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
