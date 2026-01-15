@@ -1,33 +1,43 @@
 import { Request, Response } from 'express';
-import pool from '../db';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+
+const prisma = new PrismaClient();
 
 export const login = async (req: Request, res: Response) => {
     const { internalNumber, password } = req.body;
 
+    // Basic validation
+    if (!internalNumber || !password) {
+        return res.status(400).json({ message: 'Faltan credenciales' });
+    }
+
     try {
-        // --- TEMPORARY DEBUG BACKDOOR ---
         const cleanInternal = String(internalNumber).trim();
+        console.log(`[AUTH DEBUG] Trying to log in with internal: '${cleanInternal}'`);
 
+        // Use Prisma to find the user
+        const user = await prisma.user.findFirst({
+            where: { internalNumber: cleanInternal }
+        });
 
-        const query = `SELECT * FROM "User" WHERE internalnumber = $1`;
-        const result = await pool.query(query, [cleanInternal]);
-
-        if (result.rowCount === 0) {
-
+        if (!user) {
+            console.log(`[AUTH DEBUG] User not found for internal: ${cleanInternal}`);
             return res.status(401).json({ message: 'Usuario no encontrado' });
         }
 
-        const user = result.rows[0];
-
+        // Check password
         const passwordMatch = await bcrypt.compare(password, user.passwordHash);
 
         if (!passwordMatch) {
+            console.log(`[AUTH DEBUG] Password incorrect for user: ${cleanInternal}`);
             return res.status(401).json({ message: 'Contraseña incorrecta' });
         }
+
         if (!user.tenantId) {
             console.error(`Login failed: User ${user.internalNumber} has no tenantId`);
+            // Fallback for old users without tenantId, though schema should prevent this
             return res.status(500).json({ message: 'Error de configuración de cuenta (Sin Empresa)' });
         }
 
@@ -36,15 +46,19 @@ export const login = async (req: Request, res: Response) => {
             process.env.JWT_SECRET || 'secret_de_emergencia_para_produccion_2026',
             { expiresIn: '2h' }
         );
+
         const userInfo = {
             id: user.id,
             internalNumber: user.internalNumber,
             fullName: user.fullName,
             role: user.role,
         };
+
+        console.log(`[AUTH DEBUG] Login successful for: ${cleanInternal}`);
         return res.json({ token, user: userInfo });
+
     } catch (error) {
         console.error('Login error:', error);
-        return res.status(500).json({ message: 'Error interno del servidor' });
+        return res.status(500).json({ message: 'Error interno del servidor', error: String(error) });
     }
 };
