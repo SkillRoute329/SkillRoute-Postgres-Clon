@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Camera, CheckCircle, AlertTriangle, ArrowRight, Bus } from 'lucide-react';
+import { Camera, CheckCircle, AlertTriangle, ArrowRight, Bus, Trash2 } from 'lucide-react';
 import { FleetService } from '../../services/api';
 
 // Helper to resize images (Simulated Cloud Upload)
@@ -43,7 +43,12 @@ const InspectionForm = () => {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (id) loadLastStatus();
+        if (id) {
+            loadLastStatus();
+        } else {
+            console.error("ID missing!");
+            setLoading(false);
+        }
     }, [id]);
 
     const loadLastStatus = async () => {
@@ -56,6 +61,10 @@ const InspectionForm = () => {
             setLoading(false);
         }
     };
+
+    // ... rest of component methods ...
+
+    // ... (keep existing methods until render) ...
 
     const handleCameraClick = (zone: string) => {
         setCapturingZone(zone);
@@ -258,8 +267,5 @@ const InspectionForm = () => {
         </div>
     );
 };
-
-// Necesario importar Trash2 para el componente (quick fix inline import)
-import { Trash2 } from 'lucide-react';
 
 export default InspectionForm;
