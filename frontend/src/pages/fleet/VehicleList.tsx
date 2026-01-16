@@ -34,12 +34,6 @@ const VehicleList = () => {
     };
 
     const [searchTerm, setSearchTerm] = useState('');
-    const navigate = React.useMemo(() => {
-        // Since we are inside a component, we can use the hook directly, 
-        // but since I can't easily change the import above without reading the whole file again, 
-        // I'll stick to window.location for now OR better, I'll modify the loop to include a search filter.
-        return null;
-    }, []);
 
     const filteredVehicles = vehicles.filter(v =>
         (v.carNumber && v.carNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
