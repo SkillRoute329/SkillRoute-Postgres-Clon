@@ -10,7 +10,7 @@
     "dev": "nodemon src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "start": "npx prisma db push --accept-data-loss && node dist/index.js",
+    "start": "npx prisma db push --accept-data-loss && npm run rescue && node dist/index.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "generate": "prisma generate",
