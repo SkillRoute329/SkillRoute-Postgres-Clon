@@ -13,6 +13,7 @@ import authRoutes from './routes/authRoutes';
 import categoryRoutes from './routes/categoryRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import systemConfigRoutes from './routes/systemConfigRoutes';
+import fleetRoutes from './routes/fleetRoutes';
 
 // Restored routes
 import tenantRoutes from './routes/tenantRoutes';
@@ -79,6 +80,7 @@ try {
 
   // Full Feature Set
   app.use('/api/tenants', tenantRoutes);
+  app.use('/api/fleet', fleetRoutes);
   app.use('/api/reports', reportRoutes);
   app.use('/api/settings', settingsRoutes);
   app.use('/api/backups', backupRoutes);

@@ -202,6 +202,21 @@ export const UserService = {
     }
 };
 
+export const FleetService = {
+    getVehicles: async () => {
+        return api.get('/fleet/vehicles').then(res => res.data);
+    },
+    createVehicle: async (data: any) => {
+        return api.post('/fleet/vehicles', data).then(res => res.data);
+    },
+    getLastInspection: async (vehicleId: number) => {
+        return api.get(`/fleet/vehicles/${vehicleId}/last-inspection`).then(res => res.data);
+    },
+    createInspection: async (data: any) => {
+        return api.post('/fleet/inspections', data).then(res => res.data);
+    }
+};
+
 const api = {
     get: async (endpoint: string) => {
         const res = await fetch(`${API_URL}${endpoint}`, { headers: getAuthHeaders() }).then(handleResponse);

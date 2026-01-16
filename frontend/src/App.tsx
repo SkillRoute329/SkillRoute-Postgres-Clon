@@ -14,6 +14,8 @@ import AdminWhatsApp from './pages/admin/AdminWhatsApp';
 import AdminConfig from './pages/admin/AdminConfig';
 import AdminWhatsAppSettings from './pages/admin/AdminWhatsAppSettings';
 import TenantsManager from './pages/admin/TenantsManager';
+import VehicleList from './pages/fleet/VehicleList';
+import InspectionForm from './pages/fleet/InspectionForm';
 
 function App() {
   return (
@@ -37,6 +39,10 @@ function App() {
 
                 {/* Super Admin Routes */}
                 <Route path="super-admin/tenants" element={<TenantsManager />} />
+
+                {/* Fleet Management Routes */}
+                <Route path="fleet" element={<VehicleList />} />
+                <Route path="fleet/inspect/:id" element={<InspectionForm />} />
 
 
                 {/* User Routes */}

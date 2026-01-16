@@ -40,6 +40,8 @@ model Tenant {
   systemConfigs           SystemConfig[]
   payments                Payment[]
   actionLogs              ActionLog[]
+  vehicles                Vehicle[]
+  inspections             Inspection[]
 }
 
 // 1. Usuarios
@@ -70,6 +72,7 @@ model User {
 
   @@unique([tenantId, internalNumber]) // Internal number is unique per tenant
   @@unique([tenantId, email])          // Email is unique per tenant (or globally if preferred, but per tenant implies isolation)
+  inspections     Inspection[]
 }
 
 // 2. Categorías de turnos
@@ -216,4 +219,57 @@ model Notification {
   createdAt DateTime @default(now())
 
   user      User     @relation(fields: [userId], references: [id])
+}
+
+// --- FLOTA / FLEET MANAGEMENT (New Features) ---
+
+// 10. Vehículos
+model Vehicle {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
+  carNumber   String   // "95"
+  plate       String?  // "STU-1234"
+  brand       String?
+  model       String?
+  year        Int?
+  status      String   @default("Active") // Active, Maintenance, OutOfService
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  inspections Inspection[]
+  
+  @@unique([tenantId, carNumber]) // Unique per tenant
+}
+
+// 11. Inspecciones (El Relevo Digital)
+model Inspection {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
+  vehicleId   Int
+  userId      Int      // Inspector Driver
+  type        String   // 'StartShift', 'EndShift', 'Audit'
+  odometer    Int?     
+  fuelLevel   String?  // 'Full', '3/4', '1/2', 'Reserve'
+  status      String   // 'OK', 'WithDamages'
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id])
+  vehicle     Vehicle       @relation(fields: [vehicleId], references: [id])
+  user        User          @relation(fields: [userId], references: [id])
+  damages     DamageReport[]
+}
+
+// 12. Reporte de Daños (Evidencia)
+model DamageReport {
+  id            Int      @id @default(autoincrement())
+  inspectionId  Int
+  zone          String   // 'Front', 'Right', 'Left', 'Back', 'Interior'
+  severity      String   @default("Medium") // Low, Medium, High
+  description   String
+  photoUrl      String?  
+  createdAt     DateTime @default(now())
+  
+  inspection    Inspection @relation(fields: [inspectionId], references: [id])
 }

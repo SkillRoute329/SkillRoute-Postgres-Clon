@@ -4,15 +4,21 @@ import {
     LayoutDashboard,
     CalendarClock,
     Wallet,
-    Settings,
+    ChevronDown,
+    Clock,
+    DollarSign,
+    LayoutDashboard,
     LogOut,
     Menu,
-    X,
-    PlusCircle,
-    Users,
     MessageCircle,
+    PlusCircle,
     QrCode,
-    Share2
+    Settings,
+    Share2,
+    Truck,
+    Users,
+    Wallet,
+    X
 } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
@@ -116,6 +122,48 @@ const DashboardLayout = () => {
                             <SidebarLink to="/dashboard/admin/config" icon={Settings} onClick={handleMobileLinkClick}>Configuración</SidebarLink>
                         </div>
                     )}
+
+                    {/* Super Admin Section */}
+                    {user?.role === 'SuperAdmin' && (
+                        <div className="pt-4 mt-4 border-t border-slate-700/50">
+                            <h4 className={clsx("px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2", !isSidebarOpen && "hidden")}>
+                                Super Admin
+                            </h4>
+                            <NavLink
+                                to="/dashboard/super-admin/tenants"
+                                onClick={handleMobileLinkClick}
+                                className={({ isActive }) => clsx(
+                                    'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
+                                    isActive
+                                        ? 'bg-primary-600 text-white shadow-lg shadow-primary-900/20'
+                                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                )}
+                            >
+                                <Building2 className="w-5 h-5" />
+                                <span className="font-medium">Gestión Empresas</span>
+                            </NavLink>
+                        </div>
+                    )}
+
+                    {/* Fleet Management Section */}
+                    <div className="pt-4 mt-4 border-t border-slate-700/50">
+                        <h4 className={clsx("px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2", !isSidebarOpen && "hidden")}>
+                            Operativa
+                        </h4>
+                        <NavLink
+                            to="/dashboard/fleet"
+                            onClick={handleMobileLinkClick}
+                            className={({ isActive }) => clsx(
+                                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
+                                isActive
+                                    ? 'bg-primary-600 text-white shadow-lg shadow-primary-900/20'
+                                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                            )}
+                        >
+                            <Bus className="w-5 h-5" />
+                            <span className="font-medium">Control de Flota</span>
+                        </NavLink>
+                    </div>
 
                     <div className={clsx("text-xs font-semibold text-slate-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>Mi Espacio</div>
 
