@@ -97,6 +97,13 @@ const DashboardLayout = () => {
                 </div>
 
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
+                    {role === 'SuperAdmin' && (
+                        <div className="mb-6">
+                            <div className={clsx("text-xs font-semibold text-pink-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>Super Admin</div>
+                            <SidebarLink to="/dashboard/super-admin/tenants" icon={Wallet} onClick={handleMobileLinkClick}>Gestión Empresas</SidebarLink>
+                        </div>
+                    )}
+
                     {(role === 'Admin' || role === 'SuperAdmin') && (
                         <div className="mb-6">
                             <div className={clsx("text-xs font-semibold text-slate-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>Administración</div>
@@ -170,7 +177,12 @@ const DashboardLayout = () => {
 
                         <div className="text-right hidden sm:block">
                             <div className="text-sm font-medium text-white"><span>{user?.fullName || 'Usuario'}</span></div>
-                            <div className="text-xs text-slate-500"><span>Interno #{user?.internalNumber || '0000'}</span></div>
+                            <div className="text-xs text-slate-500">
+                                <span>Int #{user?.internalNumber || '0000'}</span>
+                                {(user as any)?.tenant?.name && (
+                                    <span className="ml-1 text-primary-400"> • {(user as any).tenant.name}</span>
+                                )}
+                            </div>
                         </div>
                         <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 overflow-hidden">
                             {/* Avatar Placeholder */}

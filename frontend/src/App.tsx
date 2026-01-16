@@ -13,6 +13,7 @@ import DashboardLayout from './layouts/DashboardLayout';
 import AdminWhatsApp from './pages/admin/AdminWhatsApp';
 import AdminConfig from './pages/admin/AdminConfig';
 import AdminWhatsAppSettings from './pages/admin/AdminWhatsAppSettings';
+import TenantsManager from './pages/admin/TenantsManager';
 
 function App() {
   return (
@@ -33,6 +34,9 @@ function App() {
                 <Route path="admin/communications" element={<AdminWhatsApp />} />
                 <Route path="admin/whatsapp-bot" element={<AdminWhatsAppSettings />} />
                 <Route path="admin/config" element={<AdminConfig />} />
+
+                {/* Super Admin Routes */}
+                <Route path="super-admin/tenants" element={<TenantsManager />} />
 
 
                 {/* User Routes */}

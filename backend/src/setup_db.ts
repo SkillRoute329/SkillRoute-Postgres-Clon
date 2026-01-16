@@ -11,11 +11,6 @@ const prisma = new PrismaClient();
  * Uses 'prisma db push' which is safer for rapid iteration/prototyping environments
  * where schema changes might occur. For strict production, 'migrate deploy' is better.
  */
-/**
- * Runs database migrations/push.
- * Uses 'prisma db push' which is safer for rapid iteration/prototyping environments
- * where schema changes might occur. For strict production, 'migrate deploy' is better.
- */
 export async function runMigration(force = false) {
     console.log('🔄 [MIGRATION] Checking Database Compatibility...');
 

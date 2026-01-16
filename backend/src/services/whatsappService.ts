@@ -77,14 +77,35 @@ class WhatsAppService {
     }
 
     public async restart() {
+        console.log('🔄 [WA] Restarting Service via Re-instantiation...');
 
         this.status = 'INITIALIZING';
         this.qrCodeUrl = null;
+
         try {
             await this.client.destroy();
+            console.log('✅ [WA] Old Client destroyed.');
         } catch (e) {
-            console.error('Error destroying client during restart:', e);
+            console.error('⚠️ [WA] Error destroying client (ignoring):', e);
         }
+
+        // Re-create the client instance to clear any puppeteer zombies
+        this.client = new Client({
+            authStrategy: new LocalAuth({ clientId: 'admin-bot' }),
+            puppeteer: {
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--disable-gpu'
+                ],
+                headless: true
+                // executablePath removed to let puppeteer find it naturally or use nixpacks path
+            }
+        });
 
         this.initialize();
     }

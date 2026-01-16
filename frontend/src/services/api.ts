@@ -201,3 +201,35 @@ export const UserService = {
         return res.json();
     }
 };
+
+const api = {
+    get: async (endpoint: string) => {
+        const res = await fetch(`${API_URL}${endpoint}`, { headers: getAuthHeaders() }).then(handleResponse);
+        return { data: await res.json() };
+    },
+    post: async (endpoint: string, body: any) => {
+        const res = await fetch(`${API_URL}${endpoint}`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(body)
+        }).then(handleResponse);
+        return { data: await res.json() };
+    },
+    put: async (endpoint: string, body: any) => {
+        const res = await fetch(`${API_URL}${endpoint}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(body)
+        }).then(handleResponse);
+        return { data: await res.json() };
+    },
+    delete: async (endpoint: string) => {
+        const res = await fetch(`${API_URL}${endpoint}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        }).then(handleResponse);
+        return { data: await res.json() };
+    }
+};
+
+export default api;
