@@ -51,10 +51,26 @@ class ErrorBoundary extends Component<Props, State> {
 
                         <button
                             onClick={this.handleReload}
-                            className="bg-primary-600 hover:bg-primary-500 text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2 w-full"
+                            className="bg-primary-600 hover:bg-primary-500 text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2 w-full mb-3"
                         >
                             <RefreshCw className="w-5 h-5" />
                             Recargar Página
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                if (confirm('¿Reiniciar la aplicación de fábrica? Se borrarán tus datos locales pero solucionarás problemas de carga.')) {
+                                    localStorage.clear();
+                                    sessionStorage.clear();
+                                    if ('serviceWorker' in navigator) {
+                                        navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+                                    }
+                                    window.location.href = '/login';
+                                }
+                            }}
+                            className="bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2 w-full text-sm border border-slate-600"
+                        >
+                            🛠️ Reparar / Resetear App
                         </button>
                     </div>
                 </div>

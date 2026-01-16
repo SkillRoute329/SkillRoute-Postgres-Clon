@@ -95,11 +95,30 @@ const frontendPath = path.join(__dirname, '../../frontend/dist');
 
 // Validate Frontend Build
 if (fs.existsSync(frontendPath)) {
-  console.log(`✅ [STATIC] Serving Frontend from: ${frontendPath}`);
-  app.use(express.static(frontendPath));
+  // Aggressive Caching Strategy
+  const staticOptions = {
+    setHeaders: (res: express.Response, filePath: string) => {
+      if (filePath.endsWith('.html')) {
+        // NEVER cache index.html or other HTML files. Always revalidate.
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      } else {
+        // Cache assets (JS, CSS, Images) forever - filenames are hashed by Vite
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    }
+  };
 
+  console.log(`✅ [STATIC] Serving Frontend from: ${frontendPath}`);
+  app.use(express.static(frontendPath, staticOptions));
+
+  // Catch-All for Client-Side Routing
   app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       res.sendFile(path.join(frontendPath, 'index.html'));
     }
   });

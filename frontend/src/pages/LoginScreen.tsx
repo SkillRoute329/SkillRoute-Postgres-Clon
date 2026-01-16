@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { LogIn, KeyRound, UserCircle, AlertCircle, CheckCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { UserService } from '../services/api';
+import ResetApp from '../components/ResetApp';
 import { setAuthData } from '../utils/auth';
 
 const LoginScreen = () => {
@@ -11,6 +12,7 @@ const LoginScreen = () => {
     // MultiTenant States
     const [companySlug, setCompanySlug] = useState('');
     const [showAdvanced, setShowAdvanced] = useState(false);
+    const [showReset, setShowReset] = useState(false);
 
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
@@ -159,9 +161,29 @@ const LoginScreen = () => {
                     </button>
                 </form>
                 <div className="mt-6 text-center text-sm text-slate-500">
-                    ¿No tienes cuenta? <a href="#" className="text-primary-400 hover:text-primary-300 transition-colors">Solicitar acceso</a>
+                    <p className="mb-2">¿No tienes cuenta? <a href="#" className="text-primary-400 hover:text-primary-300 transition-colors">Solicitar acceso</a></p>
+                    <button
+                        onClick={() => setShowReset(true)}
+                        className="text-xs text-red-500/50 hover:text-red-400 underline decoration-dotted transition-colors"
+                    >
+                        ¿Problemas de conexión / Pantalla blanca?
+                    </button>
                 </div>
             </div>
+
+            {/* Reset App Modal */}
+            {showReset && (
+                <div className="fixed inset-0 z-50">
+                    <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm" onClick={() => setShowReset(false)}></div>
+                    <ResetApp />
+                    <button
+                        onClick={() => setShowReset(false)}
+                        className="fixed top-4 right-4 text-white hover:text-red-400 z-[60]"
+                    >
+                        <span className="text-2xl font-bold">×</span>
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
