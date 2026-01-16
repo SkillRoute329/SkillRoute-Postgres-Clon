@@ -40,4 +40,4 @@ nixPkgs = [
 
 [variables]
 NPM_CONFIG_PRODUCTION = "false"
-PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+PUPPETEER_CACHE_DIR = "/app/.cache/puppeteer"
