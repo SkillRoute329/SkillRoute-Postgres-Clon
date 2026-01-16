@@ -15,7 +15,7 @@
     "lint:fix": "eslint . --fix",
     "generate": "prisma generate",
     "db:init": "tsx src/init_prod_db.ts",
-    "rescue": "tsx src/rescue_admin.ts",
+    "rescue": "node dist/rescue_admin.js",
     "seed": "ts-node prisma/seed.ts"
   },
   "keywords": [],
