@@ -184,11 +184,11 @@ export const ShiftService = {
 };
 
 export const UserService = {
-    login: async (internalNumber: string, password: string) => {
+    login: async (internalNumber: string, password: string, companySlug?: string) => {
         const res = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ internalNumber, password }),
+            body: JSON.stringify({ internalNumber, password, companySlug }),
         });
         if (!res.ok) throw new Error('Credenciales inválidas');
         return res.json();

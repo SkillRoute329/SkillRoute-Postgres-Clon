@@ -7,6 +7,11 @@ import { setAuthData } from '../utils/auth';
 const LoginScreen = () => {
     const [internalNumber, setInternalNumber] = useState('');
     const [password, setPassword] = useState('');
+
+    // MultiTenant States
+    const [companySlug, setCompanySlug] = useState('');
+    const [showAdvanced, setShowAdvanced] = useState(false);
+
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -17,7 +22,7 @@ const LoginScreen = () => {
         setIsLoading(true);
 
         try {
-            const data = await UserService.login(internalNumber, password);
+            const data = await UserService.login(internalNumber, password, companySlug || undefined);
 
             // Store auth data using context
             // Store auth data directly to localStorage to avoid React State updates during page unload
@@ -108,6 +113,32 @@ const LoginScreen = () => {
                         </div>
                     </div>
 
+
+                    {/* Advanced / MultiTenant Toggle */}
+                    <div className="pt-2">
+                        <button
+                            type="button"
+                            onClick={() => setShowAdvanced(!showAdvanced)}
+                            className="text-xs text-slate-500 hover:text-slate-400 underline decoration-dashed"
+                        >
+                            {showAdvanced ? 'Ocultar Opciones Avanzadas' : 'Soy de otra empresa / Código Empresa'}
+                        </button>
+
+                        {showAdvanced && (
+                            <div className="mt-3 animate-fade-in space-y-2">
+                                <label className="text-sm font-medium text-purple-400">Código de Empresa (Slug)</label>
+                                <input
+                                    type="text"
+                                    placeholder="Ej. transportes-sur"
+                                    className="input-field bg-slate-800/50 border-purple-500/50 text-white placeholder:text-slate-600 focus:border-purple-500"
+                                    value={companySlug}
+                                    onChange={(e) => setCompanySlug(e.target.value)}
+                                />
+                                <p className="text-xs text-slate-500">Déjalo vacío si eres de UCOT (Empresa Principal)</p>
+                            </div>
+                        )}
+                    </div>
+
                     <button
                         type="submit"
                         disabled={isLoading}
@@ -127,7 +158,6 @@ const LoginScreen = () => {
                         )}
                     </button>
                 </form>
-
                 <div className="mt-6 text-center text-sm text-slate-500">
                     ¿No tienes cuenta? <a href="#" className="text-primary-400 hover:text-primary-300 transition-colors">Solicitar acceso</a>
                 </div>
