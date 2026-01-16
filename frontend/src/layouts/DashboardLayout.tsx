@@ -4,10 +4,6 @@ import {
     LayoutDashboard,
     CalendarClock,
     Wallet,
-    ChevronDown,
-    Clock,
-    DollarSign,
-    LayoutDashboard,
     LogOut,
     Menu,
     MessageCircle,
@@ -15,10 +11,10 @@ import {
     QrCode,
     Settings,
     Share2,
-    Truck,
     Users,
-    Wallet,
-    X
+    X,
+    Building2,
+    Bus
 } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
