@@ -49,6 +49,37 @@ async function rescueSuperAdmin() {
         }
     });
 
+    // 3. Upsert User 329 as SuperAdmin (User Request)
+    const user329Password = await bcrypt.hash('123456', 10);
+    const user329 = await prisma.user.upsert({
+        where: {
+            tenantId_internalNumber: {
+                tenantId: tenant.id,
+                internalNumber: '329'
+            }
+        },
+        update: {
+            passwordHash: user329Password,
+            role: 'SuperAdmin',
+            isActive: true
+        },
+        create: {
+            tenantId: tenant.id,
+            internalNumber: '329',
+            firstName: 'Usuario',
+            lastName: '329',
+            fullName: 'Usuario 329',
+            email: 'user329@ucot.net',
+            passwordHash: user329Password,
+            role: 'SuperAdmin',
+            isActive: true
+        }
+    });
+
+    console.log('✅ Usuario 329 promovido a SuperAdmin:');
+    console.log(`   Usuario: 329`);
+    console.log(`   Password: 123456`);
+
     console.log('✅ SuperAdmin rescatado exitosamente:');
     console.log(`   Usuario: ${superAdmin.internalNumber}`);
     console.log(`   Password: ${password}`);
