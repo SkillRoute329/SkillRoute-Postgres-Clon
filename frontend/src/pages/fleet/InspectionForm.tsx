@@ -4,6 +4,28 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Camera, CheckCircle, AlertTriangle, ArrowRight, Bus } from 'lucide-react';
 import { FleetService } from '../../services/api';
 
+// Helper to resize images (Simulated Cloud Upload)
+const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 800; // Resize to max 800px width
+                const scaleSize = MAX_WIDTH / img.width;
+                canvas.width = MAX_WIDTH;
+                canvas.height = img.height * scaleSize;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% Quality
+            };
+        };
+    });
+};
+
 const InspectionForm = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -15,6 +37,10 @@ const InspectionForm = () => {
     const [odometer, setOdometer] = useState('');
     const [fuelLevel, setFuelLevel] = useState('Full');
     const [damages, setDamages] = useState<any[]>([]); // New damages being reported
+
+    // Camera Handlers
+    const [capturingZone, setCapturingZone] = useState<string | null>(null);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (id) loadLastStatus();
@@ -31,10 +57,29 @@ const InspectionForm = () => {
         }
     };
 
-    const handleAddDamage = (zone: string) => {
-        const desc = prompt(`Describe el daño en: ${zone}`);
-        if (desc) {
-            setDamages([...damages, { zone, description: desc, severity: 'Medium' }]);
+    const handleCameraClick = (zone: string) => {
+        setCapturingZone(zone);
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0] && capturingZone) {
+            const file = e.target.files[0];
+
+            // 1. Compress Image
+            const base64Image = await compressImage(file);
+
+            // 2. Ask for Description
+            const desc = prompt(`Describe el daño en: ${capturingZone}`);
+            if (desc) {
+                setDamages([...damages, {
+                    zone: capturingZone,
+                    description: desc,
+                    severity: 'Medium',
+                    photoUrl: base64Image // Storing Base64 temporarily!
+                }]);
+            }
+            setCapturingZone(null);
         }
     };
 
@@ -60,6 +105,16 @@ const InspectionForm = () => {
 
     return (
         <div className="max-w-3xl mx-auto p-6 animate-fade-in-up pb-24">
+            {/* Hidden File Input */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                capture="environment" // Forces Rear Camera on Mobile
+                className="hidden"
+                onChange={handleFileChange}
+            />
+
             {/* Header */}
             <div className="mb-8 flex items-center gap-4">
                 <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center">
@@ -92,10 +147,16 @@ const InspectionForm = () => {
                                 ) : (
                                     <div className="space-y-3">
                                         {lastInspection.damages.map((d: any) => (
-                                            <div key={d.id} className="flex items-center gap-3 bg-slate-800 p-3 rounded-lg border border-slate-700">
-                                                <AlertTriangle className="w-5 h-5 text-orange-400" />
+                                            <div key={d.id} className="flex gap-3 bg-slate-800 p-3 rounded-lg border border-slate-700">
+                                                {/* If photo exists, show thumbnail */}
+                                                {d.photoUrl && (
+                                                    <img src={d.photoUrl} alt="Daño" className="w-16 h-16 object-cover rounded-lg border border-slate-600" />
+                                                )}
                                                 <div>
-                                                    <div className="text-white font-medium">{d.zone}</div>
+                                                    <div className="flex items-center gap-2">
+                                                        <AlertTriangle className="w-4 h-4 text-orange-400" />
+                                                        <span className="text-white font-medium">{d.zone}</span>
+                                                    </div>
                                                     <div className="text-sm text-slate-400">{d.description}</div>
                                                 </div>
                                             </div>
@@ -146,17 +207,19 @@ const InspectionForm = () => {
                     <div className="border-t border-slate-700 pt-6">
                         <div className="flex justify-between items-center mb-4">
                             <h4 className="text-white font-medium">Reportar Nuevos Daños</h4>
-                            <span className="text-xs text-slate-500">Toca para agregar</span>
+                            <span className="text-xs text-slate-500">Toca la cámara para agregar foto</span>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                             {['Frente', 'Atrás', 'Lateral Izq', 'Lateral Der', 'Interior', 'Ruedas'].map((zone) => (
                                 <button
                                     key={zone}
-                                    onClick={() => handleAddDamage(zone)}
-                                    className="p-4 bg-slate-800 hover:bg-slate-700 rounded-xl border border-dashed border-slate-600 hover:border-red-500 transition-colors flex flex-col items-center gap-2"
+                                    onClick={() => handleCameraClick(zone)}
+                                    className="p-4 bg-slate-800 hover:bg-slate-700 rounded-xl border border-dashed border-slate-600 hover:border-purple-500 transition-colors flex flex-col items-center gap-2 group"
                                 >
-                                    <Camera className="w-6 h-6 text-slate-400" />
+                                    <div className="w-10 h-10 rounded-full bg-slate-700 group-hover:bg-purple-500/20 flex items-center justify-center transition-colors">
+                                        <Camera className="w-5 h-5 text-slate-400 group-hover:text-purple-400" />
+                                    </div>
                                     <span className="text-sm text-slate-300">{zone}</span>
                                 </button>
                             ))}
@@ -168,7 +231,13 @@ const InspectionForm = () => {
                                 <h5 className="text-red-400 text-sm font-bold uppercase tracking-wider">Nuevos Daños Detectados:</h5>
                                 {damages.map((d, i) => (
                                     <div key={i} className="flex justify-between items-center bg-red-900/10 border border-red-500/20 p-2 rounded px-3">
-                                        <span className="text-white text-sm">[{d.zone}] {d.description}</span>
+                                        <div className="flex items-center gap-3">
+                                            {/* Preview Image */}
+                                            <img src={d.photoUrl} alt="Evidence" className="w-12 h-12 rounded object-cover border border-red-500/30" />
+                                            <span className="text-white text-sm">
+                                                <span className="font-bold">[{d.zone}]</span> {d.description}
+                                            </span>
+                                        </div>
                                         <button onClick={() => setDamages(damages.filter((_, idx) => idx !== i))} className="text-red-400 hover:text-white">
                                             <Trash2 className="w-4 h-4" />
                                         </button>
