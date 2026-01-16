@@ -22,8 +22,9 @@ router.post('/restart', authenticate, async (req, res) => {
         return res.status(403).json({ message: 'Forbidden' });
     }
 
-    await whatsAppService.restart();
-    res.json({ message: 'WhatsApp Service Restarting...' });
+    const { clean } = req.body;
+    await whatsAppService.restart(!!clean);
+    res.json({ message: `WhatsApp Service Restarting... (Clean: ${!!clean})` });
 });
 
 export default router;

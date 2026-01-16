@@ -76,8 +76,8 @@ class WhatsAppService {
         });
     }
 
-    public async restart() {
-        console.log('🔄 [WA] Restarting Service via Re-instantiation...');
+    public async restart(cleanSession = false) {
+        console.log(`🔄 [WA] Restarting Service via Re-instantiation... (Clean Session: ${cleanSession})`);
 
         this.status = 'INITIALIZING';
         this.qrCodeUrl = null;
@@ -87,6 +87,26 @@ class WhatsAppService {
             console.log('✅ [WA] Old Client destroyed.');
         } catch (e) {
             console.error('⚠️ [WA] Error destroying client (ignoring):', e);
+        }
+
+        if (cleanSession) {
+            const fs = require('fs');
+            const path = require('path');
+            const authPath = path.resolve('./.wwebjs_auth');
+            const cachePath = path.resolve('./.wwebjs_cache');
+
+            try {
+                if (fs.existsSync(authPath)) {
+                    fs.rmSync(authPath, { recursive: true, force: true });
+                    console.log('🧹 [WA] Auth session cleared.');
+                }
+                if (fs.existsSync(cachePath)) {
+                    fs.rmSync(cachePath, { recursive: true, force: true });
+                    console.log('🧹 [WA] Cache cleared.');
+                }
+            } catch (err) {
+                console.error('⚠️ [WA] Failed to clean session files:', err);
+            }
         }
 
         // Re-create the client instance to clear any puppeteer zombies
@@ -100,7 +120,10 @@ class WhatsAppService {
                     '--disable-accelerated-2d-canvas',
                     '--no-first-run',
                     '--no-zygote',
-                    '--disable-gpu'
+                    '--disable-gpu',
+                    '--disable-ipc-flooding-protection',
+                    '--disable-notifications',
+                    '--disable-popup-blocking'
                 ],
                 headless: true
                 // executablePath removed to let puppeteer find it naturally or use nixpacks path

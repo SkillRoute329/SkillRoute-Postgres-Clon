@@ -32,15 +32,17 @@ const AdminWhatsAppSettings = () => {
         return () => clearInterval(interval);
     }, []);
 
-    const handleRestart = async () => {
-        if (!confirm('¿Estás seguro de que deseas reiniciar el servicio de WhatsApp? Esto desconectará cualquier sesión activa.')) return;
+    const handleRestart = async (clean = false) => {
+        if (!confirm(clean ? '¿REINICIO TOTAL? Esto borrará la sesión actual y requerirá escanear de nuevo.' : '¿Estás seguro de que deseas reiniciar el servicio de WhatsApp?')) return;
         setLoading(true);
         try {
             await fetch('/api/whatsapp/restart', {
                 method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${getAuthToken()}`
-                }
+                },
+                body: JSON.stringify({ clean })
             });
             alert('Servicio reiniciando. Espera unos segundos y recarga el QR.');
             setStatus('INITIALIZING');
@@ -62,13 +64,23 @@ const AdminWhatsAppSettings = () => {
                     <h1 className="text-2xl font-bold text-white">Configuración de WhatsApp Bot</h1>
                     <p className="text-slate-400">Escanea el código QR para vincular el bot y permitir el envío automático de mensajes.</p>
                 </div>
-                <button
-                    onClick={handleRestart}
-                    className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors border border-slate-600"
-                >
-                    <RefreshCw className={clsx("w-4 h-4", loading && "animate-spin")} />
-                    <span>Reiniciar Servicio</span>
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => handleRestart(false)}
+                        className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors border border-slate-600"
+                    >
+                        <RefreshCw className={clsx("w-4 h-4", loading && "animate-spin")} />
+                        <span>Reiniciar</span>
+                    </button>
+                    <button
+                        onClick={() => handleRestart(true)}
+                        className="flex items-center gap-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 px-4 py-2 rounded-lg transition-colors border border-red-600/30"
+                        title="Borrar sesión y reiniciar desde cero"
+                    >
+                        <RefreshCw className={clsx("w-4 h-4", loading && "animate-spin")} />
+                        <span>Reset Total</span>
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

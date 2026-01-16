@@ -217,6 +217,15 @@ export const FleetService = {
     }
 };
 
+export const WhatsAppService = {
+    getStatus: async () => {
+        return api.get('/whatsapp/status').then(res => res.data);
+    },
+    restart: async (clean = false) => {
+        return api.post('/whatsapp/restart', { clean }).then(res => res.data);
+    }
+};
+
 const api = {
     get: async (endpoint: string) => {
         const res = await fetch(`${API_URL}${endpoint}`, { headers: getAuthHeaders() }).then(handleResponse);
