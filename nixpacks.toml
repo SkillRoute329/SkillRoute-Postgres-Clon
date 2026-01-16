@@ -1,41 +1,12 @@
 # Nixpacks configuration for Puppeteer support
 [phases.setup]
-nixPkgs = [
-    "nodejs_22",
-    "npm-9_x",
-    "openssl",
-    "chromium",
-    "glib",
-    "nss",
-    "nspr",
-    "freetype",
-    "fontconfig",
-    "harfbuzz",
-    "expat",
-    "libuuid",
-    "libdrm",
-    "mesa",
-    "alsa-lib",
-    "cups",
-    "dbus",
-    "at-spi2-atk",
-    "at-spi2-core",
-    "cairo",
-    "pango",
-    "gdk-pixbuf",
-    "gtk3",
-    "xorg.libX11",
-    "xorg.libXcomposite",
-    "xorg.libXdamage",
-    "xorg.libXext",
-    "xorg.libXfixes",
-    "xorg.libXrandr",
-    "xorg.libXrender",
-    "xorg.libXScrnSaver",
-    "xorg.libXtst",
-    "xorg.libxcb",
-    "xorg.libXcursor",
-    "xorg.libXi"
+nixPkgs = ["nodejs_22", "npm-9_x", "openssl", "chromium"]
+aptPkgs = [
+    "glib2.0-dev", "nss", "nspr", "atk", "at-spi2-atk", 
+    "cups", "dbus", "libdrm", "gtk3", "pango", "cairo", 
+    "libxcomposite", "libxcursor", "libxdamage", "libxext", 
+    "libxfixes", "libxi", "libxrandr", "libxrender", 
+    "libxss", "libxtst", "libuuid", "alsa-lib"
 ]
 
 [variables]
