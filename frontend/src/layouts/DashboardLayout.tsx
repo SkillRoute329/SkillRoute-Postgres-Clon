@@ -165,7 +165,7 @@ const DashboardLayout = () => {
                         <div onClick={handleMobileLinkClick}>
                             <a href="#road-alerts-widget" className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-slate-400 hover:bg-slate-800 hover:text-white">
                                 <AlertTriangle className="w-5 h-5 text-yellow-500" />
-                                <span className="font-medium text-yellow-500">Alertas Viales</span>
+                                <span className="font-medium text-yellow-500">Estado de Vía / Líneas</span>
                             </a>
                         </div>
                     </div>
