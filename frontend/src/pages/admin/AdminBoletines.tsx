@@ -14,7 +14,7 @@ interface BulletinRow {
     delay: number; // minutes
     occupancy: 'Low' | 'Medium' | 'High' | 'Full';
     occupancyCount: string; // New: Real ticket count
-    status: 'Pending' | 'OnTime' | 'Late' | 'Early';
+    status: 'Pending' | 'OnTime' | 'Late' | 'Early' | 'Special';
 }
 
 const OCCUPANCY_OPTIONS = [
@@ -208,7 +208,7 @@ const AdminBoletines = () => {
                         delay: 0,
                         occupancy: 'Medium',
                         occupancyCount: '',
-                        status: 'Pending'
+                        status: !timeAtStop.includes(':') ? 'Special' : 'Pending'
                     });
                 }
             });
@@ -468,6 +468,7 @@ const AdminBoletines = () => {
                                             {row.status === 'Late' && <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/20"><AlertTriangle className="w-3 h-3" /> Atrasado</div>}
                                             {row.status === 'OnTime' && <div className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/20">En Hora</div>}
                                             {row.status === 'Early' && <div className="inline-flex items-center px-2 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold border border-blue-500/20">Adelantado</div>}
+                                            {row.status === 'Special' && <div className="inline-flex items-center px-2 py-1 rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold border border-purple-500/20">Evento Especial</div>}
                                             {row.status === 'Pending' && <span className="text-slate-600 text-xs">-</span>}
                                         </td>
                                         <td className="p-4">
