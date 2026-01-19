@@ -151,7 +151,7 @@ const MyBalance = () => {
                 </div>
 
                 {/* Desktop Table */}
-                <div className="hidden md:block overflow-x-auto">
+                <div className="hidden md:block overflow-x-auto touch-pan-x">
                     <table className="w-full text-left border-collapse">
                         <thead className="bg-slate-900/50 text-slate-500 text-xs uppercase font-bold">
                             <tr>

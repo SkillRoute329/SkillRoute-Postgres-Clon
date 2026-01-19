@@ -59,34 +59,34 @@ const OptimizationPanel: React.FC<{ seasonId?: number }> = ({ seasonId }) => {
                 </span>
             </div>
 
-            <div className="overflow-x-auto max-h-[400px] custom-scrollbar">
-                <table className="w-full text-sm text-left">
+            <div className="overflow-x-auto max-h-[400px] custom-scrollbar touch-pan-x">
+                <table className="w-full text-sm text-left min-w-[700px]">
                     <thead className="bg-slate-950 text-slate-400 uppercase text-xs sticky top-0 z-10">
                         <tr>
-                            <th className="px-4 py-3">Servicio</th>
-                            <th className="px-4 py-3">Punto de Control</th>
-                            <th className="px-4 py-3">Desviación</th>
-                            <th className="px-4 py-3">Carga Prom.</th>
-                            <th className="px-4 py-3">Acción Recomendada</th>
+                            <th className="px-2 py-2 md:px-4 md:py-3">Servicio</th>
+                            <th className="px-2 py-2 md:px-4 md:py-3">Punto de Control</th>
+                            <th className="px-2 py-2 md:px-4 md:py-3">Desviación</th>
+                            <th className="px-2 py-2 md:px-4 md:py-3">Carga Prom.</th>
+                            <th className="px-2 py-2 md:px-4 md:py-3">Acción Recomendada</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
                         {suggestions.map((item, idx) => (
                             <tr key={idx} className="hover:bg-slate-800/50 transition-colors">
-                                <td className="px-4 py-3 align-top">
-                                    <div className="font-bold text-white text-lg">{item.serviceNumber}</div>
-                                    <span className="text-xs text-slate-500">Línea {item.line}</span>
+                                <td className="px-2 py-2 md:px-4 md:py-3 align-top">
+                                    <div className="font-bold text-white text-base md:text-lg">{item.serviceNumber}</div>
+                                    <span className="text-[10px] md:text-xs text-slate-500">Línea {item.line}</span>
                                 </td>
 
-                                <td className="px-4 py-3 align-top">
-                                    <div className="text-slate-300 font-medium">{item.location}</div>
-                                    <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                                <td className="px-2 py-2 md:px-4 md:py-3 align-top">
+                                    <div className="text-slate-300 font-medium text-xs md:text-sm">{item.location}</div>
+                                    <div className="flex items-center gap-2 text-[10px] md:text-xs text-slate-500 mt-1">
                                         <Clock size={12} /> Prog: {item.scheduledTime}
                                     </div>
                                 </td>
 
-                                <td className="px-4 py-3 align-top">
-                                    <div className={`flex items-center gap-1 font-bold ${item.diffMinutes > 0 ? 'text-red-400' : 'text-emerald-400'
+                                <td className="px-2 py-2 md:px-4 md:py-3 align-top">
+                                    <div className={`flex items-center gap-1 font-bold text-xs md:text-sm ${item.diffMinutes > 0 ? 'text-red-400' : 'text-emerald-400'
                                         }`}>
                                         {item.diffMinutes > 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
                                         {Math.abs(item.diffMinutes)} min
@@ -96,8 +96,8 @@ const OptimizationPanel: React.FC<{ seasonId?: number }> = ({ seasonId }) => {
                                     </div>
                                 </td>
 
-                                <td className="px-4 py-3 align-top">
-                                    <div className={`flex items-center gap-1 font-bold ${item.avgLoad > 40 ? 'text-red-400' : item.avgLoad < 5 ? 'text-blue-400' : 'text-slate-300'
+                                <td className="px-2 py-2 md:px-4 md:py-3 align-top">
+                                    <div className={`flex items-center gap-1 font-bold text-xs md:text-sm ${item.avgLoad > 40 ? 'text-red-400' : item.avgLoad < 5 ? 'text-blue-400' : 'text-slate-300'
                                         }`}>
                                         <Users size={16} /> {item.avgLoad} pax
                                     </div>
@@ -105,8 +105,8 @@ const OptimizationPanel: React.FC<{ seasonId?: number }> = ({ seasonId }) => {
                                     {item.avgLoad < 5 && <span className="text-[10px] text-blue-500 font-bold">BAJA</span>}
                                 </td>
 
-                                <td className="px-4 py-3 align-top">
-                                    <div className={`p-2 rounded-lg text-xs border ${item.severity === 'High'
+                                <td className="px-2 py-2 md:px-4 md:py-3 align-top">
+                                    <div className={`p-1.5 md:p-2 rounded-lg text-[10px] md:text-xs border ${item.severity === 'High'
                                         ? 'bg-red-900/20 text-red-200 border-red-500/30'
                                         : item.severity === 'Medium'
                                             ? 'bg-amber-900/20 text-amber-200 border-amber-500/30'

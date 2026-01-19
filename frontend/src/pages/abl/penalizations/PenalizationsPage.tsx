@@ -46,7 +46,7 @@ const PenalizationsPage = () => {
                             <button onClick={loadData} className="text-xs text-slate-400 hover:text-white">Actualizar</button>
                         </div>
 
-                        <div className="p-0">
+                        <div className="p-0 overflow-x-auto touch-pan-x">
                             {loading ? (
                                 <div className="p-8 text-center text-slate-500">Analizando datos...</div>
                             ) : redNumbers.length === 0 ? (
@@ -58,7 +58,7 @@ const PenalizationsPage = () => {
                                     <p className="text-slate-400 text-sm">No se detectaron usuarios en infracción esta semana.</p>
                                 </div>
                             ) : (
-                                <table className="w-full text-left text-sm text-slate-400">
+                                <table className="w-full text-left text-sm text-slate-400 min-w-[600px]">
                                     <thead className="text-xs uppercase bg-slate-950/50 text-slate-500">
                                         <tr>
                                             <th className="px-6 py-4">Usuario</th>

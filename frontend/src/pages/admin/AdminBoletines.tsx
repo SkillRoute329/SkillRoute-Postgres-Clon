@@ -399,8 +399,8 @@ const AdminBoletines = () => {
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                    <div className="overflow-x-auto touch-pan-x">
+                        <table className="w-full text-left border-collapse min-w-[700px] md:min-w-full">
                             <thead>
                                 <tr className="text-xs text-slate-500 uppercase tracking-wider border-b border-slate-700 bg-slate-800/50">
                                     {/* Actions */}
@@ -414,32 +414,32 @@ const AdminBoletines = () => {
                                         row.status === 'Late' && "bg-red-900/10", // Stronger red BG
                                         row.status === 'Early' && "bg-blue-900/10"
                                     )}>
-                                        <td className="p-4">
-                                            <div className="font-bold text-white text-lg">{row.serviceNumber}</div>
+                                        <td className="p-2 md:p-4">
+                                            <div className="font-bold text-white text-base md:text-lg">{row.serviceNumber}</div>
                                         </td>
-                                        <td className="p-4">
+                                        <td className="p-2 md:p-4">
                                             <input
                                                 type="text"
                                                 value={row.busNumber}
                                                 onChange={(e) => handleUpdateRow(idx, 'busNumber', e.target.value)}
                                                 placeholder="---"
-                                                className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold w-16 text-center focus:border-primary-500 outline-none"
+                                                className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold w-12 md:w-16 text-center focus:border-primary-500 outline-none text-sm md:text-base"
                                             />
                                         </td>
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-2 text-slate-300 font-mono text-lg">
-                                                <Clock className="w-4 h-4 text-slate-600" />
+                                        <td className="p-2 md:p-4">
+                                            <div className="flex items-center gap-1 md:gap-2 text-slate-300 font-mono text-sm md:text-lg">
+                                                <Clock className="w-3 h-3 md:w-4 h-4 text-slate-600" />
                                                 {row.scheduledTime}
                                             </div>
                                         </td>
-                                        <td className="p-4">
-                                            <div className="flex gap-2 items-center">
+                                        <td className="p-2 md:p-4">
+                                            <div className="flex gap-1 md:gap-2 items-center">
                                                 <input
                                                     type="time"
                                                     value={row.actualTime}
                                                     onChange={(e) => handleUpdateRow(idx, 'actualTime', e.target.value)}
                                                     className={clsx(
-                                                        "bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-mono w-24 focus:border-primary-500 outline-none font-bold",
+                                                        "bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-mono w-20 md:w-24 focus:border-primary-500 outline-none font-bold text-sm md:text-base",
                                                         row.status === 'Late' && "border-red-500 text-red-400",
                                                         row.status === 'Early' && "border-blue-500 text-blue-400",
                                                         row.status === 'OnTime' && "border-emerald-500 text-emerald-400"

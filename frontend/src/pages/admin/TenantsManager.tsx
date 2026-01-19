@@ -61,8 +61,8 @@ const TenantsManager = () => {
             </div>
 
             {/* List */}
-            <div className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
-                <table className="w-full text-left">
+            <div className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700 overflow-x-auto touch-pan-x">
+                <table className="w-full text-left min-w-[700px]">
                     <thead className="bg-slate-900/50 text-slate-400 text-sm uppercase">
                         <tr>
                             <th className="p-4">ID</th>
