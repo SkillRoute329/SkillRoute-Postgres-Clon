@@ -403,19 +403,16 @@ const AdminBoletines = () => {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="text-xs text-slate-500 uppercase tracking-wider border-b border-slate-700 bg-slate-800/50">
-                                    <th className="p-4 font-medium">Servicio</th>
-                                    <th className="p-4 font-medium">Coche</th>
-                                    <th className="p-4 font-medium">Horario Prog.</th>
-                                    <th className="p-4 font-medium">Hora Real</th>
-                                    <th className="p-4 font-medium text-center">Estado</th>
-                                    <th className="p-4 font-medium">Ocupación / Tickets</th>
+                                    {/* Actions */}
+                                    <th className="p-4 font-medium text-right">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-800">
                                 {bulletinRows.map((row, idx) => (
                                     <tr key={idx} className={clsx(
                                         "hover:bg-slate-800/50 transition-colors group",
-                                        row.status === 'Late' && "bg-red-500/5"
+                                        row.status === 'Late' && "bg-red-900/10", // Stronger red BG
+                                        row.status === 'Early' && "bg-blue-900/10"
                                     )}>
                                         <td className="p-4">
                                             <div className="font-bold text-white text-lg">{row.serviceNumber}</div>
@@ -442,8 +439,10 @@ const AdminBoletines = () => {
                                                     value={row.actualTime}
                                                     onChange={(e) => handleUpdateRow(idx, 'actualTime', e.target.value)}
                                                     className={clsx(
-                                                        "bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-mono w-24 focus:border-primary-500 outline-none",
-                                                        row.status === 'Late' && "border-red-500/50 text-red-200"
+                                                        "bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-mono w-24 focus:border-primary-500 outline-none font-bold",
+                                                        row.status === 'Late' && "border-red-500 text-red-400",
+                                                        row.status === 'Early' && "border-blue-500 text-blue-400",
+                                                        row.status === 'OnTime' && "border-emerald-500 text-emerald-400"
                                                     )}
                                                 />
                                                 <button
@@ -457,7 +456,9 @@ const AdminBoletines = () => {
                                             {row.delay !== 0 && (
                                                 <span className={clsx(
                                                     "text-xs font-bold mt-1 block",
-                                                    row.delay > 0 ? "text-red-400" : "text-emerald-400"
+                                                    row.delay > 3 ? "text-red-400 animate-pulse" : // > 3 Min Red
+                                                        row.delay < -3 ? "text-blue-400" : // < -3 Min Blue
+                                                            "text-emerald-400" // On Time
                                                 )}>
                                                     {row.delay > 0 ? `+${row.delay} min` : `${row.delay} min`}
                                                 </span>
@@ -494,6 +495,27 @@ const AdminBoletines = () => {
                                                 onChange={(e) => handleUpdateRow(idx, 'occupancyCount', e.target.value)}
                                                 className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white placeholder-slate-500 focus:border-primary-500 outline-none"
                                             />
+                                        </td>
+                                        {/* Action Buttons */}
+                                        <td className="p-4 text-right">
+                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <a
+                                                    href="/dashboard/abl/penalizations"
+                                                    target="_blank"
+                                                    className="p-2 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors border border-slate-700"
+                                                    title="Aplicar Sanción"
+                                                >
+                                                    <AlertTriangle className="w-4 h-4" />
+                                                </a>
+                                                <a
+                                                    href="/dashboard/admin/maintenance"
+                                                    target="_blank"
+                                                    className="p-2 bg-slate-800 hover:bg-yellow-500/20 text-slate-400 hover:text-yellow-400 rounded-lg transition-colors border border-slate-700"
+                                                    title="Reportar Mantenimiento"
+                                                >
+                                                    <RefreshCw className="w-4 h-4" />
+                                                </a>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

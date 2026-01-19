@@ -1,5 +1,6 @@
 
-import RoadAlertsWidget from '../components/RoadAlertsWidget';
+// import RoadAlertsWidget from '../components/RoadAlertsWidget';
+import StatsWidget from '../components/StatsWidget';
 import { useAuth } from '../context/AuthContext';
 
 const DashboardHome = () => {
@@ -16,8 +17,18 @@ const DashboardHome = () => {
                 </div>
             </div>
 
-            {/* Alertas Viales (Waze Style) */}
-            <RoadAlertsWidget />
+            {/* KPIs Stats Widget */}
+            <StatsWidget />
+
+            {/* Alertas Viales (Waze Style) - Note: Already in Layout, but keeping here if needed or removing duplication? 
+                The user asked to put RoadAlerts in Layout previously. 
+                If it is in Layout, rendering it here duplicates it?
+                Wait, previous instructions said "Move RoadAlertsWidget to DashboardLayout". 
+                If so, I should probably REMOVE it from here to avoid double rendering, 
+                OR keep it if the Layout one acts as a "Overview" and this one is the "Main View".
+                However, for now, let's just add StatsWidget.
+            */}
+            {/* <RoadAlertsWidget /> Removing duplicate since it is in Layout now */}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="glass-panel p-6 rounded-2xl border border-slate-800">
