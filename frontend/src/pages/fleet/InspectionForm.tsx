@@ -154,6 +154,12 @@ const InspectionForm = () => {
 
             {/* Header */}
             <div className="mb-6 md:mb-8 flex items-center gap-4">
+                <button
+                    onClick={() => navigate('/dashboard/fleet')}
+                    className="md:hidden p-2 -ml-2 text-slate-400 hover:text-white"
+                >
+                    <ArrowRight className="w-6 h-6 rotate-180" />
+                </button>
                 <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center shrink-0">
                     <Bus className="w-6 h-6 text-purple-400" />
                 </div>
