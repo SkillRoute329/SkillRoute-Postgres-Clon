@@ -6,6 +6,9 @@ import DashboardLayout from './layouts/DashboardLayout';
 import LoginScreen from './pages/LoginScreen';
 
 // Lazy Load Pages for Performance
+// Lazy Load Pages
+const DashboardHome = lazy(() => import('./pages/DashboardHome'));
+
 const AdminShifts = lazy(() => import('./pages/admin/AdminShifts'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminBalances = lazy(() => import('./pages/admin/AdminBalances'));
@@ -49,7 +52,7 @@ function App() {
                 <Route path="/test-cartones" element={<div className="p-4"><AdminCartones /></div>} />
 
                 <Route path="/dashboard" element={<DashboardLayout />}>
-                  <Route index element={<div className="text-white">Bienvenido al Panel</div>} />
+                  <Route index element={<DashboardHome />} />
 
                   {/* Admin Routes */}
                   <Route path="admin/shifts" element={<AdminShifts />} />

@@ -20,6 +20,7 @@ import discountRoutes from './routes/discountRoutes';
 import serviceDefinitionRoutes from './routes/serviceDefinitionRoutes';
 import bulletinRoutes from './routes/bulletinRoutes';
 import penaltyRoutes from './routes/penaltyRoutes';
+import roadAlertRoutes from './routes/roadAlertRoutes';
 
 // Restored routes
 import tenantRoutes from './routes/tenantRoutes';
@@ -94,6 +95,7 @@ try {
   app.use('/api/service-definitions', serviceDefinitionRoutes);
   app.use('/api/bulletins', bulletinRoutes);
   app.use('/api/penalties', penaltyRoutes);
+  app.use('/api/road-alerts', roadAlertRoutes);
   app.use('/api/discounts', discountRoutes);
   app.use('/api/reports', reportRoutes);
   app.use('/api/settings', settingsRoutes);

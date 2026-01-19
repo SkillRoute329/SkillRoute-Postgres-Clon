@@ -355,6 +355,18 @@ export const PenaltyService = {
     }
 };
 
+export const RoadAlertService = {
+    getAll: async () => {
+        return api.get('/road-alerts').then(res => res.data);
+    },
+    create: async (data: any) => {
+        return api.post('/road-alerts', data).then(res => res.data);
+    },
+    resolve: async (id: number) => {
+        return api.put(`/road-alerts/${id}/resolve`, {}).then(res => res.data);
+    }
+};
+
 const api = {
     get: async (endpoint: string) => {
         const res = await fetch(`${API_URL}${endpoint}`, { headers: getAuthHeaders() }).then(handleResponse);
