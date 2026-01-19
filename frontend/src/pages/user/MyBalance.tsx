@@ -156,19 +156,21 @@ const MyBalance = () => {
                         <thead className="bg-slate-900/50 text-slate-500 text-xs uppercase font-bold">
                             <tr>
                                 <th className="px-6 py-4">Fecha</th>
-                                <th className="px-6 py-4">Concepto</th>
+                                <th className="px-6 py-4">Detalle del Servicio</th>
                                 <th className="px-6 py-4">Categoría</th>
-                                <th className="px-6 py-4 text-right">Monto</th>
+                                <th className="px-6 py-4 text-right">Extras / Desc.</th>
+                                <th className="px-6 py-4 text-right">Total</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800">
                             {displayShifts.map(shift => {
                                 const currentUser = getCurrentUser();
                                 const isAssignedToMe = String(shift.assignedTo) === String(currentUser?.id) || String(shift.assignedTo) === String(currentUser?.internalNumber);
+                                const isCanje = shift.transformaFacil;
 
                                 return (
                                     <tr key={shift.id} className="hover:bg-white/5 transition-colors group">
-                                        <td className="px-6 py-4 text-sm text-slate-400">{shift.date}</td>
+                                        <td className="px-6 py-4 text-sm text-slate-400 font-mono">{shift.date}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
                                                 {isAssignedToMe ? (
@@ -176,14 +178,26 @@ const MyBalance = () => {
                                                 ) : (
                                                     <span className="w-2 h-2 rounded-full bg-red-500"></span>
                                                 )}
-                                                <span className="text-sm font-medium text-white">
-                                                    {isAssignedToMe ? 'Turno Trabajado' : 'Turno Cedido'}
-                                                </span>
+                                                <div>
+                                                    <div className="text-sm font-bold text-white">
+                                                        {isCanje ? 'A Canje (A Favor)' : (isAssignedToMe ? 'Servicio Realizado' : 'Servicio Cedido')}
+                                                    </div>
+                                                    <div className="text-xs text-slate-500">
+                                                        Coche {shift.carNumber || '---'} • Serv {shift.serviceNumber || '---'}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-slate-400">{shift.category}</td>
+                                        <td className="px-6 py-4 text-sm text-slate-300">
+                                            <div className="font-medium">{shift.category}</div>
+                                            <div className="text-xs text-slate-500">Base: ${shift.totalValue ? (Number(shift.totalValue) - (shift.extraHours || 0) * 0).toLocaleString() : '---'}</div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right text-sm">
+                                            {shift.extraHours > 0 && <div className="text-yellow-400">+{shift.extraHours} Hrs Extra</div>}
+                                            {shift.tipValue > 0 && <div className="text-emerald-400">+Propina</div>}
+                                        </td>
                                         <td className={clsx(
-                                            "px-6 py-4 text-right font-bold",
+                                            "px-6 py-4 text-right font-bold font-mono",
                                             isAssignedToMe ? "text-emerald-400" : "text-red-400"
                                         )}>
                                             {isAssignedToMe ? '+' : '-'}${Number(shift.totalValue).toLocaleString('es-AR')}
@@ -200,34 +214,47 @@ const MyBalance = () => {
                     {displayShifts.map(shift => {
                         const currentUser = getCurrentUser();
                         const isAssignedToMe = String(shift.assignedTo) === String(currentUser?.id) || String(shift.assignedTo) === String(currentUser?.internalNumber);
+                        const isCanje = shift.transformaFacil;
 
                         return (
-                            <div key={shift.id} className="p-4 flex items-center justify-between hover:bg-white/5">
-                                <div className="flex items-center gap-3">
-                                    <div className={clsx(
-                                        "w-10 h-10 rounded-full flex items-center justify-center border",
-                                        isAssignedToMe
-                                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                                            : "bg-red-500/10 border-red-500/30 text-red-400"
-                                    )}>
-                                        {isAssignedToMe ? <CircleArrowUp className="w-5 h-5" /> : <CircleArrowDown className="w-5 h-5" />}
+                            <div key={shift.id} className="p-4 flex flex-col gap-2 hover:bg-white/5">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className={clsx(
+                                            "w-10 h-10 rounded-full flex items-center justify-center border",
+                                            isAssignedToMe
+                                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                                                : "bg-red-500/10 border-red-500/30 text-red-400"
+                                        )}>
+                                            {isAssignedToMe ? <CircleArrowUp className="w-5 h-5" /> : <CircleArrowDown className="w-5 h-5" />}
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-bold text-white">
+                                                {isCanje ? 'A Canje (A Favor)' : (isAssignedToMe ? 'Servicio Realizado' : 'Servicio Cedido')}
+                                            </div>
+                                            <div className="text-xs text-slate-500">
+                                                {shift.date} • Coche {shift.carNumber}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div className="text-sm font-bold text-white">
-                                            {isAssignedToMe ? 'Turno Trabajado' : 'Turno Cedido'}
-                                        </div>
-                                        <div className="text-xs text-slate-500 flex items-center gap-2">
-                                            <span>{shift.date}</span>
-                                            <span className="w-1 h-1 rounded-full bg-slate-600"></span>
-                                            <span>{shift.category}</span>
-                                        </div>
+                                    <div className={clsx(
+                                        "font-bold text-lg font-mono",
+                                        isAssignedToMe ? "text-emerald-400" : "text-red-400"
+                                    )}>
+                                        {isAssignedToMe ? '+' : '-'}${Number(shift.totalValue).toLocaleString('es-AR')}
                                     </div>
                                 </div>
-                                <div className={clsx(
-                                    "font-bold text-sm",
-                                    isAssignedToMe ? "text-emerald-400" : "text-red-400"
-                                )}>
-                                    {isAssignedToMe ? '+' : '-'}${Number(shift.totalValue).toLocaleString('es-AR')}
+
+                                {/* Details Block */}
+                                <div className="ml-14 bg-slate-900/50 rounded p-2 text-xs text-slate-400 grid grid-cols-2 gap-2">
+                                    <div>
+                                        <span className="block text-slate-600 uppercase text-[10px]">Categoría</span>
+                                        <span className="text-white">{shift.category}</span>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="block text-slate-600 uppercase text-[10px]">Extras</span>
+                                        {shift.extraHours > 0 ? <span className="text-yellow-400">{shift.extraHours} Hrs</span> : <span>-</span>}
+                                    </div>
                                 </div>
                             </div>
                         )

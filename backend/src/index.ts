@@ -14,6 +14,12 @@ import categoryRoutes from './routes/categoryRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import systemConfigRoutes from './routes/systemConfigRoutes';
 import fleetRoutes from './routes/fleetRoutes';
+import departmentRoutes from './routes/departmentRoutes';
+import maintenanceRoutes from './routes/maintenanceRoutes';
+import discountRoutes from './routes/discountRoutes';
+import serviceDefinitionRoutes from './routes/serviceDefinitionRoutes';
+import bulletinRoutes from './routes/bulletinRoutes';
+import penaltyRoutes from './routes/penaltyRoutes';
 
 // Restored routes
 import tenantRoutes from './routes/tenantRoutes';
@@ -35,7 +41,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 const VERSION = 'v20.0-CERTIFIED';
 const BOOT_ID = Math.floor(Math.random() * 1000000).toString();
 
@@ -83,6 +89,12 @@ try {
   // Full Feature Set
   app.use('/api/tenants', tenantRoutes);
   app.use('/api/fleet', fleetRoutes);
+  app.use('/api/departments', departmentRoutes);
+  app.use('/api/maintenance', maintenanceRoutes);
+  app.use('/api/service-definitions', serviceDefinitionRoutes);
+  app.use('/api/bulletins', bulletinRoutes);
+  app.use('/api/penalties', penaltyRoutes);
+  app.use('/api/discounts', discountRoutes);
   app.use('/api/reports', reportRoutes);
   app.use('/api/settings', settingsRoutes);
   app.use('/api/backups', backupRoutes);

@@ -27,9 +27,9 @@ const handleResponse = async (res: Response) => {
 };
 
 export interface Shift {
-    id: number;
-    category: any;
-    categoryId: number;
+    id: number | string;
+    category?: any;
+    categoryId?: number;
     serviceNumber: string;
     date: string;
     time: string;
@@ -53,9 +53,13 @@ export interface Shift {
 }
 
 export const ShiftService = {
-    getAll: async (page?: number, limit?: number): Promise<Shift[]> => {
+    getAll: async (dateOrPage?: string | number, limit?: number): Promise<Shift[]> => {
         let url = `${API_URL}/shifts`;
-        if (page) url += `?page=${page}&limit=${limit || 20}`;
+        if (typeof dateOrPage === 'number') {
+            url += `?page=${dateOrPage}&limit=${limit || 20}`;
+        } else if (typeof dateOrPage === 'string') {
+            url += `?date=${dateOrPage}`;
+        }
 
         const res = await fetch(url, {
             headers: getAuthHeaders(),
@@ -195,10 +199,19 @@ export const UserService = {
     },
 
     getAll: async () => {
-        const res = await fetch(`${API_URL}/users`, {
-            headers: getAuthHeaders(),
-        }).then(res => handleResponse(res));
-        return res.json();
+        return api.get('/users').then(res => res.data);
+    },
+
+    create: async (data: any) => {
+        return api.post('/users', data).then(res => res.data);
+    },
+
+    update: async (id: number, data: any) => {
+        return api.put(`/users/${id}`, data).then(res => res.data);
+    },
+
+    delete: async (id: number) => {
+        return api.delete(`/users/${id}`).then(res => res.data);
     }
 };
 
@@ -214,6 +227,9 @@ export const FleetService = {
     },
     createInspection: async (data: any) => {
         return api.post('/fleet/inspections', data).then(res => res.data);
+    },
+    getRotationSchemes: async () => {
+        return api.get('/fleet/rotation-schemes').then(res => res.data);
     }
 };
 
@@ -223,6 +239,119 @@ export const WhatsAppService = {
     },
     restart: async (clean = false) => {
         return api.post('/whatsapp/restart', { clean }).then(res => res.data);
+    }
+};
+
+export const DepartmentService = {
+    getAll: async () => {
+        return api.get('/departments').then(res => res.data);
+    },
+    create: async (data: { name: string, description?: string }) => {
+        return api.post('/departments', data).then(res => res.data);
+    },
+    update: async (id: number, data: { name?: string, description?: string }) => {
+        return api.put(`/departments/${id}`, data).then(res => res.data);
+    },
+    delete: async (id: number) => {
+        return api.delete(`/departments/${id}`).then(res => res.data);
+    },
+    addRole: async (deptId: number, data: { name: string, description?: string, baseSalary?: number, extraHourValue?: number }) => {
+        return api.post(`/departments/${deptId}/roles`, data).then(res => res.data);
+    },
+    deleteRole: async (roleId: number) => {
+        return api.delete(`/departments/roles/${roleId}`).then(res => res.data);
+    }
+};
+
+export const MaintenanceService = {
+    create: async (data: any) => {
+        return api.post('/maintenance', data).then(res => res.data);
+    },
+    getAll: async (filters: any = {}) => {
+        const params = new URLSearchParams(filters);
+        return api.get(`/maintenance?${params.toString()}`).then(res => res.data);
+    },
+    getDetails: async (id: number) => {
+        return api.get(`/maintenance/${id}`).then(res => res.data);
+    },
+    update: async (id: number, data: any) => {
+        return api.put(`/maintenance/${id}`, data).then(res => res.data);
+    }
+};
+
+export const DiscountService = {
+    getAll: async () => {
+        return api.get('/discounts').then(res => res.data);
+    },
+    create: async (data: any) => {
+        return api.post('/discounts', data).then(res => res.data);
+    },
+    update: async (id: number, data: any) => {
+        return api.put(`/discounts/${id}`, data).then(res => res.data);
+    },
+    delete: async (id: number) => {
+        return api.delete(`/discounts/${id}`).then(res => res.data);
+    }
+};
+
+export const CartonService = {
+    save: async (data: any) => {
+        return api.post('/service-definitions', data).then(res => res.data);
+    },
+    getAll: async (seasonId?: number) => {
+        const query = seasonId ? `?seasonId=${seasonId}` : '';
+        return api.get(`/service-definitions${query}`).then(res => res.data);
+    },
+    delete: async (id: number) => {
+        return api.delete(`/service-definitions/${id}`).then(res => res.data);
+    },
+    getSuggestions: async (seasonId?: number) => {
+        const query = seasonId ? `?seasonId=${seasonId}` : '';
+        return api.get(`/service-definitions/optimize${query}`).then(res => res.data);
+    }
+};
+
+export const BulletinService = {
+    save: async (data: { date: string, entries: any[] }) => {
+        return api.post('/bulletins', data).then(res => res.data);
+    },
+    getMyStats: async () => {
+        return api.get('/bulletins/my-stats').then(res => res.data);
+    },
+    getVehicleStats: async (carNumber: string) => {
+        return api.get(`/bulletins/vehicle-stats?carNumber=${carNumber}`).then(res => res.data);
+    },
+    generateCarton: async (data: { serviceNumber: string, date: string }) => {
+        return api.post('/bulletins/generate-carton', data).then(res => res.data);
+    },
+    getTemplate: async (serviceNumber: string, seasonId?: number) => {
+        const query = seasonId ? `&seasonId=${seasonId}` : '';
+        return api.get(`/bulletins/template?serviceNumber=${serviceNumber}${query}`).then(res => res.data);
+    }
+};
+
+export const PenaltyService = {
+    getRules: async () => {
+        return api.get('/penalties/rules').then(res => res.data);
+    },
+    saveRule: async (data: any) => {
+        return api.post('/penalties/rules', data).then(res => res.data);
+    },
+    deleteRule: async (id: number) => {
+        return api.delete(`/penalties/rules/${id}`).then(res => res.data);
+    },
+    // Get active penalties (global or user specific)
+    getPenalties: async (filters: { userId?: number, type?: string, activeOnly?: boolean } = {}) => {
+        const query = new URLSearchParams(filters as any).toString();
+        return api.get(`/penalties?${query}`).then(res => res.data);
+    },
+    // Create manual penalty
+    createPenalty: async (data: any) => {
+        return api.post('/penalties', data).then(res => res.data);
+    },
+    // Get red numbers (users exceeding thresholds)
+    getRedNumbers: async () => {
+        return api.get('/penalties/red-numbers').then(res => res.data);
     }
 };
 

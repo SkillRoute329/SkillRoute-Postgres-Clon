@@ -28,3 +28,18 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
         res.status(401).json({ message: 'Token inválido' });
     }
 };
+
+
+export const requireRole = (roles: string[]) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+        const user = (req as any).user;
+        if (user && (roles.includes(user.role) || user.role === 'SuperAdmin')) {
+            next();
+        } else {
+            res.status(403).json({ message: 'Acceso denegado: Permisos insuficientes.' });
+        }
+    };
+};
+
+export const requireAdmin = requireRole(['Admin', 'SuperAdmin']);
+

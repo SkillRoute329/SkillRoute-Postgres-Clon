@@ -1,20 +1,20 @@
 
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
-    LayoutDashboard,
     CalendarClock,
     Wallet,
     LogOut,
     Menu,
-    MessageCircle,
     PlusCircle,
-    QrCode,
-    Settings,
     Share2,
     Users,
     X,
     Building2,
-    Bus
+    Bus,
+    FileSpreadsheet,
+    Wrench,
+    ClipboardList,
+    BarChart3
 } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
@@ -89,11 +89,11 @@ const DashboardLayout = () => {
                     <div className="flex items-center gap-2 text-white font-bold text-xl tracking-tight">
                         {isSidebarOpen ? (
                             <>
-                                <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">T</div>
-                                <span>Transforma</span>
+                                <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">G</div>
+                                <span>Gestión UCOT</span>
                             </>
                         ) : (
-                            <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center text-white font-bold ml-1">T</div>
+                            <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center text-white font-bold ml-1">G</div>
                         )}
                     </div>
                 </div>
@@ -109,13 +109,7 @@ const DashboardLayout = () => {
                     {(role === 'Admin' || role === 'SuperAdmin') && (
                         <div className="mb-6">
                             <div className={clsx("text-xs font-semibold text-slate-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>Administración</div>
-                            <SidebarLink to="/dashboard/admin/shifts" icon={CalendarClock} onClick={handleMobileLinkClick}>Gestión Turnos</SidebarLink>
-                            <SidebarLink to="/dashboard/admin/users" icon={Users} onClick={handleMobileLinkClick}>Usuarios</SidebarLink>
-                            <SidebarLink to="/dashboard/admin/balances" icon={Wallet} onClick={handleMobileLinkClick}>Balances Globales</SidebarLink>
-                            <SidebarLink to="/dashboard/admin/communications" icon={MessageCircle} onClick={handleMobileLinkClick}>Comunicaciones</SidebarLink>
-                            <SidebarLink to="/dashboard/admin/whatsapp-bot" icon={QrCode} onClick={handleMobileLinkClick}>Bot WhatsApp</SidebarLink>
-
-                            <SidebarLink to="/dashboard/admin/config" icon={Settings} onClick={handleMobileLinkClick}>Configuración</SidebarLink>
+                            <SidebarLink to="/dashboard/admin/rrhh" icon={Users} onClick={handleMobileLinkClick}>Recursos Humanos</SidebarLink>
                         </div>
                     )}
 
@@ -157,9 +151,25 @@ const DashboardLayout = () => {
                             )}
                         >
                             <Bus className="w-5 h-5" />
-                            <span className="font-medium">Control de Flota</span>
+                            <span className="font-medium">Coches / Dist</span>
                         </NavLink>
+                        <SidebarLink to="/dashboard/admin/shifts" icon={CalendarClock} onClick={handleMobileLinkClick}>Gestión Turnos</SidebarLink>
+                        <SidebarLink to="/dashboard/admin/cartones" icon={FileSpreadsheet} onClick={handleMobileLinkClick}>Gestión Cartones</SidebarLink>
+                        <SidebarLink to="/dashboard/admin/boletines" icon={ClipboardList} onClick={handleMobileLinkClick}>Boletines</SidebarLink>
+                        <SidebarLink to="/dashboard/operativa/distribucion" icon={Users} onClick={handleMobileLinkClick}>Dist/ Personal</SidebarLink>
+                        <SidebarLink to="/dashboard/admin/maintenance" icon={Wrench} onClick={handleMobileLinkClick}>Mantenimiento</SidebarLink>
                     </div>
+
+                    <div className={clsx("text-xs font-semibold text-slate-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>ABL (Análisis y Logística)</div>
+
+                    {/* ABL Sections */}
+                    <SidebarLink to="/dashboard/abl" icon={BarChart3} onClick={handleMobileLinkClick}>Panel de Control</SidebarLink>
+
+                    {(role === 'Admin' || role === 'SuperAdmin') && (
+                        <SidebarLink to="/dashboard/abl/penalizations" icon={Wrench} onClick={handleMobileLinkClick}>Penalizaciones</SidebarLink>
+                    )}
+
+                    <div className="border-t border-slate-800 my-2 pt-2"></div>
 
                     <div className={clsx("text-xs font-semibold text-slate-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>Mi Espacio</div>
 
@@ -177,8 +187,8 @@ const DashboardLayout = () => {
                         <span className={clsx("font-medium", !isSidebarOpen && "hidden")}>Nuevo Turno</span>
                     </NavLink>
 
-                    <SidebarLink to="/dashboard/market" icon={LayoutDashboard} onClick={handleMobileLinkClick}>Turnos Públicos</SidebarLink>
-                    <SidebarLink to="/dashboard/my-shifts" icon={CalendarClock} onClick={handleMobileLinkClick}>Mis Turnos</SidebarLink>
+                    {/* <SidebarLink to="/dashboard/my-stats" icon={BarChart3} onClick={handleMobileLinkClick}>Mis Estadísticas</SidebarLink> */}
+
                     <SidebarLink to="/dashboard/my-balance" icon={Wallet} onClick={handleMobileLinkClick}>Mi Balance</SidebarLink>
 
                     <div className="border-t border-slate-800 my-2 pt-2">

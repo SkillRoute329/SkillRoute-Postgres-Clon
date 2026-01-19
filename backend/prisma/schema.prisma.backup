@@ -1,0 +1,479 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// Enumeraciones
+// Enumeraciones eliminadas por compatibilidad con SQLite (usar Strings)
+// enum Role ...
+// enum ShiftStatus ...
+
+// 0. Tenants (Empresas)
+model Tenant {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users                   User[]
+  shiftCategories         ShiftCategory[]
+  shifts                  Shift[]
+  customFieldDefinitions  CustomFieldDefinition[]
+  systemConfigs           SystemConfig[]
+  payments                Payment[]
+  actionLogs              ActionLog[]
+  vehicles                Vehicle[]
+  inspections             Inspection[]
+  departments             Department[] 
+  jobRoles                JobRole[]
+  maintenanceReports      MaintenanceReport[] // Added maintenanceReports relation
+  discountCategories      DiscountCategory[]
+  seasons                 Season[]
+  serviceDefinitions      ServiceDefinition[]
+  rotationSchemes         RotationScheme[]
+  serviceRanges           ServiceRange[]
+}
+
+// 1. Usuarios
+model User {
+  id             Int       @id @default(autoincrement())
+  tenantId       Int       @default(1) // Default for migration
+  internalNumber String
+  firstName      String
+  lastName       String
+  fullName       String
+  email          String?
+  phoneNumber    String?   @map("phonenumber")
+  whatsappLink   String?
+  passwordHash   String
+  role           String    @default("User")
+  departmentId   Int?
+  department     Department? @relation(fields: [departmentId], references: [id])
+  jobRoleId      Int?
+  jobRole        JobRole?    @relation(fields: [jobRoleId], references: [id])
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  lastLogin      DateTime?
+
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+  shiftsCreated   Shift[]   @relation("CreatedBy")
+  shiftsAssigned  Shift[]   @relation("AssignedTo")
+  approvals       Shift[]   @relation("ApprovedBy")
+  transactions    ShiftTransaction[]
+  payments        Payment[]
+  actionLogs      ActionLog[]
+  notifications   Notification[]
+
+  @@unique([tenantId, internalNumber])
+  @@unique([tenantId, email])
+  inspections     Inspection[]
+  
+  // New Fields for Fleet Management
+  driverType      String    @default("FIXED") // FIXED, LIST
+  assignedVehicleId Int?
+  assignedVehicle Vehicle?  @relation("VehicleDrivers", fields: [assignedVehicleId], references: [id])
+  reportsMade     MaintenanceReport[] @relation("Reporter")
+  maintenanceLogs MaintenanceLog[]
+}
+
+
+// 1.5. Departamentos (Departments - Áreas de Trabajo)
+model Department {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int      @default(1)
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  users       User[]
+  jobRoles    JobRole[] // Cargos asociados
+  maintenanceReports MaintenanceReport[] // Added relation
+
+  @@unique([tenantId, name])
+}
+
+// 1.6 Cargos (Job Roles)
+model JobRole {
+  id           Int        @id @default(autoincrement())
+  tenantId     Int        @default(1)
+  departmentId Int
+  name         String
+  description  String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  tenant       Tenant     @relation(fields: [tenantId], references: [id])
+  department   Department @relation(fields: [departmentId], references: [id])
+  users        User[]
+
+  // Salarios (New Fields)
+  baseSalary      Decimal   @default(0.00) // Valor Jornal / Salario Base
+  extraHourValue  Decimal   @default(0.00)
+
+  @@unique([tenantId, departmentId, name])
+}
+
+// 1.7 Descuentos (RRHH)
+model DiscountCategory {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int      @default(1)
+  name      String   // "BPS", "IRPF", "Adelanto", "Sindicato"
+  type      String   // "PERCENTAGE", "FIXED"
+  value     Decimal  // 15.0 or 2000.0
+  isActive  Boolean  @default(true)
+  
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([tenantId, name])
+}
+
+// 2. Categorías de turnos
+model ShiftCategory {
+  id             Int      @id @default(autoincrement())
+  tenantId       Int      @default(1)
+  name           String
+  baseValue      Decimal
+  extraHourValue Decimal
+  createdBy      Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  shifts         Shift[]  @relation("CategoryToShift")
+  priceHistory   ShiftCategoryPriceHistory[]
+
+  @@unique([tenantId, name]) // Name must be unique within the tenant
+}
+
+model ShiftCategoryPriceHistory {
+  id             Int           @id @default(autoincrement())
+  categoryId     Int
+  baseValue      Decimal
+  extraHourValue Decimal
+  effectiveDate  DateTime
+  createdAt      DateTime      @default(now())
+
+  category       ShiftCategory @relation(fields: [categoryId], references: [id])
+}
+
+// 3. Turnos
+model Shift {
+  id                       Int           @id @default(autoincrement())
+  tenantId                 Int           @default(1)
+  categoryId               Int
+  serviceNumber            String
+  date                     DateTime
+  time                     String
+  endTime                  String?
+  line                     String
+  relief                   String?
+  carNumber                String
+  extraHours               Decimal       @default(0.00)
+  tip                      Boolean       @default(false)
+  tipValue                 Decimal       @default(0.00)
+  totalValue               Decimal
+  transformaFacil          Boolean       @default(false)
+  transformaFacilDiscount  Decimal       @default(0.00)
+  isPaid                   Boolean       @default(false)
+  customValues             String?
+  status                   String        @default("Created")
+  createdBy                Int
+  assignedTo               Int?
+  approvedBy               Int?
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+  deletedAt                DateTime?     // Soft Delete
+
+  tenant                   Tenant        @relation(fields: [tenantId], references: [id])
+  category                 ShiftCategory @relation("CategoryToShift", fields: [categoryId], references: [id])
+  creator                  User          @relation("CreatedBy", fields: [createdBy], references: [id])
+  assignee                 User?         @relation("AssignedTo", fields: [assignedTo], references: [id])
+  approver                 User?         @relation("ApprovedBy", fields: [approvedBy], references: [id])
+  transactions             ShiftTransaction[]
+}
+
+// 4. Transacciones
+model ShiftTransaction {
+  id                Int      @id @default(autoincrement())
+  shiftId           Int
+  userId            Int
+  type              String
+  amount            Decimal
+  transactionDate   DateTime @default(now())
+
+  shift             Shift    @relation(fields: [shiftId], references: [id])
+  user              User     @relation(fields: [userId], references: [id])
+}
+
+// 5. Campos Dinámicos
+model CustomFieldDefinition {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int      @default(1)
+  name        String
+  label       String
+  type        String
+  required    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+// 6. Configuración del Sistema
+model SystemConfig {
+  key         String
+  tenantId    Int      @default(1)
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  @@id([tenantId, key]) // Key is unique per tenant
+}
+
+// 7. Pagos Parciales
+model Payment {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int      @default(1)
+  userId    Int
+  amount    Decimal
+  date      DateTime @default(now())
+  isClosed  Boolean  @default(false)
+  notes     String?
+  deletedAt DateTime? // Soft Delete
+  
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+// 8. Audit Logs (Logs de Acciones Críticas)
+model ActionLog {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
+  userId      Int?
+  action      String   // e.g., 'CREATE_SHIFT', 'DELETE_SHIFT', 'LOGIN'
+  details     String?  // JSON or Text details
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  user        User?    @relation(fields: [userId], references: [id])
+}
+
+// 9. Notificiones
+model Notification {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int      @default(1)
+  userId    Int
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+// --- FLOTA / FLEET MANAGEMENT (New Features) ---
+
+// --- FLOTA / FLEET MANAGEMENT (New Features) ---
+
+
+// 10. Vehículos
+model Vehicle {
+  id             Int      @id @default(autoincrement())
+  tenantId       Int      @default(1)
+  internalNumber String   // Número de coche
+  plate          String?
+  
+  // Detalles ampliados
+  make           String?
+  model          String?
+  year           Int?
+  features       String?  // JSON
+  
+  status         String   @default("OPERATIONAL") // OPERATIONAL, MAINTENANCE, STOPPED
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  inspections    Inspection[]
+  reports        MaintenanceReport[]
+  
+  assignedDrivers User[]  @relation("VehicleDrivers")
+  
+  rotationSchemeId Int?
+  rotationScheme   RotationScheme? @relation(fields: [rotationSchemeId], references: [id])
+
+  @@unique([tenantId, internalNumber])
+}
+
+// 13. Reportes de Mantenimiento / Denuncias
+model MaintenanceReport {
+  id             Int      @id @default(autoincrement())
+  tenantId       Int      @default(1)
+  
+  vehicleId      Int
+  reporterId     Int
+  departmentId   Int?
+  
+  title          String
+  description    String
+  priority       String   @default("NORMAL")
+  status         String   @default("PENDING")
+  photoUrl       String?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  tenant         Tenant         @relation(fields: [tenantId], references: [id])
+  vehicle        Vehicle        @relation(fields: [vehicleId], references: [id])
+  reporter       User           @relation("Reporter", fields: [reporterId], references: [id])
+  department     Department?    @relation(fields: [departmentId], references: [id])
+  
+  logs           MaintenanceLog[]
+}
+
+model MaintenanceLog {
+  id             Int      @id @default(autoincrement())
+  reportId       Int
+  userId         Int
+  
+  action         String
+  description    String?
+  newStatus      String?
+  photoUrl       String?
+  
+  createdAt      DateTime @default(now())
+  
+  report         MaintenanceReport @relation(fields: [reportId], references: [id])
+  user           User              @relation(fields: [userId], references: [id])
+}
+
+// 10.1 Gestión de Temporadas (Verano/Invierno)
+model Season {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
+  name        String   // "Verano 2026"
+  startDate   DateTime
+  endDate     DateTime?
+  isActive    Boolean  @default(true)
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  serviceDefinitions ServiceDefinition[]
+  rotations   RotationScheme[]
+}
+
+// 10.2 Definición del Servicio (El "Cartón" Digital)
+model ServiceDefinition {
+  id            Int      @id @default(autoincrement())
+  tenantId      Int
+  seasonId      Int
+  
+  serviceNumber String   // "2290"
+  line          String   // "370"
+  variant       String?  // "Sabadero", "Habil"
+  
+  // Datos Estructurales (Fijos para este cartón)
+  startTime     String   // "04:25"
+  endTime       String   // "20:24"
+  totalHours    String?
+  liquidHours   String?
+  kilometers    String?
+  
+  // Detalle de paradas y horarios (JSON para flexibilidad)
+  // Ej: [{location: "Pza. Cerro", time: "06:15"}, ...]
+  routeData     String   // JSON
+
+  season        Season   @relation(fields: [seasonId], references: [id])
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, seasonId, serviceNumber])
+}
+
+// 10.3 Esquemas de Rotación (Lógica Cíclica)
+model RotationScheme {
+  id            Int      @id @default(autoincrement())
+  tenantId      Int
+  seasonId      Int
+  name          String   // "Rotación Yutong Híbridos"
+  
+  // Configuración de la Rotación
+  frequency     String   // "Weekly", "Cyclic"
+  daysOfWeek    String   // "Mon-Fri", "Sat", "Sun", "All"
+  
+  // Fechas específicas si la rotación no cubre toda la temporada
+  startDate     DateTime? 
+  endDate       DateTime?
+
+  cycleLength   Int      // Cuántos pasos tiene el ciclo
+  
+  // La Secuencia: [{step: 1, serviceRange: "2010"}, {step: 2, serviceRange: "2011"}]
+  sequenceData  String   // JSON
+  
+  season        Season   @relation(fields: [seasonId], references: [id])
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  vehicles      Vehicle[]
+}
+
+// 10.4 Rangos de Servicio (Simple - Conservado por compatibilidad o uso rápido)
+model ServiceRange {
+  id            Int      @id @default(autoincrement())
+  tenantId      Int
+  name          String   // "Yutong Hibridos General"
+  minService    Int
+  maxService    Int
+  allowedBrand  String?
+  allowedModel  String?
+  days          String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+// 11. Inspecciones (El Relevo Digital)
+model Inspection {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
+  vehicleId   Int
+  userId      Int      // Inspector Driver
+  type        String   // 'StartShift', 'EndShift', 'Audit'
+  odometer    Int?     
+  fuelLevel   String?  // 'Full', '3/4', '1/2', 'Reserve'
+  status      String   // 'OK', 'WithDamages'
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id])
+  vehicle     Vehicle       @relation(fields: [vehicleId], references: [id])
+  user        User          @relation(fields: [userId], references: [id])
+  damages     DamageReport[]
+}
+
+// 12. Reporte de Daños (Evidencia)
+model DamageReport {
+  id            Int      @id @default(autoincrement())
+  inspectionId  Int
+  zone          String   // 'Front', 'Right', 'Left', 'Back', 'Interior'
+  severity      String   @default("Medium") // Low, Medium, High
+  description   String
+  photoUrl      String?  
+  createdAt     DateTime @default(now())
+  
+  inspection    Inspection @relation(fields: [inspectionId], references: [id])
+}

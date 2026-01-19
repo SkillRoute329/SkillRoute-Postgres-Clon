@@ -1,5 +1,5 @@
 import pool from '../src/db';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 async function seed() {
     console.log('--- Manual Seed (Raw PG with Bcrypt) ---');

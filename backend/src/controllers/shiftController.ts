@@ -5,21 +5,24 @@ import pool from '../db'; // Keeping pool for complex legacy queries (Balances/P
 
 const prisma = new PrismaClient();
 
+import { RotationService } from '../services/rotationService';
+
 export const getAllShifts = async (req: Request, res: Response) => {
     try {
         const page = parseInt(req.query.page as string);
         const limit = parseInt(req.query.limit as string) || 20;
         const tenantId = (req as any).user.tenantId;
+        const dateParam = req.query.date as string;
+        const targetDate = dateParam ? new Date(dateParam) : new Date();
 
         const shouldPaginate = !isNaN(page) && page > 0;
 
-        // Count for pagination
-        const totalCount = shouldPaginate
-            ? await prisma.shift.count({ where: { tenantId, deletedAt: null } })
-            : 0;
+        // 1. Fetch Planned Shifts from Distribution (Only for specific states or dates)
+        // For now, if we are on page 1 or not paginating, we merge planned shifts
+        const plannedShifts = await RotationService.getPlannedAssignment(tenantId, targetDate);
 
-        // Fetch Shifts with Relations
-        const shifts = await prisma.shift.findMany({
+        // 2. Fetch DB shifts
+        const dbShifts = await prisma.shift.findMany({
             where: {
                 tenantId,
                 deletedAt: null
@@ -34,8 +37,8 @@ export const getAllShifts = async (req: Request, res: Response) => {
             skip: shouldPaginate ? (page - 1) * limit : undefined
         });
 
-        // Map to flat structure expected by frontend (preserving compatibility)
-        const formattedShifts = shifts.map(s => ({
+        // Map DB shifts
+        const formattedDbShifts = dbShifts.map(s => ({
             ...s,
             categoryName: s.category?.name,
             creatorName: s.creator?.fullName,
@@ -45,17 +48,44 @@ export const getAllShifts = async (req: Request, res: Response) => {
             assigneePhone: s.assignee?.phoneNumber
         }));
 
+        // Merge logic: If a DB shift exists for the SAME car/service/date, it overrides the planned one?
+        // Or just show both? Usually, we want to show the planned one UNLESS it has been "claimed" or "override" by a real shift record.
+        // For simplicity: merge them, ensuring no duplication if a real shift already represents that assignment.
+        const mergedShifts = [...formattedDbShifts];
+
+        plannedShifts.forEach(ps => {
+            const alreadyExists = formattedDbShifts.some(ds =>
+                ds.carNumber === ps.carNumber &&
+                ds.serviceNumber === ps.serviceNumber &&
+                new Date(ds.date).toDateString() === new Date(ps.date).toDateString()
+            );
+            if (!alreadyExists) {
+                // Map to Shift interface Expected by Frontend
+                const plannedShiftMapped = {
+                    ...ps,
+                    assignedTo: ps.assigneeId, // Critical for MyShifts filter
+                    status: 'Assigned', // Or 'Planned' if we want to distinguish
+                    // Ensure assignee object structure mimics DB shift if needed by ShiftCard?
+                    // ShiftCard uses shift.assigneeName directly? ShiftCard uses 'assigneeName' prop if flat, or 'assignee.fullName' if nested.
+                    // api.ts getAll flattens mapping: start line 77: ...s
+                    // formattedDbShifts has flat fields.
+                    // RotationService output has flat fields (assigneeName, etc).
+                };
+                mergedShifts.unshift(plannedShiftMapped);
+            }
+        });
+
         if (shouldPaginate) {
             res.json({
-                data: formattedShifts,
+                data: mergedShifts,
                 meta: {
                     currentPage: page,
-                    totalPages: Math.ceil(totalCount / limit),
-                    totalItems: totalCount
+                    totalPages: Math.ceil((dbShifts.length + plannedShifts.length) / limit), // rough estimate
+                    totalItems: dbShifts.length + plannedShifts.length
                 }
             });
         } else {
-            res.json(formattedShifts);
+            res.json(mergedShifts);
         }
 
     } catch (error) {
@@ -84,6 +114,16 @@ export const createShift = async (req: Request, res: Response) => {
         const tenantId = user?.tenantId;
         if (!tenantId) {
             return res.status(401).json({ message: 'Error de sesión: Tenant ID no encontrado.' });
+        }
+
+        // PERMISSION CHECK: Department
+        const userDetails = await (prisma.user as any).findUnique({
+            where: { id: user.id },
+            include: { department: true }
+        });
+
+        if ((userDetails as any)?.department?.name === 'Distribucion') {
+            return res.status(403).json({ message: 'El departamento de Distribución no está autorizado para crear servicios.' });
         }
 
         // ADMIN OVERRIDE: If Admin assigns a "ceding user"
@@ -283,6 +323,23 @@ export const updateShift = async (req: Request, res: Response) => {
 
     try {
         const shiftId = Number(id);
+        const user = (req as any).user;
+
+        // PERMISSION CHECK: Department
+        const userDetails = await (prisma.user as any).findUnique({
+            where: { id: user.id },
+            include: { department: true }
+        });
+
+        // Distribution cannot change structure
+        const isStructuralChange = serviceNumber || date || time || line || carNumber || categoryId;
+        if ((userDetails as any)?.department?.name === 'Distribucion' && isStructuralChange) {
+            return res.status(403).json({ message: 'El departamento de Distribución no puede modificar la estructura del servicio (Horario, Coche, etc).' });
+        }
+
+        // Fleet Control should not change assignments? (Example, usually they manage cars)
+        // For now restricting Distribution is the main request.
+
         let shiftDate = date;
         if (date && typeof date === 'string') {
             shiftDate = new Date(date).toISOString();

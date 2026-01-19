@@ -433,40 +433,35 @@ const CreateShift = () => {
                             )}
                         </div>
 
-                        {/* Option 2: TransformaFácil */}
+                        {/* Option 2: A Canje */}
                         <div
                             onClick={() => setFormData(prev => ({ ...prev, transformaFacil: true }))}
                             className={clsx(
                                 "cursor-pointer p-4 rounded-xl border-2 transition-all relative overflow-hidden",
                                 formData.transformaFacil
-                                    ? "bg-primary-900/20 border-primary-500/50"
+                                    ? "bg-amber-900/20 border-amber-500/50"
                                     : "bg-slate-800/30 border-slate-700 hover:border-slate-600"
                             )}
                         >
                             <div className="flex items-start gap-3">
                                 <div className={clsx(
                                     "p-3 rounded-full",
-                                    formData.transformaFacil ? "bg-primary-500/20 text-primary-400" : "bg-slate-800 text-slate-400"
+                                    formData.transformaFacil ? "bg-amber-500/20 text-amber-400" : "bg-slate-800 text-slate-400"
                                 )}>
                                     <CreditCard className="w-6 h-6" />
                                 </div>
                                 <div>
                                     <h3 className={clsx("font-bold text-sm mb-1", formData.transformaFacil ? "text-white" : "text-slate-300")}>
-                                        <span>TransformaFácil</span>
+                                        <span>A Canje</span>
                                     </h3>
                                     <p className="text-xs text-slate-400 leading-relaxed">
-                                        <span>El administrador te paga. Se descuenta una tarifa de servicio.</span>
+                                        <span>Turno extra realizado "a favor". Se suma a tu balance para cubrir futuras ausencias.</span>
                                     </p>
-                                    {systemDiscount > 0 && (
-                                        <div className="mt-2 inline-block bg-primary-500/20 text-primary-300 text-[10px] font-bold px-2 py-1 rounded">
-                                            <span>Tarifa: -${systemDiscount.toLocaleString()}</span>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                             {formData.transformaFacil && (
                                 <div className="absolute top-3 right-3">
-                                    <Check className="w-5 h-5 text-primary-500" />
+                                    <Check className="w-5 h-5 text-amber-500" />
                                 </div>
                             )}
                         </div>

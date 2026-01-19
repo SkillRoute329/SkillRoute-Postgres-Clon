@@ -9,9 +9,17 @@ const prisma = new PrismaClient();
 export const getVehicles = async (req: Request, res: Response) => {
     try {
         const user = (req as any).user;
-        const vehicles = await prisma.vehicle.findMany({
+        const vehicles = await (prisma.vehicle as any).findMany({
             where: { tenantId: user.tenantId },
-            orderBy: { carNumber: 'asc' }
+            include: {
+                assignedDrivers: {
+                    select: { id: true, fullName: true, internalNumber: true }
+                },
+                rotationScheme: {
+                    select: { id: true, name: true }
+                }
+            },
+            orderBy: { internalNumber: 'asc' }
         });
         res.json(vehicles);
     } catch (error) {
@@ -23,30 +31,93 @@ export const getVehicles = async (req: Request, res: Response) => {
 export const createVehicle = async (req: Request, res: Response) => {
     try {
         const user = (req as any).user;
-        const { carNumber, plate, brand, model, year } = req.body;
+        const {
+            internalNumber, carNumber, plate, make, brand, model,
+            year, status, rotationSchemeId, driverIds, features
+        } = req.body;
+        const finalNumber = internalNumber || carNumber;
 
         if (user.role !== 'Admin' && user.role !== 'SuperAdmin') {
             return res.status(403).json({ message: 'No autorizado' });
         }
 
-        const existing = await prisma.vehicle.findFirst({
-            where: { tenantId: user.tenantId, carNumber }
-        });
-
-        if (existing) {
-            return res.status(409).json({ message: 'Ya existe un vehículo con este número' });
+        if (!finalNumber) {
+            return res.status(400).json({ message: 'Número de coche requerido' });
         }
 
-        const vehicle = await prisma.vehicle.create({
-            data: {
-                tenantId: user.tenantId,
-                carNumber, plate, brand, model, year: year ? Number(year) : undefined
+        const featuresString = typeof features === 'object' ? JSON.stringify(features) : features;
+
+        const vehicle = await prisma.$transaction(async (tx) => {
+            // 1. Upsert Vehicle
+            const v = await (tx.vehicle as any).upsert({
+                where: {
+                    tenantId_internalNumber: {
+                        tenantId: user.tenantId,
+                        internalNumber: finalNumber
+                    }
+                },
+                update: {
+                    plate,
+                    make: make || brand,
+                    model,
+                    year: year ? Number(year) : undefined,
+                    status: status || 'OPERATIONAL',
+                    rotationSchemeId: rotationSchemeId ? Number(rotationSchemeId) : null,
+                    features: featuresString
+                },
+                create: {
+                    tenantId: user.tenantId,
+                    internalNumber: finalNumber,
+                    plate,
+                    make: make || brand,
+                    model,
+                    year: year ? Number(year) : undefined,
+                    status: status || 'OPERATIONAL',
+                    rotationSchemeId: rotationSchemeId ? Number(rotationSchemeId) : null,
+                    features: featuresString
+                }
+            });
+
+            // 2. Manage Driver Assignments
+            if (Array.isArray(driverIds)) {
+                // First, remove this vehicle from ANY user currently assigned to it
+                await (tx.user as any).updateMany({
+                    where: { assignedVehicleId: v.id, tenantId: user.tenantId },
+                    data: { assignedVehicleId: null }
+                });
+
+                // Then, assign requested drivers
+                if (driverIds.length > 0) {
+                    await (tx.user as any).updateMany({
+                        where: {
+                            id: { in: driverIds.map(Number) },
+                            tenantId: user.tenantId
+                        },
+                        data: { assignedVehicleId: v.id }
+                    });
+                }
             }
+
+            return v;
         });
-        res.status(201).json(vehicle);
+
+        res.status(200).json(vehicle);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Error al crear vehículo' });
+        res.status(500).json({ message: 'Error al guardar vehículo' });
+    }
+};
+
+export const getRotationSchemes = async (req: Request, res: Response) => {
+    try {
+        const user = (req as any).user;
+        const schemes = await (prisma as any).rotationScheme.findMany({
+            where: { tenantId: user.tenantId },
+            select: { id: true, name: true }
+        });
+        res.json(schemes);
+    } catch (error) {
+        res.status(500).json({ message: 'Error al obtener esquemas de rotación' });
     }
 };
 

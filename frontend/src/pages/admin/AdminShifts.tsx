@@ -8,8 +8,8 @@ import { Search, Filter, FileText, Loader2, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 
 const AdminShifts = () => {
-    const activeTabState = useState<'Created' | 'Public' | 'Assigned'>('Created');
-    const [activeTab, setActiveTab] = activeTabState;
+    const [activeTab, setActiveTab] = useState<'Created' | 'Public' | 'Assigned'>('Created');
+    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [shifts, setShifts] = useState<Shift[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -19,13 +19,13 @@ const AdminShifts = () => {
 
     useEffect(() => {
         loadShifts();
-    }, []);
+    }, [selectedDate]); // Reload when date changes
 
     const loadShifts = async () => {
         setIsLoading(true);
         setError(null);
         try {
-            const data = await ShiftService.getAll();
+            const data = await ShiftService.getAll(selectedDate);
             setShifts(data || []);
             return data || [];
         } catch (error) {
@@ -38,9 +38,20 @@ const AdminShifts = () => {
         }
     };
 
-    const handleAction = async (action: string, id: number) => {
+    const handleAction = async (action: string, id: number | string) => {
         const shift = shifts.find(s => s.id === id);
         if (!shift) return;
+
+        // If it's a planned shift (string ID), some actions might need creation first
+        if (typeof id === 'string') {
+            if (action === 'assign' || action === 'edit' || action === 'approve') {
+                // For now, we'll alert that it's a planned shift. 
+                // In a real scenario, we might "solidify" it by creating the shift record first.
+                alert('Este es un turno programado por rotación. Para modificarlo, primero guárdelo como turno real.');
+                return;
+            }
+            return;
+        }
 
         if (action === 'approve') {
             if (shift.transformaFacil) {
@@ -143,11 +154,12 @@ const AdminShifts = () => {
     );
 
     // State for PDF Automation
+    // State for PDF Automation (Refactored for Stability)
     const [autoDownload, setAutoDownload] = useState(false);
     const [downloadInterval, setDownloadInterval] = useState(60); // minutes
-    const [lastDownloadTime, setLastDownloadTime] = useState<number>(Date.now());
+    const lastDownloadRef = useState({ time: Date.now() })[0]; // Mutable ref-like object or strictly useRef
 
-    // Load automation settings from localStorage
+    // Load settings
     useEffect(() => {
         const storedAuto = localStorage.getItem('admin_pdf_auto');
         const storedInterval = localStorage.getItem('admin_pdf_interval');
@@ -155,44 +167,44 @@ const AdminShifts = () => {
         if (storedInterval) setDownloadInterval(Number(storedInterval));
     }, []);
 
-    // Save automation settings
+    // Save settings
     useEffect(() => {
         localStorage.setItem('admin_pdf_auto', String(autoDownload));
         localStorage.setItem('admin_pdf_interval', String(downloadInterval));
     }, [autoDownload, downloadInterval]);
 
-    // Automation Logic
+    // Automation Logic (Robust loop)
     useEffect(() => {
         let intervalId: any;
 
         if (autoDownload && downloadInterval > 0) {
             const checkAndDownload = async () => {
                 const now = Date.now();
-                const timeSinceLast = (now - lastDownloadTime) / 1000 / 60; // minutes
+                const timeSinceLast = (now - lastDownloadRef.time) / 1000 / 60;
 
                 if (timeSinceLast >= downloadInterval) {
+                    console.log('Running Auto PDF Download...');
+                    try {
+                        // Independent fetch to avoid state dependency
+                        const freshData = await ShiftService.getAll(selectedDate);
+                        const today = new Date().toLocaleDateString();
+                        const todaysShifts = freshData.filter((s: any) => new Date(s.date).toLocaleDateString() === today);
 
-                    // Fetch fresh data
-                    const freshData = await loadShifts();
-
-                    // Filter only today's shifts
-                    const today = new Date().toLocaleDateString();
-                    const todaysShifts = freshData.filter(s => new Date(s.date).toLocaleDateString() === today);
-
-                    if (todaysShifts.length > 0) {
-                        PDFService.generateDailyReport(todaysShifts, today);
-                        setLastDownloadTime(now);
-
+                        if (todaysShifts.length > 0) {
+                            PDFService.generateDailyReport(todaysShifts, today);
+                            lastDownloadRef.time = now; // Update ref without triggering re-render
+                        }
+                    } catch (e) {
+                        console.error("Auto PDF Error", e);
                     }
                 }
             };
 
-            // Check every minute
-            intervalId = setInterval(checkAndDownload, 60000);
+            intervalId = setInterval(checkAndDownload, 60000); // Check every minute
         }
 
         return () => clearInterval(intervalId);
-    }, [autoDownload, downloadInterval, lastDownloadTime]); // removed shifts from dependency to avoid loop if loadShifts changes state, though we are using freshData locally
+    }, [autoDownload, downloadInterval, selectedDate, lastDownloadRef]);
 
     const handleManualDownload = () => {
         const today = new Date().toLocaleDateString();
@@ -261,6 +273,15 @@ const AdminShifts = () => {
                         </button>
 
                         <div className="relative group flex-1">
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-2 text-sm focus:border-primary-500 focus:outline-none transition-all"
+                            />
+                        </div>
+
+                        <div className="relative group flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-primary-400" />
                             <input
                                 type="text"
@@ -305,7 +326,7 @@ const AdminShifts = () => {
                 </div>
             )}
 
-            <div className="border-b border-slate-800 flex gap-4">
+            <div className="border-b border-slate-800 flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
                 <TabButton name="Created" label="Pendientes" count={shifts.filter(s => s.status === 'Created').length} />
                 <TabButton name="Public" label="Públicos" count={shifts.filter(s => s.status === 'Public').length} />
                 <TabButton name="Assigned" label="Asignados" count={shifts.filter(s => s.status === 'Assigned').length} />

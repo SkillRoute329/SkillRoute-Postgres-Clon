@@ -13,10 +13,21 @@ interface User {
     role: string;
     isActive: boolean;
     createdAt: string;
+    departmentId?: number;
+    department?: {
+        id: number;
+        name: string;
+    };
+}
+
+interface Department {
+    id: number;
+    name: string;
 }
 
 const AdminUsers = () => {
     const [users, setUsers] = useState<User[]>([]);
+    const [departments, setDepartments] = useState<Department[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -28,12 +39,31 @@ const AdminUsers = () => {
         whatsappLink: '',
         password: '',
         role: 'User',
+        departmentId: '',
         isActive: true
     });
 
     useEffect(() => {
         loadUsers();
+        loadDepartments();
     }, []);
+
+    const loadDepartments = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/departments', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setDepartments(data);
+            }
+        } catch (error) {
+            console.error('Error loading departments:', error);
+        }
+    };
 
     const loadUsers = async () => {
         setIsLoading(true);
@@ -77,6 +107,7 @@ const AdminUsers = () => {
                 ...formData,
                 phoneNumber: fullPhone,
                 whatsappLink: waLink,
+                departmentId: formData.departmentId ? parseInt(formData.departmentId) : null,
                 password: (editingUser && !formData.password) ? undefined : formData.password
             };
 
@@ -142,6 +173,7 @@ const AdminUsers = () => {
             whatsappLink: user.whatsappLink || '',
             password: '',
             role: user.role,
+            departmentId: user.departmentId ? user.departmentId.toString() : '',
             isActive: user.isActive
         });
         setShowModal(true);
@@ -162,6 +194,7 @@ const AdminUsers = () => {
             whatsappLink: '',
             password: '',
             role: 'User',
+            departmentId: '',
             isActive: true
         });
     };
@@ -197,6 +230,7 @@ const AdminUsers = () => {
                                     <th className="px-6 py-4"><span>Nombre</span></th>
                                     <th className="px-6 py-4"><span>Celular</span></th>
                                     <th className="px-6 py-4"><span>Rol</span></th>
+                                    <th className="px-6 py-4"><span>Depto.</span></th>
                                     <th className="px-6 py-4"><span>Estado</span></th>
                                     <th className="px-6 py-4 text-right"><span>Acciones</span></th>
                                 </tr>
@@ -232,6 +266,15 @@ const AdminUsers = () => {
                                             )}>
                                                 <span>{user.role}</span>
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {user.department ? (
+                                                <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-slate-700 text-slate-300 border border-slate-600">
+                                                    {user.department.name}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-slate-600">-</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={clsx(
@@ -355,6 +398,20 @@ const AdminUsers = () => {
                                     </select>
                                 </div>
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-2">
+                                    <span>Departamento</span>
+                                </label>
+                                <select
+                                    value={formData.departmentId}
+                                    onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
+                                    className="input-field w-full bg-slate-800 border-slate-700 text-white placeholder-slate-500">
+                                    <option value="">Sin departamento</option>
+                                    {departments.map(dep => (
+                                        <option key={dep.id} value={dep.id}>{dep.name}</option>
+                                    ))}
+                                </select>
+                            </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -396,7 +453,6 @@ const AdminUsers = () => {
                                         placeholder="99123456"
                                         value={formData.phoneNumber?.replace('+598 ', '') || ''}
                                         onChange={(e) => {
-                                            // Allow only numbers
                                             const val = e.target.value.replace(/\D/g, '');
                                             setFormData({ ...formData, phoneNumber: val });
                                         }}
@@ -405,8 +461,6 @@ const AdminUsers = () => {
                                 </div>
                                 <p className="text-xs text-slate-500 mt-1"><span>Ingresa el número sin el 0 inicial (ej: 99123456)</span></p>
                             </div>
-
-                            {/* WhatsApp Link is now auto-generated, field removed from UI */}
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-400 mb-2">

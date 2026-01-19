@@ -35,7 +35,12 @@ class WhatsAppService {
 
     public start() {
         console.log('🚀 [WA] Starting WhatsApp Service...');
-        this.initialize();
+        try {
+            this.initialize();
+        } catch (error) {
+            console.error('❌ [WA] Failed to start WhatsApp Service:', error);
+            // Non-blocking failure
+        }
     }
 
     private initialize() {

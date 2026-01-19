@@ -1,0 +1,29 @@
+
+// 14. Boletines de Servicio (Control Operativo)
+model BulletinEntry {
+  id              Int      @id @default(autoincrement())
+  tenantId        Int      @default(1)
+  
+  serviceNumber   String   // Link to Shift/Matrix
+  date            DateTime // Date of operation
+  
+  location        String   // Control Point (e.g., "Tres Cruces")
+  
+  scheduledTime   String   // HH:mm
+  actualTime      String?  // HH:mm
+  delayMinutes    Int?
+  
+  busNumber       String?
+  occupancyCount  Int?
+  occupancyLevel  String?  // Low, Medium, High, Full
+  
+  status          String   // Pending, OnTime, Late, Early
+  
+  inspectorId     Int?     // User who recorded this
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  inspector       User?    @relation(fields: [inspectorId], references: [id])
+}

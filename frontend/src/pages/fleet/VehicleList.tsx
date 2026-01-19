@@ -1,16 +1,69 @@
-
 import React, { useState, useEffect } from 'react';
-import { Bus, Plus, AlertCircle } from 'lucide-react';
-import { FleetService } from '../../services/api';
+import { Bus, Plus, Search, Edit2, Wrench, Users, Calendar } from 'lucide-react';
+import { FleetService, UserService } from '../../services/api';
+import clsx from 'clsx';
+
+const STATUS_OPTIONS = [
+    { value: 'OPERATIONAL', label: 'Operativo', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+    { value: 'MAINTENANCE', label: 'Taller', color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
+    { value: 'STOPPED', label: 'Paralizado', color: 'text-red-400 bg-red-500/10 border-red-500/20' }
+];
 
 const VehicleList = () => {
     const [vehicles, setVehicles] = useState<any[]>([]);
     const [showModal, setShowModal] = useState(false);
-    const [formData, setFormData] = useState({ carNumber: '', plate: '', brand: '', model: '' });
+
+    // Form State
+    const [formData, setFormData] = useState<{
+        internalNumber: string,
+        plate: string,
+        make: string,
+        model: string,
+        year: string,
+        status: string,
+        rotationSchemeId: string,
+        driverIds: number[],
+        features: any // Store full features object
+    }>({
+        internalNumber: '',
+        plate: '',
+        make: '',
+        model: '',
+        year: '',
+        status: 'OPERATIONAL',
+        rotationSchemeId: '',
+        driverIds: [],
+        features: { customFields: [], driverRotationMode: 'ALL_SAME' }
+    });
+
+    const [editingId, setEditingId] = useState<number | null>(null);
+
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [allUsers, setAllUsers] = useState<any[]>([]);
+    const [rotationSchemes, setRotationSchemes] = useState<any[]>([]);
 
     useEffect(() => {
-        loadVehicles();
+        loadData();
     }, []);
+
+    const loadData = async () => {
+        setLoading(true);
+        try {
+            const [vData, uData, rData] = await Promise.all([
+                FleetService.getVehicles(),
+                UserService.getAll(),
+                FleetService.getRotationSchemes()
+            ]);
+            setVehicles(vData);
+            setAllUsers(uData.filter((u: any) => u.role === 'User'));
+            setRotationSchemes(rData);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const loadVehicles = async () => {
         try {
@@ -21,34 +74,120 @@ const VehicleList = () => {
         }
     };
 
+    const handleEdit = (v: any) => {
+        // Parse features safely
+        let parsedFeatures = { customFields: [], driverRotationMode: 'ALL_SAME' };
+        try {
+            if (v.features) {
+                parsedFeatures = JSON.parse(v.features);
+                if (!parsedFeatures.customFields) parsedFeatures.customFields = [];
+                if (!parsedFeatures.driverRotationMode) parsedFeatures.driverRotationMode = 'ALL_SAME';
+            }
+        } catch (e) { console.error('Error parsing features JSON', e); }
+
+        setFormData({
+            internalNumber: v.internalNumber || '',
+            plate: v.plate || '',
+            make: v.make || '',
+            model: v.model || '',
+            year: v.year || '',
+            status: v.status || 'OPERATIONAL',
+            rotationSchemeId: v.rotationSchemeId?.toString() || '',
+            driverIds: v.assignedDrivers?.map((d: any) => d.id) || [],
+            features: parsedFeatures
+        });
+        setEditingId(v.id);
+        setShowModal(true);
+    };
+
+    const handleNew = () => {
+        setFormData({
+            internalNumber: '', plate: '', make: '', model: '', year: '', status: 'OPERATIONAL',
+            rotationSchemeId: '', driverIds: [],
+            features: { customFields: [], driverRotationMode: 'ALL_SAME' }
+        });
+        setEditingId(null);
+        setShowModal(true);
+    };
+
+    // Custom Field Helpers
+    const addCustomField = () => {
+        setFormData(prev => ({
+            ...prev,
+            features: {
+                ...prev.features,
+                customFields: [...(prev.features.customFields || []), { key: '', value: '' }]
+            }
+        }));
+    };
+
+    const removeCustomField = (index: number) => {
+        const newFields = [...formData.features.customFields];
+        newFields.splice(index, 1);
+        setFormData(prev => ({
+            ...prev,
+            features: { ...prev.features, customFields: newFields }
+        }));
+    };
+
+    const updateCustomField = (index: number, field: 'key' | 'value', val: string) => {
+        const newFields = [...formData.features.customFields];
+        newFields[index][field] = val;
+        setFormData(prev => ({
+            ...prev,
+            features: { ...prev.features, customFields: newFields }
+        }));
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await FleetService.createVehicle(formData);
+            const payload = {
+                ...formData,
+                year: formData.year ? Number(formData.year) : undefined,
+                rotationSchemeId: formData.rotationSchemeId ? Number(formData.rotationSchemeId) : null,
+                driverIds: formData.driverIds,
+                // features passed as object, controller handles stringify
+                features: formData.features
+            };
+
+            await FleetService.createVehicle(payload);
             setShowModal(false);
-            setFormData({ carNumber: '', plate: '', brand: '', model: '' });
-            loadVehicles(); // Reload list
+            loadVehicles();
         } catch (error) {
-            alert('Error al crear vehículo');
+            alert('Error al guardar vehículo');
         }
     };
 
-    const [searchTerm, setSearchTerm] = useState('');
+    const filteredVehicles = vehicles.filter(v => {
+        const num = v.internalNumber || v.carNumber || '';
+        const plate = v.plate || '';
+        return num.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            plate.toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
-    const filteredVehicles = vehicles.filter(v =>
-        (v.carNumber && v.carNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (v.plate && v.plate.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const getStatusStyle = (status: string) => {
+        const config = STATUS_OPTIONS.find(s => s.value === status) || STATUS_OPTIONS[0];
+        return config.color;
+    };
+
+    const getStatusLabel = (status: string) => {
+        const config = STATUS_OPTIONS.find(s => s.value === status) || STATUS_OPTIONS[0];
+        return config.label;
+    };
 
     return (
-        <div className="p-6 max-w-7xl mx-auto animate-fade-in-up">
-            <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <div className="p-4 md:p-6 max-w-7xl mx-auto animate-fade-in-up pb-24">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Control de Flota</h1>
-                    <p className="text-slate-400">Gestiona las unidades y su estado actual.</p>
+                    <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 md:mb-2 flex items-center gap-2">
+                        <Bus className="w-8 h-8 text-primary-500" />
+                        Gestión Operativa de Flota
+                    </h1>
+                    <p className="text-slate-400 text-sm md:text-base">Control de unidades, marcas, modelos, esquemas de rotación y asignación de personal.</p>
                 </div>
 
-                <div className="flex gap-4 w-full md:w-auto">
+                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                     <div className="relative flex-1 md:w-64">
                         <input
                             type="text"
@@ -57,116 +196,288 @@ const VehicleList = () => {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        </div>
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
                     </div>
 
                     <button
-                        onClick={() => setShowModal(true)}
-                        className="btn btn-primary flex items-center gap-2 whitespace-nowrap"
+                        onClick={handleNew}
+                        className="btn btn-primary flex items-center justify-center gap-2 whitespace-nowrap py-2.5"
                     >
-                        <Plus className="w-5 h-5" /> Nueva Unidad
+                        <Plus className="w-5 h-5" /> <span className="hidden sm:inline">Nueva Unidad</span><span className="sm:hidden">Nuevo</span>
                     </button>
                 </div>
             </div>
 
-            {/* Grid de Vehículos */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredVehicles.map((v) => (
-                    <div key={v.id} className="glass-panel p-6 hover:border-primary-500/50 transition-colors group relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-100 transition-opacity">
-                            <Bus className="w-24 h-24 text-white" />
-                        </div>
+            {/* Content */}
+            {loading ? (
+                <div className="flex justify-center items-center py-20">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+                </div>
+            ) : filteredVehicles.length === 0 ? (
+                <div className="text-center py-20 bg-slate-800/50 rounded-2xl border border-dashed border-slate-700">
+                    <Bus className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                    <h3 className="text-xl text-slate-300 font-medium mb-2">No se encontraron unidades</h3>
+                    <p className="text-slate-500">Intenta con otro término de búsqueda.</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                    {filteredVehicles.map((v) => (
+                        <div key={v.id} className="glass-panel p-5 md:p-6 hover:border-primary-500/50 transition-all active:scale-[0.98] group relative overflow-hidden flex flex-col">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                <Bus className="w-24 h-24 text-white" />
+                            </div>
 
-                        <div className="relative z-10">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                                    <Bus className="w-6 h-6" />
+                            <div className="relative z-10 flex-1">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0 font-bold text-lg">
+                                            {v.internalNumber || v.carNumber}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-white">Coche {v.internalNumber || v.carNumber}</h3>
+                                            <p className="text-sm text-slate-400">{v.make || v.brand || 'Sin Marca'} {v.model || ''}</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => handleEdit(v)} className="p-2 text-slate-500 hover:text-white bg-slate-800/50 rounded-lg">
+                                        <Edit2 className="w-4 h-4" />
+                                    </button>
                                 </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-white">Coche {v.carNumber}</h3>
-                                    <p className="text-sm text-slate-400">{v.brand || 'Marca'} {v.model || 'Modelo'}</p>
+
+                                <div className="space-y-3 mb-6">
+                                    <div className="flex justify-between text-sm border-b border-slate-800 pb-2">
+                                        <span className="text-slate-500">Esquema:</span>
+                                        <span className="text-primary-400 font-medium flex items-center gap-1">
+                                            <Calendar className="w-3 h-3" /> {v.rotationScheme?.name || 'Manual'}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col gap-2 text-sm border-b border-slate-800 pb-2">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-slate-500 flex items-center gap-1"><Users className="w-3 h-3" /> Conductores:</span>
+                                            <span className="text-slate-300 font-bold">{v.assignedDrivers?.length || 0} / 3</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1">
+                                            {v.assignedDrivers?.map((d: any) => (
+                                                <span key={d.id} className="px-2 py-0.5 bg-slate-800 rounded text-[10px] text-slate-400 border border-slate-700">
+                                                    {d.fullName} ({d.internalNumber})
+                                                </span>
+                                            ))}
+                                            {(!v.assignedDrivers || v.assignedDrivers.length === 0) && (
+                                                <span className="text-slate-600 italic text-[10px]">Sin asignar</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between text-sm items-center">
+                                        <span className="text-slate-500">Estado:</span>
+                                        <span className={clsx(`px-2 py-0.5 rounded-full text-xs font-bold border`, getStatusStyle(v.status))}>
+                                            {getStatusLabel(v.status)}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-3 mb-6">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-500">Matrícula:</span>
-                                    <span className="text-slate-300 font-mono">{v.plate || '---'}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-500">Estado:</span>
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20`}>
-                                        {v.status === 'Active' ? 'Operativo' : v.status}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-2 mt-4 pt-4 border-t border-slate-800">
+                            <div className="flex gap-2 mt-auto pt-4 border-t border-slate-800 relative z-10">
                                 <a
                                     href={`/dashboard/fleet/inspect/${v.id}`}
-                                    className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm rounded-lg transition-colors flex items-center justify-center gap-2"
+                                    className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-300 hover:text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 border border-slate-700 hover:border-slate-500"
                                 >
-                                    <AlertCircle className="w-4 h-4" /> Inspeccionar / Foto
+                                    <Wrench className="w-4 h-4" /> Inspección
                                 </a>
                             </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
 
-            {/* Modal Crear */}
+            {/* Modal Crear/Editar */}
             {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-                    <div className="bg-slate-800 rounded-2xl w-full max-w-md p-6 border border-slate-700 shadow-xl animate-scale-in">
-                        <h2 className="text-xl font-bold text-white mb-4">Registrar Nueva Unidad</h2>
+                <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm overflow-y-auto">
+                    <div className="bg-slate-800 rounded-2xl w-full max-w-2xl p-6 border border-slate-700 shadow-xl animate-scale-in relative my-4 md:my-0">
+                        <h2 className="text-xl font-bold text-white mb-4">{editingId ? 'Editar Unidad Operativa' : 'Nueva Unidad Operativa'}</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="text-sm text-slate-400">Número de Coche *</label>
-                                <input
-                                    required
-                                    type="text"
-                                    className="input-field w-full"
-                                    placeholder="Ej. 105"
-                                    value={formData.carNumber}
-                                    onChange={e => setFormData({ ...formData, carNumber: e.target.value })}
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-sm text-slate-400">Marca</label>
-                                    <input
-                                        type="text"
-                                        className="input-field w-full"
-                                        placeholder="Mercedes"
-                                        value={formData.brand}
-                                        onChange={e => setFormData({ ...formData, brand: e.target.value })}
-                                    />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Left Column: Vehicle Info */}
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-sm text-slate-400 font-medium mb-1 block uppercase tracking-wider text-[10px]">Número de Coche *</label>
+                                            <input
+                                                required
+                                                type="text"
+                                                className="input-field w-full"
+                                                placeholder="Ej. 105"
+                                                value={formData.internalNumber}
+                                                onChange={e => setFormData({ ...formData, internalNumber: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm text-slate-400 font-medium mb-1 block uppercase tracking-wider text-[10px]">Estado</label>
+                                            <select
+                                                className="input-field w-full"
+                                                value={formData.status}
+                                                onChange={e => setFormData({ ...formData, status: e.target.value })}
+                                            >
+                                                {STATUS_OPTIONS.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-sm text-slate-400 font-medium mb-1 block uppercase tracking-wider text-[10px]">Marca</label>
+                                            <input
+                                                type="text"
+                                                className="input-field w-full"
+                                                placeholder="Mercedes"
+                                                value={formData.make}
+                                                onChange={e => setFormData({ ...formData, make: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm text-slate-400 font-medium mb-1 block uppercase tracking-wider text-[10px]">Modelo</label>
+                                            <input
+                                                type="text"
+                                                className="input-field w-full"
+                                                placeholder="O500"
+                                                value={formData.model}
+                                                onChange={e => setFormData({ ...formData, model: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-sm text-slate-400 font-medium mb-1 block uppercase tracking-wider text-[10px]">Matrícula</label>
+                                            <input
+                                                type="text"
+                                                className="input-field w-full"
+                                                placeholder="STU-1234"
+                                                value={formData.plate}
+                                                onChange={e => setFormData({ ...formData, plate: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm text-slate-400 font-medium mb-1 block uppercase tracking-wider text-[10px]">Año</label>
+                                            <input
+                                                type="number"
+                                                className="input-field w-full"
+                                                placeholder="2024"
+                                                value={formData.year}
+                                                onChange={e => setFormData({ ...formData, year: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm text-slate-400 font-medium mb-1 block uppercase tracking-wider text-[10px]">Tipo de Rotación (Cartón)</label>
+                                        <select
+                                            className="input-field w-full"
+                                            value={formData.rotationSchemeId}
+                                            onChange={e => setFormData({ ...formData, rotationSchemeId: e.target.value })}
+                                        >
+                                            <option value="">Carga Manual (Sin Rotación)</option>
+                                            {rotationSchemes.map(rs => (
+                                                <option key={rs.id} value={rs.id}>{rs.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="text-sm text-slate-400">Modelo</label>
-                                    <input
-                                        type="text"
-                                        className="input-field w-full"
-                                        placeholder="O500"
-                                        value={formData.model}
-                                        onChange={e => setFormData({ ...formData, model: e.target.value })}
-                                    />
+
+                                {/* Right Column: Driver Assignment */}
+                                <div className="space-y-4">
+                                    <label className="text-sm text-slate-400 font-medium mb-1 block uppercase tracking-wider text-[10px]">Asignar Conductores (Máx 3)</label>
+                                    <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-3 h-56 overflow-y-auto space-y-2 custom-scrollbar">
+                                        {allUsers.map(user => {
+                                            const isSelected = formData.driverIds.includes(user.id);
+                                            return (
+                                                <div
+                                                    key={user.id}
+                                                    onClick={() => {
+                                                        if (isSelected) {
+                                                            setFormData({ ...formData, driverIds: formData.driverIds.filter(id => id !== user.id) });
+                                                        } else if (formData.driverIds.length < 3) {
+                                                            setFormData({ ...formData, driverIds: [...formData.driverIds, user.id] });
+                                                        }
+                                                    }}
+                                                    className={clsx(
+                                                        "flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all border",
+                                                        isSelected ? "bg-primary-500/20 border-primary-500/50 text-white" : "hover:bg-slate-800 border-transparent text-slate-400"
+                                                    )}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={clsx("w-2 h-2 rounded-full", isSelected ? "bg-primary-500" : "bg-slate-600")}></div>
+                                                        <span className="text-xs font-medium">{user.fullName} ({user.internalNumber})</span>
+                                                    </div>
+                                                    {isSelected && <Plus className="w-3 h-3 rotate-45" />}
+                                                </div>
+                                            );
+                                        })}
+                                        {allUsers.length === 0 && <p className="text-slate-600 text-xs italic text-center py-10">No hay conductores disponibles</p>}
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 italic text-right">Seleccionados: {formData.driverIds.length}/3</p>
+
+                                    <div className="pt-2 border-t border-slate-700 mt-2">
+                                        <label className="text-sm text-slate-400 font-medium mb-1 block uppercase tracking-wider text-[10px]">Rotación Choferes</label>
+                                        <select
+                                            className="input-field w-full text-sm"
+                                            value={formData.features.driverRotationMode || 'ALL_SAME'}
+                                            onChange={e => setFormData({
+                                                ...formData,
+                                                features: { ...formData.features, driverRotationMode: e.target.value }
+                                            })}
+                                        >
+                                            <option value="ALL_SAME">Todos a la vez (Copia)</option>
+                                            <option value="WEEKLY">Semanal (Rotativo)</option>
+                                            <option value="BIWEEKLY">Quincenal (Rotativo)</option>
+                                            <option value="FIXED_TURNS">Turnos Fijos (Diario)</option>
+                                        </select>
+                                        <p className="text-[10px] text-slate-500 mt-1">
+                                            {formData.features.driverRotationMode === 'WEEKLY' && 'Los choferes rotarán turnos cada semana (Lun-Dom).'}
+                                            {formData.features.driverRotationMode === 'BIWEEKLY' && 'Los choferes rotarán cada 2 semanas.'}
+                                            {(formData.features.driverRotationMode === 'ALL_SAME' || formData.features.driverRotationMode === 'FIXED_TURNS') && 'Todos los choferes asignados trabajarán cada día (ej. Turno Mañana/Tarde).'}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div>
-                                <label className="text-sm text-slate-400">Matrícula</label>
-                                <input
-                                    type="text"
-                                    className="input-field w-full"
-                                    placeholder="STU-1234"
-                                    value={formData.plate}
-                                    onChange={e => setFormData({ ...formData, plate: e.target.value })}
-                                />
                             </div>
 
-                            <div className="flex gap-3 mt-6">
+                            {/* Custom Fields Section */}
+                            <div className="border-t border-slate-700 pt-4 mt-2">
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="text-sm text-slate-400 font-medium uppercase tracking-wider text-[10px]">Campos Adicionales</label>
+                                    <button type="button" onClick={addCustomField} className="text-primary-400 text-xs hover:text-primary-300 flex items-center gap-1">
+                                        <Plus className="w-3 h-3" /> Agregar Campo
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2">
+                                    {formData.features.customFields?.map((field: any, idx: number) => (
+                                        <div key={idx} className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Nombre (ej. Motor)"
+                                                className="input-field flex-1 text-xs py-1"
+                                                value={field.key}
+                                                onChange={(e) => updateCustomField(idx, 'key', e.target.value)}
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Valor (ej. V8)"
+                                                className="input-field flex-1 text-xs py-1"
+                                                value={field.value}
+                                                onChange={(e) => updateCustomField(idx, 'value', e.target.value)}
+                                            />
+                                            <button type="button" onClick={() => removeCustomField(idx)} className="text-red-400 hover:text-red-300 p-1">
+                                                <Plus className="w-4 h-4 rotate-45" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {(!formData.features.customFields || formData.features.customFields.length === 0) && (
+                                        <p className="text-slate-600 text-xs italic">Sin campos adicionales.</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-6 pt-4 border-t border-slate-700">
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}

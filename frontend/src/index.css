@@ -12,22 +12,47 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-900;
+    @apply bg-slate-950 text-slate-100;
   }
 }
 
 @layer components {
 
-  /* Premium Glass Effect */
+  /* Search & Filter Inputs Global Override */
+  input::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+
+  /* Premium Dark Glass Effect */
   .glass-panel {
-    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
+    @apply bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 shadow-xl rounded-2xl;
   }
 
   .glass-button {
-    @apply bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-500/30 transition-all duration-300;
+    @apply bg-primary-600 hover:bg-primary-500 text-white shadow-lg shadow-primary-500/20 transition-all duration-300 rounded-xl font-medium;
   }
 
+  /* High Contrast Input Fields (Dark Mode) */
   .input-field {
-    @apply w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all outline-none bg-white/80;
+    @apply w-full px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-900/50 text-slate-100 placeholder-slate-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all outline-none;
+  }
+
+  /* Fix for Select Options in Dark Mode */
+  select.input-field option {
+    @apply bg-slate-900 text-white py-2;
+  }
+
+  /* Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-slate-900;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-slate-700 rounded-full hover:bg-slate-600;
   }
 }

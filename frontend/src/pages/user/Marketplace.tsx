@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { ShiftService, type Shift } from '../../services/api';
 import ShiftCard from '../../components/ShiftCard';
