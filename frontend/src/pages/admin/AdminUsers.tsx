@@ -221,7 +221,7 @@ const AdminUsers = () => {
             ) : (
                 <>
                     {/* Desktop Table (Hidden on Mobile) */}
-                    <div className="hidden md:block glass-panel rounded-2xl border border-slate-800 overflow-hidden">
+                    <div className="hidden md:block glass-panel rounded-2xl border border-slate-800 overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-slate-900/50 text-slate-500 text-xs uppercase font-bold border-b border-slate-800">
                                 <tr>

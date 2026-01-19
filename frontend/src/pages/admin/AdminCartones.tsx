@@ -244,7 +244,7 @@ const AdminCartones = () => {
                 <OptimizationPanel seasonId={1} />
             </div>
 
-            <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 overflow-hidden min-h-[600px] relative">
+            <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 overflow-x-auto min-h-[600px] relative">
                 {/* Overlay backdrop */}
                 {showSelector && <div className="fixed inset-0 z-10" onClick={() => setShowSelector(false)}></div>}
 
