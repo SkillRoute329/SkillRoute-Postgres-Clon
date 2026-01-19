@@ -54,10 +54,11 @@ const RoadAlertsWidget = () => {
         }
     };
 
-    if (alerts.length === 0 && !canCreate) return null;
+    // Removed early return to ensure visibility
+    // if (alerts.length === 0 && !canCreate) return null;
 
     return (
-        <div className="mb-6 space-y-4">
+        <div id="road-alerts-widget" className="mb-6 space-y-4">
             {/* Header / Title */}
             <div className="flex justify-between items-center px-2">
                 <h3 className="text-white font-bold flex items-center gap-2">
@@ -67,12 +68,20 @@ const RoadAlertsWidget = () => {
                 {canCreate && !showForm && (
                     <button
                         onClick={() => setShowForm(true)}
-                        className="text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
+                        className="hidden md:block text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
                     >
                         + Reportar Novedad
                     </button>
                 )}
             </div>
+
+            {/* Empty State */}
+            {alerts.length === 0 && !showForm && (
+                <div className="glass-panel p-4 rounded-xl border border-slate-800/50 flex items-center gap-3 opacity-60">
+                    <Info className="w-5 h-5 text-slate-400" />
+                    <span className="text-sm text-slate-400">No hay alertas viales activas en este momento.</span>
+                </div>
+            )}
 
             {/* Create Form */}
             {showForm && (
@@ -181,6 +190,16 @@ const RoadAlertsWidget = () => {
                     </div>
                 ))}
             </div>
+
+            {/* FAB - Floating Action Button for Mobile */}
+            {canCreate && !showForm && (
+                <button
+                    onClick={() => setShowForm(true)}
+                    className="md:hidden fixed bottom-6 right-6 z-50 w-14 h-14 bg-yellow-500 text-black rounded-full shadow-lg shadow-yellow-500/20 flex items-center justify-center animate-bounce-in"
+                >
+                    <AlertTriangle className="w-6 h-6" />
+                </button>
+            )}
         </div>
     );
 };

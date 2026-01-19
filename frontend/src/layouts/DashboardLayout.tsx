@@ -14,7 +14,8 @@ import {
     FileSpreadsheet,
     Wrench,
     ClipboardList,
-    BarChart3
+    BarChart3,
+    AlertTriangle
 } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
@@ -159,6 +160,14 @@ const DashboardLayout = () => {
                         <SidebarLink to="/dashboard/admin/boletines" icon={ClipboardList} onClick={handleMobileLinkClick}>Boletines</SidebarLink>
                         <SidebarLink to="/dashboard/operativa/distribucion" icon={Users} onClick={handleMobileLinkClick}>Dist/ Personal</SidebarLink>
                         <SidebarLink to="/dashboard/admin/maintenance" icon={Wrench} onClick={handleMobileLinkClick}>Mantenimiento</SidebarLink>
+
+                        {/* New Road Alerts Link */}
+                        <div onClick={handleMobileLinkClick}>
+                            <a href="#road-alerts-widget" className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-slate-400 hover:bg-slate-800 hover:text-white">
+                                <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                                <span className="font-medium text-yellow-500">Alertas Viales</span>
+                            </a>
+                        </div>
                     </div>
 
                     <div className={clsx("text-xs font-semibold text-slate-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>ABL (Análisis y Logística)</div>
