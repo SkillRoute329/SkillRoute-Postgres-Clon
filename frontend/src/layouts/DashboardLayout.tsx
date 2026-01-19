@@ -20,6 +20,7 @@ import { useState } from 'react';
 import clsx from 'clsx';
 import NotificationsDropdown from '../components/NotificationsDropdown';
 import { useAuth } from '../context/AuthContext';
+import RoadAlertsWidget from '../components/RoadAlertsWidget';
 
 const SidebarLink = ({ to, icon: Icon, children, onClick }: { to: string; icon: any; children: React.ReactNode, onClick?: () => void }) => (
     <NavLink
@@ -249,6 +250,7 @@ const DashboardLayout = () => {
 
                 {/* Page Content */}
                 <div className="flex-1 overflow-auto p-3 md:p-6 bg-slate-950">
+                    <RoadAlertsWidget />
                     <Outlet />
                 </div>
             </main>
