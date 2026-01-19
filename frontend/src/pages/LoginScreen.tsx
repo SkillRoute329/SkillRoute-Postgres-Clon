@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogIn, KeyRound, UserCircle, AlertCircle, CheckCircle } from 'lucide-react';
+import { LogIn, KeyRound, UserCircle, AlertCircle, CheckCircle, Bus } from 'lucide-react';
 import clsx from 'clsx';
 import { UserService } from '../services/api';
 import ResetApp from '../components/ResetApp';
@@ -50,8 +50,8 @@ const LoginScreen = () => {
 
     if (isSuccess) {
         return (
-            <div key="login-success" className="flex items-center justify-center min-h-screen bg-slate-900 bg-[url('https://images.unsplash.com/photo-1494515855673-102c2498b22c?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat relative">
-                <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-md"></div>
+            <div key="login-success" className="flex items-center justify-center min-h-screen bg-slate-950 bg-[url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=2069&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat relative">
+                <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl"></div>
                 <div className="relative p-8 text-center animate-fade-in-up">
                     <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-500/20 mb-6 animate-pulse">
                         <CheckCircle className="w-10 h-10 text-emerald-400" />
@@ -64,17 +64,31 @@ const LoginScreen = () => {
     }
 
     return (
-        <div key="login-form" className="flex items-center justify-center min-h-screen bg-slate-900 bg-[url('https://images.unsplash.com/photo-1494515855673-102c2498b22c?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat relative">
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"></div>
+        <div key="login-form" className="flex items-center justify-center min-h-screen bg-slate-950 bg-[url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=2069&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat relative overflow-hidden">
+            {/* Animated background elements */}
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-600/20 rounded-full blur-[120px] animate-pulse"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[120px] animate-pulse-slow"></div>
 
-            <div className="relative w-full max-w-md p-8 glass-panel rounded-2xl animate-fade-in-up">
-                <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary-600/20 mb-4 animate-bounce-slow">
-                        <UserCircle className="w-8 h-8 text-primary-400" />
+            {/* Overlay */}
+            <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"></div>
+
+            <div className="relative w-full max-w-md p-10 glass-panel rounded-[2.5rem] animate-fade-in-up border border-white/10 shadow-2xl">
+                <div className="text-center mb-10">
+                    <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-primary-500 to-primary-700 p-0.5 mb-6 shadow-xl shadow-primary-900/20 group">
+                        <div className="w-full h-full bg-slate-900 rounded-[1.4rem] flex items-center justify-center transition-transform group-hover:scale-95 duration-500">
+                            <Bus className="w-12 h-12 text-primary-400 animate-float" />
+                        </div>
+                        {/* Decorative steering-like ring */}
+                        <div className="absolute inset-[-8px] border-2 border-primary-500/20 rounded-[2rem] animate-spin-slow"></div>
                     </div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight">TransformaFácil</h1>
-                    <p className="text-slate-400 mt-2">Gestión inteligente de turnos</p>
+                    <h1 className="text-4xl font-extrabold text-white tracking-tighter mb-2 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-400">
+                        TransForma-
+                    </h1>
+                    <div className="flex items-center justify-center gap-2">
+                        <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-primary-500/50"></div>
+                        <p className="text-primary-400 font-medium tracking-widest uppercase text-[10px]">Gestión en movimiento</p>
+                        <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-primary-500/50"></div>
+                    </div>
                 </div>
 
                 {error && (

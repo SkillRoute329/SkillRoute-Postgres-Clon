@@ -574,7 +574,7 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
                 </div>
 
                 <div className="mt-2 text-[8px] text-center text-slate-400 font-sans tracking-widest uppercase">
-                    TransformaFácil Digital System
+                    TransForma- Digital System
                 </div>
             </div>
         </div>

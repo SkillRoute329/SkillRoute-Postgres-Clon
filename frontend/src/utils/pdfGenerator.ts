@@ -15,7 +15,7 @@ export const generateShiftTicket = (shift: any, user: any) => {
     // Header
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Transforma Fáicl', centerX, y, { align: 'center' });
+    doc.text('TransForma-', centerX, y, { align: 'center' });
     y += 5;
 
     doc.setFontSize(10);

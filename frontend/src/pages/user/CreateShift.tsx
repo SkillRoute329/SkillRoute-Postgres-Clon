@@ -396,7 +396,7 @@ const CreateShift = () => {
                     </div>
                 </div>
 
-                {/* Payment Method Section (New TransformaFácil UI) */}
+                {/* Payment Method Section (New TransForma- UI) */}
                 <div>
                     <label className="text-sm font-medium text-slate-300 block mb-3"><span>Método de Cobro</span></label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

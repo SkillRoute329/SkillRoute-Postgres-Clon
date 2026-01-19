@@ -55,7 +55,7 @@ const AdminShifts = () => {
 
         if (action === 'approve') {
             if (shift.transformaFacil) {
-                const discount = prompt('Este turno es TransformaFácil. Ingrese el monto del descuento para el administrador:', '200');
+                const discount = prompt('Este turno es TransForma- (A Canje). Ingrese el monto del descuento para el administrador:', '200');
                 if (discount !== null) {
                     shift.transformaFacilDiscount = Number(discount);
                     shift.totalValue = Number(shift.totalValue) - shift.transformaFacilDiscount; // Apply discount to total

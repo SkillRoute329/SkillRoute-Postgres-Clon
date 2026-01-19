@@ -311,7 +311,7 @@ const AdminBalances = () => {
                         <span className="text-xs font-bold uppercase">A Cubrir (Admin)</span>
                     </div>
                     <div className="text-xl font-bold text-white">${globals.totalDiscounts.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                    <div className="text-[10px] text-purple-300/60 mt-1">Descuentos Transforma Fácil Est.</div>
+                    <div className="text-[10px] text-purple-300/60 mt-1">Descuentos TransForma- (A Canje) Est.</div>
                 </div>
 
                 <div className={clsx(

@@ -236,7 +236,7 @@ const AdminConfig = () => {
 
                     <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-800/50">
                         <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Descuento "Transforma Fácil"
+                            Descuento "TransForma-" (A Canje)
                         </label>
                         <div className="flex gap-2">
                             <div className="relative flex-1">
@@ -256,7 +256,7 @@ const AdminConfig = () => {
                         </div>
                         <p className="text-xs text-slate-500 mt-3 flex gap-2">
                             <AlertCircle className="w-4 h-4 shrink-0 text-primary-400" />
-                            Monto fijo descontado automáticamente al usar la opción Transforma Fácil.
+                            Monto fijo descontado automáticamente al usar la opción TransForma- (A Canje).
                         </p>
                     </div>
                 </div>

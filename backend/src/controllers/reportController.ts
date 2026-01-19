@@ -57,7 +57,7 @@ export const generateShiftsReport = async (req: Request, res: Response) => {
         doc.text('Coche', 160, y);
         doc.text('Línea', 220, y);
         doc.text('Valor Total', 300, y);
-        doc.text('TF Desc.', 400, y);
+        doc.text('Desc. TF-', 400, y);
         doc.text('Neto', 480, y);
 
         doc.font('Helvetica');
