@@ -19,13 +19,17 @@ export const createServiceDefinition = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Número de servicio y temporada requeridos' });
         }
 
+        const sCode = serviceNumber; // Use serviceNumber as code for consistency during migration
+        const dType = 'HABIL';       // Default to HABIL for AdminCartones legacy saves
+
         // Upsert logic (Update if exists, else Create)
         const definition = await prisma.serviceDefinition.upsert({
             where: {
-                tenantId_seasonId_serviceNumber: {
+                tenantId_seasonId_serviceCode_dayType: {
                     tenantId,
                     seasonId: Number(seasonId),
-                    serviceNumber
+                    serviceCode: sCode,
+                    dayType: dType
                 }
             },
             update: {
@@ -42,6 +46,8 @@ export const createServiceDefinition = async (req: Request, res: Response) => {
                 tenantId,
                 seasonId: Number(seasonId),
                 serviceNumber,
+                serviceCode: sCode,
+                dayType: dType,
                 line,
                 variant,
                 startTime,
