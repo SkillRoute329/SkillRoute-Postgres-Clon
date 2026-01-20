@@ -384,9 +384,13 @@ model ServiceDefinition {
   tenantId      Int
   seasonId      Int
   
-  serviceNumber String   // "2290"
-  line          String   // "370"
-  variant       String?  // "Sabadero", "Habil"
+  serviceCode   String   @default("0000") // Nuevo ID lógico (Ej: "1100")
+  serviceNumber String   // "2290" - Legado, se mantiene por compatibilidad UI
+  line          String   // "300"
+  variant       String?  // "Sabadero", "Habil" - Descriptivo
+  
+  dayType       String   @default("HABIL") // "HABIL", "SABADO", "DOMINGO" - CRÍTICO PARA MATRIZ
+  vehicleType   String   @default("DIESEL") // "HIBRIDO", "B7", "MT15"
   
   // Datos Estructurales (Fijos para este cartón)
   startTime     String   // "04:25"
@@ -402,7 +406,10 @@ model ServiceDefinition {
   season        Season   @relation(fields: [seasonId], references: [id])
   tenant        Tenant   @relation(fields: [tenantId], references: [id])
 
-  @@unique([tenantId, seasonId, serviceNumber])
+  // REGLA DE UNICIDAD ACTUALIZADA:
+  // Un servicio (1100) es único por Temporada y Tipo de Día.
+  // Ej: Servicio 1100 HABIL Verano != Servicio 1100 SABADO Verano != Servicio 1100 HABIL Invierno
+  @@unique([tenantId, seasonId, serviceCode, dayType])
 }
 
 // 10.3 Esquemas de Rotación (Lógica Cíclica)
