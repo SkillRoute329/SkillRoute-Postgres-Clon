@@ -1,163 +1,104 @@
-
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Datos extraídos de la Sábana de Verano 2026 - Casos Piloto
-const servicesVerano2026 = [
-    // CASO 1: Servicio Estándar (Convencional)
-    {
-        serviceCode: "1001",
-        line: "300",
-        seasonName: "VERANO 2026",
-        dayType: "HABIL",
-        vehicleType: "Convencional", // Rango 1001-1069
-        notes: "Servicio Base",
-        startTime: "06:38",
-        endTime: "21:26",
-        routeData: {
-            turn1: { start: "06:38", end: "14:05", locationEnd: "Terminal" },
-            turn2: { start: "14:05", end: "21:26", locationEnd: "Cementerio Central" }
-        }
-    },
-    // CASO 2: Servicio Híbrido con Recargo y Relevo Específico
-    {
-        serviceCode: "1100",
-        line: "329",
-        seasonName: "VERANO 2026",
-        dayType: "HABIL",
-        vehicleType: "Híbrido", // Rango 1100-1134
-        notes: "",
-        startTime: "05:20",
-        endTime: "20:30",
-        routeData: {
-            turn1: { start: "05:20", end: "12:00", locationEnd: "Terminal" },
-            turn2: {
-                start: "12:00",
-                end: "20:30",
-                reliefPoint: "SAINT BOIS",
-                overtime: "01:00" // "Rgo. 01:00" detectado en foto
-            }
-        }
-    },
-    // CASO 3: Servicio que "SACA COCHE" y "PARALIZA" (Corta servicio)
-    {
-        serviceCode: "1130",
-        line: "306",
-        seasonName: "VERANO 2026",
-        dayType: "HABIL",
-        vehicleType: "Híbrido",
-        notes: "SACA COCHE / PARALIZA",
-        startTime: "05:30",
-        endTime: "13:00",
-        routeData: {
-            turn1: { start: "05:30", end: "13:00", locationEnd: "SACA COCHE" },
-            turn2: null // No tiene segundo turno
-        }
-    },
-    // CASO 4: Servicio Complejo de 3 Turnos (Nocturno)
-    {
-        serviceCode: "1151",
-        line: "379",
-        seasonName: "VERANO 2026",
-        dayType: "HABIL",
-        vehicleType: "MT15", // Rango 1135-1159
-        notes: "SACA COCHE NOCTURNO",
-        startTime: "06:39",
-        endTime: "04:16",
-        routeData: {
-            turn1: { start: "06:39", end: "14:09", locationEnd: "Intercambiador Belloni" },
-            turn2: { start: "14:09", end: "21:10", locationEnd: "Intercambiador Belloni" },
-            turn3: {
-                start: "23:16",
-                end: "04:16",
-                description: "NOCTURNO - SACA COCHE 05:00"
-            }
-        }
-    },
-    // CASO 5: Servicio Eléctrico (Nueva Tecnología)
-    {
-        serviceCode: "1163",
-        line: "316",
-        seasonName: "VERANO 2026",
-        dayType: "HABIL",
-        vehicleType: "Eléctrico", // Rango 1163+
-        notes: "",
-        startTime: "04:45",
-        endTime: "19:09",
-        routeData: {
-            turn1: { start: "04:45", end: "11:39", locationEnd: "Km 16" },
-            turn2: { start: "11:39", end: "19:09", locationEnd: "Km 16" }
-        }
-    }
-];
-
 async function main() {
-    console.log('🚀 Iniciando Carga de Servicios Piloto (VERANO 2026)...');
+    console.log('🚀 Iniciando Carga Masiva: Sábana de Servicios Verano 2026...');
 
-    // 1. Obtener Tenant (Asumimos ID 1 o buscamos el primero)
-    const tenant = await prisma.tenant.findFirst();
-    if (!tenant) throw new Error("No existe Tenant. Ejecuta seed inicial primero.");
+    const tenant = await prisma.tenant.findFirst({ where: { slug: 'ucot' } }) || { id: 1 };
+    const tenantId = tenant.id;
 
-    // 2. Asegurar Temporada
-    console.log('📅 Verificando Temporada VERANO 2026...');
+    // 1. Asegurar Temporada
     let season = await prisma.season.findFirst({
-        where: {
-            tenantId: tenant.id,
-            name: 'VERANO 2026'
-        }
+        where: { tenantId, name: 'VERANO 2026' }
     });
 
     if (!season) {
-        console.log('⚠️ Creando Temporada VERANO 2026...');
+        console.log('📅 Creando Temporada VERANO 2026...');
         season = await prisma.season.create({
             data: {
-                tenantId: tenant.id,
+                tenantId,
                 name: 'VERANO 2026',
-                startDate: new Date('2026-01-01'), // Fechas aproximadas, ajustables
-                endDate: new Date('2026-03-31'),
+                startDate: new Date('2025-12-15'),
                 isActive: true
             }
         });
     }
 
-    // 3. Carga de Servicios (Upsert)
-    console.log(`📦 Procesando ${servicesVerano2026.length} servicios...`);
+    // 2. Limpiar servicios previos de esta temporada para evitar basura duplicada
+    console.log('🧹 Limpiando servicios previos de Verano 2026...');
+    await prisma.serviceDefinition.deleteMany({
+        where: { seasonId: season.id }
+    });
 
-    for (const s of servicesVerano2026) {
-        // Transformar datos a estructura DB
-        const serviceData = {
-            tenantId: tenant.id,
-            seasonId: season.id,
-            serviceCode: s.serviceCode,
-            serviceNumber: s.serviceCode, // Mapeo directo por ahora
-            line: s.line,
-            dayType: s.dayType,
-            vehicleType: s.vehicleType,
-            variant: s.notes || undefined,
-            startTime: s.startTime,
-            endTime: s.endTime,
-            routeData: JSON.stringify(s.routeData) // Serializar estructura compleja
-        };
+    // 3. Definición de Excepciones (Extracto de fotos)
+    const exceptions = new Map([
+        ["1001", { line: "300", type: "Convencional", t1: "06:38-14:05", t2: "14:05-21:26", t3: "21:26-07:21 (Cementerio)" }],
+        ["1009", { line: "PARALIZA", type: "Convencional", note: "Sin servicio asignado" }],
+        ["1010", { line: "PARALIZA", type: "Convencional", note: "Sin servicio asignado" }],
+        ["1060", { line: "328", type: "Convencional", t1: "06:33-14:33", t2: "14:33-21:46", t3: "21:46-07:13 (Nocturno)" }],
+        ["1089", { line: "328", type: "Piso Bajo", t1: "06:55-14:04", t2: "14:04-22:02" }],
+        ["1100", { line: "329", type: "Híbrido", t1: "05:20-12:00", t2: "12:00-20:30 (Rgo 01:00 Saint Bois)" }],
+        ["1101", { line: "316", type: "Híbrido", t1: "04:30-11:26", t2: "11:26-19:25" }],
+        ["1130", { line: "370", type: "Híbrido", t1: "05:05-12:35", t2: "16:51-00:51 (Corta y retoma)" }],
+        ["1151", { line: "379", type: "MT15", t1: "06:39-14:09", t2: "14:09-21:10", t3: "23:16-04:16 (Saca Coche Nocturno)" }],
+        ["1163", { line: "316", type: "Eléctrico", t1: "04:45-11:39", t2: "11:39-19:09" }]
+    ]);
 
-        // Upsert usando la Unique Key Compuesta
-        const result = await prisma.serviceDefinition.upsert({
-            where: {
-                tenantId_seasonId_serviceCode_dayType: { // Esta es la clave generada por Prisma
-                    tenantId: tenant.id,
-                    seasonId: season.id,
-                    serviceCode: s.serviceCode,
-                    dayType: s.dayType
-                }
-            },
-            update: serviceData, // Si existe, actualizamos todo porsiaca cambiaron horarios
-            create: serviceData
-        });
-
-        console.log(`✅ Procesado: Servicio ${s.serviceCode} (${s.vehicleType})`);
+    // Agregar Blancos (1070-1088)
+    for (let i = 1070; i <= 1088; i++) {
+        exceptions.set(i.toString(), { line: "EN BLANCO", type: "Piso Bajo", note: "Servicio Vacante" });
     }
 
-    console.log('🎉 Carga de Servicios Piloto Finalizada con Éxito.');
+    const allServices = [];
+
+    // 4. Generador por Rangos
+    const ranges = [
+        { start: 1001, end: 1069, defaultType: "Convencional" },
+        { start: 1070, end: 1099, defaultType: "Piso Bajo" },
+        { start: 1100, end: 1134, defaultType: "Híbrido" },
+        { start: 1135, end: 1162, defaultType: "MT15" },
+        { start: 1163, end: 1177, defaultType: "Eléctrico" },
+        { start: 1178, end: 1200, defaultType: "Micro" }
+    ];
+
+    console.log('📦 Generando matriz completa...');
+
+    for (const range of ranges) {
+        for (let code = range.start; code <= range.end; code++) {
+            const sCode = code.toString();
+            const exc = exceptions.get(sCode);
+
+            const serviceData = {
+                tenantId,
+                seasonId: season.id,
+                serviceCode: sCode,
+                serviceNumber: sCode, // Duplicado para compatibilidad
+                dayType: "HABIL",
+                line: exc?.line || "A DEFINIR",
+                vehicleType: exc?.type || range.defaultType,
+                startTime: (exc?.t1 || "06:00").split('-')[0],
+                endTime: (exc?.t2 || "22:00").split('-').pop() || "22:00",
+                routeData: JSON.stringify({
+                    t1: exc?.t1 || "06:00-14:00",
+                    t2: exc?.t2 || "14:00-22:00",
+                    t3: exc?.t3 || null,
+                    note: exc?.note || null
+                })
+            };
+            allServices.push(serviceData);
+        }
+    }
+
+    // 5. Inserción Masiva
+    console.log(`📥 Insertando ${allServices.length} servicios...`);
+
+    // Prisma deleteMany + createMany es eficiente para carga masiva inicial
+    await prisma.serviceDefinition.createMany({
+        data: allServices
+    });
+
+    console.log('🎉 Sábana de Servicios cargada con éxito.');
 }
 
 main()
