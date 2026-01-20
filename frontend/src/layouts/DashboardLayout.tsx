@@ -137,10 +137,24 @@ const DashboardLayout = () => {
                         </div>
                     )}
 
-                    {/* Fleet Management Section */}
+                    {/* --- DEPARTAMENTO DE TRÁNSITO --- */}
                     <div className="pt-4 mt-4 border-t border-slate-700/50">
                         <h4 className={clsx("px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2", !isSidebarOpen && "hidden")}>
-                            Operativa
+                            🚦 Departamento de Tránsito
+                        </h4>
+
+                        <SidebarLink to="/dashboard/admin/cartones" icon={FileSpreadsheet} onClick={handleMobileLinkClick}>Matriz de Servicios</SidebarLink>
+                        <SidebarLink to="/dashboard/operativa/distribucion" icon={CalendarClock} onClick={handleMobileLinkClick}>Distribución Diaria</SidebarLink>
+                        {/* Placeholder para futura Sábana de Horarios */}
+                        <div className="opacity-50 cursor-not-allowed">
+                            <SidebarLink to="#" icon={ClipboardList} onClick={() => { }}>Sábana de Horarios (P)</SidebarLink>
+                        </div>
+                    </div>
+
+                    {/* --- GESTIÓN DE FLOTA / TALLER --- */}
+                    <div className="pt-4 mt-4 border-t border-slate-700/50">
+                        <h4 className={clsx("px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2", !isSidebarOpen && "hidden")}>
+                            🛠️ Gestión de Flota
                         </h4>
                         <NavLink
                             to="/dashboard/fleet"
@@ -153,19 +167,17 @@ const DashboardLayout = () => {
                             )}
                         >
                             <Bus className="w-5 h-5" />
-                            <span className="font-medium">Coches / Dist</span>
+                            <span className="font-medium">Coches / Inventario</span>
                         </NavLink>
-                        <SidebarLink to="/dashboard/admin/shifts" icon={CalendarClock} onClick={handleMobileLinkClick}>Gestión Turnos</SidebarLink>
-                        <SidebarLink to="/dashboard/admin/cartones" icon={FileSpreadsheet} onClick={handleMobileLinkClick}>Gestión Cartones</SidebarLink>
-                        <SidebarLink to="/dashboard/admin/boletines" icon={ClipboardList} onClick={handleMobileLinkClick}>Boletines</SidebarLink>
-                        <SidebarLink to="/dashboard/operativa/distribucion" icon={Users} onClick={handleMobileLinkClick}>Dist/ Personal</SidebarLink>
-                        <SidebarLink to="/dashboard/admin/maintenance" icon={Wrench} onClick={handleMobileLinkClick}>Mantenimiento</SidebarLink>
 
-                        {/* New Road Alerts Link */}
+                        <SidebarLink to="/dashboard/admin/maintenance" icon={Wrench} onClick={handleMobileLinkClick}>Mantenimiento</SidebarLink>
+                        <SidebarLink to="/dashboard/admin/boletines" icon={ClipboardList} onClick={handleMobileLinkClick}>Boletines Técnicos</SidebarLink>
+
+                        {/* Road Alerts Link */}
                         <div onClick={handleMobileLinkClick}>
                             <a href="#road-alerts-widget" className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-slate-400 hover:bg-slate-800 hover:text-white">
                                 <AlertTriangle className="w-5 h-5 text-yellow-500" />
-                                <span className="font-medium text-yellow-500">Estado de Vía / Líneas</span>
+                                <span className="font-medium text-yellow-500">Alertas de Vía</span>
                             </a>
                         </div>
                     </div>

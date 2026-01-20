@@ -1,8 +1,9 @@
+// Eliminamos dependencias estáticas antiguas
 import { useState, useEffect } from 'react';
 import { Bus, AlertCircle, RefreshCw, UserX, Wand2, CheckCircle, Activity } from 'lucide-react';
-import { ShiftService, UserService, FleetService } from '../../services/api';
+import { ShiftService, UserService, FleetService, CartonService } from '../../services/api';
 import clsx from 'clsx';
-import { line300Data, line300ReverseData } from '../../data/lineTemplates';
+// import { line300Data, line300ReverseData } from '../../data/lineTemplates'; // YA NO SE USA
 
 const Distribution = () => {
     const [activeTab, setActiveTab] = useState<'all' | 'assigned' | 'available'>('all');
@@ -50,93 +51,63 @@ const Distribution = () => {
     };
 
     const handleGenerateDailyShifts = async () => {
-        if (!confirm("Se generarán los servicios para el día de hoy basados en la Matriz Línea 300. Si ya existen turnos, se duplicarán (en esta versión). ¿Continuar con la inicialización?")) return;
+        if (!confirm("Se generarán los servicios REALES para el día de hoy basados en la Matriz 'VERANO 2026' (HÁBIL). ¿Continuar?")) return;
 
         setProcessing(true);
         try {
             const today = getTodayStr();
 
-            // 0. System Check: Ensure Categories
-            // 0. System Check: Ensure Categories
+            // 0. Ensure Categories
             let categoriesResponse = await ShiftService.getCategories();
             let categories = Array.isArray(categoriesResponse) ? categoriesResponse : (categoriesResponse.data || []);
+            const defaultCat = categories[0]?.id || 1;
 
-            if (categories.length === 0) {
-                // Seed Categories if missing
-                await ShiftService.createCategory({ name: 'Servicio Ida', baseValue: 14000, extraHourValue: 3500 });
-                await ShiftService.createCategory({ name: 'Servicio Vuelta', baseValue: 14000, extraHourValue: 3500 });
-                // Re-fetch
-                categoriesResponse = await ShiftService.getCategories();
-                categories = Array.isArray(categoriesResponse) ? categoriesResponse : (categoriesResponse.data || []);
+            // 1. Obtener Servicios Reales de la DB (Matriz Cartones)
+            // TODO: En el futuro esto debe ser dinámico (detectar si es Sábado/Domingo automáticamente)
+            // Por ahora forzamos SEASON=2 (Verano) y DAY=HABIL
+            const seasonId = 2; // Asegurarse que ID 2 es Verano 2026 o buscarlo dinámicamente si es posible
+            const dayType = 'HABIL';
+
+            const serviceDefinitions = await CartonService.getAll(seasonId, dayType);
+
+            if (!serviceDefinitions || serviceDefinitions.length === 0) {
+                alert("No se encontraron definiciones de servicio para la temporada/día seleccionados.");
+                return;
             }
 
-            const defaultCat = categories[0]?.id;
-            if (!defaultCat) throw new Error("No se pudieron inicializar las categorías.");
+            console.log(`Generando ${serviceDefinitions.length} turnos desde definiciones...`);
 
-            // 1. System Check: Provision Fleet (Ensure 10 units exist for operations)
-            // In a real app, this would check DB first. Here we ensure they exist.
-            const vehicleNumbers = Array.from({ length: 10 }, (_, i) => `${101 + i}`);
-            for (const num of vehicleNumbers) {
-                try {
-                    await FleetService.createVehicle({
-                        number: num,
-                        plate: `SBA-${num}`,
-                        brand: 'Mercedes',
-                        model: 'O500',
-                        year: 2024,
-                        status: 'Active'
-                    });
-                } catch (e) { /* Already exists */ }
-            }
-
-            // 2. System Check: Provision Personnel (Ensure drivers exist)
-            for (let i = 1; i <= 14; i++) {
-                try {
-                    const internal = `90${i.toString().padStart(2, '0')}`;
-                    await UserService.create({
-                        internalNumber: internal,
-                        firstName: `Chofer ${i}`,
-                        lastName: `Test`,
-                        password: 'password123',
-                        role: 'User',
-                        jobRoleId: 1
-                    });
-                } catch (e) { /* Already exists */ }
-            }
-
-            // Refresh resources
+            // 2. Refresh resources for Auto-Assign logic
             const freshUsers = await UserService.getAll();
             const fleetDrivers = freshUsers.filter((u: any) => u.internalNumber && u.internalNumber.startsWith('90'));
             fleetDrivers.sort((a: any, b: any) => a.internalNumber.localeCompare(b.internalNumber));
 
-            // 3. Process Matrix: Generate Shifts from Definitions
-            const idaServices = line300Data.rows.map(r => ({ ...r, dir: 'Ida', line: '300' }));
-            const vueltaServices = line300ReverseData.rows.map(r => ({ ...r, dir: 'Vuelta', line: '300' }));
-            const activeServices = [...idaServices, ...vueltaServices].slice(0, 50); // Generating up to 50 services daily
+            // 3. Process Matrix: Generate Shifts from Real DB Definitions
+            for (let i = 0; i < serviceDefinitions.length; i++) {
+                const def = serviceDefinitions[i];
 
-            for (let i = 0; i < activeServices.length; i++) {
-                const srv = activeServices[i];
-                const carNum = `${101 + i}`;
+                // Extraer coche sugerido del tipo de vehículo (Mapeo Simulado)
+                // En producción esto debería buscar un coche disponible real del tipo correcto.
+                // Aquí simulamos asignación 1 a 1 para demo.
+                const carNum = def.serviceCode || `9${i.toString().padStart(3, '0')}`;
 
-                // Logic: Assign available driver. Leave one hole for "Management" (Scenario)
-                // We leave Index 7 (Coche 108) unassigned to demonstrate "Pending" management.
-                const driver = fleetDrivers[i];
-                const assignedUserId = (i === 7) ? null : (driver ? driver.id : null);
-
-                const cat = categories.find((c: any) => c.name.toLowerCase().includes(srv.dir.toLowerCase())) || categories[0];
+                // Auto-Assign logic (Simple Round Robin for demo)
+                const driver = fleetDrivers[i % fleetDrivers.length];
+                const assignedUserId = driver ? driver.id : null;
 
                 const createdShift = await ShiftService.create({
                     date: today,
-                    serviceNumber: srv.serviceNumber,
-                    endTime: srv.times.h8 || '23:59',
-                    time: Object.values(srv.times)[0],
-                    line: srv.line,
+                    serviceNumber: def.serviceNumber,
+                    endTime: def.endTime || '23:59', // Usa el horario real de fin
+                    time: def.startTime || '00:00', // Usa el horario real de inicio
+                    line: def.line,
                     carNumber: carNum,
-                    categoryId: cat?.id || defaultCat,
+                    categoryId: defaultCat,
                     extraHours: 0,
                     tip: false,
                     tipValue: 0,
-                    totalValue: 1400 // Standard shift value
+                    totalValue: 1400, // Standard shit value placeholder
+                    transformaFacil: false
                 });
 
                 if (createdShift && createdShift.id && assignedUserId) {
@@ -145,7 +116,7 @@ const Distribution = () => {
             }
 
             await loadData();
-            alert("Operativa del día inicializada correctamente.");
+            alert(`Operativa generada exitosamente (${serviceDefinitions.length} servicios creados).`);
 
         } catch (error) {
             console.error("Operations Error:", error);

@@ -298,8 +298,9 @@ export const CartonService = {
     save: async (data: any) => {
         return api.post('/service-definitions', data).then(res => res.data);
     },
-    getAll: async (seasonId?: number) => {
-        const query = seasonId ? `?seasonId=${seasonId}` : '';
+    getAll: async (seasonId?: number, dayType?: 'HABIL' | 'SABADO' | 'DOMINGO') => {
+        let query = seasonId ? `?seasonId=${seasonId}` : '?';
+        if (dayType) query += `&dayType=${dayType}`;
         return api.get(`/service-definitions${query}`).then(res => res.data);
     },
     delete: async (id: number) => {

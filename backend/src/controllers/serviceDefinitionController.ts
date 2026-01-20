@@ -63,25 +63,40 @@ export const createServiceDefinition = async (req: Request, res: Response) => {
 export const getServiceDefinitions = async (req: Request, res: Response) => {
     try {
         const user = (req as any).user;
-        const { seasonId } = req.query;
+        const { seasonId, dayType } = req.query;
 
         const where: any = { tenantId: user.tenantId };
+
+        // 1. Filtrar por Season
         if (seasonId) where.seasonId = Number(seasonId);
+
+        // 2. Filtrar por Tipo de Día (HABIL, SABADO, DOMINGO)
+        // Si no se envía dayType, devuelve todo (útil para administración general)
+        if (dayType) where.dayType = String(dayType).toUpperCase();
 
         const definitions = await prisma.serviceDefinition.findMany({
             where,
-            orderBy: { serviceNumber: 'asc' }
+            orderBy: { serviceNumber: 'asc' } // Mantener orden visual
         });
 
         // Parse JSON back to object
-        const parsed = definitions.map(d => ({
-            ...d,
-            routeData: JSON.parse(d.routeData)
-        }));
+        const parsed = definitions.map(d => {
+            let parsedRoute = {};
+            try {
+                parsedRoute = JSON.parse(d.routeData);
+            } catch (e) {
+                console.warn(`Error parsing routeData for Service ${d.serviceNumber}`);
+            }
+            return {
+                ...d,
+                routeData: parsedRoute
+            };
+        });
 
         res.json(parsed);
     } catch (error) {
-        res.status(500).json({ message: 'Error al obtener definiciones' });
+        console.error('Error fetching Service Definitions:', error);
+        res.status(500).json({ message: 'Error al obtener definiciones', details: String(error) });
     }
 };
 
