@@ -143,12 +143,14 @@ const DashboardLayout = () => {
                             🚦 Departamento de Tránsito
                         </h4>
 
-                        <SidebarLink to="/dashboard/admin/cartones" icon={FileSpreadsheet} onClick={handleMobileLinkClick}>Matriz de Servicios</SidebarLink>
-                        <SidebarLink to="/dashboard/operativa/distribucion" icon={CalendarClock} onClick={handleMobileLinkClick}>Distribución Diaria</SidebarLink>
-                        {/* Placeholder para futura Sábana de Horarios */}
-                        <div className="opacity-50 cursor-not-allowed">
-                            <SidebarLink to="#" icon={ClipboardList} onClick={() => { }}>Sábana de Horarios (P)</SidebarLink>
-                        </div>
+                        <SidebarLink to="/dashboard/admin/boletines" icon={ClipboardList} onClick={handleMobileLinkClick}>📋 Boletines (Inspectores)</SidebarLink>
+                        {/* Rotación apunta a Cartones por ahora como vista de lista, o placeholder si se prefiere */}
+                        <SidebarLink to="/dashboard/admin/cartones?view=list" icon={FileSpreadsheet} onClick={handleMobileLinkClick}>🔄 Rotación de Servicios</SidebarLink>
+                        <SidebarLink to="/dashboard/operativa/distribucion" icon={CalendarClock} onClick={handleMobileLinkClick}>🚌 Distribución Diaria</SidebarLink>
+                        <SidebarLink to="/dashboard/admin/cartones" icon={FileSpreadsheet} onClick={handleMobileLinkClick}>⚙️ Gestión de Cartones</SidebarLink>
+
+                        {/* NUEVO ITEM SOLICITADO FASE 2 */}
+                        <SidebarLink to="/dashboard/requests" icon={Users} onClick={handleMobileLinkClick}>📨 Solicitudes y Cambios</SidebarLink>
                     </div>
 
                     {/* --- GESTIÓN DE FLOTA / TALLER --- */}
@@ -171,7 +173,7 @@ const DashboardLayout = () => {
                         </NavLink>
 
                         <SidebarLink to="/dashboard/admin/maintenance" icon={Wrench} onClick={handleMobileLinkClick}>Mantenimiento</SidebarLink>
-                        <SidebarLink to="/dashboard/admin/boletines" icon={ClipboardList} onClick={handleMobileLinkClick}>Boletines Técnicos</SidebarLink>
+                        {/* Boletines removido de aquí arriba ya que paso a Transito */}
 
                         {/* Road Alerts Link */}
                         <div onClick={handleMobileLinkClick}>

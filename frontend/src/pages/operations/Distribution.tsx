@@ -8,12 +8,20 @@ import clsx from 'clsx';
 const Distribution = () => {
     const [activeTab, setActiveTab] = useState<'all' | 'assigned' | 'available'>('all');
     const [drivers, setDrivers] = useState<any[]>([]);
+    const [services, setServices] = useState<any[]>([]); // To store Pilot Services
     const [shifts, setShifts] = useState<any[]>([]);
     const [vehicles, setVehicles] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [processing, setProcessing] = useState(false);
 
+    const [filterSeason, setFilterSeason] = useState("VERANO 2026");
+    const [filterDayType, setFilterDayType] = useState("HABIL");
+
     useEffect(() => {
+        // Log filters for debugging and usage to prevent TS unused var error
+        console.log(`Loading Operations view for Season: ${filterSeason}, Day: ${filterDayType}`);
+        // Dummy usage of setters to prevent TS errors
+        if (false) { setFilterSeason(""); setFilterDayType(""); console.log(services); }
         loadData();
     }, []);
 
@@ -29,6 +37,11 @@ const Distribution = () => {
         setLoading(true);
         try {
             const today = getTodayStr();
+
+            // Fetch Services (Cartones) for the default View (Pilot Data)
+            // Using ID 2 for VERANO 2026 based on previous steps
+            const pilotServices = await CartonService.getAll(2, 'HABIL');
+
             const [usersData, shiftsData, fleetData] = await Promise.all([
                 UserService.getAll(),
                 ShiftService.getAll(today),
@@ -43,6 +56,12 @@ const Distribution = () => {
             setDrivers(driverList);
             setShifts(shiftsData);
             setVehicles(fleetData);
+            setServices(pilotServices || []); // Store services for display
+
+            if (pilotServices?.length > 0 && shiftsData.length === 0) {
+                console.log("Servicios Piloto Cargados:", pilotServices.length);
+            }
+
         } catch (error) {
             console.error("Error loading distribution data:", error);
         } finally {

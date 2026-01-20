@@ -41,6 +41,7 @@ model Tenant {
   penaltyRules            PenaltyRule[]
   userPenalties           UserPenalty[]
   roadAlerts              RoadAlert[]
+  shiftRequests           ShiftRequest[]
 }
 
 // 1. Usuarios
@@ -75,16 +76,75 @@ model User {
   inspections     Inspection[]
   
   // New Fields for Fleet Management
-  driverType      String    @default("FIXED") // FIXED, LIST
+  internalId      String?   @unique // Nuevo campo solicitado (ej: "329")
+  driverType      String    @default("FIXED") // Deprecated/Legacy
+  
+  driverStatus    DriverStatus @default(A_LA_ORDEN) // EFECTIVO_COCHE, A_LA_ORDEN_LISTA, LICENCIA_MEDICA
+  rotationScheme  PersonalRotationScheme @default(ESTANDAR_15x15) // ESTANDAR_15x15, SEMANAL, etc.
+  
   assignedVehicleId Int?
   assignedVehicle Vehicle?  @relation("VehicleDrivers", fields: [assignedVehicleId], references: [id])
+  
+  fairnessScore   Int       @default(100)
+  preferredPartnerId Int?   // ID de otro Usuario (Compañero)
+  
   reportsMade     MaintenanceReport[] @relation("Reporter")
   maintenanceLogs MaintenanceLog[]
   bulletinEntries BulletinEntry[]
   userPenalties   UserPenalty[]
+  shiftRequests   ShiftRequest[]
 
   @@unique([tenantId, internalNumber])
   @@unique([tenantId, email])
+}
+
+enum DriverStatus {
+  EFECTIVO_COCHE
+  A_LA_ORDEN
+  A_LA_ORDEN_LISTA
+  LICENCIA_MEDICA
+  VACACIONES
+}
+
+enum PersonalRotationScheme {
+  ESTANDAR_15x15
+  SEMANAL
+  FIJO_MANANA
+  FIJO_TARDE
+  ROTACION_DE_TRES
+}
+
+enum RequestType {
+  CORRELATIVO
+  MEDICO
+  CAMBIO_HORARIO
+  PASE_A_LISTA
+}
+
+enum RequestStatus {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+}
+
+model ShiftRequest {
+  id              String         @id @default(uuid())
+  tenantId        Int            @default(1)
+  requesterId     Int
+  type            RequestType
+  
+  targetDate      DateTime
+  targetShiftIndex Int?          // Para indicar qué turno del día (1, 2, 3)
+  
+  comments        String?
+  agreedWithPartnerId Int?       // Si es un cambio con otro
+  
+  status          RequestStatus  @default(PENDIENTE)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  requester       User           @relation(fields: [requesterId], references: [id])
+  tenant          Tenant         @relation(fields: [tenantId], references: [id])
 }
 
 
