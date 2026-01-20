@@ -144,8 +144,8 @@ const DashboardLayout = () => {
                         </h4>
 
                         <SidebarLink to="/dashboard/admin/boletines" icon={ClipboardList} onClick={handleMobileLinkClick}>📋 Boletines (Inspectores)</SidebarLink>
-                        {/* Rotación apunta a Cartones por ahora como vista de lista, o placeholder si se prefiere */}
-                        <SidebarLink to="/dashboard/admin/cartones?view=list" icon={FileSpreadsheet} onClick={handleMobileLinkClick}>🔄 Rotación de Servicios</SidebarLink>
+                        {/* Rotación apunta a la nueva vista especializada */}
+                        <SidebarLink to="/dashboard/admin/rotation-matrix" icon={FileSpreadsheet} onClick={handleMobileLinkClick}>🔄 Rotación de Servicios</SidebarLink>
                         <SidebarLink to="/dashboard/operativa/distribucion" icon={CalendarClock} onClick={handleMobileLinkClick}>🚌 Distribución Diaria</SidebarLink>
                         <SidebarLink to="/dashboard/admin/cartones" icon={FileSpreadsheet} onClick={handleMobileLinkClick}>⚙️ Gestión de Cartones</SidebarLink>
 

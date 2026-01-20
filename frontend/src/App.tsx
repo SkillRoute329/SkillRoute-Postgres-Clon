@@ -13,6 +13,7 @@ const AdminShifts = lazy(() => import('./pages/admin/AdminShifts'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminBalances = lazy(() => import('./pages/admin/AdminBalances'));
 const AdminCartones = lazy(() => import('./pages/admin/AdminCartones'));
+const RotationMatrix = lazy(() => import('./pages/traffic/RotationMatrix'));
 const AdminBoletines = lazy(() => import('./pages/admin/AdminBoletines'));
 const Distribution = lazy(() => import('./pages/operations/Distribution'));
 const AdminRRHH = lazy(() => import('./pages/admin/AdminRRHH'));
@@ -58,6 +59,7 @@ function App() {
                   <Route path="admin/shifts" element={<AdminShifts />} />
                   <Route path="admin/users" element={<AdminUsers />} />
                   <Route path="admin/balances" element={<AdminBalances />} />
+                  <Route path="admin/rotation-matrix" element={<RotationMatrix />} />
                   <Route path="admin/cartones" element={<AdminCartones />} />
                   <Route path="admin/boletines" element={<AdminBoletines />} />
                   <Route path="operativa/distribucion" element={<Distribution />} />
