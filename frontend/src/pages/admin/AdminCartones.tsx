@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import MobileCartonCard from '../../components/MobileCartonCard';
 import DigitalCarton, { type ServiceDefinitionData } from '../../components/DigitalCarton';
 import { Plus, LayoutTemplate } from 'lucide-react';
 import { CartonService, BulletinService } from '../../services/api';
@@ -94,10 +95,13 @@ const AdminCartones = () => {
     const [savedCartons, setSavedCartons] = useState<any[]>([]);
     const [showSelector, setShowSelector] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-    // Initial Load
     useEffect(() => {
         loadSavedCartons();
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
     }, []);
 
     const loadSavedCartons = async () => {
@@ -253,12 +257,23 @@ const AdminCartones = () => {
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
                     </div>
                 ) : (
-                    <DigitalCarton
-                        key={cartonData.serviceNumber + cartonData.line + Date.now()} // Force re-render
-                        data={cartonData}
-                        isEditable={true}
-                        onSave={handleSave}
-                    />
+                    {
+                        isMobile?(
+  // VISTA MÓVIL (NUEVA)
+  <MobileCartonCard
+    key = { cartonData.serviceNumber + cartonData.line + 'mobile' }
+    data = { cartonData }
+    onManage = {() => setIsEditing(true)}
+  />
+                ) : (
+                // VISTA ESCRITORIO (ORIGINAL - NO TOCAR PROPS)
+                <DigitalCarton
+                    key={cartonData.serviceNumber + cartonData.line + Date.now()}
+                    data={cartonData}
+                    isEditable={true}
+                    onSave={handleSave}
+                />
+)}
                 )}
             </div>
         </div>
