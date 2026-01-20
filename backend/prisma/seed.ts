@@ -113,6 +113,15 @@ async function main() {
     }
   });
   console.log('Upserted Test User: 101');
+
+  // --- NEW: Traffic Department Seeds ---
+  console.log('--- Iniciando Seeds de Tránsito ---');
+  const { seedServicesVerano2026 } = await import('../src/seeds/services_verano_2026');
+  const { seedBoletinesData } = await import('../src/seeds/boletines_data');
+
+  await seedServicesVerano2026(prisma);
+  await seedBoletinesData(prisma);
+  console.log('--- Finalizado Seeds de Tránsito ---');
 }
 
 main()

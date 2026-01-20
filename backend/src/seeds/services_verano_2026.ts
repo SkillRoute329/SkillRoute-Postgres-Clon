@@ -1,8 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
-
-async function main() {
+export async function seedServicesVerano2026(prisma: PrismaClient) {
     console.log('🚀 Iniciando Carga Masiva: Sábana de Servicios Verano 2026...');
 
     const tenant = await prisma.tenant.findFirst({ where: { slug: 'ucot' } }) || { id: 1 };
@@ -73,7 +71,7 @@ async function main() {
                 tenantId,
                 seasonId: season.id,
                 serviceCode: sCode,
-                serviceNumber: sCode, // Duplicado para compatibilidad
+                serviceNumber: sCode,
                 dayType: "HABIL",
                 line: exc?.line || "A DEFINIR",
                 vehicleType: exc?.type || range.defaultType,
@@ -93,19 +91,9 @@ async function main() {
     // 5. Inserción Masiva
     console.log(`📥 Insertando ${allServices.length} servicios...`);
 
-    // Prisma deleteMany + createMany es eficiente para carga masiva inicial
     await prisma.serviceDefinition.createMany({
         data: allServices
     });
 
     console.log('🎉 Sábana de Servicios cargada con éxito.');
 }
-
-main()
-    .catch((e) => {
-        console.error(e);
-        process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
-    });

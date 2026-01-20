@@ -1,8 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
-
-async function main() {
+export async function seedBoletinesData(prisma: PrismaClient) {
     console.log('🚀 Iniciando Carga de Boletines de Demostración...');
 
     let inspector = await prisma.user.findFirst({
@@ -25,7 +23,6 @@ async function main() {
     const tenantId = inspector.tenantId;
     const today = new Date();
 
-    // Datos Ficticios para Demo
     const boletinesDemo = [
         {
             date: today,
@@ -84,12 +81,3 @@ async function main() {
 
     console.log('✅ Carga de Boletines Finalizada.');
 }
-
-main()
-    .catch((e) => {
-        console.error(e);
-        process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
-    });

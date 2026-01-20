@@ -28,6 +28,7 @@ import reportRoutes from './routes/reportRoutes';
 import settingsRoutes from './routes/settingsRoutes';
 import backupRoutes from './routes/backupRoutes';
 import whatsappRoutes from './routes/whatsappRoutes';
+import { debugForceSeed } from './controllers/serviceDefinitionController';
 
 import { runMigration, seedDatabase } from './setup_db';
 import { whatsAppService } from './services/whatsappService';
@@ -101,6 +102,9 @@ try {
   app.use('/api/settings', settingsRoutes);
   app.use('/api/backups', backupRoutes);
   app.use('/api/whatsapp', whatsappRoutes);
+
+  // DEBUG ROUTES (EMERGENCY)
+  app.get('/api/debug/force-seed', debugForceSeed);
 
 } catch (error) {
   console.error('❌ [ROUTING] Error registering routes:', error);

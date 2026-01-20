@@ -1,6 +1,5 @@
-
 import { Router } from 'express';
-import { createServiceDefinition, getServiceDefinitions, deleteServiceDefinition } from '../controllers/serviceDefinitionController';
+import { createServiceDefinition, getServiceDefinitions, deleteServiceDefinition, debugForceSeed } from '../controllers/serviceDefinitionController';
 import { getOptimizationSuggestions } from '../controllers/optimizationController';
 import { authenticate } from '../middleware/authMiddleware';
 

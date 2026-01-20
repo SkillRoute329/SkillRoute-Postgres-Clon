@@ -117,6 +117,16 @@ export async function seedDatabase() {
             console.log('✅ [SEED] Admin account exists.');
         }
 
+        // --- NEW: Traffic Department Seeds (Services & Bulletins) ---
+        console.log('🌱 [SEED] Running Traffic Department massive seeds...');
+        // Dynamic imports to avoid issues with rootDir if prisma is outside src
+        const { seedServicesVerano2026 } = await import('./seeds/services_verano_2026');
+        const { seedBoletinesData } = await import('./seeds/boletines_data');
+
+        await seedServicesVerano2026(prisma);
+        await seedBoletinesData(prisma);
+        console.log('✅ [SEED] Traffic Department seeds completed.');
+
     } catch (error) {
         console.error('❌ [SEED] Seeding Failed:', error);
     } finally {
