@@ -93,6 +93,7 @@ function App() {
                   <Route path="driver/navigation" element={<DriverNavigation />} />
                   {/* <Route path="my-stats" element={<MyStats />} /> */}
                 </Route>
+                <Route path="/navigation" element={<Navigate to="/dashboard/driver/navigation" replace />} />
 
                 <Route path="/" element={<Navigate to="/login" replace />} />
               </Routes>

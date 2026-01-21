@@ -127,8 +127,13 @@ export async function seedDatabase() {
         await seedServicesVerano2026(prisma);
         await seedBoletinesData(prisma);
 
-        console.log('🌱 [SEED] Running Master Routes seed (UCOT Clean Slate)...');
-        await seedMasterRoutes();
+        const routeCount = await prisma.masterRoute.count();
+        if (routeCount === 0) {
+            console.log('🌱 [SEED] Master Routes table is empty. Running Master Routes seed (UCOT Clean Slate)...');
+            await seedMasterRoutes();
+        } else {
+            console.log('✅ [SEED] Master Routes already exist. Skipping seed.');
+        }
 
         console.log('✅ [SEED] Traffic Department seeds completed.');
 

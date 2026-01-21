@@ -37,6 +37,17 @@ const DashboardHome = () => {
                     <p className="text-xs text-slate-500 mt-1">Sin sanciones pendientes</p>
                 </div>
 
+                <div
+                    onClick={() => window.location.href = '/dashboard/driver/navigation'}
+                    className="glass-panel p-6 rounded-2xl border border-yellow-500/30 hover:bg-yellow-500/10 cursor-pointer transition-all animate-pulse shadow-lg shadow-yellow-500/10"
+                >
+                    <h3 className="font-bold text-yellow-500 mb-2 flex items-center gap-2">
+                        <span className="text-xl">📡</span> Alertas en la vía
+                    </h3>
+                    <div className="text-2xl font-bold text-white uppercase tracking-tighter">Entrar al Mapa</div>
+                    <p className="text-xs text-yellow-500/70 mt-1">Radar, zonas y reportes de tránsito</p>
+                </div>
+
                 {/* Placeholder for more widgets */}
                 <div className="glass-panel p-6 rounded-2xl border border-slate-800 opacity-50">
                     <h3 className="font-bold text-white mb-2">Próximo Turno</h3>
