@@ -34,7 +34,8 @@ const RotationMatrix = () => {
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
     // Filters
-    const [filterSeason, setFilterSeason] = useState(2); // ID 2: VERANO 2026
+    const [filterSeason, setFilterSeason] = useState<number | undefined>(undefined);
+    // const [filterSeason, setFilterSeason] = useState(2); // ID 2: VERANO 2026 // Deprecated
     const [filterDayType, setFilterDayType] = useState('HABIL');
 
     useEffect(() => {
@@ -124,9 +125,10 @@ const RotationMatrix = () => {
                         <Clock className="w-4 h-4 text-emerald-400" />
                         <select
                             className="bg-transparent text-sm font-bold text-white focus:outline-none"
-                            value={filterSeason}
-                            onChange={(e) => setFilterSeason(Number(e.target.value))}
+                            value={filterSeason || ''}
+                            onChange={(e) => setFilterSeason(e.target.value ? Number(e.target.value) : undefined)}
                         >
+                            <option value="">Temporada Activa</option>
                             <option value={2}>VERANO 2026</option>
                         </select>
                     </div>

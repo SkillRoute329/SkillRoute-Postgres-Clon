@@ -85,8 +85,17 @@ export const getServiceDefinitions = async (req: Request, res: Response) => {
 
         const where: any = { tenantId: user.tenantId };
 
-        // 1. Filtrar por Season
-        if (seasonId) where.seasonId = Number(seasonId);
+        // 1. Filtrar por Season (Si no viene, busca la ACTIVA)
+        if (seasonId) {
+            where.seasonId = Number(seasonId);
+        } else {
+            const activeSeason = await prisma.season.findFirst({
+                where: { tenantId: user.tenantId, isActive: true }
+            });
+            if (activeSeason) {
+                where.seasonId = activeSeason.id;
+            }
+        }
 
         // 2. Filtrar por Tipo de Día (HABIL, SABADO, DOMINGO)
         // Si no se envía dayType, devuelve todo (útil para administración general)
@@ -94,7 +103,8 @@ export const getServiceDefinitions = async (req: Request, res: Response) => {
 
         const definitions = await prisma.serviceDefinition.findMany({
             where,
-            orderBy: { serviceNumber: 'asc' } // Mantener orden visual
+            orderBy: { serviceNumber: 'asc' }, // Mantener orden visual
+            include: { season: true } // Include season info for verification
         });
 
         // Parse JSON back to object
