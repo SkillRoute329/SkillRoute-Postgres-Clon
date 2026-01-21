@@ -24,6 +24,12 @@ interface AlertType {
     description?: string;
 }
 
+interface PlannedDetour {
+    id: number;
+    name: string;
+    geometry: [number, number][];
+}
+
 // Map Updater Component for "Tracking Mode"
 // Rotation unused for now as Leaflet native rotation is complex without plugins
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -50,17 +56,24 @@ const DriverNavigation = () => {
     const [alerts, setAlerts] = useState<AlertType[]>([]);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [socket, setSocket] = useState<any>(null);
-
-    // Mock Route (Blue Line) - Example Montevideo coordinate
-    const officialRoute: [number, number][] = [
-        [-34.895, -56.165],
-        [-34.896, -56.166],
-        [-34.897, -56.168],
-        [-34.900, -56.170],
-        [-34.905, -56.175] // Extended...
-    ];
+    const [routeData, setRouteData] = useState<{ baseRoute: [number, number][], activeDetours: PlannedDetour[] } | null>(null);
 
     useEffect(() => {
+        // Fetch Route Data
+        const loadRoute = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API_URL}/navigation/route/370`, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {}
+                });
+                const data = await res.json();
+                setRouteData(data);
+            } catch (error) {
+                console.error("Error loading route:", error);
+            }
+        };
+        loadRoute();
+
         // Init Socket
         const newSocket = io(API_URL.replace('/api', '')); // Connect to root
         setSocket(newSocket);
@@ -118,6 +131,8 @@ const DriverNavigation = () => {
 
     if (!position) return <div className="h-screen flex items-center justify-center bg-slate-900 text-white">Buscando GPS...</div>;
 
+    const hasActiveDetour = routeData?.activeDetours && routeData.activeDetours.length > 0;
+
     return (
         <div className="relative w-full h-screen bg-slate-900 overflow-hidden">
             <MapContainer
@@ -133,8 +148,15 @@ const DriverNavigation = () => {
 
                 <MapController center={position} rotation={heading} />
 
-                {/* Official Route */}
-                <Polyline positions={officialRoute} color="blue" weight={6} opacity={0.8} />
+                {/* Base Route */}
+                {routeData?.baseRoute && (
+                    <Polyline positions={routeData.baseRoute} color="blue" weight={6} opacity={0.5} />
+                )}
+
+                {/* Active Detours */}
+                {routeData?.activeDetours?.map(detour => (
+                    <Polyline key={detour.id} positions={detour.geometry as any} color="orange" weight={6} opacity={0.9} dashArray="10, 10" />
+                ))}
 
                 {/* Bus Marker */}
                 <Marker position={position} icon={busIcon} />
@@ -148,14 +170,29 @@ const DriverNavigation = () => {
             </MapContainer>
 
             {/* HUD / UI Overlay */}
-            <div className="absolute top-4 left-4 right-4 z-[1000] flex justify-between pointer-events-none">
-                <div className="bg-slate-900/80 backdrop-blur p-4 rounded-2xl border border-slate-700 pointer-events-auto">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Navigation className="w-5 h-5 text-blue-400" />
-                        Línea 370
-                    </h2>
-                    <p className="text-slate-400 text-sm">Próxima: Av. Italia</p>
+            <div className="absolute top-4 left-4 right-4 z-[1000] flex flex-col gap-2 pointer-events-none">
+                <div className="bg-slate-900/80 backdrop-blur p-4 rounded-2xl border border-slate-700 pointer-events-auto flex justify-between items-center">
+                    <div>
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            <Navigation className="w-5 h-5 text-blue-400" />
+                            Línea 370
+                        </h2>
+                        <p className="text-slate-400 text-sm">Próxima: Av. Italia</p>
+                    </div>
                 </div>
+
+                {/* DETOUR ALERT */}
+                {hasActiveDetour && (
+                    <div className="bg-orange-600/90 backdrop-blur p-4 rounded-2xl border border-orange-500 pointer-events-auto animate-pulse flex items-center gap-3 shadow-lg shadow-orange-900/50">
+                        <AlertTriangle className="w-8 h-8 text-white" />
+                        <div>
+                            <h3 className="font-bold text-white text-lg">DESVÍO ACTIVO</h3>
+                            <p className="text-orange-100 text-sm">
+                                {routeData!.activeDetours[0].name}. Siga la línea naranja.
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Floating Action Button (FAB) */}

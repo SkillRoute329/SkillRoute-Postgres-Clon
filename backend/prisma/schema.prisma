@@ -42,6 +42,7 @@ model Tenant {
   userPenalties           UserPenalty[]
   roadAlerts              RoadAlert[]
   shiftRequests           ShiftRequest[]
+  plannedDetours          PlannedDetour[]
 }
 
 // 1. Usuarios
@@ -631,6 +632,25 @@ model RoadAlert {
   expiresAt       DateTime? // Auto-borrado opcional
   createdAt       DateTime @default(now())
   createdBy       Int?
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+// 17. Desvíos Programados (Ferias, Eventos)
+model PlannedDetour {
+  id              Int      @id @default(autoincrement())
+  tenantId        Int      @default(1)
+  name            String   // "Feria Piedras Blancas"
+  affectedLines   String   // JSON Array or CSV: ["306", "300"]
+  days            String   // JSON Array: ["MON", "TUE"]
+  startTime       String   // "06:00"
+  endTime         String   // "14:00"
+  
+  geometry        String   // JSON Polyline: [[lat,lng], [lat,lng]...]
+  
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
 }

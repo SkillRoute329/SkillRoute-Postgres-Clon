@@ -16,7 +16,8 @@ const ALLOWED_ENTITIES: Record<string, string> = {
     'maintenance': 'maintenanceReport', // Likely mapped to MaintenanceReport
     'service-definitions': 'serviceDefinition',
     'services': 'serviceDefinition', // Alias for SERVICES entity
-    'roadAlerts': 'roadAlert' // Mapped to RoadAlert
+    'roadAlerts': 'roadAlert', // Mapped to RoadAlert
+    'plannedDetours': 'plannedDetour' // Mapped to PlannedDetour
 };
 
 export const UniversalController = {

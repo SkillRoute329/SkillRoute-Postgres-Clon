@@ -103,5 +103,23 @@ export const ENTITY_REGISTRY: Record<string, EntityConfig> = {
             { key: 'latitude', label: 'Lat', type: 'number', editable: true },
             { key: 'longitude', label: 'Lon', type: 'number', editable: true },
         ]
+    },
+    'PLANNED_DETOURS': {
+        labels: {
+            title: 'Desvíos Programados',
+            singular: 'Desvío',
+            plural: 'Desvíos'
+        },
+        apiPath: 'plannedDetours',
+        actions: { import: false, export: true, edit: true, delete: true, create: true },
+        columns: [
+            { key: 'name', label: 'Nombre', type: 'text', required: true, editable: true },
+            { key: 'affectedLines', label: 'Líneas', type: 'text', required: true, editable: true },
+            { key: 'days', label: 'Días', type: 'text', required: true, editable: true },
+            { key: 'startTime', label: 'Inicio', type: 'text', editable: true },
+            { key: 'endTime', label: 'Fin', type: 'text', editable: true },
+            { key: 'geometry', label: 'Geometría JSON', type: 'json', editable: true },
+            { key: 'isActive', label: 'Activo', type: 'boolean', editable: true }
+        ]
     }
 };
