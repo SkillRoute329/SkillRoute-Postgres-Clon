@@ -4,6 +4,7 @@ import DigitalCarton, { type ServiceDefinitionData } from '../../components/Digi
 import { Plus, LayoutTemplate } from 'lucide-react';
 import { CartonService, BulletinService } from '../../services/api';
 import OptimizationPanel from '../../components/OptimizationPanel';
+import DataImporter from '../../components/DataImporter';
 
 const AdminCartones = () => {
     // ... code ...
@@ -244,8 +245,13 @@ const AdminCartones = () => {
             )}
 
             {/* Optimization Panel Integration */}
-            <div className="mb-6">
-                <OptimizationPanel seasonId={1} />
+            <div className="mb-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div className="xl:col-span-2">
+                    <OptimizationPanel seasonId={1} />
+                </div>
+                <div className="xl:col-span-1">
+                    <DataImporter />
+                </div>
             </div>
 
             <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 overflow-x-auto min-h-[600px] relative">

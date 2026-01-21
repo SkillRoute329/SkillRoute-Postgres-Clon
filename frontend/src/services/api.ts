@@ -368,6 +368,31 @@ export const RoadAlertService = {
     }
 };
 
+export const DataImportService = {
+    upload: async (formData: FormData) => {
+        const res = await fetch(`${API_URL}/data-import/upload/data`, {
+            method: 'POST',
+            // headers: getAuthHeaders(), // Do not set Content-Type manually with FormData!
+            // Need to merge auth header but exclude Content-Type
+            headers: {
+                ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {})
+            },
+            body: formData,
+        }).then(handleResponse);
+        return res.json();
+    },
+    downloadTemplate: async () => {
+        const token = getAuthToken();
+        const response = await fetch(`${API_URL}/data-import/template/download`, {
+            headers: {
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+            }
+        });
+        if (!response.ok) throw new Error('Error descargando plantilla');
+        return response.blob();
+    }
+};
+
 const api = {
     get: async (endpoint: string) => {
         const res = await fetch(`${API_URL}${endpoint}`, { headers: getAuthHeaders() }).then(handleResponse);
