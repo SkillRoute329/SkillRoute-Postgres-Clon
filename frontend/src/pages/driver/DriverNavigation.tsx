@@ -288,8 +288,20 @@ const DriverNavigation = () => {
                 <MapController center={position} />
                 <MapEvents onMapClick={handleMapLookup} />
 
-                {/* Draw Master Route */}
-                {routeData?.baseRoute && <Polyline positions={routeData.baseRoute} color="#3b82f6" weight={8} opacity={0.5} />}
+                {/* 2. Neon Polyline (Double Layer for 3D/Glow Effect) */}
+                {routeData?.baseRoute && (
+                    <>
+                        {/* Outer Glow / Border (Black/Darker) */}
+                        <Polyline positions={routeData.baseRoute} color="#000000" weight={10} opacity={0.8} />
+                        {/* Core Neon Line */}
+                        <Polyline positions={routeData.baseRoute} color="#00ff00" weight={5} opacity={1} />
+                    </>
+                )}
+
+                {/* Detours (Radioactive Orange Dashed) */}
+                {routeData?.activeDetours?.map(detour => (
+                    <Polyline key={detour.id} positions={detour.geometry} color="#ff4500" weight={5} dashArray="10, 10" opacity={0.9} />
+                ))}
 
                 {/* Draw Specialized Zones */}
                 {routeData?.tariffZones?.map(zone => (
