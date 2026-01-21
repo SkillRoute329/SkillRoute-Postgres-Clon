@@ -206,7 +206,17 @@ const AdminCartones = () => {
                         Importar Boletín
                     </button>
                     <button
-                        onClick={() => PdfService.generateBoletinOficial(savedCartons)}
+                        onClick={async () => {
+                            setLoading(true);
+                            try {
+                                await PdfService.generateBoletinOficial(savedCartons);
+                            } catch (e) {
+                                console.error(e);
+                                alert('Error generando PDF');
+                            } finally {
+                                setLoading(false);
+                            }
+                        }}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors shadow-lg shadow-emerald-900/20"
                     >
                         <Printer className="w-5 h-5" /> Exportar Boletín
