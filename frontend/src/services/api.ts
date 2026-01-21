@@ -400,6 +400,15 @@ export const DataImportService = {
     }
 };
 
+export const DriverService = {
+    getSchedule: async (month?: number, year?: number, viewMode: 'month' | 'week' = 'month') => {
+        let query = `?viewMode=${viewMode}`;
+        if (month) query += `&month=${month}`;
+        if (year) query += `&year=${year}`;
+        return api.get(`/driver/schedule${query}`).then(res => res.data);
+    }
+};
+
 const api = {
     get: async (endpoint: string) => {
         const res = await fetch(`${API_URL}${endpoint}`, { headers: getAuthHeaders() }).then(handleResponse);

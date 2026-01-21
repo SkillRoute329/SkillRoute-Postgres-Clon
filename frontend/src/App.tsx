@@ -29,6 +29,7 @@ const CreateShift = lazy(() => import('./pages/user/CreateShift'));
 const Marketplace = lazy(() => import('./pages/user/Marketplace'));
 const MyShifts = lazy(() => import('./pages/user/MyShifts'));
 const MyBalance = lazy(() => import('./pages/user/MyBalance'));
+const DriverSchedule = lazy(() => import('./pages/driver/DriverSchedule'));
 const ABLPage = lazy(() => import('./pages/abl/ABLPage'));
 const PenalizationsPage = lazy(() => import('./pages/abl/penalizations/PenalizationsPage'));
 
@@ -83,6 +84,7 @@ function App() {
                   <Route path="abl/penalizations" element={<PenalizationsPage />} />
                   <Route path="my-shifts" element={<MyShifts />} />
                   <Route path="my-balance" element={<MyBalance />} />
+                  <Route path="driver/schedule" element={<DriverSchedule />} />
                   {/* <Route path="my-stats" element={<MyStats />} /> */}
                 </Route>
 

@@ -22,6 +22,7 @@ import bulletinRoutes from './routes/bulletinRoutes';
 import penaltyRoutes from './routes/penaltyRoutes';
 import roadAlertRoutes from './routes/roadAlertRoutes';
 import dataImportRoutes from './routes/dataImportRoutes';
+import driverRoutes from './routes/driverRoutes'; // Imported
 
 // Restored routes
 import tenantRoutes from './routes/tenantRoutes';
@@ -106,6 +107,7 @@ try {
 
   // New Universal Import/Export Module
   app.use('/api/data-import', dataImportRoutes);
+  app.use('/api/driver', driverRoutes);
 
 
   // DEBUG ROUTES (EMERGENCY)

@@ -213,6 +213,8 @@ const DashboardLayout = () => {
 
                     {/* <SidebarLink to="/dashboard/my-stats" icon={BarChart3} onClick={handleMobileLinkClick}>Mis Estadísticas</SidebarLink> */}
 
+                    <SidebarLink to="/dashboard/driver/schedule" icon={CalendarClock} onClick={handleMobileLinkClick}>Mi Diagrama</SidebarLink>
+
                     <SidebarLink to="/dashboard/my-balance" icon={Wallet} onClick={handleMobileLinkClick}>Mi Balance</SidebarLink>
 
                     <div className="border-t border-slate-800 my-2 pt-2">
