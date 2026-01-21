@@ -21,6 +21,7 @@ import serviceDefinitionRoutes from './routes/serviceDefinitionRoutes';
 import bulletinRoutes from './routes/bulletinRoutes';
 import penaltyRoutes from './routes/penaltyRoutes';
 import roadAlertRoutes from './routes/roadAlertRoutes';
+import dataImportRoutes from './routes/dataImportRoutes';
 
 // Restored routes
 import tenantRoutes from './routes/tenantRoutes';
@@ -102,6 +103,10 @@ try {
   app.use('/api/settings', settingsRoutes);
   app.use('/api/backups', backupRoutes);
   app.use('/api/whatsapp', whatsappRoutes);
+
+  // New Universal Import/Export Module
+  app.use('/api/data-import', dataImportRoutes);
+
 
   // DEBUG ROUTES (EMERGENCY)
   app.get('/api/debug/force-seed', debugForceSeed);
