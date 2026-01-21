@@ -9,12 +9,13 @@ const prisma = new PrismaClient();
 const ALLOWED_ENTITIES: Record<string, string> = {
     'users': 'user',
     'vehicles': 'vehicle',
+    'stock': 'vehicle', // Alias for STOCK entity
     'departments': 'department',
-    'roles': 'role',
-    'penalties': 'penalty',
-    'maintenance': 'maintenance',
-    'service-definitions': 'serviceDefinition', // Special case logic might be needed
-    'items': 'inventoryItem' // Future proofing
+    'roles': 'jobRole', // Corrected from 'role' to 'jobRole' based on schema
+    'penalties': 'penaltyRule', // Likely mapped to PenaltyRule
+    'maintenance': 'maintenanceReport', // Likely mapped to MaintenanceReport
+    'service-definitions': 'serviceDefinition',
+    'services': 'serviceDefinition' // Alias for SERVICES entity
 };
 
 export const UniversalController = {
