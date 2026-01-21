@@ -45,6 +45,7 @@ model Tenant {
   plannedDetours          PlannedDetour[]
   masterRoutes            MasterRoute[]
   radars                  Radar[]
+  parts                   Part[]
 }
 
 // 18. Rutas Maestras (Shapefiles & Tarifas)
@@ -74,7 +75,8 @@ model TariffZone {
   routeId         Int
   name            String   // "Urbana", "Centrica", "Zonal E", "Sección 1"
   type            String   @default("POINT") // POINT (Limit), POLYGON, CIRCLE
-  price           Float?   // Precio opcional
+  price           Float?   // Precio Común
+  differentialPrice Float? // Precio Diferencial (Nuevo)
   latitude        Float    // Centro o punto de cruce
   longitude       Float
   geometry        String?  // JSON para polígonos ([ [lat,lng], ... ])
@@ -461,6 +463,7 @@ model MaintenanceReport {
   department     Department?    @relation(fields: [departmentId], references: [id])
   
   logs           MaintenanceLog[]
+  partUsages     PartUsage[]
 }
 
 model MaintenanceLog {
@@ -697,6 +700,13 @@ model PlannedDetour {
   days            String   // JSON Array: ["MON", "TUE"]
   startTime       String   // "06:00"
   endTime         String   // "14:00"
+
+  // Detalles de Obra (Nuevo)
+  street          String?
+  startSection    String?
+  endSection      String?
+  startDate       DateTime?
+  endDate         DateTime?
   
   geometry        String   // JSON Polyline: [[lat,lng], [lat,lng]...]
   
@@ -705,4 +715,37 @@ model PlannedDetour {
   updatedAt       DateTime @updatedAt
 
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+// 20. Inventario / Repuestos (Nuevo)
+model Part {
+  id             Int      @id @default(autoincrement())
+  tenantId       Int      @default(1)
+  sku            String   // Código único
+  description    String
+  currentStock   Int      @default(0)
+  minStock       Int      @default(5)
+  location       String?  // Ej: "Estantería A3"
+  
+  category       String?  // "Consumibles", "Motores", "Frenos"
+  unitCost       Decimal? @default(0.00)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  usages         PartUsage[]
+
+  @@unique([tenantId, sku])
+}
+
+model PartUsage {
+  id             Int      @id @default(autoincrement())
+  reportId       Int
+  partId         Int
+  quantity       Int
+  createdAt      DateTime @default(now())
+
+  report         MaintenanceReport @relation(fields: [reportId], references: [id])
+  part           Part              @relation(fields: [partId], references: [id])
 }

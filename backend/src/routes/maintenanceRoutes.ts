@@ -9,5 +9,6 @@ router.post('/', authenticate, maintenanceController.createReport);
 router.get('/', authenticate, maintenanceController.getReports); // Supports filters
 router.get('/:id', authenticate, maintenanceController.getReportDetails);
 router.put('/:id', authenticate, maintenanceController.updateReport); // Status changes, logs, transfers
+router.post('/:id/close', authenticate, maintenanceController.closeTicket);
 
 export default router;

@@ -173,5 +173,93 @@ export const maintenanceController = {
         } catch (error) {
             res.status(500).json({ message: 'Error' });
         }
+    },
+
+    closeTicket: async (req: Request, res: Response) => {
+        try {
+            const { id } = req.params;
+            const { solution, partsUsed } = req.body; // partsUsed: { partId: number, quantity: number }[]
+            const userId = (req as any).user.id;
+            const reportId = Number(id);
+
+            // 1. Validate Report
+            const report = await prisma.maintenanceReport.findUnique({
+                where: { id: reportId },
+            });
+
+            if (!report) return res.status(404).json({ message: 'Reporte no encontrado' });
+
+            // 2. Transaction
+            await prisma.$transaction(async (tx) => {
+                // A. Update Report Status to COMPLETED
+                await tx.maintenanceReport.update({
+                    where: { id: reportId },
+                    data: { status: 'COMPLETED' }
+                });
+
+                // B. Update Vehicle Status to OPERATIONAL
+                await tx.vehicle.update({
+                    where: { id: report.vehicleId },
+                    data: { status: 'OPERATIONAL' }
+                });
+
+                // C. Create Closing Log
+                await tx.maintenanceLog.create({
+                    data: {
+                        reportId,
+                        userId,
+                        action: 'RESOLVED',
+                        description: solution ? `Solución: ${solution}` : 'Ticket cerrado sin notas',
+                        newStatus: 'COMPLETED'
+                    }
+                });
+
+                // D. Process Parts
+                if (partsUsed && Array.isArray(partsUsed)) {
+                    for (const p of partsUsed) {
+                        const qty = Number(p.quantity);
+                        const partId = Number(p.partId);
+
+                        if (!partId || qty <= 0) continue;
+
+                        // Register Usage
+                        await tx.partUsage.create({
+                            data: {
+                                reportId,
+                                partId,
+                                quantity: qty
+                            }
+                        });
+
+                        // Decrement Stock
+                        const part = await tx.part.findUnique({ where: { id: partId } });
+                        if (part) {
+                            const newStock = part.currentStock - qty;
+                            await tx.part.update({
+                                where: { id: partId },
+                                data: { currentStock: newStock }
+                            });
+
+                            // Check Low Stock
+                            if (newStock < part.minStock) {
+                                await tx.notification.create({
+                                    data: {
+                                        tenantId: part.tenantId,
+                                        userId, // Notify current user for now
+                                        message: `⚠️ ALERTA DE STOCK: ${part.description} (SKU: ${part.sku}) está por debajo del mínimo (${newStock})`,
+                                        read: false
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+            });
+
+            res.json({ message: 'Ticket cerrado exitosamente' });
+        } catch (error) {
+            console.error('Error closing ticket:', error);
+            res.status(500).json({ message: 'Error cerrando ticket' });
+        }
     }
 };

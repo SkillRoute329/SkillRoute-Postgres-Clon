@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
     AlertTriangle, CheckCircle, Clock, Plus, Search,
-    Settings, Briefcase
+    Settings, Briefcase, Trash2
 } from 'lucide-react';
-import { MaintenanceService, FleetService, DepartmentService } from '../../services/api';
+import { MaintenanceService, FleetService, DepartmentService, UniversalService } from '../../services/api';
 import clsx from 'clsx';
 
 const STATUS_CONFIG: any = {
@@ -22,7 +22,7 @@ const MaintenanceDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [filterCheck, setFilterCheck] = useState('all'); // all, pending, process
 
-    // Modal State
+    // Create Report Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newReport, setNewReport] = useState({
         vehicleId: '',
@@ -33,8 +33,16 @@ const MaintenanceDashboard = () => {
         photoUrl: ''
     });
 
+    // Solve/Close Ticket Modal State
+    const [processModalOpen, setProcessModalOpen] = useState(false);
+    const [auditReport, setAuditReport] = useState<any>(null);
+    const [solution, setSolution] = useState('');
+    const [availableParts, setAvailableParts] = useState<any[]>([]);
+    const [selectedPartId, setSelectedPartId] = useState('');
+    const [selectedQty, setSelectedQty] = useState(1);
+    const [usedParts, setUsedParts] = useState<any[]>([]); // { partId, sku, description, quantity }
+
     useEffect(() => {
-        // Initial Fetch
         const init = async () => {
             setLoading(true);
             try {
@@ -45,6 +53,11 @@ const MaintenanceDashboard = () => {
                 setVehicles(vData);
                 setDepartments(dData);
                 fetchReports();
+
+                // Fetch Parts for autocomplete
+                UniversalService.list('parts', 1, 1000).then((res: any) => {
+                    setAvailableParts(res.data || []);
+                }).catch(() => console.error("Error loading parts"));
             } catch (error) {
                 console.error(error);
             } finally {
@@ -69,7 +82,6 @@ const MaintenanceDashboard = () => {
             await MaintenanceService.create(newReport);
             setIsModalOpen(false);
             fetchReports();
-            // Reset form
             setNewReport({
                 vehicleId: '',
                 departmentId: '',
@@ -80,6 +92,49 @@ const MaintenanceDashboard = () => {
             });
         } catch (error) {
             alert('Error al crear reporte');
+        }
+    };
+
+    const handleOpenProcess = (report: any) => {
+        setAuditReport(report);
+        setSolution('');
+        setUsedParts([]);
+        setProcessModalOpen(true);
+    };
+
+    const handleAddPart = () => {
+        if (!selectedPartId) return;
+        const part = availableParts.find(p => String(p.id) === selectedPartId);
+        if (!part) return;
+
+        setUsedParts(prev => [...prev, {
+            partId: part.id,
+            sku: part.sku,
+            description: part.description,
+            quantity: selectedQty
+        }]);
+
+        setSelectedPartId('');
+        setSelectedQty(1);
+    };
+
+    const handleRemovePart = (index: number) => {
+        setUsedParts(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const handleCloseTicket = async () => {
+        if (!auditReport) return;
+        try {
+            await MaintenanceService.closeTicket(auditReport.id, {
+                solution,
+                partsUsed: usedParts
+            });
+            setProcessModalOpen(false);
+            fetchReports();
+            alert("Ticket cerrado correctamente. Stock actualizado.");
+        } catch (error) {
+            console.error(error);
+            alert("Error al cerrar ticket");
         }
     };
 
@@ -132,7 +187,8 @@ const MaintenanceDashboard = () => {
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {reports.map((report) => (
-                        <div key={report.id} className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors flex flex-col">
+                        <div key={report.id} className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors flex flex-col relative group">
+
                             <div className="flex justify-between items-start mb-3">
                                 <div className="flex items-center gap-2">
                                     <div className="font-bold text-xl text-white">Unit {report.vehicle?.internalNumber}</div>
@@ -145,6 +201,19 @@ const MaintenanceDashboard = () => {
 
                             <h3 className="font-medium text-white mb-1 truncate">{report.title}</h3>
                             <p className="text-sm text-slate-400 line-clamp-2 mb-4 flex-1">{report.description}</p>
+
+                            {/* Process Button Overlay */}
+                            {report.status !== 'COMPLETED' && (
+                                <div className="absolute top-4 right-4">
+                                    <button
+                                        onClick={() => handleOpenProcess(report)}
+                                        className="bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                        title="Resolver / Cerrar Ticket"
+                                    >
+                                        <CheckCircle className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            )}
 
                             <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-800 text-xs text-slate-500">
                                 <div className="flex items-center gap-1">
@@ -250,6 +319,100 @@ const MaintenanceDashboard = () => {
                                 <button type="submit" className="flex-1 btn btn-primary py-2">Crear Reporte</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Process/Close Ticket Modal */}
+            {processModalOpen && auditReport && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="bg-slate-900 w-full max-w-lg rounded-2xl border border-slate-800 shadow-xl p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-white">Cerrar Reparación</h2>
+                            <button onClick={() => setProcessModalOpen(false)} className="text-slate-400 hover:text-white">
+                                <XIcon className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                                <div className="text-sm font-bold text-white">Unit {auditReport.vehicle?.internalNumber} - {auditReport.title}</div>
+                                <div className="text-xs text-slate-400">{auditReport.description}</div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-slate-400 mb-1">Solución Aplicada</label>
+                                <textarea
+                                    className="input-field w-full"
+                                    rows={3}
+                                    placeholder="Detalla qué trabajo se realizó..."
+                                    value={solution}
+                                    onChange={e => setSolution(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="p-3 border border-slate-700 rounded-lg">
+                                <label className="block text-sm font-bold text-slate-300 mb-2">Repuestos Utilizados</label>
+
+                                <div className="flex gap-2 mb-3">
+                                    <select
+                                        className="input-field flex-1 text-xs"
+                                        value={selectedPartId}
+                                        onChange={e => setSelectedPartId(e.target.value)}
+                                    >
+                                        <option value="">Buscar repuesto...</option>
+                                        {availableParts.map(p => (
+                                            <option key={p.id} value={p.id}>
+                                                {p.sku} - {p.description} (Stock: {p.currentStock})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        className="input-field w-16 text-center"
+                                        value={selectedQty}
+                                        onChange={e => setSelectedQty(Math.max(1, Number(e.target.value)))}
+                                    />
+                                    <button
+                                        onClick={handleAddPart}
+                                        disabled={!selectedPartId}
+                                        className="bg-primary-600 px-3 rounded-lg text-white hover:bg-primary-500 disabled:opacity-50"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                                {/* Parts List */}
+                                <div className="space-y-2">
+                                    {usedParts.map((part, idx) => (
+                                        <div key={idx} className="flex justify-between items-center bg-slate-800 p-2 rounded text-sm">
+                                            <div>
+                                                <div className="text-white font-medium">{part.quantity}x {part.sku}</div>
+                                                <div className="text-xs text-slate-400">{part.description}</div>
+                                            </div>
+                                            <button
+                                                onClick={() => handleRemovePart(idx)}
+                                                className="text-red-400 hover:text-red-300"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {usedParts.length === 0 && <div className="text-xs text-slate-500 text-center py-2">No se usaron repuestos</div>}
+                                </div>
+                            </div>
+
+                            <div className="pt-4 flex gap-3">
+                                <button onClick={() => setProcessModalOpen(false)} className="flex-1 py-2 text-slate-400 hover:text-white">Cancelar</button>
+                                <button
+                                    onClick={handleCloseTicket}
+                                    className="flex-1 btn bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-xl font-bold shadow-lg"
+                                >
+                                    Confirmar y Cerrar
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

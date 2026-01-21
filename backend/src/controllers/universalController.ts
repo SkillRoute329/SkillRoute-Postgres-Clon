@@ -21,7 +21,9 @@ const ALLOWED_ENTITIES: Record<string, string> = {
     'roadAlerts': 'roadAlert', // Mapped to RoadAlert
     'plannedDetours': 'plannedDetour', // Mapped to PlannedDetour
     'masterRoutes': 'masterRoute',
-    'radars': 'radar'
+    'radars': 'radar',
+    'tariffs': 'tariffZone',
+    'parts': 'part'
 };
 
 export const UniversalController = {

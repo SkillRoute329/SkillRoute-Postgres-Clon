@@ -276,6 +276,9 @@ export const MaintenanceService = {
     },
     update: async (id: number, data: any) => {
         return api.put(`/maintenance/${id}`, data).then(res => res.data);
+    },
+    closeTicket: async (id: number, data: { solution: string, partsUsed: any[] }) => {
+        return api.post(`/maintenance/${id}/close`, data).then(res => res.data);
     }
 };
 

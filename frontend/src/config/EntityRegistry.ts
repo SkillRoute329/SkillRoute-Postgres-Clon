@@ -124,15 +124,53 @@ export const ENTITY_REGISTRY: Record<string, EntityConfig> = {
             plural: 'Desvíos'
         },
         apiPath: 'plannedDetours',
-        actions: { import: false, export: true, edit: true, delete: true, create: true },
+        actions: { import: true, export: true, edit: true, delete: true, create: true },
         columns: [
             { key: 'name', label: 'Nombre', type: 'text', required: true, editable: true },
+            { key: 'street', label: 'Calle', type: 'text', editable: true },
+            { key: 'startSection', label: 'Desde (Tramo)', type: 'text', editable: true },
+            { key: 'endSection', label: 'Hasta (Tramo)', type: 'text', editable: true },
+            { key: 'startDate', label: 'Fecha Inicio', type: 'date', editable: true },
+            { key: 'endDate', label: 'Fecha Fin', type: 'date', editable: true },
             { key: 'affectedLines', label: 'Líneas', type: 'text', required: true, editable: true },
-            { key: 'days', label: 'Días', type: 'text', required: true, editable: true },
-            { key: 'startTime', label: 'Inicio', type: 'text', editable: true },
-            { key: 'endTime', label: 'Fin', type: 'text', editable: true },
             { key: 'geometry', label: 'Geometría JSON', type: 'json', editable: true },
             { key: 'isActive', label: 'Activo', type: 'boolean', editable: true }
+        ]
+    },
+    'TARIFFS': {
+        labels: {
+            title: 'Zonas Tarifarias',
+            singular: 'Zona',
+            plural: 'Zonas'
+        },
+        apiPath: 'tariffs', // Mapped to TariffZone
+        actions: { import: true, export: true, edit: true, delete: true, create: true },
+        columns: [
+            { key: 'name', label: 'Nombre Zonal', type: 'text', required: true, editable: true },
+            { key: 'price', label: 'Precio Común', type: 'number', editable: true },
+            { key: 'differentialPrice', label: 'Precio Diferencial', type: 'number', editable: true },
+            { key: 'type', label: 'Tipo', type: 'enum', options: ['POINT', 'POLYGON', 'CIRCLE'], editable: true },
+            { key: 'latitude', label: 'Latitud', type: 'number', editable: true },
+            { key: 'longitude', label: 'Longitud', type: 'number', editable: true },
+            { key: 'geometry', label: 'WKT/JSON', type: 'json', editable: true }
+        ]
+    },
+    'PARTS': {
+        labels: {
+            title: 'Inventario de Taller',
+            singular: 'Repuesto',
+            plural: 'Repuestos'
+        },
+        apiPath: 'parts', // Mapped to Part
+        actions: { import: true, export: true, edit: true, delete: true, create: true },
+        columns: [
+            { key: 'sku', label: 'SKU / Código', type: 'text', required: true, editable: true },
+            { key: 'description', label: 'Descripción', type: 'text', required: true, editable: true },
+            { key: 'category', label: 'Categoría', type: 'enum', options: ['CONSUMIBLES', 'MOTORES', 'FRENOS', 'CARROCERIA', 'ELECTRICIDAD'], editable: true },
+            { key: 'currentStock', label: 'Stock Actual', type: 'number', required: true, editable: true },
+            { key: 'minStock', label: 'Stock Mínimo', type: 'number', editable: true },
+            { key: 'location', label: 'Ubicación', type: 'text', editable: true },
+            { key: 'unitCost', label: 'Costo Unitario ($)', type: 'number', editable: true }
         ]
     },
     'MASTER_ROUTES': {
