@@ -376,6 +376,8 @@ model Vehicle {
   
   assignedDrivers User[]  @relation("VehicleDrivers")
   
+  serviceDefinitions ServiceDefinition[]
+
   rotationSchemeId Int?
   rotationScheme   RotationScheme? @relation(fields: [rotationSchemeId], references: [id])
 
@@ -462,6 +464,9 @@ model ServiceDefinition {
   // Detalle de paradas y horarios (JSON para flexibilidad)
   // Ej: [{location: "Pza. Cerro", time: "06:15"}, ...]
   routeData     String   // JSON
+
+  assignedVehicleId Int?
+  assignedVehicle   Vehicle? @relation(fields: [assignedVehicleId], references: [id])
 
   season        Season   @relation(fields: [seasonId], references: [id])
   tenant        Tenant   @relation(fields: [tenantId], references: [id])

@@ -309,6 +309,13 @@ export const CartonService = {
     getSuggestions: async (seasonId?: number) => {
         const query = seasonId ? `?seasonId=${seasonId}` : '';
         return api.get(`/service-definitions/optimize${query}`).then(res => res.data);
+    },
+    swapVehicle: async (id: number, vehicleId: number | null) => {
+        return fetch(`${API_URL}/service-definitions/${id}/swap`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ vehicleId })
+        }).then(res => handleResponse(res)).then(res => res.json());
     }
 };
 

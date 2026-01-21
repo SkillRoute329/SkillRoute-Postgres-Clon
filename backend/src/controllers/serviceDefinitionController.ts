@@ -104,7 +104,12 @@ export const getServiceDefinitions = async (req: Request, res: Response) => {
         const definitions = await prisma.serviceDefinition.findMany({
             where,
             orderBy: { serviceNumber: 'asc' }, // Mantener orden visual
-            include: { season: true } // Include season info for verification
+            include: {
+                season: true,
+                assignedVehicle: {
+                    select: { id: true, internalNumber: true, status: true, features: true }
+                }
+            }
         });
 
         // Parse JSON back to object
@@ -143,5 +148,40 @@ export const deleteServiceDefinition = async (req: Request, res: Response) => {
         res.json({ message: 'Eliminado correctamente' });
     } catch (error) {
         res.status(500).json({ message: 'Error al eliminar' });
+    }
+};
+
+export const swapVehicle = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { vehicleId } = req.body; // Can be null (to unassign)
+        const user = (req as any).user;
+
+        // 1. Validations
+        if (!id) return res.status(400).json({ message: 'Service ID required' });
+
+        // 2. Perform Swap
+        const updated = await prisma.serviceDefinition.update({
+            where: {
+                id: Number(id),
+                tenantId: user.tenantId
+            },
+            data: {
+                assignedVehicleId: vehicleId ? Number(vehicleId) : null
+            },
+            include: {
+                assignedVehicle: {
+                    select: { id: true, internalNumber: true, status: true }
+                }
+            }
+        });
+
+        res.json({
+            message: 'Unidad sustituida correctamente',
+            service: updated
+        });
+    } catch (error) {
+        console.error('Swap Vehicle Error:', error);
+        res.status(500).json({ message: 'Error al sustituir unidad', details: String(error) });
     }
 };
