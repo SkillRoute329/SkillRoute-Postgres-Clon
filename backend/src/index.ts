@@ -118,6 +118,7 @@ try {
 
   // DEBUG ROUTES (EMERGENCY)
   app.get('/api/debug/force-seed', debugForceSeed);
+  // /api/navigation/force-seed is now handled in navigationRoutes.ts
 
 } catch (error) {
   console.error('❌ [ROUTING] Error registering routes:', error);

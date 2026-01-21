@@ -81,3 +81,15 @@ export const getRoute = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Failed to fetch route' });
     }
 };
+
+export const forceSeed = async (req: Request, res: Response) => {
+    try {
+        console.log('--- Debug: Force Seeding Master Routes ---');
+        const { seedMasterRoutes } = await import('../seeds/SeedMasterRoutes');
+        await seedMasterRoutes();
+        res.json({ message: 'Seed de rutas maestras ejecutado con éxito' });
+    } catch (error) {
+        console.error('Force Seed Error:', error);
+        res.status(500).json({ message: 'Error al ejecutar seed de rutas', error: String(error) });
+    }
+};

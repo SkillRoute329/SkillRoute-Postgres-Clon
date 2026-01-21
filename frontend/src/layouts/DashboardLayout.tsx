@@ -175,13 +175,14 @@ const DashboardLayout = () => {
                         <SidebarLink to="/dashboard/admin/maintenance" icon={Wrench} onClick={handleMobileLinkClick}>Mantenimiento</SidebarLink>
                         {/* Boletines removido de aquí arriba ya que paso a Transito */}
 
-                        {/* Road Alerts Link */}
-                        <div onClick={handleMobileLinkClick}>
-                            <a href="#road-alerts-widget" className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-slate-400 hover:bg-slate-800 hover:text-white">
-                                <AlertTriangle className="w-5 h-5 text-yellow-500" />
-                                <span className="font-medium text-yellow-500">Alertas de Vía</span>
-                            </a>
-                        </div>
+                        <SidebarLink to="/dashboard/driver/navigation" icon={Bus} onClick={handleMobileLinkClick}>
+                            <span className="text-blue-400 font-bold">🗺️ Navegador UCOT</span>
+                        </SidebarLink>
+
+                        {/* Road Alerts Link Linked to Navigation */}
+                        <SidebarLink to="/dashboard/driver/navigation" icon={AlertTriangle} onClick={handleMobileLinkClick}>
+                            <span className="text-yellow-500 font-bold">Alertas de Vía</span>
+                        </SidebarLink>
                     </div>
 
                     <div className={clsx("text-xs font-semibold text-slate-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>ABL (Análisis y Logística)</div>
