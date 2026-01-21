@@ -624,6 +624,9 @@ model RoadAlert {
   type            String   // "ACCIDENTE", "FERIA", "DESVIO", "MANIFESTACION", "OBRAS"
   affectedLine    String?  // "370", "Todas", "105"
   severity        String   @default("MEDIUM") // "LOW", "MEDIUM", "HIGH"
+  latitude        Float    @default(0) // Geo-location
+  longitude       Float    @default(0)
+  radiusMeters    Int      @default(500) // Area of effect
   isActive        Boolean  @default(true)
   expiresAt       DateTime? // Auto-borrado opcional
   createdAt       DateTime @default(now())

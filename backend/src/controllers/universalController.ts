@@ -15,7 +15,8 @@ const ALLOWED_ENTITIES: Record<string, string> = {
     'penalties': 'penaltyRule', // Likely mapped to PenaltyRule
     'maintenance': 'maintenanceReport', // Likely mapped to MaintenanceReport
     'service-definitions': 'serviceDefinition',
-    'services': 'serviceDefinition' // Alias for SERVICES entity
+    'services': 'serviceDefinition', // Alias for SERVICES entity
+    'roadAlerts': 'roadAlert' // Mapped to RoadAlert
 };
 
 export const UniversalController = {

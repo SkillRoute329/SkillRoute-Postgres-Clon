@@ -85,5 +85,23 @@ export const ENTITY_REGISTRY: Record<string, EntityConfig> = {
             { key: 'endTime', label: 'Llegada', type: 'text', editable: true },
             { key: 'variant', label: 'Variante', type: 'text', editable: true }
         ]
+    },
+    'ROAD_ALERTS': {
+        labels: {
+            title: 'Alertas Viales (Waze)',
+            singular: 'Alerta',
+            plural: 'Alertas'
+        },
+        apiPath: 'roadAlerts',
+        actions: { import: false, export: true, edit: true, delete: true, create: true },
+        columns: [
+            { key: 'type', label: 'Tipo', type: 'enum', options: ['ACCIDENTE', 'FERIA', 'DESVIO', 'MANIFESTACION', 'OBRAS'], required: true, editable: true },
+            { key: 'title', label: 'Título', type: 'text', required: true, editable: true },
+            { key: 'description', label: 'Descripción', type: 'text', editable: true },
+            { key: 'severity', label: 'Severidad', type: 'enum', options: ['LOW', 'MEDIUM', 'HIGH'], editable: true },
+            { key: 'affectedLine', label: 'Línea Afectada', type: 'text', editable: true },
+            { key: 'latitude', label: 'Lat', type: 'number', editable: true },
+            { key: 'longitude', label: 'Lon', type: 'number', editable: true },
+        ]
     }
 };

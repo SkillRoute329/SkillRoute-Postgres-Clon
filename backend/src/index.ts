@@ -164,6 +164,10 @@ const server = app.listen(Number(PORT), '0.0.0.0', () => {
   deferredBoot();
 });
 
+// Initialize Socket.IO
+import { initSocket } from './services/socketService';
+initSocket(server);
+
 async function deferredBoot() {
   console.log('⏳ [BOOT] Starting deferred initialization tasks in 2 seconds...');
   await new Promise(r => setTimeout(r, 2000));
