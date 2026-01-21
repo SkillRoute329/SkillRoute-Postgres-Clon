@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { CartonService, FleetService } from "../../services/api";
+import UniversalResourceManager from "../../components/UniversalResourceManager";
 
 interface ServiceItem {
     id: number;
@@ -180,6 +181,11 @@ const RotationMatrix = () => {
                         </select>
                     </div>
                 </div>
+            </div>
+
+            {/* --- BULK MANAGEMENT --- */}
+            <div className="mb-8">
+                <UniversalResourceManager entityKey="ROTATION" />
             </div>
 
             {/* --- ACCORDION LIST --- */}

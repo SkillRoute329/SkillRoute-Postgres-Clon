@@ -16,6 +16,8 @@ const ALLOWED_ENTITIES: Record<string, string> = {
     'maintenance': 'maintenanceReport', // Likely mapped to MaintenanceReport
     'service-definitions': 'serviceDefinition',
     'services': 'serviceDefinition', // Alias for SERVICES entity
+    'rotation': 'serviceDefinition', // Alias for ROTATION entity (Uses same table but different columns)
+    'bulletins': 'serviceDefinition', // Alias for BULLETINS entity
     'roadAlerts': 'roadAlert', // Mapped to RoadAlert
     'plannedDetours': 'plannedDetour', // Mapped to PlannedDetour
     'masterRoutes': 'masterRoute',

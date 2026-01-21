@@ -3,7 +3,7 @@ import {
     Building2, Users, Receipt, Plus, Trash2, Edit2,
     X, DollarSign, Percent
 } from 'lucide-react';
-import { DepartmentService, DiscountService, UserService } from '../../services/api';
+import { DepartmentService, DiscountService } from '../../services/api';
 import clsx from 'clsx';
 
 const AdminRRHH = () => {
@@ -52,142 +52,10 @@ const AdminRRHH = () => {
 };
 
 // --- TAB: USERS ---
+import UniversalResourceManager from '../../components/UniversalResourceManager';
+
 const UsersTab = () => {
-    const [users, setUsers] = useState<any[]>([]);
-    const [depts, setDepts] = useState<any[]>([]);
-    const [showModal, setShowModal] = useState(false);
-
-    const [editingUser, setEditingUser] = useState<any>(null); // EDIT MODE
-
-    const [formData, setFormData] = useState({
-        internalNumber: '', firstName: '', lastName: '', phoneNumber: '',
-        departmentId: '', jobRoleId: '', password: 'user123'
-    });
-
-    useEffect(() => {
-        load();
-    }, []);
-
-    const load = async () => {
-        const [u, d] = await Promise.all([UserService.getAll(), DepartmentService.getAll()]);
-        setUsers(u);
-        setDepts(d);
-    };
-
-    const handleEditUser = (u: any) => {
-        setEditingUser(u);
-        setFormData({
-            internalNumber: u.internalNumber,
-            firstName: u.firstName,
-            lastName: u.lastName,
-            phoneNumber: u.phoneNumber || '',
-            departmentId: u.departmentId ? String(u.departmentId) : '',
-            jobRoleId: u.jobRoleId ? String(u.jobRoleId) : '',
-            password: ''
-        });
-        setShowModal(true);
-    };
-
-    const handleDeleteUser = async (id: number) => {
-        if (!confirm('¿Eliminar usuario permanentemente? Esta acción no se puede deshacer.')) return;
-        try {
-            await UserService.delete(id);
-            load();
-            alert('Usuario eliminado correctamente');
-        } catch (e) {
-            console.error(e);
-            alert('Error al eliminar usuario. Verifique que no tenga datos asociados (como turnos).');
-        }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            if (editingUser) {
-                await UserService.update(editingUser.id, formData);
-            } else {
-                await UserService.create(formData);
-            }
-            setShowModal(false);
-            setEditingUser(null);
-            setFormData({ internalNumber: '', firstName: '', lastName: '', phoneNumber: '', departmentId: '', jobRoleId: '', password: 'user123' });
-            load();
-            alert(editingUser ? 'Usuario actualizado' : 'Usuario creado');
-        } catch (err) {
-            alert('Error');
-        }
-    };
-
-    // Helper to get roles for selected dept
-    const activeRoles = depts.find(d => d.id === Number(formData.departmentId))?.jobRoles || [];
-
-    return (
-        <div>
-            <div className="flex justify-end mb-4">
-                <button onClick={() => { setEditingUser(null); setFormData({ internalNumber: '', firstName: '', lastName: '', phoneNumber: '', departmentId: '', jobRoleId: '', password: 'user123' }); setShowModal(true); }} className="btn btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> Nuevo Usuario</button>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {users.map(u => (
-                    <div key={u.id} className="glass-panel p-4 flex gap-4 items-center justify-between group">
-                        <div className="flex gap-4 items-center">
-                            <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center font-bold text-slate-500">
-                                {u.firstName[0]}
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-white">{u.fullName}</h3>
-                                <p className="text-xs text-slate-400">Int: {u.internalNumber} {u.phoneNumber && `| ${u.phoneNumber}`}</p>
-                                <div className="flex gap-2 mt-1">
-                                    {u.department?.name && <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded">{u.department.name}</span>}
-                                    {u.jobRole?.name && <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded">{u.jobRole.name}</span>}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleEditUser(u)} className="p-1.5 bg-slate-800 hover:text-white text-slate-400 rounded"><Edit2 className="w-3 h-3" /></button>
-                            <button onClick={() => handleDeleteUser(u.id)} className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded"><Trash2 className="w-3 h-3" /></button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-                    <div className="bg-slate-900 w-full max-w-md p-6 rounded-xl border border-slate-800">
-                        <h3 className="text-xl font-bold text-white mb-4">{editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}</h3>
-                        <form onSubmit={handleSubmit} className="space-y-3">
-                            <div className="grid grid-cols-2 gap-2">
-                                <input className="input-field w-full" placeholder="Legajo" value={formData.internalNumber} onChange={e => setFormData({ ...formData, internalNumber: e.target.value })} required />
-                                <input className="input-field w-full" placeholder="WhatsApp (Ej. 099123456)" value={formData.phoneNumber} onChange={e => setFormData({ ...formData, phoneNumber: e.target.value })} />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                                <input className="input-field w-full" placeholder="Nombre" value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} required />
-                                <input className="input-field w-full" placeholder="Apellido" value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} required />
-                            </div>
-
-                            <select className="input-field w-full" value={formData.departmentId} onChange={e => setFormData({ ...formData, departmentId: e.target.value, jobRoleId: '' })}>
-                                <option value="">Seleccionar Área...</option>
-                                {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                            </select>
-
-                            <select className="input-field w-full" value={formData.jobRoleId} onChange={e => setFormData({ ...formData, jobRoleId: e.target.value })} disabled={!formData.departmentId}>
-                                <option value="">Seleccionar Cargo...</option>
-                                {activeRoles.map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                            </select>
-
-                            {!editingUser && (
-                                <input type="password" className="input-field w-full" placeholder="Contraseña Inicial" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} required />
-                            )}
-
-                            <button className="btn btn-primary w-full mt-4">Guardar Usuario</button>
-                            <button type="button" onClick={() => setShowModal(false)} className="w-full text-center text-slate-500 text-sm mt-2">Cancelar</button>
-                        </form>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
+    return <UniversalResourceManager entityKey="USERS" />;
 };
 
 // --- TAB: STRUCTURE ---

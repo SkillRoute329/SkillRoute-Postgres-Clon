@@ -29,25 +29,25 @@ export interface EntityConfig {
     actions: EntityActionPermissions;
     labels: EntityLabels;
     pdfTitle?: string;
+    importerTemplate?: string;
 }
 
 export const ENTITY_REGISTRY: Record<string, EntityConfig> = {
     'USERS': {
         labels: {
-            title: 'Gestión de Usuarios',
-            singular: 'Usuario',
-            plural: 'Usuarios'
+            title: 'Gestión de Personal (RRHH)',
+            singular: 'Empleado',
+            plural: 'Personal'
         },
         apiPath: 'users',
+        importerTemplate: "/templates/plantilla_personal.xlsx",
         actions: { import: true, export: true, edit: true, delete: true, create: true },
         columns: [
-            { key: 'internalNumber', label: 'Interno', type: 'text', required: true, editable: true },
-            { key: 'firstName', label: 'Nombre', type: 'text', required: true, editable: true },
-            { key: 'lastName', label: 'Apellido', type: 'text', required: true, editable: true },
-            { key: 'email', label: 'Email', type: 'text', editable: true },
+            { key: 'internalNumber', label: 'Legajo', type: 'text', required: true, editable: true },
+            { key: 'fullName', label: 'Nombre Completo', type: 'text', required: true, editable: true },
             { key: 'role', label: 'Rol', type: 'enum', options: ['User', 'Admin', 'SuperAdmin', 'Inspector'], required: true, editable: true },
-            { key: 'driverStatus', label: 'Estado', type: 'enum', options: ['A_LA_ORDEN', 'EFECTIVO_COCHE', 'LICENCIA_MEDICA'], editable: true },
-            { key: 'passwordHash', label: 'Password', type: 'text', hiddenInTable: true, editable: true } // Cuidado con esto en prod, idealmente un campo virtual
+            { key: 'assignedVehicleId', label: 'Coche Fijo (ID)', type: 'number', editable: true },
+            { key: 'licenseExpirationDate', label: 'Vencimiento Libreta', type: 'date', editable: true } // Placeholder, will fail if not in DB but requested
         ]
     },
     'STOCK': { // Mapped to Vehicles internally for now as Fleet Inventory
@@ -68,22 +68,35 @@ export const ENTITY_REGISTRY: Record<string, EntityConfig> = {
             { key: 'year', label: 'Año', type: 'number', editable: true }
         ]
     },
-    'SERVICES': { // ServiceDefinitions
+    'ROTATION': {
         labels: {
-            title: 'Rotación de Servicios',
-            singular: 'Servicio',
-            plural: 'Servicios'
+            title: 'Matriz de Rotación',
+            singular: 'Asignación',
+            plural: 'Asignaciones'
         },
-        apiPath: 'service-definitions',
+        apiPath: 'rotation',
         actions: { import: true, export: true, edit: true, delete: true, create: true },
         columns: [
-            { key: 'serviceNumber', label: 'Nro. Servicio', type: 'text', required: true, editable: true },
-            { key: 'serviceCode', label: 'Código (ID)', type: 'text', required: true, editable: true },
+            { key: 'line', label: 'Línea', type: 'text', required: true, editable: true },
+            { key: 'serviceNumber', label: 'Turno', type: 'text', required: true, editable: true },
+            { key: 'startTime', label: 'Hora Salida', type: 'text', required: true, editable: true },
+            { key: 'assignedVehicleId', label: 'Coche (ID)', type: 'number', editable: true },
+            // Chofer not directly supported in flat ServiceDefinition import without relation logic
+        ]
+    },
+    'BULLETINS': {
+        labels: {
+            title: 'Boletines y Horarios',
+            singular: 'Boletín',
+            plural: 'Boletines'
+        },
+        apiPath: 'bulletins',
+        actions: { import: true, export: true, edit: true, delete: true, create: true },
+        columns: [
             { key: 'line', label: 'Línea', type: 'text', required: true, editable: true },
             { key: 'dayType', label: 'Tipo Día', type: 'enum', options: ['HABIL', 'SABADO', 'DOMINGO'], required: true, editable: true },
-            { key: 'startTime', label: 'Salida', type: 'text', required: true, editable: true },
-            { key: 'endTime', label: 'Llegada', type: 'text', editable: true },
-            { key: 'variant', label: 'Variante', type: 'text', editable: true }
+            { key: 'serviceCode', label: 'Frecuencia (Ref)', type: 'text', editable: true },
+            { key: 'startTime', label: 'Hora Inicio', type: 'text', required: true, editable: true }
         ]
     },
     'ROAD_ALERTS': {
