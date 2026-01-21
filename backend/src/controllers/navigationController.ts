@@ -4,40 +4,35 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Hardcoded mock route for '370' for MVP
-// In production this would come from the database (Route table)
-const MOCK_ROUTES: Record<string, [number, number][]> = {
-    '370': [
-        [-34.895, -56.165],
-        [-34.896, -56.166],
-        [-34.897, -56.168],
-        [-34.900, -56.170],
-        [-34.905, -56.175],
-        [-34.910, -56.180],
-        [-34.915, -56.185],
-        [-34.920, -56.190]
-    ]
-};
+// Hardcoded mock route strictly for fallback if DB empty
+const FALLBACK_ROUTE: [number, number][] = [
+    [-34.895, -56.165], [-34.896, -56.166], [-34.897, -56.168], [-34.900, -56.170]
+];
 
 export const getRoute = async (req: Request, res: Response) => {
     try {
         const { line } = req.params;
         const now = new Date();
-        const currentDay = ['DOM', 'LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB'][now.getDay()]; // Verify consistency with ENUM
+        const currentDay = ['DOM', 'LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB'][now.getDay()];
         const currentTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
 
         console.log(`[Navigation] Getting route for line ${line} at ${currentDay} ${currentTime}`);
 
-        // 1. Get Base Route
-        const baseRoute = MOCK_ROUTES[line] || MOCK_ROUTES['370']; // Default to 370 if not found for demo
+        // 1. Get Master Route from DB
+        const masterRoute = await prisma.masterRoute.findFirst({
+            where: { line: line, isActive: true },
+            include: { tariffZones: { orderBy: { order: 'asc' } } }
+        });
+
+        const baseRoute = masterRoute ? JSON.parse(masterRoute.geometry) : FALLBACK_ROUTE;
+        const tariffZones = (masterRoute?.tariffZones || []).map(tz => ({
+            ...tz,
+            geometry: tz.geometry ? JSON.parse(tz.geometry) : null
+        }));
 
         // 2. Find Active Planned Detours
-        // Need to parse 'affectedLines' JSON/String and 'days'.
-        // This is a naive implementation. For prod, use database JSON queries if supported or normalize tables.
         const allDetours = await prisma.plannedDetour.findMany({
-            where: {
-                isActive: true
-            }
+            where: { isActive: true }
         });
 
         const activeDetours = allDetours.filter(detour => {
@@ -49,14 +44,13 @@ export const getRoute = async (req: Request, res: Response) => {
             if (!lines.includes(line)) return false;
 
             // Check Day
-            // Assuming 'days' string "LUN,MAR" or JSON
             const days = detour.days.includes('[')
                 ? JSON.parse(detour.days)
                 : detour.days.split(',').map(s => s.trim());
 
             if (!days.includes(currentDay)) return false;
 
-            // Check Time (Simple String Comparison HH:MM)
+            // Check Time
             if (detour.startTime && detour.endTime) {
                 return currentTime >= detour.startTime && currentTime <= detour.endTime;
             }
@@ -64,14 +58,21 @@ export const getRoute = async (req: Request, res: Response) => {
             return true;
         });
 
-        // 3. Return Combined Data
+        // 3. Fetch Radars (Optimize with PostGIS later, now fetch all)
+        const radars = await prisma.radar.findMany();
+
+        // 4. Return Combined Data
         res.json({
             line,
+            origin: masterRoute?.origin || 'Unknown',
+            destination: masterRoute?.destination || 'Unknown',
             baseRoute,
+            tariffZones,
+            radars,
             activeDetours: activeDetours.map(d => ({
                 id: d.id,
                 name: d.name,
-                geometry: JSON.parse(d.geometry) // Ensure it's returned as object
+                geometry: JSON.parse(d.geometry)
             }))
         });
 

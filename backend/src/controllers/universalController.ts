@@ -17,7 +17,9 @@ const ALLOWED_ENTITIES: Record<string, string> = {
     'service-definitions': 'serviceDefinition',
     'services': 'serviceDefinition', // Alias for SERVICES entity
     'roadAlerts': 'roadAlert', // Mapped to RoadAlert
-    'plannedDetours': 'plannedDetour' // Mapped to PlannedDetour
+    'plannedDetours': 'plannedDetour', // Mapped to PlannedDetour
+    'masterRoutes': 'masterRoute',
+    'radars': 'radar'
 };
 
 export const UniversalController = {
@@ -125,8 +127,22 @@ export const UniversalController = {
         try {
             const { entity, id } = req.params;
             const modelName = ALLOWED_ENTITIES[entity];
+            const numericId = Number(id);
+
+            // SPECIAL CASCADE LOGIC
+            if (modelName === 'masterRoute') {
+                const route = await prisma.masterRoute.findUnique({ where: { id: numericId } });
+                if (route) {
+                    // 1. Delete associated RoadAlerts
+                    await prisma.roadAlert.deleteMany({
+                        where: { affectedLine: route.line }
+                    });
+                    // 2. TariffZones are already Cascade in DB, so no need here if correctly set in schema.
+                }
+            }
+
             // @ts-ignore
-            await prisma[modelName].delete({ where: { id: Number(id) } });
+            await prisma[modelName].delete({ where: { id: numericId } });
             res.json({ success: true });
         } catch (error) {
             res.status(500).json({ message: String(error) });

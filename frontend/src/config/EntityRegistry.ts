@@ -121,5 +121,38 @@ export const ENTITY_REGISTRY: Record<string, EntityConfig> = {
             { key: 'geometry', label: 'Geometría JSON', type: 'json', editable: true },
             { key: 'isActive', label: 'Activo', type: 'boolean', editable: true }
         ]
+    },
+    'MASTER_ROUTES': {
+        labels: {
+            title: 'Rutas y Recorridos',
+            singular: 'Recorrido',
+            plural: 'Recorridos'
+        },
+        apiPath: 'masterRoutes',
+        actions: { import: false, export: true, edit: true, delete: true, create: true },
+        columns: [
+            { key: 'line', label: 'Línea', type: 'text', required: true, editable: true },
+            { key: 'variant', label: 'Variante', type: 'text', required: true, editable: true },
+            { key: 'origin', label: 'Origen', type: 'text', editable: true },
+            { key: 'destination', label: 'Destino', type: 'text', editable: true },
+            { key: 'geometry', label: 'Geometría (JSON)', type: 'json', editable: true },
+            { key: 'isActive', label: 'Activo', type: 'boolean', editable: true }
+        ]
+    },
+    'RADARS': {
+        labels: {
+            title: 'Cámaras y Radares',
+            singular: 'Radar',
+            plural: 'Radares'
+        },
+        apiPath: 'radars',
+        actions: { import: true, export: true, edit: true, delete: true, create: true },
+        columns: [
+            { key: 'name', label: 'Nombre', type: 'text', required: true, editable: true },
+            { key: 'latitude', label: 'Latitud', type: 'number', required: true, editable: true },
+            { key: 'longitude', label: 'Longitud', type: 'number', required: true, editable: true },
+            { key: 'speedLimit', label: 'Límite (km/h)', type: 'number', required: true, editable: true },
+            { key: 'type', label: 'Tipo', type: 'enum', options: ['CAMERA', 'RADAR', 'DANGEROUS_CURVE'], required: true, editable: true }
+        ]
     }
 };

@@ -42,11 +42,22 @@ const UniversalResourceManager = ({ entityKey }: Props) => {
         }
     };
 
-    const handleDelete = async (id: number) => {
+    const handleDelete = async (item: any) => {
         if (!config.actions.delete) return;
-        if (!window.confirm('¿Seguro que desea eliminar este registro?')) return;
+
+        const isMasterRoute = entityKey === 'MASTER_ROUTES';
+        const itemName = item.line || item.name || item.id;
+
+        // Double confirmation for critical data
+        if (isMasterRoute) {
+            if (!window.confirm(`⚠️ ESTA ACCIÓN ES IRREVERSIBLE. ¿Realmente desea ELIMINAR LA LÍNEA ${itemName}?`)) return;
+            if (!window.confirm(`¿CONFIRMA borrar todos los trazados, paradas y alertas asociadas a la LÍNEA ${itemName}?`)) return;
+        } else {
+            if (!window.confirm(`¿Seguro que desea eliminar el registro "${itemName}"?`)) return;
+        }
+
         try {
-            await UniversalService.delete(config.apiPath, id);
+            await UniversalService.delete(config.apiPath, item.id);
             loadData();
         } catch (error) {
             alert('Error al eliminar');
@@ -221,7 +232,7 @@ const UniversalResourceManager = ({ entityKey }: Props) => {
                                                 )}
                                                 {config.actions.delete && (
                                                     <button
-                                                        onClick={() => handleDelete(row.id)}
+                                                        onClick={() => handleDelete(row)}
                                                         className="p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors"
                                                     >
                                                         <Trash2 className="w-4 h-4" />

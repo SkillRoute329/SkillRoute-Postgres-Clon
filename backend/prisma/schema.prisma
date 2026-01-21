@@ -43,6 +43,58 @@ model Tenant {
   roadAlerts              RoadAlert[]
   shiftRequests           ShiftRequest[]
   plannedDetours          PlannedDetour[]
+  masterRoutes            MasterRoute[]
+  radars                  Radar[]
+}
+
+// 18. Rutas Maestras (Shapefiles & Tarifas)
+model MasterRoute {
+  id              Int      @id @default(autoincrement())
+  tenantId        Int      @default(1)
+  line            String   // "71", "11A"
+  variant         String   // "A", "B", "Directo", "Ramal Aeropuerto"
+  destination     String   // "Pocitos"
+  origin          String   // "Mendoza"
+  
+  geometry        String   // JSON Polyline (Very large string)
+  isActive        Boolean  @default(true)
+  
+  tariffZones     TariffZone[]
+  
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([line, variant, origin, destination])
+}
+
+// 19. Zonas Tarifarias (Geocercas de cambio de precio)
+model TariffZone {
+  id              Int      @id @default(autoincrement())
+  routeId         Int
+  name            String   // "Urbana", "Centrica", "Zonal E", "Sección 1"
+  type            String   @default("POINT") // POINT (Limit), POLYGON, CIRCLE
+  price           Float?   // Precio opcional
+  latitude        Float    // Centro o punto de cruce
+  longitude       Float
+  geometry        String?  // JSON para polígonos ([ [lat,lng], ... ])
+  radiusMeters    Int      @default(100)
+  order           Int      @default(0)
+  
+  route           MasterRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+}
+
+// 20. Radares y Puntos de Control (Alertas de Velocidad)
+model Radar {
+  id              Int      @id @default(autoincrement())
+  tenantId        Int      @default(1)
+  name            String   // "Radar Av. Italia y Bolivia"
+  latitude        Float
+  longitude       Float
+  speedLimit      Int      // 45, 60, 75
+  type            String   // "CAMERA", "RADAR", "DANGEROUS_CURVE"
+  
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
 }
 
 // 1. Usuarios

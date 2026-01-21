@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { exec } from 'child_process';
 import util from 'util';
 import bcrypt from 'bcryptjs';
+import { seedMasterRoutes } from './seeds/SeedMasterRoutes';
 
 const execPromise = util.promisify(exec);
 const prisma = new PrismaClient();
@@ -125,6 +126,10 @@ export async function seedDatabase() {
 
         await seedServicesVerano2026(prisma);
         await seedBoletinesData(prisma);
+
+        console.log('🌱 [SEED] Running Master Routes seed (UCOT Clean Slate)...');
+        await seedMasterRoutes();
+
         console.log('✅ [SEED] Traffic Department seeds completed.');
 
     } catch (error) {

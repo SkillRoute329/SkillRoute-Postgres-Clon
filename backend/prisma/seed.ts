@@ -118,9 +118,11 @@ async function main() {
   console.log('--- Iniciando Seeds de Tránsito ---');
   const { seedServicesVerano2026 } = await import('../src/seeds/services_verano_2026');
   const { seedBoletinesData } = await import('../src/seeds/boletines_data');
+  const { seedMasterRoutes } = await import('../src/seeds/SeedMasterRoutes');
 
   await seedServicesVerano2026(prisma);
   await seedBoletinesData(prisma);
+  await seedMasterRoutes();
   console.log('--- Finalizado Seeds de Tránsito ---');
 }
 
