@@ -129,6 +129,9 @@ const DriverNavigation = () => {
     const [socket, setSocket] = useState<any>(null);
     const [routeData, setRouteData] = useState<RouteData | null>(null);
 
+    // Dynamic Lines
+    const [availableLines, setAvailableLines] = useState<string[]>(['71', '11A']); // Fallback
+
     // Revenue States
     const [currentTariff, setCurrentTariff] = useState('MONTEVIDEO');
     const [preAviso, setPreAviso] = useState<string | null>(null);
@@ -138,8 +141,19 @@ const DriverNavigation = () => {
     // Audio
     const audioRef = useRef<Record<string, HTMLAudioElement>>({});
 
-    // Hardcoded demo lines
-    const AVAILABLE_LINES = ['71', '11A', '221', '300', '306', '370'];
+    useEffect(() => {
+        // Fetch Available Master Routes
+        fetch(`${API_URL}/universal/masterRoutes/list?limit=100`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.data && Array.isArray(data.data)) {
+                    // Assuming masterRoutes has a 'lineName' or 'name' field
+                    const lines = data.data.map((r: any) => r.lineName || r.name).filter(Boolean);
+                    if (lines.length > 0) setAvailableLines(Array.from(new Set(lines)));
+                }
+            })
+            .catch(err => console.error("Error fetching lines", err));
+    }, []);
 
     useEffect(() => {
         if (!selectedLine) return;
@@ -266,11 +280,11 @@ const DriverNavigation = () => {
                     <p className="text-slate-400">Revenue Specialist & Geo-Alerts</p>
                 </div>
                 <div className="grid grid-cols-3 md:grid-cols-4 gap-4 w-full max-w-2xl px-4">
-                    {AVAILABLE_LINES.map(line => (
+                    {availableLines.length > 0 ? availableLines.map(line => (
                         <button key={line} onClick={() => setSelectedLine(line)} className="bg-slate-800 hover:bg-slate-700 text-2xl font-bold py-6 rounded-xl border border-slate-700 active:scale-95 text-blue-400">
                             {line}
                         </button>
-                    ))}
+                    )) : <div className="col-span-3 text-slate-500 text-center">No hay recorridos disponibles.</div>}
                 </div>
             </div>
         );

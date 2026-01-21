@@ -13,7 +13,8 @@ export const maintenanceController = {
                 title,
                 description,
                 priority,
-                photoUrl
+                photoUrl,
+                evidencePhotos
             } = req.body;
 
             const userId = (req as any).user.id;
@@ -27,6 +28,7 @@ export const maintenanceController = {
                     description,
                     priority: priority || 'NORMAL',
                     photoUrl,
+                    evidencePhotos, // Map Base64 string directly
                     status: 'PENDING'
                 },
                 include: {

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
     AlertTriangle, CheckCircle, Clock, Plus, Search,
-    Settings, Briefcase, Trash2
+    Settings, Briefcase, Trash2, Camera
 } from 'lucide-react';
 import { MaintenanceService, FleetService, DepartmentService, UniversalService } from '../../services/api';
 import clsx from 'clsx';
@@ -30,7 +30,8 @@ const MaintenanceDashboard = () => {
         title: '',
         description: '',
         priority: 'NORMAL',
-        photoUrl: ''
+        photoUrl: '', // Will keep compatibility
+        evidencePhotos: '' // Base64
     });
 
     // Solve/Close Ticket Modal State
@@ -76,6 +77,17 @@ const MaintenanceDashboard = () => {
         } catch (e) { console.error(e); }
     };
 
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setNewReport({ ...newReport, evidencePhotos: reader.result as string });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -88,7 +100,8 @@ const MaintenanceDashboard = () => {
                 title: '',
                 description: '',
                 priority: 'NORMAL',
-                photoUrl: ''
+                photoUrl: '',
+                evidencePhotos: ''
             });
         } catch (error) {
             alert('Error al crear reporte');
@@ -281,6 +294,31 @@ const MaintenanceDashboard = () => {
                                     onChange={e => setNewReport({ ...newReport, title: e.target.value })}
                                     required
                                 />
+                            </div>
+
+                            {/* Evidence Photo Upload */}
+                            <div>
+                                <label className="block text-sm text-slate-400 mb-1 cursor-pointer flex items-center gap-2">
+                                    <Camera className="w-4 h-4" />
+                                    Foto de Evidencia
+                                </label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageUpload}
+                                    className="block w-full text-sm text-slate-400
+                                        file:mr-4 file:py-2 file:px-4
+                                        file:rounded-full file:border-0
+                                        file:text-sm file:font-semibold
+                                        file:bg-primary-600 file:text-white
+                                        hover:file:bg-primary-500
+                                    "
+                                />
+                                {newReport.evidencePhotos && (
+                                    <div className="mt-2">
+                                        <img src={newReport.evidencePhotos} alt="Preview" className="h-20 w-auto rounded border border-slate-700 object-cover" />
+                                    </div>
+                                )}
                             </div>
 
                             <div>

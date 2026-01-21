@@ -453,6 +453,7 @@ model MaintenanceReport {
   priority       String   @default("NORMAL")
   status         String   @default("PENDING")
   photoUrl       String?
+  evidencePhotos String? // Base64 Text for multiple photos in JSON or single large string
   
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
