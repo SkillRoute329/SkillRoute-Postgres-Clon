@@ -23,6 +23,7 @@ import penaltyRoutes from './routes/penaltyRoutes';
 import roadAlertRoutes from './routes/roadAlertRoutes';
 import dataImportRoutes from './routes/dataImportRoutes';
 import driverRoutes from './routes/driverRoutes'; // Imported
+import universalRoutes from './routes/universalRoutes';
 
 // Restored routes
 import tenantRoutes from './routes/tenantRoutes';
@@ -108,6 +109,9 @@ try {
   // New Universal Import/Export Module
   app.use('/api/data-import', dataImportRoutes);
   app.use('/api/driver', driverRoutes);
+
+  // Universal Polymorphic CRUD
+  app.use('/api/universal', universalRoutes);
 
 
   // DEBUG ROUTES (EMERGENCY)

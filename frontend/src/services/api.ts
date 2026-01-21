@@ -409,6 +409,24 @@ export const DriverService = {
     }
 };
 
+export const UniversalService = {
+    list: async (entity: string, page = 1, limit = 50) => {
+        return api.get(`/universal/${entity}/list?page=${page}&limit=${limit}`).then(res => res.data);
+    },
+    import: async (entity: string, data: any[]) => {
+        return api.post(`/universal/${entity}/import`, { data }).then(res => res.data);
+    },
+    create: async (entity: string, data: any) => {
+        return api.post(`/universal/${entity}`, data).then(res => res.data);
+    },
+    update: async (entity: string, id: number | string, data: any) => {
+        return api.put(`/universal/${entity}/${id}`, data).then(res => res.data);
+    },
+    delete: async (entity: string, id: number | string) => {
+        return api.delete(`/universal/${entity}/${id}`).then(res => res.data);
+    }
+};
+
 const api = {
     get: async (endpoint: string) => {
         const res = await fetch(`${API_URL}${endpoint}`, { headers: getAuthHeaders() }).then(handleResponse);

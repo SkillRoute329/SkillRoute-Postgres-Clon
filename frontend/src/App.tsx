@@ -24,6 +24,7 @@ const TenantsManager = lazy(() => import('./pages/admin/TenantsManager'));
 
 const VehicleList = lazy(() => import('./pages/fleet/VehicleList'));
 const InspectionForm = lazy(() => import('./pages/fleet/InspectionForm'));
+const UniversalPage = lazy(() => import('./pages/admin/UniversalPage'));
 
 const CreateShift = lazy(() => import('./pages/user/CreateShift'));
 const Marketplace = lazy(() => import('./pages/user/Marketplace'));
@@ -75,6 +76,9 @@ function App() {
                   {/* Fleet Management Routes */}
                   <Route path="fleet" element={<VehicleList />} />
                   <Route path="fleet/inspect/:id" element={<InspectionForm />} />
+
+                  {/* Universal Resource Manager Route */}
+                  <Route path="universal/:entity" element={<UniversalPage />} />
 
 
                   {/* User Routes */}
