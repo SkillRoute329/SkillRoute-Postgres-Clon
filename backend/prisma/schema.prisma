@@ -850,3 +850,15 @@ model CompetitorSighting {
   affectedTripId String?
   metadata       Json?   @default("{}")
 }
+
+// 22. Operaciones: Eventos de Control
+model ControlEvent {
+  id          String   @id @default(uuid())
+  tripId      String   // El viaje afectado
+  inspectorId String   // Quién dio la orden
+  type        String   // "REGULATION_PLUS" (Adelantar) o "REGULATION_MINUS" (Atrasar)
+  minutes     Int      // Cantidad de minutos (+/-)
+  reason      String?  // Ej: "Competencia detectada", "Tránsito pesado"
+  timestamp   DateTime @default(now())
+  metadata    Json?    @default("{}") // Snapshot de la posición de la competencia en ese momento
+}

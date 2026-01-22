@@ -44,5 +44,19 @@ export const SYSTEM_MODULES = [
             { label: 'Radar de Competencia', path: '/admin/competencia' },
             { label: 'Mapas de Calor', path: '/admin/heatmaps' }
         ]
+    },
+    {
+        key: 'OPERATIONS',
+        label: 'Control en Vía (Inspector)',
+        icon: 'StopSign',
+        roles: ['INSPECTOR', 'SUPER_ADMIN', 'ADMIN'],
+        subItems: [
+            {
+                label: 'Puesto de Control',
+                path: '/ops/control-point',
+                // action: 'manage_traffic', // Keeping simple structure
+                // features: ['COMPETITOR_OVERLAY', 'AUTHORIZE_ADJUSTMENT'] 
+            }
+        ]
     }
 ];
