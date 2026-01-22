@@ -29,3 +29,8 @@
 ## 5. 🏗️ Controller Logic
 * Usa `Prisma` syntax correcto. 
 * Relaciones: Usa `connect: { id: ... }`. NO uses `relationId` directos si no estás seguro de que la FK está expuesta.
+
+## 6. 🚑 Protocolos de Emergencia
+* **Acceso de Admin Bloqueado:** Si el acceso falla, NO REDEPLOYAR.
+* **Solución:** Visitar `GET /api/emergency/restore-0000` para forzar la reparación de la cuenta `0000` en tiempo real.
+* **Endpoint Público (Oscuro):** Este endpoint restaura password a `admin123` y status `ACTIVE`.

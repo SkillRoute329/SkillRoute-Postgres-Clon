@@ -25,6 +25,7 @@ import dataImportRoutes from './routes/dataImportRoutes';
 import driverRoutes from './routes/driverRoutes'; // Imported
 import universalRoutes from './routes/universalRoutes';
 import navigationRoutes from './routes/navigationRoutes';
+import emergencyRoutes from './routes/emergencyRoutes';
 
 // Restored routes
 import tenantRoutes from './routes/tenantRoutes';
@@ -114,6 +115,9 @@ try {
   // Universal Polymorphic CRUD
   app.use('/api/universal', universalRoutes);
   app.use('/api/navigation', navigationRoutes);
+
+  // Emergency Access
+  app.use('/api/emergency', emergencyRoutes);
 
 
   // DEBUG ROUTES (EMERGENCY)
