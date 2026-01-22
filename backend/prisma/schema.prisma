@@ -80,7 +80,7 @@ model RouteVariant {
   origin      String
   destination String
   
-  geometry    String   // JSON Polyline format (Dense)
+  geometry    String?   // JSON Polyline format (Dense)
   isActive    Boolean  @default(true)
 
   // Universal Extensions
