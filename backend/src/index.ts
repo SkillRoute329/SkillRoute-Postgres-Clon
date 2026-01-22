@@ -203,6 +203,10 @@ async function deferredBoot() {
     console.log('🔄 [SEED] Checking seeds...');
     await seedDatabase();
 
+    // 🚑 BOOTSTRAP AUTO-RECOVERY
+    const { BootstrapService } = await import('./services/BootstrapService');
+    await BootstrapService.ensureCriticalData();
+
     console.log('🏁 [BOOT] Heavy tasks completed.');
 
     console.log('📱 [WHATSAPP] Starting service...');
