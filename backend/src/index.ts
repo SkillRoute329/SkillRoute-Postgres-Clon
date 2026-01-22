@@ -203,9 +203,9 @@ async function deferredBoot() {
     console.log('🔄 [SEED] Checking seeds...');
     await seedDatabase();
 
-    // 🚑 BOOTSTRAP AUTO-RECOVERY
-    const { BootstrapService } = await import('./services/BootstrapService');
-    await BootstrapService.ensureCriticalData();
+    // 🤖 SYSTEM AUTO-PILOT (Ley 2: Zero-Data Prohibition)
+    const { SystemAutoPilot } = await import('./services/SystemAutoPilot');
+    await SystemAutoPilot.initiateSequence();
 
     console.log('🏁 [BOOT] Heavy tasks completed.');
 
