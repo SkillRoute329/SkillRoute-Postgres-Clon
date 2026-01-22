@@ -51,7 +51,7 @@ const DataIngestion = () => {
             });
             const data = await res.json();
             setAnalysis(data);
-        } catch (error) {
+        } catch (_error) {
             console.error(error);
             setAnalysis({ type: 'UNKNOWN', count: 0, preview: [], message: 'Error al analizar el archivo.' });
         } finally {
@@ -80,7 +80,7 @@ const DataIngestion = () => {
             } else {
                 alert('Error: ' + data.message);
             }
-        } catch (error) {
+        } catch (_error) {
             alert('Error crítico de subida');
         } finally {
             setUploading(false);
@@ -118,7 +118,7 @@ const DataIngestion = () => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             alert('Simulación reiniciada correctamente.');
-        } catch (e) {
+        } catch (_e) {
             alert('Error al reiniciar.');
         }
     };

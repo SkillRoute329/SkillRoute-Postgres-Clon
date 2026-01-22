@@ -186,7 +186,7 @@ async function main() {
                 entry.tripsExtracted = 'Unknown File Type';
             }
 
-        } catch (e) {
+        } catch (_e) {
             entry.status = 'ERROR';
             entry.tripsExtracted = String(e).substring(0, 50);
         }

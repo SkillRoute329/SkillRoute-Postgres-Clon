@@ -77,6 +77,25 @@ jobs:
           cd backend
           railway run npx tsx src/workers/simulateTraffic.ts
 
+      # BRANCH 4: EMERGENCY FIX
+      - name: Execute Emergency Fix
+        if: env.COMMAND == 'EMERGENCY_FIX'
+        run: |
+            echo "🚑 EMERGENCY FIX PROTOCOL INITIATED"
+            node scripts/doctor.js
+            
+            # Commit changes if doctor healed files
+            if [[ -n $(git status --porcelain) ]]; then
+              echo "🩹 Doctor fixed files. Committing..."
+              git config --global user.name 'Dr. Auto Fix'
+              git config --global user.email 'doctor@robot.local'
+              git add .
+              git commit -m "HOTFIX: Auto-Doctor healed build errors"
+              git push origin master
+            else
+              echo "✅ No critical errors found by Doctor."
+            fi
+
       - name: Report Status
         if: always()
         run: echo "Ops Execution Completed."
