@@ -14,3 +14,19 @@
 * **Solicitud de Correlativo (Ej: Chofer 100 con 200):**
     * Regla 1: No desplazar personal fijo (salvo acuerdo mutuo).
     * Regla 2: Si no caben en el mismo coche, asignar coches distintos con **MARGEN DE 45 MINUTOS** entre bajada y subida.
+
+## 4. 🛡️ Protocolo Anti-Competencia (Dynamic Headway)
+* **Concepto:** El horario teórico es una referencia, el intervalo real es la ley.
+* **Regla de Despacho:** El sistema permitirá al Inspector ingresar "Avistamiento Competencia".
+* **Algoritmo de Reacción:**
+    * Si (Tiempo desde Competencia < 3 min) -> Generar "Alerta de Retención" (+2 min espera) al Chofer en su App.
+    * Objetivo: Maximizar la carga capturando la demanda acumulada posterior, no competir por las sobras.
+
+## 5. 📉 Reglas de Eficiencia (Eco-Driving)
+* **Monitoreo:** Cada viaje cerrado generará un "Score de Eficiencia" (basado en cumplimiento de horario sin adelantos bruscos).
+* **Sanción Automática:** Llegar > 3 minutos ANTES a la terminal (correr) genera una "Alerta de Gasto de Combustible".
+* **Recompensa:** Los mejores Scores tendrán prioridad automática en la solicitud de "Cambios de Turno" (Módulo RRHH).
+
+## 6. 📊 Inteligencia de Demanda (Heatmaps)
+* **Registro:** Cada boleto vendido debe guardar en su `metadata`: `{ "gps_lat": "...", "gps_lng": "...", "timestamp": "..." }`.
+* **Análisis:** El sistema debe ser capaz de agrupar estos puntos para decirnos DÓNDE y CUÁNDO se vende, y sugerir recortes de servicios vacíos.
