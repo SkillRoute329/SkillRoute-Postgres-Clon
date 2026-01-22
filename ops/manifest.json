@@ -1,6 +1,6 @@
 {
-    "timestamp": "2026-01-22T14:00:00Z",
-    "command": "DEPLOY_FULL_RECOVERY",
+    "timestamp": "2026-01-22T14:15:00Z",
+    "command": "DEPLOY_SERVER_DRIVEN_UI",
     "safety_checks": {
         "preserve_users": true,
         "preserve_history": true
