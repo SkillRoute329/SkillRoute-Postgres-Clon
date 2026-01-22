@@ -82,20 +82,74 @@ export const EmergencyController = {
 
     seedTenant1: async (req: Request, res: Response) => {
         try {
-            console.log("🚑 EMERGENCY: Seeding Tenant 1 Data...");
-            const { seedDatabase } = await import('../setup_db');
+            console.log("🚑 EMERGENCY: Forced Re-Seed for Tenant 1 Initiated.");
 
-            await seedDatabase();
+            const tenantId = 1;
+
+            // 1. Cleanup existing routes for this tenant
+            // Due to Cascade onDelete, this should clean variants, schedules, etc.
+            await prisma.route.deleteMany({
+                where: { tenantId: tenantId }
+            });
+            console.log("🧹 Cleanup: Existing routes deleted.");
+
+            // 2. Create Line 300
+            await prisma.route.create({
+                data: {
+                    tenantId: tenantId,
+                    name: "300",
+                    description: "Línea Central (Instrucciones Técnicas)",
+                    status: "ACTIVE"
+                }
+            });
+
+            // 3. Create Line 370
+            await prisma.route.create({
+                data: {
+                    tenantId: tenantId,
+                    name: "370",
+                    description: "Línea de Conexión (Experimental)",
+                    status: "ACTIVE"
+                }
+            });
+
+            // 4. Create 5 Mock Shifts/Boletines
+            // Fetch categories to get a valid one
+            const categories = await prisma.shiftCategory.findMany({ where: { tenantId } });
+            const catId = categories[0]?.id || 1;
+
+            for (let i = 1; i <= 5; i++) {
+                await prisma.shift.create({
+                    data: {
+                        tenantId: tenantId,
+                        categoryId: catId,
+                        serviceNumber: `S-${100 + i}`,
+                        date: new Date(),
+                        time: `${8 + i}:00`,
+                        line: "306", // Reference line
+                        carNumber: `${1000 + i}`,
+                        totalValue: 0,
+                        createdBy: 0, // God Mode marker
+                        status: 'CONFIRMED'
+                    }
+                });
+            }
+
+            console.log("✅ EMERGENCY SEED: Data injected correctly.");
 
             return res.json({
                 status: "Success",
-                message: "Tenant 1 Database Seeded successfully (Services, Bulletins, Master Routes)."
+                message: "Datos inyectados correctamente: Líneas 300, 370 y 5 servicios de prueba creados.",
+                details: {
+                    routesCreated: ["300", "370"],
+                    shiftsCreated: 5
+                }
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error("❌ EMERGENCY SEED FAILED:", error);
             return res.status(500).json({
                 status: "Error",
-                message: String(error)
+                message: `Failed to seed data: ${error.message || String(error)}`
             });
         }
     }

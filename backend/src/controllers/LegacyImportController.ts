@@ -183,9 +183,13 @@ export const LegacyImportController = {
 
             return res.json({ message: 'Persistence not implemented for this type yet.' });
 
-        } catch (error) {
-            console.error(error);
-            res.status(500).json({ message: String(error) });
+        } catch (error: any) {
+            console.error("❌ CRITICAL IMPORT ERROR:", error);
+            res.status(500).json({
+                status: "Error",
+                message: `Import Failed: ${error.message || String(error)}`,
+                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            });
         }
     },
 
