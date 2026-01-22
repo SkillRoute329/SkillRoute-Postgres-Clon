@@ -8,7 +8,9 @@ export const SYSTEM_MODULES = [
         subItems: [
             { label: 'Boletines (Inspectores)', path: '/admin/boletines' },
             { label: 'Rotación de Servicios', path: '/admin/rotacion' },
-            { label: 'Mapas / Navegación', path: '/admin/navegador' }
+            { label: 'Mapas / Navegación', path: '/admin/navegador' },
+            { label: 'Sugerencias de Horarios', path: '/admin/transito/sugerencias' },
+            { label: 'Optimización de Cartones', path: '/admin/transito/optimizacion' }
         ]
     },
     {
@@ -28,7 +30,9 @@ export const SYSTEM_MODULES = [
         roles: ['HR_MANAGER', 'SUPER_ADMIN'],
         subItems: [
             { label: 'Legajos', path: '/admin/rrhh/legajos' },
-            { label: 'Solicitudes', path: '/admin/rrhh/solicitudes' }
+            { label: 'Solicitudes', path: '/admin/rrhh/solicitudes' },
+            { label: 'Ranking de Choferes', path: '/admin/rrhh/ranking' },
+            { label: 'Evaluaciones', path: '/admin/rrhh/evaluaciones' }
         ]
     },
     {
