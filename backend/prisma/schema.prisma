@@ -64,6 +64,10 @@ model Route {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
+  // Universal Extensions
+  metadata    Json?    @default("{}")
+  status      String   @default("ACTIVE")
+
   @@unique([tenantId, name])
 }
 
@@ -78,6 +82,11 @@ model RouteVariant {
   
   geometry    String   // JSON Polyline format (Dense)
   isActive    Boolean  @default(true)
+
+  // Universal Extensions
+  description String?
+  metadata    Json?    @default("{}")
+  status      String   @default("ACTIVE")
 
   route       Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
   
@@ -111,6 +120,10 @@ model TripSchedule {
   
   variant     RouteVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
   times       TripTime[]
+
+  // Universal Extensions
+  metadata    Json?    @default("{}")
+  status      String   @default("ACTIVE")
 }
 
 // 18.5 Tiempos por Parada
@@ -208,6 +221,10 @@ model User {
   bulletinEntries BulletinEntry[]
   userPenalties   UserPenalty[]
   shiftRequests   ShiftRequest[]
+
+  // Universal Extensions
+  metadata        Json?     @default("{}")
+  status          String    @default("ACTIVE")
 
   @@unique([tenantId, internalNumber])
   @@unique([tenantId, email])
@@ -381,6 +398,10 @@ model Shift {
   assignee                 User?         @relation("AssignedTo", fields: [assignedTo], references: [id])
   approver                 User?         @relation("ApprovedBy", fields: [approvedBy], references: [id])
   transactions             ShiftTransaction[]
+
+  // Universal Extensions
+  metadata                 Json?         @default("{}")
+  // status already exists
 }
 
 // 4. Transacciones
@@ -497,6 +518,10 @@ model Vehicle {
   rotationScheme   RotationScheme? @relation(fields: [rotationSchemeId], references: [id])
 
   @@unique([tenantId, internalNumber])
+  
+  // Universal Extensions
+  metadata       Json?    @default("{}")
+  // status already exists
 }
 
 // 13. Reportes de Mantenimiento / Denuncias

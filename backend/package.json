@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
+    "build": "tsx src/scripts/evolve_db.ts && tsc",
     "start": "npx prisma db push --accept-data-loss && npm run rescue && npm run auto-ingest && node dist/index.js",
     "auto-ingest": "tsx src/workers/ingestLegacyData.ts",
     "seed:safe": "tsx src/scripts/safe_seed_check.ts",
