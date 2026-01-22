@@ -83,7 +83,7 @@ export const LegacyImportController = {
                     console.log(`[LegacyImport] Creating new Variant for ${lineName}: ${variantNameCandidate}`);
                     variant = await prisma.routeVariant.create({
                         data: {
-                            routeId: route.id,
+                            route: { connect: { id: route.id } },
                             name: variantNameCandidate,
                             origin: 'IMPORT',
                             destination: variantNameCandidate,

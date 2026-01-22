@@ -127,7 +127,7 @@ export async function seedDatabase() {
         await seedServicesVerano2026(prisma);
         await seedBoletinesData(prisma);
 
-        const routeCount = await prisma.masterRoute.count();
+        const routeCount = await prisma.route.count();
         if (routeCount === 0) {
             console.log('🌱 [SEED] Master Routes table is empty. Running Master Routes seed (UCOT Clean Slate)...');
             await seedMasterRoutes();

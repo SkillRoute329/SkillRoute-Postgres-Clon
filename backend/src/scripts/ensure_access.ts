@@ -48,10 +48,10 @@ async function main() {
                 role: 'ADMIN',
                 isActive: true,
                 status: 'ACTIVE',
-                metadata: {},
-                driverStatus: 'A_LA_ORDEN',
-                classification: 'ADMIN' // Fallback if field exists, otherwise ignored or error?
-                // Schema check: classification doesn't exist in recent view. Safe to omit.
+                metadata: {
+                    classification: 'ADMIN' // Fallback if needed
+                },
+                driverStatus: 'A_LA_ORDEN'
             }
         });
         console.log("✅ User '0000' restored with password 'admin123'.");
