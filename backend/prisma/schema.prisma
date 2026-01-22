@@ -835,3 +835,18 @@ model PartUsage {
   report         MaintenanceReport @relation(fields: [reportId], references: [id])
   part           Part              @relation(fields: [partId], references: [id])
 }
+
+// 21. Inteligencia Competitiva
+model CompetitorSighting {
+  id        String   @id @default(uuid())
+  line      String   // Ej: "306"
+  company   String?  // Ej: "Copsa", "Cutcsa"
+  lat       Float
+  lng       Float
+  source    String   // "API_STM" o "MANUAL_REPORT"
+  timestamp DateTime @default(now())
+  
+  // Relación opcional con nuestro viaje afectado
+  affectedTripId String?
+  metadata       Json?   @default("{}")
+}

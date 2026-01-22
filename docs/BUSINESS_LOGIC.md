@@ -27,6 +27,11 @@
 * **Sanción Automática:** Llegar > 3 minutos ANTES a la terminal (correr) genera una "Alerta de Gasto de Combustible".
 * **Recompensa:** Los mejores Scores tendrán prioridad automática en la solicitud de "Cambios de Turno" (Módulo RRHH).
 
-## 6. 📊 Inteligencia de Demanda (Heatmaps)
-* **Registro:** Cada boleto vendido debe guardar en su `metadata`: `{ "gps_lat": "...", "gps_lng": "...", "timestamp": "..." }`.
 * **Análisis:** El sistema debe ser capaz de agrupar estos puntos para decirnos DÓNDE y CUÁNDO se vende, y sugerir recortes de servicios vacíos.
+
+## 7. 🕵️ Inteligencia Competitiva (STM Integration)
+* **Fuente de Datos:** API de Transporte Público de Montevideo (Open Data).
+* **Lógica de Ingesta:**
+    * El sistema consultará posiciones de líneas rivales (filtradas por número de línea).
+    * **Cálculo de Amenaza:** Si un rival está a < 500 metros adelante -> ALERTA ROJA.
+* **Input Manual (Respaldo):** Botón en App Conductor/Inspector para reportar "Avistamiento Visual".
