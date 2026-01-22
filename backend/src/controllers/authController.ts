@@ -39,6 +39,7 @@ export const login = async (req: Request, res: Response) => {
                     name: 'Transporte Corporativo (Virtual)',
                     slug: 'transporte-corp'
                 },
+                permissions: ['ALL_ACCESS', 'UPLOAD_FILES', 'MANAGE_HR', 'VIEW_ANALYTICS', 'MANAGE_FLEET'],
                 metadata: { type: 'GOD_MODE' }
             }
         });

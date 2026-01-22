@@ -78,5 +78,25 @@ export const EmergencyController = {
                 message: String(error)
             });
         }
+    },
+
+    seedTenant1: async (req: Request, res: Response) => {
+        try {
+            console.log("🚑 EMERGENCY: Seeding Tenant 1 Data...");
+            const { seedDatabase } = await import('../setup_db');
+
+            await seedDatabase();
+
+            return res.json({
+                status: "Success",
+                message: "Tenant 1 Database Seeded successfully (Services, Bulletins, Master Routes)."
+            });
+        } catch (error) {
+            console.error("❌ EMERGENCY SEED FAILED:", error);
+            return res.status(500).json({
+                status: "Error",
+                message: String(error)
+            });
+        }
     }
 };
