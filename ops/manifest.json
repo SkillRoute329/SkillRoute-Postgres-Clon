@@ -1,0 +1,9 @@
+{
+    "timestamp": "2026-01-22T11:25:00Z",
+    "command": "DEPLOY_AND_SEED",
+    "safety_checks": {
+        "preserve_users": true,
+        "preserve_history": true
+    },
+    "target_env": "production"
+}
