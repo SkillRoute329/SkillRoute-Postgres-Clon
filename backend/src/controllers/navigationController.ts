@@ -18,16 +18,32 @@ export const getRoute = async (req: Request, res: Response) => {
 
         console.log(`[Navigation] Getting route for line ${line} at ${currentDay} ${currentTime}`);
 
-        // 1. Get Master Route from DB
-        const masterRoute = await prisma.masterRoute.findFirst({
-            where: { line: line, isActive: true },
-            include: { tariffZones: { orderBy: { order: 'asc' } } }
+        // 1. Get Route and Variants from DB
+        const route = await prisma.route.findFirst({
+            where: { name: line },
+            include: {
+                variants: {
+                    where: { isActive: true },
+                    include: { tariffZones: { orderBy: { order: 'asc' } } }
+                }
+            }
         });
 
-        const baseRoute = masterRoute ? JSON.parse(masterRoute.geometry) : FALLBACK_ROUTE;
-        const tariffZones = (masterRoute?.tariffZones || []).map(tz => ({
-            ...tz,
-            geometry: tz.geometry ? JSON.parse(tz.geometry) : null
+        if (!route) {
+            return res.status(404).json({ message: 'Route not found' });
+        }
+
+        // Format Variants
+        const variants = route.variants.map(v => ({
+            id: v.id,
+            name: v.name,
+            origin: v.origin,
+            destination: v.destination,
+            geometry: JSON.parse(v.geometry),
+            tariffZones: v.tariffZones.map(tz => ({
+                ...tz,
+                geometry: tz.geometry ? JSON.parse(tz.geometry) : null
+            }))
         }));
 
         // 2. Find Active Planned Detours
@@ -58,16 +74,14 @@ export const getRoute = async (req: Request, res: Response) => {
             return true;
         });
 
-        // 3. Fetch Radars (Optimize with PostGIS later, now fetch all)
+        // 3. Fetch Radars
         const radars = await prisma.radar.findMany();
 
         // 4. Return Combined Data
         res.json({
-            line,
-            origin: masterRoute?.origin || 'Unknown',
-            destination: masterRoute?.destination || 'Unknown',
-            baseRoute,
-            tariffZones,
+            line: route.name,
+            type: route.type,
+            variants,
             radars,
             activeDetours: activeDetours.map(d => ({
                 id: d.id,

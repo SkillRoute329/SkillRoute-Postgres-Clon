@@ -25,6 +25,7 @@ const TenantsManager = lazy(() => import('./pages/admin/TenantsManager'));
 const VehicleList = lazy(() => import('./pages/fleet/VehicleList'));
 const InspectionForm = lazy(() => import('./pages/fleet/InspectionForm'));
 const UniversalPage = lazy(() => import('./pages/admin/UniversalPage'));
+const DataIngestion = lazy(() => import('./pages/admin/DataIngestion'));
 
 const CreateShift = lazy(() => import('./pages/user/CreateShift'));
 const Marketplace = lazy(() => import('./pages/user/Marketplace'));
@@ -70,6 +71,7 @@ function App() {
                   <Route path="admin/communications" element={<AdminWhatsApp />} />
                   <Route path="admin/whatsapp-bot" element={<AdminWhatsAppSettings />} />
                   <Route path="admin/maintenance" element={<MaintenanceDashboard />} />
+                  <Route path="admin/ingestion" element={<DataIngestion />} />
 
                   {/* Super Admin Routes */}
                   <Route path="super-admin/tenants" element={<TenantsManager />} />

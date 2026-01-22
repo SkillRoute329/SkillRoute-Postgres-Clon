@@ -20,7 +20,8 @@ const ALLOWED_ENTITIES: Record<string, string> = {
     'bulletins': 'serviceDefinition', // Alias for BULLETINS entity
     'roadAlerts': 'roadAlert', // Mapped to RoadAlert
     'plannedDetours': 'plannedDetour', // Mapped to PlannedDetour
-    'masterRoutes': 'masterRoute',
+    'routes': 'route',
+    'routeVariants': 'routeVariant',
     'radars': 'radar',
     'tariffs': 'tariffZone',
     'parts': 'part'
@@ -134,14 +135,13 @@ export const UniversalController = {
             const numericId = Number(id);
 
             // SPECIAL CASCADE LOGIC
-            if (modelName === 'masterRoute') {
-                const route = await prisma.masterRoute.findUnique({ where: { id: numericId } });
+            if (modelName === 'route') {
+                const route = await prisma.route.findUnique({ where: { id: numericId } });
                 if (route) {
                     // 1. Delete associated RoadAlerts
                     await prisma.roadAlert.deleteMany({
-                        where: { affectedLine: route.line }
+                        where: { affectedLine: route.name }
                     });
-                    // 2. TariffZones are already Cascade in DB, so no need here if correctly set in schema.
                 }
             }
 

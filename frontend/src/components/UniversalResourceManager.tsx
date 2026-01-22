@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ENTITY_REGISTRY } from '../config/EntityRegistry';
 import { UniversalService } from '../services/api';
 import { Plus, Trash2, Edit, Upload, FileText, Search, X, Check, Loader2 } from 'lucide-react';
@@ -64,6 +64,46 @@ const UniversalResourceManager = ({ entityKey }: Props) => {
         }
     };
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!window.confirm(`¿Confirmar importación masiva desde ${file.name}?`)) {
+            e.target.value = '';
+            return;
+        }
+
+        setLoading(true);
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const bstr = evt.target?.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const jsonData = XLSX.utils.sheet_to_json(ws);
+
+                if (jsonData.length === 0) {
+                    alert('El archivo está vacío');
+                    return;
+                }
+
+                await UniversalService.import(config.apiPath, jsonData);
+                alert(`Importación exitosa: ${jsonData.length} registros procesados.`);
+                loadData();
+            } catch (error) {
+                console.error(error);
+                alert('Error procesando el archivo: ' + String(error));
+            } finally {
+                setLoading(false);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            }
+        };
+        reader.readAsBinaryString(file);
+    };
+
     const handleExportExcel = () => {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
@@ -123,8 +163,19 @@ const UniversalResourceManager = ({ entityKey }: Props) => {
         )
     );
 
+
+
+    // Duplicate removed
+
     return (
         <div className="space-y-6 animate-fade-in-up">
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImport}
+                className="hidden"
+                accept=".xlsx,.xls,.csv"
+            />
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
                 <div>
@@ -158,7 +209,10 @@ const UniversalResourceManager = ({ entityKey }: Props) => {
                     )}
 
                     {config.actions.import && (
-                        <button className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-colors font-medium text-sm">
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-colors font-medium text-sm"
+                        >
                             <Upload className="w-4 h-4" />
                             Importar Excel
                         </button>

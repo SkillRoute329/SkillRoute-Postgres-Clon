@@ -43,36 +43,93 @@ model Tenant {
   roadAlerts              RoadAlert[]
   shiftRequests           ShiftRequest[]
   plannedDetours          PlannedDetour[]
-  masterRoutes            MasterRoute[]
+  routes                  Route[]
   radars                  Radar[]
+  tariffZones             TariffZone[]
   parts                   Part[]
 }
 
 // 18. Rutas Maestras (Shapefiles & Tarifas)
-model MasterRoute {
-  id              Int      @id @default(autoincrement())
-  tenantId        Int      @default(1)
-  line            String   // "71", "11A"
-  variant         String   // "A", "B", "Directo", "Ramal Aeropuerto"
-  destination     String   // "Pocitos"
-  origin          String   // "Mendoza"
+// 18. Rutas (Contenedor de Línea)
+model Route {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int      @default(1)
+  name        String   // "306", "71"
+  description String?
+  type        String   @default("URBANA") // URBANA, SUBURBANA, LOCAL
   
-  geometry        String   // JSON Polyline (Very large string)
-  isActive        Boolean  @default(true)
+  variants    RouteVariant[]
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
   
-  tariffZones     TariffZone[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   
-  tenant          Tenant   @relation(fields: [tenantId], references: [id])
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  @@unique([tenantId, name])
+}
+
+// 18.2 Variantes de Ruta (Ida, Vuelta, Ramales)
+model RouteVariant {
+  id          Int      @id @default(autoincrement())
+  routeId     Int
   
-  @@unique([line, variant, origin, destination])
+  name        String   // "Hacia Casabó (A)", "Hacia Géant (Directo)"
+  origin      String
+  destination String
+  
+  geometry    String   // JSON Polyline format (Dense)
+  isActive    Boolean  @default(true)
+
+  route       Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  
+  tariffZones TariffZone[] 
+  sequences   RouteSequence[]
+  trips       TripSchedule[]
+
+  @@unique([routeId, name])
+}
+
+// 18.3 Secuencia de Paradas (Del Cartón)
+model RouteSequence {
+  id          Int      @id @default(autoincrement())
+  variantId   Int
+  stopName    String   // "Tres Cruces", "Belloni"
+  order       Int      // 0, 1, 2...
+  
+  variant     RouteVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  tripTimes   TripTime[]
+  
+  @@unique([variantId, order])
+}
+
+// 18.4 Horarios de Viaje (Del Cartón)
+model TripSchedule {
+  id          Int      @id @default(autoincrement())
+  variantId   Int
+  serviceId   String?  // "1009"
+  dayType     String   // "Habil", "Sabado", "Domingo"
+  startTime   String   // "06:00"
+  
+  variant     RouteVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  times       TripTime[]
+}
+
+// 18.5 Tiempos por Parada
+model TripTime {
+  id              Int           @id @default(autoincrement())
+  tripScheduleId  Int
+  sequenceId      Int
+  
+  time            String        // "06:15" or empty if skipped
+  
+  trip            TripSchedule  @relation(fields: [tripScheduleId], references: [id], onDelete: Cascade)
+  sequence        RouteSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
 }
 
 // 19. Zonas Tarifarias (Geocercas de cambio de precio)
 model TariffZone {
   id              Int      @id @default(autoincrement())
-  routeId         Int
+  variantId       Int      // Linked to specific variant
+  
   name            String   // "Urbana", "Centrica", "Zonal E", "Sección 1"
   type            String   @default("POINT") // POINT (Limit), POLYGON, CIRCLE
   price           Float?   // Precio Común
@@ -83,7 +140,10 @@ model TariffZone {
   radiusMeters    Int      @default(100)
   order           Int      @default(0)
   
-  route           MasterRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  variant         RouteVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  
+  tenantId        Int      @default(1)
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
 }
 
 // 20. Radares y Puntos de Control (Alertas de Velocidad)

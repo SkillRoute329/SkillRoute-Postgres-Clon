@@ -173,20 +173,34 @@ export const ENTITY_REGISTRY: Record<string, EntityConfig> = {
             { key: 'unitCost', label: 'Costo Unitario ($)', type: 'number', editable: true }
         ]
     },
-    'MASTER_ROUTES': {
+    'ROUTES': {
         labels: {
             title: 'Rutas y Recorridos',
-            singular: 'Recorrido',
-            plural: 'Recorridos'
+            singular: 'Ruta',
+            plural: 'Rutas'
         },
-        apiPath: 'masterRoutes',
-        actions: { import: false, export: true, edit: true, delete: true, create: true },
+        apiPath: 'routes',
+        actions: { import: true, export: true, edit: true, delete: true, create: true },
         columns: [
-            { key: 'line', label: 'Línea', type: 'text', required: true, editable: true },
-            { key: 'variant', label: 'Variante', type: 'text', required: true, editable: true },
+            { key: 'name', label: 'Línea', type: 'text', required: true, editable: true },
+            { key: 'type', label: 'Tipo', type: 'enum', options: ['URBANA', 'SUBURBANA', 'LOCAL'], required: true, editable: true },
+            { key: 'description', label: 'Descripción', type: 'text', editable: true }
+        ]
+    },
+    'ROUTE_VARIANTS': {
+        labels: {
+            title: 'Variantes de Recorrido',
+            singular: 'Variante',
+            plural: 'Variantes'
+        },
+        apiPath: 'routeVariants',
+        actions: { import: true, export: true, edit: true, delete: true, create: true },
+        columns: [
+            { key: 'routeId', label: 'ID Ruta', type: 'number', required: true, editable: true },
+            { key: 'name', label: 'Nombre Variante', type: 'text', required: true, editable: true },
             { key: 'origin', label: 'Origen', type: 'text', editable: true },
             { key: 'destination', label: 'Destino', type: 'text', editable: true },
-            { key: 'geometry', label: 'Geometría (JSON)', type: 'json', editable: true },
+            { key: 'geometry', label: 'Geometría (JSON)', type: 'json', editable: true, hiddenInTable: true },
             { key: 'isActive', label: 'Activo', type: 'boolean', editable: true }
         ]
     },
