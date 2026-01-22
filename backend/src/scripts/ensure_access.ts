@@ -35,7 +35,7 @@ async function main() {
                 passwordHash: hashedPassword,
                 role: 'ADMIN',
                 isActive: true,
-                status: 'ACTIVE',
+                // status: 'ACTIVE', // Moved to metadata if not in schema, generally handled by isActive
                 // metadata: {} // Don't wipe metadata on update
             },
             create: {
@@ -47,8 +47,8 @@ async function main() {
                 passwordHash: hashedPassword,
                 role: 'ADMIN',
                 isActive: true,
-                status: 'ACTIVE',
                 metadata: {
+                    status: 'ACTIVE',
                     classification: 'ADMIN' // Fallback if needed
                 },
                 driverStatus: 'A_LA_ORDEN'
@@ -72,7 +72,7 @@ async function main() {
                 passwordHash: hashedPassword,
                 role: 'ADMIN',
                 isActive: true,
-                status: 'ACTIVE'
+                // status: 'ACTIVE'
             },
             create: {
                 tenantId: tenantId,
@@ -84,8 +84,7 @@ async function main() {
                 passwordHash: hashedPassword,
                 role: 'ADMIN',
                 isActive: true,
-                status: 'ACTIVE',
-                metadata: {},
+                metadata: { status: 'ACTIVE' },
                 driverStatus: 'A_LA_ORDEN'
             }
         });
