@@ -342,6 +342,51 @@ const AdminConfig = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* 4. DANGER ZONE: CLEAN IMPORT */}
+                <div className="glass-panel p-6 rounded-2xl border border-red-900 lg:col-span-2">
+                    <div className="flex items-center gap-2 text-red-500 mb-6">
+                        <AlertCircle className="w-5 h-5" />
+                        <h2 className="font-bold text-lg">Zona de Peligro: Limpieza de Base de Datos</h2>
+                    </div>
+
+                    <div className="bg-red-900/10 p-5 rounded-xl border border-red-500/20 flex items-center justify-between">
+                        <div>
+                            <h3 className="text-white font-bold mb-1 flex items-center gap-2">
+                                <Trash className="w-4 h-4 text-red-400" />
+                                PURGAR SISTEMA COMPLETO (RESET)
+                            </h3>
+                            <p className="text-sm text-red-200/70">
+                                ⚠️ Elimina TODOS los turnos, líneas y vehículos. Deja el sistema listo para una importación limpia.
+                                <br />Esta acción NO se puede deshacer.
+                            </p>
+                        </div>
+                        <button
+                            onClick={async () => {
+                                if (!confirm('⚠️ ¿ESTÁS SEGURO? ESTO BORRARÁ TODO (Turnos, Líneas, Flota).')) return;
+                                if (!confirm('⚠️ CONFIRMA DE NUEVO: ¿BORRAR TODA LA BASE DE DATOS?')) return;
+                                const promptRes = prompt('Escribe "BORRAR TODO" para confirmar:');
+                                if (promptRes !== 'BORRAR TODO') return;
+
+                                try {
+                                    const token = localStorage.getItem('token');
+                                    await fetch('/api/emergency/wipe-all', {
+                                        method: 'DELETE',
+                                        headers: { 'Authorization': `Bearer ${token}` }
+                                    });
+                                    alert('Sistema purgado correctamente. Por favor recarga la página.');
+                                    window.location.reload();
+                                } catch (e) {
+                                    alert('Error al purgar sistema.');
+                                }
+                            }}
+                            className="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-lg transition-colors border border-red-500 flex items-center gap-2 text-sm font-black shadow-lg shadow-red-900/50"
+                        >
+                            <Trash className="w-5 h-5" />
+                            PURGAR TODO
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {/* --- CREATE MODAL --- */}

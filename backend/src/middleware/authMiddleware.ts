@@ -37,7 +37,9 @@ export const requireRole = (roles: string[]) => {
         const user = (req as any).user;
 
         // 🛑 LÓGICA DE HIERRO: Bypass de Seguridad Absoluto
-        if (user && (user.email === SystemDNA.GOD_MODE_USER || user.internalNumber === SystemDNA.GOD_MODE_USER || user.metadata?.type === 'GOD_MODE')) {
+        const isGod = user && (user.email === SystemDNA.GOD_MODE_USER || user.internalNumber === SystemDNA.GOD_MODE_USER || user.metadata?.type === 'GOD_MODE');
+
+        if (isGod) {
             console.log(`⚡ DNA BYPASS: Acceso total concedido a ${SystemDNA.GOD_MODE_USER}.`);
             return next();
         }

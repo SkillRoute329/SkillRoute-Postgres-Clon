@@ -3,7 +3,8 @@ import { useState, useCallback } from 'react';
 import { Upload, FileUp, CheckCircle, FileSpreadsheet, Loader2, Download, Trash2, Play } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { DataImportService, API_URL } from '../../services/api';
-import { ExcelParser, ParsedData } from '../../utils/ExcelParser';
+import { ExcelParser } from '../../utils/ExcelParser';
+import type { ParsedData } from '../../utils/ExcelParser';
 
 interface AnalysisResult {
     type: 'CARTON' | 'BOLETIN' | 'DAILY' | 'UNKNOWN' | 'JSON_READY';
@@ -132,6 +133,28 @@ const DataIngestion = () => {
                 <p className="text-slate-400 text-lg">
                     El procesamiento se realiza en TU navegador para máxima velocidad y seguridad.
                 </p>
+                <div className="pt-4">
+                    <button
+                        onClick={async () => {
+                            const token = localStorage.getItem('token');
+                            const res = await fetch(`${API_URL}/data-import/template`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            if (!res.ok) return alert("Error al descargar plantilla");
+                            const blob = await res.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'Plantilla_Servicios_V2026.xlsx';
+                            a.click();
+                        }}
+                        className="text-sm font-bold text-emerald-400 underline hover:text-emerald-300 flex items-center justify-center gap-2"
+                    >
+                        <Download className="w-4 h-4" />
+                        DESCARGAR PLANTILLA OFICIAL (.XLSX)
+                    </button>
+                    <p className="text-xs text-slate-500 mt-1">Usa esta plantilla para evitar errores de columnas faltantes.</p>
+                </div>
             </div>
 
             {successMsg && (

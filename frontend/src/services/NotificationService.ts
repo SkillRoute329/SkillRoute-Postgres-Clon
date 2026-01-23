@@ -20,7 +20,7 @@ export const NotificationService = {
         if (Notification.permission === 'granted') {
 
             // Customize for Traffic Alerts
-            const finalOptions: NotificationOptions = {
+            const finalOptions: any = {
                 icon: '/pwa-192x192.png',
                 badge: '/masked-icon.svg',
                 vibrate: options?.isTrafficAlert ? [200, 100, 200, 100, 200] : [100], // Long vibration for alerts

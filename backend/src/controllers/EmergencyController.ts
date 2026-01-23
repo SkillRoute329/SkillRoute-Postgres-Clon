@@ -83,59 +83,69 @@ export const EmergencyController = {
     seedTenant1: async (req: Request, res: Response) => {
         try {
             console.log("🚑 EMERGENCY: Forced Re-Seed for Tenant 1 Initiated.");
-
             const tenantId = 1;
 
-            // 1. Cleanup existing routes for this tenant
-            // Due to Cascade onDelete, this should clean variants, schedules, etc.
-            await prisma.route.deleteMany({
-                where: { tenantId: tenantId }
-            });
-            console.log("🧹 Cleanup: Existing routes deleted.");
+            // USE TRANSACTION FOR ATOMICITY
+            await prisma.$transaction(async (tx) => {
+                // 1. Cleanup
+                await tx.shift.deleteMany({ where: { tenantId } });
+                await tx.route.deleteMany({ where: { tenantId } });
+                // Note: routeVariant and others cascade delete usually, if setup in schema. 
+                // If not, we might need manual delete, but assuming cascade or clean slate.
 
-            // 2. Create Line 300
-            await prisma.route.create({
-                data: {
-                    tenantId: tenantId,
-                    name: "300",
-                    description: "Línea Central (Instrucciones Técnicas)",
-                    status: "ACTIVE"
-                }
-            });
+                console.log("🧹 Cleanup: Existing routes deleted.");
 
-            // 3. Create Line 370
-            await prisma.route.create({
-                data: {
-                    tenantId: tenantId,
-                    name: "370",
-                    description: "Línea de Conexión (Experimental)",
-                    status: "ACTIVE"
-                }
-            });
-
-            // 4. Create 5 Mock Shifts/Boletines
-            // Fetch categories to get a valid one
-            const categories = await prisma.shiftCategory.findMany({ where: { tenantId } });
-            const catId = categories[0]?.id || 1;
-
-            for (let i = 1; i <= 5; i++) {
-                await prisma.shift.create({
+                // 2. Create Lines
+                await tx.route.create({
                     data: {
-                        tenantId: tenantId,
-                        categoryId: catId,
-                        serviceNumber: `S-${100 + i}`,
-                        date: new Date(),
-                        time: `${8 + i}:00`,
-                        line: "306", // Reference line
-                        carNumber: `${1000 + i}`,
-                        totalValue: 0,
-                        createdBy: 0, // God Mode marker
-                        status: 'CONFIRMED'
+                        tenantId,
+                        name: "300",
+                        description: "Línea Central (Instrucciones Técnicas)",
+                        status: "ACTIVE"
                     }
                 });
-            }
 
-            console.log("✅ EMERGENCY SEED: Data injected correctly.");
+                await tx.route.create({
+                    data: {
+                        tenantId,
+                        name: "370",
+                        description: "Línea de Conexión (Experimental)",
+                        status: "ACTIVE"
+                    }
+                });
+
+                // 3. Create Mock Shifts
+                // Need a valid category
+                let catId = 1;
+                const cat = await tx.shiftCategory.findFirst({ where: { tenantId } });
+                if (cat) {
+                    catId = cat.id;
+                } else {
+                    const newCat = await tx.shiftCategory.create({
+                        data: { tenantId, name: 'General', baseValue: 0, extraHourValue: 0 }
+                    });
+                    catId = newCat.id;
+                }
+
+                for (let i = 1; i <= 5; i++) {
+                    await tx.shift.create({
+                        data: {
+                            tenantId,
+                            categoryId: catId,
+                            serviceNumber: `S-${100 + i}`,
+                            date: new Date(),
+                            time: `${8 + i}:00`,
+                            line: "306",
+                            carNumber: `${1000 + i}`,
+                            totalValue: 0,
+                            createdBy: 0,
+                            status: 'CONFIRMED'
+                        }
+                    });
+                }
+            });
+
+            console.log("✅ EMERGENCY SEED: Data injected correctly (Atomic).");
 
             return res.json({
                 status: "Success",
@@ -151,6 +161,35 @@ export const EmergencyController = {
                 status: "Error",
                 message: `Failed to seed data: ${error.message || String(error)}`
             });
+        }
+    },
+
+    wipeAll: async (req: Request, res: Response) => {
+        try {
+            console.log("🔥 EMERGENCY: PURGE ALL DATA INITIATED (WIPE)");
+            const tenantId = 1;
+
+            await prisma.$transaction([
+                // Ordered deletions to respect foreign keys
+                prisma.shift.deleteMany({ where: { tenantId } }),
+                prisma.serviceDefinition.deleteMany({ where: { tenantId } }),
+                prisma.tripSchedule.deleteMany({}), // If tenant context exists, filter
+                prisma.routeVariant.deleteMany({}),
+                prisma.route.deleteMany({ where: { tenantId } }),
+                prisma.vehicle.deleteMany({ where: { tenantId } }),
+                // Keep users but clean assignments
+                prisma.user.updateMany({
+                    where: { tenantId },
+                    data: { assignedVehicleId: null }
+                })
+            ]);
+
+            console.log("✅ WIPE COMPLETE. System is clean.");
+            return res.json({ message: "Sistema purgado correctamente. Listo para re-importación." });
+
+        } catch (error) {
+            console.error("❌ WIPE FAILED:", error);
+            return res.status(500).json({ message: "Error crítico al purgar", error });
         }
     }
 };

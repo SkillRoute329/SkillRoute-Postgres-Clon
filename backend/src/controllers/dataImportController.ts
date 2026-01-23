@@ -147,9 +147,14 @@ export const uploadServiceData = async (req: Request, res: Response) => {
             errors: errors.length > 0 ? errors : undefined
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Import Error:', error);
-        res.status(500).json({ message: 'Error interno al procesar el archivo', error: String(error) });
+        // Devolvemos el error real sin censura para debug inmediato
+        res.status(400).json({
+            message: 'Error CRÍTICO al procesar el archivo',
+            error: error.message || String(error),
+            stack: error.stack
+        });
     }
 };
 

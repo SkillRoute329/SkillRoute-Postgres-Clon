@@ -252,8 +252,12 @@ const RotationMatrix = () => {
                                                         <tr key={srv.id} className={clsx("hover:bg-indigo-500/5 transition-colors", isBlank && "opacity-50 bg-slate-900/30")}>
                                                             <td className="px-4 py-3 font-bold text-white font-mono">{srv.serviceCode}</td>
                                                             <td className="px-4 py-3">
-                                                                <span className={clsx("px-2 py-0.5 rounded text-xs font-bold", srv.line === '300' ? "bg-red-500/20 text-red-300" : isBlank ? "bg-slate-700 text-slate-400" : "bg-blue-500/20 text-blue-300")}>
-                                                                    {srv.line}
+                                                                <span className={clsx("px-2 py-0.5 rounded text-xs font-bold",
+                                                                    srv.line === '300' ? "bg-red-500/20 text-red-300" :
+                                                                        isBlank ? "bg-slate-700 text-slate-400" :
+                                                                            !srv.line ? "bg-red-900 text-white animate-pulse" :
+                                                                                "bg-blue-500/20 text-blue-300")}>
+                                                                    {srv.line || `⚠️ ERROR DATOS (ID: ${srv.id})`}
                                                                 </span>
                                                             </td>
                                                             <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{details.t1 || srv.startTime + ' - ' + (srv.endTime || '?')}</td>

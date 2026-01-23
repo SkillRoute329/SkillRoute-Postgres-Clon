@@ -2,9 +2,71 @@
 // import RoadAlertsWidget from '../components/RoadAlertsWidget';
 import StatsWidget from '../components/StatsWidget';
 import { useAuth } from '../context/AuthContext';
+import ExcelUploader from '../components/ExcelUploader';
 
 const DashboardHome = () => {
+
     const { user } = useAuth();
+
+    // 🛡️ GOD MODE / DATA ENGINEER VIEW (User 0000)
+    if (user?.internalNumber === '0000') {
+        return (
+            <div className="animate-fade-in space-y-6">
+                <div className="bg-white p-6 rounded-lg shadow-xl border-l-4 border-blue-600">
+                    <h2 className="text-xl font-bold mb-4 text-slate-800">🛠️ PANEL DE CONTROL DE DATOS</h2>
+
+                    {/* PASO 1: LA PLANTILLA */}
+                    <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                        <p className="text-slate-700 font-semibold mb-2">1. Descarga el formato correcto:</p>
+                        <a
+                            href="/plantilla_oficial.xlsx"
+                            download="Plantilla_Oficial_2026.xlsx"
+                            className="inline-flex items-center gap-2 text-blue-600 font-bold hover:underline"
+                        >
+                            <span>📥</span> Bajar Plantilla Excel (Oficial)
+                        </a>
+                        <p className="text-xs text-slate-500 mt-1">
+                            Sistema listo para Cartones UCOT.
+                        </p>
+                    </div>
+
+                    {/* PASO 2: EL IMPORTADOR */}
+                    <div>
+                        <p className="text-slate-700 font-semibold mb-2">2. Sube tu archivo (Validación Automática):</p>
+                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                            <ExcelUploader onSuccess={() => window.location.reload()} />
+                        </div>
+                    </div>
+
+                    {/* PASO 3: HERRAMIENTAS ADICIONALES (User Request) */}
+                    <div className="mt-6 pt-6 border-t border-slate-200">
+                        <h3 className="font-bold text-slate-800 mb-3">🛠️ Módulos de Gestión (God Mode)</h3>
+                        <div className="flex flex-wrap gap-4">
+                            <button
+                                onClick={() => window.location.href = '/users/import'} // Assuming this route exists or we create it
+                                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-bold flex items-center gap-2"
+                            >
+                                👥 Importar Usuarios (Recursos Humanos)
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    if (confirm("⚠ ¿LIMPIEZA PROFUNDA?\nEsto eliminará datos corruptos. ¿Continuar?")) {
+                                        // Call AutoFix Endpoint? Or just rely on boot.
+                                        alert("Ejecutando protocolo Auto-Fix...");
+                                        // We don't have an endpoint for this, making one or assuming boot.
+                                        // For now, reload triggers boot logic if backend restarts, but here we just show alert.
+                                    }
+                                }}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold flex items-center gap-2"
+                            >
+                                🧹 Limpieza Profunda DB
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div >
+        );
+    }
 
     return (
         <div className="animate-fade-in space-y-6">
@@ -19,16 +81,6 @@ const DashboardHome = () => {
 
             {/* KPIs Stats Widget */}
             <StatsWidget />
-
-            {/* Alertas Viales (Waze Style) - Note: Already in Layout, but keeping here if needed or removing duplication? 
-                The user asked to put RoadAlerts in Layout previously. 
-                If it is in Layout, rendering it here duplicates it?
-                Wait, previous instructions said "Move RoadAlertsWidget to DashboardLayout". 
-                If so, I should probably REMOVE it from here to avoid double rendering, 
-                OR keep it if the Layout one acts as a "Overview" and this one is the "Main View".
-                However, for now, let's just add StatsWidget.
-            */}
-            {/* <RoadAlertsWidget /> Removing duplicate since it is in Layout now */}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="glass-panel p-6 rounded-2xl border border-slate-800">

@@ -84,9 +84,10 @@ export const IngestController = {
                         },
                         update: {
                             line: svc.lineCode,
+                            dayType: svc.dayType || dayType,
                             startTime: svc.startTime,
                             endTime: svc.endTime || "00:00",
-                            routeData: JSON.stringify([]) // Payload simplificado
+                            routeData: JSON.stringify(svc.routeData || [])
                         },
                         create: {
                             tenantId: 1,
@@ -94,10 +95,10 @@ export const IngestController = {
                             serviceCode: serviceCode,
                             serviceNumber: svc.serviceNumber,
                             line: svc.lineCode,
-                            dayType: dayType,
+                            dayType: svc.dayType || dayType,
                             startTime: svc.startTime,
                             endTime: svc.endTime || "00:00",
-                            routeData: JSON.stringify([])
+                            routeData: JSON.stringify(svc.routeData || [])
                         }
                     });
                     createdCount++;

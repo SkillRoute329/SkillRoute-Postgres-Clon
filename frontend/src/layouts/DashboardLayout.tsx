@@ -129,6 +129,28 @@ const DashboardLayout = () => {
         handleMobileLinkClick();
     };
 
+    // PWA Install Logic
+    useEffect(() => {
+        const handler = (e: any) => {
+            e.preventDefault();
+            const btnContainer = document.getElementById('pwa-install-container');
+            const btn = document.getElementById('pwa-install-btn');
+            if (btnContainer && btn) {
+                btnContainer.classList.remove('hidden');
+                btn.onclick = () => {
+                    e.prompt();
+                    e.userChoice.then((choiceResult: any) => {
+                        if (choiceResult.outcome === 'accepted') {
+                            btnContainer.classList.add('hidden');
+                        }
+                    });
+                };
+            }
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
     const renderFallbackMenu = () => (
         <>
             {role === 'SuperAdmin' && (
@@ -283,11 +305,16 @@ const DashboardLayout = () => {
                 <div className="p-4 border-t border-slate-800">
                     <button
                         onClick={handleLogout}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 w-full transition-colors"
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 w-full transition-colors mb-2"
                     >
                         <LogOut className="w-5 h-5" />
                         <span className={clsx("font-medium", !isSidebarOpen && "hidden")}>Cerrar Sesión</span>
                     </button>
+                    {isSidebarOpen && (
+                        <div className="text-[10px] text-slate-600 text-center font-mono">
+                            v2.5 - HYBRID ENGINE (ONLINE)
+                        </div>
+                    )}
                 </div>
             </aside>
 
@@ -305,6 +332,17 @@ const DashboardLayout = () => {
                     <div className="flex-1"></div>
 
                     <div className="flex items-center gap-4">
+                        {/* PWA INSTALL TRIGGER */}
+                        <div id="pwa-install-container" className="hidden">
+                            <button
+                                id="pwa-install-btn"
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-lg animate-pulse flex items-center gap-2"
+                            >
+                                <Zap className="w-3 h-3" />
+                                INSTALAR APP
+                            </button>
+                        </div>
+
                         <NotificationsDropdown />
 
                         <div className="text-right hidden sm:block">

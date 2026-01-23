@@ -203,11 +203,53 @@ async function deferredBoot() {
     console.log('🔄 [SEED] Checking seeds...');
     await seedDatabase();
 
+    // 🕵️ THE VALIDATOR (INTEGRITY CHECK)
+    const { TheValidator } = await import('./scripts/TheValidator');
+    await TheValidator.run();
+
+    // 🛠️ AUTO-FIX SERVICE (DEEP CLEAN & PREP)
+    const { AutoFixService } = await import('./services/AutoFixService');
+    await AutoFixService.run();
+
     // 🤖 SELF-AWARENESS SERVICE (DNA Enforced)
     const { SelfAwarenessService } = await import('./services/SelfAwarenessService');
     await SelfAwarenessService.boot();
 
     console.log('🏁 [BOOT] Heavy tasks completed.');
+
+    // --- SENTINEL PROTOCOL (Post-Deploy Check) ---
+    console.log('🕵️ [SENTINEL] Verifying Frontend Health...');
+    try {
+      const fetch = (await import('node-fetch')).default;
+      // Check local manifest availability
+      const manifestUrl = `http://localhost:${PORT}/manifest.json`;
+      console.log(`   -> Probing: ${manifestUrl}`);
+
+      const res = await fetch(manifestUrl);
+      if (res.ok) {
+        console.log('✅ [SENTINEL] Frontend Logic OK. Manifest is accessible.');
+      } else {
+        console.error(`🚨 [SENTINEL] ALERT: Manifest returned ${res.status}. Triggering Auto-Repair...`);
+        const { execSync } = require('child_process');
+        // Attempt to run the asset script from root or relative
+        try {
+          // Adjust path as needed, assuming we are in backend/src or root
+          // Current CWD is root of project usually in Railway, but let's try strict path
+          const scriptPath = path.join(__dirname, '../../scripts/ensure-assets.js');
+          if (fs.existsSync(scriptPath)) {
+            execSync(`node "${scriptPath}"`, { stdio: 'inherit' });
+            console.log('🩹 [SENTINEL] Auto-Repair script executed.');
+          } else {
+            console.error('❌ [SENTINEL] Repair script NOT FOUND at ' + scriptPath);
+          }
+        } catch (patchErr) {
+          console.error('❌ [SENTINEL] Auto-Repair Failed:', patchErr);
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ [SENTINEL] Could not verify frontend (Service might be asleep or busy):', err);
+    }
+    // ---------------------------------------------
 
     console.log('📱 [WHATSAPP] Starting service...');
     whatsAppService.start();
