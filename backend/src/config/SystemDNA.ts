@@ -1,11 +1,22 @@
-
-/**
- * 🧬 SYSTEM DNA: The immutable core logic of TransForma 2.0.
- */
 export const SystemDNA = {
-    GOD_MODE_USER: '0000',
-    CRITICAL_ROUTES: ['300', '306', '370', 'L13'],
-    AUTO_REPAIR: true,
-    GOD_MODE_HASH: '$2b$10$7S0R7P9uY9uY9uY9uY9uYuY9uY9uY9uY9uY9uY9uY9uY9uY9uY9uY', // Hash for 'admin123'
-    DEFAULT_TENANT: { id: 1, name: 'UCOT_MASTER', slug: 'transporte-corp' }
+    identity: {
+        name: "TransformaFacil 2.0",
+        version: "20.1.0-PRODUCTION",
+        codename: "AMANECER"
+    },
+    infrastructure: {
+        repository: "https://github.com/Ucot2025/TransformaFacil-2.0.git",
+        productionBranch: "main",
+        deploymentProvider: "Railway",
+        productionUrl: "https://transformafacil-20-production.up.railway.app"
+    },
+    context: {
+        description: "Este archivo contiene la VERDAD ABSOLUTA sobre la infraestructura del sistema. Cualquier agente o desarrollador debe respetar estos parámetros.",
+        criticalRules: [
+            "SOLO desplegar desde la rama 'main'.",
+            "La rama 'master' es un artefacto legacy local, NO USAR para deploy.",
+            "Si Railway no despliega automáticamente, forzar via Commit Vacío o UI.",
+            "El sistema de archivos local es efímero en producción. Usar S3/Base de Datos para persistencia."
+        ]
+    }
 };

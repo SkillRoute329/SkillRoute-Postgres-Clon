@@ -53,7 +53,10 @@ const VERSION = 'v20.0-CERTIFIED';
 const BOOT_ID = Math.floor(Math.random() * 1000000).toString();
 
 // 1. FAIL-FAST VALIDATION (CRITICAL FOR PRODUCTION)
+import { SystemDNA } from './config/SystemDNA';
+
 console.log(`🚀 [BOOT] Starting System v${VERSION}`);
+console.log(`🧬 [DNA] Identity: ${SystemDNA.identity.codename} | Repo: ${SystemDNA.infrastructure.repository}`);
 
 const requiredEnvs = ['DATABASE_URL', 'JWT_SECRET'];
 const missingEnvs = requiredEnvs.filter(env => !process.env[env]);
