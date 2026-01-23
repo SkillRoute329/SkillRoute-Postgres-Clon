@@ -66,17 +66,25 @@ export const ExcelParser = {
  * - Data: Start Row 7 (Index 6)
  */
 function parseCarton(sheet: XLSX.WorkSheet): ParsedData {
-    // 1. Extraer Metadatos (Direct Cell Access)
-    const cellB2 = sheet['B2']?.v; // Línea
-    const cellK2 = sheet['K2']?.v; // Servicio
+    // 1. Extraer Metadatos (Smart Search)
+    const possibleLineCells = ['B1', 'B2', 'B3'];
+    const possibleServiceCells = ['K1', 'K2', 'K3'];
 
-    const lineCodeRaw = String(cellB2 || "A DEFINIR").trim();
-    // Sanitizar "300.0" -> "300"
-    const lineCode = lineCodeRaw.replace(/\.0$/, '');
+    let lineCode = "A DEFINIR";
+    for (const cell of possibleLineCells) {
+        if (sheet[cell]?.v) {
+            const v = String(sheet[cell].v).trim().replace(/\.0$/, '');
+            if (v.length > 0 && v.length < 6) { lineCode = v; break; }
+        }
+    }
 
-    // Servicio often comes as number
-    const serviceNumRaw = String(cellK2 || "0000").trim();
-    const serviceNumber = serviceNumRaw.replace(/\.0$/, '');
+    let serviceNumber = "0000";
+    for (const cell of possibleServiceCells) {
+        if (sheet[cell]?.v) {
+            const v = String(sheet[cell].v).trim().replace(/\.0$/, '');
+            if (v.length >= 3) { serviceNumber = v; break; }
+        }
+    }
 
     // 2. Iterar filas de tiempos (Skip 6 rows header)
     const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1:Z100');

@@ -1,4 +1,5 @@
 
+import bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 
@@ -80,16 +81,37 @@ export const UniversalController = {
                 return res.status(400).json({ message: 'Invalid entity or data format.' });
             }
 
+            // SPECIAL HANDLING FOR USERS (Password Hashing)
+            if (modelName === 'user') {
+                for (const row of data) {
+                    if (row.password) {
+                        row.passwordHash = await bcrypt.hash(String(row.password), 10);
+                        delete row.password; // Remove plain text
+                    } else if (!row.passwordHash) {
+                        // Default password for imported users if missing
+                        row.passwordHash = await bcrypt.hash('123456', 10);
+                    }
+
+                    // Ensure internalNumber is string
+                    if (row.internalNumber) row.internalNumber = String(row.internalNumber);
+
+                    // Ensure tenantId (default to 1 if missing for now - dangerous but needed)
+                    if (!row.tenantId) row.tenantId = 1;
+
+                    // Sanitize foreign keys if they are strings in excel
+                    ['departmentId', 'jobRoleId'].forEach(k => {
+                        if (row[k]) row[k] = Number(row[k]);
+                    });
+                }
+            }
+
             // @ts-ignore
             const delegate = prisma[modelName];
 
             // Bulk create / Upsert logic
-            // For simplicity in this universal importer, we'll try createMany first if supported, 
-            // otherwise loop. Prisma createMany is supported for most SQL DBs.
-
             const result = await delegate.createMany({
                 data: data,
-                skipDuplicates: true // Simple conflict resolution
+                skipDuplicates: true
             });
 
             res.json({ message: 'Import successful', count: result.count });

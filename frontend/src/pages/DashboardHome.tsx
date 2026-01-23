@@ -43,10 +43,10 @@ const DashboardHome = () => {
                         <h3 className="font-bold text-slate-800 mb-3">🛠️ Módulos de Gestión (God Mode)</h3>
                         <div className="flex flex-wrap gap-4">
                             <button
-                                onClick={() => window.location.href = '/users/import'} // Assuming this route exists or we create it
+                                onClick={() => window.location.href = '/dashboard/admin/users'}
                                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-bold flex items-center gap-2"
                             >
-                                👥 Importar Usuarios (Recursos Humanos)
+                                👥 Gestión de Usuarios (RRHH)
                             </button>
                             <button
                                 onClick={async () => {
