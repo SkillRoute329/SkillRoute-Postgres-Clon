@@ -170,6 +170,13 @@ export const ShiftService = {
         return res.json();
     },
 
+    getMenu: async () => {
+        const res = await fetch(`${API_URL}/system-config/menu`, {
+            headers: getAuthHeaders(),
+        }).then(res => handleResponse(res));
+        return res.json();
+    },
+
     getCategoryHistory: async (id: number) => {
         const res = await fetch(`${API_URL}/categories/${id}/history`, {
             headers: getAuthHeaders(),
@@ -400,6 +407,15 @@ export const DataImportService = {
         });
         if (!response.ok) throw new Error('Error descargando plantilla');
         return response.blob();
+    },
+
+    ingestJson: async (data: any) => {
+        const res = await fetch(`${API_URL}/data-import/ingest/json`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data),
+        }).then(handleResponse);
+        return res.json();
     }
 };
 

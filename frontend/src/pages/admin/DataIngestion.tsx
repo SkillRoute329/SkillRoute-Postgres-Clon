@@ -2,10 +2,11 @@
 import { useState, useCallback } from 'react';
 import { Upload, FileUp, CheckCircle, FileSpreadsheet, Loader2, Download, Trash2, Play } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
-import { API_URL } from '../../services/api';
+import { DataImportService, API_URL } from '../../services/api';
+import { ExcelParser, ParsedData } from '../../utils/ExcelParser';
 
 interface AnalysisResult {
-    type: 'CARTON' | 'BOLETIN' | 'DAILY' | 'UNKNOWN';
+    type: 'CARTON' | 'BOLETIN' | 'DAILY' | 'UNKNOWN' | 'JSON_READY';
     count: number;
     preview: any[];
     message: string;
@@ -15,6 +16,7 @@ const DataIngestion = () => {
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
     const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+    const [parsedData, setParsedData] = useState<ParsedData | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -22,6 +24,7 @@ const DataIngestion = () => {
             setFile(acceptedFiles[0]);
             setAnalysis(null);
             setSuccessMsg(null);
+            setParsedData(null);
             analyzeFile(acceptedFiles[0]);
         }
     }, []);
@@ -35,54 +38,52 @@ const DataIngestion = () => {
         maxFiles: 1
     });
 
+    // 🚀 CLIENT-SIDE PROCESSING
     const analyzeFile = async (uploadedFile: File) => {
         setUploading(true);
-        const formData = new FormData();
-        formData.append('file', uploadedFile);
-
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/legacy-import`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                body: formData
+            // 1. Parse Excel in Browser
+            const result = await ExcelParser.parse(uploadedFile);
+            setParsedData(result);
+
+            // 2. Local Analysis for Preview
+            setAnalysis({
+                type: 'JSON_READY',
+                count: result.services.length,
+                preview: result.services.slice(0, 10), // Show first 10
+                message: `Archivo procesado localmente: ${result.lines.length} Líneas, ${result.services.length} Servicios detectados.`
             });
-            const data = await res.json();
-            setAnalysis(data);
+
         } catch (error) {
             console.error(error);
-            setAnalysis({ type: 'UNKNOWN', count: 0, preview: [], message: 'Error al analizar el archivo.' });
+            setAnalysis({
+                type: 'UNKNOWN',
+                count: 0,
+                preview: [],
+                message: 'Error al procesar archivo en navegador: ' + (error as any).message
+            });
         } finally {
             setUploading(false);
         }
     };
 
     const confirmUpload = async () => {
-        if (!file) return;
+        if (!parsedData) return;
         setUploading(true);
-        const formData = new FormData();
-        formData.append('file', file);
 
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/legacy-import?confirm=true`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData
-            });
-            const data = await res.json();
-            if (data.success) {
-                setSuccessMsg(data.message);
+            // 3. Send JSON to Backend
+            const res = await DataImportService.ingestJson(parsedData);
+
+            if (res.message) {
+                setSuccessMsg(`Importación Completa: ${res.details.lines} Líneas, ${res.details.services} Servicios.`);
                 setAnalysis(null);
                 setFile(null);
-            } else {
-                alert('Error: ' + data.message);
+                setParsedData(null);
             }
         } catch (error) {
             console.error(error);
-            alert('Error crítico de subida');
+            alert('Error crítico de subida: ' + (error as any).message);
         } finally {
             setUploading(false);
         }
@@ -90,10 +91,6 @@ const DataIngestion = () => {
 
     const downloadReport = () => {
         const token = localStorage.getItem('token');
-        // Usar fetch con blob para manejar el PDF si se requiere auth header, o pasar token en query param
-        // Por simplicidad, asumimos que el endpoint valida token si se envia, o es publico (para descarga directa suele ser mas facil token en query)
-        // Pero dado que en universalRoutes usamos middleware, download directo 'window.open' fallará si no envía headers.
-        // Solución: Fetch + Blob + ObjectURL
         fetch(`${API_URL}/simulation/report`, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
@@ -130,10 +127,10 @@ const DataIngestion = () => {
             <div className="text-center space-y-2">
                 <h1 className="text-4xl font-black text-white tracking-tight flex items-center justify-center gap-3">
                     <FileSpreadsheet className="w-10 h-10 text-emerald-400" />
-                    Ingesta Universal de Datos
+                    Ingesta Universal (Client-Side)
                 </h1>
                 <p className="text-slate-400 text-lg">
-                    Sube archivos crudos del sistema legado (Excel/CSV). El sistema detectará automáticamente el formato.
+                    El procesamiento se realiza en TU navegador para máxima velocidad y seguridad.
                 </p>
             </div>
 
@@ -157,7 +154,7 @@ const DataIngestion = () => {
                 {uploading ? (
                     <div className="flex flex-col items-center gap-4 text-emerald-400">
                         <Loader2 className="w-16 h-16 animate-spin" />
-                        <span className="text-2xl font-bold">Procesando archivo...</span>
+                        <span className="text-2xl font-bold">Procesando...</span>
                     </div>
                 ) : analysis ? (
                     <div className="space-y-6 w-full">
@@ -191,7 +188,7 @@ const DataIngestion = () => {
 
                         <div className="flex gap-4 justify-center">
                             <button
-                                onClick={(e) => { e.stopPropagation(); setFile(null); setAnalysis(null); }}
+                                onClick={(e) => { e.stopPropagation(); setFile(null); setAnalysis(null); setParsedData(null); }}
                                 className="px-6 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 font-bold transition-colors"
                             >
                                 Cancelar
@@ -211,22 +208,22 @@ const DataIngestion = () => {
                             <Upload className="w-10 h-10 text-white" />
                         </div>
                         <div className="space-y-2">
-                            <p className="text-2xl font-bold text-white">Arrastra tus archivos aquí</p>
-                            <p className="text-slate-400">Soporta .xlsx, .xls, .csv (Cartones, Boletines, Planillas)</p>
+                            <p className="text-2xl font-bold text-white">Arrastra tus archivos Excel aquí</p>
+                            <p className="text-slate-400">Procesamiento Local (No sube el archivo, solo datos)</p>
                         </div>
                     </>
                 )}
             </div>
 
             {/* Simulation Controls */}
-            <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 space-y-6 animate-in slide-in-from-bottom-8">
+            <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 space-y-6 opacity-75 hover:opacity-100 transition-opacity">
                 <div className="flex items-center gap-4">
                     <div className="p-3 bg-purple-500/20 rounded-xl">
                         <Play className="w-8 h-8 text-purple-400" />
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold text-white">Simulación Operativa</h2>
-                        <p className="text-slate-400">Control de escenario de tráfico sintético y generación de reportes.</p>
+                        <p className="text-slate-400">Control de escenario de tráfico sintético.</p>
                     </div>
                 </div>
 
@@ -244,23 +241,8 @@ const DataIngestion = () => {
                         className="flex items-center justify-center gap-3 p-4 bg-slate-800 hover:bg-red-900/20 border border-slate-600 hover:border-red-500/50 rounded-xl transition-all group"
                     >
                         <Trash2 className="w-6 h-6 text-red-400 group-hover:scale-110 transition-transform" />
-                        <span className="font-bold text-slate-200">Limpiar Simulación</span>
+                        <span className="font-bold text-slate-200">Limpiar Simulación ABL</span>
                     </button>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 opacity-50 pointer-events-none">
-                <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-                    <h3 className="font-bold text-slate-300 mb-2">Cartones (Horarios)</h3>
-                    <p className="text-sm text-slate-500">Detecta automáticamente paradas, tiempos de paso y variantes de línea.</p>
-                </div>
-                <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-                    <h3 className="font-bold text-slate-300 mb-2">Boletines</h3>
-                    <p className="text-sm text-slate-500">Importa asignaciones de coches a líneas y servicios específicos.</p>
-                </div>
-                <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-                    <h3 className="font-bold text-slate-300 mb-2">Diarios (Asignación)</h3>
-                    <p className="text-sm text-slate-500">Carga masiva de la operación diaria (Coche + Chofer + Servicio).</p>
                 </div>
             </div>
         </div>

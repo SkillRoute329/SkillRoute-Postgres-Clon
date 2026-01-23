@@ -204,6 +204,25 @@ const DriverNavigation = () => {
         audioRef.current['radar'] = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
         audioRef.current['tariff'] = new Audio('https://actions.google.com/sounds/v1/foley/car_door_chime.ogg');
 
+        // Wake Lock
+        if ('wakeLock' in navigator) {
+            let wakeLock: any = null;
+            const requestWakeLock = async () => {
+                try {
+                    wakeLock = await (navigator as any).wakeLock.request('screen');
+                    console.log('✅ Wake Lock activo');
+                } catch (err) {
+                    console.error(`❌ Wake Lock falló: ${(err as any).name}, ${(err as any).message}`);
+                }
+            };
+            requestWakeLock();
+            document.addEventListener('visibilitychange', async () => {
+                if (wakeLock !== null && document.visibilityState === 'visible') {
+                    await requestWakeLock();
+                }
+            });
+        }
+
         return () => { newSocket.disconnect(); };
     }, []);
 
