@@ -1,0 +1,22 @@
+name: 🚀 Production Deploy (Railway)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Allows manual trigger button in GitHub
+
+jobs:
+  deploy:
+    name: 🚂 Deploy to Railway
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛡️ Checkout
+        uses: actions/checkout@v4
+
+      - name: 📦 Install Railway CLI
+        run: npm i -g @railway/cli
+
+      - name: 🚀 Force Deploy
+        run: railway up --detach --service transformafacil-20-production
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
