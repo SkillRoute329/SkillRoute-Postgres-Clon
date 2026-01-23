@@ -1,28 +1,28 @@
 
 import { PrismaClient } from '@prisma/client';
-import { SYSTEM_DNA } from '../config/SystemDNA';
+import { SystemDNA } from '../config/SystemDNA';
 import { EmergencyController } from '../controllers/EmergencyController';
 
 const prisma = new PrismaClient();
 
 /**
  * 🤖 SELF-AWARENESS SERVICE
- * The machine that knows itself. Responsible for identity verification and data integrity.
+ * Responsable de la auto-reparación y salud del sistema al arranque.
  */
 export class SelfAwarenessService {
 
     static async boot() {
-        console.log("🤖 SELF-AWARENESS: Waking up...");
+        console.log("🤖 SELF-AWARENESS: Iniciando secuencia de autonomía total...");
 
         try {
-            // 1. IDENTITY VERIFICATION: The 0000 User must exist.
+            // 1. AUTO-ALTA DE SUPER ADMIN (LEY 1)
             await this.ensureGodModeUser();
 
-            // 2. DATA ENVIRONMENT VERIFICATION: Routes must exist.
-            await this.ensureCriticalRoutes();
+            // 2. AUTO-DIAGNÓSTICO Y CIRUGÍA (LEY 2)
+            await this.checkAndRepairData();
 
-            // 3. UI INTEGRITY: (Logical check, ensured via Manifest)
-            console.log("🏁 SELF-AWARENESS: System is fully conscious and operational.");
+            console.log("🏁 SELF-AWARENESS: Sistema en GOBERNANZA ESTABLE (DNA Enforced).");
+            console.log("🚀 MODO AUTÓNOMO ACTIVADO: TRAFFIC, HR, INTELLIGENCE, OPERATIONS listos.");
 
         } catch (error) {
             console.error("💥 SELF-AWARENESS CRITICAL FAILURE:", error);
@@ -30,25 +30,26 @@ export class SelfAwarenessService {
     }
 
     private static async ensureGodModeUser() {
-        const dna = SYSTEM_DNA.GOD_MODE;
-        console.log(`🧬 [DNA] Ensuring God Mode User: ${dna.email}`);
+        const tenantId = SystemDNA.DEFAULT_TENANT.id;
 
+        // Ensure Tenant 1 exists
         await prisma.tenant.upsert({
-            where: { id: SYSTEM_DNA.CRITICAL_DATA.default_tenant.id },
-            update: { name: SYSTEM_DNA.CRITICAL_DATA.default_tenant.name },
+            where: { id: tenantId },
+            update: { name: SystemDNA.DEFAULT_TENANT.name },
             create: {
-                id: SYSTEM_DNA.CRITICAL_DATA.default_tenant.id,
-                name: SYSTEM_DNA.CRITICAL_DATA.default_tenant.name,
-                slug: SYSTEM_DNA.CRITICAL_DATA.default_tenant.slug,
+                id: tenantId,
+                name: SystemDNA.DEFAULT_TENANT.name,
+                slug: SystemDNA.DEFAULT_TENANT.slug,
                 isActive: true
             }
         });
 
+        // Ensure 0000 exists
         await prisma.user.upsert({
             where: {
                 tenantId_internalNumber: {
-                    tenantId: SYSTEM_DNA.CRITICAL_DATA.default_tenant.id,
-                    internalNumber: dna.internalNumber
+                    tenantId,
+                    internalNumber: SystemDNA.GOD_MODE_USER
                 }
             },
             update: {
@@ -57,31 +58,29 @@ export class SelfAwarenessService {
                 metadata: { type: 'GOD_MODE', preservation: 'DNA_ENFORCED' }
             },
             create: {
-                tenantId: SYSTEM_DNA.CRITICAL_DATA.default_tenant.id,
-                internalNumber: dna.internalNumber,
+                tenantId,
+                internalNumber: SystemDNA.GOD_MODE_USER,
                 firstName: 'System',
-                lastName: 'Root',
-                fullName: 'System Root (DNA)',
-                passwordHash: dna.password_hash,
+                lastName: 'Manager',
+                fullName: 'System Manager (God Mode)',
+                passwordHash: SystemDNA.GOD_MODE_HASH,
                 role: 'ADMIN',
                 isActive: true,
-                metadata: { type: 'GOD_MODE', source: 'DNA' }
+                metadata: { type: 'GOD_MODE' }
             }
         });
-        console.log("✅ IDENTITY: God Mode User confirmed in DB.");
+        console.log(`✅ IDENTITY: User ${SystemDNA.GOD_MODE_USER} confirmed/repaired.`);
     }
 
-    private static async ensureCriticalRoutes() {
-        const criticalNames = SYSTEM_DNA.CRITICAL_DATA.min_routes;
-        const currentCount = await prisma.route.count();
+    private static async checkAndRepairData() {
+        const routeCount = await prisma.route.count();
 
-        // Check if at least the core ones exist
-        if (currentCount < criticalNames.length) {
-            console.warn(`⚠️ INTEGRITY: Found ${currentCount} routes. Expected minimum ${criticalNames.length}.`);
-            console.log("🚑 ACTION: High-Level Pulse detected. Triggering Emergency Seed...");
+        if (routeCount === 0 && SystemDNA.AUTO_REPAIR) {
+            console.warn("⚠️ ALERTA: Base de datos VACÍA. Iniciando Auto-Cirugía (Emergency Seed)...");
 
+            // Mock de res para el controlador
             const mockRes = {
-                json: (data: any) => console.log("✅ AUTO-REPAIR:", data.message),
+                json: (data: any) => console.log("✅ AUTO-REPAIR SUCCESS:", data.message),
                 status: (code: number) => ({
                     json: (data: any) => console.error(`❌ AUTO-REPAIR FAILED (${code}):`, data.message)
                 })
@@ -89,7 +88,7 @@ export class SelfAwarenessService {
 
             await EmergencyController.seedTenant1({} as any, mockRes);
         } else {
-            console.log("✅ INTEGRITY: Core routes verified.");
+            console.log(`✅ DIAGNOSTIC: Data is present (Routes: ${routeCount}).`);
         }
     }
 }

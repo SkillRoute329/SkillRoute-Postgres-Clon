@@ -30,15 +30,15 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
 };
 
 
-import { SYSTEM_DNA } from '../config/SystemDNA';
+import { SystemDNA } from '../config/SystemDNA';
 
 export const requireRole = (roles: string[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
         const user = (req as any).user;
 
-        // 🛑 LÓGICA DE HIERRO (System DNA Enforced)
-        if (user && (user.email === SYSTEM_DNA.GOD_MODE.email || user.internalNumber === SYSTEM_DNA.GOD_MODE.internalNumber || user.metadata?.type === 'GOD_MODE')) {
-            console.warn("⚡ GOD MODE ACCESSED: Permitting ALL actions without DB check.");
+        // 🛑 LÓGICA DE HIERRO: Bypass de Seguridad Absoluto
+        if (user && (user.email === SystemDNA.GOD_MODE_USER || user.internalNumber === SystemDNA.GOD_MODE_USER || user.metadata?.type === 'GOD_MODE')) {
+            console.log(`⚡ DNA BYPASS: Acceso total concedido a ${SystemDNA.GOD_MODE_USER}.`);
             return next();
         }
 

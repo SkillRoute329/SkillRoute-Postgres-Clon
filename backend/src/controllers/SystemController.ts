@@ -1,6 +1,7 @@
 
 import { Request, Response } from 'express';
 import { SYSTEM_MODULES } from '../config/SystemManifest';
+import { SystemDNA } from '../config/SystemDNA';
 
 export const SystemController = {
     getMenu: async (req: Request, res: Response) => {
@@ -14,9 +15,9 @@ export const SystemController = {
 
             console.log(`🧭 SYSTEM: Generating Menu for ${user.email || user.internalNumber} (${user.role})`);
 
-            // ⚡ GOD MODE CHECK
-            if (user.metadata?.type === 'GOD_MODE' || user.email === '0000' || user.internalNumber === '0000') {
-                console.log("⚡ GOD MODE DETECTED: Returning Full System Manifest.");
+            // ⚡ GOD MODE CHECK (DNA Enforced)
+            if (user.metadata?.type === 'GOD_MODE' || user.email === SystemDNA.GOD_MODE_USER || user.internalNumber === SystemDNA.GOD_MODE_USER) {
+                console.log("⚡ DNA BYPASS: Returning Full System Manifest for God Mode.");
                 return res.json({ modules: SYSTEM_MODULES });
             }
 
