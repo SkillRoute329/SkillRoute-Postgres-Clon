@@ -3,6 +3,7 @@ import { LogIn, KeyRound, UserCircle, AlertCircle, CheckCircle, Bus } from 'luci
 import clsx from 'clsx';
 import { UserService } from '../services/api';
 import ResetApp from '../components/ResetApp';
+import BuildTag from '../components/BuildTag';
 import { setAuthData } from '../utils/auth';
 
 const LoginScreen = () => {
@@ -198,6 +199,8 @@ const LoginScreen = () => {
                     </button>
                 </div>
             )}
+
+            <BuildTag />
         </div>
     );
 };

@@ -1,9 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Camera, CheckCircle, AlertTriangle, ArrowRight, Bus, Trash2 } from 'lucide-react';
+import { Camera as LucideCamera, CheckCircle, AlertTriangle, ArrowRight, Bus, Trash2 } from 'lucide-react';
 import { FleetService } from '../../services/api';
 import clsx from 'clsx';
+// Native Camera Logic
+import { Camera, CameraResultType } from '@capacitor/camera';
 
 // Helper to resize images (Simulated Cloud Upload)
 const compressImage = (file: File): Promise<string> => {
@@ -66,31 +67,40 @@ const InspectionForm = () => {
         }
     };
 
-    const handleCameraClick = (zone: string) => {
+    // Native Camera Logic
+    // Import moved to top level
+
+    // ... (existing imports)
+
+    // Camera Handlers (Capacitor)
+    // Removed duplicate state declaration
+
+    const handleCameraClick = async (zone: string) => {
         setCapturingZone(zone);
-        fileInputRef.current?.click();
-    };
+        try {
+            const image = await Camera.getPhoto({
+                quality: 70,
+                allowEditing: false,
+                resultType: CameraResultType.DataUrl // Get Base64 directly
+            });
 
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0] && capturingZone) {
-            const file = e.target.files[0];
-
-            // 1. Compress Image
-            const base64Image = await compressImage(file);
-
-            // 2. Ask for Description
-            const desc = prompt(`Describe el daño en: ${capturingZone}`);
-            if (desc) {
-                setDamages([...damages, {
-                    zone: capturingZone,
-                    description: desc,
-                    severity: 'Medium',
-                    photoUrl: base64Image // Storing Base64 temporarily!
-                }]);
+            if (image.dataUrl) {
+                // 2. Ask for Description (Could use native dialog later)
+                const desc = prompt(`Describe el daño en: ${zone}`);
+                if (desc) {
+                    setDamages([...damages, {
+                        zone: zone,
+                        description: desc,
+                        severity: 'Medium',
+                        photoUrl: image.dataUrl
+                    }]);
+                }
             }
-            setCapturingZone(null);
+        } catch (e) {
+            console.warn('Camera cancelled or failed', e);
         }
     };
+    // Removed: handleFileChange (no longer needed for native)
 
     const [success, setSuccess] = useState(false);
 
@@ -149,7 +159,7 @@ const InspectionForm = () => {
                 accept="image/*"
                 capture="environment" // Forces Rear Camera on Mobile
                 className="hidden"
-                onChange={handleFileChange}
+            // onChange={handleFileChange} - Deprecated for Native Camera
             />
 
             {/* Header */}
@@ -266,7 +276,7 @@ const InspectionForm = () => {
                                     className="p-4 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-xl border border-dashed border-slate-600 hover:border-purple-500 transition-all flex flex-col items-center gap-2 group touch-manipulation"
                                 >
                                     <div className="w-12 h-12 rounded-full bg-slate-700 group-hover:bg-purple-500/20 flex items-center justify-center transition-colors">
-                                        <Camera className="w-6 h-6 text-slate-400 group-hover:text-purple-400" />
+                                        <LucideCamera className="w-6 h-6 text-slate-400 group-hover:text-purple-400" />
                                     </div>
                                     <span className="text-sm font-medium text-slate-300">{zone}</span>
                                 </button>
