@@ -127,10 +127,13 @@ const InspectionForm = () => {
                 navigate('/dashboard/fleet');
             }, 2000);
 
-        } catch (error) {
-            console.error(error);
-            alert('Error al conectar con el servidor. Intente nuevamente.');
-            setIsSubmitting(false);
+        } catch (error: any) {
+            console.error('Inspection Submit Error:', error);
+            const msg = error.message || String(error);
+            alert(`Error al guardar: ${msg}`);
+            setIsSubmitting(false); // Ensure submission state is reset on error
+        } finally {
+            setLoading(false);
         }
     };
 
