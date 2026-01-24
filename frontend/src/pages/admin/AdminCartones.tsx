@@ -312,6 +312,7 @@ const AdminCartones = () => {
                 {/* WORKSPACE AREA */}
                 <div className="flex-1 bg-slate-900/50 rounded-3xl border border-slate-800 overflow-hidden relative flex flex-col">
                     {/* Header Bar */}
+
                     <div className="h-12 border-b border-slate-700 bg-slate-900/80 backdrop-blur flex items-center px-4 justify-between">
                         <div className="flex items-center gap-4 text-sm">
                             <div className="flex flex-col">
@@ -325,6 +326,33 @@ const AdminCartones = () => {
                                     {parseInt(cartonData.serviceNumber) >= 1100 ? 'HÍBRIDO' : 'DIESEL / STD'}
                                 </span>
                             </div>
+
+                            {/* SIMULATION TOOLS */}
+                            <div className="h-8 w-px bg-slate-700"></div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => {
+                                        // Simple Simulation Logic: Fill random times
+                                        const newRows = cartonData.rows.map(r => {
+                                            const newTimes: any = {};
+                                            cartonData.headers.forEach(h => {
+                                                if (h.isStop) {
+                                                    const hour = Math.floor(Math.random() * 24).toString().padStart(2, '0');
+                                                    const min = Math.floor(Math.random() * 60).toString().padStart(2, '0');
+                                                    newTimes[h.id] = `${hour}:${min}`;
+                                                }
+                                            });
+                                            return { ...r, times: newTimes };
+                                        });
+                                        setCartonData({ ...cartonData, rows: newRows });
+                                        alert('Datos simulados generados. Recuerde NO guardar si es una prueba.');
+                                    }}
+                                    className="bg-purple-600/20 text-purple-400 text-xs px-2 py-1 rounded hover:bg-purple-600/40 transition-colors uppercase font-bold tracking-wider border border-purple-500/30"
+                                >
+                                    🧪 Simular
+                                </button>
+                            </div>
+
                             <div className="h-8 w-px bg-slate-700"></div>
                             <div className="flex items-center gap-2">
                                 {(!cartonData.headers || cartonData.headers.length === 0) && (
