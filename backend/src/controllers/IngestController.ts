@@ -71,8 +71,13 @@ export const IngestController = {
                 let updatedCount = 0;
 
                 for (const svc of services) {
-                    const serviceCode = svc.serviceNumber; // Usaremos el nro de servicio como código lógico
-                    const dayType = "HABIL"; // Default, debería venir del frontend o ser un param
+                    // Unique Code Strategy: Number + Variant (e.g. "105A")
+                    // This prevents collisions if Service 105 exists for both IDA and VUELTA
+                    const serviceCode = svc.variant
+                        ? `${svc.serviceNumber}${svc.variant}`
+                        : svc.serviceNumber;
+
+                    const dayType = svc.dayType || "HABIL";
 
                     await tx.serviceDefinition.upsert({
                         where: {
@@ -85,7 +90,8 @@ export const IngestController = {
                         },
                         update: {
                             line: svc.lineCode,
-                            dayType: svc.dayType || dayType,
+                            variant: svc.variant || 'A', // Default to A if missing
+                            dayType: dayType,
                             startTime: svc.startTime,
                             endTime: svc.endTime || "00:00",
                             routeData: JSON.stringify(svc.routeData || [])
@@ -96,7 +102,8 @@ export const IngestController = {
                             serviceCode: serviceCode,
                             serviceNumber: svc.serviceNumber,
                             line: svc.lineCode,
-                            dayType: svc.dayType || dayType,
+                            variant: svc.variant || 'A',
+                            dayType: dayType,
                             startTime: svc.startTime,
                             endTime: svc.endTime || "00:00",
                             routeData: JSON.stringify(svc.routeData || [])
