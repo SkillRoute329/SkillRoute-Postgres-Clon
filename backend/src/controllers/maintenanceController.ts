@@ -182,7 +182,14 @@ export const maintenanceController = {
             const { id } = req.params;
             const { solution, partsUsed } = req.body; // partsUsed: { partId: number, quantity: number }[]
             const userId = (req as any).user.id;
+            const userRole = (req as any).user.role;
             const reportId = Number(id);
+
+            // --- RBAC CHECK (Backend Enforced) ---
+            const authorizedRoles = ['Admin', 'SuperAdmin', 'Encargado'];
+            if (!authorizedRoles.includes(userRole)) {
+                return res.status(403).json({ message: 'Acceso Denegado: Permisos insuficientes para cerrar tickets.' });
+            }
 
             // 1. Validate Report
             const report = await prisma.maintenanceReport.findUnique({
