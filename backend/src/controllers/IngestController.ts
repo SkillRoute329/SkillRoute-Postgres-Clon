@@ -78,14 +78,33 @@ export const IngestController = {
 
                     const dayType = svc.dayType || "HABIL";
 
-                    // Vehicle Lookup (if provided in Rotation Sheet)
+                    // Vehicle Lookup or Create (if provided in Rotation Sheet)
                     let assignedVehicleId = null;
                     if (svc.vehicleInternalNumber) {
-                        const v = await tx.vehicle.findFirst({
-                            where: { tenantId: 1, internalNumber: svc.vehicleInternalNumber }
-                        });
-                        if (v) assignedVehicleId = v.id;
-                        // Optional: Create vehicle if strictly needed, but let's stick to existing for safety
+                        const cleanNumber = String(svc.vehicleInternalNumber).trim();
+                        if (cleanNumber.length > 0) {
+                            // Try to find
+                            let v = await tx.vehicle.findFirst({
+                                where: { tenantId: 1, internalNumber: cleanNumber }
+                            });
+
+                            // If not found, CREATE IT (Auto-Discovery)
+                            if (!v) {
+                                console.log(`🚚 Creating new vehicle from import: ${cleanNumber}`);
+                                v = await tx.vehicle.create({
+                                    data: {
+                                        tenantId: 1,
+                                        internalNumber: cleanNumber,
+                                        plate: `IMPORT-${cleanNumber}`, // Placeholder
+                                        make: 'GENERIC',
+                                        model: 'IMPORT',
+                                        status: 'OPERATIONAL',
+                                    }
+                                });
+                            }
+
+                            assignedVehicleId = v.id;
+                        }
                     }
 
                     // Prepare Data Payload

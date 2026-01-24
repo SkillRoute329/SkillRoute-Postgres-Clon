@@ -227,7 +227,7 @@ function parseRotationSheet(sheet: XLSX.WorkSheet): ServiceData[] {
 
     // 1. Find the header row (the one with 'Coche')
     let headerRowIdx = -1;
-    for (let r = 0; r < Math.min(data.length, 5); r++) {
+    for (let r = 0; r < Math.min(data.length, 10); r++) {
         const rowStr = data[r].join(" ").toUpperCase();
         if (rowStr.includes("COCHE") && (rowStr.includes("SCIO") || rowStr.includes("SERVICIO"))) {
             headerRowIdx = r;
@@ -235,63 +235,107 @@ function parseRotationSheet(sheet: XLSX.WorkSheet): ServiceData[] {
         }
     }
 
-    if (headerRowIdx === -1) return [];
+    if (headerRowIdx === -1) {
+        console.warn("⚠️ ExcelParser: No header row found for Rotation strategy.");
+        return [];
+    }
 
-    const header = data[headerRowIdx];
+    const header = data[headerRowIdx].map(c => String(c).trim().toUpperCase());
+    console.log("🧩 Header Row Detected:", header);
 
-    // 2. Identify "Blocks" of columns (Groups of Coche, Scio, Sale, Linea)
-    // We scan the header row to find the start index of each "Coche" column
-    const blockIndices: number[] = [];
+    // 2. Identify "Blocks" of columns
+    // Strategy: Find every "COCHE" column. For each, look ahead for SCIO, SALE, LINEA until the next COCHE or end.
+    const blocks: { vehicleIdx: number, serviceIdx: number, timeIdx: number, lineIdx: number }[] = [];
+
     header.forEach((val, idx) => {
-        if (String(val).trim().toUpperCase() === "COCHE") {
-            blockIndices.push(idx);
+        if (val === "COCHE" || val === "INT.") {
+            // Found a block start. Scan ahead for partners.
+            let serviceIdx = -1;
+            let timeIdx = -1;
+            let lineIdx = -1;
+
+            // Look in next 5 columns (heuristic limit)
+            for (let offset = 1; offset <= 5; offset++) {
+                const targetIdx = idx + offset;
+                if (targetIdx >= header.length) break;
+                const nextHeader = header[targetIdx];
+
+                // Stop if we hit another Block Start
+                if (nextHeader === "COCHE" || nextHeader === "INT.") break;
+
+                if (nextHeader.includes("SCIO") || nextHeader.includes("SERVICIO")) serviceIdx = targetIdx;
+                if (nextHeader.includes("SALE") || nextHeader === "HORA" || nextHeader === "SALIDA") timeIdx = targetIdx;
+                if (nextHeader.includes("LÍNEA") || nextHeader.includes("LINEA") || nextHeader === "L.") lineIdx = targetIdx;
+            }
+
+            // Fallback: If not found by name, assume standard adjacent positions if they are emptyish? 
+            // Better to rely on found indices. If some missing, try +1, +2 defaults if strict mode fails.
+            if (serviceIdx === -1) serviceIdx = idx + 1;
+            if (timeIdx === -1) timeIdx = idx + 2;
+            if (lineIdx === -1) lineIdx = idx + 3;
+
+            blocks.push({ vehicleIdx: idx, serviceIdx, timeIdx, lineIdx });
         }
     });
 
-    console.log("Blocks found at indices:", blockIndices);
+    console.log("🧩 Rotation Blocks Layout:", blocks);
 
     // 3. Iterate rows BELOW header
     for (let r = headerRowIdx + 1; r < data.length; r++) {
         const row = data[r];
         if (!row) continue;
 
+        // Skip rows that look like another header
+        const rowStr = row.join(" ").toUpperCase();
+        if (rowStr.includes("COCHE")) continue;
+
         // For each block in this row
-        blockIndices.forEach(startIdx => {
-            // Expecting: [Vehicle] [Service] [Start] [Line] (based on screenshot)
-            // But let's be flexible. Let's look at relative offsets from startIdx.
-            // Screenshot: Coche | Scio. | Sale | Línea
+        blocks.forEach(block => {
+            const vehicleVal = row[block.vehicleIdx];
+            const serviceVal = row[block.serviceIdx];
+            const timeVal = row[block.timeIdx];
+            const lineVal = row[block.lineIdx];
 
-            const vehicleVal = row[startIdx];
-            const serviceVal = row[startIdx + 1];
-            const timeVal = row[startIdx + 2];
-            const lineVal = row[startIdx + 3];
-
-            // Basic Validation
-            if (!serviceVal || !lineVal) return;
+            // Basic Validation: Must have a Service Number
+            if (!serviceVal) return;
 
             const serviceNum = String(serviceVal).trim();
-            // Line often looks like "300b", "306p"
-            const rawLine = String(lineVal).trim();
+            // Skip headers repeated in data or empty
+            if (!/^\d/.test(serviceNum)) return;
 
-            // Extract code and variant from rawLine
-            const lineMatch = rawLine.match(/^(\d+)([A-Z]?)/i);
+            // Line Parsing - Robust
             let lineCode = "UNKNOWN";
-            let variant = "A"; // Default
+            let variant = "A";
 
-            if (lineMatch) {
-                lineCode = lineMatch[1];
-                variant = lineMatch[2].toUpperCase();
-            } else {
-                lineCode = rawLine;
+            if (lineVal) {
+                const rawLine = String(lineVal).trim().toUpperCase();
+                // Regex to capture pure number, avoiding "L-" or "Línea"
+                // Matches "370", "L-370", "L370A", "370 A"
+                const lineMatch = rawLine.match(/(\d{3,4})([A-Z]?)/);
+                if (lineMatch) {
+                    lineCode = lineMatch[1];
+                    variant = lineMatch[2] || "A";
+                } else if (rawLine.length > 0) {
+                    // Fallback for non-numeric lines like "PLAYA"
+                    lineCode = rawLine;
+                }
             }
 
-            if (serviceNum.length >= 3 && isValidTime(timeVal)) {
+            // Fallback: Infer Line from Service Number (e.g. 3061 -> 306)
+            if (lineCode === "UNKNOWN" && serviceNum.length >= 3) {
+                // Heuristic: First 3 digits of service usually match line in 4-digit services
+                if (serviceNum.length === 4) {
+                    lineCode = serviceNum.substring(0, 3);
+                }
+            }
+
+            if (isValidTime(timeVal)) {
                 services.push({
                     lineCode,
                     serviceNumber: serviceNum,
                     variant,
                     startTime: formatTime(timeVal),
-                    endTime: "00:00", // Not in file
+                    endTime: "00:00", // Not specified in rotation sheets usually
                     durationMinutes: 0,
                     routeData: [], // Empty
                     dayType: 'HABIL',
