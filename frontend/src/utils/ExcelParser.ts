@@ -56,18 +56,35 @@ export const ExcelParser = {
 
                     console.log("📂 ExcelParser: Abriendo libro con hojas:", workbook.SheetNames);
 
-                    // HEURISTIC: Check if this is a Rotation Sheet (Single sheet usually, specialized headers)
+                    // HEURISTIC: Check if this is a Rotation Sheet (Vehicle Assignment)
                     if (isRotationSheet(firstSheet)) {
                         console.log("🧩 ExcelParser: Estrategia 'ROTACION' detectada.");
                         const rotationData = parseRotationSheet(firstSheet);
 
                         resolve({
                             type: 'ROTACION',
-                            lines: [], // Rotation usually mixes lines, so we extract them from services if needed
+                            lines: [],
                             services: rotationData,
                             stats: {
                                 totalSheetsProcessed: 1,
                                 totalServicesFound: rotationData.length
+                            }
+                        });
+                        return;
+                    }
+
+                    // HEURISTIC: Check if this is a "Sábana" (Distribution/Shifts) Sheet
+                    if (isSabanaSheet(firstSheet)) {
+                        console.log("📄 ExcelParser: Estrategia 'SABANA' (Distribución) detectada.");
+                        const sabanaData = parseSabanaSheet(firstSheet);
+
+                        resolve({
+                            type: 'BOLETIN', // Sábana fits 'Boletin/Carton' concept better
+                            lines: [],
+                            services: sabanaData,
+                            stats: {
+                                totalSheetsProcessed: 1,
+                                totalServicesFound: sabanaData.length
                             }
                         });
                         return;
@@ -243,6 +260,109 @@ function parseRotationSheet(sheet: XLSX.WorkSheet): ServiceData[] {
     }
 
     return services;
+}
+
+
+/**
+ * STRATEGY: SABANA / DISTRIBUTION LIST
+ * Detects headers or content like "1° 06:38 a 14:05"
+ */
+function isSabanaSheet(sheet: XLSX.WorkSheet): boolean {
+    const data = XLSX.utils.sheet_to_json(sheet, { header: 1, range: 0, defval: "" }) as any[][];
+    // Scan first 10 rows for patterns
+    for (let r = 0; r < Math.min(data.length, 10); r++) {
+        const rowStr = data[r].join(" ").toUpperCase();
+        // Check for specific keywords or time patterns
+        if (rowStr.includes("TOTAL DE SERVICIOS") || rowStr.includes("DISTRIBUCIÓN") || /\d{2}:\d{2}\s*A\s*\d{2}:\d{2}/i.test(rowStr)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function parseSabanaSheet(sheet: XLSX.WorkSheet): ServiceData[] {
+    const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as any[][];
+    const services: ServiceData[] = [];
+
+    // Find header row or start of data
+    // We assume data starts when we find a Service Number (Col A usually)
+
+    for (const row of data) {
+        if (!row || row.length < 3) continue;
+
+        // Try to identify Service and Line columns
+        // Heuristic: First numeric column is Service, Second is Line
+        // Or specific indices if known. Let's try flexible search.
+
+        let serviceVal: any = null;
+        let lineVal: any = null;
+        let contentCols: string[] = [];
+
+        // Simple iterator to find first 2 number-like fields
+        let numsFound = 0;
+        for (const cell of row) {
+            const str = String(cell).trim();
+            if (/^\d{3,5}$/.test(str)) { // 3 to 5 digits (e.g. 1001, 300)
+                if (numsFound === 0) serviceVal = str;
+                else if (numsFound === 1) lineVal = str;
+                numsFound++;
+            } else if (str.length > 5) {
+                // Potential content column
+                contentCols.push(str);
+            }
+        }
+
+        if (serviceVal && lineVal) {
+            // Process Content Columns for Shifts
+            // Format: "1° 06:38 a 14:05 - 07:27'"
+
+            let startTime = "00:00";
+            let endTime = "00:00";
+            const splits: any[] = [];
+
+            const timeRegex = /(\d{1,2}[:.]\d{2})\s*[aA]\s*(\d{1,2}[:.]\d{2})/i;
+
+            contentCols.forEach(colTxt => {
+                const match = colTxt.match(timeRegex);
+                if (match) {
+                    const start = formatTime(match[1]);
+                    const end = formatTime(match[2]);
+                    splits.push({ start, end, raw: colTxt });
+
+                    // Logic to determine global start/end
+                    if (startTime === "00:00" || compareTimes(start, startTime) < 0) startTime = start;
+                    if (compareTimes(end, endTime) > 0) endTime = end;
+                }
+            });
+
+            if (splits.length > 0) {
+                // If we have splits, assume valid service row
+                // Duration calc
+                const duration = calculateDuration(startTime, endTime);
+
+                services.push({
+                    lineCode: String(lineVal),
+                    serviceNumber: String(serviceVal),
+                    variant: 'A', // Default, difficult to extract from plain text
+                    startTime,
+                    endTime,
+                    durationMinutes: duration,
+                    routeData: [],
+                    dayType: 'HABIL', // Guessing from header usually
+                    // Store splits in routeData or metadata? 
+                    // Let's overload routeData with special "Metadata" point if needed, or just leave it blank 
+                    // and let the backend store the times.
+                    // The backend ingestion uses `startTime` and `endTime` fields explicitly.
+                });
+            }
+        }
+    }
+
+    return services;
+}
+
+function compareTimes(t1: string, t2: string): number {
+    return Number(t1.replace(':', '')) - Number(t2.replace(':', ''));
 }
 
 /**
