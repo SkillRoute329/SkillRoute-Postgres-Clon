@@ -296,7 +296,9 @@ const AdminCartones = () => {
                                                 </div>
                                                 {/* Inferred Status Indicator */}
                                                 {!s.routeData?.headers?.length && (
-                                                    <AlertTriangle className="w-3 h-3 text-yellow-500 animate-pulse" title="Estructura Inferida (Datos Incompletos)" />
+                                                    <span title="Estructura Inferida (Datos Incompletos)">
+                                                        <AlertTriangle className="w-3 h-3 text-yellow-500 animate-pulse" />
+                                                    </span>
                                                 )}
                                             </button>
                                         ))}

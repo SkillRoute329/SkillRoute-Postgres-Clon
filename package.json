@@ -14,7 +14,7 @@
         "cache:bust": "echo 1737702108000"
     },
     "engines": {
-        "node": ">=22.12.0"
+        "node": ">=22.11.0"
     },
     "dependencies": {
         "lodash": "^4.17.23"
