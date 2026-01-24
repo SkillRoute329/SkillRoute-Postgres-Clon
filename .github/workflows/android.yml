@@ -1,29 +1,43 @@
-name: Rescue Android Build
+name: Android Fix Final
 on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - name: Setup Java
         uses: actions/setup-java@v3
-        with: { distribution: 'zulu', java-version: '17' }
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
       - name: Setup Node
         uses: actions/setup-node@v3
-        with: { node-version: '18' }
-      - name: Install Dependencies
-        run: cd frontend && npm install
-      - name: Build Web
-        run: cd frontend && npm run build
-      - name: Sync Capacitor
-        run: cd frontend && npx cap sync android
-      - name: Build APK
+        with:
+          node-version: '18'
+
+      - name: Install & Build
+        run: |
+          cd frontend
+          npm install --legacy-peer-deps
+          npm run build
+        env:
+           VITE_API_URL: "https://transformafacil-20-production.up.railway.app"
+
+      - name: Capacitor Sync
+        run: |
+          cd frontend
+          npx cap sync android
+
+      - name: Gradle Build
         run: |
           cd frontend/android
           chmod +x gradlew
           ./gradlew assembleDebug
-      - name: Upload APK
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: APP-RESCATE
+          name: APP-FUNCIONA-FINAL
           path: frontend/android/app/build/outputs/apk/debug/app-debug.apk

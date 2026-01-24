@@ -226,6 +226,15 @@ const DashboardLayout = () => {
                     </div>
                 </div>
 
+                {/* --- INYECCIÓN FORZADA NUCLEAR --- */}
+                <div style={{ backgroundColor: '#dc2626', padding: '15px', fontWeight: 'bold', border: '2px solid white', margin: '10px' }}>
+                    <p style={{ color: 'white', margin: 0, textTransform: 'uppercase', fontSize: '10px' }}>⚠️ ACCESO FORZADO:</p>
+                    <a href="/dashboard/admin/employees" style={{ display: 'block', color: 'white', marginTop: '10px', textDecoration: 'underline', fontSize: '12px' }}>👉 GESTIONAR EMPLEADOS</a>
+                    <a href="/dashboard/admin/users/create" style={{ display: 'block', color: 'white', marginTop: '10px', textDecoration: 'underline', fontSize: '12px' }}>👉 ALTA DE PERSONAL</a>
+                    <a href="/dashboard/fleet" style={{ display: 'block', color: 'white', marginTop: '10px', textDecoration: 'underline', fontSize: '12px' }}>👉 INSPECCIÓN FLOTA</a>
+                </div>
+                {/* ------------------------- */}
+
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
                     {/* --- ZONA DE EMERGENCIA: VISIBILIDAD TOTAL --- */}
                     <div className="mb-6 rounded-xl overflow-hidden border border-red-600">

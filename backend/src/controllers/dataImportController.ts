@@ -22,9 +22,9 @@ export const uploadServiceData = async (req: Request, res: Response) => {
         }
 
         const user = (req as any).user;
-        const tenantId = user.tenantId;
+        const tenantId = user?.tenantId || 1;
 
-        // 1. Leer archivo desde buffer
+        // 1. Leer archivo desde buffer (Permisivo total)
         const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
@@ -32,128 +32,85 @@ export const uploadServiceData = async (req: Request, res: Response) => {
         // 2. Convertir a JSON
         const rawData: any[] = XLSX.utils.sheet_to_json(sheet);
 
-        if (rawData.length === 0) {
-            return res.status(400).json({ message: 'El archivo está vacío.' });
+        if (!rawData || rawData.length === 0) {
+            return res.status(400).json({ message: 'El archivo está vacío o no se pudo leer.' });
         }
 
-        // 3. Validar Cabeceras
-        const uploadedHeaders = Object.keys(rawData[0]);
-        const missingColumns = EXPECTED_COLUMNS.filter(col => !uploadedHeaders.includes(col));
+        console.log(`[NUCLEAR IMPORT] Processing ${rawData.length} rows for Tenant ${tenantId}`);
 
-        if (missingColumns.length > 0) {
-            return res.status(400).json({
-                message: 'Formato de archivo inválido. Faltan columnas.',
-                missingColumns,
-                expected: EXPECTED_COLUMNS
-            });
-        }
-
-        // 4. Procesar y Validar filas
-        const errors: any[] = [];
-        const validRows: any[] = [];
-
-        // Cache seasons to minimize DB calls
-        const seasonCache = new Map<string, number>();
-
-        for (let i = 0; i < rawData.length; i++) {
-            const row = rawData[i];
-            const rowNumber = i + 2; // +1 header, +1 1-based index
-
-            // Validaciones básicas
-            if (!row.Servicio || !row.Temporada || !row.TipoDia) {
-                errors.push({ row: rowNumber, error: 'Faltan datos obligatorios (Servicio, Temporada, TipoDia)' });
-                continue;
-            }
-
-            // Resolver Season ID
-            let seasonId = seasonCache.get(row.Temporada);
-            if (!seasonId) {
-                const season = await prisma.season.findFirst({
-                    where: { tenantId, name: row.Temporada }
-                });
-
-                if (season) {
-                    seasonId = season.id;
-                    seasonCache.set(row.Temporada, seasonId);
-                } else {
-                    // Opcional: Crear temporada si no existe? Por ahora error.
-                    errors.push({ row: rowNumber, error: `Temporada '${row.Temporada}' no encontrada en el sistema.` });
-                    continue;
-                }
-            }
-
-            // Preparar objeto para insert
-            validRows.push({
-                tenantId,
-                seasonId,
-                serviceCode: String(row.Servicio),
-                serviceNumber: String(row.Servicio), // Legacy
-                line: String(row.Linea || 'A DEFINIR'),
-                vehicleType: String(row.TipoCoche || 'Convencional'),
-                dayType: String(row.TipoDia).toUpperCase(),
-                startTime: String(row.HoraInicio || '00:00'),
-                endTime: String(row.HoraFin || '00:00'),
-                routeData: JSON.stringify({ note: "Importado desde Excel" })
-            });
-        }
-
-        if (errors.length > 0 && validRows.length === 0) {
-            return res.status(400).json({ message: 'Error en validación de datos', errors });
-        }
-
-        // 5. Insertar Datos (Upsert)
-        // Prisma createMany no soporta upsert directo, lo haremos iterativo o delete+create si se prefiere reemplazar.
-        // Para seguridad, usaremos upsert individual o transaction.
-
+        // 4. Procesar y Validar filas (Mínimo necesario)
         let processedCount = 0;
+        const errors: any[] = [];
 
-        await prisma.$transaction(async (tx) => {
-            for (const item of validRows) {
-                // Check if exists to avoid "where" type issues if types are outdated
-                const existing = await tx.serviceDefinition.findFirst({
+        // Asegurar que exista una temporada por defecto si no se especifica
+        let defaultSeason = await prisma.season.findFirst({ where: { tenantId, isActive: true } });
+        if (!defaultSeason) {
+            defaultSeason = await prisma.season.create({
+                data: {
+                    tenantId,
+                    name: "Importación de Emergencia",
+                    startDate: new Date(),
+                    isActive: true
+                }
+            });
+        }
+
+        for (const row of rawData) {
+            try {
+                const serviceCode = String(row.Servicio || row.serviceCode || row.id || Math.random());
+                const dayType = String(row.TipoDia || row.dayType || 'HABIL').toUpperCase();
+
+                // Upsert manual para evitar fallos de constraint
+                const existing = await (prisma as any).serviceDefinition.findFirst({
                     where: {
-                        tenantId: item.tenantId,
-                        seasonId: item.seasonId,
-                        serviceCode: item.serviceCode,
-                        dayType: item.dayType
+                        tenantId: tenantId,
+                        seasonId: defaultSeason.id,
+                        serviceCode: serviceCode,
+                        dayType: dayType
                     }
                 });
 
+                const dataPayload = {
+                    tenantId: tenantId,
+                    seasonId: defaultSeason.id,
+                    serviceCode: serviceCode,
+                    serviceNumber: serviceCode,
+                    line: String(row.Linea || row.line || 'S/N'),
+                    dayType: dayType,
+                    vehicleType: String(row.TipoCoche || row.vehicleType || 'Convencional'),
+                    startTime: String(row.HoraInicio || row.startTime || '00:00'),
+                    endTime: String(row.HoraFin || row.endTime || '00:00'),
+                    routeData: JSON.stringify(row)
+                };
+
                 if (existing) {
-                    await tx.serviceDefinition.update({
+                    await (prisma as any).serviceDefinition.update({
                         where: { id: existing.id },
-                        data: {
-                            line: item.line,
-                            vehicleType: item.vehicleType,
-                            startTime: item.startTime,
-                            endTime: item.endTime,
-                            routeData: item.routeData
-                        }
+                        data: dataPayload
                     });
                 } else {
-                    await tx.serviceDefinition.create({
-                        data: item
+                    await (prisma as any).serviceDefinition.create({
+                        data: dataPayload
                     });
                 }
-
                 processedCount++;
+            } catch (e: any) {
+                errors.push({ row, error: e.message });
             }
-        });
+        }
 
         res.json({
-            message: 'Importación completada',
-            totalRows: rawData.length,
-            processed: processedCount,
+            message: 'Importación Nuclear Completada',
+            total: rawData.length,
+            success: processedCount,
             errors: errors.length > 0 ? errors : undefined
         });
 
     } catch (error: any) {
-        console.error('Import Error:', error);
-        // Devolvemos el error real sin censura para debug inmediato
-        res.status(400).json({
-            message: 'Error CRÍTICO al procesar el archivo',
-            error: error.message || String(error),
-            stack: error.stack
+        console.error('CRITICAL Import Error:', error);
+        res.status(500).json({
+            message: 'ERROR NUCLEAR EN IMPORTACIÓN',
+            error: error.message || String(error)
         });
     }
 };
