@@ -66,6 +66,7 @@ const AdminCartones = () => {
 
         setCartonData(uiData);
         setShowSelector(false);
+        setMobileView('editor');
     };
     const templateData: ServiceDefinitionData = {
         serviceNumber: '2290',
@@ -135,6 +136,7 @@ const AdminCartones = () => {
     const [showSelector, setShowSelector] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [mobileView, setMobileView] = useState<'list' | 'editor'>('list'); // Mobile Split View State
 
     useEffect(() => {
         loadSavedCartons();
@@ -188,11 +190,13 @@ const AdminCartones = () => {
     const loadTemplate = () => {
         setCartonData(templateData);
         setShowSelector(false);
+        setMobileView('editor');
     }
 
     const loadEmpty = () => {
         setCartonData(emptyData);
         setShowSelector(false);
+        setMobileView('editor');
     }
 
     return (
