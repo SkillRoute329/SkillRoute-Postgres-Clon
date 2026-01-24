@@ -185,3 +185,26 @@ export const createInspection = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Error al guardar inspección' });
     }
 };
+
+export const createVehicleCheck = async (req: Request, res: Response) => {
+    try {
+        const user = (req as any).user;
+        const { vehicleId, photos, notes, status } = req.body;
+
+        const check = await (prisma as any).vehicleCheck.create({
+            data: {
+                tenantId: user.tenantId,
+                userId: user.id,
+                vehicleId: String(vehicleId),
+                photos: photos || [],
+                notes,
+                status: status || 'APROBADO'
+            }
+        });
+
+        res.status(201).json(check);
+    } catch (error) {
+        console.error('VehicleCheck Error:', error);
+        res.status(500).json({ message: 'Error al registrar revisión de coche' });
+    }
+};

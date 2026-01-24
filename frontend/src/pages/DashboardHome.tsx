@@ -1,12 +1,15 @@
-
+import { useState } from 'react';
 // import RoadAlertsWidget from '../components/RoadAlertsWidget';
 import StatsWidget from '../components/StatsWidget';
 import { useAuth } from '../context/AuthContext';
 import ExcelUploader from '../components/ExcelUploader';
+import VehicleCheckModal from '../components/VehicleCheckModal';
+import { Play, CheckCircle } from 'lucide-react';
 
 const DashboardHome = () => {
-
     const { user } = useAuth();
+    const [isCheckOpen, setIsCheckOpen] = useState(false);
+    const [shiftStarted, setShiftStarted] = useState(false);
 
     // 🛡️ GOD MODE / DATA ENGINEER VIEW (User 0000)
     if (user?.internalNumber === '0000') {
@@ -83,6 +86,36 @@ const DashboardHome = () => {
             <StatsWidget />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {!shiftStarted ? (
+                    <div className="lg:col-span-2 relative group overflow-hidden bg-primary-600 rounded-[2rem] p-8 shadow-2xl shadow-primary-900/40">
+                        <div className="absolute top-0 right-0 -mr-12 -mt-12 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
+                        <div className="relative z-10">
+                            <h2 className="text-3xl font-black text-white mb-2 leading-tight">¿Listo para comenzar el viaje?</h2>
+                            <p className="text-primary-100 mb-8 max-w-md font-medium">Realiza el check-in de seguridad antes de salir a la vía.</p>
+                            <button
+                                onClick={() => setIsCheckOpen(true)}
+                                className="inline-flex items-center gap-4 bg-white text-primary-600 px-8 py-4 rounded-2xl font-black text-xl hover:shadow-xl active:scale-95 transition-all"
+                            >
+                                <Play className="fill-current" />
+                                INICIAR TURNO
+                            </button>
+                        </div>
+                        <div className="absolute bottom-6 right-8 text-primary-100/20">
+                            <Play className="w-32 h-32 rotate-12" />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="lg:col-span-2 bg-emerald-500/10 border-2 border-emerald-500/20 rounded-[2rem] p-8 flex items-center gap-6">
+                        <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-emerald-900/40">
+                            <CheckCircle className="w-10 h-10" />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-bold text-white leading-tight">Turno en Curso</h2>
+                            <p className="text-emerald-400 font-medium italic">¡Buen viaje! La seguridad es lo primero.</p>
+                        </div>
+                    </div>
+                )}
+
                 <div className="glass-panel p-6 rounded-2xl border border-slate-800">
                     <h3 className="font-bold text-white mb-2">Mi Estado</h3>
                     <div className="text-3xl font-bold text-green-400">Activo</div>
@@ -99,13 +132,17 @@ const DashboardHome = () => {
                     <div className="text-2xl font-bold text-white uppercase tracking-tighter">Entrar al Mapa</div>
                     <p className="text-xs text-yellow-500/70 mt-1">Radar, zonas y reportes de tránsito</p>
                 </div>
-
-                {/* Placeholder for more widgets */}
-                <div className="glass-panel p-6 rounded-2xl border border-slate-800 opacity-50">
-                    <h3 className="font-bold text-white mb-2">Próximo Turno</h3>
-                    <div className="text-lg text-slate-400">Sin asignar</div>
-                </div>
             </div>
+
+            <VehicleCheckModal
+                isOpen={isCheckOpen}
+                onClose={() => setIsCheckOpen(false)}
+                onComplete={() => {
+                    setShiftStarted(true);
+                    setIsCheckOpen(false);
+                }}
+                vehicleId={user?.assignedVehicleId || "S/A"}
+            />
         </div>
     );
 };

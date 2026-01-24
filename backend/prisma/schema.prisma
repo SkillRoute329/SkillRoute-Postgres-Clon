@@ -47,6 +47,7 @@ model Tenant {
   radars                  Radar[]
   tariffZones             TariffZone[]
   parts                   Part[]
+  vehicleChecks           VehicleCheck[]
 }
 
 // 18. Rutas Maestras (Shapefiles & Tarifas)
@@ -222,6 +223,7 @@ model User {
   bulletinEntries BulletinEntry[]
   userPenalties   UserPenalty[]
   shiftRequests   ShiftRequest[]
+  vehicleChecks   VehicleCheck[]
 
   // Universal Extensions
   photoUrl        String?
@@ -844,4 +846,21 @@ model PartUsage {
   
   report        MaintenanceReport @relation(fields: [reportId], references: [id])
   part          Part              @relation(fields: [partId], references: [id])
+}
+
+// 21. Control de Flota (Check-in de Turno)
+model VehicleCheck {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int      @default(1)
+  vehicleId String   // Nro de coche (String por flexibilidad)
+  userId    Int
+  
+  photos    Json     // ["url1", "url2", "url3", "url4"]
+  notes     String?
+  status    String   // "APROBADO", "CON_DAÑOS", "OMITIDO"
+  
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
 }
