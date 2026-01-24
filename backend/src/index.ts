@@ -49,7 +49,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-const VERSION = 'v20.0-CERTIFIED';
+const VERSION = 'v3.5-NUCLEAR-VERIFIED';
 const BOOT_ID = Math.floor(Math.random() * 1000000).toString();
 
 // 1. FAIL-FAST VALIDATION (CRITICAL FOR PRODUCTION)

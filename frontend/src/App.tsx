@@ -90,7 +90,11 @@ function App() {
       <Router>
         <AuthProvider>
           {isOffline && <OfflineBanner />}
-          <div className="min-h-screen bg-slate-900 text-slate-100 font-sans">
+          <div className="min-h-screen bg-blue-950 text-slate-100 font-sans border-[10px] border-red-600">
+            {/* GIANT EMERGENCY BANNER FOR DEPLOY VERIFICATION */}
+            <div className="bg-red-600 text-white p-10 text-center font-black text-4xl animate-bounce">
+              SI NO VES ESTO EN AZUL CON BORDES ROJOS, NO SE ACTUALIZÓ
+            </div>
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/login" element={<LoginScreen />} />
