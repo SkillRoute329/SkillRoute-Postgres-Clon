@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Bus, Plus, Search, Edit2, Wrench, Users, Calendar } from 'lucide-react';
+import { Bus, Plus, Search, Edit2, Wrench, Users, Calendar, History } from 'lucide-react';
 import { FleetService, UserService } from '../../services/api';
 import clsx from 'clsx';
+import VehicleHistoryModal from '../../components/fleet/VehicleHistoryModal';
 
 const STATUS_OPTIONS = [
     { value: 'OPERATIONAL', label: 'Operativo', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
@@ -42,6 +43,9 @@ const VehicleList = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [allUsers, setAllUsers] = useState<any[]>([]);
     const [rotationSchemes, setRotationSchemes] = useState<any[]>([]);
+
+    // History Modal State
+    const [historyVehicle, setHistoryVehicle] = useState<{ id: number, number: string } | null>(null);
 
     useEffect(() => {
         loadData();
@@ -282,10 +286,26 @@ const VehicleList = () => {
                                 >
                                     <Wrench className="w-4 h-4" /> Inspección
                                 </a>
+                                <button
+                                    onClick={() => setHistoryVehicle({ id: v.id, number: v.internalNumber || v.carNumber })}
+                                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-primary-400 rounded-lg border border-slate-700 transition-colors"
+                                    title="Ver Historial de la Unidad"
+                                >
+                                    <History className="w-5 h-5" />
+                                </button>
                             </div>
                         </div>
                     ))}
                 </div>
+            )}
+
+            {/* History Modal */}
+            {historyVehicle && (
+                <VehicleHistoryModal
+                    vehicleId={historyVehicle.id}
+                    vehicleNumber={historyVehicle.number}
+                    onClose={() => setHistoryVehicle(null)}
+                />
             )}
 
             {/* Modal Crear/Editar */}
