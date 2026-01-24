@@ -15,6 +15,7 @@ export interface ServiceData {
     durationMinutes: number;
     routeData: StopTime[]; // Full sequence
     dayType?: string; // HABIL, SABADO, DOMINGO
+    vehicleInternalNumber?: string; // NEW: For Rotation Sheets
 }
 
 export interface ParsedLine {
@@ -24,7 +25,7 @@ export interface ParsedLine {
 }
 
 export interface ParsedData {
-    type: 'CARTON' | 'BOLETIN' | 'MATRIZ_COMPLEJA';
+    type: 'CARTON' | 'BOLETIN' | 'MATRIZ_COMPLEJA' | 'ROTACION';
     lines: ParsedLine[];
     services: ServiceData[];
     stats: {
@@ -50,10 +51,29 @@ export const ExcelParser = {
 
                     const allServices: ServiceData[] = [];
                     const foundLines = new Map<string, ParsedLine>();
+                    const firstSheetName = workbook.SheetNames[0];
+                    const firstSheet = workbook.Sheets[firstSheetName];
 
                     console.log("📂 ExcelParser: Abriendo libro con hojas:", workbook.SheetNames);
 
-                    // ITERATE ALL SHEETS (Smart Multi-Tab Support)
+                    // HEURISTIC: Check if this is a Rotation Sheet (Single sheet usually, specialized headers)
+                    if (isRotationSheet(firstSheet)) {
+                        console.log("🧩 ExcelParser: Estrategia 'ROTACION' detectada.");
+                        const rotationData = parseRotationSheet(firstSheet);
+
+                        resolve({
+                            type: 'ROTACION',
+                            lines: [], // Rotation usually mixes lines, so we extract them from services if needed
+                            services: rotationData,
+                            stats: {
+                                totalSheetsProcessed: 1,
+                                totalServicesFound: rotationData.length
+                            }
+                        });
+                        return;
+                    }
+
+                    // DEFAULT: Multi-Sheet Matrix Strategy
                     workbook.SheetNames.forEach(sheetName => {
                         // Skip system sheets or empty names
                         if (!sheetName || sheetName.toUpperCase().includes('LEGEND')) return;
@@ -124,6 +144,105 @@ function parseSheetName(name: string): { lineCode: string, variant: string } {
 
     // Fallback for names like "L-12a" or just text
     return { lineCode: clean, variant: 'A' };
+}
+
+/**
+ * STRATEGY: ROTATION SHEET
+ * Detects headers: "Coche", "Scio.", "Sale", "Línea" (Repeated horizontally)
+ */
+function isRotationSheet(sheet: XLSX.WorkSheet): boolean {
+    const data = XLSX.utils.sheet_to_json(sheet, { header: 1, range: 0, defval: "" }) as any[][];
+    // Check first 5 rows
+    for (let r = 0; r < Math.min(data.length, 5); r++) {
+        const rowStr = data[r].join(" ").toUpperCase();
+        if (rowStr.includes("COCHE") && (rowStr.includes("SCIO") || rowStr.includes("SERVICIO"))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function parseRotationSheet(sheet: XLSX.WorkSheet): ServiceData[] {
+    const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as any[][];
+    const services: ServiceData[] = [];
+
+    // 1. Find the header row (the one with 'Coche')
+    let headerRowIdx = -1;
+    for (let r = 0; r < Math.min(data.length, 5); r++) {
+        const rowStr = data[r].join(" ").toUpperCase();
+        if (rowStr.includes("COCHE") && (rowStr.includes("SCIO") || rowStr.includes("SERVICIO"))) {
+            headerRowIdx = r;
+            break;
+        }
+    }
+
+    if (headerRowIdx === -1) return [];
+
+    const header = data[headerRowIdx];
+
+    // 2. Identify "Blocks" of columns (Groups of Coche, Scio, Sale, Linea)
+    // We scan the header row to find the start index of each "Coche" column
+    const blockIndices: number[] = [];
+    header.forEach((val, idx) => {
+        if (String(val).trim().toUpperCase() === "COCHE") {
+            blockIndices.push(idx);
+        }
+    });
+
+    console.log("Blocks found at indices:", blockIndices);
+
+    // 3. Iterate rows BELOW header
+    for (let r = headerRowIdx + 1; r < data.length; r++) {
+        const row = data[r];
+        if (!row) continue;
+
+        // For each block in this row
+        blockIndices.forEach(startIdx => {
+            // Expecting: [Vehicle] [Service] [Start] [Line] (based on screenshot)
+            // But let's be flexible. Let's look at relative offsets from startIdx.
+            // Screenshot: Coche | Scio. | Sale | Línea
+
+            const vehicleVal = row[startIdx];
+            const serviceVal = row[startIdx + 1];
+            const timeVal = row[startIdx + 2];
+            const lineVal = row[startIdx + 3];
+
+            // Basic Validation
+            if (!serviceVal || !lineVal) return;
+
+            const serviceNum = String(serviceVal).trim();
+            // Line often looks like "300b", "306p"
+            const rawLine = String(lineVal).trim();
+
+            // Extract code and variant from rawLine
+            const lineMatch = rawLine.match(/^(\d+)([A-Z]?)/i);
+            let lineCode = "UNKNOWN";
+            let variant = "A"; // Default
+
+            if (lineMatch) {
+                lineCode = lineMatch[1];
+                variant = lineMatch[2].toUpperCase();
+            } else {
+                lineCode = rawLine;
+            }
+
+            if (serviceNum.length >= 3 && isValidTime(timeVal)) {
+                services.push({
+                    lineCode,
+                    serviceNumber: serviceNum,
+                    variant,
+                    startTime: formatTime(timeVal),
+                    endTime: "00:00", // Not in file
+                    durationMinutes: 0,
+                    routeData: [], // Empty
+                    dayType: 'HABIL',
+                    vehicleInternalNumber: String(vehicleVal).trim()
+                });
+            }
+        });
+    }
+
+    return services;
 }
 
 /**

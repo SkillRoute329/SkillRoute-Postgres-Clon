@@ -72,12 +72,59 @@ export const IngestController = {
 
                 for (const svc of services) {
                     // Unique Code Strategy: Number + Variant (e.g. "105A")
-                    // This prevents collisions if Service 105 exists for both IDA and VUELTA
                     const serviceCode = svc.variant
                         ? `${svc.serviceNumber}${svc.variant}`
                         : svc.serviceNumber;
 
                     const dayType = svc.dayType || "HABIL";
+
+                    // Vehicle Lookup (if provided in Rotation Sheet)
+                    let assignedVehicleId = null;
+                    if (svc.vehicleInternalNumber) {
+                        const v = await tx.vehicle.findFirst({
+                            where: { tenantId: 1, internalNumber: svc.vehicleInternalNumber }
+                        });
+                        if (v) assignedVehicleId = v.id;
+                        // Optional: Create vehicle if strictly needed, but let's stick to existing for safety
+                    }
+
+                    // Prepare Data Payload
+                    // Use a dynamic object to conditionally add 'routeData' only if it has content
+                    // (To avoid overwriting full matrix data with empty rotation data)
+                    const hasRouteData = svc.routeData && svc.routeData.length > 0;
+
+                    const updateData: any = {
+                        line: svc.lineCode,
+                        variant: svc.variant || 'A',
+                        dayType: dayType,
+                        startTime: svc.startTime,
+                        endTime: svc.endTime || "00:00",
+                    };
+
+                    if (hasRouteData) {
+                        updateData.routeData = JSON.stringify(svc.routeData);
+                    }
+
+                    if (assignedVehicleId) {
+                        updateData.assignedVehicleId = assignedVehicleId;
+                    }
+
+                    const createData: any = {
+                        tenantId: 1,
+                        seasonId: season!.id,
+                        serviceCode: serviceCode,
+                        serviceNumber: svc.serviceNumber,
+                        line: svc.lineCode,
+                        variant: svc.variant || 'A',
+                        dayType: dayType,
+                        startTime: svc.startTime,
+                        endTime: svc.endTime || "00:00",
+                        routeData: JSON.stringify(svc.routeData || [])
+                    };
+
+                    if (assignedVehicleId) {
+                        createData.assignedVehicleId = assignedVehicleId;
+                    }
 
                     await tx.serviceDefinition.upsert({
                         where: {
@@ -88,26 +135,8 @@ export const IngestController = {
                                 dayType: dayType
                             }
                         },
-                        update: {
-                            line: svc.lineCode,
-                            variant: svc.variant || 'A', // Default to A if missing
-                            dayType: dayType,
-                            startTime: svc.startTime,
-                            endTime: svc.endTime || "00:00",
-                            routeData: JSON.stringify(svc.routeData || [])
-                        },
-                        create: {
-                            tenantId: 1,
-                            seasonId: season!.id,
-                            serviceCode: serviceCode,
-                            serviceNumber: svc.serviceNumber,
-                            line: svc.lineCode,
-                            variant: svc.variant || 'A',
-                            dayType: dayType,
-                            startTime: svc.startTime,
-                            endTime: svc.endTime || "00:00",
-                            routeData: JSON.stringify(svc.routeData || [])
-                        }
+                        update: updateData,
+                        create: createData
                     });
                     createdCount++;
                 }
