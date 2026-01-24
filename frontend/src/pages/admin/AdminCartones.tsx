@@ -221,7 +221,7 @@ const AdminCartones = () => {
 
             {/* Selection Modal/Overlay */}
             {showSelector && (
-                <div className="absolute top-20 right-0 z-20 bg-slate-800 border border-slate-700 p-4 rounded-2xl shadow-2xl w-96 animate-in fade-in slide-in-from-top-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                <div className="absolute top-20 right-0 z-20 bg-slate-800 border border-slate-700 p-4 rounded-2xl shadow-2xl w-full max-w-sm mx-2 md:mx-0 md:w-96 animate-in fade-in slide-in-from-top-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
                     <h3 className="text-white font-bold mb-3">Seleccionar Cartón</h3>
 
                     <div className="space-y-2 mb-4">
