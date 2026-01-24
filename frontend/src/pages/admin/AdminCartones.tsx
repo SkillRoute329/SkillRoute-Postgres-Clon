@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import MobileCartonCard from '../../components/MobileCartonCard';
 import DigitalCarton, { type ServiceDefinitionData } from '../../components/DigitalCarton';
-import { Plus, LayoutTemplate, Printer } from 'lucide-react';
+import { Plus, LayoutTemplate, Printer, Search, AlertTriangle } from 'lucide-react';
 import { CartonService, BulletinService } from '../../services/api';
 import { PdfService } from '../../services/PdfService';
 import OptimizationPanel from '../../components/OptimizationPanel';
 import DataImporter from '../../components/DataImporter';
+import clsx from 'clsx';
+import { useAuth } from '../../context/AuthContext';
 
 const AdminCartones = () => {
+    const { user } = useAuth();
     // ... code ...
 
     const loadFromSaved = (saved: any) => {
@@ -219,72 +222,136 @@ const AdminCartones = () => {
                 </div>
             </div>
 
-            {/* Selection Modal/Overlay */}
-            {showSelector && (
-                <div className="absolute top-20 right-0 z-20 bg-slate-800 border border-slate-700 p-4 rounded-2xl shadow-2xl w-full max-w-sm mx-2 md:mx-0 md:w-96 animate-in fade-in slide-in-from-top-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
-                    <h3 className="text-white font-bold mb-3">Seleccionar Cartón</h3>
+            {/* SPLIT LAYOUT: Sidebar (List) + Workspace (Editor) */}
+            <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)]">
 
-                    <div className="space-y-2 mb-4">
-                        <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Plantillas</p>
-                        <button
-                            onClick={loadTemplate}
-                            className="w-full flex items-center gap-3 p-3 rounded-xl bg-slate-700/50 hover:bg-slate-700 text-white transition-colors text-left"
-                        >
-                            <LayoutTemplate className="w-4 h-4 text-slate-400" />
-                            <span className="text-sm">Ejemplo Línea 370</span>
-                        </button>
+                {/* SIDEBAR NAVIGATION */}
+                <div className="w-full lg:w-80 shrink-0 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col">
+                    <div className="p-4 border-b border-slate-800 bg-slate-900 sticky top-0 z-10">
+                        <h3 className="font-bold text-slate-300 uppercase text-xs tracking-wider mb-2">Explorador de Flota</h3>
+                        <div className="relative">
+                            <input
+                                placeholder="Buscar (ej. 1014, 300)"
+                                className="w-full bg-slate-800 border-none rounded-lg py-2 pl-3 pr-8 text-sm text-white focus:ring-1 focus:ring-primary-500 placeholder-slate-500"
+                            />
+                            <Search className="absolute right-2 top-2.5 w-4 h-4 text-slate-500" />
+                        </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Guardados ({savedCartons.length})</p>
-                        {savedCartons.length === 0 && <p className="text-slate-500 text-xs italic">No hay cartones guardados.</p>}
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                        {/* INFERENCIA Y DEDUPLICACIÓN EN VIVO */}
+                        {(() => {
+                            // 1. Grouping Logic
+                            const groups: Record<string, any[]> = {
+                                'CONVENCIONAL': [],
+                                'PISO BAJO': [], // IDs 1011...
+                                'HÍBRIDO': [],   // IDs 1100...
+                                'ELÉCTRICOS': [],
+                                'OTROS': []
+                            };
 
-                        {savedCartons.map(s => (
-                            <button
-                                key={s.id}
-                                onClick={() => loadFromSaved(s)}
-                                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white transition-colors text-left group"
-                            >
-                                <div>
-                                    <span className="block font-bold text-sm">Servicio {s.serviceNumber}</span>
-                                    <span className="text-xs text-slate-400">{s.line} - {s.variant}</span>
+                            // Map to handle deduplication by Service Number
+                            const seenServices = new Set();
+
+                            savedCartons.slice().sort((a, b) => parseInt(a.serviceNumber) - parseInt(b.serviceNumber)).forEach(s => {
+                                if (seenServices.has(s.serviceNumber)) {
+                                    // MERGE/DEDUPLICATE LOGIC WOULD GO HERE
+                                    // For now, we skip duplicates to show clean list
+                                    return;
+                                }
+                                seenServices.add(s.serviceNumber);
+
+                                // Simple Category Detection based on ID ranges (Heuristic)
+                                const id = parseInt(s.serviceNumber);
+                                let cat = 'OTROS';
+                                if (id >= 1000 && id < 1010) cat = 'CONVENCIONAL';
+                                else if (id >= 1011 && id < 1100) cat = 'PISO BAJO';
+                                else if (id >= 1100 && id < 1200) cat = 'HÍBRIDO';
+                                else if (id >= 1200) cat = 'ELÉCTRICOS';
+
+                                groups[cat].push(s);
+                            });
+
+                            return Object.entries(groups).map(([category, items]) => items.length > 0 && (
+                                <div key={category} className="mb-2">
+                                    <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-400 uppercase bg-slate-800/50 hover:bg-slate-800 rounded-lg mb-1 transition-colors">
+                                        <span>📂 {category}</span>
+                                        <span className="bg-slate-900 px-1.5 rounded text-[10px]">{items.length}</span>
+                                    </button>
+                                    <div className="space-y-0.5 ml-2 border-l border-slate-800 pl-2">
+                                        {items.map(s => (
+                                            <button
+                                                key={s.id}
+                                                onClick={() => loadFromSaved(s)}
+                                                className={clsx(
+                                                    "w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex justify-between items-center group",
+                                                    cartonData.serviceNumber === s.serviceNumber
+                                                        ? "bg-primary-600 text-white shadow-lg shadow-primary-900/50"
+                                                        : "text-slate-400 hover:text-white hover:bg-slate-800"
+                                                )}
+                                            >
+                                                <div className="flex flex-col leading-tight">
+                                                    <span className="font-bold font-mono">SERV: {s.serviceNumber}</span>
+                                                    <span className="text-[10px] opacity-70 truncate max-w-[120px]">{s.title || s.line}</span>
+                                                </div>
+                                                {/* Inferred Status Indicator */}
+                                                {!s.routeData?.headers?.length && (
+                                                    <AlertTriangle className="w-3 h-3 text-yellow-500 animate-pulse" title="Estructura Inferida (Datos Incompletos)" />
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                                <span className="text-xs bg-slate-900 px-2 py-1 rounded text-slate-300">{s.startTime}</span>
-                            </button>
-                        ))}
+                            ));
+                        })()}
                     </div>
                 </div>
-            )}
 
-            {/* Optimization Panel Integration */}
-            <div className="mb-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
-                <div className="xl:col-span-2">
-                    <OptimizationPanel seasonId={1} />
-                </div>
-                <div className="xl:col-span-1">
-                    <DataImporter />
-                </div>
-            </div>
-
-            <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 overflow-x-auto min-h-[600px] relative">
-                {/* Overlay backdrop */}
-                {showSelector && <div className="fixed inset-0 z-10" onClick={() => setShowSelector(false)}></div>}
-
-                {loading ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-20">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+                {/* WORKSPACE AREA */}
+                <div className="flex-1 bg-slate-900/50 rounded-3xl border border-slate-800 overflow-hidden relative flex flex-col">
+                    {/* Header Bar */}
+                    <div className="h-12 border-b border-slate-700 bg-slate-900/80 backdrop-blur flex items-center px-4 justify-between">
+                        <div className="flex items-center gap-4 text-sm">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Servicio Activo</span>
+                                <span className="font-mono font-bold text-white text-lg leading-none">{cartonData.serviceNumber || '---'}</span>
+                            </div>
+                            <div className="h-8 w-px bg-slate-700"></div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Categoría</span>
+                                <span className="font-bold text-primary-400 text-sm leading-none">
+                                    {parseInt(cartonData.serviceNumber) >= 1100 ? 'HÍBRIDO' : 'DIESEL / STD'}
+                                </span>
+                            </div>
+                            <div className="h-8 w-px bg-slate-700"></div>
+                            <div className="flex items-center gap-2">
+                                {(!cartonData.headers || cartonData.headers.length === 0) && (
+                                    <span className="bg-yellow-500/10 border border-yellow-500/50 text-yellow-500 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
+                                        <AlertTriangle className="w-3 h-3" /> ESTRUCTURA INFERIDA
+                                    </span>
+                                )}
+                                <span className="bg-emerald-500/10 border border-emerald-500/50 text-emerald-500 px-2 py-0.5 rounded text-[10px] font-bold">
+                                    ● ONLINE
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                ) : (
-                    // VISTA UNIFICADA (Responsive)
-                    // Eliminamos la restricción de vista móvil para permitir la gestión completa ("Lanzador") desde el celular
-                    <DigitalCarton
-                        key={cartonData.serviceNumber + cartonData.line + Date.now()}
-                        data={cartonData}
-                        isEditable={true}
-                        onSave={handleSave}
-                    />
-                )}
 
+                    <div className="flex-1 overflow-auto p-4 relative">
+                        {loading ? (
+                            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-20">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+                            </div>
+                        ) : (
+                            <DigitalCarton
+                                key={cartonData.serviceNumber + cartonData.line + Date.now()}
+                                data={cartonData}
+                                isEditable={user?.role === 'Admin' || user?.role === 'SuperAdmin' || user?.role === 'Encargado'}
+                                onSave={handleSave}
+                            />
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );
