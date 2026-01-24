@@ -53,7 +53,7 @@ const ExcelUploader = ({ onSuccess }: ExcelUploaderProps) => {
     });
 
     const confirmUpload = async () => {
-        if (!parsedData) return;
+        if (!parsedData || uploading) return; // Prevent double submission
         setUploading(true);
         try {
             await DataImportService.ingestJson(parsedData);

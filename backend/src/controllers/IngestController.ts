@@ -21,11 +21,12 @@ export const IngestController = {
             });
 
             if (!season) {
-                console.log("⚠️ No active season found. Creating default 'Temporada Base'.");
+                const seasonName = `Importación ${new Date().toLocaleDateString()}`;
+                console.log(`⚠️ No active season found. Creating season '${seasonName}'.`);
                 season = await prisma.season.create({
                     data: {
                         tenantId: 1,
-                        name: "Temporada Base",
+                        name: seasonName,
                         startDate: new Date(),
                         isActive: true
                     }
