@@ -7,6 +7,7 @@ import { PdfService } from '../../services/PdfService';
 import OptimizationPanel from '../../components/OptimizationPanel';
 import DataImporter from '../../components/DataImporter';
 import clsx from 'clsx';
+import { LINE_ARCHETYPES } from '../../data/lineTemplates';
 import { useAuth } from '../../context/AuthContext';
 
 const AdminCartones = () => {
@@ -47,18 +48,9 @@ const AdminCartones = () => {
 
             // Apply Archetype Headers if empty
             if (uiData.headers.length === 0) {
-                // We need LINE_ARCHETYPES. Since I can't easily add import top-level in this replace block without context of imports,
-                // I will define a small local lookup or try to use the one I added if I can import it.
-                // Actually, I can't add 'import' here safely.
-                // I will hardcode the critical 300/306 headers here for emergency fix.
-                const archs: any = {
-                    '300': ["Crio. Central", "Bv. Artigas", "Tres Cruces", "8 Oct", "Belloni", "Instrucciones"],
-                    '306': ["Casabó", "Cerro", "Teja", "Paso Molino", "Centro", "Pocitos", "Géant"],
-                    '370': ["Portones", "Av Italia", "8 Oct", "Centro", "Agraciada", "Cerro"],
-                    '316': ["Km 16", "Belloni", "8 Oct", "Centro", "Pocitos"]
-                };
-                if (archs[inferredLine]) {
-                    uiData.headers = archs[inferredLine].map((LOC: string, i: number) => ({ id: `h${i}`, location: LOC, isStop: true }));
+                const archetype = LINE_ARCHETYPES[inferredLine];
+                if (archetype) {
+                    uiData.headers = archetype.headers.map((LOC: string, i: number) => ({ id: `h${i}`, location: LOC, isStop: true }));
                     uiData.title = `RECONSTRUIDO - LÍNEA ${inferredLine}`;
                 }
             }
