@@ -36,6 +36,11 @@ const DriverNavigation = lazy(() => import('./pages/driver/DriverNavigation'));
 const ABLPage = lazy(() => import('./pages/abl/ABLPage'));
 const PenalizationsPage = lazy(() => import('./pages/abl/penalizations/PenalizationsPage'));
 
+// Native Plugins
+import { Network } from '@capacitor/network';
+import { Toast } from '@capacitor/toast';
+import { useState, useEffect } from 'react';
+
 // Loading Component
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[50vh]">
@@ -43,11 +48,47 @@ const PageLoader = () => (
   </div>
 );
 
+// Offline Banner Component
+const OfflineBanner = () => (
+  <div className="fixed top-0 left-0 right-0 bg-red-600/90 text-white text-xs font-bold text-center py-1 z-[99999] backdrop-blur animate-fade-in-up">
+    ⚠️ MODO OFFLINE ACTIVADO - Los datos se guardarán localmente
+  </div>
+);
+
 function App() {
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    // 1. Initial Status
+    Network.getStatus().then(status => setIsOffline(!status.connected));
+
+    // 2. Listen for changes
+    const handler = Network.addListener('networkStatusChange', status => {
+      const offline = !status.connected;
+      setIsOffline(offline);
+      if (offline) {
+        Toast.show({
+          text: '⚠️ Conexión Perdida. Activando Modo Túnel.',
+          duration: 'long'
+        });
+      } else {
+        Toast.show({
+          text: '🟢 Conexión Restaurada. Sincronizando...',
+          duration: 'short'
+        });
+      }
+    });
+
+    return () => {
+      handler.then(h => h.remove());
+    };
+  }, []);
+
   return (
     <ErrorBoundary>
       <Router>
         <AuthProvider>
+          {isOffline && <OfflineBanner />}
           <div className="min-h-screen bg-slate-900 text-slate-100 font-sans">
             <Suspense fallback={<PageLoader />}>
               <Routes>

@@ -136,6 +136,20 @@
   animation: fade-in-up 0.8s ease-out forwards;
 }
 
-.animate-bounce-slow {
-  animation: bounce 3s infinite;
+/* Mobile UX Premium Patches */
+* {
+  user-select: none;
+  /* Prevent text selection */
+  -webkit-tap-highlight-color: transparent;
+  /* Remove blue tap flash */
+}
+
+/* Hide scrollbars for native feel */
+::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  overscroll-behavior-y: none;
+  /* Prevent pull-to-refresh on body */
 }

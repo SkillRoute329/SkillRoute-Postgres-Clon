@@ -100,7 +100,7 @@ const ExcelUploader = ({ onSuccess }: ExcelUploaderProps) => {
                         <Upload className="w-10 h-10 text-slate-400" />
                     )}
                     <div>
-                        <p className="font-bold text-slate-700">Arrastra archivos aquí (.xlsx)</p>
+                        <p className="font-bold text-slate-700">Tocá para buscar archivo</p>
                         <p className="text-xs text-slate-500">Soporta formatos: BOLETÍN y CARTONES</p>
                     </div>
                 </div>
