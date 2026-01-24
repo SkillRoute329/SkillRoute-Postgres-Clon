@@ -15,7 +15,8 @@ const Sidebar = () => {
         {
             title: 'Departamento de Tránsito',
             items: [
-                { path: '/dashboard/admin/boletines', label: 'Boletines (Inspectores)', icon: FileText },
+                { path: '/dashboard/operativa/inspector', label: '📱 Panel Inspector', icon: AlertTriangle },
+                { path: '/dashboard/admin/boletines', label: 'Histórico Boletines', icon: FileText },
                 { path: '/dashboard/admin/cartones', label: 'Rotación de Servicios', icon: Calendar },
                 { path: '/dashboard/operativa/distribucion', label: 'Distribución Diaria', icon: Activity },
                 { path: '/dashboard/admin/rotation-matrix', label: 'Matriz de Rotación', icon: Settings },
