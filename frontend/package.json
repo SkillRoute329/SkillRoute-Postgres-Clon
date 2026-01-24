@@ -1,7 +1,7 @@
 {
   "name": "transformafacil-frontend",
   "private": true,
-  "version": "3.0.0-EMERGENCY",
+  "version": "1.0.1-CACHEBUST-1737694665421",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -1,6 +1,6 @@
 {
     "name": "transformafacil-monorepo",
-    "version": "3.0.0-EMERGENCY",
+    "version": "1.0.1-CACHEBUST-1737694665421",
     "private": true,
     "description": "Root package for Railway deployment - NIXPACKS FORCE",
     "scripts": {
@@ -10,7 +10,8 @@
         "deploy:prepare": "node scripts/deploy_prepare.js",
         "deploy:verify": "node scripts/verify_remote.js",
         "build": "cd frontend && npm install && npm run build && cd ../backend && npm install && npx prisma generate && npm run build",
-        "start": "cd backend && node --max-old-space-size=512 dist/index.js"
+        "start": "cd backend && node --max-old-space-size=512 dist/index.js",
+        "cache:bust": "echo 1737694665421"
     },
     "engines": {
         "node": ">=22.12.0"

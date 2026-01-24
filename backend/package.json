@@ -1,7 +1,7 @@
 {
   "name": "transformafacil-backend",
-  "version": "3.0.0-EMERGENCY",
-  "buildTime": "2026-01-24-FORCE-UPDATE-REV3",
+  "version": "1.0.1-CACHEBUST-1737694665421",
+  "buildTime": "2026-01-24-REBUILD-FORZADO-1737694665421",
   "description": "",
   "main": "index.js",
   "engines": {
