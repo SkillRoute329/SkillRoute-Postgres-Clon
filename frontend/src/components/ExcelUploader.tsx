@@ -1,39 +1,46 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import * as XLSX from 'xlsx';
-import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle, Database, Server } from 'lucide-react';
+import { useDropzone } from 'react-dropzone';
+import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle, Database, Server, Loader2, FileUp } from 'lucide-react';
 import { DataImportService } from '../services/api';
-import { ExcelParser, ParsedData } from '../utils/ExcelParser'; // Assuming this exists from previous read
+import { ExcelParser, ParsedData } from '../utils/ExcelParserV2';
 
 const ExcelUploader = ({ onSuccess }: { onSuccess?: () => void }) => {
-    const [file, setFile] = useState<File | null>(null);
     const [parsedData, setParsedData] = useState<ParsedData | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [uploading, setUploading] = useState(false);
     const [analyzing, setAnalyzing] = useState(false);
 
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = e.target.files?.[0];
-        setFile(selectedFile || null);
+    const onDrop = useCallback(async (acceptedFiles: File[]) => {
+        const selectedFile = acceptedFiles[0];
+        if (!selectedFile) return;
+
         setErrorMsg(null);
         setSuccessMsg(null);
         setParsedData(null);
+        setAnalyzing(true);
 
-        if (selectedFile) {
-            setAnalyzing(true);
-            try {
-                // CLIENT-SIDE PARSING ENGINE
-                // We parse it locally to ensure it's valid BEFORE hitting the server
-                const result = await ExcelParser.parse(selectedFile);
-                setParsedData(result);
-            } catch (error: any) {
-                setErrorMsg("Error leyendo archivo: " + error.message);
-                setFile(null);
-            } finally {
-                setAnalyzing(false);
-            }
+        try {
+            // CLIENT-SIDE PARSING ENGINE
+            // We parse it locally to ensure it's valid BEFORE hitting the server
+            const result = await ExcelParser.parse(selectedFile);
+            setParsedData(result);
+        } catch (error: any) {
+            setErrorMsg("Error leyendo archivo: " + error.message);
+        } finally {
+            setAnalyzing(false);
         }
-    };
+    }, []);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: {
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+            'application/vnd.ms-excel': ['.xls']
+        },
+        maxFiles: 1
+    });
 
     const confirmUpload = async () => {
         if (!parsedData || uploading) return; // Prevent double submission
@@ -44,7 +51,6 @@ const ExcelUploader = ({ onSuccess }: { onSuccess?: () => void }) => {
             await DataImportService.ingestJson(parsedData);
             setSuccessMsg(`✅ Importación Exitosa: ${parsedData.lines.length} Lineas, ${parsedData.services.length} Servicios.`);
             setParsedData(null);
-            setFile(null);
             if (onSuccess) onSuccess();
         } catch (error: any) {
             console.error(error);
@@ -80,14 +86,16 @@ const ExcelUploader = ({ onSuccess }: { onSuccess?: () => void }) => {
                     `}
                 >
                     <input {...getInputProps()} />
-                    {uploading ? (
+                    {analyzing ? (
                         <Loader2 className="w-10 h-10 animate-spin text-primary-500" />
                     ) : (
                         <Upload className="w-10 h-10 text-slate-400" />
                     )}
                     <div>
-                        <p className="font-bold text-slate-700">Tocá para buscar archivo</p>
-                        <p className="text-xs text-slate-500">Soporta formatos: BOLETÍN y CARTONES</p>
+                        <p className="font-bold text-slate-700">
+                            {analyzing ? "Analizando archivo..." : "Tocá para buscar archivo o arrastralo aquí"}
+                        </p>
+                        <p className="text-xs text-slate-500">Soporta formatos: BOLETÍN y CARTONES (.xlsx, .xls)</p>
                     </div>
                 </div>
             ) : (
