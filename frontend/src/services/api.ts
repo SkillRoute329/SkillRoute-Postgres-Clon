@@ -232,6 +232,9 @@ export const FleetService = {
     getLastInspection: async (vehicleId: number) => {
         return api.get(`/fleet/vehicles/${vehicleId}/last-inspection`).then(res => res.data);
     },
+    getVehicleHistory: async (vehicleId: number) => {
+        return api.get(`/fleet/vehicles/${vehicleId}/history`).then(res => res.data);
+    },
     createInspection: async (data: any) => {
         return api.post('/fleet/inspections', data).then(res => res.data);
     },

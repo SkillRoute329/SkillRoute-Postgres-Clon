@@ -137,6 +137,25 @@ export const getLastInspection = async (req: Request, res: Response) => {
     }
 };
 
+export const getVehicleHistory = async (req: Request, res: Response) => {
+    try {
+        const { vehicleId } = req.params;
+        const history = await prisma.inspection.findMany({
+            where: { vehicleId: Number(vehicleId) },
+            orderBy: { createdAt: 'desc' },
+            include: {
+                user: { select: { fullName: true, internalNumber: true } },
+                damages: true
+            },
+            take: 50
+        });
+        res.json(history);
+    } catch (error) {
+        console.error('History error:', error);
+        res.status(500).json({ message: 'Error fetching vehicle history' });
+    }
+};
+
 export const createInspection = async (req: Request, res: Response) => {
     try {
         const user = (req as any).user;
