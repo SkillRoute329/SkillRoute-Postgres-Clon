@@ -127,10 +127,13 @@ const DataIngestion = () => {
             <div className="text-center space-y-2">
                 <h1 className="text-4xl font-black text-white tracking-tight flex items-center justify-center gap-3">
                     <FileSpreadsheet className="w-10 h-10 text-emerald-400" />
-                    Ingesta Universal V2.5 (Multi-Matriz)
+                    Ingesta Universal V2.6 (Auto-Detect)
                 </h1>
                 <p className="text-slate-400 text-lg">
-                    El procesamiento se realiza en TU navegador para máxima velocidad y seguridad.
+                    Soporta: Matriz (300a), Rotación (Coches), y Sábana (Horarios).
+                    <span className="block text-xs text-yellow-500 mt-2 font-bold animate-pulse">
+                        ⚠️ SI NO VES "V2.6", RECARGA LA PÁGINA (CTRL + F5)
+                    </span>
                 </p>
                 <div className="pt-4">
                     <button
@@ -191,16 +194,21 @@ const DataIngestion = () => {
                             <table className="w-full text-xs text-slate-300">
                                 <thead>
                                     <tr className="border-b border-slate-700">
-                                        {analysis.preview[0] && Object.keys(analysis.preview[0]).slice(0, 6).map(key => (
+                                        {analysis.preview[0] && Object.keys(analysis.preview[0]).slice(0, 8).map(key => (
                                             <th key={key} className="p-2 text-slate-400">{key}</th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {analysis.preview.map((row, i) => (
-                                        <tr key={i} className="border-b border-slate-800">
-                                            {Object.values(row).slice(0, 6).map((val: any, j) => (
-                                                <td key={j} className="p-2 truncate max-w-[150px]">{String(val)}</td>
+                                        <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/50">
+                                            {Object.entries(row).slice(0, 8).map(([key, val], j) => (
+                                                <td key={j} className="p-2 truncate max-w-[200px]" title={String(val)}>
+                                                    {key === 'routeData'
+                                                        ? <span className="text-slate-500 font-mono text-[10px]">[Array {(val as any[]).length}]</span>
+                                                        : String(val)
+                                                    }
+                                                </td>
                                             ))}
                                         </tr>
                                     ))}
