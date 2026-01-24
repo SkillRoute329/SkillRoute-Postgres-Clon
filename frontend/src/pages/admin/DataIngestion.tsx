@@ -3,8 +3,8 @@ import { useState, useCallback } from 'react';
 import { Upload, FileUp, CheckCircle, FileSpreadsheet, Loader2, Download, Trash2, Play } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { DataImportService, API_URL } from '../../services/api';
-import { ExcelParser } from '../../utils/ExcelParser';
-import type { ParsedData } from '../../utils/ExcelParser';
+import { ExcelParser } from '../../utils/ExcelParserV2';
+import type { ParsedData } from '../../utils/ExcelParserV2';
 
 interface AnalysisResult {
     type: 'CARTON' | 'BOLETIN' | 'DAILY' | 'UNKNOWN' | 'JSON_READY';
@@ -127,7 +127,7 @@ const DataIngestion = () => {
             <div className="text-center space-y-2">
                 <h1 className="text-4xl font-black text-white tracking-tight flex items-center justify-center gap-3">
                     <FileSpreadsheet className="w-10 h-10 text-emerald-400" />
-                    Ingesta Universal V2.6 (Auto-Detect)
+                    Ingesta Universal V2.7 (Cache-Bust)
                 </h1>
                 <p className="text-slate-400 text-lg">
                     Soporta: Matriz (300a), Rotación (Coches), y Sábana (Horarios).
