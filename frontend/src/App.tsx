@@ -17,6 +17,7 @@ const AdminCartones = lazy(() => import('./pages/admin/AdminCartones'));
 const RotationMatrix = lazy(() => import('./pages/traffic/RotationMatrix'));
 const AdminBoletines = lazy(() => import('./pages/admin/AdminBoletines'));
 const Distribution = lazy(() => import('./pages/operations/Distribution'));
+const InspectorDashboard = lazy(() => import('./pages/operations/InspectorDashboard'));
 const AdminRRHH = lazy(() => import('./pages/admin/AdminRRHH'));
 const AdminWhatsApp = lazy(() => import('./pages/admin/AdminWhatsApp'));
 const AdminWhatsAppSettings = lazy(() => import('./pages/admin/AdminWhatsAppSettings'));
@@ -115,6 +116,7 @@ function App() {
                     <Route path="admin/cartones" element={<AdminCartones />} />
                     <Route path="admin/boletines" element={<AdminBoletines />} />
                     <Route path="operativa/distribucion" element={<Distribution />} />
+                    <Route path="operativa/inspector" element={<InspectorDashboard />} />
                     <Route path="admin/rrhh" element={<AdminRRHH />} />
                     <Route path="admin/communications" element={<AdminWhatsApp />} />
                     <Route path="admin/whatsapp-bot" element={<AdminWhatsAppSettings />} />
