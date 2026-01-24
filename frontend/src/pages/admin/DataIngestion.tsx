@@ -202,14 +202,25 @@ const DataIngestion = () => {
                                 <tbody>
                                     {analysis.preview.map((row, i) => (
                                         <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/50">
-                                            {Object.entries(row).slice(0, 8).map(([key, val], j) => (
-                                                <td key={j} className="p-2 truncate max-w-[200px]" title={String(val)}>
-                                                    {key === 'routeData'
-                                                        ? <span className="text-slate-500 font-mono text-[10px]">[Array {(val as any[]).length}]</span>
-                                                        : String(val)
-                                                    }
-                                                </td>
-                                            ))}
+                                            {Object.entries(row).slice(0, 8).map(([key, val], j) => {
+                                                let displayVal = String(val);
+                                                let isArray = Array.isArray(val);
+
+                                                if (isArray) {
+                                                    displayVal = `[Array ${(val as any[]).length}]`;
+                                                } else if (typeof val === 'object' && val !== null) {
+                                                    displayVal = JSON.stringify(val);
+                                                }
+
+                                                return (
+                                                    <td key={j} className="p-2 truncate max-w-[200px]" title={String(val)}>
+                                                        {key === 'routeData' || isArray
+                                                            ? <span className="text-slate-500 font-mono text-[10px]">{displayVal}</span>
+                                                            : displayVal
+                                                        }
+                                                    </td>
+                                                );
+                                            })}
                                         </tr>
                                     ))}
                                 </tbody>
