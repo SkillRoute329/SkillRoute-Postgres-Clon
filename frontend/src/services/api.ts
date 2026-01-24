@@ -1,7 +1,7 @@
 import { getAuthToken, clearAuthData } from '../utils/auth';
 
-// API URL configurada para backend local
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+// API URL apunta a Railway (Producción)
+export const API_URL = 'https://transformafacil-20-production.up.railway.app/api';
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
