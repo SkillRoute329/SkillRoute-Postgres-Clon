@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle, Database, Server, Loader2, FileUp } from 'lucide-react';
 import { DataImportService } from '../services/api';
-import { ExcelParser, ParsedData } from '../utils/ExcelParserV2';
+import { ExcelParser, type ParsedData } from '../utils/ExcelParserV2';
 
 const ExcelUploader = ({ onSuccess }: { onSuccess?: () => void }) => {
     const [parsedData, setParsedData] = useState<ParsedData | null>(null);
