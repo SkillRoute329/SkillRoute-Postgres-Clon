@@ -1,64 +1,50 @@
-
-import { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
-import { Upload, FileUp, CheckCircle, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import * as XLSX from 'xlsx';
+import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle, Database, Server } from 'lucide-react';
 import { DataImportService } from '../services/api';
-import { ExcelParser } from '../utils/ExcelParser';
-import type { ParsedData } from '../utils/ExcelParser';
+import { ExcelParser, ParsedData } from '../utils/ExcelParser'; // Assuming this exists from previous read
 
-interface ExcelUploaderProps {
-    onSuccess?: () => void;
-}
-
-const ExcelUploader = ({ onSuccess }: ExcelUploaderProps) => {
-    const [uploading, setUploading] = useState(false);
+const ExcelUploader = ({ onSuccess }: { onSuccess?: () => void }) => {
+    const [file, setFile] = useState<File | null>(null);
     const [parsedData, setParsedData] = useState<ParsedData | null>(null);
-    const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const [analyzing, setAnalyzing] = useState(false);
 
-    const onDrop = useCallback(async (acceptedFiles: File[]) => {
-        if (acceptedFiles.length === 0) return;
-
-        const file = acceptedFiles[0];
-        setUploading(true);
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFile = e.target.files?.[0];
+        setFile(selectedFile || null);
         setErrorMsg(null);
         setSuccessMsg(null);
         setParsedData(null);
 
-        try {
-            // 1. Client-Side Parsing (The Brain)
-            const result = await ExcelParser.parse(file);
-            setParsedData(result);
-
-            // Auto-Confirm logic or wait for user? 
-            // User requested "Sube tu archivo (El sistema lo validará automáticamente)" 
-            // and implies a button to confirm or auto?
-            // "Panel... 2. Sube tu archivo... <ExcelUploader onSuccess...>"
-            // DataIngestion had a "Confirm Upload" button.
-            // Let's keep the confirm button for safety, but show preview.
-        } catch (error: any) {
-            console.error(error);
-            setErrorMsg("Error al leer archivo: " + error.message);
-        } finally {
-            setUploading(false);
+        if (selectedFile) {
+            setAnalyzing(true);
+            try {
+                // CLIENT-SIDE PARSING ENGINE
+                // We parse it locally to ensure it's valid BEFORE hitting the server
+                const result = await ExcelParser.parse(selectedFile);
+                setParsedData(result);
+            } catch (error: any) {
+                setErrorMsg("Error leyendo archivo: " + error.message);
+                setFile(null);
+            } finally {
+                setAnalyzing(false);
+            }
         }
-    }, []);
-
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
-        onDrop,
-        accept: {
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx', '.xls'],
-        },
-        maxFiles: 1
-    });
+    };
 
     const confirmUpload = async () => {
         if (!parsedData || uploading) return; // Prevent double submission
         setUploading(true);
         try {
+            // Send the PRE-PARSED JSON, not the file
+            // This bypasses server-side parsing issues
             await DataImportService.ingestJson(parsedData);
             setSuccessMsg(`✅ Importación Exitosa: ${parsedData.lines.length} Lineas, ${parsedData.services.length} Servicios.`);
             setParsedData(null);
+            setFile(null);
             if (onSuccess) onSuccess();
         } catch (error: any) {
             console.error(error);
