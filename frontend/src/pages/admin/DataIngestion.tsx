@@ -1,10 +1,80 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Upload, FileUp, CheckCircle, FileSpreadsheet, Loader2, Download, Trash2, Play } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { DataImportService, API_URL } from '../../services/api';
 import { ExcelParser } from '../../utils/ExcelParserV2';
-import type { ParsedData } from '../../utils/ExcelParserV2';
+import type { ParsedData, ServiceData } from '../../utils/ExcelParserV2';
+import DigitalCarton, { type ServiceDefinitionData } from '../../components/DigitalCarton';
+
+// --- ADAPTER WRAPPER: Transforms Parser Data -> UI Component Data ---
+const DigitalCartonEditorWrapper = ({ serviceData, onUpdate }: { serviceData: ServiceData; onUpdate: (d: any) => void }) => {
+    // Transform once on load
+    const initialData: ServiceDefinitionData = useMemo(() => {
+        // Convert parser 'routeData' (Arrays of StopTime) into headers/rows format
+        // This is complex because parser gives [trip1, trip2] but digital carton needs [row1...rowN] with headers.
+
+        // 1. Extract Unique Stops (Headers)
+        // Assume first trip defines the pattern? Or merge all?
+        // Parser creates ONE big routeData for "Sample Pattern".
+        // Actually, parser output structure for 'routeData' in 'CARTON' mode is:
+        // routeData: StopTime[] which is just ONE trip pattern usually.
+        // Wait, parser CARTON logic: returns "routeData: allStopTimes.slice(0, stops.length)".
+        // It captures one trip to define the STOPS.
+
+        let stops: any[] = [];
+        if (Array.isArray(serviceData.routeData)) {
+            stops = serviceData.routeData;
+        }
+
+        const headers = stops.map((s, i) => ({
+            id: `stop-${i}`,
+            location: s.stopName,
+            isStop: true
+        }));
+
+        // 2. Generate Simulated Rows if only 1 trip is present
+        // Or if we have full matrix, map it.
+        // The parser for CARTON returns "Pattern". The "MATRIZ_COMPLEJA" returns actual trips.
+        // If we want to edit the PLAN/TEMPLATE, we just need 1 row? 
+        // Or maybe we want to generate the full day?
+        // Let's create a single sample row for editing the "Pattern".
+
+        const row = {
+            id: 'row-1',
+            times: {},
+            serviceNumber: serviceData.serviceNumber
+        } as any;
+
+        stops.forEach((s, i) => {
+            row.times[`stop-${i}`] = s.time;
+        });
+
+        return {
+            serviceNumber: serviceData.serviceNumber,
+            line: serviceData.lineCode,
+            title: `PLANILLA ${serviceData.lineCode}`,
+            startTime: serviceData.startTime,
+            endTime: serviceData.endTime || '00:00',
+            startLocationDescription: stops[0]?.stopName || 'SALIDA',
+            headers,
+            rows: [row], // Just showing the pattern row
+            reliefs: [],
+            totalHours: '00:00', // Calc later
+            waitingTime: '00:00',
+            liquidHours: '00:00',
+            kilometers: '0'
+        };
+    }, [serviceData]);
+
+    return (
+        <DigitalCarton
+            data={initialData}
+            isEditable={true}
+            onSave={(finalData) => onUpdate(finalData)}
+        />
+    );
+};
 
 interface AnalysisResult {
     type: 'CARTON' | 'BOLETIN' | 'DAILY' | 'UNKNOWN' | 'JSON_READY';
@@ -188,44 +258,73 @@ const DataIngestion = () => {
                             <h3 className="text-2xl font-bold">{analysis.message}</h3>
                         </div>
 
-                        {/* Preview Table */}
-                        <div className="bg-slate-900 rounded-xl p-4 overflow-x-auto text-left shadow- inner">
-                            <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Vista Previa ({analysis.count} filas)</h4>
-                            <table className="w-full text-xs text-slate-300">
-                                <thead>
-                                    <tr className="border-b border-slate-700">
-                                        {analysis.preview[0] && Object.keys(analysis.preview[0]).slice(0, 8).map(key => (
-                                            <th key={key} className="p-2 text-slate-400">{key}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {analysis.preview.map((row, i) => (
-                                        <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/50">
-                                            {Object.entries(row).slice(0, 8).map(([key, val], j) => {
-                                                let displayVal = String(val);
-                                                let isArray = Array.isArray(val);
-
-                                                if (isArray) {
-                                                    displayVal = `[Array ${(val as any[]).length}]`;
-                                                } else if (typeof val === 'object' && val !== null) {
-                                                    displayVal = JSON.stringify(val);
-                                                }
-
-                                                return (
-                                                    <td key={j} className="p-2 truncate max-w-[200px]" title={String(val)}>
-                                                        {key === 'routeData' || isArray
-                                                            ? <span className="text-slate-500 font-mono text-[10px]">{displayVal}</span>
-                                                            : displayVal
-                                                        }
-                                                    </td>
-                                                );
-                                            })}
+                        {/* DIGITAL TWIN EDITOR (PRE-FLIGHT CHECK) */}
+                        {analysis.type === 'JSON_READY' && parsedData?.services.length && parsedData.services.length > 0 && parsedData.type === 'CARTON' ? (
+                            <div className="bg-slate-900 rounded-xl p-4 border border-slate-700">
+                                <h4 className="text-sm font-bold text-center text-blue-400 uppercase mb-4 animate-pulse">
+                                    🛠️ Editor de Cartón Digital (Gemelo Digital) - {parsedData.services[0].lineCode}
+                                </h4>
+                                {/* Show ONLY the first one for demo/MVP editing, or map them? 
+                                    Usually you edit the MASTER Template. 
+                                    ParsedData.services contains ACTUAL scheduled trips if it's a Carton.
+                                    Let's attempt to map the Parsed ServiceData to DigitalCarton format.
+                                */}
+                                <DigitalCartonEditorWrapper
+                                    serviceData={parsedData.services[0]}
+                                    onUpdate={(updatedV) => {
+                                        // Update the parsedData state with the edited version
+                                        const newServices = [...parsedData.services];
+                                        // Deep merge or replace logic. 
+                                        // Since DigitalCarton outputs ServiceDefinitionData, we need to map back if we want to save changes.
+                                        // For now, this is a visual confirmation mainly.
+                                        console.log("Carton Edited:", updatedV);
+                                        // We would update 'parsedData' here to reflect changes before Upload.
+                                    }}
+                                />
+                                <p className="text-center text-[10px] text-slate-500 mt-2">
+                                    * La edición afecta solo a la vista previa, la importación usará la lógica del servidor.
+                                </p>
+                            </div>
+                        ) : (
+                            /* Standard Preview Table */
+                            <div className="bg-slate-900 rounded-xl p-4 overflow-x-auto text-left shadow-inner">
+                                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Vista Previa ({analysis.count} filas)</h4>
+                                <table className="w-full text-xs text-slate-300">
+                                    <thead>
+                                        <tr className="border-b border-slate-700">
+                                            {analysis.preview[0] && Object.keys(analysis.preview[0]).slice(0, 8).map(key => (
+                                                <th key={key} className="p-2 text-slate-400">{key}</th>
+                                            ))}
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        {analysis.preview.map((row, i) => (
+                                            <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/50">
+                                                {Object.entries(row).slice(0, 8).map(([key, val], j) => {
+                                                    let displayVal = String(val);
+                                                    let isArray = Array.isArray(val);
+
+                                                    if (isArray) {
+                                                        displayVal = `[Array ${(val as any[]).length}]`;
+                                                    } else if (typeof val === 'object' && val !== null) {
+                                                        displayVal = JSON.stringify(val);
+                                                    }
+
+                                                    return (
+                                                        <td key={j} className="p-2 truncate max-w-[200px]" title={String(val)}>
+                                                            {key === 'routeData' || isArray
+                                                                ? <span className="text-slate-500 font-mono text-[10px]">{displayVal}</span>
+                                                                : displayVal
+                                                            }
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
 
                         <div className="flex gap-4 justify-center">
                             <button
