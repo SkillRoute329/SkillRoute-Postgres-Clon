@@ -2,12 +2,14 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// BUILD TIMESTAMP: FORCE_REFRESH_1737694665421
+// BUILD TIMESTAMP: FORCE_REFRESH_2026-01-24_03:01
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
+    // VitePWA DEACTIVATED FOR AUDIT
+    /*
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
@@ -35,37 +37,38 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        globPatterns: ['**/*.{ js, css, html, ico, png, svg }'],
         runtimeCaching: [
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/universal/static'),
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'api-static-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 Days
-              }
-            }
+      {
+        urlPattern: ({ url }) => url.pathname.startsWith('/api/universal/static'),
+        handler: 'CacheFirst',
+        options: {
+          cacheName: 'api-static-cache',
+          expiration: {
+            maxEntries: 100,
+            maxAgeSeconds: 60 * 60 * 24 * 30 // 30 Days
           }
-        ]
+        }
+      }
+    ]
       }
     })
+  */
   ],
-  server: {
-    host: true, // Expose to network (0.0.0.0)
+server: {
+  host: true, // Expose to network (0.0.0.0)
     port: 5173,
-    strictPort: true, // Prevent switching to 5174 if busy (breaks ngrok)
-    allowedHosts: true, // Allow ngrok tunneling
-    watch: {
-      usePolling: true
-    },
-    proxy: {
-      '/api': {
-        target: 'http://localhost:4000',
+      strictPort: true, // Prevent switching to 5174 if busy (breaks ngrok)
+        allowedHosts: true, // Allow ngrok tunneling
+          watch: {
+    usePolling: true
+  },
+  proxy: {
+    '/api': {
+      target: 'http://localhost:4000',
         changeOrigin: true,
-        secure: false,
+          secure: false,
       }
-    }
   }
+}
 })
