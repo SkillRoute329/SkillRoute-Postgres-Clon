@@ -154,15 +154,7 @@ const DashboardLayout = () => {
 
     const renderFallbackMenu = () => (
         <>
-            {(role.toUpperCase() === 'ADMIN' || role.toUpperCase() === 'SUPERADMIN') && (
-                <div className="mb-6">
-                    <div className={clsx("text-xs font-semibold text-slate-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>ADMINISTRACIÓN</div>
-                    <SidebarLink to="/dashboard/admin/employees" icon={Users} onClick={handleMobileLinkClick}>👥 Gestión de Personal (RRHH)</SidebarLink>
-                    <SidebarLink to="/dashboard/admin/users/create" icon={UserPlus} onClick={handleMobileLinkClick}>🔑 Usuarios del Sistema</SidebarLink>
-                    <SidebarLink to="/dashboard/admin/rrhh" icon={Users} onClick={handleMobileLinkClick}>Configuración de Áreas</SidebarLink>
-                </div>
-            )}
-
+            {/* Fallback items if needed */}
             {role.toUpperCase() === 'SUPERADMIN' && (
                 <div className="mb-6 border-t border-slate-700/30 pt-4">
                     <div className={clsx("text-xs font-semibold text-pink-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>SYSTEM ROOT</div>
@@ -200,7 +192,7 @@ const DashboardLayout = () => {
 
             <div className={clsx("text-xs font-semibold text-slate-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>ABL (Análisis y Logística)</div>
             <SidebarLink to="/dashboard/abl" icon={BarChart3} onClick={handleMobileLinkClick}>Panel de Control</SidebarLink>
-            {(role === 'Admin' || role === 'SuperAdmin') && (
+            {(role.toUpperCase() === 'ADMIN' || role.toUpperCase() === 'SUPERADMIN') && (
                 <SidebarLink to="/dashboard/abl/penalizations" icon={Wrench} onClick={handleMobileLinkClick}>Penalizaciones</SidebarLink>
             )}
         </>
@@ -259,6 +251,18 @@ const DashboardLayout = () => {
                         ))
                     ) : (
                         renderFallbackMenu()
+                    )}
+
+                    {/* --- SECCIÓN EXCLUSIVA ADMIN (Always Visible if Role matches) --- */}
+                    {(role.toUpperCase() === 'ADMIN' || role.toUpperCase() === 'SUPERADMIN') && (
+                        <div className="pt-4 mt-4 border-t border-slate-700/50">
+                            <h4 className={clsx("px-4 text-xs font-semibold text-primary-500 uppercase tracking-wider mb-2", !isSidebarOpen && "hidden")}>
+                                🛡️ ADMINISTRACIÓN
+                            </h4>
+                            <SidebarLink to="/dashboard/admin/employees" icon={Users} onClick={handleMobileLinkClick}>👥 Gestión de Personal (RRHH)</SidebarLink>
+                            <SidebarLink to="/dashboard/admin/users/create" icon={UserPlus} onClick={handleMobileLinkClick}>🔑 Alta de Personal</SidebarLink>
+                            <SidebarLink to="/dashboard/admin/rrhh" icon={Users} onClick={handleMobileLinkClick}>⚙️ Áreas y Departamentos</SidebarLink>
+                        </div>
                     )}
 
                     <div className="border-t border-slate-800 my-2 pt-2"></div>
