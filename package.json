@@ -10,7 +10,7 @@
         "deploy:prepare": "node scripts/deploy_prepare.js",
         "deploy:verify": "node scripts/verify_remote.js",
         "build": "cd frontend && npm install && npm run build && cd ../backend && npm install && npx prisma generate && npm run build",
-        "start": "cd backend && node dist/index.js"
+        "start": "cd backend && node --max-old-space-size=512 dist/index.js"
     },
     "engines": {
         "node": ">=22.12.0"

@@ -227,6 +227,16 @@ const DashboardLayout = () => {
                 </div>
 
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
+                    {/* --- ZONA DE EMERGENCIA: VISIBILIDAD TOTAL --- */}
+                    <div className="mb-6 rounded-xl overflow-hidden border border-red-600">
+                        <div className="bg-red-900 text-white p-2 text-[10px] font-black tracking-widest text-center">ZONA DE EMERGENCIA</div>
+                        <div className="bg-red-950/20 p-1 space-y-1">
+                            <SidebarLink to="/dashboard/admin/employees" icon={Users} onClick={handleMobileLinkClick}>👥 EMPLEADOS (RRHH)</SidebarLink>
+                            <SidebarLink to="/dashboard/admin/users/create" icon={UserPlus} onClick={handleMobileLinkClick}>🔑 ALTA USUARIOS</SidebarLink>
+                            <SidebarLink to="/dashboard/fleet" icon={Bus} onClick={handleMobileLinkClick}>🚌 INSPEC. FLOTA</SidebarLink>
+                        </div>
+                    </div>
+
                     {/* DYNAMIC MENU vs FALLBACK */}
                     {menuItems.length > 0 ? (
                         menuItems.map((module) => (

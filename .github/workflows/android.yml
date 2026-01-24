@@ -1,50 +1,29 @@
-name: Build Android APK Issues Fix
-on:
-  push:
-    branches: [ "main" ]
+name: Rescue Android Build
+on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Setup Java 17
+      - uses: actions/checkout@v3
+      - name: Setup Java
         uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Node.js
+        with: { distribution: 'zulu', java-version: '17' }
+      - name: Setup Node
         uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      - name: Install dependencies
-        run: |
-          cd frontend
-          npm install
-
-      - name: Build Frontend Project
-        run: |
-          cd frontend
-          npm run build
-        env:
-          VITE_API_URL: "https://transformafacil-20-production.up.railway.app"
-
+        with: { node-version: '18' }
+      - name: Install Dependencies
+        run: cd frontend && npm install
+      - name: Build Web
+        run: cd frontend && npm run build
       - name: Sync Capacitor
-        run: |
-          cd frontend
-          npx cap sync android
-
-      - name: Build APK with Gradle
+        run: cd frontend && npx cap sync android
+      - name: Build APK
         run: |
           cd frontend/android
           chmod +x gradlew
           ./gradlew assembleDebug
-
-      - name: Upload APK Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v3
         with:
-          name: Transforma-App-Debug
+          name: APP-RESCATE
           path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
