@@ -160,5 +160,31 @@ export const IngestController = {
                 error: String(error)
             });
         }
+    },
+
+    clearAllData: async (req: Request, res: Response) => {
+        try {
+            console.log("🧹 CLEAR: Iniciando limpieza de datos operativos...");
+
+            const result = await prisma.$transaction([
+                prisma.shift.deleteMany({ where: { tenantId: 1 } }),
+                prisma.serviceDefinition.deleteMany({ where: { tenantId: 1 } }),
+                prisma.route.deleteMany({ where: { tenantId: 1 } }),
+                // Don't delete Vehicles or Users as they are masters
+            ]);
+
+            console.log("✅ CLEAR SUCCESS: Datos operativos eliminados.");
+            return res.json({
+                message: "Datos operativos eliminados correctamente.",
+                details: result
+            });
+
+        } catch (error) {
+            console.error("❌ CLEAR FAILED:", error);
+            return res.status(500).json({
+                message: "Error al limpiar datos",
+                error: String(error)
+            });
+        }
     }
 };

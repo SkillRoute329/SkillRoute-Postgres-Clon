@@ -10,6 +10,7 @@ const router = Router();
 
 // New JSON Ingestion Endpoint (Transactional)
 router.post('/ingest/json', authenticate, IngestController.ingestJson);
+router.delete('/ingest/clear', authenticate, IngestController.clearAllData);
 
 // Legacy Upload (Deprecated/Removed)
 // router.post('/upload/data', ...) 

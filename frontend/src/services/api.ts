@@ -451,6 +451,14 @@ export const DataImportService = {
         });
         if (!response.ok) throw new Error('Error exportando empleados');
         return response.blob();
+    },
+
+    clearData: async () => {
+        const res = await fetch(`${API_URL}/data-import/ingest/clear`, {
+            method: 'DELETE',
+            headers: getAuthHeaders(),
+        }).then(handleResponse);
+        return res.json();
     }
 };
 

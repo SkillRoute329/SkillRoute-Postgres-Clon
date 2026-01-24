@@ -286,6 +286,44 @@ const DataIngestion = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Danger Zone */}
+            <div className="bg-red-900/10 border border-red-900/50 rounded-3xl p-8 space-y-6">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-red-900/20 rounded-xl">
+                        <Trash2 className="w-8 h-8 text-red-500" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-bold text-red-100">Zona de Peligro</h2>
+                        <p className="text-red-400">Acciones destructivas irreversibles.</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                    <button
+                        onClick={async () => {
+                            if (confirm('PELIGRO: ¿Estás seguro de BORRAR TODOS LOS DATOS OPERATIVOS? (Turnos, Servicios, Líneas). Esto no se puede deshacer.')) {
+                                if (confirm('¿REALMENTE seguro? Se borrará todo lo importado.')) {
+                                    try {
+                                        setUploading(true);
+                                        const res = await DataImportService.clearData();
+                                        alert(res.message);
+                                        window.location.reload();
+                                    } catch (e: any) {
+                                        alert('Error: ' + e.message);
+                                    } finally {
+                                        setUploading(false);
+                                    }
+                                }
+                            }
+                        }}
+                        className="flex items-center justify-center gap-3 p-4 bg-red-950 hover:bg-red-900 border border-red-800 hover:border-red-600 rounded-xl transition-all group"
+                    >
+                        <Trash2 className="w-6 h-6 text-red-500 group-hover:scale-110 transition-transform" />
+                        <span className="font-bold text-red-200">BORRAR TODOS LOS DATOS (Factory Reset)</span>
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };
