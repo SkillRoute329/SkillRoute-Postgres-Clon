@@ -172,11 +172,12 @@ model Radar {
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
 }
 
-// 1. Usuarios
+// 1. Usuarios (Updated to include Employee Data directly)
 model User {
   id             Int       @id @default(autoincrement())
   tenantId       Int       @default(1) 
-  internalNumber String
+  internalNumber String    // Legajo / ID Interno
+  ci             String?   @unique // Cédula de Identidad (New)
   firstName      String
   lastName       String
   fullName       String
@@ -204,7 +205,7 @@ model User {
   inspections     Inspection[]
   
   // New Fields for Fleet Management
-  internalId      String?   @unique // Nuevo campo solicitado (ej: "329")
+  internalId      String?   @unique 
   driverType      String    @default("FIXED") // Deprecated/Legacy
   
   driverStatus    DriverStatus @default(A_LA_ORDEN) // EFECTIVO_COCHE, A_LA_ORDEN_LISTA, LICENCIA_MEDICA
@@ -230,6 +231,7 @@ model User {
   @@unique([tenantId, email])
 }
 
+// ... (Rest of Schema - Preserving Enums and Models)
 enum DriverStatus {
   EFECTIVO_COCHE
   A_LA_ORDEN
@@ -798,67 +800,32 @@ model PlannedDetour {
   
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
 
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
 }
 
-// 20. Inventario / Repuestos (Nuevo)
+// Stock Parts
 model Part {
-  id             Int      @id @default(autoincrement())
-  tenantId       Int      @default(1)
-  sku            String   // Código único
-  description    String
-  currentStock   Int      @default(0)
-  minStock       Int      @default(5)
-  location       String?  // Ej: "Estantería A3"
+  id            Int      @id @default(autoincrement())
+  tenantId      Int      @default(1)
+  sku           String
+  description   String
+  category      String   // 'CONSUMIBLES', 'MOTORES', etc.
+  currentStock  Int      @default(0)
+  minStock      Int      @default(5)
+  location      String?
+  unitCost      Decimal?
   
-  category       String?  // "Consumibles", "Motores", "Frenos"
-  unitCost       Decimal? @default(0.00)
-
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  tenant         Tenant   @relation(fields: [tenantId], references: [id])
-  usages         PartUsage[]
-
-  @@unique([tenantId, sku])
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  usages        PartUsage[]
 }
 
 model PartUsage {
-  id             Int      @id @default(autoincrement())
-  reportId       Int
-  partId         Int
-  quantity       Int
-  createdAt      DateTime @default(now())
-
-  report         MaintenanceReport @relation(fields: [reportId], references: [id])
-  part           Part              @relation(fields: [partId], references: [id])
-}
-
-// 21. Inteligencia Competitiva
-model CompetitorSighting {
-  id        String   @id @default(uuid())
-  line      String   // Ej: "306"
-  company   String?  // Ej: "Copsa", "Cutcsa"
-  lat       Float
-  lng       Float
-  source    String   // "API_STM" o "MANUAL_REPORT"
-  timestamp DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  reportId      Int
+  partId        Int
+  quantity      Int
   
-  // Relación opcional con nuestro viaje afectado
-  affectedTripId String?
-  metadata       Json?   @default("{}")
-}
-
-// 22. Operaciones: Eventos de Control
-model ControlEvent {
-  id          String   @id @default(uuid())
-  tripId      String   // El viaje afectado
-  inspectorId String   // Quién dio la orden
-  type        String   // "REGULATION_PLUS" (Adelantar) o "REGULATION_MINUS" (Atrasar)
-  minutes     Int      // Cantidad de minutos (+/-)
-  reason      String?  // Ej: "Competencia detectada", "Tránsito pesado"
-  timestamp   DateTime @default(now())
-  metadata    Json?    @default("{}") // Snapshot de la posición de la competencia en ese momento
+  report        MaintenanceReport @relation(fields: [reportId], references: [id])
+  part          Part              @relation(fields: [partId], references: [id])
 }

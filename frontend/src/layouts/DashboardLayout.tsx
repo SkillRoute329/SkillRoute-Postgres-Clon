@@ -5,6 +5,7 @@ import {
     LogOut,
     Menu,
     PlusCircle,
+    UserPlus,
     Share2,
     Users,
     X,
@@ -164,6 +165,7 @@ const DashboardLayout = () => {
                 <div className="mb-6">
                     <div className={clsx("text-xs font-semibold text-slate-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>Administración</div>
                     <SidebarLink to="/dashboard/admin/rrhh" icon={Users} onClick={handleMobileLinkClick}>Recursos Humanos</SidebarLink>
+                    <SidebarLink to="/dashboard/admin/users/create" icon={UserPlus} onClick={handleMobileLinkClick}>Alta de Personal</SidebarLink>
                 </div>
             )}
 

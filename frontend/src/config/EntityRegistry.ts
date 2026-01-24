@@ -45,7 +45,10 @@ export const ENTITY_REGISTRY: Record<string, EntityConfig> = {
         columns: [
             { key: 'internalNumber', label: 'Legajo', type: 'text', required: true, editable: true },
             { key: 'fullName', label: 'Nombre Completo', type: 'text', required: true, editable: true },
-            { key: 'role', label: 'Rol', type: 'enum', options: ['User', 'Admin', 'SuperAdmin', 'Inspector'], required: true, editable: true },
+            { key: 'role', label: 'Rol del Sistema', type: 'enum', options: ['User', 'Admin', 'SuperAdmin', 'Inspector'], required: true, editable: true },
+            { key: 'internalNumber', label: 'Nro Interno', type: 'text', required: true, editable: true },
+            { key: 'departmentId', label: 'ID Departamento', type: 'number', editable: true },
+            { key: 'jobRoleId', label: 'ID Cargo', type: 'number', editable: true },
             { key: 'assignedVehicleId', label: 'Coche Fijo (ID)', type: 'number', editable: true },
             { key: 'licenseExpirationDate', label: 'Vencimiento Libreta', type: 'date', editable: true } // Placeholder, will fail if not in DB but requested
         ]
@@ -204,7 +207,7 @@ export const ENTITY_REGISTRY: Record<string, EntityConfig> = {
             { key: 'isActive', label: 'Activo', type: 'boolean', editable: true }
         ]
     },
-    'RADARS': {
+    'RADAR': {
         labels: {
             title: 'Cámaras y Radares',
             singular: 'Radar',
@@ -218,6 +221,64 @@ export const ENTITY_REGISTRY: Record<string, EntityConfig> = {
             { key: 'longitude', label: 'Longitud', type: 'number', required: true, editable: true },
             { key: 'speedLimit', label: 'Límite (km/h)', type: 'number', required: true, editable: true },
             { key: 'type', label: 'Tipo', type: 'enum', options: ['CAMERA', 'RADAR', 'DANGEROUS_CURVE'], required: true, editable: true }
+        ]
+    },
+    'DEPARTMENTS': {
+        labels: {
+            title: 'Departamentos y Áreas',
+            singular: 'Área',
+            plural: 'Áreas'
+        },
+        apiPath: 'departments',
+        actions: { import: true, export: true, edit: true, delete: true, create: true },
+        columns: [
+            { key: 'name', label: 'Nombre del Área', type: 'text', required: true, editable: true },
+            { key: 'description', label: 'Descripción', type: 'text', editable: true }
+        ]
+    },
+    'JOB_ROLES': {
+        labels: {
+            title: 'Cargos y Roles',
+            singular: 'Cargo',
+            plural: 'Cargos'
+        },
+        apiPath: 'roles',
+        actions: { import: true, export: true, edit: true, delete: true, create: true },
+        columns: [
+            { key: 'name', label: 'Nombre del Cargo', type: 'text', required: true, editable: true },
+            { key: 'departmentId', label: 'ID Depto', type: 'number', required: true, editable: true },
+            { key: 'baseSalary', label: 'Salario Base', type: 'number', editable: true },
+            { key: 'extraHourValue', label: 'Valor Hora Extra', type: 'number', editable: true }
+        ]
+    },
+    'PENALTY_RULES': {
+        labels: {
+            title: 'Reglamento de Conducta',
+            singular: 'Regla',
+            plural: 'Reglas'
+        },
+        apiPath: 'penalties',
+        actions: { import: true, export: true, edit: true, delete: true, create: true },
+        columns: [
+            { key: 'name', label: 'Falta / Motivo', type: 'text', required: true, editable: true },
+            { key: 'type', label: 'Tipo', type: 'enum', options: ['EarlyArrival', 'LateArrival', 'LowLoad', 'Behavior'], required: true, editable: true },
+            { key: 'action', label: 'Sanción', type: 'enum', options: ['Suspension', 'Warning', 'Fine'], required: true, editable: true },
+            { key: 'maxCount', label: 'Tolerancia (Cant)', type: 'number', editable: true }
+        ]
+    },
+    'SHIFT_REQUESTS': {
+        labels: {
+            title: 'Solicitudes de Personal',
+            singular: 'Solicitud',
+            plural: 'Solicitudes'
+        },
+        apiPath: 'shiftRequests',
+        actions: { import: false, export: true, edit: true, delete: true, create: false }, // Created by users mostly
+        columns: [
+            { key: 'requesterId', label: 'Solicitante (ID)', type: 'number', editable: false },
+            { key: 'type', label: 'Tipo', type: 'text', editable: false },
+            { key: 'targetDate', label: 'Fecha Solicitada', type: 'date', editable: false },
+            { key: 'status', label: 'Estado', type: 'enum', options: ['PENDIENTE', 'APROBADO', 'RECHAZADO'], editable: true }
         ]
     }
 };

@@ -36,9 +36,11 @@ const LoginScreen = () => {
 
             // Small delay to let the animation show (and let state propagate) before hard reload
             setTimeout(() => {
-                if (data.user.role === 'Admin' || data.user.role === 'SuperAdmin') {
+                if (['Admin', 'SuperAdmin', 'Inspector'].includes(data.user.role)) {
+                    // Admins & Inspectors go to Admin/Operations Dashboard
                     window.location.href = '/dashboard/admin/shifts';
                 } else {
+                    // Drivers/Users go to My Shifts
                     window.location.href = '/dashboard/my-shifts';
                 }
             }, 800);
