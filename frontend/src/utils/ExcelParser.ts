@@ -73,19 +73,61 @@ export const ExcelParser = {
                         return;
                     }
 
-                    // HEURISTIC: Check if this is a "Sábana" (Distribution/Shifts) Sheet
+                    // HEURISTIC: "Sábana" (Distribution/Shifts)
                     if (isSabanaSheet(firstSheet)) {
                         console.log("📄 ExcelParser: Estrategia 'SABANA' (Distribución) detectada.");
                         const sabanaData = parseSabanaSheet(firstSheet);
 
                         resolve({
-                            type: 'BOLETIN', // Sábana fits 'Boletin/Carton' concept better
+                            type: 'BOLETIN',
                             lines: [],
                             services: sabanaData,
                             stats: {
                                 totalSheetsProcessed: 1,
                                 totalServicesFound: sabanaData.length
                             }
+                        });
+                        return;
+                    }
+
+                    // HEURISTIC: Check if this is a "Cartón" (One Service per Tab)
+                    // We check the first few tabs. If they look like Service Numbers ("1044", "1046"), assume Carton Mode.
+                    const isCartonMode = workbook.SheetNames.slice(0, 3).every(name => /^\d{3,4}[A-Z]?$/.test(name.trim()));
+
+                    if (isCartonMode) {
+                        console.log("🎫 ExcelParser: Estrategia 'CARTON' (Fichas Individuales) detectada.");
+
+                        workbook.SheetNames.forEach(sheetName => {
+                            const sheet = workbook.Sheets[sheetName];
+                            // Skip legends/metadata tabs
+                            if (!/^\d/.test(sheetName)) return;
+
+                            try {
+                                const cartonService = parseCartonSheet(sheet, sheetName);
+                                if (cartonService) {
+                                    allServices.push(cartonService);
+
+                                    // Register Line (if new)
+                                    if (!foundLines.has(cartonService.lineCode)) {
+                                        foundLines.set(cartonService.lineCode, {
+                                            code: cartonService.lineCode,
+                                            name: `Línea ${cartonService.lineCode}`,
+                                            sheetName
+                                        });
+                                    }
+                                }
+                                meta.totalSheetsProcessed++;
+                            } catch (e) {
+                                console.warn(`Error parsing carton ${sheetName}`, e);
+                            }
+                        });
+
+                        meta.totalServicesFound = allServices.length;
+                        resolve({
+                            type: 'CARTON',
+                            lines: Array.from(foundLines.values()),
+                            services: allServices,
+                            stats: meta
                         });
                         return;
                     }
@@ -363,6 +405,118 @@ function parseSabanaSheet(sheet: XLSX.WorkSheet): ServiceData[] {
 
 function compareTimes(t1: string, t2: string): number {
     return Number(t1.replace(':', '')) - Number(t2.replace(':', ''));
+}
+
+/**
+ * STRATEGY: CARTON INDIVIDUAL
+ * Sheet Name = Service Number (e.g. "1044")
+ */
+function parseCartonSheet(sheet: XLSX.WorkSheet, sheetName: string): ServiceData | null {
+    const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as any[][];
+    if (data.length < 5) return null;
+
+    // 1. Extract Header Info (Line and Service)
+    // Row 0 or 1 usually has "Línea 300" ... "Servicio 1044"
+    let lineCode = "UNKNOWN";
+    let serviceNumber = sheetName; // Default to tab name
+
+    // Scan top 3 rows for metadata
+    for (let r = 0; r < 3; r++) {
+        const rowStr = data[r].join(" ").toUpperCase();
+        // Extract Line
+        const lineMatch = rowStr.match(/LÍNEA\s*(\d+[A-Z]?)/i); // e.g. "Línea 300"
+        if (lineMatch) lineCode = lineMatch[1];
+        else {
+            // Fallback: look for just big number "300" in Col A
+            const possibleLine = String(data[r][0]).trim();
+            if (/^\d{3}[A-Z]?$/.test(possibleLine)) lineCode = possibleLine;
+        }
+
+        // Extract Service from cell content if explicit
+        const svcMatch = rowStr.match(/SERVICIO\s*N[º°]?\s*(\d+)/i);
+        if (svcMatch) serviceNumber = svcMatch[1];
+    }
+
+    // 2. Locate Stop Header Row
+    // Looks for "Crio. Central", "Tres Cruces", etc.
+    // Heuristic: Row with many non-empty strings, usually below row 3
+    let headerRowIdx = -1;
+    for (let r = 3; r < 10; r++) {
+        const row = data[r];
+        const validCols = row.filter((c: any) => c && String(c).length > 3).length;
+        if (validCols > 3) {
+            headerRowIdx = r;
+            break;
+        }
+    }
+
+    if (headerRowIdx === -1) return null;
+
+    const stops: string[] = data[headerRowIdx].map(c => String(c).trim());
+
+    // 3. Scan Trip Rows (Time Sequences)
+    // Rows below header that contain exclusively time-like strings
+    const allStopTimes: StopTime[] = [];
+    let earliest = "23:59";
+    let latest = "00:00";
+
+    for (let r = headerRowIdx + 1; r < data.length; r++) {
+        const row = data[r];
+        // Stop if we hit footer text (long text like "SACA COCHE...")
+        const rowStr = row.join(" ");
+        if (rowStr.length > 50 && !/\d{2}:\d{2}/.test(rowStr.substring(0, 20))) break;
+
+        // Extract times
+        row.forEach((cell, cIdx) => {
+            const val = formatTime(cell);
+            if (isValidTime(cell)) {
+                const stopName = stops[cIdx] || `Stop ${cIdx}`;
+                allStopTimes.push({ stopName, time: val });
+
+                // Update bounds
+                // Handle midnight crossing logic for bounds is tricky without full dates
+                // Simple string compare for now
+                if (val < earliest && val > "03:00") earliest = val; // Ignore post-midnight early AM for start
+                if (val > latest || (val < "03:00" && latest > "20:00")) latest = val;
+            }
+        });
+    }
+
+    // 4. Extract Footer Info (Shift details)
+    // Look for "TURNO DE ... a ..."
+    let shiftMetadata = "";
+    for (let r = data.length - 10; r < data.length; r++) {
+        if (data[r]) {
+            const str = data[r].join(" ").toUpperCase();
+            if (str.includes("TURNO")) {
+                shiftMetadata = str.trim();
+                // Try to refine start/end from this authoritative line
+                const timeMatch = str.match(/(\d{2}:\d{2})\s*A\s*(\d{2}:\d{2})/);
+                if (timeMatch) {
+                    earliest = timeMatch[1];
+                    latest = timeMatch[2];
+                }
+                break;
+            }
+        }
+    }
+
+    // Construct Service Data
+    // NOTE: 'routeData' here is massive (all stops of all trips). 
+    // Usually we want just the SEQUENCE Pattern, not every single time execution.
+    // For "ServiceDefinition", we need the GENERAL start/end.
+
+    return {
+        lineCode,
+        serviceNumber,
+        variant: 'A', // Default
+        startTime: earliest,
+        endTime: latest,
+        durationMinutes: calculateDuration(earliest, latest),
+        routeData: allStopTimes.slice(0, stops.length), // Just take first trip as "Sample Pattern"
+        dayType: 'HABIL',
+        // metadata: shiftMetadata // Store this if UI supports it
+    };
 }
 
 /**
