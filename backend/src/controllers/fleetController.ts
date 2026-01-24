@@ -193,20 +193,23 @@ export const createInspection = async (req: Request, res: Response) => {
             });
 
             if (newDamages && newDamages.length > 0) {
+                console.log(`[INSPECTION] Saving ${newDamages.length} damages for Vehicle ${vehicleId}`);
                 await tx.damageReport.createMany({
                     data: newDamages.map((d: any) => ({
                         inspectionId: inspection.id,
-                        zone: d.zone,
-                        description: d.description,
+                        zone: d.zone || 'Unknown', // Fallback
+                        description: d.description || 'Sin descripción',
                         severity: d.severity || 'Medium',
-                        photoUrl: d.photoUrl
+                        photoUrl: d.photoUrl || null // Ensure null if undefined
                     }))
                 });
             }
 
             // If status is NOT OK, maybe update Vehicle status?
             if (status === 'WithDamages') {
-                // Logic to flag vehicle if critical? For now just logging.
+                console.log('[INSPECTION] Vehicle flagged WithDamages');
+                // Automatically set vehicle to MAINTENANCE? Maybe too aggressive.
+                // Just Log for now.
             }
 
             return inspection;

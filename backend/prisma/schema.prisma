@@ -557,8 +557,8 @@ model MaintenanceReport {
   description    String
   priority       String   @default("NORMAL")
   status         String   @default("ENVIADO") // ENVIADO, RECIBIDO, EN_PROCESO, PROGRAMADO, DESCARTADO, FINALIZADO
-  photoUrl       String?
-  evidencePhotos String? // Base64 Text for multiple photos in JSON or single large string
+  photoUrl       String?  @db.Text
+  evidencePhotos String?  @db.Text // Base64 Text for multiple photos in JSON or single large string
   
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -706,8 +706,8 @@ model DamageReport {
   inspectionId  Int
   zone          String   // 'Front', 'Right', 'Left', 'Back', 'Interior'
   severity      String   @default("Medium") // Low, Medium, High
-  description   String
-  photoUrl      String?  
+  description   String   @db.Text
+  photoUrl      String?  @db.Text
   createdAt     DateTime @default(now())
   
   inspection    Inspection @relation(fields: [inspectionId], references: [id])
