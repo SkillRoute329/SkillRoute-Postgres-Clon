@@ -228,6 +228,9 @@ export const FleetService = {
     createVehicle: async (data: any) => {
         return api.post('/fleet/vehicles', data).then(res => res.data);
     },
+    updateVehicle: async (id: number, data: any) => {
+        return api.put(`/fleet/vehicles/${id}`, data).then(res => res.data);
+    },
     getLastInspection: async (vehicleId: number) => {
         return api.get(`/fleet/vehicles/${vehicleId}/last-inspection`).then(res => res.data);
     },

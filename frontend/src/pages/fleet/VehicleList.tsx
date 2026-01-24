@@ -146,20 +146,34 @@ const VehicleList = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            // Sanitize custom fields
+            const cleanCustomFields = formData.features.customFields?.filter((f: any) => f.key && f.key.trim() !== "" && f.value && f.value.trim() !== "") || [];
+
             const payload = {
                 ...formData,
                 year: formData.year ? Number(formData.year) : undefined,
                 rotationSchemeId: formData.rotationSchemeId ? Number(formData.rotationSchemeId) : null,
                 driverIds: formData.driverIds,
-                // features passed as object, controller handles stringify
-                features: formData.features
+                features: {
+                    ...formData.features,
+                    customFields: cleanCustomFields
+                }
             };
 
-            await FleetService.createVehicle(payload);
+            if (editingId) {
+                await FleetService.updateVehicle(editingId, payload);
+                alert('Unidad actualizada correctamente.');
+            } else {
+                await FleetService.createVehicle(payload);
+                alert('Unidad creada correctamente.');
+            }
+
             setShowModal(false);
             loadVehicles();
-        } catch (error) {
-            alert('Error al guardar vehículo');
+        } catch (error: any) {
+            console.error('Save error', error);
+            const msg = error.response?.data?.message || error.message || "Error técnico al guardar";
+            alert("Error: " + msg);
         }
     };
 
