@@ -79,9 +79,10 @@ const InspectionForm = () => {
         setCapturingZone(zone);
         try {
             const image = await Camera.getPhoto({
-                quality: 70,
+                quality: 60, // Reduced quality for mobile upload
                 allowEditing: false,
-                resultType: CameraResultType.DataUrl // Get Base64 directly
+                width: 1024, // Optimized width (was full res)
+                resultType: CameraResultType.DataUrl
             });
 
             if (image.dataUrl) {
@@ -161,6 +162,13 @@ const InspectionForm = () => {
                 className="hidden"
             // onChange={handleFileChange} - Deprecated for Native Camera
             />
+
+            {/* Error Message Display */}
+            {success === false && (
+                <div className="fixed top-4 left-4 right-4 z-50 animate-fade-in-down">
+                    {/* Placeholder for toast - using alert generally but this could be better */}
+                </div>
+            )}
 
             {/* Header */}
             <div className="mb-6 md:mb-8 flex items-center gap-4">
