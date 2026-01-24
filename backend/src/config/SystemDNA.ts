@@ -18,5 +18,14 @@ export const SystemDNA = {
             "Si Railway no despliega automáticamente, forzar via Commit Vacío o UI.",
             "El sistema de archivos local es efímero en producción. Usar S3/Base de Datos para persistencia."
         ]
+    },
+    // FALTANTE QUE ROMPIÓ EL BUILD:
+    GOD_MODE_USER: "0000",
+    GOD_MODE_HASH: "$2b$10$7vNfQv90E/7zR1l.V/kG1eQz8pD8zK/9w.e8pD8zK/9w.e8pD8zK/", // admin123 hash
+    AUTO_REPAIR: true,
+    DEFAULT_TENANT: {
+        id: 1,
+        name: "UCOT",
+        slug: "ucot-official"
     }
 };
