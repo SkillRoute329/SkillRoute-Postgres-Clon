@@ -148,6 +148,10 @@ function App() {
           </div>
         </AuthProvider>
       </Router>
+      {/* INDICADOR DE EMERGENCIA */}
+      <div className="fixed bottom-4 right-4 z-[9999] bg-red-600 text-white px-4 py-2 rounded-full font-black text-xs shadow-2xl animate-pulse cursor-default pointer-events-none">
+        v3.0 - SI VES ESTO, SE ACTUALIZÓ
+      </div>
     </ErrorBoundary>
   );
 }

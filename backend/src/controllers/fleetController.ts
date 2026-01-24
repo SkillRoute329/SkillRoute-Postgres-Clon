@@ -191,20 +191,23 @@ export const createVehicleCheck = async (req: Request, res: Response) => {
         const user = (req as any).user;
         const { cocheId, photos, notes, estado } = req.body;
 
+        // EMERGENCY: No complex validation, just save the raw data (Base64 supported via Json)
+        console.log(`[DEBUG] Saving VehicleCheck for Coche: ${cocheId} | User: ${user?.id}`);
+
         const check = await (prisma as any).vehicleCheck.create({
             data: {
-                tenantId: user.tenantId,
-                userId: user.id,
-                cocheId: String(cocheId),
+                tenantId: user?.tenantId || 1,
+                userId: user?.id || 0,
+                cocheId: String(cocheId || 'S/N'),
                 fotos: photos || [],
-                notas: notes,
+                notas: notes || '',
                 estado: estado || 'OK'
             }
         });
 
         res.status(201).json(check);
     } catch (error) {
-        console.error('VehicleCheck Error:', error);
-        res.status(500).json({ message: 'Error al registrar revisión de coche' });
+        console.error('CRITICAL VehicleCheck Error:', error);
+        res.status(500).json({ message: 'Error de emergencia al registrar revisión', error: String(error) });
     }
 };

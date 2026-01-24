@@ -253,17 +253,15 @@ const DashboardLayout = () => {
                         renderFallbackMenu()
                     )}
 
-                    {/* --- SECCIÓN EXCLUSIVA ADMIN (Always Visible if Role matches) --- */}
-                    {(role.toUpperCase() === 'ADMIN' || role.toUpperCase() === 'SUPERADMIN') && (
-                        <div className="pt-4 mt-4 border-t border-slate-700/50">
-                            <h4 className={clsx("px-4 text-xs font-semibold text-primary-500 uppercase tracking-wider mb-2", !isSidebarOpen && "hidden")}>
-                                🛡️ ADMINISTRACIÓN
-                            </h4>
-                            <SidebarLink to="/dashboard/admin/employees" icon={Users} onClick={handleMobileLinkClick}>👥 Gestión de Personal (RRHH)</SidebarLink>
-                            <SidebarLink to="/dashboard/admin/users/create" icon={UserPlus} onClick={handleMobileLinkClick}>🔑 Alta de Personal</SidebarLink>
-                            <SidebarLink to="/dashboard/admin/rrhh" icon={Users} onClick={handleMobileLinkClick}>⚙️ Áreas y Departamentos</SidebarLink>
-                        </div>
-                    )}
+                    {/* --- MODO DEBUG: SIN RESTRICCIONES --- */}
+                    <div className="pt-4 mt-4 border-t border-red-500/50">
+                        <h4 className={clsx("px-4 text-[10px] font-black text-red-500 uppercase tracking-widest mb-2", !isSidebarOpen && "hidden")}>
+                            🔴 MODO DEBUG ACTIVO
+                        </h4>
+                        <SidebarLink to="/dashboard/admin/employees" icon={Users} onClick={handleMobileLinkClick}>👥 Gestión de Personal (RRHH)</SidebarLink>
+                        <SidebarLink to="/dashboard/admin/users/create" icon={UserPlus} onClick={handleMobileLinkClick}>🔑 Alta de Personal</SidebarLink>
+                        <SidebarLink to="/dashboard/admin/rrhh" icon={Users} onClick={handleMobileLinkClick}>⚙️ Áreas y Departamentos</SidebarLink>
+                    </div>
 
                     <div className="border-t border-slate-800 my-2 pt-2"></div>
 
