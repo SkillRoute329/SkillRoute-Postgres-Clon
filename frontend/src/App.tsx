@@ -5,7 +5,6 @@ import ErrorBoundary from './components/ErrorBoundary';
 import DashboardLayout from './layouts/DashboardLayout';
 import LoginScreen from './pages/LoginScreen';
 
-// Lazy Load Pages for Performance
 // Lazy Load Pages
 const DashboardHome = lazy(() => import('./pages/DashboardHome'));
 
@@ -157,3 +156,5 @@ function App() {
 }
 
 export default App;
+
+// FORCE UPDATE REVISION 5
