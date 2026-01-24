@@ -5,20 +5,24 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
+    console.log('🔍 Buscando Super Admin (CI=0000)...');
+
     const passwordHash = await bcrypt.hash('admin123', 10);
 
-    console.log('🌱 Seeding Super Admin...');
-
     // 1. Ensure Tenant exists
+    console.log('🏢 Verificando empresa UCOT...');
     let tenant = await prisma.tenant.findUnique({ where: { slug: 'ucot' } });
     if (!tenant) {
         tenant = await prisma.tenant.create({
             data: { name: 'UCOT', slug: 'ucot' }
         });
-        console.log('Created Tenant: UCOT');
+        console.log('✅ Empresa UCOT creada.');
+    } else {
+        console.log('✅ Empresa UCOT ya existe.');
     }
 
     // 2. Create User
+    console.log('👤 Creando/Actualizando Usuario 0000...');
     let user = await prisma.user.findFirst({
         where: { internalNumber: '0000', tenantId: tenant.id }
     });
@@ -36,16 +40,17 @@ async function main() {
                 role: 'SuperAdmin',
             }
         });
-        console.log('Created User: 0000');
+        console.log('✅ Usuario 0000 creado.');
     } else {
         await prisma.user.update({
             where: { id: user.id },
             data: { passwordHash, role: 'SuperAdmin', ci: '0000' }
         });
-        console.log('Updated User: 0000');
+        console.log('✅ Usuario 0000 actualizado.');
     }
 
     // 3. Employee
+    console.log('📋 Vinculando Legajo RRHH...');
     const employee = await prisma.employee.findUnique({
         where: { userId: user.id }
     });
@@ -60,15 +65,17 @@ async function main() {
                 userId: user.id,
             }
         });
-        console.log('Created Employee Profile');
+        console.log('✅ Legajo RRHH creado.');
+    } else {
+        console.log('✅ Legajo RRHH ya existe.');
     }
 
-    console.log('✅ Seed complete. User: 0000 / Pass: admin123');
+    console.log('🚀 ÉXITO: Super Admin listo (User: 0000 / Pass: admin123)');
 }
 
 main()
     .catch((e) => {
-        console.error(e);
+        console.error('❌ ERROR DE PRUEBA:', e.message);
         process.exit(1);
     })
     .finally(async () => {

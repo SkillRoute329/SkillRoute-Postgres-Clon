@@ -189,16 +189,16 @@ export const createInspection = async (req: Request, res: Response) => {
 export const createVehicleCheck = async (req: Request, res: Response) => {
     try {
         const user = (req as any).user;
-        const { vehicleId, photos, notes, status } = req.body;
+        const { cocheId, photos, notes, estado } = req.body;
 
         const check = await (prisma as any).vehicleCheck.create({
             data: {
                 tenantId: user.tenantId,
                 userId: user.id,
-                vehicleId: String(vehicleId),
-                photos: photos || [],
-                notes,
-                status: status || 'APROBADO'
+                cocheId: String(cocheId),
+                fotos: photos || [],
+                notas: notes,
+                estado: estado || 'OK'
             }
         });
 

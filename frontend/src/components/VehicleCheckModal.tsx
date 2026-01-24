@@ -38,7 +38,7 @@ const VehicleCheckModal: React.FC<VehicleCheckModalProps> = ({ isOpen, onClose, 
         }
     };
 
-    const submitCheck = async (status: 'APROBADO' | 'OMITIDO') => {
+    const submitCheck = async (status: 'OK' | 'WAIVER') => {
         setLoading(true);
         try {
             const res = await fetch(`${API_URL}/fleet/check`, {
@@ -48,10 +48,10 @@ const VehicleCheckModal: React.FC<VehicleCheckModalProps> = ({ isOpen, onClose, 
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    vehicleId,
-                    photos: status === 'APROBADO' ? photos : [],
+                    cocheId: vehicleId,
+                    photos: status === 'OK' ? photos : [],
                     notes,
-                    status
+                    estado: status
                 })
             });
 
@@ -140,7 +140,7 @@ const VehicleCheckModal: React.FC<VehicleCheckModalProps> = ({ isOpen, onClose, 
 
                         <button
                             disabled={loading || photos.some(p => !p)}
-                            onClick={() => submitCheck('APROBADO')}
+                            onClick={() => submitCheck('OK')}
                             className="btn btn-primary w-full py-4 font-bold flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {loading ? <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" /> : <Save />}
@@ -165,7 +165,7 @@ const VehicleCheckModal: React.FC<VehicleCheckModalProps> = ({ isOpen, onClose, 
                         <div className="flex flex-col gap-3">
                             <button
                                 disabled={loading}
-                                onClick={() => submitCheck('OMITIDO')}
+                                onClick={() => submitCheck('WAIVER')}
                                 className="btn bg-red-600 hover:bg-red-500 text-white py-4 font-bold active:scale-95"
                             >
                                 ACEPTAR RIESGO E INICIAR

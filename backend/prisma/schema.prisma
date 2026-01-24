@@ -850,14 +850,14 @@ model PartUsage {
 
 // 21. Control de Flota (Check-in de Turno)
 model VehicleCheck {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(uuid())
   tenantId  Int      @default(1)
-  vehicleId String   // Nro de coche (String por flexibilidad)
+  cocheId   String   
   userId    Int
   
-  photos    Json     // ["url1", "url2", "url3", "url4"]
-  notes     String?
-  status    String   // "APROBADO", "CON_DAÑOS", "OMITIDO"
+  fotos     Json     // ["url1", "url2", "url3", "url4"]
+  notas     String?
+  estado    String   // 'OK', 'CON_DAÑOS', 'WAIVER'
   
   createdAt DateTime @default(now())
 
