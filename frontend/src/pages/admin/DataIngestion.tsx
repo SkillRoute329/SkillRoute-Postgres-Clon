@@ -127,7 +127,7 @@ const DataIngestion = () => {
             <div className="text-center space-y-2">
                 <h1 className="text-4xl font-black text-white tracking-tight flex items-center justify-center gap-3">
                     <FileSpreadsheet className="w-10 h-10 text-emerald-400" />
-                    Ingesta Universal (Client-Side)
+                    Ingesta Universal V2.5 (Multi-Matriz)
                 </h1>
                 <p className="text-slate-400 text-lg">
                     El procesamiento se realiza en TU navegador para máxima velocidad y seguridad.
