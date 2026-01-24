@@ -1,239 +1,263 @@
 
-import React, { useState, useEffect } from 'react';
-import { BulletinService } from '../../services/api';
-import { Clock, MapPin, Users, Save, Search, AlertTriangle, CheckCircle, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { BulletinService } from '../../services/api';
+import { Search, RotateCcw, Save, Users, Clock, AlertTriangle } from 'lucide-react';
+import { LINE_ARCHETYPES, line300Data, line300ReverseData } from '../../data/lineTemplates';
 
-interface ControlPoint {
-    location: string;
+// Types
+interface MatrixCell {
+    service: string;
+    headerId: string;
     scheduledTime: string;
-    actualTime: string;
-    delay: number;
+    actualTime?: string;
+    delay?: number;
     status: 'Pending' | 'Completed' | 'Skipped';
-    serviceNumber: string;
     occupancy?: number;
 }
 
 const InspectorDashboard = () => {
     const { user } = useAuth();
-    const [serviceNumber, setServiceNumber] = useState('');
-    const [points, setPoints] = useState<ControlPoint[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [activeService, setActiveService] = useState<string | null>(null);
+    const [line, setLine] = useState('');
+    const [variant, setVariant] = useState<'IDA' | 'VUELTA'>('IDA');
+    const [matrixMode, setMatrixMode] = useState(false);
 
-    // Modal State
-    const [selectedPoint, setSelectedPoint] = useState<ControlPoint | null>(null);
+    // Matrix Data
+    const [headers, setHeaders] = useState<any[]>([]);
+    const [rows, setRows] = useState<any[]>([]);
+
+    // Modal Interaction
+    const [selectedCell, setSelectedCell] = useState<MatrixCell | null>(null);
     const [inputTime, setInputTime] = useState('');
     const [inputPax, setInputPax] = useState('');
 
-    const loadService = async () => {
-        if (!serviceNumber) return;
-        setLoading(true);
-        try {
-            const template = await BulletinService.getTemplate(serviceNumber);
-            setPoints(template);
-            setActiveService(serviceNumber);
-        } catch (error) {
-            alert('No se encontró el servicio o cartón.');
-            setPoints([]);
-        } finally {
-            setLoading(false);
+    const loadMatrix = async () => {
+        if (!line) return;
+
+        // 1. Load Template (Archetype)
+        // For MVP we just use the static line300Data if line is 300, else we try to find it.
+        // In full version, this comes from API: /service-definitions?line=300
+
+        let templateData: any = null;
+        if (line === '300') {
+            templateData = variant === 'IDA' ? line300Data : line300ReverseData;
+        } else if (LINE_ARCHETYPES[line]) {
+            // Reconstruct if we only have headers but no rows logic in Archetype (Archetype is simpler)
+            // Ideally we need the full ServiceDefinition rows.
+            // Let's alert if not found for now.
+            alert('Línea no configurada completamente en demo. Usar 300.');
+            return;
+        } else {
+            alert('Línea no encontrada. Pruebe 300.');
+            return;
         }
+
+        // 2. Load Actuals (Bulletin Entries for Today)
+        // TODO: backend fetch using BulletinService.getEntries({ line, date: today })
+        // For now, local state only.
+
+        setHeaders(templateData.headers);
+        setRows(templateData.rows);
+        setMatrixMode(true);
     };
 
-    const handlePointClick = (point: ControlPoint) => {
+    const handleCellClick = (row: any, header: any) => {
+        const schedTime = row.times[header.id];
+        if (!schedTime) return; // Empty cell (skipped stop)
+
         const now = new Date();
         const currentHHMM = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
 
-        setSelectedPoint(point);
-        setInputTime(point.actualTime || currentHHMM);
-        setInputPax(point.occupancy?.toString() || '');
+        setSelectedCell({
+            service: row.serviceNumber,
+            headerId: header.id,
+            scheduledTime: schedTime,
+            status: 'Pending',
+            actualTime: currentHHMM
+        });
+
+        setInputTime(currentHHMM);
+        setInputPax('');
     };
 
-    const savePoint = async () => {
-        if (!selectedPoint) return;
+    const saveControl = async () => {
+        if (!selectedCell) return;
 
         // Calculate Delay
-        // Simple Minut Difference logic
-        // TODO: Handle day rollover if needed, assume same day for MVP
-        const [schedH, schedM] = selectedPoint.scheduledTime.split(':').map(Number);
+        const [schedH, schedM] = selectedCell.scheduledTime.split(':').map(Number);
         const [actH, actM] = inputTime.split(':').map(Number);
+        const diff = (actH * 60 + actM) - (schedH * 60 + schedM);
 
-        const schedMin = schedH * 60 + schedM;
-        const actMin = actH * 60 + actM;
-        const diff = actMin - schedMin;
-
-        const updatedPoint: ControlPoint = {
-            ...selectedPoint,
-            actualTime: inputTime,
-            delay: diff,
-            occupancy: inputPax ? parseInt(inputPax) : 0,
-            status: 'Completed'
-        };
-
-        setLoading(true);
         try {
-            // Save to Backend
             await BulletinService.save({
                 date: new Date().toISOString(),
                 entries: [{
-                    serviceNumber: activeService,
-                    location: updatedPoint.location,
-                    scheduledTime: updatedPoint.scheduledTime,
-                    actualTime: updatedPoint.actualTime,
-                    delay: updatedPoint.delay,
-                    occupancyCount: updatedPoint.occupancy,
+                    serviceNumber: selectedCell.service,
+                    location: headers.find(h => h.id === selectedCell.headerId)?.location, // Look up name
+                    scheduledTime: selectedCell.scheduledTime,
+                    actualTime: inputTime,
+                    delay: diff,
+                    occupancyCount: inputPax ? parseInt(inputPax) : 0,
                     status: 'Completed'
                 }]
             });
 
-            // Update Local State
-            setPoints(prev => prev.map(p =>
-                p.location === updatedPoint.location && p.scheduledTime === updatedPoint.scheduledTime
-                    ? updatedPoint
-                    : p
-            ));
+            // Visual Update locally (Optimistic)
+            // We need to update the "Rows" state to reflect this new Actual time?
+            // "DigitalCarton" data structure was "times: { h1: '10:00' }". It doesn't store actuals/metadata easily in the *same* string.
+            // We need a parallel state for "Actuals".
 
-            setSelectedPoint(null);
+            // For MVP display, we just close modal. The Matrix assumes static plan for now.
+            // To show "Green/Red", we'd need to fetch and overlay status.
+
+            setSelectedCell(null);
+            alert(`Registro Guardado: Servicio ${selectedCell.service}, Atraso: ${diff} min`);
+
         } catch (e) {
-            alert('Error al guardar registro');
-        } finally {
-            setLoading(false);
+            alert('Error al guardar');
         }
     };
 
     return (
-        <div className="max-w-4xl mx-auto p-4 space-y-6 pb-24">
-            {/* Header */}
-            <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+        <div className="flex flex-col h-screen bg-slate-950 text-white overflow-hidden pb-16">
+            {/* Header / Selector */}
+            <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-4 shrink-0">
+                <div className="flex items-center gap-4">
+                    <h1 className="text-xl font-bold flex items-center gap-2">
                         <Users className="text-primary-500" />
-                        Control de Tránsito
+                        <span className="hidden md:inline">Control Inspectores</span>
                     </h1>
-                    <p className="text-slate-400 text-sm">Inspector: <span className="text-white font-mono">{user?.internalNumber}</span></p>
-                </div>
 
-                {activeService && (
-                    <div className="bg-primary-900/30 px-4 py-2 rounded-xl border border-primary-500/30 text-center">
-                        <span className="text-xs text-primary-300 uppercase font-bold">Servicio Activo</span>
-                        <div className="text-2xl font-mono font-bold text-white leading-none">{activeService}</div>
-                    </div>
-                )}
-            </div>
-
-            {/* Selector */}
-            {!activeService ? (
-                <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center space-y-4">
-                    <h2 className="text-xl text-white font-medium">Seleccionar Servicio a Controlar</h2>
-                    <div className="flex max-w-md mx-auto gap-2">
+                    <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
                         <input
-                            value={serviceNumber}
-                            onChange={e => setServiceNumber(e.target.value)}
-                            placeholder="Ej. 1042, 2290..."
-                            className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg font-mono focus:ring-2 focus:ring-primary-500 outline-none"
+                            className="bg-transparent text-center w-20 px-2 outline-none font-bold font-mono"
+                            placeholder="300"
+                            value={line}
+                            onChange={e => setLine(e.target.value)}
                         />
+                        <div className="w-px bg-slate-700 mx-1"></div>
                         <button
-                            onClick={loadService}
-                            disabled={!serviceNumber || loading}
-                            className="bg-primary-600 hover:bg-primary-500 text-white px-6 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50"
+                            onClick={() => setVariant('IDA')}
+                            className={`px-3 py-1 rounded text-xs font-bold ${variant === 'IDA' ? 'bg-primary-600' : 'text-slate-400'}`}
                         >
-                            <Search className="w-5 h-5" /> Buscar
+                            IDA
+                        </button>
+                        <button
+                            onClick={() => setVariant('VUELTA')}
+                            className={`px-3 py-1 rounded text-xs font-bold ${variant === 'VUELTA' ? 'bg-primary-600' : 'text-slate-400'}`}
+                        >
+                            VTA
                         </button>
                     </div>
                 </div>
+
+                <div className="flex gap-2">
+                    <button onClick={loadMatrix} className="bg-primary-600 px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-primary-500">
+                        <Search size={16} /> <span className="hidden sm:inline">Cargar Matriz</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Matrix View */}
+            {!matrixMode ? (
+                <div className="flex-1 flex items-center justify-center p-8 text-slate-500 text-center">
+                    <div>
+                        <Search className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                        <p>Ingrese Línea y presione Cargar para ver la Sábana Horaria</p>
+                    </div>
+                </div>
             ) : (
-                <div className="space-y-4">
-                    <div className="flex justify-between items-center px-2">
-                        <h3 className="text-slate-400 uppercase text-xs font-bold tracking-wider">Puntos de Control ({points.length})</h3>
-                        <button onClick={() => setActiveService(null)} className="text-xs text-red-400 hover:text-red-300">Cambiar Servicio</button>
-                    </div>
-
-                    <div className="grid gap-3">
-                        {points.map((point, idx) => (
-                            <button
-                                key={idx}
-                                onClick={() => handlePointClick(point)}
-                                className={`w-full text-left p-4 rounded-xl border transition-all relative overflow-hidden group
-                                    ${point.status === 'Completed'
-                                        ? 'bg-slate-900/50 border-slate-800 opacity-75 hover:opacity-100'
-                                        : 'bg-slate-800 border-slate-700 hover:border-primary-500/50 hover:bg-slate-750'
-                                    }
-                                `}
-                            >
-                                <div className="flex justify-between items-start">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs
-                                            ${point.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-slate-700 text-slate-300'}
-                                        `}>
-                                            {idx + 1}
+                <div className="flex-1 overflow-auto custom-scrollbar relative">
+                    <table className="w-full text-xs border-collapse">
+                        <thead className="sticky top-0 z-10 bg-slate-900 border-b border-slate-700 shadow-xl">
+                            <tr>
+                                <th className="p-3 text-left font-bold text-slate-400 w-24 border-r border-slate-800 sticky left-0 bg-slate-900 z-20">Servicio</th>
+                                {headers.map(h => (
+                                    <th key={h.id} className="p-2 text-center font-medium text-slate-300 min-w-[80px] border-r border-slate-800 whitespace-nowrap rotate-0">
+                                        <div className="writing-mode-vertical transform -rotate-180 h-32 flex items-center justify-center">
+                                            {h.location}
                                         </div>
-                                        <div>
-                                            <div className="text-white font-bold text-lg leading-none">{point.location}</div>
-                                            <div className="text-slate-500 text-xs mt-1 flex items-center gap-2">
-                                                <Clock className="w-3 h-3" /> Prog: {point.scheduledTime}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {point.status === 'Completed' ? (
-                                        <div className="text-right">
-                                            <div className="text-lg font-mono font-bold text-emerald-400">{point.actualTime}</div>
-                                            <div className={`text-xs font-bold ${point.delay > 0 ? 'text-red-400' : 'text-emerald-500'}`}>
-                                                {point.delay > 0 ? `+${point.delay} min` : `${point.delay} min`}
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <ArrowRight className="text-slate-600 group-hover:text-primary-500 transition-colors" />
-                                    )}
-                                </div>
-                            </button>
-                        ))}
-                    </div>
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="bg-slate-900/50">
+                            {rows.map((row) => (
+                                <tr key={row.id} className="hover:bg-slate-800 transition-colors border-b border-slate-800/50">
+                                    <td className="p-3 font-bold text-white border-r border-slate-800 sticky left-0 bg-slate-900/90 z-10">
+                                        {row.serviceNumber}
+                                    </td>
+                                    {headers.map(h => (
+                                        <td
+                                            key={h.id}
+                                            onClick={() => handleCellClick(row, h)}
+                                            className={`p-2 text-center border-r border-slate-800/50 cursor-pointer hover:bg-white/10 transition-colors
+                                                ${!row.times[h.id] ? 'bg-slate-950/50' : ''}
+                                            `}
+                                        >
+                                            <span className="font-mono text-slate-300 font-medium">
+                                                {row.times[h.id] || '-'}
+                                            </span>
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             )}
 
-            {/* Modal de Registro */}
-            {selectedPoint && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-4 animate-fade-in">
-                    <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-3xl p-6 shadow-2xl relative">
-                        <h3 className="text-xl font-bold text-white mb-1">Registrar Control</h3>
-                        <p className="text-slate-400 text-sm mb-6">{selectedPoint.location} (Prog: {selectedPoint.scheduledTime})</p>
-
-                        <div className="space-y-6">
+            {/* Inspector Tools Modal */}
+            {selectedCell && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+                    <div className="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-2xl p-6 shadow-2xl">
+                        <div className="flex justify-between items-start mb-6">
                             <div>
-                                <label className="block text-xs uppercase font-bold text-slate-500 mb-2">Hora Real de Paso</label>
-                                <input
-                                    type="time"
-                                    value={inputTime}
-                                    onChange={e => setInputTime(e.target.value)}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-4 text-3xl font-mono text-center text-white focus:ring-2 focus:ring-primary-500 outline-none"
-                                />
+                                <h3 className="text-lg font-bold text-white">Registrar Paso</h3>
+                                <p className="text-slate-400 text-xs mt-1">
+                                    Servicio {selectedCell.service} • {headers.find(h => h.id === selectedCell.headerId)?.location}
+                                </p>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-slate-500 text-[10px] uppercase font-bold">Programado</span>
+                                <div className="text-xl font-mono text-white">{selectedCell.scheduledTime}</div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                                <label className="block text-xs uppercase font-bold text-slate-500 mb-2">Hora Real</label>
+                                <div className="flex gap-2">
+                                    <Clock className="text-primary-500 mt-2" />
+                                    <input
+                                        type="time"
+                                        value={inputTime}
+                                        onChange={e => setInputTime(e.target.value)}
+                                        className="flex-1 bg-transparent text-3xl font-mono text-white font-bold outline-none text-center"
+                                    />
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs uppercase font-bold text-slate-500 mb-2">Carga (Pasajeros Abordo)</label>
-                                <input
-                                    type="number"
-                                    value={inputPax}
-                                    onChange={e => setInputPax(e.target.value)}
-                                    placeholder="0"
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-4 text-3xl font-mono text-center text-white focus:ring-2 focus:ring-primary-500 outline-none"
-                                />
+                            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                                <label className="block text-xs uppercase font-bold text-slate-500 mb-2">Pasajeros</label>
+                                <div className="flex gap-2">
+                                    <Users className="text-primary-500 mt-2" />
+                                    <input
+                                        type="number"
+                                        placeholder="0"
+                                        value={inputPax}
+                                        onChange={e => setInputPax(e.target.value)}
+                                        className="flex-1 bg-transparent text-3xl font-mono text-white font-bold outline-none text-center"
+                                    />
+                                </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 pt-4">
-                                <button
-                                    onClick={() => setSelectedPoint(null)}
-                                    className="bg-slate-800 text-slate-300 py-3 rounded-xl font-bold hover:bg-slate-700"
-                                >
-                                    Cancelar
+                            <div className="flex gap-3 pt-2">
+                                <button onClick={() => setSelectedCell(null)} className="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-800 rounded-xl">
+                                    Volver
                                 </button>
-                                <button
-                                    onClick={savePoint}
-                                    className="bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-500 shadow-lg shadow-emerald-900/20"
-                                >
-                                    Confirmar
+                                <button onClick={saveControl} className="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/20">
+                                    Guardar
                                 </button>
                             </div>
                         </div>
