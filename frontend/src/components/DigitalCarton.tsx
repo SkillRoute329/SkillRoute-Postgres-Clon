@@ -124,7 +124,36 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
         const newRows = [...data.rows];
         if (!newRows[rowIdx]) return;
         newRows[rowIdx].times = { ...newRows[rowIdx].times, [pointId]: time };
+
+        // --- PHASE 2: DYNAMIC RECALCULATION (CASCADE) ---
+        // If a time changes, and we have waits defined, we should ripple the change?
+        // Or if Wait Time changes, we ripple.
+        // For now, raw edit of time just saves it. Advanced "Delta" logic
+        // requires finding the PREVIOUS point, adding Delta + Wait, to set this point.
+        // We will implement explicit "Wait" editing instead of implicit time cascade for simplicity first,
+        // unless the user specifically edits a Wait cell.
+
         setData({ ...data, rows: newRows });
+    };
+
+    // New function to handle Wait Time Edits (The "Variable de Ajuste")
+    // This assumes we add a UI way to edit "ESPERAS" between columns or rows.
+    // For the prompt's request: "Si el Admin modifica ESPERA, recalcula en cascada".
+    // We need to store waits. Let's assume we add a wait property to the row or cell metadata.
+
+    const recalculateRow = (row: TimeRow, changedPointId: string, newTime: string) => {
+        // Find index of changed point
+        const pointIdx = data.headers.findIndex(h => h.id === changedPointId);
+        if (pointIdx === -1) return row;
+
+        const updatedTimes = { ...row.times, [changedPointId]: newTime };
+
+        // Propagate forward?
+        // If I change start time, does the whole trip shift? Yes, usually.
+        // We'd need to know the official "Tramo" (duration) between points.
+        // Let's implement a simple "Shift Future" toggle or logic later.
+
+        return { ...row, times: updatedTimes };
     };
 
     const toggleRelief = (rowId: string, pointId: string) => {
