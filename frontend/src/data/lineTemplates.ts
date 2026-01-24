@@ -1,9 +1,59 @@
 import type { ServiceDefinitionData } from '../components/DigitalCarton';
 
+// ... existing imports ...
+
+export const LINE_ARCHETYPES: Record<string, any> = {
+    "300": {
+        headers: ["Crio. Central", "Bv. Artigas", "Tres Cruces", "8 Oct/JB Ordoñez", "Intercamb. Belloni", "Instrucc. y Bell", "Gral Flores"],
+        cycleTime: 85, // Minutos vuelta promedio
+        defaultDeltas: [0, 10, 8, 12, 15, 10, 20] // Minutos entre paradas (para reconstrucción)
+    },
+    "306": {
+        headers: ["Casabó", "Burdeos", "Cno. Cibils", "Cerro", "La Teja", "Paso Molino", "Centro", "Pocitos", "Géant"],
+        cycleTime: 120,
+        defaultDeltas: [0, 10, 8, 15, 12, 15, 20, 25, 30]
+    },
+    "316": {
+        headers: ["Cno. Maldonado", "Belloni", "8 de Octubre", "Centenario", "Centro", "Pocitos"],
+        cycleTime: 70,
+        defaultDeltas: [0, 15, 20, 15, 25, 20]
+    },
+    "317": { // Corrige errores de asignación previos
+        headers: ["Pajas Blancas", "Cerro", "Paso de la Arena", "Lecocq", "Paso Molino", "Centro", "Pza. Independencia"],
+        cycleTime: 90,
+        defaultDeltas: [0, 20, 15, 12, 18, 25, 10]
+    },
+    "328": {
+        headers: ["Punta Carretas", "Bv Artigas", "Centenario", "Propios", "Instrucciones", "Mendoza"],
+        cycleTime: 65,
+        defaultDeltas: [0, 12, 15, 15, 10, 13]
+    },
+    "329": {
+        headers: ["Punta Carretas", "Soca", "Centenario", "Gral Flores", "San Martin", "Mendoza", "Instrucciones"],
+        cycleTime: 75,
+        defaultDeltas: [0, 10, 15, 15, 10, 15, 10]
+    },
+    "370": {
+        headers: ["Portones", "Av Italia", "Comercio", "8 Octubre", "Centro", "Agraciada", "Cerro"],
+        cycleTime: 90,
+        defaultDeltas: [0, 15, 10, 15, 20, 15, 15]
+    },
+    "396": {
+        headers: ["Punta Carretas", "Bv Artigas", "8 Octubre", "Mendoza", "Instrucciones"],
+        cycleTime: 60,
+        defaultDeltas: [0, 15, 20, 15, 10]
+    }
+};
+
 export const line300Data: ServiceDefinitionData = {
+    // ... existing content (preserved) can be just left as is if I replace correctly
+    // Wait, the tool requires me to replace a block. I will append the NEW data at the end or begin.
+    // Let's prepend it for visibility.
     serviceNumber: 'MATRIZ-300-IDA',
     line: '300',
     title: 'CRIO. CENTRAL -> INSTRUCCIONES',
+    // ... (I will use a careful Replace to INSERT at top)
+
     startTime: '05:12',
     startLocationDescription: 'Cementerio Central',
     endTime: '06:16',

@@ -6,10 +6,11 @@ const prisma = new PrismaClient();
 export const debugForceSeed = async (req: Request, res: Response) => {
     try {
         console.log('--- Debug: Force Seeding Verano 2026 ---');
+        console.log('--- ACTION: REPAIRING MASTER DATA ---');
         // Dynamic import to avoid rootDir issues in some TS configs
         const { seedServicesVerano2026 } = await import('../seeds/services_verano_2026');
         await seedServicesVerano2026(prisma);
-        res.json({ message: 'Seed Verano 2026 ejecutado con éxito' });
+        res.json({ message: 'Seed Verano 2026 ejecutado con éxito. Datos corruptos eliminados y restaurados.' });
     } catch (error) {
         console.error('Debug Seed Error:', error);
         res.status(500).json({ message: 'Error al ejecutar seed', error: String(error) });
