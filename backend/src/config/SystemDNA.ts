@@ -1,8 +1,8 @@
 export const SystemDNA = {
     identity: {
         name: "TransformaFacil 2.0",
-        version: "20.1.0-PRODUCTION",
-        codename: "AMANECER"
+        version: "20.5.0-RRHH-STABLE",
+        codename: "ANTIGRAVITY-X"
     },
     infrastructure: {
         repository: "https://github.com/Ucot2025/TransformaFacil-2.0.git",

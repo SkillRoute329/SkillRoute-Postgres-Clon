@@ -1,7 +1,7 @@
 
+import { Suspense, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Menu, X, Zap } from 'lucide-react';
-import { useState } from 'react';
 import clsx from 'clsx';
 import Sidebar from '../components/Sidebar';
 import NotificationsDropdown from '../components/NotificationsDropdown';
@@ -61,10 +61,21 @@ const DashboardLayout = () => {
                 </header>
 
                 {/* Page Content */}
-                <div className="flex-1 overflow-auto p-4 md:p-8 bg-slate-950 custom-scrollbar">
-                    <RoadAlertsWidget />
-                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                        <Outlet />
+                <div className="flex-1 overflow-auto bg-slate-900/50 custom-scrollbar relative">
+                    <div className="p-4 md:p-8 min-h-full flex flex-col">
+                        <RoadAlertsWidget />
+                        <div className="flex-1 relative">
+                            <Suspense fallback={
+                                <div className="flex flex-col items-center justify-center p-12 text-slate-500">
+                                    <Zap className="w-10 h-10 mb-4 animate-pulse text-primary-500" />
+                                    <p className="text-xs font-black uppercase tracking-widest">Cargando Módulo...</p>
+                                </div>
+                            }>
+                                <div className="animate-in fade-in duration-500 h-full">
+                                    <Outlet />
+                                </div>
+                            </Suspense>
+                        </div>
                     </div>
                 </div>
             </main>

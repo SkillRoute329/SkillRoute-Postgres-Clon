@@ -26,6 +26,7 @@ import driverRoutes from './routes/driverRoutes'; // Imported
 import universalRoutes from './routes/universalRoutes';
 import navigationRoutes from './routes/navigationRoutes';
 import emergencyRoutes from './routes/emergencyRoutes';
+import systemHealthRoutes from './routes/systemHealthRoutes';
 
 // Restored routes
 import tenantRoutes from './routes/tenantRoutes';
@@ -121,6 +122,9 @@ try {
 
   // Emergency Access
   app.use('/api/emergency', emergencyRoutes);
+
+  // System Health & Diagnostics
+  app.use('/api/system-health', systemHealthRoutes);
 
 
   // DEBUG ROUTES (EMERGENCY)

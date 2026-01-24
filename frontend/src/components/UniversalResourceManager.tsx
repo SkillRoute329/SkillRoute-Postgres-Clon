@@ -91,11 +91,12 @@ const UniversalResourceManager = ({ entityKey }: Props) => {
                 }
 
                 await UniversalService.import(config.apiPath, jsonData);
-                alert(`Importación exitosa: ${jsonData.length} registros procesados.`);
+                alert(`¡Importación Exitosa!\n\nSe han procesado ${jsonData.length} registros correctamente.`);
                 loadData();
-            } catch (error) {
-                console.error(error);
-                alert('Error procesando el archivo: ' + String(error));
+            } catch (error: any) {
+                console.error("IMPORT ERROR:", error);
+                const errorMsg = error.message || String(error);
+                alert(`❌ ERROR EN IMPORTACIÓN:\n\n${errorMsg}\n\nVerifique que las columnas del Excel coincidan con los requisitos del sistema.`);
             } finally {
                 setLoading(false);
                 if (fileInputRef.current) fileInputRef.current.value = '';

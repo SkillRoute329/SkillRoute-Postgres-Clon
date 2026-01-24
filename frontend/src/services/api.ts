@@ -2,7 +2,7 @@ import { getAuthToken, clearAuthData } from '../utils/auth';
 
 // 1. If VITE_API_URL is set (Production/Cloud), use it.
 // 2. Otherwise, use relative path '/api' (relying on Vite Proxy or Nginx).
-export const API_URL = import.meta.env.VITE_API_URL || '/api';
+export const API_URL = 'https://transformafacil-20-production.up.railway.app/api';
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
@@ -461,6 +461,18 @@ export const DriverService = {
         if (month) query += `&month=${month}`;
         if (year) query += `&year=${year}`;
         return api.get(`/driver/schedule${query}`).then(res => res.data);
+    }
+};
+
+export const SystemHealthService = {
+    getStatus: async () => {
+        return api.get('/system-health/status').then(res => res.data);
+    },
+    getLogs: async () => {
+        return api.get('/system-health/logs').then(res => res.data);
+    },
+    triggerUpdate: async () => {
+        return api.post('/system-health/update', {}).then(res => res.data);
     }
 };
 

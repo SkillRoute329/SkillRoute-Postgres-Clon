@@ -1,23 +1,18 @@
+import { PrismaClient } from '@prisma/client';
 
-import { Client } from 'pg';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-async function testConnection() {
-    const client = new Client({
-        connectionString: process.env.DATABASE_URL,
-    });
+async function main() {
+    const prisma = new PrismaClient();
     try {
-        console.log('Connecting to:', process.env.DATABASE_URL?.replace(/:[^:@]*@/, ':****@'));
-        await client.connect();
-        console.log('Connection successful!');
-        const res = await client.query('SELECT NOW()');
-        console.log('Server time:', res.rows[0]);
-        await client.end();
-    } catch (err) {
-        console.error('Connection error:', err);
+        console.log('Testing DB connection...');
+        const result = await prisma.$queryRaw`SELECT 1 as connected`;
+        console.log('Result:', result);
+        const userCount = await prisma.user.count();
+        console.log('User count:', userCount);
+    } catch (e) {
+        console.error('Connection FAIL:', e);
+    } finally {
+        await prisma.$disconnect();
     }
 }
 
-testConnection();
+main();

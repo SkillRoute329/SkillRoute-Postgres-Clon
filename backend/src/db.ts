@@ -21,7 +21,12 @@ const pool = new Pool({
     connectionTimeoutMillis: 5000
 });
 
-pool.on('connect', () => console.log('✅ [DB] Conectado exitosamente a Postgres.'));
-pool.on('error', (err) => console.error('🔥 [DB] Error en cliente de base de datos:', err));
+pool.on('connect', () => console.log('✅ [DB] Pool: Conectado exitosamente a Postgres.'));
+pool.on('error', (err) => {
+    console.error('🔥 [DB] Pool: Error crítico:', err.message);
+    if (err.message.includes('ECONNRESET')) {
+        console.error('   [HINT] La conexión fue cerrada por el servidor. Verifique Firewall/SSL.');
+    }
+});
 
 export default pool;

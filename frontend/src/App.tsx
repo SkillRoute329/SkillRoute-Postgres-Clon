@@ -20,6 +20,7 @@ const AdminWhatsApp = lazy(() => import('./pages/admin/AdminWhatsApp'));
 const AdminWhatsAppSettings = lazy(() => import('./pages/admin/AdminWhatsAppSettings'));
 const MaintenanceDashboard = lazy(() => import('./pages/admin/MaintenanceDashboard'));
 const TenantsManager = lazy(() => import('./pages/admin/TenantsManager'));
+const AppMaintenance = lazy(() => import('./pages/admin/AppMaintenance'));
 
 const VehicleList = lazy(() => import('./pages/fleet/VehicleList'));
 const InspectionForm = lazy(() => import('./pages/fleet/InspectionForm'));
@@ -91,11 +92,7 @@ function App() {
       <Router>
         <AuthProvider>
           {isOffline && <OfflineBanner />}
-          <div className="min-h-screen bg-purple-900 text-slate-100 font-sans border-[15px] border-yellow-400">
-            {/* MEGA BANNER FOR FINAL VERIFICATION */}
-            <div className="bg-yellow-400 text-black p-10 text-center font-black text-6xl animate-bounce">
-              VERSION 9.9.9 - SYNC TOTAL ACTIVADA
-            </div>
+          <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/login" element={<LoginScreen />} />
@@ -118,6 +115,7 @@ function App() {
                   <Route path="admin/communications" element={<AdminWhatsApp />} />
                   <Route path="admin/whatsapp-bot" element={<AdminWhatsAppSettings />} />
                   <Route path="admin/maintenance" element={<MaintenanceDashboard />} />
+                  <Route path="admin/maintenance-system" element={<AppMaintenance />} />
                   <Route path="admin/ingestion" element={<DataIngestion />} />
                   <Route path="admin/users/create" element={<UserManagement />} />
                   <Route path="admin/employees" element={<Employees />} />
@@ -150,40 +148,9 @@ function App() {
                 <Route path="/" element={<Navigate to="/login" replace />} />
               </Routes>
             </Suspense>
-
-            {/* --- EMERGENCY ADMIN BUTTON --- */}
-            <a
-              href="/dashboard/admin/employees"
-              style={{
-                position: 'fixed',
-                bottom: '20px',
-                right: '25px',
-                backgroundColor: '#dc2626',
-                color: 'white',
-                padding: '16px 20px',
-                borderRadius: '50px',
-                fontWeight: '900',
-                fontSize: '14px',
-                zIndex: 99999,
-                boxShadow: '0 0 20px rgba(220,38,38,0.6)',
-                textDecoration: 'none',
-                border: '3px solid white',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                pointerEvents: 'auto'
-              }}
-            >
-              <span style={{ fontSize: '20px' }}>🚨</span> RRHH / ADMIN
-            </a>
-            {/* ----------------------------- */}
           </div>
         </AuthProvider>
       </Router>
-      {/* INDICADOR DE EMERGENCIA */}
-      <div className="fixed bottom-4 left-4 z-[9999] bg-slate-800 text-white px-4 py-2 rounded-full font-black text-xs shadow-2xl border border-slate-700 animate-pulse pointer-events-none">
-        v3.5 - UI OVERRIDE ACTIVE
-      </div>
     </ErrorBoundary>
   );
 }
