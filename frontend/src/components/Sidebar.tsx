@@ -55,8 +55,8 @@ const Sidebar = () => {
     ];
 
     return (
-        <aside className="w-72 bg-slate-950 border-r border-slate-800 flex flex-col h-screen sticky top-0 overflow-y-auto custom-scrollbar">
-            <div className="p-6 flex items-center gap-3 border-b border-slate-900/50 bg-slate-900/20">
+        <aside className="w-72 bg-slate-950 border-r border-slate-800 flex flex-col h-full overflow-y-auto custom-scrollbar relative">
+            <div className="p-6 flex items-center gap-3 border-b border-slate-900/50 bg-slate-900/20 shrink-0">
                 <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center font-black text-white shadow-lg shadow-primary-900/20">
                     G
                 </div>

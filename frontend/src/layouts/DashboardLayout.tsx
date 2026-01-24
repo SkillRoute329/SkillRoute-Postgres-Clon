@@ -25,7 +25,7 @@ const DashboardLayout = () => {
 
             {/* Sidebar Component */}
             <div className={clsx(
-                "transition-transform duration-300 fixed lg:relative z-[50]",
+                "transition-transform duration-300 fixed lg:static z-[50] h-full flex-shrink-0 bg-slate-950",
                 !isSidebarOpen && "-translate-x-full lg:translate-x-0"
             )}>
                 <Sidebar />

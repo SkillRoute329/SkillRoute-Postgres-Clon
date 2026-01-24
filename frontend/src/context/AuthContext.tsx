@@ -48,8 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearAuthData();
         setToken(null);
         setUser(null);
-        // Optional: window.location.href = '/login'; 
-        // We let the UI react to the state change instead of forcing reload
+        window.location.href = '/login';
     };
 
     return (
