@@ -46,9 +46,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const logout = () => {
         clearAuthData();
+        sessionStorage.clear(); // Ensure session storage is also wiped
         setToken(null);
         setUser(null);
-        window.location.href = '/login';
+        // Force hard navigation to ensure complete state reset
+        window.location.assign('/login');
     };
 
     return (
