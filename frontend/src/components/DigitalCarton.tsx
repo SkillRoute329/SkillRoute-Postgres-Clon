@@ -301,6 +301,11 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
                 </div>
             )}
 
+            {/* Mobile Scroll Hint */}
+            <div className="md:hidden text-center text-[10px] text-blue-400 mb-2 animate-pulse flex items-center justify-center gap-2">
+                <span>↔️ Desliza horizontalmente para ver todo el cartón</span>
+            </div>
+
             <div className={`p-1 md:p-4 border-2 border-slate-900 bg-white text-black font-mono shadow-2xl w-full mx-auto transition-all ${isEditing ? 'ring-4 ring-blue-500/20 scale-[1.005]' : ''}`}>
 
                 {/* Header Section */}

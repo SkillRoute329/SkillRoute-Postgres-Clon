@@ -275,22 +275,14 @@ const AdminCartones = () => {
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
                     </div>
                 ) : (
-                    isMobile ? (
-                        // VISTA MÓVIL (NUEVA)
-                        <MobileCartonCard
-                            key={cartonData.serviceNumber + cartonData.line + 'mobile'}
-                            data={cartonData}
-                            onManage={() => alert('Gestión simplificada: Pendiente de implementación')}
-                        />
-                    ) : (
-                        // VISTA ESCRITORIO (ORIGINAL - NO TOCAR PROPS)
-                        <DigitalCarton
-                            key={cartonData.serviceNumber + cartonData.line + Date.now()}
-                            data={cartonData}
-                            isEditable={true}
-                            onSave={handleSave}
-                        />
-                    )
+                    // VISTA UNIFICADA (Responsive)
+                    // Eliminamos la restricción de vista móvil para permitir la gestión completa ("Lanzador") desde el celular
+                    <DigitalCarton
+                        key={cartonData.serviceNumber + cartonData.line + Date.now()}
+                        data={cartonData}
+                        isEditable={true}
+                        onSave={handleSave}
+                    />
                 )}
 
             </div>
