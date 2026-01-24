@@ -556,7 +556,7 @@ model MaintenanceReport {
   title          String
   description    String
   priority       String   @default("NORMAL")
-  status         String   @default("PENDING")
+  status         String   @default("ENVIADO") // ENVIADO, RECIBIDO, EN_PROCESO, PROGRAMADO, DESCARTADO, FINALIZADO
   photoUrl       String?
   evidencePhotos String? // Base64 Text for multiple photos in JSON or single large string
   
@@ -739,6 +739,7 @@ model BulletinEntry {
   inspector      User     @relation(fields: [inspectorId], references: [id])
 
   @@index([tenantId, serviceNumber])
+  @@index([tenantId, date])
 }
 
 // 15. Sistema de Penalizaciones (Conducta)

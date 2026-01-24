@@ -163,68 +163,72 @@ export const getVehicleStats = async (req: Request, res: Response) => {
 export const generateCartonFromBulletin = async (req: Request, res: Response) => {
     try {
         const tenantId = (req as any).user.tenantId;
-        const { serviceNumber, date } = req.body; // e.g., '2290', '2026-01-18'
+        const { serviceNumber, date } = req.body;
 
-        // 1. Fetch real entries
         const records = await prisma.bulletinEntry.findMany({
             where: {
                 tenantId,
                 serviceNumber,
-                // If date is provided, filter by it, otherwise take latest? 
-                // Let's assume precise date for now or use range
                 date: date ? new Date(date) : undefined
             },
-            orderBy: { scheduledTime: 'asc' } // Or actualTime? Scheduled is safer for structure
+            orderBy: { scheduledTime: 'asc' }
         });
 
         if (records.length === 0) return res.status(404).json({ message: "No se encontraron registros de boletín para generar cartón." });
 
-        // 2. Build Route Data Structure
-        // This is tricky because we need to group into rows if it's a cyclic service.
-        // For '2290', we know it has structure. 
-        // We will attempt to create a "Raw" structure that the user can then edit in AdminCartones.
+        // Heuristic: Multi-row detection
+        // We identify the unique locations in their FIRST appearance order.
+        const locations = records.map(r => r.location);
+        const uniqueLocations: string[] = [];
+        const seenFirstPass = new Set<string>();
 
-        // Assumption: Steps are sequential in time.
-        // We need to infer headers. If records have 'location', we can collect unique locations in order?
-        // No, that puts all locations in headers. A carton typically has H headers and R rows.
-        // A single trip (Ida) might touch H headers. 
-        // A sequential list of N records might represent R trips over H headers.
+        // We try to find the "Pattern" of a trip
+        // If the same location repeats, it might be a new trip.
+        // Let's build rows dynamically.
+        const rows: any[] = [];
+        let currentTimes: any = {};
+        let currentRowIdx = 1;
 
-        // Heuristic:
-        // Group records by 'ScheduledTime' closeness? No.
-        // Let's assume the Bulletin Entry order IS the sequence.
+        // Headers will be based on all locations seen, but ordered by their first appearance
+        const headerMap = new Map<string, string>();
+        let hCount = 1;
 
-        // For the MVP tool requested: We will return a "Suggested" JSON that fits the 'ServiceDefinition' model
-        // but perhaps flattened or simple, and let the user refine it.
+        records.forEach((r) => {
+            if (!headerMap.has(r.location)) {
+                headerMap.set(r.location, `h${hCount++}`);
+            }
 
-        const headers = Array.from(new Set(records.map(r => r.location))).map((loc, i) => ({
-            id: `h${i + 1}`,
+            const hId = headerMap.get(r.location)!;
+
+            // If this header is already filled in current row, start a NEW row
+            if (currentTimes[hId]) {
+                rows.push({ id: `r${currentRowIdx++}`, times: { ...currentTimes } });
+                currentTimes = {};
+            }
+
+            currentTimes[hId] = r.actualTime || r.scheduledTime;
+        });
+
+        // Add last row
+        if (Object.keys(currentTimes).length > 0) {
+            rows.push({ id: `r${currentRowIdx++}`, times: { ...currentTimes } });
+        }
+
+        const headers = Array.from(headerMap.entries()).map(([loc, id]) => ({
+            id,
             location: loc,
             isStop: true
         }));
 
-        // This is a naive reconstruction. A better one would be to group by 'Trip ID' if we had it.
-        // Since we don't, we will create ONE single row with ALL the times if it fits,
-        // OR we try to detect cycles.
-
-        // Let's just return the raw data formatted as a new "Draft" ServiceDefinition
         const newCarton = {
-            serviceNumber: serviceNumber + '-DRAFT',
-            line: '370', // Placeholder
-            variant: `Generado de Boletín ${date || 'Histórico'}`,
+            serviceNumber: serviceNumber + '-REV',
+            line: '370',
+            variant: `Sincronizado de Boletín ${date || 'Reciente'}`,
             startTime: records[0].actualTime || records[0].scheduledTime,
             endTime: records[records.length - 1].actualTime || records[records.length - 1].scheduledTime,
             routeData: {
                 headers: headers,
-                rows: [{
-                    id: 'r1',
-                    times: records.reduce((acc: any, r) => {
-                        // Find header id for this location
-                        const h = headers.find(h => h.location === r.location);
-                        if (h) acc[h.id] = r.actualTime || r.scheduledTime;
-                        return acc;
-                    }, {})
-                }]
+                rows: rows
             }
         };
 

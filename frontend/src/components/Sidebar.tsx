@@ -40,6 +40,9 @@ export default function Sidebar() {
                 <Link to="/dashboard/market" className="flex items-center gap-3 p-3 hover:bg-slate-800 rounded-xl transition-all border border-transparent hover:border-slate-700">
                     <span>🛒</span> Bolsa de Trabajo
                 </Link>
+                <Link to="/dashboard/driver/report" className="flex items-center gap-3 p-3 bg-red-600/10 text-red-400 hover:bg-red-600/20 rounded-xl transition-all border border-red-500/20">
+                    <span>🛠️</span> Reportar Novedad
+                </Link>
                 <Link to="/dashboard/my-balance" className="flex items-center gap-3 p-3 hover:bg-slate-800 rounded-xl transition-all border border-transparent hover:border-slate-700">
                     <span>💰</span> Mi Cuenta
                 </Link>

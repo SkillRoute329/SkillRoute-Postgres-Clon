@@ -158,11 +158,6 @@ const AdminCartones = () => {
         setShowSelector(false);
     }
 
-    // loadFromSaved moved up
-
-
-    // loadFromSaved moved up
-
     return (
         <div className="space-y-6 animate-fade-in-up relative">
             <div className="flex justify-between items-center">

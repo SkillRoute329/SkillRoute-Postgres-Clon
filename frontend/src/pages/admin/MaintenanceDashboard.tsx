@@ -7,12 +7,12 @@ import { MaintenanceService, FleetService, DepartmentService, UniversalService }
 import clsx from 'clsx';
 
 const STATUS_CONFIG: any = {
-    'PENDING': { label: 'Enviado', color: 'bg-yellow-500/20 text-yellow-400', icon: Clock },
-    'RECEIVED': { label: 'Recibido', color: 'bg-blue-500/20 text-blue-400', icon: CheckCircle },
-    'IN_PROCESS': { label: 'En Proceso', color: 'bg-indigo-500/20 text-indigo-400', icon: Settings },
-    'SCHEDULED': { label: 'Programado', color: 'bg-purple-500/20 text-purple-400', icon: Clock },
-    'DISCARDED': { label: 'Descartado', color: 'bg-slate-500/20 text-slate-400', icon: AlertTriangle },
-    'COMPLETED': { label: 'Finalizado', color: 'bg-green-500/20 text-green-400', icon: CheckCircle }
+    'ENVIADO': { label: 'Enviado', color: 'bg-yellow-500/20 text-yellow-400', icon: Clock },
+    'RECIBIDO': { label: 'Recibido', color: 'bg-blue-500/20 text-blue-400', icon: CheckCircle },
+    'EN_PROCESO': { label: 'En Proceso', color: 'bg-indigo-500/20 text-indigo-400', icon: Settings },
+    'PROGRAMADO': { label: 'Programado', color: 'bg-purple-500/20 text-purple-400', icon: Clock },
+    'DESCARTADO': { label: 'Descartado', color: 'bg-slate-500/20 text-slate-400', icon: AlertTriangle },
+    'FINALIZADO': { label: 'Finalizado', color: 'bg-green-500/20 text-green-400', icon: CheckCircle }
 };
 
 const MaintenanceDashboard = () => {
@@ -71,7 +71,7 @@ const MaintenanceDashboard = () => {
     const fetchReports = async () => {
         try {
             const data = await MaintenanceService.getAll({
-                reportStatus: filterCheck !== 'all' ? filterCheck : undefined
+                status: filterCheck !== 'all' ? filterCheck : undefined
             });
             setReports(data);
         } catch (e) { console.error(e); }
@@ -172,7 +172,7 @@ const MaintenanceDashboard = () => {
 
             {/* Filters */}
             <div className="flex gap-2 overflow-x-auto pb-2">
-                {['all', 'PENDING', 'IN_PROCESS', 'COMPLETED'].map(status => (
+                {['all', 'ENVIADO', 'EN_PROCESO', 'FINALIZADO'].map(status => (
                     <button
                         key={status}
                         onClick={() => setFilterCheck(status)}
@@ -216,7 +216,7 @@ const MaintenanceDashboard = () => {
                             <p className="text-sm text-slate-400 line-clamp-2 mb-4 flex-1">{report.description}</p>
 
                             {/* Process Button Overlay */}
-                            {report.status !== 'COMPLETED' && (
+                            {report.status !== 'FINALIZADO' && (
                                 <div className="absolute top-4 right-4">
                                     <button
                                         onClick={() => handleOpenProcess(report)}

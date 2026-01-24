@@ -34,6 +34,7 @@ const MyShifts = lazy(() => import('./pages/user/MyShifts'));
 const MyBalance = lazy(() => import('./pages/user/MyBalance'));
 const DriverSchedule = lazy(() => import('./pages/driver/DriverSchedule'));
 const DriverNavigation = lazy(() => import('./pages/driver/DriverNavigation'));
+const NewReport = lazy(() => import('./pages/driver/NewReport'));
 const ABLPage = lazy(() => import('./pages/abl/ABLPage'));
 const PenalizationsPage = lazy(() => import('./pages/abl/penalizations/PenalizationsPage'));
 
@@ -141,6 +142,7 @@ function App() {
                   <Route path="my-balance" element={<MyBalance />} />
                   <Route path="driver/schedule" element={<DriverSchedule />} />
                   <Route path="driver/navigation" element={<DriverNavigation />} />
+                  <Route path="driver/report" element={<NewReport />} />
                   {/* <Route path="my-stats" element={<MyStats />} /> */}
                 </Route>
                 <Route path="/navigation" element={<Navigate to="/dashboard/driver/navigation" replace />} />

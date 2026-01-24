@@ -4,7 +4,7 @@ import StatsWidget from '../components/StatsWidget';
 import { useAuth } from '../context/AuthContext';
 import ExcelUploader from '../components/ExcelUploader';
 import VehicleCheckModal from '../components/VehicleCheckModal';
-import { Play, CheckCircle } from 'lucide-react';
+import { Play, CheckCircle, AlertTriangle } from 'lucide-react';
 
 const DashboardHome = () => {
     const { user } = useAuth();
@@ -84,6 +84,25 @@ const DashboardHome = () => {
 
             {/* KPIs Stats Widget */}
             <StatsWidget />
+
+            {/* STATUS: A LA ORDEN / LISTA (Phase 4) */}
+            {user?.driverStatus === 'A_LA_ORDEN_LISTA' && (
+                <div className="bg-amber-500/10 border-2 border-amber-500/20 rounded-[2rem] p-8 flex flex-col md:flex-row items-center gap-6 shadow-xl shadow-amber-900/10 animate-pulse">
+                    <div className="w-20 h-20 bg-amber-500 rounded-full flex items-center justify-center text-white shadow-lg shrink-0">
+                        <AlertTriangle className="w-10 h-10" />
+                    </div>
+                    <div className="flex-1 text-center md:text-left">
+                        <h2 className="text-2xl font-bold text-white leading-tight">Estado: A la Orden (Lista)</h2>
+                        <p className="text-amber-400 font-medium">Tu coche asignado está en mantenimiento o paralizado. Estás disponible para cubrir otros turnos.</p>
+                    </div>
+                    <button
+                        onClick={() => window.location.href = '/dashboard/market'}
+                        className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg"
+                    >
+                        Ver Bolsa de Trabajo
+                    </button>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {!shiftStarted ? (

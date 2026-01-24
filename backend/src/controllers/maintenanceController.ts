@@ -29,7 +29,7 @@ export const maintenanceController = {
                     priority: priority || 'NORMAL',
                     photoUrl,
                     evidencePhotos, // Map Base64 string directly
-                    status: 'PENDING'
+                    status: 'ENVIADO'
                 },
                 include: {
                     vehicle: true,
@@ -196,13 +196,19 @@ export const maintenanceController = {
                 // A. Update Report Status to COMPLETED
                 await tx.maintenanceReport.update({
                     where: { id: reportId },
-                    data: { status: 'COMPLETED' }
+                    data: { status: 'FINALIZADO' }
                 });
 
                 // B. Update Vehicle Status to OPERATIONAL
                 await tx.vehicle.update({
                     where: { id: report.vehicleId },
                     data: { status: 'OPERATIONAL' }
+                });
+
+                // B.2 Restore drivers to "EFECTIVO" (Plan Fase 4)
+                await tx.user.updateMany({
+                    where: { assignedVehicleId: report.vehicleId },
+                    data: { driverStatus: 'EFECTIVO_COCHE' }
                 });
 
                 // C. Create Closing Log
@@ -212,7 +218,7 @@ export const maintenanceController = {
                         userId,
                         action: 'RESOLVED',
                         description: solution ? `Solución: ${solution}` : 'Ticket cerrado sin notas',
-                        newStatus: 'COMPLETED'
+                        newStatus: 'FINALIZADO'
                     }
                 });
 

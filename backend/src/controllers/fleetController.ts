@@ -98,6 +98,21 @@ export const createVehicle = async (req: Request, res: Response) => {
                 }
             }
 
+            // 3. Automatic Reassignment Logic (Plan Fase 4)
+            if (status === 'MAINTENANCE' || status === 'STOPPED') {
+                // Move drivers to "LISTA"
+                await (tx.user as any).updateMany({
+                    where: { assignedVehicleId: v.id, tenantId: user.tenantId },
+                    data: { driverStatus: 'A_LA_ORDEN_LISTA' }
+                });
+            } else if (status === 'OPERATIONAL') {
+                // Restore drivers to "EFECTIVO"
+                await (tx.user as any).updateMany({
+                    where: { assignedVehicleId: v.id, tenantId: user.tenantId },
+                    data: { driverStatus: 'EFECTIVO_COCHE' }
+                });
+            }
+
             return v;
         });
 
