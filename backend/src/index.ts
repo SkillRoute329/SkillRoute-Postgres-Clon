@@ -24,6 +24,7 @@ import roadAlertRoutes from './routes/roadAlertRoutes';
 import dataImportRoutes from './routes/dataImportRoutes';
 import driverRoutes from './routes/driverRoutes'; // Imported
 import universalRoutes from './routes/universalRoutes';
+import uploadRoutes from './routes/uploadRoutes';
 import navigationRoutes from './routes/navigationRoutes';
 import emergencyRoutes from './routes/emergencyRoutes';
 import systemHealthRoutes from './routes/systemHealthRoutes';
@@ -77,6 +78,9 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Serve Uploads Static Directory (Cloud Simulation)
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+
 // 3. HEALTH CHECK (Priority #1)
 app.get('/api/health', (req, res) => {
   console.log('💓 [HEALTH] Heartbeat from ' + req.ip);
@@ -115,6 +119,9 @@ try {
   // New Universal Import/Export Module
   app.use('/api/data-import', dataImportRoutes);
   app.use('/api/driver', driverRoutes);
+
+  // File Uploads (Cloud Simulation)
+  app.use('/api/upload', uploadRoutes);
 
   // Universal Polymorphic CRUD
   app.use('/api/universal', universalRoutes);

@@ -23,14 +23,22 @@ const NewReport = () => {
         FleetService.getVehicles().then(setVehicles).catch(console.error);
     }, []);
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData({ ...formData, evidencePhotos: reader.result as string });
-            };
-            reader.readAsDataURL(file);
+            setLoading(true);
+            try {
+                // Upload to Cloud (Simulated)
+                const res = await MaintenanceService.uploadFile(file);
+                if (res.url) {
+                    setFormData({ ...formData, evidencePhotos: res.url });
+                }
+            } catch (error) {
+                console.error("Upload error", error);
+                alert("Error subiendo imagen. Intente nuevamente.");
+            } finally {
+                setLoading(false);
+            }
         }
     };
 

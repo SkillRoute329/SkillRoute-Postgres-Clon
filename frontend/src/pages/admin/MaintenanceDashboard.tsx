@@ -78,14 +78,23 @@ const MaintenanceDashboard = () => {
         } catch (e) { console.error(e); }
     };
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setNewReport({ ...newReport, evidencePhotos: reader.result as string });
-            };
-            reader.readAsDataURL(file);
+            // Optimistic Loading State or dedicated upload state could be used
+            // but we reuse the main form since it blocks submit usually
+            // Here we just fire and forget, blocking via async if we wanted.
+
+            try {
+                const res = await MaintenanceService.uploadFile(file);
+                if (res.url) {
+                    setNewReport({ ...newReport, evidencePhotos: res.url });
+                    // Optional: Toast success
+                }
+            } catch (error) {
+                console.error("Upload failed", error);
+                alert("Error al subir imagen");
+            }
         }
     };
 

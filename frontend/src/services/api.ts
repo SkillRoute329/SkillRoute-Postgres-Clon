@@ -288,6 +288,18 @@ export const MaintenanceService = {
     },
     closeTicket: async (id: number, data: { solution: string, partsUsed: any[] }) => {
         return api.post(`/maintenance/${id}/close`, data).then(res => res.data);
+    },
+    uploadFile: async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(`${API_URL}/upload`, {
+            method: 'POST',
+            headers: {
+                ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {})
+            },
+            body: formData
+        }).then(handleResponse);
+        return res.json();
     }
 };
 
