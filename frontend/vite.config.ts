@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// BUILD TIMESTAMP: FORCE_REFRESH_1737694665421
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [

@@ -144,12 +144,39 @@ function App() {
                 <Route path="/" element={<Navigate to="/login" replace />} />
               </Routes>
             </Suspense>
+
+            {/* --- EMERGENCY ADMIN BUTTON --- */}
+            <a
+              href="/dashboard/admin/employees"
+              style={{
+                position: 'fixed',
+                bottom: '20px',
+                right: '25px',
+                backgroundColor: '#dc2626',
+                color: 'white',
+                padding: '16px 20px',
+                borderRadius: '50px',
+                fontWeight: '900',
+                fontSize: '14px',
+                zIndex: 99999,
+                boxShadow: '0 0 20px rgba(220,38,38,0.6)',
+                textDecoration: 'none',
+                border: '3px solid white',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                pointerEvents: 'auto'
+              }}
+            >
+              <span style={{ fontSize: '20px' }}>🚨</span> RRHH / ADMIN
+            </a>
+            {/* ----------------------------- */}
           </div>
         </AuthProvider>
       </Router>
       {/* INDICADOR DE EMERGENCIA */}
-      <div className="fixed bottom-4 right-4 z-[9999] bg-red-600 text-white px-4 py-2 rounded-full font-black text-xs shadow-2xl animate-pulse cursor-default pointer-events-none">
-        v3.0 - SI VES ESTO, SE ACTUALIZÓ
+      <div className="fixed bottom-4 left-4 z-[9999] bg-slate-800 text-white px-4 py-2 rounded-full font-black text-xs shadow-2xl border border-slate-700 animate-pulse pointer-events-none">
+        v3.5 - UI OVERRIDE ACTIVE
       </div>
     </ErrorBoundary>
   );
@@ -157,4 +184,4 @@ function App() {
 
 export default App;
 
-// FORCE UPDATE REVISION 5
+// BUILD TIMESTAMP: FORCE_REFRESH_2026-01-24_02:55
