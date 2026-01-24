@@ -84,7 +84,12 @@ app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 // 3. HEALTH CHECK (Priority #1)
 app.get('/api/health', (req, res) => {
   console.log('💓 [HEALTH] Heartbeat from ' + req.ip);
-  res.status(200).json({ status: 'ok', version: VERSION, step: 'early-boot' });
+  res.status(200).json({
+    status: 'ok',
+    version: VERSION,
+    bootId: BOOT_ID, // Exposed for Auto-Update Strategy
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.get('/api/version', (req, res) => {

@@ -5,6 +5,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import DashboardLayout from './layouts/DashboardLayout';
 import LoginScreen from './pages/LoginScreen';
 import { ToastProvider } from './components/ToastProvider';
+import { VersionGuard } from './components/VersionGuard';
 
 // Lazy Load Pages
 const DashboardHome = lazy(() => import('./pages/DashboardHome'));
@@ -93,6 +94,7 @@ function App() {
       <Router>
         <AuthProvider>
           <ToastProvider>
+            <VersionGuard />
             {isOffline && <OfflineBanner />}
             <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
               <Suspense fallback={<PageLoader />}>
