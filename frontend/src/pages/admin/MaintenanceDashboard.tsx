@@ -4,6 +4,7 @@ import {
     Settings, Briefcase, Trash2, Camera
 } from 'lucide-react';
 import { MaintenanceService, FleetService, DepartmentService, UniversalService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
 
 const STATUS_CONFIG: any = {
@@ -135,8 +136,31 @@ const MaintenanceDashboard = () => {
         setUsedParts(prev => prev.filter((_, i) => i !== index));
     };
 
+    // --- RBAC CHECK ---
+    const { user } = useAuth(); // Import useAuth hook at top level first! This snippet assumes useAuth is imported.
+    // However, I need to add useAuth import at top of file first.
+
     const handleCloseTicket = async () => {
         if (!auditReport) return;
+
+        // RBAC: Only Admin/SuperAdmin/Encargado
+        // Assuming 'Encargado' role exists or is mapped to Admin/SuperAdmin permissions for this module.
+        // If strictly 'Encargado' is a role string:
+        const authorizedRoles = ['Admin', 'SuperAdmin', 'Encargado'];
+        if (!user || !authorizedRoles.includes(user.role)) {
+            alert('Acceso Denegado: Solo el Encargado de Taller o Admin puede cerrar tickets.');
+            return;
+        }
+
+        // VALIDATION: Mandatory Description
+        if (!solution || solution.trim().length < 5) {
+            alert('REQUISITO: Debe detallar la solución técnica aplicada par poder cerrar la incidencia.');
+            return;
+        }
+
+        // Confirmation (Implicit in "Confirmar y Cerrar" button, but let's be double sure if critical)
+        if (!confirm('¿Confirma que el vehículo está reparado y listo para operar?')) return;
+
         try {
             await MaintenanceService.closeTicket(auditReport.id, {
                 solution,
