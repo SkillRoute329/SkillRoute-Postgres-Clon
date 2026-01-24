@@ -1,8 +1,7 @@
 import { getAuthToken, clearAuthData } from '../utils/auth';
 
-// 1. If VITE_API_URL is set (Production/Cloud), use it.
-// 2. Otherwise, use relative path '/api' (relying on Vite Proxy or Nginx).
-export const API_URL = 'https://transformafacil-20-production.up.railway.app/api';
+// API URL configurada para backend local
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {

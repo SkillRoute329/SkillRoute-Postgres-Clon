@@ -75,50 +75,121 @@ export const UniversalController = {
         try {
             const { entity } = req.params;
             const modelName = ALLOWED_ENTITIES[entity];
-            const { data } = req.body; // Array of objects
+            let { data } = req.body; // Array of objects
 
             if (!modelName || !Array.isArray(data)) {
-                return res.status(400).json({ message: 'Invalid entity or data format.' });
+                return res.status(400).json({ message: 'Formato inválido. Debe ser un array de datos.' });
             }
 
-            // SPECIAL HANDLING FOR USERS (Password Hashing)
-            if (modelName === 'user') {
-                for (const row of data) {
-                    if (row.password) {
-                        row.passwordHash = await bcrypt.hash(String(row.password), 10);
-                        delete row.password; // Remove plain text
-                    } else if (!row.passwordHash) {
-                        // Default password for imported users if missing
-                        row.passwordHash = await bcrypt.hash('123456', 10);
+            console.log(`[IMPORT] Recibiendo ${data.length} registros para entidad: ${entity}`);
+
+            // LIMPIEZA Y NORMALIZACIÓN FLEXIBLE DE DATOS
+            const cleanedData = [];
+            const errors = [];
+
+            for (let i = 0; i < data.length; i++) {
+                const row = data[i];
+                const cleanRow: any = {};
+
+                try {
+                    // SPECIAL HANDLING FOR USERS
+                    if (modelName === 'user') {
+                        // Campos obligatorios con valores por defecto inteligentes
+                        cleanRow.internalNumber = String(row.internalNumber || row.legajo || row.numero || row.id || `AUTO-${Date.now()}-${i}`);
+                        cleanRow.firstName = String(row.firstName || row.nombre || row.first_name || 'Sin').trim();
+                        cleanRow.lastName = String(row.lastName || row.apellido || row.last_name || 'Nombre').trim();
+                        cleanRow.fullName = `${cleanRow.firstName} ${cleanRow.lastName}`;
+
+                        // Password handling
+                        if (row.password || row.contraseña || row.pass) {
+                            cleanRow.passwordHash = await bcrypt.hash(String(row.password || row.contraseña || row.pass), 10);
+                        } else {
+                            cleanRow.passwordHash = await bcrypt.hash('123456', 10);
+                        }
+
+                        // Campos opcionales
+                        cleanRow.email = row.email || row.correo || null;
+                        cleanRow.phoneNumber = row.phoneNumber || row.telefono || row.phone || null;
+                        cleanRow.ci = row.ci || row.cedula || row.dni || null;
+                        cleanRow.role = row.role || row.rol || 'User';
+                        cleanRow.tenantId = Number(row.tenantId || 1);
+                        cleanRow.isActive = row.isActive !== undefined ? Boolean(row.isActive) : true;
+
+                        // Foreign keys opcionales
+                        if (row.departmentId) cleanRow.departmentId = Number(row.departmentId);
+                        if (row.jobRoleId) cleanRow.jobRoleId = Number(row.jobRoleId);
+                        if (row.assignedVehicleId) cleanRow.assignedVehicleId = Number(row.assignedVehicleId);
+                    }
+                    // SPECIAL HANDLING FOR VEHICLES
+                    else if (modelName === 'vehicle') {
+                        cleanRow.internalNumber = String(row.internalNumber || row.numero || row.coche || `VEH-${i}`);
+                        cleanRow.plate = row.plate || row.matricula || row.patente || null;
+                        cleanRow.make = row.make || row.marca || null;
+                        cleanRow.model = row.model || row.modelo || null;
+                        cleanRow.year = row.year ? Number(row.year) : null;
+                        cleanRow.status = row.status || row.estado || 'OPERATIONAL';
+                        cleanRow.tenantId = Number(row.tenantId || 1);
+                        cleanRow.isActive = row.isActive !== undefined ? Boolean(row.isActive) : true;
+                    }
+                    // GENERIC HANDLING FOR OTHER ENTITIES
+                    else {
+                        // Copiar solo campos que existen en el row, ignorando extras
+                        Object.keys(row).forEach(key => {
+                            if (row[key] !== undefined && row[key] !== null && row[key] !== '') {
+                                cleanRow[key] = row[key];
+                            }
+                        });
+
+                        // Asegurar tenantId si no existe
+                        if (!cleanRow.tenantId) cleanRow.tenantId = 1;
                     }
 
-                    // Ensure internalNumber is string
-                    if (row.internalNumber) row.internalNumber = String(row.internalNumber);
-
-                    // Ensure tenantId (default to 1 if missing for now - dangerous but needed)
-                    if (!row.tenantId) row.tenantId = 1;
-
-                    // Sanitize foreign keys if they are strings in excel
-                    ['departmentId', 'jobRoleId'].forEach(k => {
-                        if (row[k]) row[k] = Number(row[k]);
-                    });
+                    cleanedData.push(cleanRow);
+                } catch (rowError: any) {
+                    errors.push({ row: i + 1, error: rowError.message });
+                    console.error(`[IMPORT] Error en fila ${i + 1}:`, rowError);
                 }
             }
+
+            if (cleanedData.length === 0) {
+                return res.status(400).json({
+                    message: 'No se pudo procesar ningún registro válido.',
+                    errors
+                });
+            }
+
+            console.log(`[IMPORT] ${cleanedData.length} registros limpiados y listos para importar.`);
 
             // @ts-ignore
             const delegate = prisma[modelName];
 
-            // Bulk create / Upsert logic
+            // Bulk create con skipDuplicates
             const result = await delegate.createMany({
-                data: data,
+                data: cleanedData,
                 skipDuplicates: true
             });
 
-            res.json({ message: 'Import successful', count: result.count });
+            const response: any = {
+                message: `✅ Importación exitosa: ${result.count} registros creados.`,
+                count: result.count,
+                processed: cleanedData.length,
+                total: data.length
+            };
 
-        } catch (error) {
+            if (errors.length > 0) {
+                response.warnings = `${errors.length} filas tuvieron errores y fueron omitidas.`;
+                response.errors = errors;
+            }
+
+            res.json(response);
+
+        } catch (error: any) {
             console.error('Universal Import Error:', error);
-            res.status(500).json({ message: 'Error importing data', error: String(error) });
+            res.status(500).json({
+                message: 'Error en la importación',
+                error: error.message || String(error),
+                hint: 'Verifique que el Excel tenga al menos las columnas básicas requeridas.'
+            });
         }
     },
 
