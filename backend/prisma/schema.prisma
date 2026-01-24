@@ -864,3 +864,15 @@ model VehicleCheck {
   user      User     @relation(fields: [userId], references: [id])
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
 }
+
+// 22. Control de Operaciones (Amanecer)
+model ControlEvent {
+  id          Int      @id @default(autoincrement())
+  tripId      String
+  inspectorId String
+  type        String   // 'REGULATION_PLUS', 'REGULATION_MINUS'
+  minutes     Int
+  reason      String
+  metadata    Json?    @default("{}")
+  createdAt   DateTime @default(now())
+}
