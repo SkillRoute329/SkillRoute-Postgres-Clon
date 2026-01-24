@@ -1,7 +1,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/authMiddleware';
-import { getVehicles, createVehicle, getLastInspection, getVehicleHistory, createInspection, getRotationSchemes, createVehicleCheck } from '../controllers/fleetController';
+import { getVehicles, createVehicle, getLastInspection, getVehicleHistory, createInspection, getRotationSchemes, createVehicleCheck, reportBreakdown } from '../controllers/fleetController';
 
 const router = Router();
 
@@ -9,6 +9,9 @@ const router = Router();
 router.get('/vehicles', authenticate, getVehicles);
 router.post('/vehicles', authenticate, createVehicle);
 router.get('/rotation-schemes', authenticate, getRotationSchemes);
+
+// Operations (God Mode)
+router.post('/breakdown', authenticate, reportBreakdown);
 
 // Inspections
 router.get('/vehicles/:vehicleId/last-inspection', authenticate, getLastInspection);

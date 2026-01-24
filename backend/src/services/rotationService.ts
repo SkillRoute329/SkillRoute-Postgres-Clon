@@ -90,8 +90,34 @@ export const RotationService = {
                     activeDrivers = vehicleDrivers;
                 }
 
+                const isRestDay = serviceDef &&
+                    (serviceDef.line?.toUpperCase().includes('DESCANSA') ||
+                        serviceDef.line?.toUpperCase().includes('PARALIZA') ||
+                        plannedService.serviceNumber === 'FRANCO');
+
                 // Create assignments for active drivers
                 for (const driver of activeDrivers) {
+                    if (isRestDay) {
+                        // PROTOCOLO DESCANSA: Titular libre.
+                        assignments.push({
+                            id: `planned-franco-${driver.id}-${date.getTime()}`,
+                            status: 'Draft', // Not 'Assigned' so it doesn't count as work
+                            date: date,
+                            serviceNumber: 'FRANCO',
+                            carNumber: vehicle.internalNumber,
+                            line: 'DESCANSA',
+                            time: '00:00',
+                            endTime: '23:59',
+                            assigneeId: driver.id,
+                            assigneeName: driver.fullName,
+                            assigneeInternalNumber: driver.internalNumber,
+                            isPlanned: true,
+                            totalValue: 0,
+                            metadata: { type: 'REST_DAY' }
+                        });
+                        continue;
+                    }
+
                     assignments.push({
                         id: `planned-${driver.id}-${date.getTime()}`,
                         status: 'Assigned',
@@ -107,6 +133,33 @@ export const RotationService = {
                         assigneePhone: driver.phoneNumber,
                         isPlanned: true,
                         totalValue: 0
+                    });
+                }
+
+                // GOD MODE: CRITICAL CONDITION (Inject Reserves)
+                // If it's a Rest Day but we simulate high demand (mocked condition or specialized flag)
+                // const isHighDemand = false; // We can't easily detect this without external input 
+                // However, if the ServiceDefinition actually EXISTED (meaning there IS a schedule like '10:00 - 18:00') 
+                // but it was marked as a rest day for the *Vehicle* rotation step, then we need a reserve.
+
+                // Real Logic:
+                // If the SERVICE (defined in DB) is valid (has times) but the Rotation Step says "DESCANSA" (because the CAR is resting),
+                // then THE SERVICE IS ORPHANED. We must assign a Reserve.
+
+                if (!isRestDay && activeDrivers.length === 0) {
+                    // ORPHANED SERVICE (No driver in rotation logic matches)
+                    // Inject "Banco de Reserva" (Placeholder)
+                    assignments.push({
+                        id: `orphan-${plannedService.serviceNumber}-${date.getTime()}`,
+                        status: 'Open', // Needs assignment
+                        date: date,
+                        serviceNumber: plannedService.serviceNumber,
+                        carNumber: vehicle.internalNumber, // The car is running, but no driver?
+                        line: serviceDef?.line || 'N/A',
+                        time: serviceDef?.startTime || '00:00',
+                        assigneeName: 'VACANTE - REQUERIR RESERVA',
+                        isPlanned: true,
+                        isVacancy: true
                     });
                 }
             }
