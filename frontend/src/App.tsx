@@ -90,10 +90,10 @@ function App() {
       <Router>
         <AuthProvider>
           {isOffline && <OfflineBanner />}
-          <div className="min-h-screen bg-blue-950 text-slate-100 font-sans border-[10px] border-red-600">
-            {/* GIANT EMERGENCY BANNER FOR DEPLOY VERIFICATION */}
-            <div className="bg-red-600 text-white p-10 text-center font-black text-4xl animate-bounce">
-              SI NO VES ESTO EN AZUL CON BORDES ROJOS, NO SE ACTUALIZÓ
+          <div className="min-h-screen bg-purple-900 text-slate-100 font-sans border-[15px] border-yellow-400">
+            {/* MEGA BANNER FOR FINAL VERIFICATION */}
+            <div className="bg-yellow-400 text-black p-10 text-center font-black text-6xl animate-bounce">
+              VERSION 9.9.9 - SYNC TOTAL ACTIVADA
             </div>
             <Suspense fallback={<PageLoader />}>
               <Routes>
