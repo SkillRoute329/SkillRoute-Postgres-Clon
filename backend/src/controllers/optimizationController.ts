@@ -117,45 +117,53 @@ export const getOptimizationSuggestions = async (req: Request, res: Response) =>
                     }
 
                     // Complex Analysis: Balance Load vs Time
-                    // Rule 1: High Load (>50 pax) AND Late (>5 min) => Critical Increase Time
-                    // Rule 2: Low Load (<5 pax) AND Early (<-5 min) => Reduce Time significantly
-                    // Rule 3: High Load but Early => Efficiency anomaly (maybe rushing?)
+                    // --- CEREBRO DE OPERACIONES (ANTIGRAVITY OPS) ---
+                    // Algoritmo de Decisiones basado en Plan vs Realidad + Carga
 
                     let recommendation = "";
                     let severity: 'High' | 'Medium' | 'Low' = 'Low';
-                    let actionType = 'None';
+                    let type = 'INFO';
 
-                    const isLate = avgDelay > 3;
-                    const isVeryLate = avgDelay > 10;
-                    const isEarly = avgDelay < -3;
-                    const isVeryEarly = avgDelay < -10;
+                    const isLate = avgDelay > 3; // > 3 min late
+                    const isEarly = avgDelay < -3; // > 3 min early (ahead of schedule)
+                    const onTime = !isLate && !isEarly;
 
-                    const isCrowded = avgLoad > 40; // Example threshold
+                    // Determine Load Status (using avgLoad numeric or frequency of level text)
+                    // Simplified: Use avgLoad numeric if available
+                    const isSaturated = avgLoad > 50;
                     const isEmpty = avgLoad < 5;
 
-                    if (isVeryLate) {
-                        recommendation = `CRÍTICO: Atraso de ${Math.round(avgDelay)} min. ${isCrowded ? 'Alta carga ralentiza el servicio.' : ''} Sumar ${Math.round(avgDelay)} min al tramo anterior.`;
+                    // CASO A: SATURACIÓN (Prioridad ALTA)
+                    // Señal: Atrasado O (En hora + Saturado)
+                    if (isLate || (onTime && isSaturated)) {
+                        recommendation = "Inyectar coche de refuerzo (SACA COCHE) usando personal de guardia (3 y 4) para barrer la demanda.";
                         severity = 'High';
-                        actionType = 'Increase';
-                    } else if (isLate) {
-                        recommendation = `Atraso leve (${Math.round(avgDelay)} min). Sumar 2-3 min para compensar.`;
+                        type = 'CASE_A';
+                    }
+                    // CASO B: INEFICIENCIA
+                    // Señal: Adelantado + Vacío
+                    else if (isEarly && isEmpty) {
+                        recommendation = "Retener en control o ajustar tiempo de vuelta para ahorro de combustible.";
                         severity = 'Medium';
-                        actionType = 'Increase';
-                    } else if (isVeryEarly) {
-                        // If empty and early, reduce time
-                        if (isEmpty) {
-                            recommendation = `HOLGURA EXCESIVA: ${Math.abs(Math.round(avgDelay))} min de sobra y coche vacío. Quitar tiempo.`;
-                            severity = 'High';
-                            actionType = 'Decrease';
-                        } else {
-                            recommendation = `Adelanto excesivo (${Math.abs(Math.round(avgDelay))} min) con carga media. Ajustar espera.`;
-                            severity = 'Medium';
-                            actionType = 'Decrease';
-                        }
+                        type = 'CASE_B';
+                    }
+                    // CASO C: FALSO POSITIVO (Alerta Grave)
+                    // Señal: Hora Perfecta + Saturado (Contradictorio: si va lleno deberia ir lento, o el insp. miente)
+                    // Interpretación del prompt: "Servicio en hora perfecta + Carga Saturada (No subió nadie)"
+                    else if (onTime && isSaturated) {
+                        // Note: This overlaps with Case A in logic above if not careful. 
+                        // Prompt says: "Señal: Servicio en hora perfecta + Carga Saturada/No subió nadie -> Alerta grave."
+                        recommendation = "ALERTA GRAVE: El inspector solo hizo control visual. El servicio es deficiente aunque el reloj diga que está bien. Sugerir cambio a coche de mayor capacidad.";
+                        severity = 'High';
+                        type = 'CASE_C';
+                    }
+                    // Default logic for other cases
+                    else if (isLate) {
+                        recommendation = `Atraso moderado (${Math.round(avgDelay)} min). Ajustar tiempos.`;
+                        severity = 'Medium';
                     } else if (isEarly) {
-                        recommendation = `Adelanto leve. Ajustar 2 min.`;
+                        recommendation = `Adelanto moderado (${Math.abs(Math.round(avgDelay))} min). Controlar salida.`;
                         severity = 'Low';
-                        actionType = 'Decrease';
                     }
 
                     // Only push if there's a recommendation
@@ -165,14 +173,15 @@ export const getOptimizationSuggestions = async (req: Request, res: Response) =>
                             line: def.line,
                             location: location,
                             scheduledTime: scheduledTime,
-                            avgActualTime: `+${Math.round(avgDelay)} min`,
+                            avgActualTime: `${Math.round(avgDelay)} min`,
                             diffMinutes: Number(avgDelay.toFixed(1)),
                             sampleSize: stats.delays.length,
                             recommendation,
                             severity,
                             // Extra fields for UI
                             avgLoad: avgLoad,
-                            loadStatus: isCrowded ? 'High' : isEmpty ? 'Low' : 'Normal'
+                            loadStatus: isSaturated ? 'Saturado' : isEmpty ? 'Vacio' : 'Normal',
+                            caseType: type
                         } as any);
                     }
                 }
