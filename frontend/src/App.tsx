@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import DashboardLayout from './layouts/DashboardLayout';
 import LoginScreen from './pages/LoginScreen';
+import { ToastProvider } from './components/ToastProvider';
 
 // Lazy Load Pages
 const DashboardHome = lazy(() => import('./pages/DashboardHome'));
@@ -91,64 +92,66 @@ function App() {
     <ErrorBoundary>
       <Router>
         <AuthProvider>
-          {isOffline && <OfflineBanner />}
-          <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/login" element={<LoginScreen />} />
+          <ToastProvider>
+            {isOffline && <OfflineBanner />}
+            <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/login" element={<LoginScreen />} />
 
-                {/* Temp Public Route for Visualization */}
-                <Route path="/test-cartones" element={<div className="p-4"><AdminCartones /></div>} />
+                  {/* Temp Public Route for Visualization */}
+                  <Route path="/test-cartones" element={<div className="p-4"><AdminCartones /></div>} />
 
-                <Route path="/dashboard" element={<DashboardLayout />}>
-                  <Route index element={<DashboardHome />} />
+                  <Route path="/dashboard" element={<DashboardLayout />}>
+                    <Route index element={<DashboardHome />} />
 
-                  {/* Admin Routes */}
-                  <Route path="admin/shifts" element={<AdminShifts />} />
-                  <Route path="admin/users" element={<AdminUsers />} />
-                  <Route path="admin/balances" element={<AdminBalances />} />
-                  <Route path="admin/rotation-matrix" element={<RotationMatrix />} />
-                  <Route path="admin/cartones" element={<AdminCartones />} />
-                  <Route path="admin/boletines" element={<AdminBoletines />} />
-                  <Route path="operativa/distribucion" element={<Distribution />} />
-                  <Route path="admin/rrhh" element={<AdminRRHH />} />
-                  <Route path="admin/communications" element={<AdminWhatsApp />} />
-                  <Route path="admin/whatsapp-bot" element={<AdminWhatsAppSettings />} />
-                  <Route path="admin/maintenance" element={<MaintenanceDashboard />} />
-                  <Route path="admin/maintenance-system" element={<AppMaintenance />} />
-                  <Route path="admin/ingestion" element={<DataIngestion />} />
-                  <Route path="admin/users/create" element={<UserManagement />} />
-                  <Route path="admin/employees" element={<Employees />} />
+                    {/* Admin Routes */}
+                    <Route path="admin/shifts" element={<AdminShifts />} />
+                    <Route path="admin/users" element={<AdminUsers />} />
+                    <Route path="admin/balances" element={<AdminBalances />} />
+                    <Route path="admin/rotation-matrix" element={<RotationMatrix />} />
+                    <Route path="admin/cartones" element={<AdminCartones />} />
+                    <Route path="admin/boletines" element={<AdminBoletines />} />
+                    <Route path="operativa/distribucion" element={<Distribution />} />
+                    <Route path="admin/rrhh" element={<AdminRRHH />} />
+                    <Route path="admin/communications" element={<AdminWhatsApp />} />
+                    <Route path="admin/whatsapp-bot" element={<AdminWhatsAppSettings />} />
+                    <Route path="admin/maintenance" element={<MaintenanceDashboard />} />
+                    <Route path="admin/maintenance-system" element={<AppMaintenance />} />
+                    <Route path="admin/ingestion" element={<DataIngestion />} />
+                    <Route path="admin/users/create" element={<UserManagement />} />
+                    <Route path="admin/employees" element={<Employees />} />
 
-                  {/* Super Admin Routes */}
-                  <Route path="super-admin/tenants" element={<TenantsManager />} />
+                    {/* Super Admin Routes */}
+                    <Route path="super-admin/tenants" element={<TenantsManager />} />
 
-                  {/* Fleet Management Routes */}
-                  <Route path="fleet" element={<VehicleList />} />
-                  <Route path="fleet/inspect/:id" element={<InspectionForm />} />
+                    {/* Fleet Management Routes */}
+                    <Route path="fleet" element={<VehicleList />} />
+                    <Route path="fleet/inspect/:id" element={<InspectionForm />} />
 
-                  {/* Universal Resource Manager Route */}
-                  <Route path="universal/:entity" element={<UniversalPage />} />
+                    {/* Universal Resource Manager Route */}
+                    <Route path="universal/:entity" element={<UniversalPage />} />
 
 
-                  {/* User Routes */}
-                  <Route path="create-shift" element={<CreateShift />} />
-                  <Route path="market" element={<Marketplace />} />
-                  <Route path="abl" element={<ABLPage />} />
-                  <Route path="abl/penalizations" element={<PenalizationsPage />} />
-                  <Route path="my-shifts" element={<MyShifts />} />
-                  <Route path="my-balance" element={<MyBalance />} />
-                  <Route path="driver/schedule" element={<DriverSchedule />} />
-                  <Route path="driver/navigation" element={<DriverNavigation />} />
-                  <Route path="driver/report" element={<NewReport />} />
-                  {/* <Route path="my-stats" element={<MyStats />} /> */}
-                </Route>
-                <Route path="/navigation" element={<Navigate to="/dashboard/driver/navigation" replace />} />
+                    {/* User Routes */}
+                    <Route path="create-shift" element={<CreateShift />} />
+                    <Route path="market" element={<Marketplace />} />
+                    <Route path="abl" element={<ABLPage />} />
+                    <Route path="abl/penalizations" element={<PenalizationsPage />} />
+                    <Route path="my-shifts" element={<MyShifts />} />
+                    <Route path="my-balance" element={<MyBalance />} />
+                    <Route path="driver/schedule" element={<DriverSchedule />} />
+                    <Route path="driver/navigation" element={<DriverNavigation />} />
+                    <Route path="driver/report" element={<NewReport />} />
+                    {/* <Route path="my-stats" element={<MyStats />} /> */}
+                  </Route>
+                  <Route path="/navigation" element={<Navigate to="/dashboard/driver/navigation" replace />} />
 
-                <Route path="/" element={<Navigate to="/login" replace />} />
-              </Routes>
-            </Suspense>
-          </div>
+                  <Route path="/" element={<Navigate to="/login" replace />} />
+                </Routes>
+              </Suspense>
+            </div>
+          </ToastProvider>
         </AuthProvider>
       </Router>
     </ErrorBoundary>
