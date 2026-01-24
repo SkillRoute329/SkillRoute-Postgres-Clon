@@ -13,8 +13,8 @@ if ('serviceWorker' in navigator) {
   });
 
   // Forzar recarga si es la primera vez que limpiamos
-  if (!localStorage.getItem('force_reload_v5')) {
-    localStorage.setItem('force_reload_v5', 'true');
+  if (!localStorage.getItem('force_reload_v6')) {
+    localStorage.setItem('force_reload_v6', 'true');
     // Clear other caches
     if ('caches' in window) {
       caches.keys().then((names) => {
