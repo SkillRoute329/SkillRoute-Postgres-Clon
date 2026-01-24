@@ -154,29 +154,19 @@ const DashboardLayout = () => {
 
     const renderFallbackMenu = () => (
         <>
-            {role === 'SuperAdmin' && (
+            {(role.toUpperCase() === 'ADMIN' || role.toUpperCase() === 'SUPERADMIN') && (
                 <div className="mb-6">
-                    <div className={clsx("text-xs font-semibold text-pink-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>Super Admin</div>
-                    <SidebarLink to="/dashboard/super-admin/tenants" icon={Wallet} onClick={handleMobileLinkClick}>Gestión Empresas</SidebarLink>
+                    <div className={clsx("text-xs font-semibold text-slate-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>ADMINISTRACIÓN</div>
+                    <SidebarLink to="/dashboard/admin/employees" icon={Users} onClick={handleMobileLinkClick}>👥 Gestión de Personal (RRHH)</SidebarLink>
+                    <SidebarLink to="/dashboard/admin/users/create" icon={UserPlus} onClick={handleMobileLinkClick}>🔑 Usuarios del Sistema</SidebarLink>
+                    <SidebarLink to="/dashboard/admin/rrhh" icon={Users} onClick={handleMobileLinkClick}>Configuración de Áreas</SidebarLink>
                 </div>
             )}
 
-            {(role === 'Admin' || role === 'SuperAdmin') && (
-                <div className="mb-6">
-                    <div className={clsx("text-xs font-semibold text-slate-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>Administración</div>
-                    <SidebarLink to="/dashboard/admin/rrhh" icon={Users} onClick={handleMobileLinkClick}>Recursos Humanos</SidebarLink>
-                    <SidebarLink to="/dashboard/admin/users/create" icon={UserPlus} onClick={handleMobileLinkClick}>Alta de Personal</SidebarLink>
-                    <SidebarLink to="/dashboard/admin/employees" icon={Users} onClick={handleMobileLinkClick}>Gestión de Empleados</SidebarLink>
-                </div>
-            )}
-
-            {/* Super Admin Section (redundant but in old code) */}
-            {user?.role === 'SuperAdmin' && (
-                <div className="pt-4 mt-4 border-t border-slate-700/50">
-                    <h4 className={clsx("px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2", !isSidebarOpen && "hidden")}>
-                        Super Admin
-                    </h4>
-                    <SidebarLink to="/dashboard/super-admin/tenants" icon={Building2} onClick={handleMobileLinkClick}>Gestión Empresas</SidebarLink>
+            {role.toUpperCase() === 'SUPERADMIN' && (
+                <div className="mb-6 border-t border-slate-700/30 pt-4">
+                    <div className={clsx("text-xs font-semibold text-pink-500 uppercase mb-2 px-4", !isSidebarOpen && "hidden")}>SYSTEM ROOT</div>
+                    <SidebarLink to="/dashboard/super-admin/tenants" icon={Building2} onClick={handleMobileLinkClick}>Gestión de Empresas</SidebarLink>
                 </div>
             )}
 
