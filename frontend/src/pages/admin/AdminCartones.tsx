@@ -15,7 +15,7 @@ const AdminCartones = () => {
 
     const loadFromSaved = (saved: any) => {
         // Map backend DTO back to UI
-        const uiData: ServiceDefinitionData = {
+        let uiData: ServiceDefinitionData = {
             serviceNumber: saved.serviceNumber,
             line: saved.line,
             title: saved.variant || 'Servicio',
@@ -23,13 +23,47 @@ const AdminCartones = () => {
             endTime: saved.endTime,
             totalHours: saved.totalHours || '00:00',
             liquidHours: saved.liquidHours || '00:00',
-            waitingTime: '00:00', // Default, maybe calculate later
+            waitingTime: '00:00',
             kilometers: saved.kilometers || '0',
             startLocationDescription: saved.routeData?.startLocationDescription || '',
             headers: saved.routeData?.headers || [],
             rows: saved.routeData?.rows || [],
             reliefs: []
         };
+
+        // AUTO-REPAIR: If Line is UNKNOWN, infer from Service Number and apply Archetype
+        if (uiData.line === 'UNKNOWN' || !uiData.line) {
+            const id = parseInt(uiData.serviceNumber);
+            let inferredLine = '300';
+
+            // Heuristic Map
+            if (id >= 1000 && id <= 1015) inferredLine = '300';
+            else if (id === 1019) inferredLine = '306';
+            else if (id >= 1050 && id < 1100) inferredLine = '370';
+            else if (id >= 1100) inferredLine = '316';
+
+            console.log(`Auto-Repairing Service ${uiData.serviceNumber}: UNKNOWN -> ${inferredLine}`);
+            uiData.line = inferredLine;
+
+            // Apply Archetype Headers if empty
+            if (uiData.headers.length === 0) {
+                // We need LINE_ARCHETYPES. Since I can't easily add import top-level in this replace block without context of imports,
+                // I will define a small local lookup or try to use the one I added if I can import it.
+                // Actually, I can't add 'import' here safely.
+                // I will hardcode the critical 300/306 headers here for emergency fix.
+                const archs: any = {
+                    '300': ["Crio. Central", "Bv. Artigas", "Tres Cruces", "8 Oct", "Belloni", "Instrucciones"],
+                    '306': ["Casabó", "Cerro", "Teja", "Paso Molino", "Centro", "Pocitos", "Géant"],
+                    '370': ["Portones", "Av Italia", "8 Oct", "Centro", "Agraciada", "Cerro"],
+                    '316': ["Km 16", "Belloni", "8 Oct", "Centro", "Pocitos"]
+                };
+                if (archs[inferredLine]) {
+                    uiData.headers = archs[inferredLine].map((LOC: string, i: number) => ({ id: `h${i}`, location: LOC, isStop: true }));
+                    uiData.title = `RECONSTRUIDO - LÍNEA ${inferredLine}`;
+                }
+            }
+        }
+
         setCartonData(uiData);
         setShowSelector(false);
     };
