@@ -224,6 +224,7 @@ model User {
   shiftRequests   ShiftRequest[]
 
   // Universal Extensions
+  photoUrl        String?
   metadata        Json?     @default("{}")
   status          String    @default("ACTIVE")
 

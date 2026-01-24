@@ -63,13 +63,13 @@ export const login = async (req: Request, res: Response) => {
 
         console.log(`[AUTH DEBUG] Login attempt: User '${cleanInternal}' inside Tenant ID: ${targetTenantId}`);
 
-        // Use Prisma to find the user in the SPECIFIC Tenant
-        const user = await prisma.user.findUnique({
+        // Check if user exists (Internal Number OR CI)
+        const user = await prisma.user.findFirst({
             where: {
-                tenantId_internalNumber: {
-                    tenantId: targetTenantId,
-                    internalNumber: cleanInternal
-                }
+                OR: [
+                    { internalNumber: cleanInternal, tenantId: targetTenantId },
+                    { ci: cleanInternal, tenantId: targetTenantId }
+                ]
             },
             include: { tenant: true }
         });
@@ -102,6 +102,8 @@ export const login = async (req: Request, res: Response) => {
             internalNumber: user.internalNumber,
             fullName: user.fullName,
             role: user.role,
+            ci: user.ci,
+            photoUrl: user.photoUrl,
             tenant: {
                 id: user.tenant.id,
                 name: user.tenant.name,
@@ -114,5 +116,26 @@ export const login = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Login error:', error);
         return res.status(500).json({ message: 'Error interno del servidor' });
+    }
+};
+
+export const getMe = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.id;
+        if (!userId) return res.status(401).json({ message: 'No autenticado' });
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { tenant: true, department: true, jobRole: true }
+        });
+
+        if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+        // clean password
+        const { passwordHash, ...safeUser } = user;
+        res.json(safeUser);
+    } catch (error) {
+        console.error('GetMe error:', error);
+        res.status(500).json({ message: 'Server Error' });
     }
 };
