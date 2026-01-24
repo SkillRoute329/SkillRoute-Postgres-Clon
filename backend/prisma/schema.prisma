@@ -228,8 +228,23 @@ model User {
   metadata        Json?     @default("{}")
   status          String    @default("ACTIVE")
 
+  employee        Employee? // Link to separated Employee record
+
   @@unique([tenantId, internalNumber])
   @@unique([tenantId, email])
+}
+
+// 1.1 Empleados (Legajo Completo)
+model Employee {
+  id        Int      @id @default(autoincrement())
+  firstName String
+  lastName  String
+  ci        String   @unique
+  position  String   // Cargo manual o relacionado
+  photoUrl  String?
+  
+  userId    Int      @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // ... (Rest of Schema - Preserving Enums and Models)

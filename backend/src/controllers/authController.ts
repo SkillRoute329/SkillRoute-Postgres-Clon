@@ -119,6 +119,57 @@ export const login = async (req: Request, res: Response) => {
     }
 };
 
+export const register = async (req: Request, res: Response) => {
+    const { firstName, lastName, ci, internalNumber, password, role, position, photoUrl } = req.body;
+
+    // VALIDATION
+    if (!ci || !password || !firstName) {
+        return res.status(400).json({ message: 'Faltan datos obligatorios (CI, Password, Nombre)' });
+    }
+
+    try {
+        const passwordHash = await bcrypt.hash(password, 10);
+
+        // TRANSACTION: User + Employee
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Create User
+            const user = await tx.user.create({
+                data: {
+                    internalNumber: String(internalNumber || ci), // Fallback to CI if no internal number
+                    ci: String(ci),
+                    passwordHash,
+                    role: role || 'User',
+                    firstName,
+                    lastName: lastName || '',
+                    fullName: `${firstName} ${lastName || ''}`.trim(),
+                    photoUrl: photoUrl,
+                    tenantId: 1 // Default
+                }
+            });
+
+            // 2. Create Employee Profile
+            await tx.employee.create({
+                data: {
+                    firstName,
+                    lastName: lastName || '',
+                    ci: String(ci),
+                    position: position || 'Sin Cargo',
+                    photoUrl: photoUrl,
+                    userId: user.id
+                }
+            });
+
+            return user;
+        });
+
+        res.status(201).json({ message: 'Usuario y Empleado creados', user: result });
+
+    } catch (error) {
+        console.error('Register Error:', error);
+        res.status(500).json({ message: 'Error al registrar', error: String(error) });
+    }
+};
+
 export const getMe = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user?.id;
