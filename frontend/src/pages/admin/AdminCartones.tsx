@@ -351,6 +351,31 @@ const AdminCartones = () => {
                                 >
                                     🧪 Simular
                                 </button>
+
+                                <button
+                                    onClick={async () => {
+                                        if (!confirm('ATENCIÓN: Esto forzará la reparación de la base de datos maestra. ¿Continuar?')) return;
+                                        setLoading(true);
+                                        try {
+                                            // Call debug endpoint directly (Bypass service layer for internal tool)
+                                            const res = await fetch('https://transformafacil-20-production.up.railway.app/api/debug/force-seed');
+                                            if (res.ok) {
+                                                alert('Reparación Exitosa: Datos maestros restaurados.');
+                                                loadSavedCartons(); // Reload list
+                                            } else {
+                                                alert('Error del servidor al reparar.');
+                                            }
+                                        } catch (e) {
+                                            alert('Error de conexión.');
+                                        } finally {
+                                            setLoading(false);
+                                        }
+                                    }}
+                                    className="bg-red-600/20 text-red-400 text-xs px-2 py-1 rounded hover:bg-red-600/40 transition-colors uppercase font-bold tracking-wider border border-red-500/30 flex items-center gap-1"
+                                    title="Forzar Reparación de Base de Datos"
+                                >
+                                    🛠️ Reparar DB
+                                </button>
                             </div>
 
                             <div className="h-8 w-px bg-slate-700"></div>
