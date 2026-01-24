@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
     Building2, Users, Receipt, Plus, Trash2, Edit2,
-    X, DollarSign, Percent
+    X, DollarSign, Percent, FileUp, FileDown, Download
 } from 'lucide-react';
-import { DepartmentService, DiscountService } from '../../services/api';
+import { DepartmentService, DiscountService, DataImportService } from '../../services/api';
 import clsx from 'clsx';
 
 const AdminRRHH = () => {
@@ -55,7 +55,83 @@ const AdminRRHH = () => {
 import UniversalResourceManager from '../../components/UniversalResourceManager';
 
 const UsersTab = () => {
-    return <UniversalResourceManager entityKey="USERS" />;
+    const [showImport, setShowImport] = useState(false);
+    const [file, setFile] = useState<File | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    const handleExport = async () => {
+        try {
+            const blob = await DataImportService.exportEmployees();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `empleados_ucot_${new Date().toISOString().split('T')[0]}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (e) { alert('Error exportando'); }
+    };
+
+    const handleImport = async () => {
+        if (!file) return;
+        setLoading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            await DataImportService.uploadEmployees(formData);
+            alert('Importación completada');
+            setShowImport(false);
+            window.location.reload();
+        } catch (e) { alert('Error importando'); }
+        finally { setLoading(false); }
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-end gap-3">
+                <button
+                    onClick={handleExport}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl border border-slate-700 flex items-center gap-2 transition-all"
+                >
+                    <FileDown className="w-5 h-5" /> Exportar RRHH
+                </button>
+                <button
+                    onClick={() => setShowImport(true)}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl border border-slate-700 flex items-center gap-2 transition-all"
+                >
+                    <FileUp className="w-5 h-5" /> Importar RRHH
+                </button>
+            </div>
+            <UniversalResourceManager entityKey="USERS" />
+
+            {showImport && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-white">Importar Personal</h2>
+                            <button onClick={() => setShowImport(false)}><X className="w-6 h-6 text-slate-500" /></button>
+                        </div>
+                        <div className="space-y-6">
+                            <div className="border-2 border-dashed border-slate-700 rounded-xl p-8 text-center hover:border-primary-500 transition-colors cursor-pointer">
+                                <input type="file" onChange={e => setFile(e.target.files?.[0] || null)} className="hidden" id="import-rrhh" accept=".xlsx" />
+                                <label htmlFor="import-rrhh" className="cursor-pointer">
+                                    <FileUp className="w-12 h-12 text-slate-500 mx-auto mb-2" />
+                                    <p className="text-sm text-slate-300">{file ? file.name : 'Vincular archivo Excel'}</p>
+                                </label>
+                            </div>
+                            <button
+                                disabled={loading || !file}
+                                onClick={handleImport}
+                                className="w-full btn btn-primary py-3 font-bold"
+                            >
+                                {loading ? 'Procesando...' : 'Iniciar Carga'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 };
 
 // --- TAB: STRUCTURE ---

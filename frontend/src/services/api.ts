@@ -419,6 +419,39 @@ export const DataImportService = {
             body: JSON.stringify(data),
         }).then(handleResponse);
         return res.json();
+    },
+
+    uploadEmployees: async (formData: FormData) => {
+        const res = await fetch(`${API_URL}/data-import/upload/employees`, {
+            method: 'POST',
+            headers: {
+                ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {})
+            },
+            body: formData,
+        }).then(handleResponse);
+        return res.json();
+    },
+
+    downloadEmployeeTemplate: async () => {
+        const token = getAuthToken();
+        const response = await fetch(`${API_URL}/data-import/template/download?type=employees`, {
+            headers: {
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+            }
+        });
+        if (!response.ok) throw new Error('Error descargando plantilla');
+        return response.blob();
+    },
+
+    exportEmployees: async () => {
+        const token = getAuthToken();
+        const response = await fetch(`${API_URL}/data-import/export/employees`, {
+            headers: {
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+            }
+        });
+        if (!response.ok) throw new Error('Error exportando empleados');
+        return response.blob();
     }
 };
 

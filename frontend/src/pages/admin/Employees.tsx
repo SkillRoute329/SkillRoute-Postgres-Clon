@@ -2,13 +2,17 @@
 import { useState, useEffect } from 'react';
 import { API_URL } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { UserPlus, Users, Search, Save, X } from 'lucide-react';
+import { UserPlus, Users, Search, Save, X, FileUp, FileDown, Download } from 'lucide-react';
+import { DataImportService } from '../../services/api';
 
 const Employees = () => {
     const { token } = useAuth();
     const [employees, setEmployees] = useState<any[]>([]);
     const [showModal, setShowModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [importing, setImporting] = useState(false);
+    const [file, setFile] = useState<File | null>(null);
 
     // Form State
     const [form, setForm] = useState({
@@ -70,6 +74,54 @@ const Employees = () => {
         }
     };
 
+    const handleExport = async () => {
+        try {
+            const blob = await DataImportService.exportEmployees();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `empleados_ucot_${new Date().toISOString().split('T')[0]}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (e) {
+            alert('Error al exportar');
+        }
+    };
+
+    const handleImport = async () => {
+        if (!file) return;
+        setImporting(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await DataImportService.uploadEmployees(formData);
+            alert(`Éxito: ${res.success} procesados. Errores: ${res.errors?.length || 0}`);
+            setShowImportModal(false);
+            setFile(null);
+            loadEmployees();
+        } catch (e: any) {
+            alert('Error en importación: ' + e.message);
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    const handleDownloadTemplate = async () => {
+        try {
+            const blob = await DataImportService.downloadEmployeeTemplate();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'plantilla_empleados_ucot.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (e) {
+            alert('Error al descargar plantilla');
+        }
+    };
+
     return (
         <div className="p-6 max-w-7xl mx-auto animate-fade-in-up">
             <div className="flex justify-between items-center mb-8">
@@ -80,13 +132,29 @@ const Employees = () => {
                     </h1>
                     <p className="text-slate-400">Administración de RRHH y Usuarios del Sistema</p>
                 </div>
-                <button
-                    onClick={() => setShowModal(true)}
-                    className="btn btn-primary flex items-center gap-2"
-                >
-                    <UserPlus className="w-5 h-5" />
-                    Nuevo Empleado
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={handleExport}
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl border border-slate-700 flex items-center gap-2 transition-all"
+                    >
+                        <FileDown className="w-5 h-5" />
+                        Exportar
+                    </button>
+                    <button
+                        onClick={() => setShowImportModal(true)}
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl border border-slate-700 flex items-center gap-2 transition-all"
+                    >
+                        <FileUp className="w-5 h-5" />
+                        Importar (XLSX)
+                    </button>
+                    <button
+                        onClick={() => setShowModal(true)}
+                        className="btn btn-primary flex items-center gap-2 shadow-lg shadow-primary-900/20"
+                    >
+                        <UserPlus className="w-5 h-5" />
+                        Nuevo Empleado
+                    </button>
+                </div>
             </div>
 
             {/* Employee List */}
@@ -195,6 +263,60 @@ const Employees = () => {
                                 Crear Empleado
                             </button>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Import Modal */}
+            {showImportModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-white">Importación Masiva</h2>
+                            <button onClick={() => setShowImportModal(false)} className="text-slate-400 hover:text-white"><X className="w-6 h-6" /></button>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="text-center p-6 border-2 border-dashed border-slate-700 rounded-xl hover:border-primary-500 transition-colors cursor-pointer group">
+                                <input
+                                    type="file"
+                                    accept=".xlsx"
+                                    className="hidden"
+                                    id="employee-file"
+                                    onChange={e => setFile(e.target.files?.[0] || null)}
+                                />
+                                <label htmlFor="employee-file" className="cursor-pointer">
+                                    <FileUp className="w-12 h-12 text-slate-500 mx-auto mb-2 group-hover:text-primary-400" />
+                                    <p className="text-sm text-slate-300">{file ? file.name : 'Seleccionar archivo Excel (.xlsx)'}</p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Soporta más de 1000 registros</p>
+                                </label>
+                            </div>
+
+                            <button
+                                onClick={handleDownloadTemplate}
+                                className="w-full flex items-center justify-center gap-2 text-xs text-primary-400 hover:text-primary-300"
+                            >
+                                <Download className="w-4 h-4" /> Bajar Plantilla RRHH
+                            </button>
+
+                            <div className="pt-4 flex gap-3 border-t border-slate-800">
+                                <button
+                                    disabled={importing}
+                                    onClick={() => setShowImportModal(false)}
+                                    className="flex-1 py-2 text-slate-400 hover:text-white"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    disabled={importing || !file}
+                                    onClick={handleImport}
+                                    className="flex-1 btn btn-primary py-2 flex justify-center items-center gap-2"
+                                >
+                                    {importing && <span className="animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white"></span>}
+                                    Iniciar Carga
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
