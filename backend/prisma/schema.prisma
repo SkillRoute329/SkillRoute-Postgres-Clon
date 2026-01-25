@@ -417,6 +417,10 @@ model Shift {
   deletedAt                DateTime?     // Soft Delete
 
   tenant                   Tenant        @relation(fields: [tenantId], references: [id])
+  
+  seasonId                 Int?          // SeasonScope: Isolation for drafts/historical data
+  season                   Season?       @relation(fields: [seasonId], references: [id])
+
   category                 ShiftCategory @relation("CategoryToShift", fields: [categoryId], references: [id])
   creator                  User          @relation("CreatedBy", fields: [createdBy], references: [id])
   assignee                 User?         @relation("AssignedTo", fields: [assignedTo], references: [id])
@@ -544,9 +548,8 @@ model Vehicle {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  // Fleet Relation Additions
-  fleetCategoryId Int?
-  fleetCategory   FleetCategory? @relation(fields: [fleetCategoryId], references: [id])
+  // Fleet Master enhancements
+  shiftsCapacity Int      @default(3) // Capacidad de turnos por día (Mañana, Tarde, Nocturno)
 
   tenant         Tenant   @relation(fields: [tenantId], references: [id])
   inspections    Inspection[]
@@ -622,6 +625,7 @@ model Season {
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   serviceDefinitions ServiceDefinition[]
   rotations   RotationScheme[]
+  shifts      Shift[]
 }
 
 // 10.2 Definición del Servicio (El "Cartón" Digital)
