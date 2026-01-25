@@ -48,6 +48,7 @@ model Tenant {
   tariffZones             TariffZone[]
   parts                   Part[]
   vehicleChecks           VehicleCheck[]
+  incidents               Incident[]
 }
 
 // 18. Rutas Maestras (Shapefiles & Tarifas)
