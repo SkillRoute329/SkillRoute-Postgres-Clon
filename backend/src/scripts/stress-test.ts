@@ -146,3 +146,17 @@ async function main() {
 }
 
 main();
+
+/**
+ * 📘 USAGE GUIDE:
+ * 
+ * 1. LOCAL TEST (Mock Identity):
+ *    npx tsx src/scripts/stress-test.ts
+ * 
+ * 2. PRODUCTION VERIFICATION (Real Identity):
+ *    (Powershell)
+ *    $env:API_URL="https://transformafacil-20-production.up.railway.app/api"; $env:TEST_USER="[USER_INTERNAL_ID]"; $env:TEST_PASS="[PASSWORD]"; npx tsx src/scripts/stress-test.ts
+ * 
+ *    (Bash)
+ *    API_URL="https://transformafacil-20-production.up.railway.app/api" TEST_USER="[USER]" TEST_PASS="[PASS]" npx tsx src/scripts/stress-test.ts
+ */
