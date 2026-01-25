@@ -512,6 +512,19 @@ model Notification {
 // --- FLOTA / FLEET MANAGEMENT (New Features) ---
 
 
+// 10.A Categorías de Flota (Tecnología)
+model FleetCategory {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int      @default(1)
+  name        String   // "Híbrido", "Eléctrico", "Convencional", "Articulado"
+  description String?
+  
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  vehicles    Vehicle[]
+
+  @@unique([tenantId, name])
+}
+
 // 10. Vehículos
 model Vehicle {
   id             Int      @id @default(autoincrement())
@@ -530,6 +543,10 @@ model Vehicle {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  // Fleet Relation Additions
+  fleetCategoryId Int?
+  fleetCategory   FleetCategory? @relation(fields: [fleetCategoryId], references: [id])
 
   tenant         Tenant   @relation(fields: [tenantId], references: [id])
   inspections    Inspection[]

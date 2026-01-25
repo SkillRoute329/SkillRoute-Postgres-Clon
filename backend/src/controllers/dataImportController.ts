@@ -18,20 +18,28 @@ const EXPECTED_COLUMNS = [
 
 export const uploadServiceData = async (req: Request, res: Response) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ message: 'No se ha subido ningún archivo.' });
+        if (!req.file || !req.file.path) {
+            return res.status(400).json({ message: 'No se ha subido ningún archivo válido.' });
         }
 
         const user = (req as any).user;
         const tenantId = user?.tenantId || 1;
+        const filePath = req.file.path;
 
-        // 1. Leer archivo desde buffer (Permisivo total)
-        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+        console.log(`[NUCLEAR IMPORT] Reading file from disk: ${filePath}`);
+
+        // 1. Leer archivo desde DISCO (Optimizado para memoria)
+        const workbook = XLSX.readFile(filePath);
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
 
         // 2. Convertir a JSON
         const rawData: any[] = XLSX.utils.sheet_to_json(sheet);
+
+        // Limpieza inmediata del archivo temporal (si no es necesario auditar este upload específico o si DMS ya lo movió)
+        // Como viene del Middleware temporal, deberíamos borrarlo tras proceso si no usamos StorageService.save() para persistirlo.
+        // Por ahora, asumimos que es un proceso efímero de ingesta.
+        // fs.unlinkSync(filePath); // Descomentar si se desea limpieza agresiva
 
         if (!rawData || rawData.length === 0) {
             return res.status(400).json({ message: 'El archivo está vacío o no se pudo leer.' });
@@ -56,9 +64,19 @@ export const uploadServiceData = async (req: Request, res: Response) => {
             });
         }
 
+        // BATCH PROCESSING (Transaction optimization)
+        // Instead of one-by-one, we could map data, but upsert needs ID usually.
+        // We stick to loop for safety with upserts.
+
         for (const row of rawData) {
             try {
-                const serviceCode = String(row.Servicio || row.serviceCode || row.id || Math.random());
+                // STRICT PARSING - NO INVENTION
+                // If serviceCode is missing, SKIP. Do not invent math.random()
+                const serviceCode = row.Servicio || row.serviceCode;
+                if (!serviceCode) {
+                    throw new Error("Fila ignorada: Falta 'Servicio' ID.");
+                }
+
                 const dayType = String(row.TipoDia || row.dayType || 'HABIL').toUpperCase();
 
                 // Upsert manual para evitar fallos de constraint
@@ -66,7 +84,7 @@ export const uploadServiceData = async (req: Request, res: Response) => {
                     where: {
                         tenantId: tenantId,
                         seasonId: defaultSeason.id,
-                        serviceCode: serviceCode,
+                        serviceCode: String(serviceCode),
                         dayType: dayType
                     }
                 });
@@ -74,14 +92,14 @@ export const uploadServiceData = async (req: Request, res: Response) => {
                 const dataPayload = {
                     tenantId: tenantId,
                     seasonId: defaultSeason.id,
-                    serviceCode: serviceCode,
-                    serviceNumber: serviceCode,
+                    serviceCode: String(serviceCode),
+                    serviceNumber: String(serviceCode),
                     line: String(row.Linea || row.line || 'S/N'),
                     dayType: dayType,
                     vehicleType: String(row.TipoCoche || row.vehicleType || 'Convencional'),
                     startTime: String(row.HoraInicio || row.startTime || '00:00'),
                     endTime: String(row.HoraFin || row.endTime || '00:00'),
-                    routeData: JSON.stringify(row)
+                    routeData: JSON.stringify(row) // Save RAW row data as evidence
                 };
 
                 if (existing) {
@@ -96,12 +114,14 @@ export const uploadServiceData = async (req: Request, res: Response) => {
                 }
                 processedCount++;
             } catch (e: any) {
-                errors.push({ row, error: e.message });
+                // errors.push({ row, error: e.message }); // Too verbose for large dumps?
+                // Just log first 10 errors maybe?
+                if (errors.length < 50) errors.push({ service: row.Servicio, error: e.message });
             }
         }
 
         res.json({
-            message: 'Importación Nuclear Completada',
+            message: 'Importación Nuclear Completada (Modo Estricto)',
             total: rawData.length,
             success: processedCount,
             errors: errors.length > 0 ? errors : undefined
