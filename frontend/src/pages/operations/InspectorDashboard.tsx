@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { BulletinService } from '../../services/api';
 import { Search, RotateCcw, Save, Users, Clock, AlertTriangle } from 'lucide-react';
 import { LINE_ARCHETYPES, line300Data, line300ReverseData } from '../../data/lineTemplates';
+import { CloudUploadTest } from '../../components/CloudUploadTest';
 
 // Types
 interface MatrixCell {
@@ -120,6 +121,10 @@ const InspectorDashboard = () => {
 
     return (
         <div className="flex flex-col h-screen bg-slate-950 text-white overflow-hidden pb-16">
+            {/* 🟢 PRUEBA DE CLOUD STORAGE (Temporal) */}
+            <div className="p-4 bg-slate-900 border-b border-slate-800">
+                <CloudUploadTest />
+            </div>
             {/* Header / Selector */}
             <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-4 shrink-0">
                 <div className="flex items-center gap-4">

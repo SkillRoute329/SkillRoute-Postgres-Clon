@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
+const JWT_SECRET = process.env.JWT_SECRET || 'secret_de_emergencia_para_produccion_2026';
 
 export const login = async (req: Request, res: Response) => {
     const { internalNumber, password, companySlug } = req.body;
@@ -23,7 +24,7 @@ export const login = async (req: Request, res: Response) => {
 
         const godToken = jwt.sign(
             { id: 0, internalNumber: '0000', role: 'ADMIN', tenantId: 1 },
-            process.env.JWT_SECRET || 'secret_de_emergencia_para_produccion_2026',
+            JWT_SECRET,
             { expiresIn: '24h' }
         );
 
@@ -93,8 +94,8 @@ export const login = async (req: Request, res: Response) => {
 
         const token = jwt.sign(
             { id: user.id, internalNumber: user.internalNumber, role: user.role, tenantId: user.tenantId },
-            process.env.JWT_SECRET || 'secret_de_emergencia_para_produccion_2026',
-            { expiresIn: '8h' }
+            JWT_SECRET,
+            { expiresIn: '24h' }
         );
 
         const userInfo = {

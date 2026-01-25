@@ -6,6 +6,7 @@ import DashboardLayout from './layouts/DashboardLayout';
 import LoginScreen from './pages/LoginScreen';
 import { ToastProvider } from './components/ToastProvider';
 import { VersionGuard } from './components/VersionGuard';
+import { CloudUploadTest } from './components/CloudUploadTest';
 
 // Lazy Load Pages
 const DashboardHome = lazy(() => import('./pages/DashboardHome'));
@@ -102,6 +103,8 @@ function App() {
                 <Routes>
                   <Route path="/login" element={<LoginScreen />} />
 
+                  {/* Test Route for Cloud Upload */}
+                  <Route path="/test-upload" element={<div className="p-4"><CloudUploadTest /></div>} />
                   {/* Temp Public Route for Visualization */}
                   <Route path="/test-cartones" element={<div className="p-4"><AdminCartones /></div>} />
 

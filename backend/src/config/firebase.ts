@@ -9,22 +9,30 @@ dotenv.config();
 
 let serviceAccount: any;
 
+const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || '../../serviceAccountKey.json';
+
 try {
+
+    // Auto-detect: Environment Variable (Prod) vs Local File (Dev)
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-        // Opción 1: JSON stringificado en variable de entorno (Producción)
         serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
     } else {
-        // Opción 2: Archivo local (Desarrollo)
-        // Nota: El usuario debe colocar este archivo manualmente y NO subirlo a Git
-        serviceAccount = require('../../serviceAccountKey.json');
+        // En desarrollo local, buscamos el archivo que el usuario acaba de colocar
+        // try/catch para manejar si no existe sin crashear toda la app
+        try {
+            serviceAccount = require(serviceAccountPath);
+        } catch (e) {
+            console.warn('⚠️ No se encontró serviceAccountKey.json en backend/ ni variable de entorno.');
+        }
     }
 
-    if (admin.apps.length === 0) {
+    if (serviceAccount && admin.apps.length === 0) {
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
-            // databaseURL: "https://<YOUR-PROJECT-ID>.firebaseio.com" // Opcional para Firestore
+            // La región de Firestore se define al crear la BD, el SDK se enruta solo.
+            // Para Functions o Storage si se especifica región, pero Firestore es global/regional implícito.
         });
-        console.log('🔥 Firebase Admin Initialized Successfully');
+        console.log('🔥 Firebase Admin Initialized Successfully (Region: southamerica-east1 [Implícito])');
     }
 } catch (error) {
     console.warn('⚠️ Firebase no se pudo inicializar. Verifica FIREBASE_SERVICE_ACCOUNT o serviceAccountKey.json');
