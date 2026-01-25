@@ -210,21 +210,27 @@ export const createInspection = async (req: Request, res: Response) => {
             newDamages = unsafePayload.newDamages;
         }
 
-        // Process File Uploads (Sanitized)
+        // Process File Uploads (Sanitized & DMS Integrated)
         const files = (req as any).files as Express.Multer.File[];
         const uploadedUrls: Record<string, string> = {};
 
         if (files && files.length > 0) {
-            files.forEach(f => {
-                // Save using Scalable Storage (Tenant/Year/Category)
-                const url = StorageService.saveFile(
-                    f.buffer,
-                    f.originalname,
+            // Processing sequentially to ensure file system stability
+            for (const f of files) {
+                // Save using DMS (Disk Management System)
+                // Now passing the full 'f' object because DMS reads from f.path
+                const storedFile = await StorageService.save(
+                    f,
                     'inspections',
                     user.tenantId
                 );
-                uploadedUrls[f.fieldname] = url;
-            });
+
+                // Store the public URL mapped to the fieldname
+                uploadedUrls[f.fieldname] = storedFile.url;
+
+                // Log audit trail
+                console.log(`[DMS] File stored: ${storedFile.filename} | Hash: ${storedFile.hash}`);
+            }
         }
 
         // Map files to damages if fieldnames match logic (damage_0_photo)

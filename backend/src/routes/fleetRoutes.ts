@@ -26,7 +26,11 @@ router.use('/inspections', (req, res, next) => {
 // Inspections
 router.get('/vehicles/:vehicleId/last-inspection', authenticate, getLastInspection);
 router.get('/vehicles/:vehicleId/history', authenticate, getVehicleHistory);
-router.post('/inspections', authenticate, createInspection);
-router.post('/check', authenticate, createVehicleCheck);
+import { UploadMiddleware } from '../middleware/UploadMiddleware';
+
+// Inspections
+// Usamos 'any' para máxima compatibilidad con el frontend que manda campos dinámicos (damage_0_photo, etc)
+router.post('/inspections', authenticate, UploadMiddleware('any'), createInspection);
+router.post('/check', authenticate, UploadMiddleware('any'), createVehicleCheck);
 
 export default router;
