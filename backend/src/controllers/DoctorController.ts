@@ -35,7 +35,11 @@ export const DoctorController = {
         // 2. DB CHECK
         try {
             await prisma.$queryRaw`SELECT 1`;
-            report.checks.database = { status: 'OK' };
+            const userCount = await prisma.user.count();
+            report.checks.database = { status: 'OK', userCount };
+            if (userCount === 0) {
+                report.checks.database.warning = 'ZERO USERS FOUND - SEED REQUIRED';
+            }
         } catch (e: any) {
             report.status = 'CRITICAL';
             report.checks.database = { status: 'FAIL', error: e.message };

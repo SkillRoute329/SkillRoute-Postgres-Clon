@@ -174,16 +174,25 @@ export const getVehicleHistory = async (req: Request, res: Response) => {
 export const createInspection = async (req: Request, res: Response) => {
     try {
         const user = (req as any).user;
-        const { vehicleId, type, odometer, fuelLevel, status, notes, newDamages } = req.body;
-        // newDamages is an array of { zone, description, photoUrl, severity }
+        if (!user || !user.id) {
+            return res.status(401).json({ message: 'User Identity Missing. Relogin required.' });
+        }
+
+        const {
+            vehicleId, type, odometer, fuelLevel,
+            status, notes, newDamages
+        } = req.body;
 
         // Transaction to save inspection AND damages atomically
         const result = await prisma.$transaction(async (tx) => {
             const inspection = await tx.inspection.create({
                 data: {
+                    // ZERO-TRUST SECURITY:
+                    // We explicitly ignore any 'userId' or 'tenantId' arriving in req.body
                     tenantId: user.tenantId,
+                    userId: user.id, // Enforce Token ID
+
                     vehicleId: Number(vehicleId),
-                    userId: user.id,
                     type,
                     odometer: odometer ? Number(odometer) : null,
                     fuelLevel,
@@ -205,13 +214,6 @@ export const createInspection = async (req: Request, res: Response) => {
                 });
             }
 
-            // If status is NOT OK, maybe update Vehicle status?
-            if (status === 'WithDamages') {
-                console.log('[INSPECTION] Vehicle flagged WithDamages');
-                // Automatically set vehicle to MAINTENANCE? Maybe too aggressive.
-                // Just Log for now.
-            }
-
             return inspection;
         });
 
@@ -219,7 +221,7 @@ export const createInspection = async (req: Request, res: Response) => {
 
     } catch (error) {
         console.error('Inspection Error:', error);
-        res.status(500).json({ message: 'Error al guardar inspección' });
+        res.status(500).json({ message: 'Error al guardar inspección', details: String(error) });
     }
 };
 
