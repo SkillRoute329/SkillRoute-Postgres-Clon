@@ -81,7 +81,7 @@ app.use(cors({
   origin: true, // Universal Access (Mobile/Web/Hybrid) - Reflects Origin
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }));
 
 // DEBUGGER DE HEADERS
