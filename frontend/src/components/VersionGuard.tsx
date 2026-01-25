@@ -1,55 +1,24 @@
 
-import React, { useEffect, useState } from 'react';
-import { API_URL } from '../services/api';
-
-const CHECK_INTERVAL = 30 * 1000; // 30 seconds
+import React from 'react';
+import { useVersionCheck } from '../hooks/useVersionCheck';
+import { RefreshCw } from 'lucide-react';
 
 export const VersionGuard = () => {
-    const [bootId, setBootId] = useState<string | null>(null);
+    const { isUpdating } = useVersionCheck();
 
-    useEffect(() => {
-        const checkVersion = async () => {
-            try {
-                // Use fetch directly to bypass potential axios interceptors or just to be raw
-                const res = await fetch(`${API_URL}/health?_t=${Date.now()}`);
-                if (!res.ok) return;
+    if (!isUpdating) return null;
 
-                const data = await res.json();
-                const serverBootId = data.bootId;
-
-                if (!serverBootId) return;
-
-                setBootId(prev => {
-                    if (prev && prev !== serverBootId) {
-                        console.log(`[UPDATE] New Server Boot ID detected: ${serverBootId}. Refreshing...`);
-
-                        // Force aggressive reload to clear cache
-                        if ('serviceWorker' in navigator) {
-                            navigator.serviceWorker.getRegistrations().then(registrations => {
-                                for (let registration of registrations) {
-                                    registration.unregister();
-                                }
-                            });
-                        }
-
-                        // Show brief toast if possible, then reload
-                        // Just reload for "Ley nunca fallar" speed
-                        window.location.reload();
-                    }
-                    return serverBootId;
-                });
-            } catch (error) {
-                // Ignore network errors (maybe offline)
-            }
-        };
-
-        // Initial check
-        checkVersion();
-
-        // Interval
-        const interval = setInterval(checkVersion, CHECK_INTERVAL);
-        return () => clearInterval(interval);
-    }, []);
-
-    return null; // Invisible sentinel
+    return (
+        <div className="fixed inset-0 bg-slate-900/95 z-[99999] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+            <RefreshCw className="w-16 h-16 text-primary-500 animate-spin mb-6" />
+            <h2 className="text-2xl font-bold text-white mb-2">Actualizando Sistema...</h2>
+            <p className="text-slate-400 max-w-sm">
+                Se ha detectado una nueva versión de la plataforma.
+                Sincronizando cambios críticos para garantizar la integridad de sus datos.
+            </p>
+            <div className="mt-8 bg-slate-800 rounded-full h-1 w-48 overflow-hidden">
+                <div className="h-full bg-primary-500 animate-progress"></div>
+            </div>
+        </div>
+    );
 };

@@ -51,8 +51,9 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-const VERSION = 'v9.9.9-ALL-BRANCHES-SYNC';
+const VERSION = 'v10.0.0-GOLD-MASTER';
 const BOOT_ID = Math.floor(Math.random() * 1000000).toString();
+const BUILD_TIME = new Date().toISOString();
 
 // 1. FAIL-FAST VALIDATION (CRITICAL FOR PRODUCTION)
 import { SystemDNA } from './config/SystemDNA';
@@ -72,9 +73,8 @@ if (missingEnvs.length > 0) {
 // 2. MIDDLEWARE SETUP
 console.log(`🌍 [BOOT] Env PORT: ${process.env.PORT} | Detected: ${PORT}`);
 
-// 2. MIDDLEWARE SETUP
 app.use(cors());
-app.use(cors());
+// Explicit 50mb limit for Large Photos (Base64)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -87,13 +87,18 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
     version: VERSION,
-    bootId: BOOT_ID, // Exposed for Auto-Update Strategy
+    bootId: BOOT_ID,
+    buildTime: BUILD_TIME,
     timestamp: new Date().toISOString()
   });
 });
 
 app.get('/api/version', (req, res) => {
-  res.json({ version: VERSION });
+  res.json({
+    version: VERSION,
+    buildTime: BUILD_TIME,
+    bootId: BOOT_ID
+  });
 });
 
 // 4. ROUTE REGISTRATION
