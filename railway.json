@@ -1,60 +1,31 @@
 {
-    "build": {
-        "builder": "NIXPACKS"
-    },
     "deploy": {
-        "healthcheckPath": "/api/health",
-        "healthcheckTimeout": 120,
+        "numKeep": 5,
         "restartPolicyType": "ON_FAILURE",
-        "restartPolicyMaxRetries": 5
+        "restartPolicyMaxRetries": 3
     },
-    "nixpacks": {
-        "phases": {
-            "setup": {
-                "nixPkgs": [
-                    "nodejs_22",
-                    "npm-9_x",
-                    "openssl",
-                    "postgresql",
-                    "chromium",
-                    "glib",
-                    "nss",
-                    "nspr",
-                    "freetype",
-                    "fontconfig",
-                    "harfbuzz",
-                    "expat",
-                    "libuuid",
-                    "libdrm",
-                    "mesa",
-                    "alsa-lib",
-                    "cups",
-                    "dbus",
-                    "at-spi2-atk",
-                    "at-spi2-core",
-                    "cairo",
-                    "pango",
-                    "gdk-pixbuf",
-                    "gtk3",
-                    "xorg.libX11",
-                    "xorg.libXcomposite",
-                    "xorg.libXdamage",
-                    "xorg.libXext",
-                    "xorg.libXfixes",
-                    "xorg.libXrandr",
-                    "xorg.libXrender",
-                    "xorg.libXScrnSaver",
-                    "xorg.libXtst",
-                    "xorg.libxcb",
-                    "xorg.libXcursor",
-                    "xorg.libXi"
-                ]
+    "build": {
+        "builder": "NIXPACKS",
+        "nixpacksPlan": {
+            "phases": {
+                "setup": {
+                    "nixPkgs": [
+                        "nodejs",
+                        "openssl"
+                    ]
+                },
+                "install": {
+                    "cmds": [
+                        "npm ci"
+                    ]
+                },
+                "build": {
+                    "cmds": [
+                        "npx prisma generate",
+                        "npm run build"
+                    ]
+                }
             }
-        },
-        "variables": {
-            "NPM_CONFIG_PRODUCTION": "false",
-            "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true",
-            "PUPPETEER_EXECUTABLE_PATH": "/usr/bin/chromium"
         }
     }
 }
