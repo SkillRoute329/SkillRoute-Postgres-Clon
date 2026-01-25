@@ -226,7 +226,10 @@ model User {
   vehicleChecks   VehicleCheck[]
 
   // Universal Extensions
+  incidentsReported Incident[]
+  incidentLogs    IncidentLog[]
   photoUrl        String?
+  avatarUrl       String?   @db.Text // Ruta local almacenamiento
   metadata        Json?     @default("{}")
   status          String    @default("ACTIVE")
 
@@ -520,6 +523,7 @@ model Vehicle {
   model          String?
   year           Int?
   features       String?  // JSON
+  docUrl         String?  @db.Text
   
   status         String   @default("OPERATIONAL") // OPERATIONAL, MAINTENANCE, STOPPED
   isActive       Boolean  @default(true)
@@ -876,4 +880,38 @@ model ControlEvent {
   reason      String
   metadata    Json?    @default("{}")
   createdAt   DateTime @default(now())
+}
+
+// 23. Incidentes (Sistema Unificado de Activos)
+model Incident {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int      @default(1)
+  
+  title       String
+  description String   @db.Text
+  status      String   @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  priority    String   @default("MEDIUM")
+  
+  photoUrl    String?  @db.Text // Ruta local /uploads/incidents/...
+  
+  reportedBy  Int
+  reporter    User     @relation(fields: [reportedBy], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  logs        IncidentLog[]
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model IncidentLog {
+  id         Int      @id @default(autoincrement())
+  incidentId Int
+  actorId    Int
+  action     String   // "CREATE", "UPDATE", "UPLOAD_PHOTO", "RESOLVE"
+  note       String?  @db.Text
+  timestamp  DateTime @default(now())
+  
+  incident   Incident @relation(fields: [incidentId], references: [id])
+  actor      User     @relation(fields: [actorId], references: [id])
 }
