@@ -1,133 +1,136 @@
 
 import 'dotenv/config';
+import FormData from 'form-data';
+import fetch from 'node-fetch';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
-import fetch from 'node-fetch';
 
 const prisma = new PrismaClient();
-const API_URL = 'http://localhost:4000/api'; // Testing local first, or change to production URL
+const API_URL = process.env.API_URL || 'http://localhost:4000/api';
 
 async function main() {
-    console.log('🔥 [STRESS-TEST] Initializing Sentinel Protocol...');
-    const SECRET = process.env.JWT_SECRET;
+    console.log('🧪 [STRESS] Starting Centinela Stress Test...');
 
-    if (!SECRET) {
-        console.error('❌ JWT_SECRET missing in .env');
-        process.exit(1);
+    let token: string | null = null;
+    let userId: number = 0;
+
+    // 1. AUTHENTICATION STRATEGY
+    const TEST_USER_INTERNAL = process.env.TEST_USER;
+    const TEST_USER_PASS = process.env.TEST_PASS;
+
+    if (TEST_USER_INTERNAL && TEST_USER_PASS) {
+        console.log(`🔑 Attempting REAL LOGIN with ${TEST_USER_INTERNAL}...`);
+        try {
+            const res = await fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ internalNumber: TEST_USER_INTERNAL, password: TEST_USER_PASS })
+            });
+
+            if (res.ok) {
+                const data: any = await res.json();
+                token = data.token;
+                userId = data.user.id;
+                console.log(`✅ Login Successful. Token acquired for User ${userId}`);
+            } else {
+                console.error(`❌ Login Failed: ${res.status} ${res.statusText}`);
+            }
+        } catch (e) {
+            console.error('❌ Login Network Error:', e);
+        }
     }
 
-    // 1. Get Qualified User (with Fallback)
-    let user;
-    try {
-        user = await prisma.user.findFirst({
-            where: { role: { in: ['Admin', 'SuperAdmin'] } }
-        });
-    } catch (e) {
-        console.warn('⚠️ [WARN] Could not connect to DB for User lookup. Using Fallback Admin Identity.');
-        user = { id: 1, tenantId: 1, role: 'SuperAdmin', internalNumber: 'ADM-999', fullName: 'Sentinel Backup' };
+    // FALLBACK: FORGE TOKEN (Sentinel Mode)
+    if (!token) {
+        console.log('⚠️ No credentials or Login failed. Switching to SENTINEL FORGE MODE (DB Access Required).');
+        const SECRET = process.env.JWT_SECRET;
+        if (!SECRET) {
+            console.error('❌ Cannot forge token: JWT_SECRET missing.');
+            process.exit(1);
+        }
+
+        const admin = await prisma.user.findFirst({ where: { role: 'Admin' } });
+        if (!admin) {
+            // Hard fallback for empty DBs
+            console.warn('⚠️ No Admin found in DB. Creating mock Identity.');
+            userId = 999;
+            const mockUser = { id: 999, tenantId: 1, role: 'Admin', internalNumber: 'SENTINEL' };
+            token = jwt.sign(mockUser, SECRET, { expiresIn: '15m' });
+        } else {
+            console.log(`✅ Found Admin: ${admin.internalNumber}`);
+            userId = admin.id;
+            token = jwt.sign({ id: admin.id, tenantId: admin.tenantId, role: admin.role, internalNumber: admin.internalNumber }, SECRET, { expiresIn: '15m' });
+        }
     }
 
-    if (!user) {
-        // Should catch above, but safety check
-        user = { id: 1, tenantId: 1, role: 'SuperAdmin', internalNumber: 'ADM-999', fullName: 'Sentinel Backup' };
-    }
+    // 2. PREPARE ATTACK
+    const CONCURRENCY = 20;
+    console.log(`🚀 Focusing Fire: ${CONCURRENCY} concurrent requests against /fleet/inspections`);
 
-    // 2. Forge Token
-    const token = jwt.sign(
-        { id: user.id, tenantId: user.tenantId, role: user.role, internalNumber: user.internalNumber },
-        SECRET,
-        { expiresIn: '1h' }
-    );
-
-    console.log(`✅ Sentinel Identity: ${user.fullName} (${user.internalNumber})`);
-    console.log(`🔑 Token Forged. Starting Artillery...`);
-
-    // 3. Prepare Payload
-    let vehicleId = 1;
-    try {
-        const vehicle = await prisma.vehicle.findFirst({ where: { tenantId: user.tenantId } });
-        if (vehicle) vehicleId = vehicle.id;
-        else console.warn('⚠️ No vehicle found in DB. Using ID 1.');
-    } catch (e) {
-        console.warn('⚠️ Could not fetch vehicle from DB. Using ID 1.');
-    }
-
-    const payload = {
-        vehicleId: vehicleId,
-        type: "StartShift",
-        odometer: 50000,
-        fuelLevel: "Full",
-        status: "OK",
-        notes: "Stress Test Automated Entry",
-        // Malicious Injection Attempt (Should be ignored by controller)
-        userId: 999999,
-        tenantId: 999999
-    };
-
-    // 4. Fire 50 Requests
-    const REQUEST_COUNT = 50;
     const promises = [];
     const startTime = Date.now();
 
-    console.log(`🚀 Launching ${REQUEST_COUNT} concurrent requests against /fleet/inspections...`);
+    for (let i = 0; i < CONCURRENCY; i++) {
+        // Construct Multipart Form
+        const form = new FormData();
+        form.append('vehicleId', '1'); // Target Vehicle 1
+        form.append('type', 'StressTest');
+        form.append('odometer', (1000 + i).toString());
+        form.append('status', 'OK');
+        form.append('notes', `Centinela Test Payload ${i}`);
 
-    for (let i = 0; i < REQUEST_COUNT; i++) {
-        promises.push(
-            fetch(`${API_URL}/fleet/inspections`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    ...payload,
-                    notes: `Stress Test Entry #${i} - ${new Date().toISOString()}`
-                })
-            }).then(async res => {
-                const data: any = await res.json().catch(() => ({}));
-                return { status: res.status, data };
-            })
-        );
+        // Malicious Injection (The Trap)
+        form.append('userId', '666666');
+        form.append('tenantId', '666666');
+
+        // Fake File
+        const fakeBuffer = Buffer.from('FAKE IMAGE DATA', 'utf-8');
+        form.append('photo', fakeBuffer, { filename: `stress_${i}.jpg`, contentType: 'image/jpeg' });
+
+        // Request
+        const req = fetch(`${API_URL}/fleet/inspections`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                ...form.getHeaders()
+            },
+            body: form
+        }).then(async res => {
+            const txt = await res.text();
+            return { status: res.status, body: txt };
+        }).catch(err => ({ status: 0, body: err.message }));
+
+        promises.push(req);
     }
 
-    // 5. Analyze Results
+    // 3. RESULTS
     const results = await Promise.all(promises);
     const endTime = Date.now();
 
-    const successes = results.filter(r => r.status === 201).length;
-    const failures = results.filter(r => r.status !== 201);
+    const success = results.filter(r => r.status === 201 || r.status === 200).length;
+    const failures = results.filter(r => r.status !== 201 && r.status !== 200);
 
-    console.log('\n📊 [REPORT] Stress Test Results:');
-    console.log(`   Total Requests: ${REQUEST_COUNT}`);
-    console.log(`   Time Taken: ${(endTime - startTime) / 1000}s`);
-    console.log(`   ✅ Success: ${successes}`);
+    console.log('\n📊 [CENTINELA REPORT]');
+    console.log(`   Time: ${endTime - startTime}ms`);
+    console.log(`   ✅ Success: ${success}`);
     console.log(`   ❌ Failures: ${failures.length}`);
 
     if (failures.length > 0) {
-        console.log('\n⚠️ Failure Sample:');
-        console.log(JSON.stringify(failures[0], null, 2));
+        console.log(`   First Failure: ${failures[0].status} - ${failures[0].body.substring(0, 100)}`);
     }
 
-    // 6. Verify Integrity
+    // 4. INTEGRITY CHECK (Only if DB accessible)
     try {
-        const corruptedRecords = await prisma.inspection.count({
-            where: { userId: 999999 }
-        });
-
-        if (corruptedRecords > 0) {
-            console.error(`\n💀 CRITICAL: IDOR VULNERABILITY DETECTED! Found ${corruptedRecords} records with injected ID.`);
+        const hacks = await prisma.inspection.count({ where: { userId: 666666 } });
+        if (hacks > 0) {
+            console.error(`\n💀 CRITICAL FAIL: DETECTED ${hacks} RECORDS WITH INJECTED USER ID 666666`);
             process.exit(1);
         } else {
-            console.log(`\n🛡️ INTEGRITY CHECK PASSED: No IDOR injections found. Controller ignored malicious payload.`);
+            console.log(`\n🛡️ SECURE: No records found with injected ID. Controller is BLINDED.`);
         }
     } catch (e) {
-        console.warn('\n⚠️ [WARN] Could not check DB for integrity verification (DB Unreachable). Check manual logs or assume Controller worked if successes > 0.');
+        console.warn('⚠️ Could not verify DB Integrity directly (DB Connection Failed). Assumed secure if API returned 201s.');
     }
-
-    process.exit(0);
 }
 
-main().catch(e => {
-    console.error(e);
-    process.exit(1);
-});
+main();

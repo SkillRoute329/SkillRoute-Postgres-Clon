@@ -178,19 +178,25 @@ export const createInspection = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'User Identity Missing. Relogin required.' });
         }
 
+        // 🛡️ ZERO-TRUST SECURITY PATTERN 🛡️
+        // Explicitly sanitize input to prevent Mass Assignment / IDOR
+        const unsafePayload = { ...req.body };
+        delete unsafePayload.userId;
+        delete unsafePayload.tenantId;
+        delete unsafePayload.id;
+
         const {
             vehicleId, type, odometer, fuelLevel,
             status, notes, newDamages
-        } = req.body;
+        } = unsafePayload;
 
         // Transaction to save inspection AND damages atomically
         const result = await prisma.$transaction(async (tx) => {
             const inspection = await tx.inspection.create({
                 data: {
-                    // ZERO-TRUST SECURITY:
-                    // We explicitly ignore any 'userId' or 'tenantId' arriving in req.body
-                    tenantId: user.tenantId,
-                    userId: user.id, // Enforce Token ID
+                    // IMPOSING TRUTH from Token
+                    tenantId: user.tenantId, // ENFORCED
+                    userId: user.id, // ENFORCED
 
                     vehicleId: Number(vehicleId),
                     type,
