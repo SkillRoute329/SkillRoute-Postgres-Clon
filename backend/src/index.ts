@@ -78,16 +78,10 @@ console.log(`🌍 [BOOT] Env PORT: ${process.env.PORT} | Detected: ${PORT}`);
 
 app.use(telemetryMiddleware); // Log incoming requests
 app.use(cors({
-  origin: true, // Allow any origin dynamically (safe for this specific internal tool context)
+  origin: true, // Universal Access (Mobile/Web/Hybrid) - Reflects Origin
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin'
-  ]
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
 }));
 
 // DEBUGGER DE HEADERS
@@ -98,15 +92,22 @@ app.use((req, res, next) => {
   }
   next();
 });
+
 // Explicit 50mb limit for Large Photos (Base64)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Serve Uploads Static Directory (Persistent Storage)
 const IS_RAILWAY = fs.existsSync('/app');
-const STORAGE_PATH = IS_RAILWAY ? '/app/uploads' : path.join(process.cwd(), 'uploads');
-console.log(`📂 [SERVER] Serving Static Uploads from: ${STORAGE_PATH}`);
-app.use('/uploads', express.static(STORAGE_PATH));
+const STORAGE_ROOT = IS_RAILWAY ? '/app/uploads' : path.join(process.cwd(), 'uploads');
+
+if (!fs.existsSync(STORAGE_ROOT)) {
+  console.log(`📂 [BOOT] Creating Storage Root: ${STORAGE_ROOT}`);
+  try { fs.mkdirSync(STORAGE_ROOT, { recursive: true }); } catch (e) { console.error('Error creating uploads dir:', e); }
+}
+
+console.log(`📂 [SERVER] Serving Static Uploads from: ${STORAGE_ROOT}`);
+app.use('/uploads', express.static(STORAGE_ROOT));
 
 // 3. HEALTH CHECK (Priority #1)
 app.get('/api/health', (req, res) => {
