@@ -252,17 +252,29 @@ export const FleetService = {
             }
         });
 
-        // Manual Auth Header Injection (Bypassing default JSON headers)
-        const token = getAuthToken();
-        const headers: any = {};
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+        // NUEVA IMPLEMENTACIÓN CON FETCH (A prueba de fallos de Axios)
+        // 1. Obtener token crudo
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error("No hay token de sesión");
 
-        const res = await fetch(`${API_URL}/fleet/inspections`, {
+        // 2. Usar FETCH nativo (Bypasseando Axios)
+        // Nota: NO ponemos 'Content-Type', el navegador lo pone solo con el boundary correcto.
+        const response = await fetch(`${API_URL}/fleet/inspections`, {
             method: 'POST',
-            headers: headers,
+            headers: {
+                'Authorization': `Bearer ${token}` // <--- Inyección directa
+            },
             body: formData
-        }).then(res => handleResponse(res));
-        return res.json();
+        });
+
+        // 3. Manejo de respuesta manual
+        if (!response.ok) {
+            if (response.status === 401) throw new Error("Sesión expirada (Token rechazado por servidor)");
+            const errorText = await response.text();
+            throw new Error(`Error del servidor: ${response.status} - ${errorText}`);
+        }
+
+        return await response.json();
     },
     getRotationSchemes: async () => {
         return api.get('/fleet/rotation-schemes').then(res => res.data);

@@ -143,6 +143,14 @@ try {
 
   // Full Feature Set
   app.use('/api/tenants', tenantRoutes);
+  // LOG DE LA VERDAD (BACKEND)
+  app.use('/api/fleet/inspections', (req, res, next) => {
+    console.log('--- INTENTO DE SUBIDA ---');
+    console.log('Headers recibidos:', JSON.stringify(req.headers));
+    console.log('Tiene Authorization?:', !!req.headers.authorization);
+    next();
+  });
+
   app.use('/api/fleet', fleetRoutes);
   app.use('/api/departments', departmentRoutes);
   app.use('/api/maintenance', maintenanceRoutes);
