@@ -277,7 +277,21 @@ export const DepartmentService = {
 
 export const MaintenanceService = {
     create: async (data: any) => {
-        return api.post('/maintenance', data).then(res => res.data);
+        const formData = new FormData();
+        Object.keys(data).forEach(key => {
+            if (data[key] !== undefined && data[key] !== null) {
+                formData.append(key, data[key]);
+            }
+        });
+
+        const res = await fetch(`${API_URL}/maintenance`, {
+            method: 'POST',
+            headers: {
+                ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {})
+            },
+            body: formData
+        }).then(res => handleResponse(res));
+        return res.json();
     },
     getAll: async (filters: any = {}) => {
         const params = new URLSearchParams(filters);
@@ -287,7 +301,21 @@ export const MaintenanceService = {
         return api.get(`/maintenance/${id}`).then(res => res.data);
     },
     update: async (id: number, data: any) => {
-        return api.put(`/maintenance/${id}`, data).then(res => res.data);
+        const formData = new FormData();
+        Object.keys(data).forEach(key => {
+            if (data[key] !== undefined && data[key] !== null) {
+                formData.append(key, data[key]);
+            }
+        });
+
+        const res = await fetch(`${API_URL}/maintenance/${id}`, {
+            method: 'PUT',
+            headers: {
+                ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {})
+            },
+            body: formData
+        }).then(res => handleResponse(res));
+        return res.json();
     },
     closeTicket: async (id: number, data: { solution: string, partsUsed: any[] }) => {
         return api.post(`/maintenance/${id}/close`, data).then(res => res.data);
