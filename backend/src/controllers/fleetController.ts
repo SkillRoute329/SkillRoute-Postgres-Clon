@@ -228,15 +228,20 @@ export const createInspection = async (req: Request, res: Response) => {
 export const createVehicleCheck = async (req: Request, res: Response) => {
     try {
         const user = (req as any).user;
+
+        // HARDENED SECURITY CHECK
+        if (!user || !user.id) {
+            return res.status(401).json({ message: 'Identity Verification Failed' });
+        }
+
         const { cocheId, photos, notes, estado } = req.body;
 
-        // EMERGENCY: No complex validation, just save the raw data (Base64 supported via Json)
-        console.log(`[DEBUG] Saving VehicleCheck for Coche: ${cocheId} | User: ${user?.id}`);
+        console.log(`[DEBUG] Saving VehicleCheck for Coche: ${cocheId} | User: ${user.id}`);
 
         const check = await (prisma as any).vehicleCheck.create({
             data: {
-                tenantId: user?.tenantId || 1,
-                userId: user?.id || 0,
+                tenantId: user.tenantId,
+                userId: user.id,
                 cocheId: String(cocheId || 'S/N'),
                 fotos: photos || [],
                 notas: notes || '',
