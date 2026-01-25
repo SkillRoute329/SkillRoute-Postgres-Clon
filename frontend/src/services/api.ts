@@ -238,7 +238,31 @@ export const FleetService = {
         return api.get(`/fleet/vehicles/${vehicleId}/history`).then(res => res.data);
     },
     createInspection: async (data: any) => {
-        return api.post('/fleet/inspections', data).then(res => res.data);
+        const formData = new FormData();
+
+        Object.keys(data).forEach(key => {
+            const value = data[key];
+            if (value === undefined || value === null) return;
+
+            // Serialize objects/arrays to JSON string for backend parsing
+            if (typeof value === 'object' && !(value instanceof File) && !(value instanceof Blob)) {
+                formData.append(key, JSON.stringify(value));
+            } else {
+                formData.append(key, value);
+            }
+        });
+
+        // Manual Auth Header Injection (Bypassing default JSON headers)
+        const token = getAuthToken();
+        const headers: any = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const res = await fetch(`${API_URL}/fleet/inspections`, {
+            method: 'POST',
+            headers: headers,
+            body: formData
+        }).then(res => handleResponse(res));
+        return res.json();
     },
     getRotationSchemes: async () => {
         return api.get('/fleet/rotation-schemes').then(res => res.data);
