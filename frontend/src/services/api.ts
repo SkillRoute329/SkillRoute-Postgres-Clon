@@ -308,11 +308,13 @@ export const MaintenanceService = {
             }
         });
 
+        const token = getAuthToken();
+        const headers: any = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const res = await fetch(`${API_URL}/maintenance`, {
             method: 'POST',
-            headers: {
-                ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {})
-            },
+            headers,
             body: formData
         }).then(res => handleResponse(res));
         return res.json();
@@ -332,11 +334,13 @@ export const MaintenanceService = {
             }
         });
 
+        const token = getAuthToken();
+        const headers: any = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const res = await fetch(`${API_URL}/maintenance/${id}`, {
             method: 'PUT',
-            headers: {
-                ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {})
-            },
+            headers,
             body: formData
         }).then(res => handleResponse(res));
         return res.json();
@@ -347,11 +351,14 @@ export const MaintenanceService = {
     uploadFile: async (file: File) => {
         const formData = new FormData();
         formData.append('file', file);
+
+        const token = getAuthToken();
+        const headers: any = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const res = await fetch(`${API_URL}/upload`, {
             method: 'POST',
-            headers: {
-                ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {})
-            },
+            headers,
             body: formData
         }).then(handleResponse);
         return res.json();
