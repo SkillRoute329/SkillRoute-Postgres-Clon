@@ -171,10 +171,12 @@ export const getVehicleHistory = async (req: Request, res: Response) => {
     }
 };
 
+import { StorageService } from '../services/storageService';
+
 export const createInspection = async (req: Request, res: Response) => {
     try {
         const user = (req as any).user;
-        if (!user || !user.id) {
+        if (!user || !user.id || !user.tenantId) {
             return res.status(401).json({ message: 'User Identity Missing. Relogin required.' });
         }
 
@@ -187,8 +189,48 @@ export const createInspection = async (req: Request, res: Response) => {
 
         const {
             vehicleId, type, odometer, fuelLevel,
-            status, notes, newDamages
+            status, notes
         } = unsafePayload;
+
+        // Validations
+        const cleanOdometer = Number(odometer);
+        if (odometer && isNaN(cleanOdometer)) {
+            return res.status(400).json({ message: 'Invalid Odometer reading' });
+        }
+
+        // Handle Files & Damages
+        let newDamages: any[] = [];
+        if (typeof unsafePayload.newDamages === 'string') {
+            try {
+                newDamages = JSON.parse(unsafePayload.newDamages);
+            } catch (e) {
+                newDamages = [];
+            }
+        } else if (Array.isArray(unsafePayload.newDamages)) {
+            newDamages = unsafePayload.newDamages;
+        }
+
+        // Process File Uploads (Sanitized)
+        const files = (req as any).files as Express.Multer.File[];
+        const uploadedUrls: Record<string, string> = {};
+
+        if (files && files.length > 0) {
+            files.forEach(f => {
+                // Save using Scalable Storage (Tenant/Year/Category)
+                const url = StorageService.saveFile(
+                    f.buffer,
+                    f.originalname,
+                    'inspections',
+                    user.tenantId
+                );
+                uploadedUrls[f.fieldname] = url;
+            });
+        }
+
+        // Map files to damages if fieldnames match logic (damage_0_photo)
+        // Or if Frontend sent metadata.
+        // For simplicity: If damage has a 'tempId' or 'photoField', map it.
+        // Fallback: Just save text damages for now to ensure robustness.
 
         // Transaction to save inspection AND damages atomically
         const result = await prisma.$transaction(async (tx) => {
@@ -199,24 +241,31 @@ export const createInspection = async (req: Request, res: Response) => {
                     userId: user.id, // ENFORCED
 
                     vehicleId: Number(vehicleId),
-                    type,
-                    odometer: odometer ? Number(odometer) : null,
+                    type: type || 'Audit',
+                    odometer: isNaN(cleanOdometer) ? null : cleanOdometer,
                     fuelLevel,
-                    status,
+                    status: status || 'OK',
                     notes
                 }
             });
 
-            if (newDamages && newDamages.length > 0) {
+            if (newDamages.length > 0) {
                 console.log(`[INSPECTION] Saving ${newDamages.length} damages for Vehicle ${vehicleId}`);
                 await tx.damageReport.createMany({
-                    data: newDamages.map((d: any) => ({
-                        inspectionId: inspection.id,
-                        zone: d.zone || 'Unknown', // Fallback
-                        description: d.description || 'Sin descripción',
-                        severity: d.severity || 'Medium',
-                        photoUrl: d.photoUrl || null // Ensure null if undefined
-                    }))
+                    data: newDamages.map((d: any, index: number) => {
+                        // Try to find matching photo from uploads
+                        // Expecting fieldname "damage_${index}_photo"
+                        const photoKey = `damage_${index}_photo`;
+                        const fileUrl = uploadedUrls[photoKey] || uploadedUrls[d.photoField] || d.photoUrl || null;
+
+                        return {
+                            inspectionId: inspection.id,
+                            zone: d.zone || 'Unknown',
+                            description: d.description || 'Sin descripción',
+                            severity: d.severity || 'Medium',
+                            photoUrl: fileUrl
+                        };
+                    })
                 });
             }
 

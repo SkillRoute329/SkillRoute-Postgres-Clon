@@ -26,27 +26,35 @@ export const StorageService = {
      * Saves a buffer to disk and returns the relative URL path
      * @param fileBuffer Buffer of the file
      * @param originalName Original filename to extract extension
-     * @param folder Subfolder (e.g. 'avatars', 'incidents')
+     * @param folder Category/Folder (e.g. 'avatars', 'incidents')
+     * @param tenantId Optional Tenant ID for multi-tenant isolation
      */
-    saveFile: (fileBuffer: Buffer, originalName: string, folder: string = 'misc'): string => {
-        // 1. Ensure Folder Exists
-        const targetDir = path.join(STORAGE_ROOT, folder);
+    saveFile: (fileBuffer: Buffer, originalName: string, folder: string = 'misc', tenantId?: number | string): string => {
+        // 1. Determine Hierarchy
+        // Structure: /app/uploads/{tenantId|global}/{folder}/{year}/filename
+        const tid = tenantId ? String(tenantId) : 'global';
+        const year = new Date().getFullYear().toString();
+
+        const relativeDir = path.join(tid, folder, year);
+        const targetDir = path.join(STORAGE_ROOT, relativeDir);
+
+        // 2. Ensure Folder Exists
         if (!fs.existsSync(targetDir)) {
             fs.mkdirSync(targetDir, { recursive: true });
         }
 
-        // 2. Generate Unique Name
+        // 3. Generate Unique Name
         const ext = path.extname(originalName) || '.jpg';
         const fileName = `${uuidv4()}-${Date.now()}${ext}`;
         const finalPath = path.join(targetDir, fileName);
 
-        // 3. Write Info
+        // 4. Write Info
         console.log(`💾 [STORAGE] Writing ${fileBuffer.length} bytes to ${finalPath}`);
         fs.writeFileSync(finalPath, fileBuffer);
 
-        // 4. Return Public URL Path (Relative)
-        // e.g. /uploads/incidents/abc-123.jpg
-        return `/uploads/${folder}/${fileName}`;
+        // 5. Return Public URL Path (web-friendly forward slashes)
+        // e.g. /uploads/1/incidents/2026/abc-123.jpg
+        return `/uploads/${tid}/${folder}/${year}/${fileName}`.replace(/\\/g, '/');
     },
 
     /**

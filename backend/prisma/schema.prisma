@@ -690,32 +690,45 @@ model ServiceRange {
 model Inspection {
   id          Int      @id @default(autoincrement())
   tenantId    Int
+  
   vehicleId   Int
-  userId      Int      // Inspector Driver
-  type        String   // 'StartShift', 'EndShift', 'Audit'
-  odometer    Int?     
-  fuelLevel   String?  // 'Full', '3/4', '1/2', 'Reserve'
-  status      String   // 'OK', 'WithDamages'
-  notes       String?
+  userId      Int
+  
+  type        String   // StartShift, EndShift, Audit
+  odometer    Float?
+  fuelLevel   String?
+  
+  status      String   @default("OK") // OK, WithDamages
+  notes       String?  @db.Text
+  
   createdAt   DateTime @default(now())
-
-  tenant      Tenant        @relation(fields: [tenantId], references: [id])
-  vehicle     Vehicle       @relation(fields: [vehicleId], references: [id])
-  user        User          @relation(fields: [userId], references: [id])
+  
+  // Relations
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
   damages     DamageReport[]
+
+  @@index([vehicleId])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([createdAt])
 }
 
 // 12. Reporte de Daños (Evidencia)
 model DamageReport {
   id            Int      @id @default(autoincrement())
+  
   inspectionId  Int
-  zone          String   // 'Front', 'Right', 'Left', 'Back', 'Interior'
-  severity      String   @default("Medium") // Low, Medium, High
+  
+  zone          String
   description   String   @db.Text
+  severity      String   @default("Medium")
   photoUrl      String?  @db.Text
   createdAt     DateTime @default(now())
   
-  inspection    Inspection @relation(fields: [inspectionId], references: [id])
+  inspection    Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
 }
 
 // 14. Boletines (Registro de Tiempos Reales)

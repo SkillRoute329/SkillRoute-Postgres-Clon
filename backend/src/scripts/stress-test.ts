@@ -49,7 +49,13 @@ async function main() {
             process.exit(1);
         }
 
-        const admin = await prisma.user.findFirst({ where: { role: 'Admin' } });
+        let admin = null;
+        try {
+            admin = await prisma.user.findFirst({ where: { role: 'Admin' } });
+        } catch (e) {
+            console.warn('⚠️ DB Unreachable for User Lookup. Using Mock Admin.');
+        }
+
         if (!admin) {
             // Hard fallback for empty DBs
             console.warn('⚠️ No Admin found in DB. Creating mock Identity.');
@@ -83,9 +89,15 @@ async function main() {
         form.append('userId', '666666');
         form.append('tenantId', '666666');
 
-        // Fake File
+        // Complex Data Structure for Damages
+        const damages = [
+            { zone: 'Front', description: 'Stress Test Scratch', severity: 'Low' }
+        ];
+        form.append('newDamages', JSON.stringify(damages));
+
+        // File matched to damage index 0
         const fakeBuffer = Buffer.from('FAKE IMAGE DATA', 'utf-8');
-        form.append('photo', fakeBuffer, { filename: `stress_${i}.jpg`, contentType: 'image/jpeg' });
+        form.append('damage_0_photo', fakeBuffer, { filename: `stress_${i}.jpg`, contentType: 'image/jpeg' });
 
         // Request
         const req = fetch(`${API_URL}/fleet/inspections`, {
