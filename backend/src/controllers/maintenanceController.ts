@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { StorageService } from '../services/storageService';
 
 const prisma = new PrismaClient();
 
@@ -12,12 +13,37 @@ export const maintenanceController = {
                 departmentId,
                 title,
                 description,
-                priority,
-                photoUrl,
-                evidencePhotos
+                priority
             } = req.body;
 
             const userId = (req as any).user.id;
+            const files = (req as any).files as Express.Multer.File[];
+
+            let photoUrl = req.body.photoUrl; // Allow string URL (legacy)
+            let evidencePhotos = req.body.evidencePhotos; // Allow string (legacy)
+
+            // Handle Files
+            if (files && files.length > 0) {
+                const evidenceList: string[] = [];
+
+                files.forEach(f => {
+                    const url = StorageService.saveFile(f.buffer, f.originalname, 'maintenance');
+
+                    if (f.fieldname === 'photo' || f.fieldname === 'photoUrl') {
+                        photoUrl = url;
+                    } else {
+                        // All other files go to evidence
+                        evidenceList.push(url);
+                    }
+                });
+
+                if (evidenceList.length > 0) {
+                    // Update evidencePhotos
+                    // If legacy string exists, try to parse and append? Or overwrite.
+                    // For now, let's treat file upload as primary.
+                    evidencePhotos = JSON.stringify(evidenceList);
+                }
+            }
 
             const report = await prisma.maintenanceReport.create({
                 data: {
@@ -28,7 +54,7 @@ export const maintenanceController = {
                     description,
                     priority: priority || 'NORMAL',
                     photoUrl,
-                    evidencePhotos, // Map Base64 string directly
+                    evidencePhotos, // Map Base64 string directly or JSON array
                     status: 'ENVIADO'
                 },
                 include: {
