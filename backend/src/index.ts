@@ -77,7 +77,27 @@ import { DoctorController } from './controllers/DoctorController';
 console.log(`🌍 [BOOT] Env PORT: ${process.env.PORT} | Detected: ${PORT}`);
 
 app.use(telemetryMiddleware); // Log incoming requests
-app.use(cors());
+app.use(cors({
+  origin: true, // Allow any origin dynamically (safe for this specific internal tool context)
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin'
+  ]
+}));
+
+// DEBUGGER DE HEADERS
+app.use((req, res, next) => {
+  if (req.method !== 'OPTIONS') { // Reduce noise
+    console.log(`[REQUEST] ${req.method} ${req.path}`);
+    console.log('[HEADERS] Auth:', req.headers.authorization ? 'PRESENT' : 'MISSING');
+  }
+  next();
+});
 // Explicit 50mb limit for Large Photos (Base64)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
