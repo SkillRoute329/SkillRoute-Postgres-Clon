@@ -4,6 +4,7 @@ import { Camera, Save, ArrowLeft, Bus, AlertTriangle, ShieldCheck } from 'lucide
 import { useNavigate } from 'react-router-dom';
 import { MaintenanceService, FleetService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { UniversalImageUploader } from '../../components/common/UniversalImageUploader';
 
 const NewReport = () => {
     const navigate = useNavigate();
@@ -23,24 +24,7 @@ const NewReport = () => {
         FleetService.getVehicles().then(setVehicles).catch(console.error);
     }, []);
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setLoading(true);
-            try {
-                // Upload to Cloud (Simulated)
-                const res = await MaintenanceService.uploadFile(file);
-                if (res.url) {
-                    setFormData({ ...formData, evidencePhotos: res.url });
-                }
-            } catch (error) {
-                console.error("Upload error", error);
-                alert("Error subiendo imagen. Intente nuevamente.");
-            } finally {
-                setLoading(false);
-            }
-        }
-    };
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -130,24 +114,12 @@ const NewReport = () => {
 
                     {/* Foto */}
                     <div>
-                        <label className="block text-sm font-bold text-slate-300 mb-2 uppercase tracking-widest text-[10px]">Foto de Evidencia (Opcional)</label>
-                        <div className="flex items-center gap-4">
-                            <label className="flex-1 flex flex-col items-center justify-center gap-2 p-6 bg-slate-800/50 border-2 border-dashed border-slate-700 rounded-2xl hover:border-primary-500 cursor-pointer transition-all group">
-                                <Camera className="w-8 h-8 text-slate-500 group-hover:text-primary-400" />
-                                <span className="text-xs text-slate-500 font-bold uppercase">Capturar Foto</span>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={handleImageUpload}
-                                />
-                            </label>
-                            {formData.evidencePhotos && (
-                                <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-primary-500 shrink-0">
-                                    <img src={formData.evidencePhotos} alt="Preview" className="w-full h-full object-cover" />
-                                </div>
-                            )}
-                        </div>
+                        <UniversalImageUploader
+                            label="Foto de Evidencia (Opcional)"
+                            folder="mantenimiento"
+                            onUploadComplete={(url) => setFormData(prev => ({ ...prev, evidencePhotos: url }))}
+                            currentImageUrl={formData.evidencePhotos}
+                        />
                     </div>
 
                     {/* Prioridad */}

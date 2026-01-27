@@ -5,6 +5,9 @@ import { UserService } from '../services/api';
 import ResetApp from '../components/ResetApp';
 import BuildTag from '../components/BuildTag';
 import { setAuthData } from '../utils/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../config/firebase';
 
 const LoginScreen = () => {
     const [internalNumber, setInternalNumber] = useState('');
@@ -28,19 +31,41 @@ const LoginScreen = () => {
             const data = await UserService.login(internalNumber, password, companySlug || undefined);
 
             // Store auth data using context
-            // Store auth data directly to localStorage to avoid React State updates during page unload
-            setAuthData(data.token, data.user);
+            // 1. Firebase Auth Login (Direct to Google Cloud)
+            const userCredential = await signInWithEmailAndPassword(auth, internalNumber, password);
+            const firebaseUser = userCredential.user;
+            const token = await firebaseUser.getIdToken();
 
-            // Show success animation
+            // 2. Fetch User Profile from Firestore (for Role & Name)
+            // (Our create_admin_user script created this doc)
+            const userDocRef = doc(db, 'users', firebaseUser.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            let userData = userDoc.exists() ? userDoc.data() : {};
+
+            // Fallback for Admin if Firestore doc missing (Emergency Mode)
+            if (!userDoc.exists() && internalNumber.includes('admin')) {
+                userData = { role: 'ADMIN', fullName: 'Super Admin Recovered' };
+            }
+
+            const appUser = {
+                id: firebaseUser.uid, // Use string UID
+                email: firebaseUser.email,
+                fullName: userData.fullName || 'Usuario',
+                role: userData.role || 'User',
+                internalNumber: userData.internalNumber || '',
+                tenant: { id: 1, name: 'UCOT', slug: 'ucot' } // Hardcoded for emergency
+            };
+
+            // 3. Persist Session
+            setAuthData(token, appUser);
+
+            // 4. Success UI & Redirect
             setIsSuccess(true);
-
-            // Small delay to let the animation show (and let state propagate) before hard reload
             setTimeout(() => {
-                if (['Admin', 'SuperAdmin', 'Inspector'].includes(data.user.role)) {
-                    // Admins & Inspectors go to Admin/Operations Dashboard
+                if (['Admin', 'SuperAdmin', 'Inspector', 'ADMIN'].includes(appUser.role)) {
                     window.location.href = '/dashboard/admin/shifts';
                 } else {
-                    // Drivers/Users go to My Shifts
                     window.location.href = '/dashboard/my-shifts';
                 }
             }, 800);
@@ -172,7 +197,7 @@ const LoginScreen = () => {
                             <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
                         ) : (
                             <>
-                                Ingresar <LogIn className="w-4 h-4" />
+                                Ingresar (Cloud) <LogIn className="w-4 h-4" />
                             </>
                         )}
                     </button>

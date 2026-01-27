@@ -1,6 +1,6 @@
 
 
-const URL = 'https://transformafacil-20-production.up.railway.app/api/health';
+const URL = 'https://ucot-gestor-cloud.web.app/api/health';
 
 console.log('Checking ' + URL);
 

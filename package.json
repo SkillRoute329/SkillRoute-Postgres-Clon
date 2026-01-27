@@ -1,25 +1,17 @@
 {
-    "name": "transformafacil-monorepo",
-    "version": "1.0.1-CACHEBUST-1737702108000",
+    "name": "transformafacil-cloud",
+    "version": "2.0.0",
     "private": true,
-    "description": "Root package for Railway deployment - NIXPACKS FORCE",
+    "description": "Cloud Native version (Firebase)",
     "scripts": {
         "install:all": "cd frontend && npm install && cd ../backend && npm install",
-        "certify": "node scripts/certify.js",
-        "postinstall": "npm run install:all",
-        "deploy:prepare": "node scripts/deploy_prepare.js",
-        "deploy:verify": "node scripts/verify_remote.js",
-        "build": "cd frontend && npm install && npm run build && cd ../backend && npm install && npx prisma generate && npm run build",
-        "start": "cd backend && node --max-old-space-size=512 dist/index.js",
-        "cache:bust": "echo 1737702108000"
+        "build": "cd frontend && npm install && npm run build && cd ../backend && npm install && npm run build",
+        "deploy": "firebase deploy"
     },
     "engines": {
         "node": ">=20.0.0"
     },
     "dependencies": {
         "lodash": "^4.17.23"
-    },
-    "keywords": [
-        "railway"
-    ]
+    }
 }

@@ -16,10 +16,39 @@ export const CloudUploadTest: React.FC = () => {
 
         try {
             console.log("🚀 Iniciando prueba de carga...");
-            const url = await StorageService.uploadSancionPhoto(file, 'TEST_DEV_001');
+            const url = await StorageService.uploadFile(file, 'sanciones', 'TEST_DEV_001');
+
+            console.log("✅ Subida exitosa. URL:", url);
             setImageUrl(url);
+
+            // Feedback explícito en pantalla
+            alert(`🎉 ¡ÉXITO! Imagen subida correctamente.\n\nURL: ${url}`);
+
         } catch (err: any) {
-            setError(err.message || 'Error desconocido');
+            console.error("❌ Fallo en la subida:", err);
+
+            let errorMessage = "Error desconocido.";
+            let userTip = "Intenta nuevamente.";
+
+            // Mapeo de errores comunes de Firebase Storage
+            if (err.code === 'storage/unauthorized') {
+                errorMessage = "⛔ ACCESO DENEGADO (403)";
+                userTip = "No tienes permiso para escribir en esta ruta ('/reportes'). Verifica las Reglas de Seguridad en Firebase Console.";
+            } else if (err.code === 'storage/canceled') {
+                errorMessage = "⏹️ Subida Cancelada";
+                userTip = "El usuario canceló la operación.";
+            } else if (err.code === 'storage/unknown') {
+                errorMessage = "❓ Error Desconocido";
+                userTip = "Ocurrió un error inesperado al conectar con el servidor.";
+            } else if (err.message && err.message.includes('network')) {
+                errorMessage = "📡 Error de Red";
+                userTip = "Verifica tu conexión a internet.";
+            } else {
+                errorMessage = err.message || errorMessage;
+            }
+
+            setError(`${errorMessage}: ${userTip}`);
+            alert(`❌ ${errorMessage}\n\n${userTip}`);
         } finally {
             setUploading(false);
         }
@@ -57,16 +86,22 @@ export const CloudUploadTest: React.FC = () => {
                 </label>
             </div>
 
+            {/* Estado de Error */}
             {error && (
-                <div style={{ marginTop: '15px', color: 'red', fontWeight: 'bold' }}>
+                <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#ffebee', color: '#c62828', borderRadius: '5px', border: '1px solid #ffcdd2', fontWeight: 'bold' }}>
                     ❌ {error}
                 </div>
             )}
 
+            {/* Estado de Éxito */}
             {imageUrl && (
-                <div style={{ marginTop: '20px' }}>
-                    <p style={{ color: 'green', fontWeight: 'bold' }}>✅ Éxito: Imagen en la Nube</p>
-                    <a href={imageUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.8em', wordBreak: 'break-all' }}>{imageUrl}</a>
+                <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#e8f5e9', borderRadius: '8px', border: '1px solid #c8e6c9' }}>
+                    <p style={{ color: '#2e7d32', fontWeight: '900', fontSize: '1.2em', margin: '0 0 10px 0' }}>
+                        🎉 ¡SUBIDA EXITOSA!
+                    </p>
+                    <a href={imageUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.8em', color: '#1565c0', wordBreak: 'break-all' }}>
+                        Ver imagen original
+                    </a>
                     <br />
                     <img
                         src={imageUrl}

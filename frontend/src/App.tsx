@@ -32,6 +32,7 @@ const UniversalPage = lazy(() => import('./pages/admin/UniversalPage'));
 const DataIngestion = lazy(() => import('./pages/admin/DataIngestion'));
 const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 const Employees = lazy(() => import('./pages/admin/Employees'));
+const SystemDoctor = lazy(() => import('./pages/SystemDoctor'));
 
 const CreateShift = lazy(() => import('./pages/user/CreateShift'));
 const Marketplace = lazy(() => import('./pages/user/Marketplace'));
@@ -105,7 +106,8 @@ function App() {
 
                   {/* Test Route for Cloud Upload */}
                   <Route path="/test-upload" element={<div className="p-4"><CloudUploadTest /></div>} />
-                  {/* Temp Public Route for Visualization */}
+                  {/* Debug Routes */}
+                  <Route path="/admin/debug" element={<SystemDoctor />} />
                   <Route path="/test-cartones" element={<div className="p-4"><AdminCartones /></div>} />
 
                   <Route path="/dashboard" element={<DashboardLayout />}>

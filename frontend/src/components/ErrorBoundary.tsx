@@ -78,35 +78,24 @@ class ErrorBoundary extends Component<Props, State> {
     public render() {
         if (this.state.hasError) {
             return (
-                <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white p-4">
-                    <div className="max-w-md w-full bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-2xl text-center">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-500/20 mb-6">
-                            <TriangleAlert className="w-8 h-8 text-red-500" />
-                        </div>
-                        <h2 className="text-2xl font-bold mb-2">¡Ups! Algo salió mal.</h2>
-                        <p className="text-slate-400 mb-6 text-sm">
-                            Hemos detectado un problema técnico. Puede deberse a una actualización reciente o un problema de conexión.
-                            <br />
-                            <span className="text-xs font-mono text-red-300 bg-red-900/20 p-1 rounded mt-2 inline-block max-w-full overflow-hidden text-ellipsis">
-                                {this.state.error?.message}
-                            </span>
-                        </p>
-
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="bg-primary-600 hover:bg-primary-500 text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2 w-full mb-3"
-                        >
-                            <RefreshCw className="w-5 h-5" />
-                            Intentar Recargar
-                        </button>
-
-                        <button
-                            onClick={this.handleHardReset}
-                            className="bg-red-900/30 hover:bg-red-900/50 text-red-200 font-medium py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2 w-full text-sm border border-red-800/50"
-                        >
-                            🛠️ Restablecimiento Completo (Soluciona Errores)
-                        </button>
+                <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-4">
+                    <h1 className="text-3xl font-bold mb-4">Algo salió mal</h1>
+                    <p className="mb-4 text-slate-400">La aplicación ha encontrado un error crítico.</p>
+                    <div className="bg-red-900/50 border border-red-500/50 p-4 rounded-lg mb-6 max-w-lg overflow-auto">
+                        <code className="text-xs text-red-200">{this.state.error && this.state.error.toString()}</code>
                     </div>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="bg-primary-600 hover:bg-primary-700 px-6 py-2 rounded-lg font-bold transition-colors"
+                    >
+                        Recargar Aplicación
+                    </button>
+                    <button
+                        onClick={this.handleHardReset}
+                        className="mt-4 text-red-400 underline text-sm"
+                    >
+                        Resetear Todo (Emergencia)
+                    </button>
                 </div>
             );
         }

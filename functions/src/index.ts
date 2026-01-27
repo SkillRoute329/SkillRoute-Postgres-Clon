@@ -9,18 +9,37 @@ if (!admin.apps.length) {
     admin.initializeApp();
 }
 
+// Routes
+import shiftRoutes from './routes/shiftRoutes';
+import fleetRoutes from './routes/fleetRoutes';
+import categoryRoutes from './routes/categoryRoutes';
+import serviceDefinitionRoutes from './routes/serviceDefinitionRoutes';
+import personnelRoutes from './routes/personnelRoutes';
+import { authMiddleware } from './middleware/authMiddleware';
+
 const app = express();
 app.use(cors({ origin: true }));
+
+// Support JSON bodies
 app.use(express.json());
 
-// Aquí importaríamos tus rutas reales.
-// Por ahora, un endpoint de salud para confirmar que Serverless funciona.
-app.get("/health", (req, res) => {
+const apiRouter = express.Router();
+
+apiRouter.get("/health", (req, res) => {
     res.json({ status: "ONLINE", mode: "SERVERLESS", timestamp: new Date() });
 });
 
-// TODO: Importar rutas de ../backend/src/routes cuando se estructure el monorepo
-// app.use('/api', apiRoutes);
+// Authenticated Routes
+apiRouter.use('/shifts', authMiddleware, shiftRoutes);
+apiRouter.use('/fleet', authMiddleware, fleetRoutes);
+apiRouter.use('/categories', authMiddleware, categoryRoutes);
+apiRouter.use('/service-definitions', authMiddleware, serviceDefinitionRoutes);
 
-// Exportar la API como Cloud Function
+// RRHH Module
+apiRouter.use('/personnel', authMiddleware, personnelRoutes);
+
+
+// Mount API
+app.use("/api", apiRouter);
+
 export const api = functions.https.onRequest(app);

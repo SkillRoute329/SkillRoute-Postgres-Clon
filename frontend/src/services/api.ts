@@ -1,7 +1,10 @@
 import { getAuthToken, clearAuthData } from '../utils/auth';
+import { auth, db } from '../config/firebase';
+import { signInWithEmailAndPassword, browserLocalPersistence } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
-// API URL apunta a Railway (Producción)
-export const API_URL = 'https://transformafacil-20-production.up.railway.app/api';
+// API URL apunta a Cloud Functions (via Hosting Rewrites)
+export const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
@@ -195,13 +198,49 @@ export const ShiftService = {
 
 export const UserService = {
     login: async (internalNumber: string, password: string, companySlug?: string) => {
-        const res = await fetch(`${API_URL}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ internalNumber, password, companySlug }),
-        });
-        if (!res.ok) throw new Error('Credenciales inválidas');
-        return res.json();
+        console.log("🔒 [Auth Strategy] Attempting Firebase Native Login...");
+        try {
+            // 1. Firebase Auth (Google Cloud)
+            // Si el input no es email, podríamos intentar construirlo, pero para Admin es email.
+            const email = internalNumber.includes('@') ? internalNumber : `${internalNumber}@ucot.net`;
+
+            // Establecer persistencia LOCAL explícitamente
+            await auth.setPersistence(browserLocalPersistence);
+
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const firebaseUser = userCredential.user;
+            const token = await firebaseUser.getIdToken();
+
+            // 2. Firestore Role
+            const userDocRef = doc(db, 'users', firebaseUser.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            let userData = userDoc.exists() ? userDoc.data() : {};
+
+            // Fallback de Emergencia
+            if (!userDoc.exists()) {
+                console.warn("⚠️ User has no Firestore Doc. Using fallback profile.");
+                userData = {
+                    fullName: firebaseUser.displayName || 'Usuario Recupeardo',
+                    role: 'ADMIN', // Asumimos Admin en emergencia si entra
+                    internalNumber: internalNumber
+                };
+            }
+
+            return {
+                token,
+                user: {
+                    id: firebaseUser.uid,
+                    ...userData,
+                    role: userData.role || 'User',
+                    tenant: { id: 1, name: 'UCOT Cloud', slug: 'ucot' }
+                }
+            };
+        } catch (error: any) {
+            console.error("❌ Firebase Auth Failed:", error);
+            // Si falla Firebase, lanzamos error (ya no intentamos Railway)
+            throw new Error(error.code === 'auth/invalid-credential' ? 'Credenciales Inválidas' : 'Error de Conexión');
+        }
     },
 
     getAll: async () => {

@@ -388,7 +388,7 @@ const AdminCartones = () => {
                                         setLoading(true);
                                         try {
                                             // Call debug endpoint directly (Bypass service layer for internal tool)
-                                            const res = await fetch('https://transformafacil-20-production.up.railway.app/api/debug/force-seed');
+                                            const res = await fetch('/api/debug/force-seed');
                                             if (res.ok) {
                                                 alert('Reparación Exitosa: Datos maestros restaurados.');
                                                 loadSavedCartons(); // Reload list
