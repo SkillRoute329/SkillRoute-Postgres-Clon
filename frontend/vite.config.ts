@@ -40,7 +40,7 @@ export default defineConfig({
   ],
   server: {
     host: '0.0.0.0', // 🔓 Expose to Network (Critical for Android Testing)
-    port: 5173,
+    port: 5175,
     strictPort: true,
     allowedHosts: true, // Allow 192.168.x.x
     watch: {

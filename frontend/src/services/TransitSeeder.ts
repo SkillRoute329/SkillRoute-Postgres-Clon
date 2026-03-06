@@ -181,6 +181,8 @@ export const TransitSeeder = {
               ? `${Math.floor(svc.durationMinutes / 60)}:${String(svc.durationMinutes % 60).padStart(2, '0')}`
               : '',
             kilometros: '',
+            temporada: 'VERANO_2026', // Requerido para filtro AdminCartones
+            tipo_dia: dayType === 'SABADO' ? 'SABADO' : (dayType === 'DOMINGO' || dayType === 'FESTIVO') ? 'DOMINGO' : 'HABIL',
             vigenciaDesde: Timestamp.now(),
             creadoEn: Timestamp.now(),
           },

@@ -36,6 +36,7 @@ const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 const Employees = lazy(() => import('./pages/admin/Employees'));
 const SystemDoctor = lazy(() => import('./pages/SystemDoctor'));
 
+const AdminCartones = lazy(() => import('./pages/admin/AdminCartones'));
 const CreateShift = lazy(() => import('./pages/user/CreateShift'));
 const Marketplace = lazy(() => import('./pages/user/Marketplace'));
 const MyShifts = lazy(() => import('./pages/user/MyShifts'));
@@ -147,6 +148,7 @@ function App() {
                     <Route path="admin/maintenance" element={<MaintenanceDashboard />} />
                     <Route path="admin/maintenance-system" element={<AppMaintenance />} />
                     <Route path="admin/ingestion" element={<DataIngestion />} />
+                    <Route path="admin/cartones" element={<AdminCartones />} />
                     <Route path="admin/users/create" element={<UserManagement />} />
                     <Route path="admin/employees" element={<Employees />} />
                     <Route path="admin/stress-test" element={<AdminStressTest />} />
