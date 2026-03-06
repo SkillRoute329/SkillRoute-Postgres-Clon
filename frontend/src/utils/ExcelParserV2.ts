@@ -518,30 +518,45 @@ function parseCartonSheet(sheet: XLSX.WorkSheet, sheetName: string): ServiceData
     if (!row) continue;
     const rowStr = row.join(' ').toUpperCase();
 
-    // Extract Line: "LÍNEA 300", "L. CE1B", "300", "CE1B"
-    const lineMatch = rowStr.match(/(?:L(?:Í|I)NEA|L\.?)\s*([A-Z0-9\-]+)/i);
+    // Extract Line: "LÍNEA 300", "Línea CE1B"
+    // NOTE: Only match "LÍNEA" or "LINEA" followed by the code. Do NOT match bare "L" or "L." to avoid false positives.
+    const lineMatch = rowStr.match(/(?:L[ÍI]NEA)\s+([A-Z0-9\-]{2,})/i);
     if (lineMatch) {
       lineCode = lineMatch[1].trim().toUpperCase();
-    } else {
+    }
+    // Also scan individual cells for standalone 3-digit line codes or alphanumeric codes
+    if (lineCode === 'UNKNOWN' || lineCode === 'U') {
       for (const cell of row) {
         const val = String(cell).trim();
         if (/^\d{3}[A-Z]?$/.test(val)) lineCode = val;
-        else if (/^[A-Z]{2,}\d*[A-Z]?$/i.test(val) && val.length >= 2) lineCode = val.toUpperCase(); // CE1B, DM1B, L-12B
+        else if (/^[A-Z]{2,}\d+[A-Z]?$/i.test(val) && val.length >= 3) lineCode = val.toUpperCase(); // CE1B, DM1B
       }
     }
 
     // Extract Service
-    // Patterns: "SERVICIO N° 1044", "SERVICIO 1044", "1044" (big number)
+    // Patterns: "SERVICIO N° 1044", "SERVICIO 1044", "Servicio N°" (label in one cell, value in next)
     const svcMatch = rowStr.match(/(?:SERVICIO|TURNO|SCIO)\s*(?:N[º°\.]?)?\s*(\d{3,4})/i);
     if (svcMatch) {
       serviceNumber = svcMatch[1];
-    } else if (serviceNumber === sheetName) {
-      // Check for standalone 4-digit number (common for service N)
-      for (const cell of row) {
-        const val = String(cell).trim();
-        if (/^\d{4}$/.test(val) && val !== '2026') {
-          // Avoid Year
-          serviceNumber = val;
+    } else {
+      // Check if "SERVICIO" label is in one cell and the number in a nearby cell
+      const svcLabelIdx = row.findIndex((c: any) => /SERVICIO|SCIO/i.test(String(c)));
+      if (svcLabelIdx !== -1) {
+        // Look in surrounding cells for the service number
+        for (let ci = svcLabelIdx; ci < Math.min(row.length, svcLabelIdx + 4); ci++) {
+          const val = String(row[ci]).trim();
+          if (/^\d{3,4}$/.test(val) && val !== '2026' && val !== '2025') {
+            serviceNumber = val;
+            break;
+          }
+        }
+      } else if (serviceNumber === sheetName) {
+        // Fallback: Check for standalone 4-digit number
+        for (const cell of row) {
+          const val = String(cell).trim();
+          if (/^\d{4}$/.test(val) && val !== '2026' && val !== '2025') {
+            serviceNumber = val;
+          }
         }
       }
     }
@@ -552,10 +567,16 @@ function parseCartonSheet(sheet: XLSX.WorkSheet, sheetName: string): ServiceData
   }
 
   // 2. Fila de cabeceras = nombres de paradas (ej: "TRES CRUCES", "EJIDO", "PZA INDEPEND")
+  // CRITICAL: Skip metadata rows that contain known keywords (LÍNEA, U.C.O.T., SERVICIO, etc.)
+  const METADATA_KEYWORDS =
+    /L[ÍI]NEA|U\.?C\.?O\.?T|SERVICIO|TURNO|BOLETI|HORARIO|HABILES|SABADO|FESTIVO|VERANO|INVIERNO/i;
   let headerRowIdx = -1;
   for (let r = 0; r < Math.min(data.length, 25); r++) {
     const row = data[r];
     if (!row || row.length < 2) continue;
+    const rowStr = row.join(' ').toUpperCase();
+    // Skip rows with metadata keywords — these are NOT stop name headers
+    if (METADATA_KEYWORDS.test(rowStr)) continue;
     let potentialStops = 0;
     let timeCount = 0;
     for (const cell of row) {
@@ -565,7 +586,8 @@ function parseCartonSheet(sheet: XLSX.WorkSheet, sheetName: string): ServiceData
       else if (val.length >= 2 && /[a-zA-Z]/.test(val) && !/^\d{1,2}:\d{2}$/.test(val))
         potentialStops++;
     }
-    if (potentialStops >= 2 && timeCount <= potentialStops) {
+    // Require at least 3 potential stop names to avoid false positives
+    if (potentialStops >= 3 && timeCount <= potentialStops) {
       headerRowIdx = r;
       break;
     }
@@ -588,12 +610,24 @@ function parseCartonSheet(sheet: XLSX.WorkSheet, sheetName: string): ServiceData
     const row = data[r];
     if (!row) continue;
     const rowStr = row.join(' ');
-    if (
-      rowStr.length > 50 &&
-      !/\d{1,2}:\d{2}/.test(rowStr.slice(0, 30)) &&
-      /[a-zA-Z]{5,}/.test(rowStr)
-    )
-      break;
+
+    // Skip note/instruction rows (e.g. "SACA COCHE A LA HORA: 06:38 EXPRESO...")
+    // Only break on rows that are purely text with no numeric time data in cells
+    const hasAnyTimeCell = row.some((cell: any) => isValidTime(cell));
+    if (!hasAnyTimeCell && rowStr.length > 30 && /[a-zA-Z]{5,}/.test(rowStr)) {
+      // Check if this is a footer (Total de Horas, EN CASO DE, TURNO DE, etc.)
+      const upper = rowStr.toUpperCase();
+      if (
+        upper.includes('TOTAL DE HORAS') ||
+        upper.includes('EN CASO DE') ||
+        upper.includes('OBLIGACI') ||
+        upper.includes('TURNO DE') ||
+        upper.includes('EXPENDEDORA')
+      )
+        break;
+      // Otherwise just skip the row (could be a note between time blocks)
+      continue;
+    }
 
     if (row.length > maxCols) maxCols = row.length;
     const checkpoints: string[] = [];
