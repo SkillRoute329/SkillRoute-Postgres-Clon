@@ -1,0 +1,57 @@
+{
+  "version": "2026.1",
+  "source": "UCOT Gestor Cloud – Fuente de Verdad CEO",
+  "lineas": [
+    { "id": "300", "nombre": "300", "activa": true },
+    { "id": "306", "nombre": "306", "activa": true },
+    { "id": "1041", "nombre": "1041", "activa": true },
+    { "id": "6011", "nombre": "6011", "activa": true }
+  ],
+  "puntosControl": [
+    {
+      "id": "p8oct",
+      "nombre": "8 de Octubre",
+      "alias": ["8 oct", "8 de Octubre", "8 oct / JB Ordoñez"]
+    },
+    {
+      "id": "pinstrucc",
+      "nombre": "Instrucciones y Belloni",
+      "alias": ["Instrucc y Bell", "Instrucciones"]
+    },
+    { "id": "ptrescr", "nombre": "Tres Cruces", "alias": ["Tres Cruces"] },
+    { "id": "pcrio", "nombre": "Crio. Central", "alias": ["Crio. Central", "Central"] },
+    { "id": "pgralflores", "nombre": "Gral. Flores", "alias": ["Gral Flores", "Gral. Flores"] }
+  ],
+  "servicios": [
+    {
+      "servicioId": "1041",
+      "lineaId": "1041",
+      "linea": "1041",
+      "serviceNumber": "1041",
+      "nombreCorto": "Servicio 1041",
+      "puntosControl": [
+        "Crio. Central",
+        "Bv Artigas / Zuñiga",
+        "Tres Cruces",
+        "8 de Octubre",
+        "Gral. Flores",
+        "Instrucciones y Belloni"
+      ],
+      "horarios": [
+        { "filas": ["06:38", "06:42", "07:00", "07:15", "07:30", "07:45"] },
+        { "filas": ["13:10", "13:25", "13:40", "13:55", "14:10", "14:25"] }
+      ],
+      "horaInicioReferencia": "13:10"
+    },
+    {
+      "servicioId": "300_1",
+      "lineaId": "300",
+      "linea": "300",
+      "serviceNumber": "1",
+      "nombreCorto": "300 - 1",
+      "puntosControl": ["Crio. Central", "8 de Octubre", "Tres Cruces", "Gral. Flores"],
+      "horarios": [{ "filas": ["06:00", "06:20", "06:40", "07:00"] }],
+      "horaInicioReferencia": "06:00"
+    }
+  ]
+}

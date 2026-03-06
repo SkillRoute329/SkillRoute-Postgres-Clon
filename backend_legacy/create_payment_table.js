@@ -2,15 +2,15 @@ require('dotenv').config();
 const { Client } = require('pg');
 
 const client = new Client({
-    connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_URL,
 });
 
 async function run() {
-    try {
-        await client.connect();
-        console.log('Connected to DB');
+  try {
+    await client.connect();
+    console.log('Connected to DB');
 
-        const query = `
+    const query = `
             CREATE TABLE IF NOT EXISTS "Payment" (
                 "id" SERIAL PRIMARY KEY,
                 "userId" INTEGER NOT NULL,
@@ -22,14 +22,14 @@ async function run() {
             );
         `;
 
-        await client.query(query);
-        console.log('Table Payment created successfully');
+    await client.query(query);
+    console.log('Table Payment created successfully');
 
-        await client.end();
-    } catch (e) {
-        console.error('Error:', e);
-        process.exit(1);
-    }
+    await client.end();
+  } catch (e) {
+    console.error('Error:', e);
+    process.exit(1);
+  }
 }
 
 run();

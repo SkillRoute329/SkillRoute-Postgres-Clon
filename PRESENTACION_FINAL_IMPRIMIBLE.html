@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TransForma - Gestión en Movimiento</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap');
+
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: white;
+        color: #1e293b;
+        margin: 0;
+        padding: 0;
+        line-height: 1.5;
+      }
+
+      .a4-page {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0 auto;
+        background: white;
+        padding: 20mm;
+        box-sizing: border-box;
+        position: relative;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+      }
+
+      @media print {
+        body {
+          background: none;
+        }
+
+        .a4-page {
+          width: 100%;
+          margin: 0;
+          box-shadow: none;
+          page-break-after: always;
+        }
+      }
+
+      /* HEADER */
+      .header {
+        border-bottom: 2px solid #2563eb;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+      }
+
+      .logo h1 {
+        font-size: 24pt;
+        font-weight: 900;
+        margin: 0;
+        color: #0f172a;
+        letter-spacing: -1px;
+        text-transform: none;
+        /* Respect Case */
+      }
+
+      .logo span {
+        color: #2563eb;
+      }
+
+      .logo .tagline {
+        font-size: 10pt;
+        color: #2563eb;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-top: 5px;
+      }
+
+      .meta {
+        text-align: right;
+        font-size: 9pt;
+        color: #64748b;
+      }
+
+      /* CONTENT */
+      h2 {
+        font-size: 14pt;
+        color: #2563eb;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-left: 5px solid #2563eb;
+        padding-left: 10px;
+        margin-top: 30px;
+        margin-bottom: 15px;
+      }
+
+      p {
+        font-size: 10pt;
+        color: #334155;
+        margin-bottom: 10px;
+        text-align: justify;
+      }
+
+      /* FEATURE GRID */
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+
+      .card {
+        background: #f8fafc;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+      }
+
+      .card h3 {
+        margin: 0 0 5px 0;
+        font-size: 11pt;
+        color: #0f172a;
+      }
+
+      .card p {
+        font-size: 9pt;
+        margin: 0;
+      }
+
+      /* IMAGES */
+      .screenshot-container {
+        width: 100%;
+        margin-bottom: 20px;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .screenshot-container img {
+        width: 100%;
+        display: block;
+      }
+
+      .img-caption {
+        background: #1e293b;
+        color: white;
+        font-size: 8pt;
+        padding: 5px 10px;
+        text-align: right;
+        font-weight: bold;
+      }
+
+      .highlight-box {
+        background: #eff6ff;
+        border-left: 4px solid #3b82f6;
+        padding: 10px;
+        font-size: 10pt;
+        font-style: italic;
+        margin: 20px 0;
+      }
+
+      .footer {
+        position: absolute;
+        bottom: 20mm;
+        left: 20mm;
+        right: 20mm;
+        border-top: 1px solid #e2e8f0;
+        padding-top: 10px;
+        font-size: 8pt;
+        color: #94a3b8;
+        display: flex;
+        justify-content: space-between;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- PAGE 1: RESUMEN Y ESTRATEGIA -->
+    <div class="a4-page">
+      <div class="header">
+        <div class="logo">
+          <h1>TransForma <span>v3.0</span></h1>
+          <div class="tagline">GESTIÓN EN MOVIMIENTO</div>
+        </div>
+        <div class="meta">
+          <strong>Informe Técnico Ejecutivo</strong><br />
+          Fecha: 27 de Enero, 2026<br />
+          Estado: PRODUCCIÓN (Estable)
+        </div>
+      </div>
+
+      <div class="highlight-box">
+        "No estamos simplemente digitalizando papeles; estamos descentralizando la inteligencia
+        operativa de UCOT para que cada decisión esté respaldada por datos en tiempo real."
+      </div>
+
+      <h2>1. La Solución</h2>
+      <p>
+        En respuesta a la necesidad crítica de modernización, presentamos
+        <strong>TransForma</strong>, una plataforma "Cloud-Native" diseñada para operar en el
+        entorno dinámico y exigente del transporte público. A diferencia de los sistemas heredados,
+        esta solución garantiza la continuidad operativa incluso en condiciones de conectividad nula
+        ("Offline-First"), sincronizando datos automáticamente cuando la red se restablece.
+      </p>
+
+      <h2>2. Innovaciones Clave</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>🚀 Matriz de Servicio Dinámica</h3>
+          <p>
+            Abandono total de las planillas Excel estáticas. Visualización en tiempo real de turnos,
+            frecuencias y asignaciones con un motor de filtrado instantáneo.
+          </p>
+        </div>
+        <div class="card">
+          <h3>🛡️ Resiliencia "Zero-Downtime"</h3>
+          <p>
+            Arquitectura híbrida. Si el servidor central cae o el bus entra en zona sin señal, la
+            App sigue funcionando localmente sin pérdida de datos.
+          </p>
+        </div>
+        <div class="card">
+          <h3>👥 Autogestión del Personal</h3>
+          <p>
+            Cada conductor posee un portal personal ("Mi Espacio") para consultar turnos, solicitar
+            cambios y ver su balance, reduciendo la carga administrativa en oficina.
+          </p>
+        </div>
+        <div class="card">
+          <h3>🔧 Flota Inteligente</h3>
+          <p>
+            Reporte de incidencias con evidencia fotográfica geolocalizada. Semaforización
+            automática del estado de los coches (Verde/Amarillo/Rojo).
+          </p>
+        </div>
+      </div>
+
+      <h2>3. Portal de Acceso Unificado</h2>
+      <p>
+        La puerta de entrada al sistema combina seguridad de nivel empresarial con una experiencia
+        de usuario fluida.
+      </p>
+
+      <div class="screenshot-container">
+        <img src="presentation_assets/1_Portada_Login.png" alt="Pantalla de Login" />
+        <div class="img-caption">FIG 1. PANTALLA DE ACCESO SEGURO CON INDICADORES DE ESTADO</div>
+      </div>
+
+      <div class="footer">
+        <span>UCOT - Departamento de Tecnología</span>
+        <span>Página 1 de 2</span>
+      </div>
+    </div>
+
+    <!-- PAGE 2: OPERACIÓN Y VISUALES -->
+    <div class="a4-page">
+      <div class="header">
+        <div class="logo">
+          <h1>TransForma</h1>
+          <div class="tagline">GESTIÓN EN MOVIMIENTO</div>
+        </div>
+        <div class="meta">Operación en Tiempo Real</div>
+      </div>
+
+      <h2>4. Control de Tráfico (Dashboard)</h2>
+      <p>
+        El corazón de la operación. Este panel permite a los inspectores y jefes de tráfico
+        visualizar la totalidad del servicio diario en una sola pantalla. Los indicadores de color
+        alertan sobre retrasos acumulados o huecos en la frecuencia.
+      </p>
+
+      <div class="screenshot-container">
+        <img src="presentation_assets/2_Matriz_Operativa.png" alt="Matriz de Servicios" />
+        <div class="img-caption">FIG 2. MATRIZ DE SERVICIOS EN TIEMPO REAL</div>
+      </div>
+
+      <h2>5. Gestión de Mantenimiento</h2>
+      <p>
+        La comunicación entre Tráfico y Taller fluye sin intermediarios. Un inspector detecta una
+        falla, toma una foto, y el taller recibe la alerta al instante.
+      </p>
+
+      <div class="screenshot-container" style="height: 200px; overflow: hidden">
+        <img
+          src="presentation_assets/3_Estado_Flota.png"
+          style="margin-top: -50px"
+          alt="Gestión de Flota"
+        />
+        <div class="img-caption">FIG 3. PANEL DE ESTADO DE FLOTA</div>
+      </div>
+
+      <h2>6. Conclusión Técnica</h2>
+      <p>
+        La versión 3.0 marca el hito final de la transformación digital. Con una infraestructura
+        escalable, costos de mantenimiento reducidos (Serverless) y una experiencia de usuario que
+        no requiere capacitación intensiva, UCOT está posicionada para liderar la eficiencia
+        operativa en el sector.
+      </p>
+      <p>
+        <strong>Siguientes Pasos:</strong> Despliegue masivo a la flota (Fase ya iniciada) y
+        capacitación final a inspectores.
+      </p>
+
+      <div class="footer">
+        <span>UCOT - Documento Confidencial</span>
+        <span>Página 2 de 2</span>
+      </div>
+    </div>
+  </body>
+</html>

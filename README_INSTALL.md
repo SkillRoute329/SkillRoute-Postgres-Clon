@@ -26,15 +26,15 @@ Al intentar abrir el archivo APK, Android te pedirá permisos de seguridad.
 
 1. Abre la app **TransForma**.
 2. Ingresa con tus credenciales habituales.
-   * **Usuario Maestro (Emergencia):** `SuperAdmin` / `0000` (Si aplica).
+   - **Usuario Maestro (Emergencia):** `SuperAdmin` / `0000` (Si aplica).
 3. Concede los permisos de **Cámara** y **Ubicación** cuando la app los pida.
 
 ---
 
 ### Solución de Problemas
 
-* **¿Pantalla blanca?** Verifica tu conexión a internet.
-* **¿No deja instalar?** Asegúrate de borrar cualquier versión anterior de la app.
-* **¿Aviso de Play Protect?** Toca en "Más detalles" -> "Instalar de todas formas" (Es normal en apps corporativas internas).
+- **¿Pantalla blanca?** Verifica tu conexión a internet.
+- **¿No deja instalar?** Asegúrate de borrar cualquier versión anterior de la app.
+- **¿Aviso de Play Protect?** Toca en "Más detalles" -> "Instalar de todas formas" (Es normal en apps corporativas internas).
 
 **Soporte Técnico:** Contactar al Área de Sistemas (Interno 404).

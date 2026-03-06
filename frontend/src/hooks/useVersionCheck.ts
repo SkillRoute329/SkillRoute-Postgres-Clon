@@ -1,92 +1,74 @@
+import { useState, useEffect } from 'react';
 
-import { useEffect, useState, useRef } from 'react';
-import { API_URL } from '../services/api';
-
-const POLLING_INTERVAL = 60 * 1000; // 60 seconds
+// Debug tool to force update UI
+const triggerUpdateSimulation = () => {
+  localStorage.setItem('app_version', '0.0.0-OLD');
+  window.location.reload();
+};
+// Attach to window for easier debugging
+(window as any).triggerUpdate = triggerUpdateSimulation;
 
 export const useVersionCheck = () => {
-    const [isUpdating, setIsUpdating] = useState(false);
-    const [serverVersion, setServerVersion] = useState<string | null>(null);
-    const initialBootId = useRef<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
+  useEffect(() => {
     const checkVersion = async () => {
-        try {
-            // Use fetch to bypass axios interceptors that might redirect to login
-            const res = await fetch(`${API_URL}/health?_t=${Date.now()}`);
-            if (!res.ok) return;
+      try {
+        // Agregar timestamp para evitar caché del navegador (especialmente en Brave/Safari)
+        const res = await fetch(`/version.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) return;
 
-            const data = await res.json();
-            const { bootId, version } = data;
+        const data = await res.json();
+        const serverVersion = data.version;
+        const localVersion = localStorage.getItem('app_version');
 
-            // Initialize on first successful check
-            if (!initialBootId.current) {
-                initialBootId.current = bootId;
-                setServerVersion(version);
-                return;
+        // Si es la primera vez (no hay localVersion), guardamos y no hacemos nada
+        if (!localVersion) {
+          localStorage.setItem('app_version', serverVersion);
+          return;
+        }
+
+        // Si las versiones difieren, forzamos actualización
+        if (serverVersion !== localVersion) {
+          console.log(`🚀 New Version Detected: ${serverVersion} (Local: ${localVersion})`);
+
+          // 🎮 SIMULATION BYPASS: In Sim mode, just show UI but don't wipe data aggressively
+          const isSim = sessionStorage.getItem('TRANSFORMA_SIMULATION_MODE') === 'true';
+
+          setIsUpdating(true);
+
+          // 1. Limpiar Service Workers antiguos
+          if ('serviceWorker' in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const registration of registrations) {
+              await registration.unregister();
             }
+          }
 
-            // DETECT CHANGE
-            if (bootId && initialBootId.current !== bootId) {
-                console.log(`🚨 [VERSION GUARD] Mismatch detected! Local: ${initialBootId.current} vs Server: ${bootId}`);
-                triggerUpdate();
-            }
+          // 2. Limpiar Caché de la Aplicación
+          if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map((key) => caches.delete(key)));
+          }
 
-        } catch (error) {
-            console.warn('[VERSION GUARD] Check failed (offline?)', error);
-        }
-    };
+          // 3. Actualizar Referencia
+          localStorage.setItem('app_version', serverVersion);
 
-    const triggerUpdate = () => {
-        setIsUpdating(true);
-
-        // 1. Nuke Service Workers
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(registrations => {
-                for (let registration of registrations) {
-                    registration.unregister();
-                }
-            });
-        }
-
-        // 2. Clear Caches
-        if ('caches' in window) {
-            caches.keys().then((names) => {
-                names.forEach(name => caches.delete(name));
-            });
-        }
-
-        // 3. Clear Storage
-        // We preserve 'auth' token if possible? No, Prompt says "Force immediately void cache".
-        // Use prudent clearing. Maybe keep token to avoid re-login if token is valid?
-        // But if backend changed significantly, token format might differ.
-        // Let's keep it safe: Nuke everything.
-        localStorage.clear();
-        sessionStorage.clear();
-
-        // 4. Force Reload with visual delay
-        setTimeout(() => {
+          // 4. Recargar Página (dar tiempo a la animación de VersionGuard)
+          setTimeout(() => {
             window.location.reload();
-        }, 2000);
+          }, 3500);
+        }
+      } catch (error) {
+        console.error('Version check failed:', error);
+      }
     };
 
-    useEffect(() => {
-        // Check on Mount
-        checkVersion();
+    // Chequear al inicio y cada 60 segundos
+    checkVersion();
+    const interval = setInterval(checkVersion, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
-        // Check on Interval
-        const intervalId = setInterval(checkVersion, POLLING_INTERVAL);
-
-        // Check on Window Focus
-        const handleFocus = () => {
-            checkVersion();
-        };
-        window.addEventListener('focus', handleFocus);
-
-        return () => {
-            clearInterval(intervalId);
-            window.removeEventListener('focus', handleFocus);
-        };
-    }, []);
-
-    return { isUpdating, serverVersion };
+  return { isUpdating };
 };

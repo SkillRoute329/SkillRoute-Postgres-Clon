@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "ucot-gestor-cloud"
+  },
+  "targets": {
+    "ucot-gestor-cloud": {
+      "hosting": {
+        "ucot-gestor-cloud": [
+          "ucot-gestor-cloud"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

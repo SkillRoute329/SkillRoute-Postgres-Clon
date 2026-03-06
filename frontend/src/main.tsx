@@ -1,53 +1,33 @@
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import { createRoot } from 'react-dom/client';
+import { useState } from 'react';
+import './index.css';
+import App from './App.tsx';
+import { FeedbackProvider } from './context/FeedbackProvider';
+import { runGenesisProtocol } from './utils/seedDatabase';
+import { BootScreen } from './components/BootScreen';
 
-// 🚨 CÓDIGO DE LIMPIEZA DE EMERGENCIA (CACHE BUSTER V4)
-// Fuerza la eliminación de Service Workers antiguos para asegurar la carga de la versión nueva.
-// 🚨 CÓDIGO DE LIMPIEZA DE EMERGENCIA (CACHE BUSTER V5 - FINAL)
-// Fuerza la eliminación de Service Workers antiguos y limpia almacenamiento UNA SOLA VEZ.
-const SAFE_KEY = 'v1_stable_flag';
+import { defineCustomElements } from '@ionic/pwa-elements/loader';
 
-try {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(function (registrations) {
-      for (let registration of registrations) {
-        // Unregister silently
-        registration.unregister().catch(() => { });
-      }
-    });
+// Initialize PWA Elements (Camera, etc)
+defineCustomElements(window);
 
-    const isFirebase = window.location.hostname.includes('firebase') || window.location.hostname.includes('web.app');
-    const hasCleaned = sessionStorage.getItem(SAFE_KEY);
+// Expose Genesis Protocol for Manual/Automated Trigger
+(window as any).genesis = runGenesisProtocol;
+console.log("🤖 [GENESIS] Protocol ready. Type 'window.genesis()' to seed data.");
 
-    if (isFirebase && !hasCleaned) {
-      console.log('🧹 [System] Performing One-Time Startup Cleanup...');
+const Root = () => {
+  const [booted, setBooted] = useState(false);
 
-      // 1. Wipe
-      localStorage.clear();
-      sessionStorage.clear();
-
-      // 2. Set Flag (Re-set after clear)
-      sessionStorage.setItem(SAFE_KEY, 'true');
-
-      // 3. Clear Caches
-      if ('caches' in window) {
-        caches.keys().then((names) => {
-          for (let name of names) caches.delete(name);
-        });
-      }
-
-      // 4. Reload (Only once per tab session)
-      console.log('🔄 [System] Reloading to apply clean state...');
-      window.location.reload();
-    } else {
-      console.log('✅ [System] Startup Stable. Storage Verified.');
-    }
+  if (!booted) {
+    return <BootScreen onComplete={() => setBooted(true)} />;
   }
-} catch (e) {
-  console.warn('⚠️ [System] Auto-Cleanup Skipped due to error:', e);
-}
 
-createRoot(document.getElementById('root')!).render(
-  <App />
-)
+  return (
+    <>
+      <FeedbackProvider />
+      <App />
+    </>
+  );
+};
+
+createRoot(document.getElementById('root')!).render(<Root />);

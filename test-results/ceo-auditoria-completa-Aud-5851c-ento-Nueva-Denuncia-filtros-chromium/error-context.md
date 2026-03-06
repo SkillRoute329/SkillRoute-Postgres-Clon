@@ -1,0 +1,196 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - complementary [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: G
+      - generic [ref=e9]:
+        - heading "Gestión UCOT" [level=1] [ref=e10]
+        - text: Plataforma 2.0
+    - navigation [ref=e11]:
+      - link "Vista General" [ref=e12] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e13]
+        - text: Vista General
+      - generic [ref=e18]:
+        - heading "Departamento de Tránsito" [level=3] [ref=e19]
+        - generic [ref=e20]:
+          - link "Matriz de Servicio" [ref=e21] [cursor=pointer]:
+            - /url: /dashboard/traffic/service-matrix
+            - generic [ref=e22]:
+              - img [ref=e23]
+              - text: Matriz de Servicio
+            - img [ref=e25]
+          - link "Control Inspectores" [ref=e27] [cursor=pointer]:
+            - /url: /dashboard/traffic/inspector-control
+            - generic [ref=e28]:
+              - img [ref=e29]
+              - text: Control Inspectores
+            - img [ref=e31]
+          - link "Captura Inspector (Móvil)" [ref=e33] [cursor=pointer]:
+            - /url: /dashboard/traffic/inspector-capture
+            - generic [ref=e34]:
+              - img [ref=e35]
+              - text: Captura Inspector (Móvil)
+            - img [ref=e37]
+          - link "Gestor de Cartones" [ref=e39] [cursor=pointer]:
+            - /url: /dashboard/traffic/cartons
+            - generic [ref=e40]:
+              - img [ref=e41]
+              - text: Gestor de Cartones
+            - img [ref=e44]
+          - link "Lista Diaria (Listero)" [ref=e46] [cursor=pointer]:
+            - /url: /dashboard/traffic/daily-list
+            - generic [ref=e47]:
+              - img [ref=e48]
+              - text: Lista Diaria (Listero)
+            - img [ref=e51]
+          - link "Navegador UCOT" [ref=e53] [cursor=pointer]:
+            - /url: /dashboard/traffic/navigation
+            - generic [ref=e54]:
+              - img [ref=e55]
+              - text: Navegador UCOT
+            - img [ref=e57]
+          - link "Monitoreo de Flota" [ref=e59] [cursor=pointer]:
+            - /url: /dashboard/traffic/fleet-monitor
+            - generic [ref=e60]:
+              - img [ref=e61]
+              - text: Monitoreo de Flota
+            - img [ref=e67]
+          - link "Estadísticas Inspectores" [ref=e69] [cursor=pointer]:
+            - /url: /dashboard/traffic/statistics
+            - generic [ref=e70]:
+              - img [ref=e71]
+              - text: Estadísticas Inspectores
+            - img [ref=e73]
+          - link "Analítica de Servicio" [ref=e75] [cursor=pointer]:
+            - /url: /dashboard/traffic/analytics
+            - generic [ref=e76]:
+              - img [ref=e77]
+              - text: Analítica de Servicio
+            - img [ref=e79]
+      - generic [ref=e81]:
+        - heading "Gestión de Flota" [level=3] [ref=e82]
+        - generic [ref=e83]:
+          - link "Coches / Inventario" [ref=e84] [cursor=pointer]:
+            - /url: /dashboard/fleet
+            - generic [ref=e85]:
+              - img [ref=e86]
+              - text: Coches / Inventario
+            - img [ref=e90]
+          - link "Mantenimiento" [ref=e92] [cursor=pointer]:
+            - /url: /dashboard/admin/maintenance
+            - generic [ref=e93]:
+              - img [ref=e94]
+              - text: Mantenimiento
+            - img [ref=e96]
+          - link "Alertas de Vía" [ref=e98] [cursor=pointer]:
+            - /url: /dashboard/alerts
+            - generic [ref=e99]:
+              - img [ref=e100]
+              - text: Alertas de Vía
+            - img [ref=e102]
+      - generic [ref=e104]:
+        - heading "Recursos Humanos (RRHH)" [level=3] [ref=e105]
+        - generic [ref=e106]:
+          - link "Gestión de Personal" [ref=e107] [cursor=pointer]:
+            - /url: /dashboard/admin/rrhh
+            - generic [ref=e108]:
+              - img [ref=e109]
+              - text: Gestión de Personal
+            - img [ref=e114]
+          - link "Centro de Talento" [ref=e116] [cursor=pointer]:
+            - /url: /dashboard/talento
+            - generic [ref=e117]:
+              - img [ref=e118]
+              - text: Centro de Talento
+            - img [ref=e123]
+          - link "Motor de Rotación" [ref=e125] [cursor=pointer]:
+            - /url: /dashboard/admin/rrhh/rotation
+            - generic [ref=e126]:
+              - img [ref=e127]
+              - text: Motor de Rotación
+            - img [ref=e129]
+          - link "Fichas Médicas/CI" [ref=e131] [cursor=pointer]:
+            - /url: /dashboard/admin/employees
+            - generic [ref=e132]:
+              - img [ref=e133]
+              - text: Fichas Médicas/CI
+            - img [ref=e136]
+      - generic [ref=e138]:
+        - heading "Soporte y Salud" [level=3] [ref=e139]
+        - generic [ref=e140]:
+          - link "Estado del Sistema" [ref=e141] [cursor=pointer]:
+            - /url: /dashboard/admin/maintenance-system
+            - generic [ref=e142]:
+              - img [ref=e143]
+              - text: Estado del Sistema
+            - img [ref=e146]
+          - link "Ingesta de Datos" [ref=e148] [cursor=pointer]:
+            - /url: /dashboard/admin/ingestion
+            - generic [ref=e149]:
+              - img [ref=e150]
+              - text: Ingesta de Datos
+            - img [ref=e153]
+          - link "Parámetros del Sistema" [ref=e155] [cursor=pointer]:
+            - /url: /dashboard/admin/params
+            - generic [ref=e156]:
+              - img [ref=e157]
+              - text: Parámetros del Sistema
+            - img [ref=e160]
+      - generic [ref=e162]:
+        - heading "Mi Espacio" [level=3] [ref=e163]
+        - generic [ref=e164]:
+          - link "Bolsa de Trabajo" [ref=e165] [cursor=pointer]:
+            - /url: /dashboard/market
+            - generic [ref=e166]:
+              - img [ref=e167]
+              - text: Bolsa de Trabajo
+            - img [ref=e171]
+          - link "Mi Cuenta" [ref=e173] [cursor=pointer]:
+            - /url: /dashboard/my-balance
+            - generic [ref=e174]:
+              - img [ref=e175]
+              - text: Mi Cuenta
+            - img [ref=e178]
+    - button "Cerrar Sesión" [ref=e181] [cursor=pointer]:
+      - img [ref=e182]
+      - text: Cerrar Sesión
+  - main [ref=e185]:
+    - generic [ref=e187]:
+      - button "EN LÍNEA" [ref=e189] [cursor=pointer]:
+        - generic [ref=e193]: EN LÍNEA
+      - button "Notificaciones y mensajes internos (Listero / Chofer)" [ref=e196] [cursor=pointer]:
+        - img [ref=e197]
+      - generic [ref=e200]:
+        - generic [ref=e201]: Super Administrador
+        - generic [ref=e202]: "Int #329 | SuperAdmin"
+      - generic [ref=e203]: S
+    - generic [ref=e205]:
+      - generic [ref=e206]:
+        - generic [ref=e207]:
+          - heading "Alertas Viales" [level=3] [ref=e208]:
+            - img [ref=e209]
+            - generic [ref=e211]: Alertas Viales
+          - button "+ Reportar Novedad" [ref=e212] [cursor=pointer]
+        - generic [ref=e213]:
+          - img [ref=e214]
+          - generic [ref=e216]: No hay alertas viales activas en este momento.
+      - generic [ref=e219]:
+        - generic [ref=e220]:
+          - generic [ref=e221]:
+            - heading "Mantenimiento y Denuncias" [level=1] [ref=e222]:
+              - img [ref=e223]
+              - text: Mantenimiento y Denuncias
+            - paragraph [ref=e226]: Gestión de novedades, roturas y mantenimientos de flota.
+          - button "Nueva Denuncia" [ref=e227] [cursor=pointer]:
+            - img [ref=e228]
+            - text: Nueva Denuncia
+        - generic [ref=e229]:
+          - button "Todos" [ref=e230] [cursor=pointer]
+          - button "Enviado" [ref=e231] [cursor=pointer]
+          - button "En Proceso" [ref=e232] [cursor=pointer]
+          - button "Finalizado" [ref=e233] [cursor=pointer]
+        - generic [ref=e234]: Cargando reportes...
+```

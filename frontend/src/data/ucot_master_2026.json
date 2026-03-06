@@ -1,0 +1,48 @@
+{
+  "metadatos": {
+    "empresa": "UCOT",
+    "temporada": "VERANO 2026",
+    "flota_total": 137
+  },
+  "categorias": {
+    "LINEA_FIJA": {
+      "coches": ["64", "115", "140", "16", "80", "104", "163"],
+      "descripcion": "Alta Frecuencia"
+    },
+    "APOYO_LOCAL": {
+      "coches": ["123", "111", "181", "131"],
+      "lineas": ["L12", "L13", "L31", "L32", "L33"]
+    },
+    "SUBURBANO": {
+      "coches": ["262", "263", "264", "265", "266"],
+      "lineas": ["221", "DM1"]
+    }
+  },
+  "mapeo_inicial": [
+    {
+      "coche": "64",
+      "servicio": "1006",
+      "linea": "300b"
+    },
+    {
+      "coche": "115",
+      "servicio": "1129",
+      "linea": "329h"
+    },
+    {
+      "coche": "140",
+      "servicio": "1148",
+      "linea": "330r"
+    },
+    {
+      "coche": "104",
+      "servicio": "1029",
+      "linea": "306p"
+    },
+    {
+      "coche": "163",
+      "servicio": "1044",
+      "linea": "300p"
+    }
+  ]
+}

@@ -3,16 +3,16 @@ const { Pool } = require('pg');
 // Usar la variable de entorno de Railway (TROJAN HORSE STRATEGY)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
 });
 
 async function repair() {
-  console.log("🔥 INICIANDO REPARACIÓN MANUAL DE BD...");
+  console.log('🔥 INICIANDO REPARACIÓN MANUAL DE BD...');
   try {
     const client = await pool.connect();
 
     // 1. Crear Tabla Notification
-    console.log("1. Creando tabla Notification...");
+    console.log('1. Creando tabla Notification...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS "Notification" (
         id SERIAL PRIMARY KEY,
@@ -24,16 +24,16 @@ async function repair() {
     `);
 
     // 2. Agregar Columna phoneNumber
-    console.log("2. Agregando columna phoneNumber...");
+    console.log('2. Agregando columna phoneNumber...');
     await client.query(`
       ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "phoneNumber" VARCHAR(255);
     `);
 
-    console.log("✅ ¡ÉXITO! BASE DE DATOS REPARADA.");
+    console.log('✅ ¡ÉXITO! BASE DE DATOS REPARADA.');
     client.release();
     process.exit(0);
   } catch (err) {
-    console.error("❌ ERROR FATAL:", err);
+    console.error('❌ ERROR FATAL:', err);
     process.exit(1);
   }
 }

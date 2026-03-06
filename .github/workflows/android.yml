@@ -23,7 +23,7 @@ jobs:
           npm install --legacy-peer-deps
           npm run build
         env:
-           VITE_API_URL: "https://transformafacil-20-production.up.railway.app"
+          VITE_API_URL: 'https://transformafacil-20-production.up.railway.app'
 
       - name: Capacitor Sync
         run: |

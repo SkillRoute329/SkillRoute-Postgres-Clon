@@ -1,11 +1,11 @@
 @echo off
-title TransformaFacil - Acceso Directo a Producción
+title TransformaFacil - Acceso Directo a Producción (FIREBASE)
 cls
 echo ========================================================
-echo     TRANSFORMAFACIL 2.0 - ACCESO GLOBAL
+echo     TRANSFORMAFACIL 2.0 - ACCESO GLOBAL (FIREBASE)
 echo ========================================================
 echo.
-echo La aplicacion esta DESPLEGADA Y FUNCIONANDO en Railway.
+echo La aplicacion esta DESPLEGADA Y FUNCIONANDO en Google Firebase.
 echo.
 echo Accesible desde CUALQUIER UBICACION del mundo:
 echo   - Oficina (Wi-Fi corporativo)
@@ -15,7 +15,7 @@ echo   - Otro pais
 echo.
 echo ========================================================
 echo   URL DE ACCESO:
-echo   https://transformafacil-20-production.up.railway.app
+echo   https://ucot-gestor-cloud.web.app
 echo ========================================================
 echo.
 echo CREDENCIALES DE SUPER ADMINISTRADOR:
@@ -34,7 +34,7 @@ set /p opcion="Seleccione una opcion: "
 if "%opcion%"=="1" (
     echo.
     echo Abriendo aplicacion en el navegador...
-    start https://transformafacil-20-production.up.railway.app
+    start https://ucot-gestor-cloud.web.app
     echo.
     echo ✅ Aplicacion abierta. Use las credenciales mostradas arriba.
     echo.
@@ -44,12 +44,12 @@ if "%opcion%"=="1" (
 
 if "%opcion%"=="2" (
     echo.
-    echo Verificando estado del sistema...
+    echo Verificando estado del sistema (Firebase Functions)...
     echo.
-    curl.exe -s https://transformafacil-20-production.up.railway.app/api/health
+    curl.exe -s https://ucot-gestor-cloud.web.app/api/health
     echo.
     echo.
-    echo Si ve "status": "ok", el sistema esta FUNCIONANDO.
+    echo Si ve "status": "ONLINE", el sistema esta FUNCIONANDO PERFECTAMENTE.
     echo.
     pause
     exit

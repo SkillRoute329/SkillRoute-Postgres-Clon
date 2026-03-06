@@ -16,13 +16,13 @@ CREATE TABLE IF NOT EXISTS "ShiftCategoryPriceHistory" (
 `;
 
 (async () => {
-    try {
-        console.log('Connecting to', process.env.DATABASE_URL.replace(/:[^:@]+@/, ':***@'));
-        await pool.query(query);
-        console.log('Table ShiftCategoryPriceHistory created successfully.');
-        process.exit(0);
-    } catch (e) {
-        console.error(e);
-        process.exit(1);
-    }
+  try {
+    console.log('Connecting to', process.env.DATABASE_URL.replace(/:[^:@]+@/, ':***@'));
+    await pool.query(query);
+    console.log('Table ShiftCategoryPriceHistory created successfully.');
+    process.exit(0);
+  } catch (e) {
+    console.error(e);
+    process.exit(1);
+  }
 })();

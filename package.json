@@ -1,17 +1,33 @@
 {
-    "name": "transformafacil-cloud",
-    "version": "2.0.0",
-    "private": true,
-    "description": "Cloud Native version (Firebase)",
-    "scripts": {
-        "install:all": "cd frontend && npm install && cd ../backend && npm install",
-        "build": "cd frontend && npm install && npm run build && cd ../backend && npm install && npm run build",
-        "deploy": "firebase deploy"
-    },
-    "engines": {
-        "node": ">=20.0.0"
-    },
-    "dependencies": {
-        "lodash": "^4.17.23"
-    }
+  "name": "transformafacil-cloud",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Cloud Native version (Firebase)",
+  "scripts": {
+    "install:all": "cd frontend && npm install && cd ../backend && npm install",
+    "build": "cd frontend && npm install && npm run build && cd ../backend && npm install && npm run build",
+    "start": "npm run install:all && concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"node scripts/open-browser.js\"",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:legacy": "cd backend_legacy && npm install",
+    "build:legacy": "cd backend_legacy && npm run build",
+    "deploy": "firebase deploy",
+    "test:e2e": "playwright test tests/usuario-real.spec.ts",
+    "verificar": "node scripts/verificar-login.js",
+    "format": "prettier --write ."
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "lodash": "^4.17.23"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0",
+    "concurrently": "^9.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "prettier": "^3.8.1"
+  }
 }

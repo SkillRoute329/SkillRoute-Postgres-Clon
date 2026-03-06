@@ -1,0 +1,580 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - complementary [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: G
+      - generic [ref=e9]:
+        - heading "Gestión UCOT" [level=1] [ref=e10]
+        - text: Plataforma 2.0
+    - navigation [ref=e11]:
+      - link "Vista General" [ref=e12] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e13]
+        - text: Vista General
+      - generic [ref=e18]:
+        - heading "Departamento de Tránsito" [level=3] [ref=e19]
+        - generic [ref=e20]:
+          - link "Matriz de Servicio" [ref=e21] [cursor=pointer]:
+            - /url: /dashboard/traffic/service-matrix
+            - generic [ref=e22]:
+              - img [ref=e23]
+              - text: Matriz de Servicio
+            - img [ref=e25]
+          - link "Control Inspectores" [ref=e27] [cursor=pointer]:
+            - /url: /dashboard/traffic/inspector-control
+            - generic [ref=e28]:
+              - img [ref=e29]
+              - text: Control Inspectores
+            - img [ref=e31]
+          - link "Captura Inspector (Móvil)" [ref=e33] [cursor=pointer]:
+            - /url: /dashboard/traffic/inspector-capture
+            - generic [ref=e34]:
+              - img [ref=e35]
+              - text: Captura Inspector (Móvil)
+            - img [ref=e37]
+          - link "Gestor de Cartones" [ref=e39] [cursor=pointer]:
+            - /url: /dashboard/traffic/cartons
+            - generic [ref=e40]:
+              - img [ref=e41]
+              - text: Gestor de Cartones
+            - img [ref=e44]
+          - link "Lista Diaria (Listero)" [ref=e46] [cursor=pointer]:
+            - /url: /dashboard/traffic/daily-list
+            - generic [ref=e47]:
+              - img [ref=e48]
+              - text: Lista Diaria (Listero)
+            - img [ref=e51]
+          - link "Navegador UCOT" [ref=e53] [cursor=pointer]:
+            - /url: /dashboard/traffic/navigation
+            - generic [ref=e54]:
+              - img [ref=e55]
+              - text: Navegador UCOT
+            - img [ref=e57]
+          - link "Monitoreo de Flota" [ref=e59] [cursor=pointer]:
+            - /url: /dashboard/traffic/fleet-monitor
+            - generic [ref=e60]:
+              - img [ref=e61]
+              - text: Monitoreo de Flota
+            - img [ref=e67]
+          - link "Estadísticas Inspectores" [ref=e69] [cursor=pointer]:
+            - /url: /dashboard/traffic/statistics
+            - generic [ref=e70]:
+              - img [ref=e71]
+              - text: Estadísticas Inspectores
+            - img [ref=e73]
+          - link "Analítica de Servicio" [ref=e75] [cursor=pointer]:
+            - /url: /dashboard/traffic/analytics
+            - generic [ref=e76]:
+              - img [ref=e77]
+              - text: Analítica de Servicio
+            - img [ref=e79]
+      - generic [ref=e81]:
+        - heading "Gestión de Flota" [level=3] [ref=e82]
+        - generic [ref=e83]:
+          - link "Coches / Inventario" [ref=e84] [cursor=pointer]:
+            - /url: /dashboard/fleet
+            - generic [ref=e85]:
+              - img [ref=e86]
+              - text: Coches / Inventario
+            - img [ref=e90]
+          - link "Mantenimiento" [ref=e92] [cursor=pointer]:
+            - /url: /dashboard/admin/maintenance
+            - generic [ref=e93]:
+              - img [ref=e94]
+              - text: Mantenimiento
+            - img [ref=e96]
+          - link "Alertas de Vía" [ref=e98] [cursor=pointer]:
+            - /url: /dashboard/alerts
+            - generic [ref=e99]:
+              - img [ref=e100]
+              - text: Alertas de Vía
+            - img [ref=e102]
+      - generic [ref=e104]:
+        - heading "Recursos Humanos (RRHH)" [level=3] [ref=e105]
+        - generic [ref=e106]:
+          - link "Gestión de Personal" [ref=e107] [cursor=pointer]:
+            - /url: /dashboard/admin/rrhh
+            - generic [ref=e108]:
+              - img [ref=e109]
+              - text: Gestión de Personal
+            - img [ref=e114]
+          - link "Centro de Talento" [ref=e116] [cursor=pointer]:
+            - /url: /dashboard/talento
+            - generic [ref=e117]:
+              - img [ref=e118]
+              - text: Centro de Talento
+            - img [ref=e123]
+          - link "Motor de Rotación" [ref=e125] [cursor=pointer]:
+            - /url: /dashboard/admin/rrhh/rotation
+            - generic [ref=e126]:
+              - img [ref=e127]
+              - text: Motor de Rotación
+            - img [ref=e129]
+          - link "Fichas Médicas/CI" [ref=e131] [cursor=pointer]:
+            - /url: /dashboard/admin/employees
+            - generic [ref=e132]:
+              - img [ref=e133]
+              - text: Fichas Médicas/CI
+            - img [ref=e136]
+      - generic [ref=e138]:
+        - heading "Soporte y Salud" [level=3] [ref=e139]
+        - generic [ref=e140]:
+          - link "Estado del Sistema" [ref=e141] [cursor=pointer]:
+            - /url: /dashboard/admin/maintenance-system
+            - generic [ref=e142]:
+              - img [ref=e143]
+              - text: Estado del Sistema
+            - img [ref=e146]
+          - link "Ingesta de Datos" [ref=e148] [cursor=pointer]:
+            - /url: /dashboard/admin/ingestion
+            - generic [ref=e149]:
+              - img [ref=e150]
+              - text: Ingesta de Datos
+            - img [ref=e153]
+          - link "Parámetros del Sistema" [ref=e155] [cursor=pointer]:
+            - /url: /dashboard/admin/params
+            - generic [ref=e156]:
+              - img [ref=e157]
+              - text: Parámetros del Sistema
+            - img [ref=e160]
+      - generic [ref=e162]:
+        - heading "Mi Espacio" [level=3] [ref=e163]
+        - generic [ref=e164]:
+          - link "Bolsa de Trabajo" [ref=e165] [cursor=pointer]:
+            - /url: /dashboard/market
+            - generic [ref=e166]:
+              - img [ref=e167]
+              - text: Bolsa de Trabajo
+            - img [ref=e171]
+          - link "Mi Cuenta" [ref=e173] [cursor=pointer]:
+            - /url: /dashboard/my-balance
+            - generic [ref=e174]:
+              - img [ref=e175]
+              - text: Mi Cuenta
+            - img [ref=e178]
+    - button "Cerrar Sesión" [ref=e181] [cursor=pointer]:
+      - img [ref=e182]
+      - text: Cerrar Sesión
+  - main [ref=e185]:
+    - generic [ref=e187]:
+      - button "EN LÍNEA" [ref=e189] [cursor=pointer]:
+        - generic [ref=e193]: EN LÍNEA
+      - button "Notificaciones y mensajes internos (Listero / Chofer)" [ref=e196] [cursor=pointer]:
+        - img [ref=e197]
+      - generic [ref=e200]:
+        - generic [ref=e201]: Super Administrador
+        - generic [ref=e202]: "Int #329 | SuperAdmin"
+      - generic [ref=e203]: S
+    - generic [ref=e205]:
+      - generic [ref=e206]:
+        - generic [ref=e207]:
+          - heading "Alertas Viales" [level=3] [ref=e208]:
+            - img [ref=e209]
+            - generic [ref=e211]: Alertas Viales
+          - button "+ Reportar Novedad" [ref=e212] [cursor=pointer]
+        - generic [ref=e213]:
+          - img [ref=e214]
+          - generic [ref=e216]: No hay alertas viales activas en este momento.
+      - generic [ref=e219]:
+        - generic [ref=e220]:
+          - generic [ref=e221]:
+            - heading "Motor de Rotación de Personal" [level=1] [ref=e222]:
+              - img [ref=e223]
+              - text: Motor de Rotación de Personal
+            - paragraph [ref=e225]: "Grilla del mes: regímenes 15 y 15 / semana y semana, día de descanso y huecos para el Listero."
+          - generic [ref=e226]:
+            - button [ref=e227] [cursor=pointer]:
+              - img [ref=e228]
+            - generic [ref=e230]: marzo de 2026
+            - button [ref=e231] [cursor=pointer]:
+              - img [ref=e232]
+        - generic [ref=e234]:
+          - complementary [ref=e235]:
+            - generic [ref=e236]:
+              - heading "Asignar Coche · Conductor · Servicio" [level=2] [ref=e237]
+              - generic [ref=e238]:
+                - generic [ref=e239]:
+                  - generic [ref=e240]: Seleccionar Coche
+                  - combobox [ref=e241]:
+                    - option "— Coche —" [selected]
+                    - option "100"
+                    - option "1009"
+                    - option "101"
+                    - option "102"
+                    - option "103"
+                    - option "104"
+                    - option "1040"
+                    - option "105"
+                    - option "106"
+                    - option "107"
+                    - option "108"
+                    - option "109"
+                    - option "110"
+                    - option "111"
+                    - option "1110"
+                    - option "112"
+                    - option "113"
+                    - option "114"
+                    - option "115"
+                    - option "116"
+                    - option "117"
+                    - option "118"
+                    - option "119"
+                    - option "12"
+                    - option "120"
+                    - option "122"
+                    - option "123"
+                    - option "125"
+                    - option "126"
+                    - option "127"
+                    - option "128"
+                    - option "129"
+                    - option "130"
+                    - option "131"
+                    - option "132"
+                    - option "133"
+                    - option "135"
+                    - option "136"
+                    - option "137"
+                    - option "138"
+                    - option "14"
+                    - option "140"
+                    - option "141"
+                    - option "142"
+                    - option "143"
+                    - option "144"
+                    - option "145"
+                    - option "146"
+                    - option "147"
+                    - option "149"
+                    - option "15"
+                    - option "150"
+                    - option "152"
+                    - option "153"
+                    - option "154"
+                    - option "156"
+                    - option "157"
+                    - option "158"
+                    - option "16"
+                    - option "160"
+                    - option "161"
+                    - option "162"
+                    - option "163"
+                    - option "165"
+                    - option "166"
+                    - option "167"
+                    - option "168"
+                    - option "169"
+                    - option "17"
+                    - option "18"
+                    - option "2"
+                    - option "21"
+                    - option "22"
+                    - option "226"
+                    - option "244"
+                    - option "251"
+                    - option "26"
+                    - option "260"
+                    - option "262"
+                    - option "263"
+                    - option "264"
+                    - option "265"
+                    - option "266"
+                    - option "267"
+                    - option "268"
+                    - option "29"
+                    - option "3"
+                    - option "30"
+                    - option "31"
+                    - option "33"
+                    - option "34"
+                    - option "35"
+                    - option "36"
+                    - option "37"
+                    - option "38"
+                    - option "39"
+                    - option "40"
+                    - option "41"
+                    - option "43"
+                    - option "45"
+                    - option "46"
+                    - option "48"
+                    - option "49"
+                    - option "50"
+                    - option "51"
+                    - option "53"
+                    - option "54"
+                    - option "55"
+                    - option "57"
+                    - option "58"
+                    - option "59"
+                    - option "60"
+                    - option "61"
+                    - option "63"
+                    - option "64"
+                    - option "67"
+                    - option "69"
+                    - option "7"
+                    - option "70"
+                    - option "72"
+                    - option "74"
+                    - option "77"
+                    - option "80"
+                    - option "81"
+                    - option "82"
+                    - option "84"
+                    - option "85"
+                    - option "87"
+                    - option "88"
+                    - option "89"
+                    - option "9"
+                    - option "90"
+                    - option "91"
+                    - option "92"
+                    - option "93"
+                    - option "94"
+                    - option "95"
+                    - option "96"
+                    - option "97"
+                    - option "99"
+                - generic [ref=e242]:
+                  - generic [ref=e243]: Seleccionar Conductor
+                  - combobox [ref=e244]:
+                    - option "— Conductor —" [selected]
+                    - option "Usuario Operaciones"
+                    - option "Super Admin UCOT"
+                    - option "Conductor Demo 1001"
+                    - option "Conductor Demo 1002"
+                    - option "Conductor Demo 1003"
+                    - option "Conductor Demo 1004"
+                    - option "Conductor Demo 1005"
+                    - option "Conductor Demo 1006"
+                    - option "Conductor Demo 1007"
+                    - option "Conductor Demo 1008"
+                    - option "Conductor Demo 1009"
+                    - option "Conductor Demo 1010"
+                    - option "Conductor Demo 1011"
+                    - option "Conductor Demo 1012"
+                    - option "Conductor Demo 1013"
+                    - option "Conductor Demo 1014"
+                    - option "Conductor Demo 1015"
+                    - option "Conductor Demo 1016"
+                    - option "Conductor Demo 1017"
+                    - option "Conductor Demo 1018"
+                    - option "Conductor Demo 1019"
+                    - option "Conductor Demo 1020"
+                    - option "Conductor Demo 1021"
+                    - option "Conductor Demo 1022"
+                    - option "Conductor Demo 1023"
+                    - option "Conductor Demo 1024"
+                    - option "Conductor Demo 1025"
+                    - option "Conductor Demo 1026"
+                    - option "Conductor Demo 1027"
+                    - option "Conductor Demo 1028"
+                    - option "Conductor Demo 1029"
+                    - option "Conductor Demo 1030"
+                    - option "Conductor Demo 1031"
+                    - option "Conductor Demo 1032"
+                    - option "Conductor Demo 1033"
+                    - option "Conductor Demo 1034"
+                    - option "Conductor Demo 1035"
+                    - option "Conductor Demo 1036"
+                    - option "Conductor Demo 1037"
+                    - option "Conductor Demo 1038"
+                    - option "Conductor Demo 1039"
+                    - option "Conductor Demo 1040"
+                    - option "Conductor Demo 1041"
+                    - option "Conductor Demo 1042"
+                    - option "Conductor Demo 1043"
+                    - option "Conductor Demo 1044"
+                    - option "Conductor Demo 1045"
+                    - option "Conductor Demo 1046"
+                    - option "Conductor Demo 1047"
+                    - option "Conductor Demo 1048"
+                    - option "Conductor Demo 1049"
+                    - option "Conductor Demo 1050"
+                    - option "Super Administrador"
+                    - option "Jonathan Laluz"
+                    - option "Conductor 100"
+                    - option "Conductor 101"
+                    - option "Conductor 102"
+                    - option "Conductor 103"
+                    - option "Conductor 104"
+                    - option "Conductor 105"
+                    - option "Conductor 107"
+                    - option "Conductor 108"
+                    - option "Conductor 109"
+                    - option "Conductor 110"
+                    - option "Conductor 111"
+                    - option "Conductor 1110"
+                    - option "Conductor 112"
+                    - option "Conductor 113"
+                    - option "Conductor 114"
+                    - option "Conductor 115"
+                    - option "Conductor 116"
+                    - option "Conductor 117"
+                    - option "Conductor 118"
+                    - option "Conductor 119"
+                    - option "Conductor 12"
+                    - option "Conductor 122"
+                    - option "Conductor 123"
+                    - option "Conductor 125"
+                    - option "Conductor 126"
+                    - option "Conductor 127"
+                    - option "Conductor 128"
+                    - option "Conductor 129"
+                    - option "Conductor 130"
+                    - option "Conductor 131"
+                    - option "Conductor 132"
+                    - option "Conductor 133"
+                    - option "Conductor 135"
+                    - option "Conductor 136"
+                    - option "Conductor 137"
+                    - option "Conductor 138"
+                    - option "Conductor 14"
+                    - option "Conductor 140"
+                    - option "Conductor 141"
+                    - option "Conductor 142"
+                    - option "Conductor 143"
+                    - option "Conductor 144"
+                    - option "Conductor 145"
+                    - option "Conductor 146"
+                    - option "Conductor 147"
+                    - option "Conductor 149"
+                    - option "Conductor 15"
+                    - option "Conductor 150"
+                    - option "Conductor 152"
+                    - option "Conductor 153"
+                    - option "Conductor 154"
+                    - option "Conductor 156"
+                    - option "Conductor 157"
+                    - option "Conductor 158"
+                    - option "Conductor 16"
+                    - option "Conductor 160"
+                    - option "Conductor 161"
+                    - option "Conductor 162"
+                    - option "Conductor 163"
+                    - option "Conductor 165"
+                    - option "Conductor 166"
+                    - option "Conductor 167"
+                    - option "Conductor 168"
+                    - option "Conductor 169"
+                    - option "Conductor 17"
+                    - option "Conductor 18"
+                    - option "Conductor 2"
+                    - option "Conductor 21"
+                    - option "Conductor 22"
+                    - option "Conductor 226"
+                    - option "Conductor 244"
+                    - option "Conductor 251"
+                    - option "Conductor 26"
+                    - option "Conductor 260"
+                    - option "Conductor 262"
+                    - option "Conductor 263"
+                    - option "Conductor 264"
+                    - option "Conductor 265"
+                    - option "Conductor 266"
+                    - option "Conductor 267"
+                    - option "Conductor 268"
+                    - option "Conductor 29"
+                    - option "Conductor 3"
+                    - option "Conductor 30"
+                    - option "Conductor 31"
+                    - option "Conductor 33"
+                    - option "Conductor 34"
+                    - option "Conductor 35"
+                    - option "Conductor 36"
+                    - option "Conductor 37"
+                    - option "Conductor 38"
+                    - option "Conductor 39"
+                    - option "Conductor 40"
+                    - option "Conductor 41"
+                    - option "Conductor 43"
+                    - option "Conductor 45"
+                    - option "Conductor 46"
+                    - option "Conductor 48"
+                    - option "Conductor 49"
+                    - option "Conductor 50"
+                    - option "Conductor 51"
+                    - option "Conductor 53"
+                    - option "Conductor 54"
+                    - option "Conductor 55"
+                    - option "Conductor 57"
+                    - option "Conductor 58"
+                    - option "Conductor 59"
+                    - option "Conductor 60"
+                    - option "Conductor 61"
+                    - option "Conductor 63"
+                    - option "Conductor 64"
+                    - option "Conductor 67"
+                    - option "Conductor 69"
+                    - option "Conductor 7"
+                    - option "Conductor 70"
+                    - option "Conductor 72"
+                    - option "Conductor 74"
+                    - option "Conductor 77"
+                    - option "Conductor 80"
+                    - option "Conductor 81"
+                    - option "Conductor 82"
+                    - option "Conductor 84"
+                    - option "Conductor 85"
+                    - option "Conductor 87"
+                    - option "Conductor 88"
+                    - option "Conductor 89"
+                    - option "Conductor 9"
+                    - option "Conductor 90"
+                    - option "Conductor 91"
+                    - option "Conductor 92"
+                    - option "Conductor 93"
+                    - option "Conductor 94"
+                    - option "Conductor 95"
+                    - option "Conductor 96"
+                    - option "Conductor 97"
+                    - option "Conductor 99"
+                - generic [ref=e245]:
+                  - generic [ref=e246]: Seleccionar Servicio
+                  - combobox [ref=e247]:
+                    - option "— Servicio —" [selected]
+                    - option "1041 · L1041"
+                    - option "1 · L300"
+                - generic [ref=e248]:
+                  - generic [ref=e249]: Fecha
+                  - textbox [ref=e250]: 2026-03-06
+                - button "Asignar y Guardar" [disabled] [ref=e251]
+            - generic [ref=e252]:
+              - heading "Personal con coche fijo" [level=2] [ref=e253]:
+                - img [ref=e254]
+                - text: Personal con coche fijo
+              - list [ref=e259]:
+                - listitem [ref=e260]:
+                  - button "Conductor Demo 1009Coche 1009" [ref=e261] [cursor=pointer]:
+                    - text: Conductor Demo 1009
+                    - generic [ref=e262]: Coche 1009
+          - main [ref=e263]:
+            - generic [ref=e264]:
+              - paragraph [ref=e266]: Cargue un archivo R-xxx.xls (Rotación) para generar la grilla por vehículo/servicio.
+              - table [ref=e268]:
+                - rowgroup [ref=e269]:
+                  - row "Fecha / Recurso 1 2 3 4 5 6 7 8 9 10 11 12 13 14 …" [ref=e270]:
+                    - columnheader "Fecha / Recurso" [ref=e271]
+                    - columnheader "1" [ref=e272]
+                    - columnheader "2" [ref=e273]
+                    - columnheader "3" [ref=e274]
+                    - columnheader "4" [ref=e275]
+                    - columnheader "5" [ref=e276]
+                    - columnheader "6" [ref=e277]
+                    - columnheader "7" [ref=e278]
+                    - columnheader "8" [ref=e279]
+                    - columnheader "9" [ref=e280]
+                    - columnheader "10" [ref=e281]
+                    - columnheader "11" [ref=e282]
+                    - columnheader "12" [ref=e283]
+                    - columnheader "13" [ref=e284]
+                    - columnheader "14" [ref=e285]
+                    - columnheader "…" [ref=e286]
+                - rowgroup [ref=e287]:
+                  - row "Sin asignaciones. Añada reglas, personal con coche fijo y un template de servicios (R-xxx.xls)." [ref=e288]:
+                    - cell "Sin asignaciones. Añada reglas, personal con coche fijo y un template de servicios (R-xxx.xls)." [ref=e289]
+```

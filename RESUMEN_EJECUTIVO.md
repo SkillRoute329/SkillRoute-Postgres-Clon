@@ -12,11 +12,13 @@
 ## 🌐 ACCESO GLOBAL CONFIRMADO
 
 ### URL Principal:
+
 ```
 https://transformafacil-20-production.up.railway.app
 ```
 
 ### Credenciales de Super Administrador:
+
 - **Usuario:** `0000`
 - **Contraseña:** `admin123`
 
@@ -25,6 +27,7 @@ https://transformafacil-20-production.up.railway.app
 ## ✅ PRUEBAS REALIZADAS Y CONFIRMADAS
 
 ### 1. Health Check del Sistema
+
 ```bash
 ✅ Status: OK
 ✅ Version: v20.0-CERTIFIED
@@ -32,6 +35,7 @@ https://transformafacil-20-production.up.railway.app
 ```
 
 ### 2. Autenticación GOD MODE
+
 ```bash
 ✅ Login exitoso
 ✅ Token JWT generado correctamente
@@ -39,6 +43,7 @@ https://transformafacil-20-production.up.railway.app
 ```
 
 ### 3. Conectividad Global
+
 ```bash
 ✅ Accesible desde cualquier ubicación
 ✅ HTTPS habilitado (conexión segura)
@@ -51,6 +56,7 @@ https://transformafacil-20-production.up.railway.app
 ## 📊 INFRAESTRUCTURA DESPLEGADA
 
 ### Backend (Railway)
+
 - **Plataforma:** Railway (US-East4)
 - **Runtime:** Node.js v22
 - **Framework:** Express.js
@@ -58,12 +64,14 @@ https://transformafacil-20-production.up.railway.app
 - **Almacenamiento:** Ilimitado
 
 ### Frontend
+
 - **Framework:** React 19 + Vite
 - **Servido desde:** Railway Static Assets
 - **Build:** Optimizado para producción
 - **Tamaño:** ~2.5 MB (comprimido)
 
 ### Seguridad
+
 - **SSL/TLS:** Habilitado (Let's Encrypt)
 - **CORS:** Configurado para acceso global
 - **Autenticación:** JWT con expiración de 8h
@@ -74,12 +82,14 @@ https://transformafacil-20-production.up.railway.app
 ## 🚀 FUNCIONALIDADES DISPONIBLES
 
 ### Para Inspectores (Campo)
+
 - ✅ Registro de pasadas en tiempo real
 - ✅ Control de carga de pasajeros
 - ✅ Reportes de novedades
 - ✅ Acceso desde smartphone (4G/5G)
 
 ### Para Jefes (Oficina)
+
 - ✅ Visualización en tiempo real de todos los inspectores
 - ✅ Gestión de personal (RRHH)
 - ✅ Matriz de rotación de vehículos
@@ -89,6 +99,7 @@ https://transformafacil-20-production.up.railway.app
 - ✅ Reportes y exportación de datos
 
 ### Para Administradores
+
 - ✅ Gestión completa de usuarios
 - ✅ Configuración del sistema
 - ✅ Ingesta de datos masivos (Excel)
@@ -100,16 +111,19 @@ https://transformafacil-20-production.up.railway.app
 ## 📱 DISPOSITIVOS COMPATIBLES
 
 ### Computadoras
+
 - ✅ Windows 10/11
 - ✅ macOS
 - ✅ Linux
 
 ### Navegadores
+
 - ✅ Chrome/Edge (recomendado)
 - ✅ Firefox
 - ✅ Safari
 
 ### Smartphones/Tablets
+
 - ✅ Android 8+
 - ✅ iOS 12+
 

@@ -25,7 +25,7 @@ echo ✅ Frontend listo.
 echo.
 
 echo [2/3] Iniciando Backend (Puerto 4000)...
-start "TransformaFacil Backend" cmd /k "cd backend && npm run dev"
+start "TransformaFacil Backend" cmd /k "cd backend_legacy && npm run dev"
 timeout /t 5 /nobreak >nul
 echo ✅ Backend iniciado.
 echo.

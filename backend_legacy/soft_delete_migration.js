@@ -1,27 +1,27 @@
-
 const { Client } = require('pg');
 
 // Correct credentials from docker-compose.yml
 const client = new Client({
-    connectionString: 'postgresql://user_admin:password_admin@127.0.0.1:5555/transformafacil_db?schema=public'
+  connectionString:
+    'postgresql://user_admin:password_admin@127.0.0.1:5555/transformafacil_db?schema=public',
 });
 
 async function migrate() {
-    try {
-        await client.connect();
-        console.log('Connected to DB...');
+  try {
+    await client.connect();
+    console.log('Connected to DB...');
 
-        // 1. Add deletedAt to Shift
-        console.log('Adding deletedAt to Shift...');
-        await client.query(`ALTER TABLE "Shift" ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP(3);`);
+    // 1. Add deletedAt to Shift
+    console.log('Adding deletedAt to Shift...');
+    await client.query(`ALTER TABLE "Shift" ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP(3);`);
 
-        // 2. Add deletedAt to Payment
-        console.log('Adding deletedAt to Payment...');
-        await client.query(`ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP(3);`);
+    // 2. Add deletedAt to Payment
+    console.log('Adding deletedAt to Payment...');
+    await client.query(`ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP(3);`);
 
-        // 3. Create ActionLog Table
-        console.log('Creating ActionLog table...');
-        await client.query(`
+    // 3. Create ActionLog Table
+    console.log('Creating ActionLog table...');
+    await client.query(`
             CREATE TABLE IF NOT EXISTS "ActionLog" (
                 "id" SERIAL PRIMARY KEY,
                 "tenantId" INTEGER NOT NULL,
@@ -36,13 +36,12 @@ async function migrate() {
             );
         `);
 
-        console.log('Migration Complete!');
-
-    } catch (e) {
-        console.error('Migration failed:', e);
-    } finally {
-        await client.end();
-    }
+    console.log('Migration Complete!');
+  } catch (e) {
+    console.error('Migration failed:', e);
+  } finally {
+    await client.end();
+  }
 }
 
 migrate();

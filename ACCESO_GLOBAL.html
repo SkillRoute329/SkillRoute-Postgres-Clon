@@ -1,219 +1,215 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TransformaFacil 2.0 - Acceso Global</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
 
-        .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 600px;
-            width: 100%;
-            padding: 40px;
-            text-align: center;
-        }
+      .container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 600px;
+        width: 100%;
+        padding: 40px;
+        text-align: center;
+      }
 
-        h1 {
-            color: #667eea;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
+      h1 {
+        color: #667eea;
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
 
-        .subtitle {
-            color: #666;
-            font-size: 1.1em;
-            margin-bottom: 30px;
-        }
+      .subtitle {
+        color: #666;
+        font-size: 1.1em;
+        margin-bottom: 30px;
+      }
 
-        .status {
-            background: #10b981;
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            font-weight: bold;
-            font-size: 1.2em;
-        }
+      .status {
+        background: #10b981;
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        font-weight: bold;
+        font-size: 1.2em;
+      }
 
-        .url-box {
-            background: #f3f4f6;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            border: 2px solid #667eea;
-        }
+      .url-box {
+        background: #f3f4f6;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        border: 2px solid #667eea;
+      }
 
-        .url {
-            color: #667eea;
-            font-size: 1.3em;
-            font-weight: bold;
-            word-break: break-all;
-        }
+      .url {
+        color: #667eea;
+        font-size: 1.3em;
+        font-weight: bold;
+        word-break: break-all;
+      }
 
-        .credentials {
-            background: #fef3c7;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            text-align: left;
-        }
+      .credentials {
+        background: #fef3c7;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        text-align: left;
+      }
 
-        .credentials h3 {
-            color: #92400e;
-            margin-bottom: 15px;
-        }
+      .credentials h3 {
+        color: #92400e;
+        margin-bottom: 15px;
+      }
 
-        .credential-item {
-            margin: 10px 0;
-            font-size: 1.1em;
-        }
+      .credential-item {
+        margin: 10px 0;
+        font-size: 1.1em;
+      }
 
-        .credential-label {
-            font-weight: bold;
-            color: #92400e;
-        }
+      .credential-label {
+        font-weight: bold;
+        color: #92400e;
+      }
 
-        .credential-value {
-            color: #1f2937;
-            font-family: 'Courier New', monospace;
-            background: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            display: inline-block;
-            margin-left: 10px;
-        }
+      .credential-value {
+        color: #1f2937;
+        font-family: 'Courier New', monospace;
+        background: white;
+        padding: 5px 10px;
+        border-radius: 5px;
+        display: inline-block;
+        margin-left: 10px;
+      }
 
-        .btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            font-size: 1.2em;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-decoration: none;
-            display: inline-block;
-            margin: 10px;
-        }
+      .btn {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 15px 40px;
+        font-size: 1.2em;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: inline-block;
+        margin: 10px;
+      }
 
-        .btn:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
-        }
+      .btn:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+      }
 
-        .features {
-            text-align: left;
-            margin: 30px 0;
-        }
+      .features {
+        text-align: left;
+        margin: 30px 0;
+      }
 
-        .feature {
-            padding: 10px 0;
-            border-bottom: 1px solid #e5e7eb;
-        }
+      .feature {
+        padding: 10px 0;
+        border-bottom: 1px solid #e5e7eb;
+      }
 
-        .feature:last-child {
-            border-bottom: none;
-        }
+      .feature:last-child {
+        border-bottom: none;
+      }
 
-        .check {
-            color: #10b981;
-            font-weight: bold;
-            margin-right: 10px;
-        }
+      .check {
+        color: #10b981;
+        font-weight: bold;
+        margin-right: 10px;
+      }
 
-        .footer {
-            margin-top: 30px;
-            color: #6b7280;
-            font-size: 0.9em;
-        }
+      .footer {
+        margin-top: 30px;
+        color: #6b7280;
+        font-size: 0.9em;
+      }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="container">
-        <h1>🚀 TransformaFacil 2.0</h1>
-        <div class="subtitle">Sistema de Gestión Empresarial UCOT</div>
+      <h1>🚀 TransformaFacil 2.0</h1>
+      <div class="subtitle">Sistema de Gestión Empresarial UCOT</div>
 
-        <div class="status">
-            ✅ SISTEMA OPERATIVO - Acceso Global Habilitado
+      <div class="status">✅ SISTEMA OPERATIVO - Acceso Global Habilitado</div>
+
+      <div class="url-box">
+        <div style="color: #666; margin-bottom: 10px">URL de Acceso:</div>
+        <div class="url">https://transformafacil-20-production.up.railway.app</div>
+      </div>
+
+      <div class="credentials">
+        <h3>🔐 Credenciales de Administrador</h3>
+        <div class="credential-item">
+          <span class="credential-label">Usuario:</span>
+          <span class="credential-value">0000</span>
         </div>
-
-        <div class="url-box">
-            <div style="color: #666; margin-bottom: 10px;">URL de Acceso:</div>
-            <div class="url">https://transformafacil-20-production.up.railway.app</div>
+        <div class="credential-item">
+          <span class="credential-label">Contraseña:</span>
+          <span class="credential-value">admin123</span>
         </div>
+      </div>
 
-        <div class="credentials">
-            <h3>🔐 Credenciales de Administrador</h3>
-            <div class="credential-item">
-                <span class="credential-label">Usuario:</span>
-                <span class="credential-value">0000</span>
-            </div>
-            <div class="credential-item">
-                <span class="credential-label">Contraseña:</span>
-                <span class="credential-value">admin123</span>
-            </div>
+      <a href="https://transformafacil-20-production.up.railway.app" target="_blank" class="btn">
+        🌐 Acceder al Sistema
+      </a>
+
+      <div class="features">
+        <h3 style="color: #667eea; margin-bottom: 15px">📱 Características de Acceso</h3>
+        <div class="feature">
+          <span class="check">✓</span>
+          Acceso desde cualquier ubicación del mundo
         </div>
-
-        <a href="https://transformafacil-20-production.up.railway.app" target="_blank" class="btn">
-            🌐 Acceder al Sistema
-        </a>
-
-        <div class="features">
-            <h3 style="color: #667eea; margin-bottom: 15px;">📱 Características de Acceso</h3>
-            <div class="feature">
-                <span class="check">✓</span>
-                Acceso desde cualquier ubicación del mundo
-            </div>
-            <div class="feature">
-                <span class="check">✓</span>
-                Compatible con PC, tablets y smartphones
-            </div>
-            <div class="feature">
-                <span class="check">✓</span>
-                Conexión segura HTTPS
-            </div>
-            <div class="feature">
-                <span class="check">✓</span>
-                Datos en tiempo real sincronizados
-            </div>
-            <div class="feature">
-                <span class="check">✓</span>
-                Soporta 1,000+ usuarios simultáneos
-            </div>
-            <div class="feature">
-                <span class="check">✓</span>
-                Disponibilidad 24/7
-            </div>
+        <div class="feature">
+          <span class="check">✓</span>
+          Compatible con PC, tablets y smartphones
         </div>
-
-        <div class="footer">
-            <strong>Administrador:</strong> Jonathan (UCOT)<br>
-            <strong>Última Verificación:</strong> 24 de Enero de 2026<br>
-            <strong>Estado del Servidor:</strong> <span style="color: #10b981;">● ONLINE</span>
+        <div class="feature">
+          <span class="check">✓</span>
+          Conexión segura HTTPS
         </div>
+        <div class="feature">
+          <span class="check">✓</span>
+          Datos en tiempo real sincronizados
+        </div>
+        <div class="feature">
+          <span class="check">✓</span>
+          Soporta 1,000+ usuarios simultáneos
+        </div>
+        <div class="feature">
+          <span class="check">✓</span>
+          Disponibilidad 24/7
+        </div>
+      </div>
+
+      <div class="footer">
+        <strong>Administrador:</strong> Jonathan (UCOT)<br />
+        <strong>Última Verificación:</strong> 24 de Enero de 2026<br />
+        <strong>Estado del Servidor:</strong> <span style="color: #10b981">● ONLINE</span>
+      </div>
     </div>
-</body>
-
+  </body>
 </html>

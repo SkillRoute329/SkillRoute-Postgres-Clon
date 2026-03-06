@@ -1,0 +1,8 @@
+node_modules
+dist
+build
+.firebase
+*.xls
+*.xlsx
+package-lock.json
+public

@@ -1,276 +1,523 @@
-
-import React, { useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Timestamp } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
-import { BulletinService } from '../../services/api';
-import { Search, RotateCcw, Save, Users, Clock, AlertTriangle } from 'lucide-react';
-import { LINE_ARCHETYPES, line300Data, line300ReverseData } from '../../data/lineTemplates';
-import { CloudUploadTest } from '../../components/CloudUploadTest';
+import { BulletinService, CartonService, InspectionService } from '../../services/api';
+import { ActiveAssignmentsService } from '../../services/firestore';
+import { Search, Users, BarChart3, Check, Car } from 'lucide-react';
 
 // Types
-interface MatrixCell {
-    service: string;
-    headerId: string;
-    scheduledTime: string;
-    actualTime?: string;
-    delay?: number;
-    status: 'Pending' | 'Completed' | 'Skipped';
-    occupancy?: number;
-}
 
 const InspectorDashboard = () => {
-    const { user } = useAuth();
-    const [line, setLine] = useState('');
-    const [variant, setVariant] = useState<'IDA' | 'VUELTA'>('IDA');
-    const [matrixMode, setMatrixMode] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [availableLines, setAvailableLines] = useState<string[]>([]);
+  const [line, setLine] = useState('');
+  const [matrixMode, setMatrixMode] = useState(false);
 
-    // Matrix Data
-    const [headers, setHeaders] = useState<any[]>([]);
-    const [rows, setRows] = useState<any[]>([]);
+  // Líneas dinámicas desde Firestore. Sin datos de prueba.
+  useEffect(() => {
+    CartonService.getLineIds().then(setAvailableLines).catch(console.error);
+  }, []);
 
-    // Modal Interaction
-    const [selectedCell, setSelectedCell] = useState<MatrixCell | null>(null);
-    const [inputTime, setInputTime] = useState('');
-    const [inputPax, setInputPax] = useState('');
+  // Matrix Data
+  const [headers, setHeaders] = useState<Array<{ id: string; location: string; isStop: boolean }>>(
+    [],
+  );
+  const [rows, setRows] = useState<
+    Array<{ id: string; serviceNumber: string; times: Record<string, string> }>
+  >([]);
 
-    const loadMatrix = async () => {
-        if (!line) return;
+  // Control Data (Synced with Cloud)
+  // Key: `${date}_${line}_${service}_${headerId}` -> Value: { actual, diff }
+  const [controls, setControls] = useState<
+    Record<string, { actualTime: string; diff: number; status: 'Completed' }>
+  >({});
+  const [loads, setLoads] = useState<Record<string, string>>({}); // Key: ServiceNr -> Value: 'Malo'|'Regular'|'Bueno'|'Excelente'
+  const [offsets, setOffsets] = useState<Record<string, number>>({}); // Key: ServiceNr -> Value: minutes (+/-)
 
-        // 1. Load Template (Archetype)
-        // For MVP we just use the static line300Data if line is 300, else we try to find it.
-        // In full version, this comes from API: /service-definitions?line=300
+  // Coches que pasaron por un punto de control en la última hora (ActiveAssignmentsService.getByDate + inspecciones)
+  const [lastHourPasses, setLastHourPasses] = useState<
+    Array<{
+      controlPointId: string;
+      lineId: string;
+      serviceId: string;
+      cocheId: string | null;
+      time: string;
+    }>
+  >([]);
+  const [lastHourLoading, setLastHourLoading] = useState(false);
 
-        let templateData: any = null;
-        if (line === '300') {
-            templateData = variant === 'IDA' ? line300Data : line300ReverseData;
-        } else if (LINE_ARCHETYPES[line]) {
-            // Reconstruct if we only have headers but no rows logic in Archetype (Archetype is simpler)
-            // Ideally we need the full ServiceDefinition rows.
-            // Let's alert if not found for now.
-            alert('Línea no configurada completamente en demo. Usar 300.');
-            return;
-        } else {
-            alert('Línea no encontrada. Pruebe 300.');
-            return;
-        }
+  // Modal Interaction (Deprecated in favor of Inline Check)
+  // const [selectedCell, setSelectedCell] = useState<MatrixCell | null>(null);
 
-        // 2. Load Actuals (Bulletin Entries for Today)
-        // TODO: backend fetch using BulletinService.getEntries({ line, date: today })
-        // For now, local state only.
+  const loadMatrix = async () => {
+    if (!line) return;
 
-        setHeaders(templateData.headers);
-        setRows(templateData.rows);
-        setMatrixMode(true);
-    };
+    try {
+      // 1. Fetch Matrix Definition (Carton)
+      const cloudDefinitions = await CartonService.getAll(line);
 
-    const handleCellClick = (row: any, header: any) => {
-        const schedTime = row.times[header.id];
-        if (!schedTime) return; // Empty cell (skipped stop)
+      if (cloudDefinitions && cloudDefinitions.length > 0) {
+        // TRANSFORM CLOUD DATA -> UI MATRIX
+        const sample = cloudDefinitions[0];
+        const cleanHeaders = (
+          ((sample as { headers?: Array<{ id: string; location: string }> }).headers ||
+            []) as Array<{
+            id: string;
+            location: string;
+          }>
+        ).map((h) => ({
+          id: h.id,
+          location: h.location,
+          isStop: true,
+        }));
 
-        const now = new Date();
-        const currentHHMM = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-
-        setSelectedCell({
-            service: row.serviceNumber,
-            headerId: header.id,
-            scheduledTime: schedTime,
-            status: 'Pending',
-            actualTime: currentHHMM
-        });
-
-        setInputTime(currentHHMM);
-        setInputPax('');
-    };
-
-    const saveControl = async () => {
-        if (!selectedCell) return;
-
-        // Calculate Delay
-        const [schedH, schedM] = selectedCell.scheduledTime.split(':').map(Number);
-        const [actH, actM] = inputTime.split(':').map(Number);
-        const diff = (actH * 60 + actM) - (schedH * 60 + schedM);
-
-        try {
-            await BulletinService.save({
-                date: new Date().toISOString(),
-                entries: [{
-                    serviceNumber: selectedCell.service,
-                    location: headers.find(h => h.id === selectedCell.headerId)?.location, // Look up name
-                    scheduledTime: selectedCell.scheduledTime,
-                    actualTime: inputTime,
-                    delay: diff,
-                    occupancyCount: inputPax ? parseInt(inputPax) : 0,
-                    status: 'Completed'
-                }]
+        const cleanRows = cloudDefinitions
+          .map((def) => {
+            const times: Record<string, string> = {};
+            cleanHeaders.forEach((h: { id: string }, idx: number) => {
+              times[h.id] = def.rawMatrix?.[0]?.checkpoints?.[idx] ?? '--:--';
             });
+            return {
+              id: def.id,
+              serviceNumber: def.serviceNumber ?? String(def.id).split('_')[0],
+              times,
+            };
+          })
+          .sort((a, b) => {
+            const tA = (Object.values(a.times)[0] as string) || '';
+            const tB = (Object.values(b.times)[0] as string) || '';
+            return tA.localeCompare(tB);
+          });
 
-            // Visual Update locally (Optimistic)
-            // We need to update the "Rows" state to reflect this new Actual time?
-            // "DigitalCarton" data structure was "times: { h1: '10:00' }". It doesn't store actuals/metadata easily in the *same* string.
-            // We need a parallel state for "Actuals".
+        setHeaders(cleanHeaders);
+        setRows(cleanRows);
+        setMatrixMode(true);
+        loadActuals();
+        return;
+      }
 
-            // For MVP display, we just close modal. The Matrix assumes static plan for now.
-            // To show "Green/Red", we'd need to fetch and overlay status.
+      alert(
+        'No hay definiciones de matriz para esta línea en la nube. Realice una ingesta previa.',
+      );
+    } catch (e) {
+      console.error('Matrix Load Failed', e);
+      alert('Error cargando matriz.');
+    }
+  };
 
-            setSelectedCell(null);
-            alert(`Registro Guardado: Servicio ${selectedCell.service}, Atraso: ${diff} min`);
+  const todayStr = new Date().toISOString().split('T')[0];
 
-        } catch (e) {
-            alert('Error al guardar');
+  const loadLastHourPasses = useCallback(async () => {
+    setLastHourLoading(true);
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    try {
+      const list = await InspectionService.getForDate(todayStr);
+      const inLastHour = list.filter((i) => {
+        const at = i.actualPassedAt?.toDate?.();
+        return at && at.getTime() >= oneHourAgo;
+      });
+      const passes = await Promise.all(
+        inLastHour.map(async (i) => {
+          const assign = await ActiveAssignmentsService.get(i.cartonServiceId, i.serviceDate);
+          const time = i.actualPassedAt?.toDate?.()
+            ? `${String(i.actualPassedAt.toDate().getHours()).padStart(2, '0')}:${String(i.actualPassedAt.toDate().getMinutes()).padStart(2, '0')}`
+            : '--:--';
+          return {
+            controlPointId: i.controlPointId,
+            lineId: i.lineId,
+            serviceId: i.cartonServiceId,
+            cocheId: assign?.cocheId ?? null,
+            time,
+          };
+        }),
+      );
+      setLastHourPasses(passes);
+    } catch {
+      setLastHourPasses([]);
+    } finally {
+      setLastHourLoading(false);
+    }
+  }, [todayStr]);
+
+  useEffect(() => {
+    loadLastHourPasses();
+    const t = setInterval(loadLastHourPasses, 60000);
+    return () => clearInterval(t);
+  }, [todayStr, loadLastHourPasses]);
+
+  const loadActuals = async () => {
+    try {
+      const list = await InspectionService.getForDate(todayStr, line);
+      const newControls: Record<string, { actualTime: string; diff: number; status: string }> = {};
+      const newLoads: Record<string, string> = {};
+
+      list.forEach((i) => {
+        const key = `${i.cartonServiceId}_${i.controlPointId}`;
+        const actualTime = i.actualPassedAt?.toDate?.()
+          ? `${String(i.actualPassedAt.toDate().getHours()).padStart(2, '0')}:${String(i.actualPassedAt.toDate().getMinutes()).padStart(2, '0')}`
+          : '--:--';
+        newControls[key] = {
+          actualTime,
+          diff: i.timeDeltaMinutes ?? 0,
+          status: 'Completed',
+        };
+        if (i.passengerLoad != null) {
+          newLoads[i.cartonServiceId] =
+            typeof i.passengerLoad === 'number' ? String(i.passengerLoad) : i.passengerLoad;
         }
+      });
+
+      setControls(newControls as any);
+      setLoads(newLoads);
+      console.log('Loaded inspections (actuals):', list.length);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Listener en tiempo real: inspecciones del día para la línea seleccionada (5.4)
+  useEffect(() => {
+    if (!line || !matrixMode) return;
+    const unsub = InspectionService.subscribeForDate(todayStr, line, (list) => {
+      const newControls: Record<string, { actualTime: string; diff: number; status: string }> = {};
+      const newLoads: Record<string, string> = {};
+      list.forEach((i) => {
+        const key = `${i.cartonServiceId}_${i.controlPointId}`;
+        const actualTime = i.actualPassedAt?.toDate?.()
+          ? `${String(i.actualPassedAt.toDate().getHours()).padStart(2, '0')}:${String(i.actualPassedAt.toDate().getMinutes()).padStart(2, '0')}`
+          : '--:--';
+        newControls[key] = { actualTime, diff: i.timeDeltaMinutes ?? 0, status: 'Completed' };
+        if (i.passengerLoad != null)
+          newLoads[i.cartonServiceId] =
+            typeof i.passengerLoad === 'number' ? String(i.passengerLoad) : i.passengerLoad;
+      });
+      setControls(newControls as any);
+      setLoads(newLoads);
+    });
+    return () => unsub();
+  }, [line, matrixMode, todayStr]);
+
+  /**
+   * ⚡ CORE LOGIC: "Check" Button
+   * Captures Device Time, Calculates Diff, Saves to Cloud.
+   */
+  const handleQuickCheck = async (
+    row: { id: string; serviceNumber: string; times: Record<string, string> },
+    header: { id: string },
+  ) => {
+    const schedTime = row.times[header.id];
+    if (!schedTime) return;
+
+    const now = new Date();
+    const currentHHMM =
+      now.getHours().toString().padStart(2, '0') +
+      ':' +
+      now.getMinutes().toString().padStart(2, '0');
+
+    // Calculate Diff (Minutes)
+    const [schedH, schedM] = schedTime.split(':').map(Number);
+    const [actH, actM] = currentHHMM.split(':').map(Number);
+
+    const schedMins = schedH * 60 + schedM;
+    const actMins = actH * 60 + actM;
+
+    // "Adelantado" (Early) = Sched > Actual. Wait.
+    // User: "paso 5 adelantado genera +5". If Sched=10:00, Act=09:55 -> 600 - 595 = +5.
+    // User: "paso atrasado marcara en negativo -10". If Sched=10:00, Act=10:10 -> 600 - 610 = -10.
+    // Formula: Scheduled - Actual.
+
+    let diff = schedMins - actMins;
+
+    // Handle Midnight crossing if needed (simple logic for now)
+    if (diff > 720) diff -= 1440; // Likely wrong day assumption
+    if (diff < -720) diff += 1440;
+
+    const key = `${row.id}_${header.id}`;
+
+    // Optimistic UI Update
+    const newEntry = {
+      actualTime: currentHHMM,
+      diff: diff,
+      status: 'Completed' as const,
     };
 
-    return (
-        <div className="flex flex-col h-screen bg-slate-950 text-white overflow-hidden pb-16">
-            {/* 🟢 PRUEBA DE CLOUD STORAGE (Temporal) */}
-            <div className="p-4 bg-slate-900 border-b border-slate-800">
-                <CloudUploadTest />
-            </div>
-            {/* Header / Selector */}
-            <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-4 shrink-0">
-                <div className="flex items-center gap-4">
-                    <h1 className="text-xl font-bold flex items-center gap-2">
-                        <Users className="text-primary-500" />
-                        <span className="hidden md:inline">Control Inspectores</span>
-                    </h1>
+    setControls((prev) => ({ ...prev, [key]: newEntry }));
 
-                    <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
-                        <input
-                            className="bg-transparent text-center w-20 px-2 outline-none font-bold font-mono"
-                            placeholder="300"
-                            value={line}
-                            onChange={e => setLine(e.target.value)}
-                        />
-                        <div className="w-px bg-slate-700 mx-1"></div>
-                        <button
-                            onClick={() => setVariant('IDA')}
-                            className={`px-3 py-1 rounded text-xs font-bold ${variant === 'IDA' ? 'bg-primary-600' : 'text-slate-400'}`}
-                        >
-                            IDA
-                        </button>
-                        <button
-                            onClick={() => setVariant('VUELTA')}
-                            className={`px-3 py-1 rounded text-xs font-bold ${variant === 'VUELTA' ? 'bg-primary-600' : 'text-slate-400'}`}
-                        >
-                            VTA
-                        </button>
-                    </div>
-                </div>
+    // Save to Cloud: colección inspecciones (delta = hora real - programada; positivo = atraso)
+    const timeDeltaMinutes = actMins - schedMins;
+    const serviceDate = new Date().toISOString().split('T')[0];
+    try {
+      await InspectionService.create({
+        cartonServiceId: row.id,
+        lineId: line,
+        controlPointId: header.id,
+        serviceDate,
+        scheduledTime: schedTime,
+        actualPassedAt: Timestamp.now(),
+        timeDeltaMinutes,
+        passengerLoad: 'MEDIO',
+        inspectorId: (user as { uid?: string })?.uid,
+      });
+    } catch (e) {
+      console.error('Save Check Failed', e);
+      alert('Error al guardar check (Offline?)');
+    }
+  };
 
-                <div className="flex gap-2">
-                    <button onClick={loadMatrix} className="bg-primary-600 px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-primary-500">
-                        <Search size={16} /> <span className="hidden sm:inline">Cargar Matriz</span>
-                    </button>
-                </div>
-            </div>
+  /**
+   * ⚡ ADVANCE / DELAY SERVICE
+   */
+  const adjustService = async (serviceNumber: string, delta: number) => {
+    const current = offsets[serviceNumber] || 0;
+    const newValue = current + delta;
 
-            {/* Matrix View */}
-            {!matrixMode ? (
-                <div className="flex-1 flex items-center justify-center p-8 text-slate-500 text-center">
-                    <div>
-                        <Search className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                        <p>Ingrese Línea y presione Cargar para ver la Sábana Horaria</p>
-                    </div>
-                </div>
-            ) : (
-                <div className="flex-1 overflow-auto custom-scrollbar relative">
-                    <table className="w-full text-xs border-collapse">
-                        <thead className="sticky top-0 z-10 bg-slate-900 border-b border-slate-700 shadow-xl">
-                            <tr>
-                                <th className="p-3 text-left font-bold text-slate-400 w-24 border-r border-slate-800 sticky left-0 bg-slate-900 z-20">Servicio</th>
-                                {headers.map(h => (
-                                    <th key={h.id} className="p-2 text-center font-medium text-slate-300 min-w-[80px] border-r border-slate-800 whitespace-nowrap rotate-0">
-                                        <div className="writing-mode-vertical transform -rotate-180 h-32 flex items-center justify-center">
-                                            {h.location}
-                                        </div>
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="bg-slate-900/50">
-                            {rows.map((row) => (
-                                <tr key={row.id} className="hover:bg-slate-800 transition-colors border-b border-slate-800/50">
-                                    <td className="p-3 font-bold text-white border-r border-slate-800 sticky left-0 bg-slate-900/90 z-10">
-                                        {row.serviceNumber}
-                                    </td>
-                                    {headers.map(h => (
-                                        <td
-                                            key={h.id}
-                                            onClick={() => handleCellClick(row, h)}
-                                            className={`p-2 text-center border-r border-slate-800/50 cursor-pointer hover:bg-white/10 transition-colors
-                                                ${!row.times[h.id] ? 'bg-slate-950/50' : ''}
-                                            `}
-                                        >
-                                            <span className="font-mono text-slate-300 font-medium">
-                                                {row.times[h.id] || '-'}
-                                            </span>
-                                        </td>
-                                    ))}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+    setOffsets((prev) => ({ ...prev, [serviceNumber]: newValue }));
 
-            {/* Inspector Tools Modal */}
-            {selectedCell && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-                    <div className="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-2xl p-6 shadow-2xl">
-                        <div className="flex justify-between items-start mb-6">
-                            <div>
-                                <h3 className="text-lg font-bold text-white">Registrar Paso</h3>
-                                <p className="text-slate-400 text-xs mt-1">
-                                    Servicio {selectedCell.service} • {headers.find(h => h.id === selectedCell.headerId)?.location}
-                                </p>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-slate-500 text-[10px] uppercase font-bold">Programado</span>
-                                <div className="text-xl font-mono text-white">{selectedCell.scheduledTime}</div>
-                            </div>
-                        </div>
+    await BulletinService.save({
+      type: 'OFFSET',
+      line,
+      date: new Date().toISOString().split('T')[0],
+      serviceNumber,
+      value: newValue,
+    });
+  };
 
-                        <div className="space-y-4">
-                            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                                <label className="block text-xs uppercase font-bold text-slate-500 mb-2">Hora Real</label>
-                                <div className="flex gap-2">
-                                    <Clock className="text-primary-500 mt-2" />
-                                    <input
-                                        type="time"
-                                        value={inputTime}
-                                        onChange={e => setInputTime(e.target.value)}
-                                        className="flex-1 bg-transparent text-3xl font-mono text-white font-bold outline-none text-center"
-                                    />
-                                </div>
-                            </div>
+  /**
+   * ⚡ LOAD REGISTRATION
+   */
+  const setServiceLoad = async (serviceNumber: string, value: string) => {
+    setLoads((prev) => ({ ...prev, [serviceNumber]: value }));
 
-                            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                                <label className="block text-xs uppercase font-bold text-slate-500 mb-2">Pasajeros</label>
-                                <div className="flex gap-2">
-                                    <Users className="text-primary-500 mt-2" />
-                                    <input
-                                        type="number"
-                                        placeholder="0"
-                                        value={inputPax}
-                                        onChange={e => setInputPax(e.target.value)}
-                                        className="flex-1 bg-transparent text-3xl font-mono text-white font-bold outline-none text-center"
-                                    />
-                                </div>
-                            </div>
+    await BulletinService.save({
+      type: 'LOAD',
+      line,
+      date: new Date().toISOString().split('T')[0],
+      serviceNumber,
+      value,
+    });
+  };
 
-                            <div className="flex gap-3 pt-2">
-                                <button onClick={() => setSelectedCell(null)} className="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-800 rounded-xl">
-                                    Volver
-                                </button>
-                                <button onClick={saveControl} className="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/20">
-                                    Guardar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+  /** Verde = puntual (|delta| ≤ 3 min), Rojo = tarde (delta > 3), Amarillo = adelantado (delta < -3), Gris = sin dato. */
+  const getDiffColor = (diff: number) => {
+    if (Math.abs(diff) <= 3) return 'text-emerald-400';
+    if (diff > 3) return 'text-red-400';
+    return 'text-amber-400';
+  };
+  const getDiffBg = (diff: number) => {
+    if (Math.abs(diff) <= 3) return 'bg-emerald-500/20';
+    if (diff > 3) return 'bg-red-500/20';
+    return 'bg-amber-500/20';
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-slate-950 text-white overflow-hidden pb-16">
+      <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-4 shrink-0">
+        <div className="flex items-center gap-4">
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <Users className="text-primary-500" />
+            <span className="hidden md:inline">Control Inspectores V2 (LIVE)</span>
+          </h1>
+          <div className="flex items-center gap-2">
+            <select
+              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 font-mono text-white min-w-[100px]"
+              value={line}
+              onChange={(e) => setLine(e.target.value)}
+              aria-label="Línea"
+            >
+              <option value="">Línea</option>
+              {availableLines.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+            <button onClick={loadMatrix} className="bg-primary-600 px-3 py-2 rounded font-bold">
+              Cargar
+            </button>
+          </div>
         </div>
-    );
+        <button
+          onClick={() => navigate('/dashboard/traffic/statistics')}
+          className="bg-slate-800 border border-slate-700 hover:bg-slate-700 px-4 py-2 rounded-lg font-bold flex items-center gap-2"
+        >
+          <BarChart3 className="w-4 h-4 text-purple-400" />
+          <span className="hidden sm:inline">Estadísticas</span>
+        </button>
+      </div>
+
+      <div className="shrink-0 border-b border-slate-800 bg-slate-900/80 px-4 py-3">
+        <h3 className="text-sm font-bold text-slate-300 flex items-center gap-2 mb-2">
+          <Car className="w-4 h-4 text-primary-500" />
+          Coches que pasaron por un punto de control (última hora)
+        </h3>
+        {lastHourLoading ? (
+          <p className="text-slate-500 text-sm">Cargando…</p>
+        ) : lastHourPasses.length === 0 ? (
+          <p className="text-slate-500 text-sm">Ningún paso registrado en la última hora.</p>
+        ) : (
+          <ul className="flex flex-wrap gap-2">
+            {lastHourPasses.map((p, idx) => (
+              <li
+                key={`${p.serviceId}-${p.controlPointId}-${idx}`}
+                className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-sm"
+              >
+                <span className="font-mono">{p.time}</span>
+                <span className="mx-2">·</span>
+                <span>L{p.lineId}</span>
+                <span className="mx-2">·</span>
+                <span>#{p.serviceId}</span>
+                <span className="mx-2">·</span>
+                <span>{p.controlPointId}</span>
+                {p.cocheId && (
+                  <>
+                    <span className="mx-2">·</span>
+                    <span className="text-primary-400">Coche {p.cocheId}</span>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {!matrixMode ? (
+        <div className="flex-1 flex items-center justify-center p-8 text-slate-500 text-center">
+          <div>
+            <Search className="w-16 h-16 mx-auto mb-4 opacity-20" />
+            <p>Ingrese Línea y presione Cargar</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-auto custom-scrollbar relative">
+          <div className="w-full overflow-x-auto shadow-sm rounded-lg">
+            <table className="w-full text-xs border-collapse min-w-[500px]">
+              <thead className="sticky top-0 z-10 bg-slate-900 border-b border-slate-700 shadow-xl">
+                <tr>
+                  <th className="p-3 text-left font-bold text-slate-400 min-w-[140px] border-r border-slate-800 sticky left-0 bg-slate-900 z-20">
+                    Servicio / Ajuste
+                  </th>
+                  {headers.map((h) => (
+                    <th
+                      key={h.id}
+                      className="p-2 text-center font-medium text-slate-300 min-w-[90px] border-r border-slate-800"
+                    >
+                      {h.location}
+                    </th>
+                  ))}
+                  <th className="p-2 text-center font-bold text-slate-300 min-w-[120px] bg-slate-900 z-20">
+                    Carga
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-slate-900/50">
+                {rows.map((row) => (
+                  <tr
+                    key={row.serviceNumber}
+                    className="hover:bg-slate-800 transition-colors border-b border-slate-800/50"
+                  >
+                    {/* SERVICE & OFFSET */}
+                    <td className="p-2 border-r border-slate-800 sticky left-0 bg-slate-900/90 z-10">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-bold text-base text-white">#{row.serviceNumber}</span>
+                        <div className="flex items-center gap-1 bg-slate-800 rounded p-1">
+                          <button
+                            onClick={() => adjustService(row.serviceNumber, -1)}
+                            className="w-6 h-6 flex items-center justify-center bg-red-500/20 text-red-400 rounded hover:bg-red-500/40"
+                          >
+                            -
+                          </button>
+                          <span
+                            className={`font-mono font-bold w-6 text-center ${offsets[row.serviceNumber] ? 'text-white' : 'text-slate-600'}`}
+                          >
+                            {offsets[row.serviceNumber] || 0}
+                          </span>
+                          <button
+                            onClick={() => adjustService(row.serviceNumber, 1)}
+                            className="w-6 h-6 flex items-center justify-center bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/40"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* TIMINGS & CHECKS */}
+                    {headers.map((h) => {
+                      const key = `${row.id}_${h.id}`;
+                      const control = controls[key];
+                      const sched = row.times[h.id];
+
+                      return (
+                        <td
+                          key={h.id}
+                          className="p-2 text-center border-r border-slate-800/50 align-top"
+                        >
+                          {sched ? (
+                            <div className="flex flex-col items-center gap-2">
+                              <span className="font-mono text-slate-400 text-xs">{sched}</span>
+
+                              {control ? (
+                                <div
+                                  className={`flex flex-col items-center animate-in fade-in zoom-in rounded-lg p-1.5 min-w-[3rem] ${getDiffBg(control.diff)}`}
+                                >
+                                  <span className="text-[10px] text-slate-500 font-mono">
+                                    {control.actualTime}
+                                  </span>
+                                  <span
+                                    className={`text-sm font-black ${getDiffColor(control.diff)}`}
+                                  >
+                                    {control.diff > 0 ? `+${control.diff}` : control.diff}
+                                  </span>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => handleQuickCheck(row, h)}
+                                  className="w-8 h-8 rounded-full bg-slate-800 border-2 border-slate-600 hover:border-emerald-500 hover:bg-emerald-500/20 text-slate-500 hover:text-emerald-400 transition-all flex items-center justify-center"
+                                  aria-label="Registrar paso"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-700">-</span>
+                          )}
+                        </td>
+                      );
+                    })}
+
+                    {/* LOAD */}
+                    <td className="p-2 bg-slate-900/50 z-10 align-middle">
+                      <div className="grid grid-cols-2 gap-1 w-full max-w-[120px]">
+                        {['Malo', 'Regular', 'Bueno', 'Excelente'].map((opt) => (
+                          <button
+                            key={opt}
+                            onClick={() => setServiceLoad(row.serviceNumber, opt)}
+                            className={`
+                                                        text-[9px] font-bold uppercase py-1 rounded border transition-all
+                                                        ${
+                                                          loads[row.serviceNumber] === opt
+                                                            ? 'bg-blue-600 border-blue-500 text-white'
+                                                            : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-700'
+                                                        }
+                                                    `}
+                          >
+                            {opt.substring(0, 3)}
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default InspectorDashboard;

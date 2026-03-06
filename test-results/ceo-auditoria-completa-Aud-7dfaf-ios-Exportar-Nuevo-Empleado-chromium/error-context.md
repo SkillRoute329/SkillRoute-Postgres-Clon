@@ -1,0 +1,935 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - complementary [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: G
+      - generic [ref=e9]:
+        - heading "Gestión UCOT" [level=1] [ref=e10]
+        - text: Plataforma 2.0
+    - navigation [ref=e11]:
+      - link "Vista General" [ref=e12] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e13]
+        - text: Vista General
+      - generic [ref=e18]:
+        - heading "Departamento de Tránsito" [level=3] [ref=e19]
+        - generic [ref=e20]:
+          - link "Matriz de Servicio" [ref=e21] [cursor=pointer]:
+            - /url: /dashboard/traffic/service-matrix
+            - generic [ref=e22]:
+              - img [ref=e23]
+              - text: Matriz de Servicio
+            - img [ref=e25]
+          - link "Control Inspectores" [ref=e27] [cursor=pointer]:
+            - /url: /dashboard/traffic/inspector-control
+            - generic [ref=e28]:
+              - img [ref=e29]
+              - text: Control Inspectores
+            - img [ref=e31]
+          - link "Captura Inspector (Móvil)" [ref=e33] [cursor=pointer]:
+            - /url: /dashboard/traffic/inspector-capture
+            - generic [ref=e34]:
+              - img [ref=e35]
+              - text: Captura Inspector (Móvil)
+            - img [ref=e37]
+          - link "Gestor de Cartones" [ref=e39] [cursor=pointer]:
+            - /url: /dashboard/traffic/cartons
+            - generic [ref=e40]:
+              - img [ref=e41]
+              - text: Gestor de Cartones
+            - img [ref=e44]
+          - link "Lista Diaria (Listero)" [ref=e46] [cursor=pointer]:
+            - /url: /dashboard/traffic/daily-list
+            - generic [ref=e47]:
+              - img [ref=e48]
+              - text: Lista Diaria (Listero)
+            - img [ref=e51]
+          - link "Navegador UCOT" [ref=e53] [cursor=pointer]:
+            - /url: /dashboard/traffic/navigation
+            - generic [ref=e54]:
+              - img [ref=e55]
+              - text: Navegador UCOT
+            - img [ref=e57]
+          - link "Monitoreo de Flota" [ref=e59] [cursor=pointer]:
+            - /url: /dashboard/traffic/fleet-monitor
+            - generic [ref=e60]:
+              - img [ref=e61]
+              - text: Monitoreo de Flota
+            - img [ref=e67]
+          - link "Estadísticas Inspectores" [ref=e69] [cursor=pointer]:
+            - /url: /dashboard/traffic/statistics
+            - generic [ref=e70]:
+              - img [ref=e71]
+              - text: Estadísticas Inspectores
+            - img [ref=e73]
+          - link "Analítica de Servicio" [ref=e75] [cursor=pointer]:
+            - /url: /dashboard/traffic/analytics
+            - generic [ref=e76]:
+              - img [ref=e77]
+              - text: Analítica de Servicio
+            - img [ref=e79]
+      - generic [ref=e81]:
+        - heading "Gestión de Flota" [level=3] [ref=e82]
+        - generic [ref=e83]:
+          - link "Coches / Inventario" [ref=e84] [cursor=pointer]:
+            - /url: /dashboard/fleet
+            - generic [ref=e85]:
+              - img [ref=e86]
+              - text: Coches / Inventario
+            - img [ref=e90]
+          - link "Mantenimiento" [ref=e92] [cursor=pointer]:
+            - /url: /dashboard/admin/maintenance
+            - generic [ref=e93]:
+              - img [ref=e94]
+              - text: Mantenimiento
+            - img [ref=e96]
+          - link "Alertas de Vía" [ref=e98] [cursor=pointer]:
+            - /url: /dashboard/alerts
+            - generic [ref=e99]:
+              - img [ref=e100]
+              - text: Alertas de Vía
+            - img [ref=e102]
+      - generic [ref=e104]:
+        - heading "Recursos Humanos (RRHH)" [level=3] [ref=e105]
+        - generic [ref=e106]:
+          - link "Gestión de Personal" [ref=e107] [cursor=pointer]:
+            - /url: /dashboard/admin/rrhh
+            - generic [ref=e108]:
+              - img [ref=e109]
+              - text: Gestión de Personal
+            - img [ref=e114]
+          - link "Centro de Talento" [ref=e116] [cursor=pointer]:
+            - /url: /dashboard/talento
+            - generic [ref=e117]:
+              - img [ref=e118]
+              - text: Centro de Talento
+            - img [ref=e123]
+          - link "Motor de Rotación" [ref=e125] [cursor=pointer]:
+            - /url: /dashboard/admin/rrhh/rotation
+            - generic [ref=e126]:
+              - img [ref=e127]
+              - text: Motor de Rotación
+            - img [ref=e129]
+          - link "Fichas Médicas/CI" [ref=e131] [cursor=pointer]:
+            - /url: /dashboard/admin/employees
+            - generic [ref=e132]:
+              - img [ref=e133]
+              - text: Fichas Médicas/CI
+            - img [ref=e136]
+      - generic [ref=e138]:
+        - heading "Soporte y Salud" [level=3] [ref=e139]
+        - generic [ref=e140]:
+          - link "Estado del Sistema" [ref=e141] [cursor=pointer]:
+            - /url: /dashboard/admin/maintenance-system
+            - generic [ref=e142]:
+              - img [ref=e143]
+              - text: Estado del Sistema
+            - img [ref=e146]
+          - link "Ingesta de Datos" [ref=e148] [cursor=pointer]:
+            - /url: /dashboard/admin/ingestion
+            - generic [ref=e149]:
+              - img [ref=e150]
+              - text: Ingesta de Datos
+            - img [ref=e153]
+          - link "Parámetros del Sistema" [ref=e155] [cursor=pointer]:
+            - /url: /dashboard/admin/params
+            - generic [ref=e156]:
+              - img [ref=e157]
+              - text: Parámetros del Sistema
+            - img [ref=e160]
+      - generic [ref=e162]:
+        - heading "Mi Espacio" [level=3] [ref=e163]
+        - generic [ref=e164]:
+          - link "Bolsa de Trabajo" [ref=e165] [cursor=pointer]:
+            - /url: /dashboard/market
+            - generic [ref=e166]:
+              - img [ref=e167]
+              - text: Bolsa de Trabajo
+            - img [ref=e171]
+          - link "Mi Cuenta" [ref=e173] [cursor=pointer]:
+            - /url: /dashboard/my-balance
+            - generic [ref=e174]:
+              - img [ref=e175]
+              - text: Mi Cuenta
+            - img [ref=e178]
+    - button "Cerrar Sesión" [ref=e181] [cursor=pointer]:
+      - img [ref=e182]
+      - text: Cerrar Sesión
+  - main [ref=e185]:
+    - generic [ref=e187]:
+      - button "EN LÍNEA" [ref=e189] [cursor=pointer]:
+        - generic [ref=e193]: EN LÍNEA
+      - button "Notificaciones y mensajes internos (Listero / Chofer)" [ref=e196] [cursor=pointer]:
+        - img [ref=e197]
+      - generic [ref=e200]:
+        - generic [ref=e201]: Super Administrador
+        - generic [ref=e202]: "Int #329 | SuperAdmin"
+      - generic [ref=e203]: S
+    - generic [ref=e205]:
+      - generic [ref=e206]:
+        - generic [ref=e207]:
+          - heading "Alertas Viales" [level=3] [ref=e208]:
+            - img [ref=e209]
+            - generic [ref=e211]: Alertas Viales
+          - button "+ Reportar Novedad" [ref=e212] [cursor=pointer]
+        - generic [ref=e213]:
+          - img [ref=e214]
+          - generic [ref=e216]: No hay alertas viales activas en este momento.
+      - generic [ref=e219]:
+        - generic [ref=e221]:
+          - heading "Recursos Humanos (RRHH)" [level=1] [ref=e222]:
+            - img [ref=e223]
+            - text: Recursos Humanos (RRHH)
+          - paragraph [ref=e228]: Gestión de personal, estructura organizacional y compensaciones.
+        - generic [ref=e229]:
+          - button "Usuarios" [ref=e230] [cursor=pointer]
+          - button "Estructura y Cargos" [ref=e231] [cursor=pointer]
+          - button "Descuentos y Retenciones" [ref=e232] [cursor=pointer]
+        - generic [ref=e234]:
+          - generic [ref=e235]:
+            - button "Exportar RRHH" [ref=e236] [cursor=pointer]:
+              - img [ref=e237]
+              - text: Exportar RRHH
+            - button "Importar RRHH" [ref=e241] [cursor=pointer]:
+              - img [ref=e242]
+              - text: Importar RRHH
+          - generic [ref=e246]:
+            - generic [ref=e247]:
+              - generic [ref=e248]:
+                - 'heading "Gestión de Personal (RRHH) Total: 0" [level=1] [ref=e249]':
+                  - text: Gestión de Personal (RRHH)
+                  - generic [ref=e250]: "Total: 0"
+                - paragraph [ref=e251]: Administración centralizada de personal
+              - generic [ref=e252]:
+                - generic [ref=e253]:
+                  - img [ref=e254]
+                  - textbox "Buscar..." [ref=e257]
+                - button "Exportar Excel" [ref=e259] [cursor=pointer]:
+                  - img [ref=e260]
+                - button "Importar Excel" [ref=e263] [cursor=pointer]:
+                  - img [ref=e264]
+                  - text: Importar Excel
+                - button "Nuevo Empleado" [ref=e267] [cursor=pointer]:
+                  - img [ref=e268]
+                  - text: Nuevo Empleado
+            - generic [ref=e269]:
+              - table [ref=e271]:
+                - rowgroup [ref=e272]:
+                  - row "Legajo Nombre Completo Rol del Sistema ID Departamento ID Cargo Coche Fijo (ID) Vencimiento Libreta Acciones" [ref=e273]:
+                    - columnheader "Legajo" [ref=e274]
+                    - columnheader "Nombre Completo" [ref=e275]
+                    - columnheader "Rol del Sistema" [ref=e276]
+                    - columnheader "ID Departamento" [ref=e277]
+                    - columnheader "ID Cargo" [ref=e278]
+                    - columnheader "Coche Fijo (ID)" [ref=e279]
+                    - columnheader "Vencimiento Libreta" [ref=e280]
+                    - columnheader "Acciones" [ref=e281]
+                - rowgroup [ref=e282]:
+                  - row "0000 Usuario Operaciones admin - - - -" [ref=e283]:
+                    - cell "0000" [ref=e284]
+                    - cell "Usuario Operaciones" [ref=e285]
+                    - cell "admin" [ref=e286]
+                    - cell "-" [ref=e287]
+                    - cell "-" [ref=e288]
+                    - cell "-" [ref=e289]
+                    - cell "-" [ref=e290]
+                    - cell [ref=e291]:
+                      - generic [ref=e292]:
+                        - button [ref=e293] [cursor=pointer]:
+                          - img [ref=e294]
+                        - button [ref=e297] [cursor=pointer]:
+                          - img [ref=e298]
+                  - row "0000 Super Admin UCOT - - - -" [ref=e301]:
+                    - cell "0000" [ref=e302]
+                    - cell "Super Admin UCOT" [ref=e303]
+                    - cell [ref=e304]
+                    - cell "-" [ref=e306]
+                    - cell "-" [ref=e307]
+                    - cell "-" [ref=e308]
+                    - cell "-" [ref=e309]
+                    - cell [ref=e310]:
+                      - generic [ref=e311]:
+                        - button [ref=e312] [cursor=pointer]:
+                          - img [ref=e313]
+                        - button [ref=e316] [cursor=pointer]:
+                          - img [ref=e317]
+                  - row "1001 Conductor Demo 1001 User - - - -" [ref=e320]:
+                    - cell "1001" [ref=e321]
+                    - cell "Conductor Demo 1001" [ref=e322]
+                    - cell "User" [ref=e323]
+                    - cell "-" [ref=e324]
+                    - cell "-" [ref=e325]
+                    - cell "-" [ref=e326]
+                    - cell "-" [ref=e327]
+                    - cell [ref=e328]:
+                      - generic [ref=e329]:
+                        - button [ref=e330] [cursor=pointer]:
+                          - img [ref=e331]
+                        - button [ref=e334] [cursor=pointer]:
+                          - img [ref=e335]
+                  - row "1002 Conductor Demo 1002 User - - - -" [ref=e338]:
+                    - cell "1002" [ref=e339]
+                    - cell "Conductor Demo 1002" [ref=e340]
+                    - cell "User" [ref=e341]
+                    - cell "-" [ref=e342]
+                    - cell "-" [ref=e343]
+                    - cell "-" [ref=e344]
+                    - cell "-" [ref=e345]
+                    - cell [ref=e346]:
+                      - generic [ref=e347]:
+                        - button [ref=e348] [cursor=pointer]:
+                          - img [ref=e349]
+                        - button [ref=e352] [cursor=pointer]:
+                          - img [ref=e353]
+                  - row "1003 Conductor Demo 1003 User - - - -" [ref=e356]:
+                    - cell "1003" [ref=e357]
+                    - cell "Conductor Demo 1003" [ref=e358]
+                    - cell "User" [ref=e359]
+                    - cell "-" [ref=e360]
+                    - cell "-" [ref=e361]
+                    - cell "-" [ref=e362]
+                    - cell "-" [ref=e363]
+                    - cell [ref=e364]:
+                      - generic [ref=e365]:
+                        - button [ref=e366] [cursor=pointer]:
+                          - img [ref=e367]
+                        - button [ref=e370] [cursor=pointer]:
+                          - img [ref=e371]
+                  - row "1004 Conductor Demo 1004 User - - - -" [ref=e374]:
+                    - cell "1004" [ref=e375]
+                    - cell "Conductor Demo 1004" [ref=e376]
+                    - cell "User" [ref=e377]
+                    - cell "-" [ref=e378]
+                    - cell "-" [ref=e379]
+                    - cell "-" [ref=e380]
+                    - cell "-" [ref=e381]
+                    - cell [ref=e382]:
+                      - generic [ref=e383]:
+                        - button [ref=e384] [cursor=pointer]:
+                          - img [ref=e385]
+                        - button [ref=e388] [cursor=pointer]:
+                          - img [ref=e389]
+                  - row "1005 Conductor Demo 1005 User - - - -" [ref=e392]:
+                    - cell "1005" [ref=e393]
+                    - cell "Conductor Demo 1005" [ref=e394]
+                    - cell "User" [ref=e395]
+                    - cell "-" [ref=e396]
+                    - cell "-" [ref=e397]
+                    - cell "-" [ref=e398]
+                    - cell "-" [ref=e399]
+                    - cell [ref=e400]:
+                      - generic [ref=e401]:
+                        - button [ref=e402] [cursor=pointer]:
+                          - img [ref=e403]
+                        - button [ref=e406] [cursor=pointer]:
+                          - img [ref=e407]
+                  - row "1006 Conductor Demo 1006 User - - - -" [ref=e410]:
+                    - cell "1006" [ref=e411]
+                    - cell "Conductor Demo 1006" [ref=e412]
+                    - cell "User" [ref=e413]
+                    - cell "-" [ref=e414]
+                    - cell "-" [ref=e415]
+                    - cell "-" [ref=e416]
+                    - cell "-" [ref=e417]
+                    - cell [ref=e418]:
+                      - generic [ref=e419]:
+                        - button [ref=e420] [cursor=pointer]:
+                          - img [ref=e421]
+                        - button [ref=e424] [cursor=pointer]:
+                          - img [ref=e425]
+                  - row "1007 Conductor Demo 1007 User - - - -" [ref=e428]:
+                    - cell "1007" [ref=e429]
+                    - cell "Conductor Demo 1007" [ref=e430]
+                    - cell "User" [ref=e431]
+                    - cell "-" [ref=e432]
+                    - cell "-" [ref=e433]
+                    - cell "-" [ref=e434]
+                    - cell "-" [ref=e435]
+                    - cell [ref=e436]:
+                      - generic [ref=e437]:
+                        - button [ref=e438] [cursor=pointer]:
+                          - img [ref=e439]
+                        - button [ref=e442] [cursor=pointer]:
+                          - img [ref=e443]
+                  - row "1008 Conductor Demo 1008 User - - - -" [ref=e446]:
+                    - cell "1008" [ref=e447]
+                    - cell "Conductor Demo 1008" [ref=e448]
+                    - cell "User" [ref=e449]
+                    - cell "-" [ref=e450]
+                    - cell "-" [ref=e451]
+                    - cell "-" [ref=e452]
+                    - cell "-" [ref=e453]
+                    - cell [ref=e454]:
+                      - generic [ref=e455]:
+                        - button [ref=e456] [cursor=pointer]:
+                          - img [ref=e457]
+                        - button [ref=e460] [cursor=pointer]:
+                          - img [ref=e461]
+                  - row "1009 Conductor Demo 1009 User - - 1009 -" [ref=e464]:
+                    - cell "1009" [ref=e465]
+                    - cell "Conductor Demo 1009" [ref=e466]
+                    - cell "User" [ref=e467]
+                    - cell "-" [ref=e468]
+                    - cell "-" [ref=e469]
+                    - cell "1009" [ref=e470]
+                    - cell "-" [ref=e471]
+                    - cell [ref=e472]:
+                      - generic [ref=e473]:
+                        - button [ref=e474] [cursor=pointer]:
+                          - img [ref=e475]
+                        - button [ref=e478] [cursor=pointer]:
+                          - img [ref=e479]
+                  - row "1010 Conductor Demo 1010 User - - - -" [ref=e482]:
+                    - cell "1010" [ref=e483]
+                    - cell "Conductor Demo 1010" [ref=e484]
+                    - cell "User" [ref=e485]
+                    - cell "-" [ref=e486]
+                    - cell "-" [ref=e487]
+                    - cell "-" [ref=e488]
+                    - cell "-" [ref=e489]
+                    - cell [ref=e490]:
+                      - generic [ref=e491]:
+                        - button [ref=e492] [cursor=pointer]:
+                          - img [ref=e493]
+                        - button [ref=e496] [cursor=pointer]:
+                          - img [ref=e497]
+                  - row "1011 Conductor Demo 1011 User - - - -" [ref=e500]:
+                    - cell "1011" [ref=e501]
+                    - cell "Conductor Demo 1011" [ref=e502]
+                    - cell "User" [ref=e503]
+                    - cell "-" [ref=e504]
+                    - cell "-" [ref=e505]
+                    - cell "-" [ref=e506]
+                    - cell "-" [ref=e507]
+                    - cell [ref=e508]:
+                      - generic [ref=e509]:
+                        - button [ref=e510] [cursor=pointer]:
+                          - img [ref=e511]
+                        - button [ref=e514] [cursor=pointer]:
+                          - img [ref=e515]
+                  - row "1012 Conductor Demo 1012 User - - - -" [ref=e518]:
+                    - cell "1012" [ref=e519]
+                    - cell "Conductor Demo 1012" [ref=e520]
+                    - cell "User" [ref=e521]
+                    - cell "-" [ref=e522]
+                    - cell "-" [ref=e523]
+                    - cell "-" [ref=e524]
+                    - cell "-" [ref=e525]
+                    - cell [ref=e526]:
+                      - generic [ref=e527]:
+                        - button [ref=e528] [cursor=pointer]:
+                          - img [ref=e529]
+                        - button [ref=e532] [cursor=pointer]:
+                          - img [ref=e533]
+                  - row "1013 Conductor Demo 1013 User - - - -" [ref=e536]:
+                    - cell "1013" [ref=e537]
+                    - cell "Conductor Demo 1013" [ref=e538]
+                    - cell "User" [ref=e539]
+                    - cell "-" [ref=e540]
+                    - cell "-" [ref=e541]
+                    - cell "-" [ref=e542]
+                    - cell "-" [ref=e543]
+                    - cell [ref=e544]:
+                      - generic [ref=e545]:
+                        - button [ref=e546] [cursor=pointer]:
+                          - img [ref=e547]
+                        - button [ref=e550] [cursor=pointer]:
+                          - img [ref=e551]
+                  - row "1014 Conductor Demo 1014 User - - - -" [ref=e554]:
+                    - cell "1014" [ref=e555]
+                    - cell "Conductor Demo 1014" [ref=e556]
+                    - cell "User" [ref=e557]
+                    - cell "-" [ref=e558]
+                    - cell "-" [ref=e559]
+                    - cell "-" [ref=e560]
+                    - cell "-" [ref=e561]
+                    - cell [ref=e562]:
+                      - generic [ref=e563]:
+                        - button [ref=e564] [cursor=pointer]:
+                          - img [ref=e565]
+                        - button [ref=e568] [cursor=pointer]:
+                          - img [ref=e569]
+                  - row "1015 Conductor Demo 1015 User - - - -" [ref=e572]:
+                    - cell "1015" [ref=e573]
+                    - cell "Conductor Demo 1015" [ref=e574]
+                    - cell "User" [ref=e575]
+                    - cell "-" [ref=e576]
+                    - cell "-" [ref=e577]
+                    - cell "-" [ref=e578]
+                    - cell "-" [ref=e579]
+                    - cell [ref=e580]:
+                      - generic [ref=e581]:
+                        - button [ref=e582] [cursor=pointer]:
+                          - img [ref=e583]
+                        - button [ref=e586] [cursor=pointer]:
+                          - img [ref=e587]
+                  - row "1016 Conductor Demo 1016 User - - - -" [ref=e590]:
+                    - cell "1016" [ref=e591]
+                    - cell "Conductor Demo 1016" [ref=e592]
+                    - cell "User" [ref=e593]
+                    - cell "-" [ref=e594]
+                    - cell "-" [ref=e595]
+                    - cell "-" [ref=e596]
+                    - cell "-" [ref=e597]
+                    - cell [ref=e598]:
+                      - generic [ref=e599]:
+                        - button [ref=e600] [cursor=pointer]:
+                          - img [ref=e601]
+                        - button [ref=e604] [cursor=pointer]:
+                          - img [ref=e605]
+                  - row "1017 Conductor Demo 1017 User - - - -" [ref=e608]:
+                    - cell "1017" [ref=e609]
+                    - cell "Conductor Demo 1017" [ref=e610]
+                    - cell "User" [ref=e611]
+                    - cell "-" [ref=e612]
+                    - cell "-" [ref=e613]
+                    - cell "-" [ref=e614]
+                    - cell "-" [ref=e615]
+                    - cell [ref=e616]:
+                      - generic [ref=e617]:
+                        - button [ref=e618] [cursor=pointer]:
+                          - img [ref=e619]
+                        - button [ref=e622] [cursor=pointer]:
+                          - img [ref=e623]
+                  - row "1018 Conductor Demo 1018 User - - - -" [ref=e626]:
+                    - cell "1018" [ref=e627]
+                    - cell "Conductor Demo 1018" [ref=e628]
+                    - cell "User" [ref=e629]
+                    - cell "-" [ref=e630]
+                    - cell "-" [ref=e631]
+                    - cell "-" [ref=e632]
+                    - cell "-" [ref=e633]
+                    - cell [ref=e634]:
+                      - generic [ref=e635]:
+                        - button [ref=e636] [cursor=pointer]:
+                          - img [ref=e637]
+                        - button [ref=e640] [cursor=pointer]:
+                          - img [ref=e641]
+                  - row "1019 Conductor Demo 1019 User - - - -" [ref=e644]:
+                    - cell "1019" [ref=e645]
+                    - cell "Conductor Demo 1019" [ref=e646]
+                    - cell "User" [ref=e647]
+                    - cell "-" [ref=e648]
+                    - cell "-" [ref=e649]
+                    - cell "-" [ref=e650]
+                    - cell "-" [ref=e651]
+                    - cell [ref=e652]:
+                      - generic [ref=e653]:
+                        - button [ref=e654] [cursor=pointer]:
+                          - img [ref=e655]
+                        - button [ref=e658] [cursor=pointer]:
+                          - img [ref=e659]
+                  - row "1020 Conductor Demo 1020 User - - - -" [ref=e662]:
+                    - cell "1020" [ref=e663]
+                    - cell "Conductor Demo 1020" [ref=e664]
+                    - cell "User" [ref=e665]
+                    - cell "-" [ref=e666]
+                    - cell "-" [ref=e667]
+                    - cell "-" [ref=e668]
+                    - cell "-" [ref=e669]
+                    - cell [ref=e670]:
+                      - generic [ref=e671]:
+                        - button [ref=e672] [cursor=pointer]:
+                          - img [ref=e673]
+                        - button [ref=e676] [cursor=pointer]:
+                          - img [ref=e677]
+                  - row "1021 Conductor Demo 1021 User - - - -" [ref=e680]:
+                    - cell "1021" [ref=e681]
+                    - cell "Conductor Demo 1021" [ref=e682]
+                    - cell "User" [ref=e683]
+                    - cell "-" [ref=e684]
+                    - cell "-" [ref=e685]
+                    - cell "-" [ref=e686]
+                    - cell "-" [ref=e687]
+                    - cell [ref=e688]:
+                      - generic [ref=e689]:
+                        - button [ref=e690] [cursor=pointer]:
+                          - img [ref=e691]
+                        - button [ref=e694] [cursor=pointer]:
+                          - img [ref=e695]
+                  - row "1022 Conductor Demo 1022 User - - - -" [ref=e698]:
+                    - cell "1022" [ref=e699]
+                    - cell "Conductor Demo 1022" [ref=e700]
+                    - cell "User" [ref=e701]
+                    - cell "-" [ref=e702]
+                    - cell "-" [ref=e703]
+                    - cell "-" [ref=e704]
+                    - cell "-" [ref=e705]
+                    - cell [ref=e706]:
+                      - generic [ref=e707]:
+                        - button [ref=e708] [cursor=pointer]:
+                          - img [ref=e709]
+                        - button [ref=e712] [cursor=pointer]:
+                          - img [ref=e713]
+                  - row "1023 Conductor Demo 1023 User - - - -" [ref=e716]:
+                    - cell "1023" [ref=e717]
+                    - cell "Conductor Demo 1023" [ref=e718]
+                    - cell "User" [ref=e719]
+                    - cell "-" [ref=e720]
+                    - cell "-" [ref=e721]
+                    - cell "-" [ref=e722]
+                    - cell "-" [ref=e723]
+                    - cell [ref=e724]:
+                      - generic [ref=e725]:
+                        - button [ref=e726] [cursor=pointer]:
+                          - img [ref=e727]
+                        - button [ref=e730] [cursor=pointer]:
+                          - img [ref=e731]
+                  - row "1024 Conductor Demo 1024 User - - - -" [ref=e734]:
+                    - cell "1024" [ref=e735]
+                    - cell "Conductor Demo 1024" [ref=e736]
+                    - cell "User" [ref=e737]
+                    - cell "-" [ref=e738]
+                    - cell "-" [ref=e739]
+                    - cell "-" [ref=e740]
+                    - cell "-" [ref=e741]
+                    - cell [ref=e742]:
+                      - generic [ref=e743]:
+                        - button [ref=e744] [cursor=pointer]:
+                          - img [ref=e745]
+                        - button [ref=e748] [cursor=pointer]:
+                          - img [ref=e749]
+                  - row "1025 Conductor Demo 1025 User - - - -" [ref=e752]:
+                    - cell "1025" [ref=e753]
+                    - cell "Conductor Demo 1025" [ref=e754]
+                    - cell "User" [ref=e755]
+                    - cell "-" [ref=e756]
+                    - cell "-" [ref=e757]
+                    - cell "-" [ref=e758]
+                    - cell "-" [ref=e759]
+                    - cell [ref=e760]:
+                      - generic [ref=e761]:
+                        - button [ref=e762] [cursor=pointer]:
+                          - img [ref=e763]
+                        - button [ref=e766] [cursor=pointer]:
+                          - img [ref=e767]
+                  - row "1026 Conductor Demo 1026 User - - - -" [ref=e770]:
+                    - cell "1026" [ref=e771]
+                    - cell "Conductor Demo 1026" [ref=e772]
+                    - cell "User" [ref=e773]
+                    - cell "-" [ref=e774]
+                    - cell "-" [ref=e775]
+                    - cell "-" [ref=e776]
+                    - cell "-" [ref=e777]
+                    - cell [ref=e778]:
+                      - generic [ref=e779]:
+                        - button [ref=e780] [cursor=pointer]:
+                          - img [ref=e781]
+                        - button [ref=e784] [cursor=pointer]:
+                          - img [ref=e785]
+                  - row "1027 Conductor Demo 1027 User - - - -" [ref=e788]:
+                    - cell "1027" [ref=e789]
+                    - cell "Conductor Demo 1027" [ref=e790]
+                    - cell "User" [ref=e791]
+                    - cell "-" [ref=e792]
+                    - cell "-" [ref=e793]
+                    - cell "-" [ref=e794]
+                    - cell "-" [ref=e795]
+                    - cell [ref=e796]:
+                      - generic [ref=e797]:
+                        - button [ref=e798] [cursor=pointer]:
+                          - img [ref=e799]
+                        - button [ref=e802] [cursor=pointer]:
+                          - img [ref=e803]
+                  - row "1028 Conductor Demo 1028 User - - - -" [ref=e806]:
+                    - cell "1028" [ref=e807]
+                    - cell "Conductor Demo 1028" [ref=e808]
+                    - cell "User" [ref=e809]
+                    - cell "-" [ref=e810]
+                    - cell "-" [ref=e811]
+                    - cell "-" [ref=e812]
+                    - cell "-" [ref=e813]
+                    - cell [ref=e814]:
+                      - generic [ref=e815]:
+                        - button [ref=e816] [cursor=pointer]:
+                          - img [ref=e817]
+                        - button [ref=e820] [cursor=pointer]:
+                          - img [ref=e821]
+                  - row "1029 Conductor Demo 1029 User - - - -" [ref=e824]:
+                    - cell "1029" [ref=e825]
+                    - cell "Conductor Demo 1029" [ref=e826]
+                    - cell "User" [ref=e827]
+                    - cell "-" [ref=e828]
+                    - cell "-" [ref=e829]
+                    - cell "-" [ref=e830]
+                    - cell "-" [ref=e831]
+                    - cell [ref=e832]:
+                      - generic [ref=e833]:
+                        - button [ref=e834] [cursor=pointer]:
+                          - img [ref=e835]
+                        - button [ref=e838] [cursor=pointer]:
+                          - img [ref=e839]
+                  - row "1030 Conductor Demo 1030 User - - - -" [ref=e842]:
+                    - cell "1030" [ref=e843]
+                    - cell "Conductor Demo 1030" [ref=e844]
+                    - cell "User" [ref=e845]
+                    - cell "-" [ref=e846]
+                    - cell "-" [ref=e847]
+                    - cell "-" [ref=e848]
+                    - cell "-" [ref=e849]
+                    - cell [ref=e850]:
+                      - generic [ref=e851]:
+                        - button [ref=e852] [cursor=pointer]:
+                          - img [ref=e853]
+                        - button [ref=e856] [cursor=pointer]:
+                          - img [ref=e857]
+                  - row "1031 Conductor Demo 1031 User - - - -" [ref=e860]:
+                    - cell "1031" [ref=e861]
+                    - cell "Conductor Demo 1031" [ref=e862]
+                    - cell "User" [ref=e863]
+                    - cell "-" [ref=e864]
+                    - cell "-" [ref=e865]
+                    - cell "-" [ref=e866]
+                    - cell "-" [ref=e867]
+                    - cell [ref=e868]:
+                      - generic [ref=e869]:
+                        - button [ref=e870] [cursor=pointer]:
+                          - img [ref=e871]
+                        - button [ref=e874] [cursor=pointer]:
+                          - img [ref=e875]
+                  - row "1032 Conductor Demo 1032 User - - - -" [ref=e878]:
+                    - cell "1032" [ref=e879]
+                    - cell "Conductor Demo 1032" [ref=e880]
+                    - cell "User" [ref=e881]
+                    - cell "-" [ref=e882]
+                    - cell "-" [ref=e883]
+                    - cell "-" [ref=e884]
+                    - cell "-" [ref=e885]
+                    - cell [ref=e886]:
+                      - generic [ref=e887]:
+                        - button [ref=e888] [cursor=pointer]:
+                          - img [ref=e889]
+                        - button [ref=e892] [cursor=pointer]:
+                          - img [ref=e893]
+                  - row "1033 Conductor Demo 1033 User - - - -" [ref=e896]:
+                    - cell "1033" [ref=e897]
+                    - cell "Conductor Demo 1033" [ref=e898]
+                    - cell "User" [ref=e899]
+                    - cell "-" [ref=e900]
+                    - cell "-" [ref=e901]
+                    - cell "-" [ref=e902]
+                    - cell "-" [ref=e903]
+                    - cell [ref=e904]:
+                      - generic [ref=e905]:
+                        - button [ref=e906] [cursor=pointer]:
+                          - img [ref=e907]
+                        - button [ref=e910] [cursor=pointer]:
+                          - img [ref=e911]
+                  - row "1034 Conductor Demo 1034 User - - - -" [ref=e914]:
+                    - cell "1034" [ref=e915]
+                    - cell "Conductor Demo 1034" [ref=e916]
+                    - cell "User" [ref=e917]
+                    - cell "-" [ref=e918]
+                    - cell "-" [ref=e919]
+                    - cell "-" [ref=e920]
+                    - cell "-" [ref=e921]
+                    - cell [ref=e922]:
+                      - generic [ref=e923]:
+                        - button [ref=e924] [cursor=pointer]:
+                          - img [ref=e925]
+                        - button [ref=e928] [cursor=pointer]:
+                          - img [ref=e929]
+                  - row "1035 Conductor Demo 1035 User - - - -" [ref=e932]:
+                    - cell "1035" [ref=e933]
+                    - cell "Conductor Demo 1035" [ref=e934]
+                    - cell "User" [ref=e935]
+                    - cell "-" [ref=e936]
+                    - cell "-" [ref=e937]
+                    - cell "-" [ref=e938]
+                    - cell "-" [ref=e939]
+                    - cell [ref=e940]:
+                      - generic [ref=e941]:
+                        - button [ref=e942] [cursor=pointer]:
+                          - img [ref=e943]
+                        - button [ref=e946] [cursor=pointer]:
+                          - img [ref=e947]
+                  - row "1036 Conductor Demo 1036 User - - - -" [ref=e950]:
+                    - cell "1036" [ref=e951]
+                    - cell "Conductor Demo 1036" [ref=e952]
+                    - cell "User" [ref=e953]
+                    - cell "-" [ref=e954]
+                    - cell "-" [ref=e955]
+                    - cell "-" [ref=e956]
+                    - cell "-" [ref=e957]
+                    - cell [ref=e958]:
+                      - generic [ref=e959]:
+                        - button [ref=e960] [cursor=pointer]:
+                          - img [ref=e961]
+                        - button [ref=e964] [cursor=pointer]:
+                          - img [ref=e965]
+                  - row "1037 Conductor Demo 1037 User - - - -" [ref=e968]:
+                    - cell "1037" [ref=e969]
+                    - cell "Conductor Demo 1037" [ref=e970]
+                    - cell "User" [ref=e971]
+                    - cell "-" [ref=e972]
+                    - cell "-" [ref=e973]
+                    - cell "-" [ref=e974]
+                    - cell "-" [ref=e975]
+                    - cell [ref=e976]:
+                      - generic [ref=e977]:
+                        - button [ref=e978] [cursor=pointer]:
+                          - img [ref=e979]
+                        - button [ref=e982] [cursor=pointer]:
+                          - img [ref=e983]
+                  - row "1038 Conductor Demo 1038 User - - - -" [ref=e986]:
+                    - cell "1038" [ref=e987]
+                    - cell "Conductor Demo 1038" [ref=e988]
+                    - cell "User" [ref=e989]
+                    - cell "-" [ref=e990]
+                    - cell "-" [ref=e991]
+                    - cell "-" [ref=e992]
+                    - cell "-" [ref=e993]
+                    - cell [ref=e994]:
+                      - generic [ref=e995]:
+                        - button [ref=e996] [cursor=pointer]:
+                          - img [ref=e997]
+                        - button [ref=e1000] [cursor=pointer]:
+                          - img [ref=e1001]
+                  - row "1039 Conductor Demo 1039 User - - - -" [ref=e1004]:
+                    - cell "1039" [ref=e1005]
+                    - cell "Conductor Demo 1039" [ref=e1006]
+                    - cell "User" [ref=e1007]
+                    - cell "-" [ref=e1008]
+                    - cell "-" [ref=e1009]
+                    - cell "-" [ref=e1010]
+                    - cell "-" [ref=e1011]
+                    - cell [ref=e1012]:
+                      - generic [ref=e1013]:
+                        - button [ref=e1014] [cursor=pointer]:
+                          - img [ref=e1015]
+                        - button [ref=e1018] [cursor=pointer]:
+                          - img [ref=e1019]
+                  - row "1040 Conductor Demo 1040 User - - - -" [ref=e1022]:
+                    - cell "1040" [ref=e1023]
+                    - cell "Conductor Demo 1040" [ref=e1024]
+                    - cell "User" [ref=e1025]
+                    - cell "-" [ref=e1026]
+                    - cell "-" [ref=e1027]
+                    - cell "-" [ref=e1028]
+                    - cell "-" [ref=e1029]
+                    - cell [ref=e1030]:
+                      - generic [ref=e1031]:
+                        - button [ref=e1032] [cursor=pointer]:
+                          - img [ref=e1033]
+                        - button [ref=e1036] [cursor=pointer]:
+                          - img [ref=e1037]
+                  - row "1041 Conductor Demo 1041 User - - - -" [ref=e1040]:
+                    - cell "1041" [ref=e1041]
+                    - cell "Conductor Demo 1041" [ref=e1042]
+                    - cell "User" [ref=e1043]
+                    - cell "-" [ref=e1044]
+                    - cell "-" [ref=e1045]
+                    - cell "-" [ref=e1046]
+                    - cell "-" [ref=e1047]
+                    - cell [ref=e1048]:
+                      - generic [ref=e1049]:
+                        - button [ref=e1050] [cursor=pointer]:
+                          - img [ref=e1051]
+                        - button [ref=e1054] [cursor=pointer]:
+                          - img [ref=e1055]
+                  - row "1042 Conductor Demo 1042 User - - - -" [ref=e1058]:
+                    - cell "1042" [ref=e1059]
+                    - cell "Conductor Demo 1042" [ref=e1060]
+                    - cell "User" [ref=e1061]
+                    - cell "-" [ref=e1062]
+                    - cell "-" [ref=e1063]
+                    - cell "-" [ref=e1064]
+                    - cell "-" [ref=e1065]
+                    - cell [ref=e1066]:
+                      - generic [ref=e1067]:
+                        - button [ref=e1068] [cursor=pointer]:
+                          - img [ref=e1069]
+                        - button [ref=e1072] [cursor=pointer]:
+                          - img [ref=e1073]
+                  - row "1043 Conductor Demo 1043 User - - - -" [ref=e1076]:
+                    - cell "1043" [ref=e1077]
+                    - cell "Conductor Demo 1043" [ref=e1078]
+                    - cell "User" [ref=e1079]
+                    - cell "-" [ref=e1080]
+                    - cell "-" [ref=e1081]
+                    - cell "-" [ref=e1082]
+                    - cell "-" [ref=e1083]
+                    - cell [ref=e1084]:
+                      - generic [ref=e1085]:
+                        - button [ref=e1086] [cursor=pointer]:
+                          - img [ref=e1087]
+                        - button [ref=e1090] [cursor=pointer]:
+                          - img [ref=e1091]
+                  - row "1044 Conductor Demo 1044 User - - - -" [ref=e1094]:
+                    - cell "1044" [ref=e1095]
+                    - cell "Conductor Demo 1044" [ref=e1096]
+                    - cell "User" [ref=e1097]
+                    - cell "-" [ref=e1098]
+                    - cell "-" [ref=e1099]
+                    - cell "-" [ref=e1100]
+                    - cell "-" [ref=e1101]
+                    - cell [ref=e1102]:
+                      - generic [ref=e1103]:
+                        - button [ref=e1104] [cursor=pointer]:
+                          - img [ref=e1105]
+                        - button [ref=e1108] [cursor=pointer]:
+                          - img [ref=e1109]
+                  - row "1045 Conductor Demo 1045 User - - - -" [ref=e1112]:
+                    - cell "1045" [ref=e1113]
+                    - cell "Conductor Demo 1045" [ref=e1114]
+                    - cell "User" [ref=e1115]
+                    - cell "-" [ref=e1116]
+                    - cell "-" [ref=e1117]
+                    - cell "-" [ref=e1118]
+                    - cell "-" [ref=e1119]
+                    - cell [ref=e1120]:
+                      - generic [ref=e1121]:
+                        - button [ref=e1122] [cursor=pointer]:
+                          - img [ref=e1123]
+                        - button [ref=e1126] [cursor=pointer]:
+                          - img [ref=e1127]
+                  - row "1046 Conductor Demo 1046 User - - - -" [ref=e1130]:
+                    - cell "1046" [ref=e1131]
+                    - cell "Conductor Demo 1046" [ref=e1132]
+                    - cell "User" [ref=e1133]
+                    - cell "-" [ref=e1134]
+                    - cell "-" [ref=e1135]
+                    - cell "-" [ref=e1136]
+                    - cell "-" [ref=e1137]
+                    - cell [ref=e1138]:
+                      - generic [ref=e1139]:
+                        - button [ref=e1140] [cursor=pointer]:
+                          - img [ref=e1141]
+                        - button [ref=e1144] [cursor=pointer]:
+                          - img [ref=e1145]
+                  - row "1047 Conductor Demo 1047 User - - - -" [ref=e1148]:
+                    - cell "1047" [ref=e1149]
+                    - cell "Conductor Demo 1047" [ref=e1150]
+                    - cell "User" [ref=e1151]
+                    - cell "-" [ref=e1152]
+                    - cell "-" [ref=e1153]
+                    - cell "-" [ref=e1154]
+                    - cell "-" [ref=e1155]
+                    - cell [ref=e1156]:
+                      - generic [ref=e1157]:
+                        - button [ref=e1158] [cursor=pointer]:
+                          - img [ref=e1159]
+                        - button [ref=e1162] [cursor=pointer]:
+                          - img [ref=e1163]
+                  - row "1048 Conductor Demo 1048 User - - - -" [ref=e1166]:
+                    - cell "1048" [ref=e1167]
+                    - cell "Conductor Demo 1048" [ref=e1168]
+                    - cell "User" [ref=e1169]
+                    - cell "-" [ref=e1170]
+                    - cell "-" [ref=e1171]
+                    - cell "-" [ref=e1172]
+                    - cell "-" [ref=e1173]
+                    - cell [ref=e1174]:
+                      - generic [ref=e1175]:
+                        - button [ref=e1176] [cursor=pointer]:
+                          - img [ref=e1177]
+                        - button [ref=e1180] [cursor=pointer]:
+                          - img [ref=e1181]
+              - generic [ref=e1184]:
+                - generic [ref=e1185]: Mostrando 50 registros
+                - generic [ref=e1186]:
+                  - button "Anterior" [disabled] [ref=e1187]
+                  - button "Siguiente" [ref=e1188] [cursor=pointer]
+```
