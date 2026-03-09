@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Clock, User, AlertTriangle, CheckCircle } from 'lucide-react';
+import { X, Clock, User, AlertTriangle } from 'lucide-react';
 import { FleetService } from '../../services/api';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';

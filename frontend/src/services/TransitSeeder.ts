@@ -2,16 +2,12 @@ import {
   collection,
   getDocs,
   doc,
-  setDoc,
   writeBatch,
-  query,
-  where,
   Timestamp,
-  getDoc,
-} from 'firebase/firestore';
+  } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import type { DailyShift, ServiceDefinition, ScheduleMatrix } from '../types/traffic';
-import type { ParsedData, ServiceData } from '../utils/ExcelParserV2';
+import type { DailyShift, ServiceDefinition } from '../types/traffic';
+import type { ParsedData } from '../utils/ExcelParserV2';
 
 // Cache for quick lookups
 const _usersIndex: Record<string, { uid: string; name: string }> = {};
@@ -69,7 +65,7 @@ export const TransitSeeder = {
   ): Promise<{ success: boolean; message: string }> {
     await this.loadMasterIndices();
 
-    const timestamp = new Date();
+    const _timestamp = new Date();
 
     try {
       switch (parsedData.type) {
@@ -177,12 +173,19 @@ export const TransitSeeder = {
             nombre: `Cartón ${svc.serviceNumber} ${minuta}`,
             paradas,
             turnos,
-            totalHoras: svc.durationMinutes
-              ? `${Math.floor(svc.durationMinutes / 60)}:${String(svc.durationMinutes % 60).padStart(2, '0')}`
-              : '',
-            kilometros: '',
+            totalHoras:
+              svc.totalHours ||
+              (svc.durationMinutes
+                ? `${Math.floor(svc.durationMinutes / 60)}:${String(svc.durationMinutes % 60).padStart(2, '0')}`
+                : ''),
+            kilometros: svc.kilometers || '',
             temporada: 'VERANO_2026', // Requerido para filtro AdminCartones
-            tipo_dia: dayType === 'SABADO' ? 'SABADO' : (dayType === 'DOMINGO' || dayType === 'FESTIVO') ? 'DOMINGO' : 'HABIL',
+            tipo_dia:
+              dayType === 'SABADO'
+                ? 'SABADO'
+                : dayType === 'DOMINGO' || dayType === 'FESTIVO'
+                  ? 'DOMINGO'
+                  : 'HABIL',
             vigenciaDesde: Timestamp.now(),
             creadoEn: Timestamp.now(),
           },

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../config/firebase';
 import { collection, onSnapshot, query, where, Timestamp } from 'firebase/firestore';
-import { Activity, Map as MapIcon, Users, AlertTriangle } from 'lucide-react';
+import { Activity, Map as Users, AlertTriangle } from 'lucide-react';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 

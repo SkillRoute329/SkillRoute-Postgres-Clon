@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, X, Check, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Upload, Loader2, Image as ImageIcon } from 'lucide-react';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 interface ImageUploaderProps {

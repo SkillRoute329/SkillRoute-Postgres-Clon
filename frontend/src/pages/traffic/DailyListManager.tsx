@@ -202,12 +202,9 @@ export default function DailyListManager() {
   }, [selectedDate]);
 
   useEffect(() => {
-    const fromMaster = CartonService.getLineIdsFromMaster();
-    if (fromMaster.length > 0) setLineas(fromMaster);
-    else
-      CartonService.getLineIds()
-        .then(setLineas)
-        .catch(() => setLineas([]));
+    CartonService.getLineIds()
+      .then(setLineas)
+      .catch(() => setLineas([]));
   }, []);
 
   useEffect(() => {
@@ -216,15 +213,9 @@ export default function DailyListManager() {
       setSelectedServicio('');
       return;
     }
-    const fromMaster = CartonService.getServiciosFromMaster(selectedLinea);
-    if (fromMaster.length > 0) {
-      setServicios(fromMaster);
-      setSelectedServicio('');
-      return;
-    }
     CartonService.getAll(selectedLinea)
-      .then((data: unknown[]) => {
-        const list = (data || []).map((x: Record<string, unknown>) => ({
+      .then((data: any[]) => {
+        const list = (data || []).map((x: any) => ({
           id: String(x.id ?? ''),
           linea: String(x.linea ?? selectedLinea),
           serviceNumber: String(x.serviceNumber ?? x.id ?? ''),
@@ -542,12 +533,16 @@ export default function DailyListManager() {
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-4">
           <div>
-            <label className="text-slate-400 text-sm mr-2">Fecha:</label>
+            <label htmlFor="selectedDateInput" className="text-slate-400 text-sm mr-2">
+              Fecha:
+            </label>
             <input
+              id="selectedDateInput"
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+              title="Seleccionar fecha de operaciones"
             />
           </div>
           <button
@@ -626,11 +621,15 @@ export default function DailyListManager() {
           {/* Nueva asignación (Listero): Servicio + Coche + Conductor → programacion_diaria */}
           <div className="flex flex-wrap items-end gap-2 mt-2 lg:mt-0">
             <div>
-              <label className="block text-slate-400 text-xs mb-1">Línea</label>
+              <label htmlFor="selectedLineaSelect" className="block text-slate-400 text-xs mb-1">
+                Línea
+              </label>
               <select
+                id="selectedLineaSelect"
                 value={selectedLinea}
                 onChange={(e) => setSelectedLinea(e.target.value)}
                 className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-white text-sm min-w-[72px]"
+                title="Seleccionar línea"
               >
                 <option value="">—</option>
                 {lineas.map((l) => (
@@ -641,12 +640,16 @@ export default function DailyListManager() {
               </select>
             </div>
             <div>
-              <label className="block text-slate-400 text-xs mb-1">Servicio</label>
+              <label htmlFor="selectedServicioSelect" className="block text-slate-400 text-xs mb-1">
+                Servicio
+              </label>
               <select
+                id="selectedServicioSelect"
                 value={selectedServicio}
                 onChange={(e) => setSelectedServicio(e.target.value)}
                 className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-white text-sm min-w-[80px]"
                 disabled={!selectedLinea}
+                title="Seleccionar servicio"
               >
                 <option value="">—</option>
                 {servicios.map((s) => (
@@ -657,11 +660,15 @@ export default function DailyListManager() {
               </select>
             </div>
             <div>
-              <label className="block text-slate-400 text-xs mb-1">Coche</label>
+              <label htmlFor="selectedVehiculoSelect" className="block text-slate-400 text-xs mb-1">
+                Coche
+              </label>
               <select
+                id="selectedVehiculoSelect"
                 value={selectedVehiculo}
                 onChange={(e) => setSelectedVehiculo(e.target.value)}
                 className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-white text-sm min-w-[72px]"
+                title="Seleccionar coche"
               >
                 <option value="">—</option>
                 {vehicles.map((v) => (
@@ -672,11 +679,18 @@ export default function DailyListManager() {
               </select>
             </div>
             <div>
-              <label className="block text-slate-400 text-xs mb-1">Conductor</label>
+              <label
+                htmlFor="selectedConductorSelect"
+                className="block text-slate-400 text-xs mb-1"
+              >
+                Conductor
+              </label>
               <select
+                id="selectedConductorSelect"
                 value={selectedConductor}
                 onChange={(e) => setSelectedConductor(e.target.value)}
                 className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-white text-sm min-w-[100px]"
+                title="Seleccionar conductor"
               >
                 <option value="">—</option>
                 {users.map((u) => {
@@ -1259,7 +1273,10 @@ export default function DailyListManager() {
                 </div>
               )}
               <div>
-                <label className="block text-slate-400 text-sm mb-2">
+                <label
+                  id="vehicle-reassignment-label"
+                  className="block text-slate-400 text-sm mb-2"
+                >
                   Asignar coche de reemplazo
                 </label>
                 {sugerenciaReemplazoAveria?.categoria && (
@@ -1365,8 +1382,11 @@ export default function DailyListManager() {
             <div className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-400 text-xs mb-1">Turno 1 inicio</label>
+                  <label htmlFor="t1StartInput" className="block text-slate-400 text-xs mb-1">
+                    Turno 1 inicio
+                  </label>
                   <input
+                    id="t1StartInput"
                     type="time"
                     value={dobleTurnoForm.t1Start}
                     onChange={(e) => setDobleTurnoForm((f) => ({ ...f, t1Start: e.target.value }))}
@@ -1374,8 +1394,11 @@ export default function DailyListManager() {
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 text-xs mb-1">Turno 1 fin</label>
+                  <label htmlFor="t1EndInput" className="block text-slate-400 text-xs mb-1">
+                    Turno 1 fin
+                  </label>
                   <input
+                    id="t1EndInput"
                     type="time"
                     value={dobleTurnoForm.t1End}
                     onChange={(e) => setDobleTurnoForm((f) => ({ ...f, t1End: e.target.value }))}
@@ -1383,8 +1406,11 @@ export default function DailyListManager() {
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 text-xs mb-1">Turno 2 inicio</label>
+                  <label htmlFor="t2StartInput" className="block text-slate-400 text-xs mb-1">
+                    Turno 2 inicio
+                  </label>
                   <input
+                    id="t2StartInput"
                     type="time"
                     value={dobleTurnoForm.t2Start}
                     onChange={(e) => setDobleTurnoForm((f) => ({ ...f, t2Start: e.target.value }))}
@@ -1392,8 +1418,11 @@ export default function DailyListManager() {
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 text-xs mb-1">Turno 2 fin</label>
+                  <label htmlFor="t2EndInput" className="block text-slate-400 text-xs mb-1">
+                    Turno 2 fin
+                  </label>
                   <input
+                    id="t2EndInput"
                     type="time"
                     value={dobleTurnoForm.t2End}
                     onChange={(e) => setDobleTurnoForm((f) => ({ ...f, t2End: e.target.value }))}
@@ -1530,13 +1559,17 @@ export default function DailyListManager() {
             </div>
             <div className="p-4 overflow-y-auto min-h-0 flex-1">
               <div>
-                <label className="block text-slate-400 text-sm mb-1">Tipo</label>
+                <label htmlFor="infraccionTipoSelect" className="block text-slate-400 text-sm mb-1">
+                  Tipo
+                </label>
                 <select
+                  id="infraccionTipoSelect"
                   value={infraccionTipo}
                   onChange={(e) =>
                     setInfraccionTipo(e.target.value as 'infraccion' | 'multa' | 'observacion')
                   }
                   className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white min-h-[44px]"
+                  title="Seleccionar tipo de incidencia"
                 >
                   <option value="infraccion">Infracción</option>
                   <option value="multa">Multa</option>
@@ -1544,13 +1577,17 @@ export default function DailyListManager() {
                 </select>
               </div>
               <div className="mt-4">
-                <label className="block text-slate-400 text-sm mb-1">Descripción</label>
+                <label htmlFor="infraccionDescInput" className="block text-slate-400 text-sm mb-1">
+                  Descripción
+                </label>
                 <textarea
+                  id="infraccionDescInput"
                   value={infraccionDesc}
                   onChange={(e) => setInfraccionDesc(e.target.value)}
                   rows={3}
                   className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white"
                   placeholder="Detalle de la infracción..."
+                  title="Detalles de la incidencia"
                 />
               </div>
             </div>
@@ -1570,7 +1607,7 @@ export default function DailyListManager() {
                       date: selectedDate,
                       tipo: infraccionTipo,
                       descripcion: infraccionDesc.trim(),
-                      inspectorId: authUser?.uid ?? authUser?.id,
+                      inspectorId: String(authUser?.uid ?? authUser?.id ?? ''),
                     });
                     setInfraccionModal(null);
                     setInfraccionDesc('');
@@ -1579,6 +1616,7 @@ export default function DailyListManager() {
                   }
                 }}
                 className="w-full min-h-[48px] rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold touch-manipulation disabled:opacity-50"
+                title="Guardar reporte de incidencia"
               >
                 {infraccionSaving ? 'Guardando…' : 'Guardar'}
               </button>

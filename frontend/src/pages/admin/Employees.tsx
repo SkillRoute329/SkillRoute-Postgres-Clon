@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { API_URL } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { UserPlus, Users, Search, Save, X, FileUp, FileDown, Download } from 'lucide-react';
+import { UserPlus, Users, Save, X, FileUp, FileDown, Download } from 'lucide-react';
 import { DataImportService } from '../../services/api';
 
 const Employees = () => {

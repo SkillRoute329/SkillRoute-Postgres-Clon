@@ -5,7 +5,6 @@ import {
   setDoc,
   query,
   where,
-  orderBy,
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';

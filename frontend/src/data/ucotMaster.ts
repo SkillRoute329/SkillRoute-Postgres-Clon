@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Fuente de Verdad: UCOT Master Intelligence 2026.
- * Prohibido simular: si un campo no está en el JSON, se expone como "PENDIENTE" o undefined.
+ * Prohibido simular: si un campo no estÃ¡ en el JSON, se expone como "PENDIENTE" o undefined.
  */
 
 export interface MasterLinea {
@@ -36,7 +36,7 @@ export interface UcotMasterIntelligence {
 
 import masterData from './ucot_master_intelligence_2026.json';
 
-const master = masterData as UcotMasterIntelligence;
+const master = masterData as unknown as UcotMasterIntelligence;
 
 export function getMaster(): UcotMasterIntelligence {
   return master;
@@ -77,3 +77,5 @@ export function getServiciosByPuntoControl(nombrePunto: string): MasterServicio[
     ),
   );
 }
+
+

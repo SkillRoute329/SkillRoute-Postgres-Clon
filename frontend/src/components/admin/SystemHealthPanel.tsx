@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Activity, Database, ShieldAlert, BadgeCheck, RefreshCw, ServerCrash } from 'lucide-react';
+import { Activity, ShieldAlert, BadgeCheck, RefreshCw, ServerCrash } from 'lucide-react';
 import {
   doc,
   getDoc,

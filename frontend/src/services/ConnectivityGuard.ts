@@ -4,7 +4,6 @@ import {
   collection,
   limit,
   query,
-  enableIndexedDbPersistence,
   disableNetwork,
   enableNetwork,
 } from 'firebase/firestore';

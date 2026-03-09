@@ -1,7 +1,7 @@
-import { collection, getDocs, doc, setDoc, getDoc, query, where } from 'firebase/firestore';
+﻿import { collection, getDocs, doc, setDoc, getDoc, query, where } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { getMasterLineas, getMasterServicios, getMasterServicioById } from '../../data/ucotMaster';
-import { type Shift, type User, type Carton } from './types';
+import type { Carton } from './types';
 
 const LINEAS = 'lineas';
 const SERVICIOS = 'servicios';
@@ -10,7 +10,7 @@ const SERVICE_DEFINITIONS = 'service_definitions';
 const CARTONES = 'cartones';
 const CARTONES_COMPLETADOS = 'cartones_completados';
 
-/** ID de Servicio como clave primaria (Arquitectura CEO). Todo nace del JSON Maestro; Firestore solo guarda estado dinámico. */
+/** ID de Servicio como clave primaria (Arquitectura CEO). Todo nace del JSON Maestro; Firestore solo guarda estado dinÃ¡mico. */
 
 /** Mapea un doc de service_definitions al formato esperado por InspectorDashboard/InspectorCapture (id, linea, headers, rawMatrix, serviceNumber). */
 function mapServiceDefToCartonShape(
@@ -41,7 +41,7 @@ function mapServiceDefToCartonShape(
   };
 }
 
-/** Mapea un doc de colección cartones (esquema UCOT) al formato esperado por AdminCartones/InspectorDashboard. */
+/** Mapea un doc de colecciÃ³n cartones (esquema UCOT) al formato esperado por AdminCartones/InspectorDashboard. */
 function mapCartonDocToShape(docId: string, data: Record<string, any>): Carton {
   const paradas = (data.paradas as Array<{ nombre: string; tiempos?: string[] }>) || [];
   const headers = paradas.map((p, i) => ({
@@ -84,7 +84,7 @@ function mapCartonDocToShape(docId: string, data: Record<string, any>): Carton {
 
 export const CartonService = {
   /**
-   * Líneas desde JSON Maestro (fuente de verdad). Fallback a Firestore si el maestro no tiene datos.
+   * LÃ­neas desde JSON Maestro (fuente de verdad). Fallback a Firestore si el maestro no tiene datos.
    */
   getLineIdsFromMaster(): string[] {
     const lineas = getMasterLineas();
@@ -97,14 +97,17 @@ export const CartonService = {
   },
 
   /**
-   * Devuelve los IDs de líneas disponibles.
+   * Devuelve los IDs de lÃ­neas disponibles.
    * Origen: 1) JSON Maestro, 2) service_definitions, 3) cartones, 4) lineas.
    */
   async getLineIds(): Promise<string[]> {
-    const fromMaster = this.getLineIdsFromMaster();
-    if (fromMaster.length > 0) return fromMaster;
-
     const seen = new Set<string>();
+
+    // 1. Cargar desde el Maestro (Base inamovible)
+    const fromMaster = this.getLineIdsFromMaster();
+    fromMaster.forEach((id) => seen.add(id));
+
+    // 2. Cargar desde Firestore (Extensiones dinámicas)
     try {
       const defsSnap = await getDocs(collection(db, SERVICE_DEFINITIONS));
       defsSnap.docs.forEach((d) => {
@@ -112,9 +115,8 @@ export const CartonService = {
         if (lineCode) seen.add(String(lineCode).trim());
       });
     } catch {
-      // ignore
+      /* ignore */
     }
-    if (seen.size > 0) return Array.from(seen).sort();
 
     try {
       const cartonesSnap = await getDocs(collection(db, CARTONES));
@@ -123,19 +125,21 @@ export const CartonService = {
         if (linea) seen.add(String(linea).trim());
       });
     } catch {
-      // ignore
+      /* ignore */
     }
-    if (seen.size > 0) return Array.from(seen).sort();
 
-    const lineasSnap = await getDocs(collection(db, LINEAS));
-    return lineasSnap.docs
-      .map((d) => d.id)
-      .filter(Boolean)
-      .sort();
+    try {
+      const lineasSnap = await getDocs(collection(db, LINEAS));
+      lineasSnap.docs.forEach((d) => seen.add(d.id));
+    } catch {
+      /* ignore */
+    }
+
+    return Array.from(seen).filter(Boolean).sort();
   },
 
   /**
-   * Servicios desde JSON Maestro por línea. Clave primaria = servicioId.
+   * Servicios desde JSON Maestro por lÃ­nea. Clave primaria = servicioId.
    */
   getServiciosFromMaster(
     lineaId?: string,
@@ -153,12 +157,11 @@ export const CartonService = {
   },
 
   async getAll(seasonOrLine?: string, dayType?: string): Promise<any[]> {
-    // 1. Specific Line Filter (e.g. "300")
-    if (seasonOrLine && !/^(VERANO|INVIERNO)/.test(seasonOrLine)) {
-      const lineId = seasonOrLine;
-      const fromMaster = getMasterServicios(lineId);
-      if (fromMaster.length > 0) {
-        return fromMaster.map((s) => ({
+    // 0. No filter: return all from master (fastest path)
+    if (!seasonOrLine && !dayType) {
+      const all = getMasterServicios();
+      if (all.length > 0) {
+        return all.map((s) => ({
           id: s.servicioId,
           linea: s.linea,
           serviceNumber: s.serviceNumber ?? s.servicioId,
@@ -166,14 +169,49 @@ export const CartonService = {
           rawMatrix: (s.horarios ?? []).map((h) => ({ checkpoints: h.filas ?? [] })),
         }));
       }
+    }
+    // 1. Specific Line Filter (e.g. "300")
+    // 1. Specific Line Filter (e.g. "300")
+    if (seasonOrLine && !/^(VERANO|INVIERNO)/.test(seasonOrLine)) {
+      const lineId = seasonOrLine;
+      const mergedMap = new Map<string, any>();
 
+      // 1a. Base desde el Maestro
+      const fromMaster = getMasterServicios(lineId);
+      fromMaster.forEach((s: any) => {
+        mergedMap.set(s.servicioId, {
+          id: s.servicioId,
+          linea: s.linea,
+          serviceNumber: s.serviceNumber ?? s.servicioId,
+          headers: s.headers?.length
+            ? s.headers
+            : (s.puntosControl ?? []).map((p: string, i: number) => ({
+                id: `stop-${i}`,
+                location: p,
+              })),
+          rawMatrix: s.rawMatrix?.length
+            ? s.rawMatrix
+            : (s.horarios ?? []).map((h: any) => ({ checkpoints: h.filas ?? [] })),
+          instruccionesEspeciales: s.instruccionesEspeciales,
+          source: 'master',
+        });
+      });
+
+      // 1b. Extender/Sobrescribir desde Firestore
       try {
         let q = query(collection(db, CARTONES), where('linea', '==', lineId));
         if (dayType) q = query(q, where('tipo_dia', '==', dayType));
         const snap = await getDocs(q);
-        if (!snap.empty) return snap.docs.map((d) => mapCartonDocToShape(d.id, d.data()));
+        snap.docs.forEach((d) => {
+          const data = mapCartonDocToShape(d.id, d.data());
+          mergedMap.set(data.id, { ...mergedMap.get(data.id), ...data, source: 'firestore' });
+        });
       } catch {
         /* ignore */
+      }
+
+      if (mergedMap.size > 0) {
+        return Array.from(mergedMap.values());
       }
 
       const servRef = collection(db, LINEAS, lineId, SERVICIOS);
@@ -236,7 +274,7 @@ export const CartonService = {
     return [];
   },
 
-  /** Cartones físicos (1 pestaña = 1 doc): grilla 2D desde cartones_completados. */
+  /** Cartones fÃ­sicos (1 pestaÃ±a = 1 doc): grilla 2D desde cartones_completados. */
   async getCartonesFisicos(): Promise<any[]> {
     try {
       const snap = await getDocs(collection(db, CARTONES_COMPLETADOS));
@@ -252,7 +290,7 @@ export const CartonService = {
     return { id: snap.id, ...snap.data(), source: 'fisico' };
   },
 
-  /** Actualiza los tiempos de un cartón (edición in-place). Escribe en cartones y, si existe, en service_definitions para que la recarga muestre los datos. */
+  /** Actualiza los tiempos de un cartÃ³n (ediciÃ³n in-place). Escribe en cartones y, si existe, en service_definitions para que la recarga muestre los datos. */
   async updateCartonParadas(
     cartonDocId: string,
     paradas: Array<{ nombre: string; tiempos?: string[] }>,

@@ -55,16 +55,17 @@ const LoginScreen = () => {
       }
     }
 
-    // ESTRATEGIA 2: Backend Express local (localhost:3001) — funciona siempre en desarrollo
+    // ESTRATEGIA 2: Backend Express local (Proxy /api -> localhost:3002)
     try {
-      const res = await fetch('http://localhost:3001/api/auth/login', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ internalNumber: raw, password }),
       });
 
       if (!res.ok) {
-        setError('Credenciales inválidas');
+        const errData = await res.json().catch(() => ({}));
+        setError(errData.error || 'Credenciales inválidas');
         setIsLoading(false);
         return;
       }
@@ -73,9 +74,10 @@ const LoginScreen = () => {
       // Registrar sesión en el contexto de autenticación
       login(data.token, {
         id: data.user.id,
+        uid: data.user.id,
         internalNumber: String(data.user.internalNumber),
-        firstName: data.user.firstName,
-        lastName: data.user.lastName,
+        firstName: data.user.fullName?.split(' ')[0] || 'Usuario',
+        lastName: data.user.fullName?.split(' ').slice(1).join(' ') || '',
         fullName: data.user.fullName,
         role: data.user.role,
       });
@@ -85,7 +87,7 @@ const LoginScreen = () => {
       }, 800);
     } catch (backendErr) {
       console.error('Backend error:', backendErr);
-      setError('No se pudo conectar. Asegúrate de que la aplicación esté corriendo (INICIAR.bat).');
+      setError('No se pudo conectar con el servidor de seguridad (Port 3002).');
       setIsLoading(false);
     }
   };

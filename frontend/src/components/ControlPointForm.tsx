@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { X, Check, AlertTriangle, Info, Clock } from 'lucide-react';
 import { checkCompetitorProximity } from '../services/CompetitorIntelligence';
-import { db } from '../config/firebase'; // Ensure authorized
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { InspectionService } from '../services/api';
+import { Timestamp } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import type { PassengerLoadCategory } from '../types/inspections';
 
 interface ControlProps {
   lineId: string;
@@ -12,6 +13,11 @@ interface ControlProps {
   scheduledTime: string;
   onClose: () => void;
   onSuccess: () => void;
+}
+
+interface CompetitorAlert {
+  detected: boolean;
+  message: string;
 }
 
 const ControlPointForm = ({
@@ -23,7 +29,7 @@ const ControlPointForm = ({
   onSuccess,
 }: ControlProps) => {
   const [loadLevel, setLoadLevel] = useState('');
-  const [competitorAlert, setCompetitorAlert] = useState<any>(null);
+  const [competitorAlert, setCompetitorAlert] = useState<CompetitorAlert | null>(null);
   const [delta, setDelta] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
@@ -48,30 +54,19 @@ const ControlPointForm = ({
       const user = auth.currentUser;
       if (!user) throw new Error('No autorizado');
 
-      const stopKey = stopName.replace(/[\.\#\$\[\]\/]/g, '').trim();
-      const controlRef = doc(db, 'lineas', lineId, 'servicios', serviceId, 'controls', stopKey);
+      const serviceDate = new Date().toISOString().split('T')[0];
 
-      await setDoc(controlRef, {
-        timestamp: new Date().toISOString(), // Real Time Check
+      await InspectionService.create({
+        cartonServiceId: serviceId,
+        lineId: lineId,
+        controlPointId: stopName,
+        serviceDate,
+        scheduledTime: scheduledTime,
+        actualPassedAt: Timestamp.now(),
+        timeDeltaMinutes: delta,
+        passengerLoad: loadLevel as PassengerLoadCategory, // Targeted types
         inspectorId: user.uid,
-        inspectorName: user.displayName || 'Inspector',
-        stopName,
-        load: loadLevel,
-        timeDelta: delta, // Adjusted time
-        type: 'CHECK',
-        reason: delta !== 0 ? 'Ajuste Operativo / Competencia' : 'Normal',
       });
-
-      // Also update Service Status Summary in Parent
-      const serviceRef = doc(db, 'lineas', lineId, 'servicios', serviceId);
-      await setDoc(
-        serviceRef,
-        {
-          lastControl: new Date().toISOString(),
-          currentDelay: delta,
-        },
-        { merge: true },
-      );
 
       onSuccess();
     } catch (error) {
@@ -94,7 +89,7 @@ const ControlPointForm = ({
               Programado: <span className="text-white font-mono font-bold">{scheduledTime}</span>
             </div>
           </div>
-          <button onClick={onClose}>
+          <button onClick={onClose} aria-label="Cerrar modal" title="Cerrar">
             <X className="text-slate-400" />
           </button>
         </div>
@@ -122,10 +117,17 @@ const ControlPointForm = ({
 
           {/* Load Selector */}
           <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase mb-3">
+            <label
+              id="load-selector-label"
+              className="block text-xs font-bold text-slate-400 uppercase mb-3"
+            >
               Carga de Pasajeros
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div
+              className="grid grid-cols-4 gap-2"
+              role="group"
+              aria-labelledby="load-selector-label"
+            >
               {['VACIO', 'SENTADOS', 'LLENO', 'EXPLOTADO'].map((level) => (
                 <button
                   key={level}
@@ -135,6 +137,7 @@ const ControlPointForm = ({
                       ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/50'
                       : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
                   }`}
+                  aria-pressed={loadLevel === level}
                 >
                   {level}
                 </button>
@@ -144,24 +147,36 @@ const ControlPointForm = ({
 
           {/* Traffic Management (Header/Terminals usually) */}
           <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase mb-3">
+            <label
+              id="delta-management-label"
+              className="block text-xs font-bold text-slate-400 uppercase mb-3"
+            >
               Gestión de Salida (Minutos)
             </label>
-            <div className="flex bg-slate-800 rounded-xl border border-slate-700 p-1">
+            <div
+              className="flex bg-slate-800 rounded-xl border border-slate-700 p-1"
+              role="group"
+              aria-labelledby="delta-management-label"
+            >
               <button
                 onClick={() => setDelta((d) => d - 1)}
                 className="flex-1 py-2 rounded-lg hover:bg-slate-700 text-slate-300 font-bold"
+                aria-label="Disminuir minutos"
+                title="Quitar minuto"
               >
                 -
               </button>
               <div
                 className={`w-16 flex items-center justify-center font-mono font-bold ${delta > 0 ? 'text-red-400' : delta < 0 ? 'text-emerald-400' : 'text-white'}`}
+                aria-live="polite"
               >
                 {delta > 0 ? `+${delta}` : delta}
               </div>
               <button
                 onClick={() => setDelta((d) => d + 1)}
                 className="flex-1 py-2 rounded-lg hover:bg-slate-700 text-slate-300 font-bold"
+                aria-label="Aumentar minutos"
+                title="Agregar minuto"
               >
                 +
               </button>

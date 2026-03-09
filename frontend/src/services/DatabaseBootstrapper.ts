@@ -6,9 +6,7 @@ import {
   query,
   orderBy,
   limit,
-  addDoc,
-  getDoc,
-} from 'firebase/firestore';
+  } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
 import { seedServicesPhase1 } from '../data/seed_phase_1';
 

@@ -9,7 +9,6 @@ import {
   Siren,
   Timer,
   ShieldAlert,
-  CheckCircle,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';

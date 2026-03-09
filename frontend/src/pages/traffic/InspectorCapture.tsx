@@ -5,7 +5,7 @@ import { computeTimeDeltaMinutes } from '../../utils/inspectionTimeDelta';
 import { Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../config/firebase';
-import type { PassengerLoadCategory } from '../../types/inspections';
+import type { PassengerLoadCategory, Inspection } from '../../types/inspections';
 import { Clock, CheckCircle, Users, Loader2, Camera, Upload, X } from 'lucide-react';
 
 type ControlPointOption = { id: string; name: string; scheduledTime: string };
@@ -37,10 +37,11 @@ const InspectorCapture = () => {
   const [lastSaved, setLastSaved] = useState(false);
   /** Matriz "Tocar para llenar": por punto, hora real ingresada y delta (para pintar fila amarillo/naranja). */
   const [matrixCaptured, setMatrixCaptured] = useState<
-    Record<string, { actualTime: string; delta: number }>
+    Record<string, { actualTime: string; delta: number; isSaving?: boolean }>
   >({});
   const [matrixEditingPointId, setMatrixEditingPointId] = useState<string | null>(null);
   const [matrixActualTimeInput, setMatrixActualTimeInput] = useState('');
+  const [savedInspections, setSavedInspections] = useState<Inspection[]>([]);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
@@ -108,16 +109,54 @@ const InspectorCapture = () => {
     setSelectedPoint(null);
   }, [selectedServiceId, services]);
 
-  const applyMatrixActualTime = (pointId: string, actualTime: string) => {
+  const applyMatrixActualTime = async (pointId: string, actualTime: string) => {
     const point = controlPoints.find((p) => p.id === pointId);
     if (!point || !/^\d{1,2}:\d{2}$/.test(actualTime.trim())) return;
+
     const [h, m] = actualTime.trim().split(':').map(Number);
     const [y, mo, d] = serviceDate.split('-').map(Number);
-    const actualMs = new Date(y, mo - 1, d, h, m, 0, 0).getTime();
-    const delta = computeTimeDeltaMinutes(point.scheduledTime, serviceDate, actualMs);
-    setMatrixCaptured((prev) => ({ ...prev, [pointId]: { actualTime: actualTime.trim(), delta } }));
+    const actualDate = new Date(y, mo - 1, d, h, m, 0, 0);
+    const delta = computeTimeDeltaMinutes(point.scheduledTime, serviceDate, actualDate.getTime());
+
+    // Optimistic Update with "saving" status
+    setMatrixCaptured((prev) => ({
+      ...prev,
+      [pointId]: { actualTime: actualTime.trim(), delta, isSaving: true },
+    }));
     setMatrixEditingPointId(null);
     setMatrixActualTimeInput('');
+
+    try {
+      if (!selectedServiceId || !selectedLineId) throw new Error('No service selected');
+
+      await InspectionService.create({
+        cartonServiceId: selectedServiceId,
+        lineId: selectedLineId,
+        controlPointId: pointId,
+        serviceDate,
+        scheduledTime: point.scheduledTime,
+        actualPassedAt: Timestamp.fromDate(actualDate),
+        timeDeltaMinutes: delta,
+        passengerLoad: 'MEDIO', // Carga por defecto para carga masiva
+        inspectorId: (user as { uid?: string })?.uid ?? undefined,
+      });
+
+      // Clear from captured state as it will be loaded via real-time subscription
+      setMatrixCaptured((prev) => {
+        const next = { ...prev };
+        delete next[pointId];
+        return next;
+      });
+      setLastSaved(true);
+    } catch (e) {
+      console.error(e);
+      alert('Error guardando punto. Intente nuevamente.');
+      // Revert saving status on error
+      setMatrixCaptured((prev) => ({
+        ...prev,
+        [pointId]: { actualTime: actualTime.trim(), delta, isSaving: false },
+      }));
+    }
   };
 
   const handleMarcarPasada = () => {
@@ -144,7 +183,11 @@ const InspectorCapture = () => {
       numericPassengers.trim() !== '' && !Number.isNaN(Number(numericPassengers))
         ? Number(numericPassengers)
         : (passengerLoad ?? 'MEDIO');
-    if (typeof load !== 'number' && !['BAJO', 'MEDIO', 'ALTO'].includes(load)) return;
+    if (
+      typeof load !== 'number' &&
+      !['BAJO', 'MEDIO', 'ALTO', 'VACIO', 'SENTADOS', 'LLENO', 'EXPLOTADO'].includes(load)
+    )
+      return;
 
     setSaving(true);
     try {
@@ -247,6 +290,24 @@ const InspectorCapture = () => {
     [photoPreviewUrl],
   );
 
+  useEffect(() => {
+    if (!selectedLineId || !selectedServiceId) {
+      setSavedInspections([]);
+      return;
+    }
+    const unsub = InspectionService.subscribeForDate(serviceDate, selectedLineId, (list) => {
+      const filtered = list.filter((i) => i.cartonServiceId === selectedServiceId);
+      setSavedInspections(filtered);
+    });
+    return unsub;
+  }, [selectedLineId, selectedServiceId, serviceDate]);
+
+  const formatTimestamp = (ts: Timestamp | number | Date | null | undefined) => {
+    if (!ts) return '';
+    const date = ts instanceof Timestamp ? ts.toDate() : new Date(ts as number | Date);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
   const canGuardar =
     capturedAt != null &&
     timeDelta != null &&
@@ -268,12 +329,16 @@ const InspectorCapture = () => {
       <main className="flex-1 p-4 md:p-6 space-y-6 max-w-lg mx-auto w-full">
         {/* Línea */}
         <section>
-          <label className="block text-slate-400 text-sm font-medium mb-2">Línea</label>
+          <label htmlFor="line-select" className="block text-slate-400 text-sm font-medium mb-2">
+            Línea
+          </label>
           <select
+            id="line-select"
             value={selectedLineId}
             onChange={(e) => setSelectedLineId(e.target.value)}
             disabled={loadingLines}
             className="w-full min-h-[44px] h-12 px-4 rounded-xl bg-slate-800 border border-slate-700 text-white text-base touch-manipulation md:w-full"
+            title="Seleccionar línea"
           >
             <option value="">Seleccionar línea</option>
             {lines.map((l) => (
@@ -286,12 +351,16 @@ const InspectorCapture = () => {
 
         {/* Servicio / Cartón */}
         <section>
-          <label className="block text-slate-400 text-sm font-medium mb-2">Servicio / Cartón</label>
+          <label htmlFor="service-select" className="block text-slate-400 text-sm font-medium mb-2">
+            Servicio / Cartón
+          </label>
           <select
+            id="service-select"
             value={selectedServiceId}
             onChange={(e) => setSelectedServiceId(e.target.value)}
             disabled={loadingServices || !selectedLineId}
             className="w-full min-h-[44px] h-12 px-4 rounded-xl bg-slate-800 border border-slate-700 text-white text-base touch-manipulation md:w-full"
+            title="Seleccionar servicio"
           >
             <option value="">Seleccionar servicio</option>
             {services.map((s) => {
@@ -350,28 +419,45 @@ const InspectorCapture = () => {
             <h3 className="text-slate-300 font-medium text-sm mb-3">Tocar para llenar</h3>
             <div className="space-y-2">
               {controlPoints.map((p) => {
+                const saved = savedInspections.find((i) => i.controlPointId === p.id);
                 const captured = matrixCaptured[p.id];
                 const isEditing = matrixEditingPointId === p.id;
-                const delta = captured?.delta ?? null;
+
+                const displayTime =
+                  captured?.actualTime || (saved ? formatTimestamp(saved.actualPassedAt) : null);
+                const delta = captured?.delta ?? saved?.timeDeltaMinutes ?? null;
+
+                const isSaved = !!saved && !captured;
+                const isSaving = captured?.isSaving;
+
                 const rowBg =
                   delta != null && delta > 0
                     ? 'bg-amber-500/20 border-amber-500/50'
                     : delta != null && delta < 0
                       ? 'bg-emerald-500/10 border-emerald-500/30'
-                      : 'bg-slate-800/50 border-slate-700';
+                      : isSaved
+                        ? 'bg-emerald-900/20 border-emerald-500/30'
+                        : isSaving
+                          ? 'bg-blue-900/20 border-blue-500/30 animate-pulse'
+                          : 'bg-slate-800/50 border-slate-700';
+
                 return (
                   <div
                     key={p.id}
-                    className={`rounded-xl border p-3 ${rowBg}`}
+                    className={`rounded-xl border p-3 ${rowBg} transition-colors relative`}
                     data-testid={`inspector-matrix-row-${p.id}`}
                     data-delta={delta != null ? String(delta) : undefined}
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-white">{p.scheduledTime}</span>
+                      <div className="flex items-center gap-2">
+                        {isSaved && <CheckCircle className="w-4 h-4 text-emerald-500" />}
+                        {isSaving && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
+                        <span className="font-mono text-white">{p.scheduledTime}</span>
+                      </div>
                       <span className="text-slate-400 text-sm">{p.name}</span>
-                      {captured && (
+                      {displayTime && (
                         <span className="text-slate-300 text-sm">
-                          Real: {captured.actualTime}
+                          Real: {displayTime}
                           {delta != null && (
                             <span
                               className={
@@ -434,6 +520,7 @@ const InspectorCapture = () => {
                 );
               })}
             </div>
+            {/* handleGuardarMatriz button removed as we save on each Apply */}
           </section>
         )}
 
@@ -522,6 +609,8 @@ const InspectorCapture = () => {
                     setPhotoPreviewUrl(null);
                   }}
                   className="p-2 rounded-lg bg-slate-700 text-slate-400 hover:text-white"
+                  title="Eliminar foto"
+                  aria-label="Eliminar foto"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -551,19 +640,19 @@ const InspectorCapture = () => {
                 <Users className="w-4 h-4" />
                 Carga de pasajeros
               </p>
-              <div className="grid grid-cols-3 gap-3 md:flex md:flex-row md:gap-3 md:flex-wrap">
-                {(['BAJO', 'MEDIO', 'ALTO'] as const).map((cat) => (
+              <div className="grid grid-cols-4 gap-2 md:grid-cols-7">
+                {['VACIO', 'SENTADOS', 'BAJO', 'MEDIO', 'ALTO', 'LLENO', 'EXPLOTADO'].map((cat) => (
                   <button
                     key={cat}
                     type="button"
                     onClick={() => {
-                      setPassengerLoad(cat);
+                      setPassengerLoad(cat as PassengerLoadCategory);
                       setNumericPassengers('');
                     }}
-                    className={`min-h-[44px] h-14 w-full md:w-auto rounded-xl border-2 font-bold touch-manipulation transition-all ${
+                    className={`min-h-[40px] h-12 w-full rounded-lg border-2 font-bold text-[10px] touch-manipulation transition-all flex items-center justify-center truncate px-1 uppercase ${
                       passengerLoad === cat
-                        ? 'border-emerald-500 bg-emerald-500/20 text-white'
-                        : 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600'
+                        ? 'border-emerald-500 bg-emerald-500/20 text-white shadow-lg shadow-emerald-900/20'
+                        : 'border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-600'
                     }`}
                   >
                     {cat}

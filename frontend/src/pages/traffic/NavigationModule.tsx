@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   Plus,
   Loader2,
-  Locate,
   Navigation,
   Square,
   Volume2,

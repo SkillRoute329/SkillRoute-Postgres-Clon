@@ -20,6 +20,9 @@ import {
   ClipboardList,
   Radio,
   ListOrdered,
+  Train,
+  Zap,
+  Shield,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
@@ -43,30 +46,16 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       title: 'Departamento de Tránsito',
       items: [
         { path: '/dashboard/traffic/service-matrix', label: 'Matriz de Servicio', icon: Calendar },
-        {
-          path: '/dashboard/traffic/inspector-control',
-          label: 'Control Inspectores',
-          icon: Activity,
-        },
-        {
-          path: '/dashboard/traffic/inspector-capture',
-          label: 'Captura Inspector (Móvil)',
-          icon: Smartphone,
-        },
+        { path: '/dashboard/traffic/inspector-control', label: 'Control Inspectores', icon: Activity },
+        { path: '/dashboard/traffic/inspector-capture', label: 'Captura Inspector (Móvil)', icon: Smartphone },
         { path: '/dashboard/traffic/cartons', label: 'Gestor de Cartones', icon: ClipboardList },
-        {
-          path: '/dashboard/traffic/daily-list',
-          label: 'Lista Diaria (Listero)',
-          icon: ListOrdered,
-        },
+        { path: '/dashboard/traffic/daily-list', label: 'Lista Diaria (Listero)', icon: ListOrdered },
         { path: '/dashboard/traffic/navigation', label: 'Navegador UCOT', icon: Map },
         { path: '/dashboard/traffic/fleet-monitor', label: 'Monitoreo de Flota', icon: Radio },
-        {
-          path: '/dashboard/traffic/statistics',
-          label: 'Estadísticas Inspectores',
-          icon: BarChart3,
-        },
+        { path: '/dashboard/traffic/statistics', label: 'Estadísticas Inspectores', icon: BarChart3 },
         { path: '/dashboard/traffic/analytics', label: 'Analítica de Servicio', icon: BarChart3 },
+        { path: '/dashboard/traffic/ceo', label: 'Dashboard CEO', icon: BarChart3 },
+        { path: '/dashboard/traffic/brt', label: 'Proyecto BRT 2029', icon: Train },
       ],
     },
     {
@@ -75,6 +64,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         { path: '/dashboard/fleet', label: 'Coches / Inventario', icon: Bus },
         { path: '/dashboard/admin/maintenance', label: 'Mantenimiento', icon: Wrench },
         { path: '/dashboard/alerts', label: 'Alertas de Vía', icon: AlertTriangle },
+        { path: '/dashboard/fleet/ev-charge', label: 'Carga Eléctrica', icon: Zap },
       ],
     },
     {
@@ -89,13 +79,10 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     {
       title: 'Soporte y Salud',
       items: [
-        {
-          path: '/dashboard/admin/maintenance-system',
-          label: 'Estado del Sistema',
-          icon: ShieldCheck,
-        },
+        { path: '/dashboard/admin/maintenance-system', label: 'Estado del Sistema', icon: ShieldCheck },
         { path: '/dashboard/admin/ingestion', label: 'Ingesta de Datos', icon: FileText },
         { path: '/dashboard/admin/params', label: 'Parámetros del Sistema', icon: Settings },
+        { path: '/dashboard/admin/compliance', label: 'Cumplimiento MTOP/IMM', icon: Shield },
       ],
     },
     {

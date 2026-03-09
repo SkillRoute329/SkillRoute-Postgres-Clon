@@ -1,8 +1,6 @@
 import { db } from '../config/firebase';
 import {
   collection,
-  addDoc,
-  updateDoc,
   doc,
   serverTimestamp,
   writeBatch,

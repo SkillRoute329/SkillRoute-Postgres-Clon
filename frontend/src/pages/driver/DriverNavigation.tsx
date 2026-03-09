@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { TrafficService, type TrafficAlert } from '../../services/trafficService';
@@ -10,8 +10,7 @@ import {
   Shield,
   AlertOctagon,
   Locate,
-  Menu,
-} from 'lucide-react';
+  } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../config/firebase';
 import { collection, onSnapshot, query, where, Timestamp, limit } from 'firebase/firestore';

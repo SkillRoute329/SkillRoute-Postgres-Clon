@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../config/firebase';
 import { collection, addDoc, enableNetwork, disableNetwork } from 'firebase/firestore';
-import { Wifi, WifiOff, Globe, ShieldCheck, Zap, Server } from 'lucide-react';
+import { Wifi, WifiOff, ShieldCheck, Zap, Server } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export const ConnectivityDebugWidget = () => {

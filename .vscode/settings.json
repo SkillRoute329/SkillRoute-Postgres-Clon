@@ -9,5 +9,6 @@
     "*.bat": "bat"
   },
   "gitlens.codeLens.enabled": true,
-  "eslint.workingDirectories": ["./frontend", "./backend", "./backend_legacy"]
+  "eslint.workingDirectories": ["./frontend", "./backend", "./backend_legacy"],
+  "git.ignoreLimitWarning": true
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Camera, AlertCircle, CheckCircle, Save, X, ShieldAlert } from 'lucide-react';
+import { Camera, AlertCircle, Save, X, ShieldAlert } from 'lucide-react';
 import { Camera as CapCamera, CameraResultType } from '@capacitor/camera';
 import { API_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 interface VehicleCheckModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onComplete: (data: any) => void;
+  onComplete: (data: unknown) => void;
   vehicleId: string;
 }
 
@@ -17,7 +17,7 @@ const VehicleCheckModal: React.FC<VehicleCheckModalProps> = ({
   onComplete,
   vehicleId,
 }) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [step, setStep] = useState<'ask' | 'inspect' | 'waiver'>('ask');
   const [photos, setPhotos] = useState<string[]>(['', '', '', '']); // Frente, Atrás, Izq, Der
   const [notes, setNotes] = useState('');
@@ -37,7 +37,7 @@ const VehicleCheckModal: React.FC<VehicleCheckModalProps> = ({
         newPhotos[index] = image.dataUrl;
         setPhotos(newPhotos);
       }
-    } catch (e) {
+    } catch {
       console.warn('Camera closed');
     }
   };
@@ -52,10 +52,12 @@ const VehicleCheckModal: React.FC<VehicleCheckModalProps> = ({
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          cocheId: vehicleId,
+          vehicleId,
+          driverId: user?.id || 'unknown',
           photos: status === 'OK' ? photos : [],
           notes,
-          estado: status,
+          status,
+          checkType: 'pre-service',
         }),
       });
 
@@ -64,7 +66,7 @@ const VehicleCheckModal: React.FC<VehicleCheckModalProps> = ({
       } else {
         alert('Error al guardar reporte');
       }
-    } catch (e) {
+    } catch {
       alert('Error de conexión');
     } finally {
       setLoading(false);
@@ -109,7 +111,12 @@ const VehicleCheckModal: React.FC<VehicleCheckModalProps> = ({
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-white">Inspección Visual</h3>
-              <button onClick={onClose} className="text-slate-500">
+              <button
+                onClick={onClose}
+                className="text-slate-500"
+                aria-label="Cerrar"
+                title="Cerrar"
+              >
                 <X />
               </button>
             </div>
@@ -120,17 +127,23 @@ const VehicleCheckModal: React.FC<VehicleCheckModalProps> = ({
                   key={i}
                   onClick={() => handleCapture(i)}
                   className="aspect-video bg-slate-800 rounded-xl border-2 border-dashed border-slate-700 flex flex-col items-center justify-center relative overflow-hidden group active:scale-95 transition-all"
+                  aria-label={`Tomar foto ${labels[i]}`}
+                  title={`Tomar foto ${labels[i]}`}
                 >
                   {p ? (
                     <>
-                      <img src={p} className="w-full h-full object-cover" />
+                      <img
+                        src={p}
+                        className="w-full h-full object-cover"
+                        alt={`Vista de ${labels[i]}`}
+                      />
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <Camera className="text-white" />
                       </div>
                     </>
                   ) : (
                     <>
-                      <Camera className="w-8 h-8 text-slate-500 mb-1" />
+                      <Camera className="w-8 h-8 text-slate-500 mb-1" aria-hidden="true" />
                       <span className="text-[10px] uppercase font-bold text-slate-500">
                         {labels[i]}
                       </span>

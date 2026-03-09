@@ -2,11 +2,23 @@ import { useState, useRef } from 'react';
 import { Upload, FileSpreadsheet, Download, CheckCircle, AlertTriangle, X } from 'lucide-react';
 import { DataImportService } from '../services/api';
 
+interface ValidationRowError {
+  row: number;
+  error: string;
+}
+
+interface ImportResults {
+  processed?: number;
+  totalRows?: number;
+  message?: string;
+  errors?: ValidationRowError[];
+}
+
 const DataImporter = () => {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState<'IDLE' | 'SUCCESS' | 'ERROR'>('IDLE');
-  const [resultData, setResultData] = useState<any>(null); // For success stats or detailed errors
+  const [resultData, setResultData] = useState<ImportResults | null>(null); // For success stats or detailed errors
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -51,25 +63,13 @@ const DataImporter = () => {
 
       const res = await DataImportService.upload(formData);
       setStatus('SUCCESS');
-      setResultData(res);
-    } catch (error: any) {
+      setResultData(res as ImportResults);
+    } catch (error) {
       console.error(error);
       setStatus('ERROR');
       // Try to parse detailed error if available
-      try {
-        // The error thrown by handleResponse is generic mostly, but if the API returns JSON error,
-        // handleResponse throws `error.message`.
-        // For detailed row errors, we might need to adjust handleResponse or just assume the message is informative.
-        // However, if the error is 400 Bad Request with JSON, handleResponse throws { message: ... } usually.
-        // Let's just store the error object/message.
-        // In our implementation, handleResponse throws an Error with .message.
-        // If there were detailed errors in the body, handleResponse might mask them if simply throwing message.
-        // Let's assume validation errors come in the catch block if handleResponse was modified to support details,
-        // but simpler for now:
-        setResultData({ message: error.message });
-      } catch (e) {
-        setResultData({ message: 'Error desconocido al subir.' });
-      }
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido al subir.';
+      setResultData({ message: errorMessage });
     } finally {
       setUploading(false);
     }
@@ -102,13 +102,17 @@ const DataImporter = () => {
     <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden shadow-xl">
       <div className="p-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-white font-bold text-lg flex items-center gap-2">
+          <h3
+            id="mass-import-title"
+            className="text-white font-bold text-lg flex items-center gap-2"
+          >
             <Upload className="w-5 h-5 text-indigo-400" />
             Importación Masiva
           </h3>
           <button
             onClick={handleDownloadTemplate}
             className="text-xs flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+            title="Descargar plantilla Excel oficial"
           >
             <Download className="w-4 h-4" />
             Descargar Plantilla Oficial
@@ -119,23 +123,34 @@ const DataImporter = () => {
           <div
             onDragOver={handleDragOver}
             onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-slate-600 rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:border-indigo-500 hover:bg-slate-700/30 transition-all group min-h-[160px]"
+            className="border-2 border-dashed border-slate-600 rounded-xl transition-all group min-h-[160px]"
           >
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept=".xlsx"
-              onChange={handleFileSelect}
-            />
-            <div className="bg-slate-700/50 p-3 rounded-full mb-3 group-hover:scale-110 transition-transform">
-              <FileSpreadsheet className="w-8 h-8 text-slate-400 group-hover:text-indigo-400" />
-            </div>
-            <p className="text-slate-300 font-medium">
-              Click para seleccionar o arrastra tu Excel aquí
-            </p>
-            <p className="text-xs text-slate-500 mt-1">Solo archivos .xlsx hasta 5MB</p>
+            <label
+              htmlFor="mass-file-input"
+              className="flex flex-col items-center justify-center p-8 text-center cursor-pointer hover:border-indigo-500 hover:bg-slate-700/30 transition-all rounded-xl w-full h-full focus-within:ring-2 focus-within:ring-indigo-500 outline-none"
+              title="Cargar archivo Excel"
+            >
+              <input
+                id="mass-file-input"
+                type="file"
+                ref={fileInputRef}
+                className="sr-only"
+                accept=".xlsx"
+                onChange={handleFileSelect}
+                title="Seleccionar archivo Excel"
+                aria-labelledby="mass-import-title"
+              />
+              <div className="bg-slate-700/50 p-3 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                <FileSpreadsheet
+                  className="w-8 h-8 text-slate-400 group-hover:text-indigo-400"
+                  aria-hidden="true"
+                />
+              </div>
+              <p className="text-slate-300 font-medium">
+                Click para seleccionar o arrastra tu Excel aquí
+              </p>
+              <p className="text-xs text-slate-500 mt-1">Solo archivos .xlsx hasta 5MB</p>
+            </label>
           </div>
         ) : (
           <div className="bg-slate-700/50 rounded-xl p-4 animate-fade-in">
@@ -149,7 +164,12 @@ const DataImporter = () => {
                   <p className="text-xs text-slate-400">{(file.size / 1024).toFixed(1)} KB</p>
                 </div>
               </div>
-              <button onClick={clearFile} className="text-slate-400 hover:text-white">
+              <button
+                onClick={clearFile}
+                className="text-slate-400 hover:text-white"
+                aria-label="Quitar archivo"
+                title="Quitar archivo"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -188,7 +208,7 @@ const DataImporter = () => {
                     {/* Fallback for detailed errors if we manage to get them from API */}
                     {resultData?.errors && Array.isArray(resultData.errors) && (
                       <div className="max-h-32 overflow-y-auto custom-scrollbar bg-red-900/20 rounded p-2 border border-red-500/10">
-                        {resultData.errors.map((err: any, idx: number) => (
+                        {resultData.errors.map((err, idx: number) => (
                           <div
                             key={idx}
                             className="text-xs text-red-300 border-b border-red-500/10 last:border-0 py-1"

@@ -7,7 +7,7 @@ interface CartonGridProps {
 }
 
 // Helper to format time strings from Excel raw values if needed
-const formatTime = (val: any): string => {
+const formatTime = (val: string | number | null | undefined): string => {
   if (!val) return '';
   const str = String(val);
   if (str.includes(':')) return str;

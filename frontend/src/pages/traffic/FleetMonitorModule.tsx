@@ -10,7 +10,7 @@ import 'leaflet/dist/leaflet.css';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import type { GeoPoint, Timestamp } from 'firebase/firestore';
-import { Radio, Bus } from 'lucide-react';
+import { Radio } from 'lucide-react';
 
 const VIAJES_ACTIVOS_COL = 'viajes_activos';
 const INACTIVITY_MS = 15 * 60 * 1000; // 15 minutos

@@ -1,18 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
-// @ts-ignore
-import { VariableSizeGrid as Grid } from 'react-window';
+import { useState, useEffect } from 'react';
 import { db } from '../config/firebase';
-import { collection, getDocs, onSnapshot, query } from 'firebase/firestore';
-import { getStatusColor, getDelayBorder } from '../utils/timeMatrixUtils';
+import { collection, getDocs } from 'firebase/firestore';
 import ControlPointForm from './ControlPointForm';
-import { Search, Activity } from 'lucide-react';
+import { Activity } from 'lucide-react';
 
 const ITEM_WIDTH = 80;
-const ITEM_HEIGHT = 50;
 const FIRST_COL_WIDTH = 90;
 
 const InspectionMatrix = () => {
-  const [lineId, setLineId] = useState('300'); // Default or Route Param
+  const [lineId] = useState('300'); // Default or Route Param
   const [services, setServices] = useState<any[]>([]); // Rows
   const [stops, setStops] = useState<string[]>([]); // Headers
   const [controls, setControls] = useState<Record<string, any>>({}); // Real-time feedback map { "service-stop": controlData }

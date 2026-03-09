@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { ShiftService } from '../services/api';
 import type { Shift } from '../services/api';
@@ -10,13 +9,18 @@ interface EditShiftModalProps {
   onSave: () => void;
 }
 
+interface ShiftCategory {
+  id: number;
+  name: string;
+}
+
 const EditShiftModal = ({ shift, onClose, onSave }: EditShiftModalProps) => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Shift>({
     ...shift,
     date: shift.date ? new Date(shift.date).toISOString().split('T')[0] : '',
-    categoryId: shift.categoryId, // Ensure this maps correctly if needed
+    categoryId: shift.categoryId,
   });
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<ShiftCategory[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -35,12 +39,12 @@ const EditShiftModal = ({ shift, onClose, onSave }: EditShiftModalProps) => {
     e.preventDefault();
     setIsSaving(true);
     try {
-      await ShiftService.update(shift.id, {
+      await ShiftService.update(shift.id as string, {
         ...formData,
-        totalValue: Number(formData.totalValue),
-        extraHours: Number(formData.extraHours),
-        tipValue: Number(formData.tipValue),
-        categoryId: Number(formData.categoryId),
+        totalValue: Number(formData.totalValue || 0),
+        extraHours: Number(formData.extraHours || 0),
+        tipValue: Number(formData.tipValue || 0),
+        categoryId: Number(formData.categoryId || 0),
       });
       // Removed alert for better UX, or keep it if requested? User asked for "Toast" style.
       // For now, minimal alert or just close.
@@ -69,6 +73,8 @@ const EditShiftModal = ({ shift, onClose, onSave }: EditShiftModalProps) => {
             onClick={onClose}
             className="text-slate-400 hover:text-white transition-colors"
             disabled={isSaving}
+            title="Cerrar modal"
+            aria-label="Cerrar modal"
           >
             <X className="w-6 h-6" />
           </button>
@@ -82,27 +88,31 @@ const EditShiftModal = ({ shift, onClose, onSave }: EditShiftModalProps) => {
                     */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="label">
+              <label htmlFor="serviceNumber" className="label">
                 <span>N° Servicio</span>
               </label>
               <input
+                id="serviceNumber"
                 name="serviceNumber"
                 value={formData.serviceNumber}
                 onChange={handleChange}
                 className="input-field w-full bg-slate-800 border-slate-700 text-white"
                 disabled={isSaving}
+                title="Número de servicio"
               />
             </div>
             <div>
-              <label className="label">
+              <label htmlFor="categoryIdSelect" className="label">
                 <span>Categoría</span>
               </label>
               <select
+                id="categoryIdSelect"
                 name="categoryId"
                 value={formData.categoryId}
                 onChange={handleChange}
                 className="input-field w-full bg-slate-800 border-slate-700 text-white"
                 disabled={isSaving}
+                title="Seleccionar categoría de turno"
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -113,38 +123,43 @@ const EditShiftModal = ({ shift, onClose, onSave }: EditShiftModalProps) => {
             </div>
 
             <div>
-              <label className="label">
+              <label htmlFor="shiftDateInput" className="label">
                 <span>Fecha</span>
               </label>
               <input
+                id="shiftDateInput"
                 type="date"
                 name="date"
                 value={formData.date}
                 onChange={handleChange}
                 className="input-field w-full bg-slate-800 border-slate-700 text-white"
                 disabled={isSaving}
+                title="Fecha del turno"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="label">
+                <label htmlFor="timeInput" className="label">
                   <span>Inicio</span>
                 </label>
                 <input
+                  id="timeInput"
                   type="time"
                   name="time"
                   value={formData.time}
                   onChange={handleChange}
                   className="input-field w-full bg-slate-800 border-slate-700 text-white"
                   disabled={isSaving}
+                  title="Hora de inicio"
                 />
               </div>
               <div>
-                <label className="label">
+                <label htmlFor="endTimeInput" className="label">
                   <span>Fin</span>
                 </label>
                 <input
+                  id="endTimeInput"
                   type="time"
                   name="endTime"
                   value={formData.endTime || ''}
@@ -156,27 +171,31 @@ const EditShiftModal = ({ shift, onClose, onSave }: EditShiftModalProps) => {
             </div>
 
             <div>
-              <label className="label">
+              <label htmlFor="line" className="label">
                 <span>Línea</span>
               </label>
               <input
+                id="line"
                 name="line"
                 value={formData.line}
                 onChange={handleChange}
                 className="input-field w-full bg-slate-800 border-slate-700 text-white"
                 disabled={isSaving}
+                title="Nombre o número de línea"
               />
             </div>
             <div>
-              <label className="label">
+              <label htmlFor="carNumber" className="label">
                 <span>Coche</span>
               </label>
               <input
+                id="carNumber"
                 name="carNumber"
                 value={formData.carNumber}
                 onChange={handleChange}
                 className="input-field w-full bg-slate-800 border-slate-700 text-white"
                 disabled={isSaving}
+                title="Número de coche/unidad"
               />
             </div>
           </div>
@@ -184,24 +203,27 @@ const EditShiftModal = ({ shift, onClose, onSave }: EditShiftModalProps) => {
           <div className="border-t border-slate-800 pt-4">
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="label">
+                <label htmlFor="extraHours" className="label">
                   <span>Horas Extras</span>
                 </label>
                 <input
+                  id="extraHours"
                   type="number"
                   name="extraHours"
                   value={formData.extraHours}
                   onChange={handleChange}
                   className="input-field w-full bg-slate-800 border-slate-700 text-white"
                   disabled={isSaving}
+                  title="Horas extras realizadas"
                 />
               </div>
               <div>
-                <label className="label">
+                <label htmlFor="tip" className="label">
                   <span>Propina</span>
                 </label>
                 <div className="flex items-center gap-2 mb-2">
                   <input
+                    id="tip"
                     type="checkbox"
                     name="tip"
                     checked={formData.tip}
@@ -209,34 +231,39 @@ const EditShiftModal = ({ shift, onClose, onSave }: EditShiftModalProps) => {
                     className="w-4 h-4 rounded bg-slate-800 border-slate-700"
                     disabled={isSaving}
                   />
-                  <span className="text-sm text-slate-400">
-                    <span>Incluir</span>
-                  </span>
+                  <label htmlFor="tip" className="text-sm text-slate-400">
+                    <span>Incluir Propina</span>
+                  </label>
                 </div>
                 {formData.tip && (
                   <input
+                    id="tipValue"
                     type="number"
                     name="tipValue"
                     value={formData.tipValue}
                     onChange={handleChange}
                     className="input-field w-full bg-slate-800 border-slate-700 text-white"
                     disabled={isSaving}
+                    placeholder="Monto de propina"
+                    title="Monto de propina"
                   />
                 )}
               </div>
               <div>
-                <label className="label font-bold text-primary-400">
+                <label htmlFor="totalValue" className="label font-bold text-primary-400">
                   <span>Valor Total</span>
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
                   <input
+                    id="totalValue"
                     type="number"
                     name="totalValue"
                     value={formData.totalValue}
                     onChange={handleChange}
                     className="input-field w-full pl-8 bg-slate-800 border-primary-500/50 text-white font-bold"
                     disabled={isSaving}
+                    title="Valor total del servicio"
                   />
                 </div>
               </div>

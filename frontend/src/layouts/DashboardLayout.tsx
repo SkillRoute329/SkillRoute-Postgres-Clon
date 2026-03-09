@@ -1,6 +1,6 @@
 import { Suspense, useState, useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
-import { Menu, X, Zap, Wifi, WifiOff, Activity, ShieldAlert } from 'lucide-react'; // Added ShieldAlert
+import { Outlet } from 'react-router-dom';
+import { Menu, X, Zap, Activity, ShieldAlert } from 'lucide-react'; // Added ShieldAlert
 import clsx from 'clsx';
 import Sidebar from '../components/Sidebar';
 import NotificationsDropdown from '../components/NotificationsDropdown';
@@ -107,7 +107,6 @@ const SystemStatus = () => {
 const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   return (
     <div className="flex h-screen w-full max-w-[100vw] bg-slate-900 overflow-hidden relative">

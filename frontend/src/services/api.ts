@@ -1,9 +1,6 @@
 /**
- * Punto de entrada único: reexporta servicios Firestore (reemplazo de la API backend eliminada).
- * No levantar servidor; todo el acceso a datos es vía Firestore en tiempo real.
+ * Punto de entrada único: integra Servicios Firestore con la API Backend 2.0.
  */
-import { getDocs, addDoc, collection } from 'firebase/firestore';
-import { db } from '../config/firebase';
 
 export {
   UserService,
@@ -27,26 +24,36 @@ export {
 
 export type { Shift, User, Vehicle } from './firestore';
 
-/** URL base de API (ya no hay backend local; se deja por compatibilidad con componentes que la referencian). */
-export const API_URL = '';
+/** URL base de API (Usa el proxy de Vite en desarrollo: /api -> localhost:3002). */
+export const API_URL = '/api';
 
-/** Compatibilidad: stub para componentes que usan api.get/post (p. ej. TenantsManager). */
-const apiStub = {
+/**
+ * API Client real para llamar al Backend 2.0 Hardened.
+ */
+const api = {
   get: async (path: string) => {
-    if (path === '/tenants') {
-      const snap = await getDocs(collection(db, 'tenants'));
-      return { data: snap.docs.map((d) => ({ id: d.id, ...d.data() })) };
-    }
-    if (path === '/system-health/status') return { data: { status: 'ok' } };
-    return { data: null };
+    const token = localStorage.getItem('tf_token');
+    const response = await fetch(`${API_URL}${path}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+    return { data: await response.json() };
   },
   post: async (path: string, data: Record<string, unknown>) => {
-    if (path === '/tenants') {
-      const ref = await addDoc(collection(db, 'tenants'), data);
-      return { data: { id: ref.id, ...data } };
-    }
-    return { data: null };
+    const token = localStorage.getItem('tf_token');
+    const response = await fetch(`${API_URL}${path}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+    return { data: await response.json() };
   },
 };
 
-export default apiStub;
+export default api;

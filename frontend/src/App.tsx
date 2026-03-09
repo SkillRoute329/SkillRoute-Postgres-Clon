@@ -62,6 +62,9 @@ const TalentCenter = lazy(() => import('./pages/talento/TalentCenter'));
 const AdminStressTest = lazy(() => import('./pages/admin/AdminStressTest'));
 const SystemParamsPage = lazy(() => import('./pages/admin/SystemParamsPage'));
 const RoadAlertsPage = lazy(() => import('./pages/alerts/RoadAlertsPage'));
+const BRTCorridorDashboard = lazy(() => import('./pages/traffic/BRTCorridorDashboard'));
+const EVChargeOptimizer = lazy(() => import('./pages/fleet/EVChargeOptimizer'));
+const ComplianceHub = lazy(() => import('./pages/admin/ComplianceHub'));
 
 // Loading Component
 const PageLoader = () => (
@@ -182,6 +185,9 @@ function App() {
                     <Route path="traffic/fleet-monitor" element={<FleetMonitorModule />} />
                     <Route path="traffic/daily-list" element={<DailyListManager />} />
                     <Route path="traffic/ceo" element={<CEODashboard />} />
+                    <Route path="traffic/brt" element={<BRTCorridorDashboard />} />
+                    <Route path="fleet/ev-charge" element={<EVChargeOptimizer />} />
+                    <Route path="admin/compliance" element={<ComplianceHub />} />
                     <Route path="talento" element={<TalentCenter />} />
 
                     {/* User Routes */}

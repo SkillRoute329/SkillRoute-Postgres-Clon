@@ -102,7 +102,7 @@ export default function DriverServiceView() {
     setReportando(true);
     try {
       await LogsIncidenciasService.createPrioridadAlta({
-        driverId,
+        driverId: String(driverId),
         servicioId: asignacionHoy?.servicio,
         ultimoPuntoControl: ultimoPuntoPasado ?? 'No registrado',
         mensaje: 'Incidente reportado desde app chofer',
@@ -121,7 +121,7 @@ export default function DriverServiceView() {
     setCambiando(true);
     try {
       await MensajesInternosService.create({
-        fromUserId: driverId,
+        fromUserId: String(driverId),
         toUserId: 'listero',
         tipo: 'cambio_turno',
         titulo: 'Solicitud de cambio de turno',

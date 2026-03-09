@@ -7,7 +7,6 @@ import {
   connectAuthEmulator,
 } from 'firebase/auth';
 import {
-  getFirestore,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,

@@ -1,7 +1,7 @@
 /**
  * Colección logs_incidencias: incidencias reportadas por el chofer (ej. Reportar Incidente – Prioridad Alta).
  */
-import { collection, addDoc, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, query, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 
 const COL = 'logs_incidencias';

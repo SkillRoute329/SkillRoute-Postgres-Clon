@@ -3,7 +3,10 @@ import { API_URL } from '../services/api';
 
 const BuildTag = () => {
   const [clientInfo, setClientInfo] = useState<{ version: string; buildTime: string } | null>(null);
-  const [serverInfo, setServerInfo] = useState<{ version: string } | null>(null);
+  const [serverInfo, setServerInfo] = useState<{ version: string } | null>(() => {
+    const isSim = sessionStorage.getItem('TRANSFORMA_SIMULATION_MODE') === 'true';
+    return isSim ? { version: 'SIMULATION-CORE' } : null;
+  });
 
   useEffect(() => {
     // 1. Get Client Version (Real-time from public/version.json)
@@ -13,10 +16,8 @@ const BuildTag = () => {
       .catch((err) => console.error('Client Version Error', err));
 
     // 2. Get Server Version (or Mock if offline/sim)
-    const isSim = sessionStorage.getItem('TRANSFORMA_SIMULATION_MODE') === 'true';
-    if (isSim) {
-      setServerInfo({ version: 'SIMULATION-CORE' });
-    } else {
+    // If serverInfo is already set (e.g. from initializer), we don't fetch
+    if (!serverInfo) {
       // Try to reach API, but fallback to "Cloud Active" if endpoint is missing (common for simple backends)
       fetch(`${API_URL}/health-check`) // Try a dummy endpoint or root
         .then((res) => {
@@ -32,7 +33,7 @@ const BuildTag = () => {
           img.src = 'https://www.google.com/favicon.ico?' + Date.now();
         });
     }
-  }, []);
+  }, [serverInfo]);
 
   if (!clientInfo) return null;
 

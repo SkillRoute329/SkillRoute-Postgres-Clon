@@ -4,7 +4,7 @@
  * Sin tablas tipo Excel: lista de tarjetas.
  */
 import { useState, useCallback } from 'react';
-import { Upload, FileText, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, FileText, Loader2, CheckCircle } from 'lucide-react';
 import { UserService } from '../../services/firestore';
 
 export interface PersonalRow {

@@ -18,6 +18,8 @@ export interface ServiceData {
   stops?: string[];
   fullSchedule?: { id: string; startTime: string; checkpoints: string[] }[];
   destination?: string; // NEW: For Rotation Destination/Notes
+  totalHours?: string;
+  kilometers?: string;
 }
 
 export interface ParsedLine {
@@ -63,13 +65,24 @@ export const ExcelParser = {
             console.log("🧩 ExcelParser: Estrategia 'ROTACION' detectada.");
             const rotationData = parseRotationSheet(firstSheet);
 
+            // Calculate totalHours and kilometers for each service if not already present
+            const servicesWithCalculatedData = rotationData.map((svc) => ({
+              ...svc,
+              totalHours:
+                svc.totalHours ||
+                (svc.durationMinutes
+                  ? `${Math.floor(svc.durationMinutes / 60)}:${String(svc.durationMinutes % 60).padStart(2, '0')}`
+                  : ''),
+              kilometers: svc.kilometers || '',
+            }));
+
             resolve({
               type: 'ROTACION',
               lines: [],
-              services: rotationData,
+              services: servicesWithCalculatedData,
               stats: {
                 totalSheetsProcessed: 1,
-                totalServicesFound: rotationData.length,
+                totalServicesFound: servicesWithCalculatedData.length,
               },
             });
             return;
@@ -526,6 +539,13 @@ function parseCartonSheet(sheet: XLSX.WorkSheet, sheetName: string): ServiceData
     }
     // Also scan individual cells for standalone 3-digit line codes or alphanumeric codes
     if (lineCode === 'UNKNOWN' || lineCode === 'U') {
+      const lineLabelIdx = row.findIndex((c: any) => /^L[ÍI]NEA$/i.test(String(c).trim()));
+      if (lineLabelIdx !== -1 && data[r + 1]) {
+        const valBelow = String(data[r + 1][lineLabelIdx]).trim();
+        if (/^\d{3}[A-Z]?$/.test(valBelow)) {
+          lineCode = valBelow;
+        }
+      }
       for (const cell of row) {
         const val = String(cell).trim();
         if (/^\d{3}[A-Z]?$/.test(val)) lineCode = val;
@@ -542,12 +562,21 @@ function parseCartonSheet(sheet: XLSX.WorkSheet, sheetName: string): ServiceData
       // Check if "SERVICIO" label is in one cell and the number in a nearby cell
       const svcLabelIdx = row.findIndex((c: any) => /SERVICIO|SCIO/i.test(String(c)));
       if (svcLabelIdx !== -1) {
-        // Look in surrounding cells for the service number
-        for (let ci = svcLabelIdx; ci < Math.min(row.length, svcLabelIdx + 4); ci++) {
-          const val = String(row[ci]).trim();
-          if (/^\d{3,4}$/.test(val) && val !== '2026' && val !== '2025') {
-            serviceNumber = val;
-            break;
+        // 1. Look in the cell BELOW if it's a vertical layout (UCOT Standard)
+        if (data[r + 1]) {
+          const valBelow = String(data[r + 1][svcLabelIdx]).trim();
+          if (/^\d{3,4}$/.test(valBelow) && valBelow !== '2026' && valBelow !== '2025') {
+            serviceNumber = valBelow;
+          }
+        }
+        // 2. Look in surrounding cells for the service number
+        if (serviceNumber === sheetName || !serviceNumber) {
+          for (let ci = svcLabelIdx; ci < Math.min(row.length, svcLabelIdx + 4); ci++) {
+            const val = String(row[ci]).trim();
+            if (/^\d{3,4}$/.test(val) && val !== '2026' && val !== '2025') {
+              serviceNumber = val;
+              break;
+            }
           }
         }
       } else if (serviceNumber === sheetName) {
@@ -650,6 +679,22 @@ function parseCartonSheet(sheet: XLSX.WorkSheet, sheetName: string): ServiceData
 
   while (stops.length < maxCols) stops.push(`Punto ${stops.length + 1}`);
 
+  // 4. Extract Real Footer Metadata (Kms, Total Hours)
+  let totalHours = '';
+  let kilometers = '';
+  for (let r = headerRowIdx + 1; r < data.length; r++) {
+    const rowStr = (data[r] || []).join(' ');
+    const upper = rowStr.toUpperCase();
+    if (!totalHours) {
+      const hMatch = rowStr.match(/Total de Horas:\s*(\d{1,2}:\d{2})/i);
+      if (hMatch) totalHours = hMatch[1];
+    }
+    if (!kilometers) {
+      const kMatch = rowStr.match(/Kil[oó]metros:\s*([\d,\./]+)/i);
+      if (kMatch) kilometers = kMatch[1];
+    }
+  }
+
   if (fullSchedule.length === 0) return null;
 
   return {
@@ -663,6 +708,8 @@ function parseCartonSheet(sheet: XLSX.WorkSheet, sheetName: string): ServiceData
     stops,
     dayType: 'HABIL',
     fullSchedule,
+    totalHours,
+    kilometers,
   };
 }
 

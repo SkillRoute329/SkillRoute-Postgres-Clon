@@ -1,9 +1,9 @@
 import { auth } from '../config/firebase';
 import { onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { type User } from '../services/api';
-import React, { createContext, useContext, useState, useEffect } from 'react'; // Added missing React imports
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface AuthContextType {
   user: User | null;
@@ -17,15 +17,25 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // 🧱 ARCHITECTURAL REFACTOR: LOADING WALL PATTERN
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [initializing, setInitializing] = useState(true); // 🔒 The Wall
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    console.log(
-      '🔒 [AuthContext] Initializing Strict Auth Listener (Firebase Auth only, no bypass).',
-    );
+    // 🔗 PERSISTENCE BRIDGE: Restore manual tokens (Backend 2.0)
+    const storedToken = localStorage.getItem('tf_token');
+    const storedUser = localStorage.getItem('tf_user');
+    if (storedToken && storedUser) {
+      try {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      } catch (_e) {
+        localStorage.removeItem('tf_token');
+        localStorage.removeItem('tf_user');
+      }
+    }
+
+    console.log('🔒 [AuthContext] Initializing Strict Auth Listener (Firebase + Backend).');
 
     // Ensure persistence is set before listening
     setPersistence(auth, browserLocalPersistence).catch((err) =>
@@ -35,51 +45,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
-          console.log('✅ [AuthContext] Session Restored:', firebaseUser.email);
+          console.log('✅ [AuthContext] Firebase Session Restored:', firebaseUser.email);
           const freshToken = await firebaseUser.getIdToken();
 
-          // 1. Base Strategy: Always have at least the Auth User
           let finalUser: User = {
             id: firebaseUser.uid,
+            uid: firebaseUser.uid,
             internalNumber: '----',
             firstName: firebaseUser.displayName?.split(' ')[0] || 'Usuario',
             lastName: '',
             fullName: firebaseUser.displayName || 'Usuario Sistema',
             role: 'User',
-            email: firebaseUser.email,
+            email: firebaseUser.email || undefined,
           };
 
-          // 2. Progressive Enhancement: Try to fetch DB Profile
           try {
             const userDocRef = doc(db, 'users', firebaseUser.uid);
-            let userSnap = await getDoc(userDocRef);
-
-            // Auto-Onboarding for new users (if DB allows)
-            if (!userSnap.exists()) {
-              try {
-                await setDoc(userDocRef, {
-                  uid: firebaseUser.uid,
-                  email: firebaseUser.email,
-                  rol: 'USER',
-                  empresa: 'UCOT',
-                  createdAt: serverTimestamp(),
-                });
-                userSnap = await getDoc(userDocRef);
-              } catch (writeErr) {
-                console.warn('Could not create user profile (permissions):', writeErr);
-              }
-            }
-
-            // Owner Privilege Restoration (Strict Check)
-            if (firebaseUser.uid === 'hCXervt1IHauUG1zWnCT640GgEP2') {
-              const currentData = userSnap.data();
-              if (currentData?.rol !== 'SuperAdmin') {
-                // Try to elevate if rules allow
-                setDoc(userDocRef, { ...currentData, rol: 'SuperAdmin' }, { merge: true }).catch(
-                  (e) => console.warn('Elevation blocked by rules:', e),
-                );
-              }
-            }
+            const userSnap = await getDoc(userDocRef);
 
             if (userSnap.exists()) {
               const userData = userSnap.data();
@@ -88,31 +70,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 internalNumber: userData?.datos_empresa?.legajo || '----',
                 firstName: userData?.datos_personales?.nombre || finalUser.firstName,
                 lastName: userData?.datos_personales?.apellido || '',
-                fullName:
-                  `${(userData?.datos_personales?.nombre as string) || ''} ${(userData?.datos_personales?.apellido as string) || ''}`.trim() ||
-                  finalUser.fullName,
                 role: userData?.rol || 'USER',
               };
             }
           } catch (dbError) {
-            console.error('⚠️ [AuthContext] DB Profile Unreachable (using Fallback):', dbError);
-            // We continue with finalUser (Auth Data) so we don't block login
+            console.error('⚠️ [AuthContext] DB Profile Unreachable:', dbError);
           }
 
-          // 3. Commit State
           setToken(freshToken);
           setUser(finalUser);
-        } else {
+          localStorage.setItem('tf_token', freshToken);
+          localStorage.setItem('tf_user', JSON.stringify(finalUser));
+        } else if (!localStorage.getItem('tf_token')) {
+          // Solo limpiar si no hay un token de backend manual
           console.log('💤 [AuthContext] No active session found.');
           setToken(null);
           setUser(null);
         }
       } catch (error) {
         console.error('❌ [AuthContext] Critical Auth Error:', error);
-        setToken(null);
-        setUser(null);
       } finally {
-        // 🔓 LIFT THE WALL: Whether success or failure, we are done checking.
         setInitializing(false);
       }
     });
@@ -123,16 +100,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = (newToken: string, newUser: User) => {
     setToken(newToken);
     setUser(newUser);
+    localStorage.setItem('tf_token', newToken);
+    localStorage.setItem('tf_user', JSON.stringify(newUser));
   };
 
   const logout = () => {
     auth.signOut();
+    localStorage.removeItem('tf_token');
+    localStorage.removeItem('tf_user');
     setToken(null);
     setUser(null);
     window.location.assign('/login');
   };
 
-  // ⛔ BLOCKED STATE RENDER
   if (initializing) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-950 text-white">

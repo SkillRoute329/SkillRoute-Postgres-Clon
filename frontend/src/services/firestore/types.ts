@@ -2,8 +2,6 @@
  * Tipos compartidos para servicios Firestore (reemplazo de la antigua API).
  */
 
-import { type Shift, type User, type Carton } from '../../services/firestore/types';
-
 export interface Shift {
   id: number | string;
   date?: string;
@@ -23,6 +21,9 @@ export interface Shift {
   serviceId?: string;
   serviceNumber?: string;
   line?: string;
+  extraHours?: number;
+  tip?: boolean;
+  tipValue?: number;
   [key: string]: unknown;
 }
 
@@ -41,6 +42,7 @@ export interface User {
   role?: string;
   email?: string;
   uid?: string;
+  assignedVehicleId?: string;
   datos_personales?: { nombre?: string; apellido?: string };
   datos_empresa?: { legajo?: string };
   [key: string]: unknown;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Save, ArrowLeft, Bus, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Bus, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { MaintenanceService, FleetService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';

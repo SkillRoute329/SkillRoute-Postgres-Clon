@@ -13,6 +13,10 @@ export const PassengerLoadCategory = {
   BAJO: 'BAJO',
   MEDIO: 'MEDIO',
   ALTO: 'ALTO',
+  VACIO: 'VACIO',
+  SENTADOS: 'SENTADOS',
+  LLENO: 'LLENO',
+  EXPLOTADO: 'EXPLOTADO',
 } as const;
 export type PassengerLoadCategory =
   (typeof PassengerLoadCategory)[keyof typeof PassengerLoadCategory];

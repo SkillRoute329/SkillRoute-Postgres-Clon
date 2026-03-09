@@ -104,16 +104,22 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
     }
   };
 
-  const handleChange = (field: keyof ServiceDefinitionData, value: any) => {
+  const handleChange = <T extends keyof ServiceDefinitionData>(
+    field: T,
+    value: ServiceDefinitionData[T],
+  ) => {
     // Create temp updated data
     const updatedData = { ...data, [field]: value };
 
     // Auto-calculate Total and Liquid Hours if relevant fields change
     if (field === 'startTime' || field === 'endTime' || field === 'waitingTime') {
-      const newTotal = calculateDuration(updatedData.startTime, updatedData.endTime);
+      const newTotal = calculateDuration(
+        updatedData.startTime as string,
+        updatedData.endTime as string,
+      );
       if (newTotal !== '--:--') {
         updatedData.totalHours = newTotal;
-        updatedData.liquidHours = subtractTime(newTotal, updatedData.waitingTime);
+        updatedData.liquidHours = subtractTime(newTotal, updatedData.waitingTime as string);
       }
     }
 
@@ -146,21 +152,6 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
   // This assumes we add a UI way to edit "ESPERAS" between columns or rows.
   // For the prompt's request: "Si el Admin modifica ESPERA, recalcula en cascada".
   // We need to store waits. Let's assume we add a wait property to the row or cell metadata.
-
-  const recalculateRow = (row: TimeRow, changedPointId: string, newTime: string) => {
-    // Find index of changed point
-    const pointIdx = data.headers.findIndex((h) => h.id === changedPointId);
-    if (pointIdx === -1) return row;
-
-    const updatedTimes = { ...row.times, [changedPointId]: newTime };
-
-    // Propagate forward?
-    // If I change start time, does the whole trip shift? Yes, usually.
-    // We'd need to know the official "Tramo" (duration) between points.
-    // Let's implement a simple "Shift Future" toggle or logic later.
-
-    return { ...row, times: updatedTimes };
-  };
 
   const toggleRelief = (rowId: string, pointId: string) => {
     if (!isReliefMode) return;

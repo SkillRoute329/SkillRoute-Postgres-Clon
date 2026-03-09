@@ -4,8 +4,6 @@ import {
   Database,
   ShieldCheck,
   RefreshCcw,
-  AlertCircle,
-  FileText,
   CheckCircle2,
   Terminal,
   ShieldAlert,

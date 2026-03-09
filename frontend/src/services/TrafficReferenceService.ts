@@ -1,7 +1,7 @@
-import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { DailyShift } from '../types/traffic';
-import type { ParsedData, ServiceData } from '../utils/ExcelParserV2';
+import type { ParsedData } from '../utils/ExcelParserV2';
 
 // Cache to avoid thousands of reads
 const _usersCache: Record<string, any> = {};
@@ -102,7 +102,7 @@ export const TrafficReferenceService = {
       // "Driver" might not be in the Excel row depending on parser V2...
       // Wait, ParserV2 for Rotation returns: { vehicleInternalNumber, ... }
       // It currently does NOT extract Driver Legajo/Name explicitly in V2?
-      // Need to check V2 parser output again. 'ServiceData' has vehicleInternalNumber, but no explicit 'driverCode'.
+      // Need to check V2 parser output again. '' has vehicleInternalNumber, but no explicit 'driverCode'.
       // If the excel has driver info, we need to extract it.
       // Assuming for now Vehicle is the main link in the "Rotation" file provided (Salida).
 

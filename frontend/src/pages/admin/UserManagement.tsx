@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { API_URL, UserService } from '../../services/api'; // Still needed for CREATE (as it uses API backend for logic)
+import { UserService } from '../../services/api'; // Still needed for CREATE (as it uses API backend for logic)
 import { UserPlus, Save, Trash2, Search } from 'lucide-react';
 import { useFirestoreCollection } from '../../hooks/useFirestoreCollection';
 import { showSuccess, showError, showLoading, dismiss } from '../../context/FeedbackProvider';
-import { orderBy, where } from 'firebase/firestore';
+import { orderBy } from 'firebase/firestore';
 import { getFirestore, deleteDoc, doc } from 'firebase/firestore';
 
 const UserManagement = () => {
@@ -14,8 +14,7 @@ const UserManagement = () => {
   const {
     data: users,
     loading: listLoading,
-    error,
-  } = useFirestoreCollection('users', [orderBy('createdAt', 'desc')]);
+    } = useFirestoreCollection('users', [orderBy('createdAt', 'desc')]);
 
   const [formData, setFormData] = useState({
     firstName: '',

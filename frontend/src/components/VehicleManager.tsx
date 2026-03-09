@@ -1,29 +1,14 @@
 import { useState, useEffect } from 'react';
 import { UniversalService } from '../services/api'; // Using Universal as bridge unless specific vehicle logic requires specialized hook
-import {
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  ShieldAlert,
-  BusFront,
-  FileText,
-  Truck,
-  Wrench,
-  Calendar,
-  AlertTriangle,
-  X,
-  Check,
-} from 'lucide-react';
+import { Plus, Search, Edit, ShieldAlert, BusFront, FileText, X, Check } from 'lucide-react';
 import ImageUploader from './ImageUploader';
-import { doc, updateDoc, collection, addDoc, getFirestore } from 'firebase/firestore';
+import { doc, updateDoc, getFirestore } from 'firebase/firestore';
 
 // We assume UniversalService handles basic CRUD, but we might need direct Firestore for specific sub-updates or use specialized API endpoints if available.
 // For now, let's build on top of API but do Image association client-side or separate API call.
 
 const VehicleManager = () => {
   const [vehicles, setVehicles] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<any>(null);
 
@@ -35,7 +20,6 @@ const VehicleManager = () => {
   }, []);
 
   const loadFleet = async () => {
-    setLoading(true);
     try {
       // Fetch from Universal Endpoint (mapped to FleetController)
       const res = await UniversalService.list('fleet'); // or 'vehicles'
@@ -43,8 +27,6 @@ const VehicleManager = () => {
       setVehicles(Array.isArray(res) ? res : res.data || []);
     } catch (error) {
       console.error('Error loading fleet', error);
-    } finally {
-      setLoading(false);
     }
   };
 

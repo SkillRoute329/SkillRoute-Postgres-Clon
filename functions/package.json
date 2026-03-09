@@ -1,0 +1,28 @@
+{
+    "name":  "functions",
+    "version":  "1.0.0",
+    "description":  "",
+    "main":  "lib/index.js",
+    "scripts":  {
+                    "serve":  "npm run build \u0026\u0026 firebase emulators:start --only functions",
+                    "build":  "tsc",
+                    "deploy":  "npm run build \u0026\u0026 firebase deploy --only functions"
+                },
+    "keywords":  [
+
+                 ],
+    "author":  "",
+    "license":  "ISC",
+    "type":  "commonjs",
+    "dependencies":  {
+                         "axios":  "^1.13.6",
+                         "cors":  "^2.8.6",
+                         "firebase-admin":  "^13.7.0",
+                         "firebase-functions":  "^7.1.0"
+                     },
+    "devDependencies":  {
+                            "@types/cors":  "^2.8.19",
+                            "@types/node":  "^25.3.5",
+                            "typescript":  "^5.9.3"
+                        }
+}

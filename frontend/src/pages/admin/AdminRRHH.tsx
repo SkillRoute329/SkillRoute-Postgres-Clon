@@ -11,8 +11,7 @@ import {
   Percent,
   FileUp,
   FileDown,
-  Download,
-} from 'lucide-react';
+  } from 'lucide-react';
 import { DepartmentService, DiscountService, DataImportService } from '../../services/api';
 import clsx from 'clsx';
 
@@ -96,7 +95,7 @@ const UsersTab = () => {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    } catch (e) {
+    } catch (err) {
       alert('Error exportando');
     }
   };
@@ -111,7 +110,7 @@ const UsersTab = () => {
       alert('Importación completada');
       setShowImport(false);
       window.location.reload();
-    } catch (e) {
+    } catch (err) {
       alert('Error importando');
     } finally {
       setLoading(false);
@@ -217,7 +216,7 @@ const StructureTab = () => {
       setEditingDept(null);
       setDeptForm({ name: '', description: '' });
       loadData();
-    } catch (e) {
+    } catch (err) {
       alert('Error');
     }
   };
@@ -240,7 +239,7 @@ const StructureTab = () => {
       setShowRoleModal(false);
       setRoleForm({ name: '', description: '', baseSalary: '', extraHourValue: '' });
       loadData();
-    } catch (e) {
+    } catch (err) {
       alert('Error');
     }
   };
@@ -455,8 +454,8 @@ const DiscountsTab = () => {
     try {
       const data = await DiscountService.getAll();
       setDiscounts(data);
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      
     }
   };
 

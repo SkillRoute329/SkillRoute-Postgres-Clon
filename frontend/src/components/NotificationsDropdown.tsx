@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Info, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Bell, Info, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { MensajesInternosService } from '../services/firestore/mensajesInternos';
 import type { MensajeInternoEntry } from '../services/firestore/mensajesInternos';
@@ -15,7 +15,7 @@ const NotificationsDropdown = () => {
 
   useEffect(() => {
     if (!uid) return;
-    const unsub = MensajesInternosService.subscribeByUser(uid, (list) => {
+    const unsub = MensajesInternosService.subscribeByUser(String(uid), (list) => {
       setNotifications(list);
       setUnreadCount(list.filter((n) => !n.readAt).length);
     });

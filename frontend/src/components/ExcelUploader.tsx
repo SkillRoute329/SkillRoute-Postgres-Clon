@@ -1,13 +1,8 @@
 import { useState, useCallback } from 'react';
-import * as XLSX from 'xlsx';
 import { useDropzone } from 'react-dropzone';
 import {
   Upload,
-  FileSpreadsheet,
-  AlertTriangle,
   CheckCircle,
-  Database,
-  Server,
   Loader2,
   FileUp,
 } from 'lucide-react';

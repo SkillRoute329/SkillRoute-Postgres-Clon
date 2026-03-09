@@ -23,28 +23,31 @@ export const CloudUploadTest: React.FC = () => {
 
       // Feedback explícito en pantalla
       alert(`🎉 ¡ÉXITO! Imagen subida correctamente.\n\nURL: ${url}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌ Fallo en la subida:', err);
 
       let errorMessage = 'Error desconocido.';
       let userTip = 'Intenta nuevamente.';
 
+      // Type narrowing for Firebase Storage errors
+      const firebaseErr = err as { code?: string; message?: string };
+
       // Mapeo de errores comunes de Firebase Storage
-      if (err.code === 'storage/unauthorized') {
+      if (firebaseErr.code === 'storage/unauthorized') {
         errorMessage = '⛔ ACCESO DENEGADO (403)';
         userTip =
           "No tienes permiso para escribir en esta ruta ('/reportes'). Verifica las Reglas de Seguridad en Firebase Console.";
-      } else if (err.code === 'storage/canceled') {
+      } else if (firebaseErr.code === 'storage/canceled') {
         errorMessage = '⏹️ Subida Cancelada';
         userTip = 'El usuario canceló la operación.';
-      } else if (err.code === 'storage/unknown') {
+      } else if (firebaseErr.code === 'storage/unknown') {
         errorMessage = '❓ Error Desconocido';
         userTip = 'Ocurrió un error inesperado al conectar con el servidor.';
-      } else if (err.message && err.message.includes('network')) {
+      } else if (firebaseErr.message && firebaseErr.message.includes('network')) {
         errorMessage = '📡 Error de Red';
         userTip = 'Verifica tu conexión a internet.';
       } else {
-        errorMessage = err.message || errorMessage;
+        errorMessage = firebaseErr.message || errorMessage;
       }
 
       setError(`${errorMessage}: ${userTip}`);

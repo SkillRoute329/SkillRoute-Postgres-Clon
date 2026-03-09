@@ -7,9 +7,7 @@ import {
   where,
   Timestamp,
   orderBy,
-  limit,
-  onSnapshot,
-} from 'firebase/firestore';
+  } from 'firebase/firestore';
 
 export type AlertType = 'ACCIDENT' | 'TRAFFIC' | 'POLICE' | 'DETOUR' | 'WEATHER' | 'OTHER';
 

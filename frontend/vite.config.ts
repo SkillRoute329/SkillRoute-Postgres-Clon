@@ -2,6 +2,7 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 const CACHE_BUST = Date.now();
 
@@ -9,6 +10,11 @@ const CACHE_BUST = Date.now();
 export default defineConfig({
   plugins: [
     react(),
+    nodePolyfills({
+      globals: {
+        process: true,
+      },
+    }),
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: { enabled: false },
@@ -39,7 +45,7 @@ export default defineConfig({
     }),
   ],
   server: {
-    host: '0.0.0.0', // 🔓 Expose to Network (Critical for Android Testing)
+    host: '127.0.0.1', // 🔓 Expose to Network (Critical for Android Testing)
     port: 5175,
     strictPort: true,
     allowedHosts: true, // Allow 192.168.x.x
@@ -47,12 +53,38 @@ export default defineConfig({
       usePolling: true,
     },
     proxy: {
-      '/api': {
-        target: 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/api', // ☁️ Production Backend
-        // target: 'http://127.0.0.1:5001/ucot-gestor-cloud/us-central1/api', // 🔧 Local Emulator
-        // target: 'http://192.168.1.4:3000', // 💀 Legacy Local Backend
+      '/api/auth': {
+        target: 'http://127.0.0.1:3002',
         changeOrigin: true,
-        secure: true,
+        secure: false,
+        timeout: 10000,
+        proxyTimeout: 10000,
+      },
+      '/api/health-check': {
+        target: 'http://127.0.0.1:3002',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api': {
+        target: 'http://127.0.0.1:3002',
+        changeOrigin: true,
+        secure: false,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('--- PROXY ERROR ---');
+            console.warn(err);
+          });
+          proxy.on('proxyReq', (_proxyReq, req, _res) => {
+            if (req.method !== 'GET') {
+              console.log(`[Proxy] ${req.method} ${req.url}`);
+            }
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            if (proxyRes.statusCode && proxyRes.statusCode >= 400) {
+              console.log(`[Proxy ERR] ${proxyRes.statusCode} ${req.url}`);
+            }
+          });
+        },
       },
     },
   },
