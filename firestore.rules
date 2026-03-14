@@ -1,11 +1,51 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // TEMPORAL LOCAL/EMULATOR: permitir todo para E2E y desarrollo con emulador.
-    // En producción sustituir por las reglas restrictivas (auth, roles).
-    match /{path=**} {
-      allow read, write: if true;
+    // Usuarios - solo el propietario puede leer/escribir
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // Líneas - operador ve solo sus líneas
+    match /lineas/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Cartones
+    match /cartones/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Boletaje
+    match /boletaje/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // STM Horarios
+    match /stm_horarios/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // STM Sincronizaciones
+    match /stm_sincronizaciones/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Alertas
+    match /stm_alertas_competencia/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Recomendaciones
+    match /recomendaciones/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Default - denegar todo lo demás
+    match /{document=**} {
+      allow read: if request.auth != null;
+      allow write: if false;
     }
   }
 }

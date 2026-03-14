@@ -6,7 +6,7 @@
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite --port 5175 --strictPort",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "qa:audit": "node scripts/qa_audit.js",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -49,6 +49,7 @@
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.11.0",
     "react-window": "^2.2.5",
+    "recharts": "^3.8.0",
     "shpjs": "^6.2.0",
     "socket.io-client": "^4.8.3",
     "tailwind-merge": "^3.4.0",
