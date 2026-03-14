@@ -1,0 +1,146 @@
+/**
+ * Enrutador principal - Agrupa todas las rutas
+ * TransformaFacil 2.0: Centro de Comando Unificado
+ */
+
+import { Router } from 'express';
+
+// Middleware
+import { verifyAuth, requireAdmin } from '../middleware/auth';
+import { validateBody } from '../middleware/validation';
+
+// Controllers
+import * as authController from '../controllers/authController';
+import * as cartonController from '../controllers/cartonController';
+import * as fleetController from '../controllers/fleetController';
+import * as systemController from '../controllers/systemController';
+
+// Sub-routers (Semanas 4-11)
+import competitionRoutes from './competition.routes';
+import analyticsRoutes from './analytics.routes';
+import forecastRoutes from './forecast.routes';
+import dashboardRoutes from './dashboard.routes';
+import stmRoutes from './stm.routes';
+
+const router = Router();
+
+// ─── PÚBLICAS (sin autenticación) ─────────────────────────────────────────
+
+/**
+ * POST /api/auth/login
+ * Realizar login con internalNumber y contraseña
+ */
+router.post('/auth/login', validateBody(['internalNumber', 'password']), authController.login);
+
+/**
+ * GET /api/doctor
+ * Diagnóstico del sistema
+ */
+router.get('/doctor', systemController.systemDoctor);
+
+/**
+ * GET /api/health
+ * Simple health check
+ */
+router.get('/health', systemController.healthCheck);
+
+/**
+ * GET /api/version
+ * Obtener versión
+ */
+router.get('/version', systemController.getVersion);
+
+// ─── PROTEGIDAS (requieren autenticación) ─────────────────────────────────
+
+/**
+ * GET /api/auth/me
+ * Obtener usuario actual autenticado
+ */
+router.get('/auth/me', verifyAuth, authController.getCurrentUser);
+
+// ─── CARTONES ────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/cartones
+ * Obtener todos los cartones
+ */
+router.get('/cartones', verifyAuth, cartonController.getAllCartones);
+
+/**
+ * GET /api/cartones/:id
+ * Obtener un cartón específico
+ */
+router.get('/cartones/:id', verifyAuth, cartonController.getCartonById);
+
+/**
+ * POST /api/cartones
+ * Crear o actualizar un cartón
+ */
+router.post('/cartones', verifyAuth, validateBody(['serviceNumber']), cartonController.saveCarton);
+
+/**
+ * DELETE /api/cartones/:id
+ * Eliminar un cartón
+ */
+router.delete('/cartones/:id', verifyAuth, requireAdmin, cartonController.deleteCarton);
+
+// ─── FLOTA ───────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/fleet/vehicles
+ * Obtener todos los vehículos
+ */
+router.get('/fleet/vehicles', verifyAuth, fleetController.getAllVehicles);
+
+/**
+ * GET /api/fleet/vehicles/:id
+ * Obtener un vehículo específico
+ */
+router.get('/fleet/vehicles/:id', verifyAuth, fleetController.getVehicleById);
+
+/**
+ * POST /api/fleet/check
+ * Crear una inspección de vehículo
+ */
+router.post('/fleet/check', verifyAuth, validateBody(['vehicleId']), fleetController.createFleetCheck);
+
+/**
+ * GET /api/fleet/vehicles/:id/checks
+ * Obtener inspecciones de un vehículo
+ */
+router.get('/fleet/vehicles/:id/checks', verifyAuth, fleetController.getVehicleChecks);
+
+// ─── SEMANA 4-9: INTELIGENCIA COMPETITIVA Y DASHBOARD ──────────────────────
+
+/**
+ * Rutas de Análisis de Competencia (Semana 4)
+ * GET /api/competition/...
+ */
+router.use('/competition', competitionRoutes);
+
+/**
+ * Rutas de Análisis y Validación (Semana 5)
+ * GET /api/analytics/...
+ */
+router.use('/analytics', analyticsRoutes);
+
+/**
+ * Rutas de Predicción y Pronósticos (Semana 6-7)
+ * GET /api/forecast/...
+ */
+router.use('/forecast', forecastRoutes);
+
+/**
+ * Rutas de Dashboard Ejecutivo (Semana 8-9)
+ * GET /api/dashboard/...
+ */
+router.use('/dashboard', dashboardRoutes);
+
+/**
+ * Rutas de Integración STM + 5G (Semana 10-11)
+ * GET /api/stm/...
+ * POST /api/stm/...
+ */
+router.use('/stm', stmRoutes);
+
+export default router;

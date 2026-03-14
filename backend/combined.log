@@ -1,0 +1,59 @@
+[2026-03-13 18:17:55] INFO: 🚀 TransformaFacil Backend iniciando... {"environment":"development","port":3002}
+[2026-03-13 18:17:56] INFO: 🔌 Socket.io inicializado
+[2026-03-13 18:17:56] INFO: 🛡️ TransformaFacil API + Socket.io operativo {"port":3002,"environment":"development"}
+[2026-03-13 18:17:56] INFO: 📡 HTTP API: http://localhost:3002/
+[2026-03-13 18:17:56] INFO: 🔌 WebSocket: ws://localhost:3002
+[2026-03-13 18:17:56] INFO: 📚 Health: http://localhost:3002/api/health
+[2026-03-13 18:17:56] INFO: 🔍 Doctor: http://localhost:3002/api/doctor
+[2026-03-13 18:17:57] INFO: GET /health {"statusCode":200,"duration":"2ms"}
+[2026-03-13 18:18:48] WARN: SIGTERM signal received: closing HTTP server
+[2026-03-13 18:19:15] INFO: 🚀 TransformaFacil Backend iniciando... {"environment":"development","port":3000}
+[2026-03-13 18:19:15] INFO: 🔌 Socket.io inicializado
+[2026-03-13 18:19:15] INFO: 🛡️ TransformaFacil API + Socket.io operativo {"port":3000,"environment":"development"}
+[2026-03-13 18:19:15] INFO: 📡 HTTP API: http://localhost:3000/
+[2026-03-13 18:19:15] INFO: 🔌 WebSocket: ws://localhost:3000
+[2026-03-13 18:19:15] INFO: 📚 Health: http://localhost:3000/api/health
+[2026-03-13 18:19:15] INFO: 🔍 Doctor: http://localhost:3000/api/doctor
+[2026-03-13 18:19:19] INFO: GET /health {"statusCode":200,"duration":"3ms"}
+[2026-03-13 18:19:24] INFO: POST /auth/login {"statusCode":400,"duration":"0ms"}
+[2026-03-13 18:19:26] INFO: POST /auth/login {"statusCode":400,"duration":"0ms"}
+[2026-03-13 18:23:45] INFO: 🚀 TransformaFacil Backend iniciando... {"environment":"development","port":3000}
+[2026-03-13 18:23:45] INFO: 🔌 Socket.io inicializado
+[2026-03-13 18:23:45] INFO: 🛡️ TransformaFacil API + Socket.io operativo {"port":3000,"environment":"development"}
+[2026-03-13 18:23:45] INFO: 📡 HTTP API: http://localhost:3000/
+[2026-03-13 18:23:45] INFO: 🔌 WebSocket: ws://localhost:3000
+[2026-03-13 18:23:45] INFO: 📚 Health: http://localhost:3000/api/health
+[2026-03-13 18:23:45] INFO: 🔍 Doctor: http://localhost:3000/api/doctor
+[2026-03-13 18:24:17] INFO: GET /health {"statusCode":200,"duration":"3ms"}
+[2026-03-13 18:24:29] INFO: GET /health {"statusCode":200,"duration":"1ms"}
+[2026-03-13 18:25:20] ERROR: [AUTH] Unexpected error during login {"error":"Error: 14 UNAVAILABLE: Name resolution failed for target dns:firestore.googleapis.com:443"}
+[2026-03-13 18:25:50] INFO: 🚀 TransformaFacil Backend iniciando... {"environment":"development","port":3000}
+[2026-03-13 18:25:50] INFO: 🔌 Socket.io inicializado
+[2026-03-13 18:25:50] INFO: 🛡️ TransformaFacil API + Socket.io operativo {"port":3000,"environment":"development"}
+[2026-03-13 18:25:50] INFO: 📡 HTTP API: http://localhost:3000/
+[2026-03-13 18:25:50] INFO: 🔌 WebSocket: ws://localhost:3000
+[2026-03-13 18:25:50] INFO: 📚 Health: http://localhost:3000/api/health
+[2026-03-13 18:25:50] INFO: 🔍 Doctor: http://localhost:3000/api/doctor
+[2026-03-13 18:26:14] INFO: GET /health {"statusCode":200,"duration":"4ms"}
+[2026-03-13 18:29:34] INFO: 🚀 TransformaFacil Backend iniciando... {"environment":"development","port":3000}
+[2026-03-13 18:29:35] INFO: 🔌 Socket.io inicializado
+[2026-03-13 18:29:35] INFO: 🛡️ TransformaFacil API + Socket.io operativo {"port":3000,"environment":"development"}
+[2026-03-13 18:29:35] INFO: 📡 HTTP API: http://localhost:3000/
+[2026-03-13 18:29:35] INFO: 🔌 WebSocket: ws://localhost:3000
+[2026-03-13 18:29:35] INFO: 📚 Health: http://localhost:3000/api/health
+[2026-03-13 18:29:35] INFO: 🔍 Doctor: http://localhost:3000/api/doctor
+[2026-03-13 18:29:51] INFO: GET /health {"statusCode":200,"duration":"3ms"}
+[2026-03-13 18:37:06] INFO: 🚀 TransformaFacil Backend iniciando... {"environment":"development","port":3000}
+[2026-03-13 18:37:06] INFO: 🔌 Socket.io inicializado
+[2026-03-13 18:37:06] INFO: 🛡️ TransformaFacil API + Socket.io operativo {"port":3000,"environment":"development"}
+[2026-03-13 18:37:06] INFO: 📡 HTTP API: http://localhost:3000/
+[2026-03-13 18:37:06] INFO: 🔌 WebSocket: ws://localhost:3000
+[2026-03-13 18:37:06] INFO: 📚 Health: http://localhost:3000/api/health
+[2026-03-13 18:37:06] INFO: 🔍 Doctor: http://localhost:3000/api/doctor
+[2026-03-13 18:42:31] INFO: 🚀 TransformaFacil Backend iniciando... {"environment":"development","port":3000}
+[2026-03-13 18:42:31] INFO: 🔌 Socket.io inicializado
+[2026-03-13 18:42:31] INFO: 🛡️ TransformaFacil API + Socket.io operativo {"port":3000,"environment":"development"}
+[2026-03-13 18:42:31] INFO: 📡 HTTP API: http://localhost:3000/
+[2026-03-13 18:42:31] INFO: 🔌 WebSocket: ws://localhost:3000
+[2026-03-13 18:42:31] INFO: 📚 Health: http://localhost:3000/api/health
+[2026-03-13 18:42:31] INFO: 🔍 Doctor: http://localhost:3000/api/doctor

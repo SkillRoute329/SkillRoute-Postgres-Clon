@@ -1,0 +1,1 @@
+[2026-03-13 18:25:20] ERROR: [AUTH] Unexpected error during login {"error":"Error: 14 UNAVAILABLE: Name resolution failed for target dns:firestore.googleapis.com:443"}
