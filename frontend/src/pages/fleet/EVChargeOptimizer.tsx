@@ -12,8 +12,14 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, where, query } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import {
-  Zap, Battery, Clock, AlertTriangle, CheckCircle2,
-  TrendingDown, Calendar, Settings
+  Zap,
+  Battery,
+  Clock,
+  AlertTriangle,
+  CheckCircle2,
+  TrendingDown,
+  Calendar,
+  Settings,
 } from 'lucide-react';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -26,7 +32,7 @@ interface BusElectrico {
   ciclosCarga: number;
   ultimaRecarga?: string;
   horasServicioHoy: number;
-  proximoTurno?: string;     // "06:00" = próximo turno
+  proximoTurno?: string; // "06:00" = próximo turno
   enCochera: boolean;
   prioridadCarga: 'alta' | 'media' | 'baja';
 }
@@ -45,12 +51,72 @@ interface SlotCarga {
 // ─── Datos demo (reemplazar con Firestore real) ───────────────────────────────
 
 const BUSES_ELECTRICOS_DEMO: BusElectrico[] = [
-  { id: 'E01', numero: '201', modelo: 'Yutong E12LF (2020)', nivelBateriaPct: 28, ciclosCarga: 412, horasServicioHoy: 8.5, proximoTurno: '05:30', enCochera: true, prioridadCarga: 'alta' },
-  { id: 'E02', numero: '202', modelo: 'Yutong E12LF (2020)', nivelBateriaPct: 54, ciclosCarga: 398, horasServicioHoy: 7.0, proximoTurno: '06:00', enCochera: true, prioridadCarga: 'media' },
-  { id: 'E03', numero: '203', modelo: 'Yutong E12LF (2020)', nivelBateriaPct: 71, ciclosCarga: 445, horasServicioHoy: 6.0, proximoTurno: '07:00', enCochera: false, prioridadCarga: 'baja' },
-  { id: 'E04', numero: '204', modelo: 'Yutong E12 Pro (2024)', nivelBateriaPct: 15, ciclosCarga: 87, horasServicioHoy: 9.0, proximoTurno: '05:00', enCochera: true, prioridadCarga: 'alta' },
-  { id: 'E05', numero: '205', modelo: 'Yutong E12 Pro (2024)', nivelBateriaPct: 42, ciclosCarga: 92, horasServicioHoy: 7.5, proximoTurno: '06:30', enCochera: true, prioridadCarga: 'media' },
-  { id: 'E06', numero: '206', modelo: 'Yutong E12 Pro (2024)', nivelBateriaPct: 88, ciclosCarga: 65, horasServicioHoy: 4.0, proximoTurno: '08:00', enCochera: true, prioridadCarga: 'baja' },
+  {
+    id: 'E01',
+    numero: '201',
+    modelo: 'Yutong E12LF (2020)',
+    nivelBateriaPct: 28,
+    ciclosCarga: 412,
+    horasServicioHoy: 8.5,
+    proximoTurno: '05:30',
+    enCochera: true,
+    prioridadCarga: 'alta',
+  },
+  {
+    id: 'E02',
+    numero: '202',
+    modelo: 'Yutong E12LF (2020)',
+    nivelBateriaPct: 54,
+    ciclosCarga: 398,
+    horasServicioHoy: 7.0,
+    proximoTurno: '06:00',
+    enCochera: true,
+    prioridadCarga: 'media',
+  },
+  {
+    id: 'E03',
+    numero: '203',
+    modelo: 'Yutong E12LF (2020)',
+    nivelBateriaPct: 71,
+    ciclosCarga: 445,
+    horasServicioHoy: 6.0,
+    proximoTurno: '07:00',
+    enCochera: false,
+    prioridadCarga: 'baja',
+  },
+  {
+    id: 'E04',
+    numero: '204',
+    modelo: 'Yutong E12 Pro (2024)',
+    nivelBateriaPct: 15,
+    ciclosCarga: 87,
+    horasServicioHoy: 9.0,
+    proximoTurno: '05:00',
+    enCochera: true,
+    prioridadCarga: 'alta',
+  },
+  {
+    id: 'E05',
+    numero: '205',
+    modelo: 'Yutong E12 Pro (2024)',
+    nivelBateriaPct: 42,
+    ciclosCarga: 92,
+    horasServicioHoy: 7.5,
+    proximoTurno: '06:30',
+    enCochera: true,
+    prioridadCarga: 'media',
+  },
+  {
+    id: 'E06',
+    numero: '206',
+    modelo: 'Yutong E12 Pro (2024)',
+    nivelBateriaPct: 88,
+    ciclosCarga: 65,
+    horasServicioHoy: 4.0,
+    proximoTurno: '08:00',
+    enCochera: true,
+    prioridadCarga: 'baja',
+  },
 ];
 
 // ─── Generador de plan de carga ───────────────────────────────────────────────
@@ -73,10 +139,14 @@ function generarPlanCarga(buses: BusElectrico[]): SlotCarga[] {
     const kwNecesarios = ((objetivo - bus.nivelBateriaPct) / 100) * KWH_BATERIA;
     const minNecesarios = Math.ceil((kwNecesarios / TASA_CARGA_KW) * 60);
 
-    const inicioHH = Math.floor(horaActual / 60).toString().padStart(2, '0');
+    const inicioHH = Math.floor(horaActual / 60)
+      .toString()
+      .padStart(2, '0');
     const inicioMM = (horaActual % 60).toString().padStart(2, '0');
     const finMin = horaActual + minNecesarios;
-    const finHH = Math.floor(finMin / 60 % 24).toString().padStart(2, '0');
+    const finHH = Math.floor((finMin / 60) % 24)
+      .toString()
+      .padStart(2, '0');
     const finMM = (finMin % 60).toString().padStart(2, '0');
 
     plan.push({
@@ -87,7 +157,10 @@ function generarPlanCarga(buses: BusElectrico[]): SlotCarga[] {
       nivelInicio: bus.nivelBateriaPct,
       nivelObjetivo: objetivo,
       kwh: Math.round(kwNecesarios),
-      motivo: bus.prioridadCarga === 'alta' ? 'Nivel crítico' : `Turno a las ${bus.proximoTurno ?? 'N/A'}`,
+      motivo:
+        bus.prioridadCarga === 'alta'
+          ? 'Nivel crítico'
+          : `Turno a las ${bus.proximoTurno ?? 'N/A'}`,
     });
 
     horaActual = finMin + 15; // 15 min entre cargas
@@ -113,7 +186,7 @@ export default function EVChargeOptimizer() {
     setCargandoDatos(true);
     try {
       const snap = await getDocs(
-        query(collection(db, 'vehicles'), where('tipo', 'in', ['electrico', 'hibrido']))
+        query(collection(db, 'vehicles'), where('tipo', 'in', ['electrico', 'hibrido'])),
       );
       if (snap.size > 0) {
         const data = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as BusElectrico[];
@@ -168,12 +241,16 @@ export default function EVChargeOptimizer() {
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="w-5 h-5 text-red-600" />
               <p className="font-semibold text-red-800">
-                {criticos.length} unidad{criticos.length > 1 ? 'es' : ''} con batería crítica (&lt;25%)
+                {criticos.length} unidad{criticos.length > 1 ? 'es' : ''} con batería crítica
+                (&lt;25%)
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               {criticos.map((b) => (
-                <span key={b.id} className="bg-red-100 text-red-800 text-sm font-medium px-3 py-1 rounded-full">
+                <span
+                  key={b.id}
+                  className="bg-red-100 text-red-800 text-sm font-medium px-3 py-1 rounded-full"
+                >
                   🚌 {b.numero} — {b.nivelBateriaPct}%
                 </span>
               ))}
@@ -192,16 +269,13 @@ export default function EVChargeOptimizer() {
                 bus.nivelBateriaPct < 25
                   ? 'bg-red-500'
                   : bus.nivelBateriaPct < 50
-                  ? 'bg-amber-500'
-                  : bus.nivelBateriaPct < 75
-                  ? 'bg-blue-500'
-                  : 'bg-green-500';
+                    ? 'bg-amber-500'
+                    : bus.nivelBateriaPct < 75
+                      ? 'bg-blue-500'
+                      : 'bg-green-500';
 
               return (
-                <div
-                  key={bus.id}
-                  className="bg-white rounded-xl border p-4 space-y-3"
-                >
+                <div key={bus.id} className="bg-white rounded-xl border p-4 space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="font-bold text-slate-800">Bus {bus.numero}</p>
@@ -267,9 +341,8 @@ export default function EVChargeOptimizer() {
                   Total: <strong className="text-slate-700">{kwhTotalNoche} kWh</strong>
                 </span>
                 <span className="text-slate-500">
-                  Costo est.: <strong className="text-slate-700">
-                    ${(kwhTotalNoche * 4.2).toFixed(0)} UY
-                  </strong>
+                  Costo est.:{' '}
+                  <strong className="text-slate-700">${(kwhTotalNoche * 4.2).toFixed(0)} UY</strong>
                 </span>
               </div>
             </div>

@@ -209,10 +209,10 @@ const AdminSetup = () => {
         {
           linea: '300',
           servicio: 'REFERENCIA-IDA',
-          paradas: line300Data.headers.map((h) => h.location),
-          viajes: line300Data.rows.map((r, i) => ({
+          paradas: line300Data.headers.map((h: { location: string }) => h.location),
+          viajes: line300Data.rows.map((r: { times: Record<string, string> }, i: number) => ({
             fila: i + 1,
-            tiempos: line300Data.headers.map((h) => r.times[h.id] || ''),
+            tiempos: line300Data.headers.map((h: { id: string }) => r.times[h.id] || ''),
           })),
           notasCabecera: ['CARTÓN DE REFERENCIA GENERADO POR ADMIN SETUP'],
           notasPie: [],
@@ -228,10 +228,10 @@ const AdminSetup = () => {
         {
           linea: '300',
           servicio: 'REFERENCIA-VUELTA',
-          paradas: line300ReverseData.headers.map((h) => h.location),
-          viajes: line300ReverseData.rows.map((r, i) => ({
+          paradas: line300ReverseData.headers.map((h: { location: string }) => h.location),
+          viajes: line300ReverseData.rows.map((r: { times: Record<string, string> }, i: number) => ({
             fila: i + 1,
-            tiempos: line300ReverseData.headers.map((h) => r.times[h.id] || ''),
+            tiempos: line300ReverseData.headers.map((h: { id: string }) => r.times[h.id] || ''),
           })),
           notasCabecera: ['CARTÓN DE REFERENCIA GENERADO POR ADMIN SETUP'],
           notasPie: [],

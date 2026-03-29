@@ -11,10 +11,9 @@ const UserManagement = () => {
   const { token } = useAuth();
   // Real-Time Data!
   // We order by createdAt if possible, or just default.
-  const {
-    data: users,
-    loading: listLoading,
-    } = useFirestoreCollection('users', [orderBy('createdAt', 'desc')]);
+  const { data: users, loading: listLoading } = useFirestoreCollection('users', [
+    orderBy('createdAt', 'desc'),
+  ]);
 
   const [formData, setFormData] = useState({
     firstName: '',

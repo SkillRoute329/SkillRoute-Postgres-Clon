@@ -9,22 +9,22 @@
 
 export interface Vehiculo {
   id: string;
-  numero: string;             // Número interno del coche, ej: "115"
+  numero: string; // Número interno del coche, ej: "115"
   patente?: string;
   empresa: 'UCOT' | string;
-  modelo?: string;            // Ej: "Yutong E12LF"
+  modelo?: string; // Ej: "Yutong E12LF"
   año?: number;
   tipo: 'electrico' | 'hibrido' | 'diesel';
   status: 'activo' | 'mantenimiento' | 'taller' | 'paralizado' | 'baja';
   capacidadPasajeros?: number;
-  ultimaInspeccion?: string;  // ISO date
+  ultimaInspeccion?: string; // ISO date
   // GPS
   ultimaPosicion?: { lat: number; lng: number };
   ultimaActualizacionGps?: string; // ISO timestamp
 }
 
 export interface ViajeActivo {
-  id: string;                 // = cocheId
+  id: string; // = cocheId
   cocheId: string;
   codigoLinea: string;
   conductorId: string;
@@ -41,8 +41,8 @@ export interface ViajeActivo {
 
 export interface LineaUCOT {
   id: string;
-  codigo: string;             // "300", "306", "CE1"
-  variante?: string;          // "a", "b"
+  codigo: string; // "300", "306", "CE1"
+  variante?: string; // "a", "b"
   nombre: string;
   empresa: string;
   activa: boolean;
@@ -94,8 +94,8 @@ export interface Turno {
   conductorId: string;
   cocheId: string;
   lineaCodigo: string;
-  fecha: string;              // "YYYY-MM-DD"
-  horaInicio: string;         // "HH:MM"
+  fecha: string; // "YYYY-MM-DD"
+  horaInicio: string; // "HH:MM"
   horaFin: string;
   estado: 'programado' | 'en_curso' | 'completado' | 'ausente' | 'cancelado';
   atrasoMinutos?: number;
@@ -174,7 +174,7 @@ export interface KpiDashboard {
 export interface RevenueLinea {
   linea: string;
   totalBoletos: number;
-  ingresos: number;           // En pesos uruguayos
+  ingresos: number; // En pesos uruguayos
 }
 
 // ─── BRT ──────────────────────────────────────────────────────────────────────

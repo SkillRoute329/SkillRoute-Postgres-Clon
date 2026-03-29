@@ -2,7 +2,7 @@
  * Navegador UCOT — guía visual de líneas (estilo Waze para conductores).
  * Ruta: /dashboard/traffic/navigation
  */
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Map,
@@ -16,6 +16,10 @@ import {
   VolumeX,
   DollarSign,
   X,
+  Pencil,
+  ArrowUpDown,
+  Check,
+  Route,
 } from 'lucide-react';
 import { collection, doc, setDoc, updateDoc, serverTimestamp, GeoPoint } from 'firebase/firestore';
 import { db } from '../../config/firebase';
@@ -26,11 +30,28 @@ import {
   syncLineaFromAPI,
   type LineaUCOTResumen,
 } from '../../services/ucotLinesService';
+import {
+  getOverride,
+  setOverride,
+  applyOverride,
+  swapOrigenDestino,
+  getRouteOverride,
+  setRouteOverride,
+  clearRouteOverride,
+  hasRouteOverride,
+  type LatLng,
+} from '../../services/lineOverrides';
 import { getMasterServicios } from '../../data/ucotMaster';
 import type { LineaUCOT } from '../../types/lineasUcot';
 import RouteMap from '../../components/traffic/RouteMap';
+import RouteEditorMap from '../../components/traffic/RouteEditorMap';
 import StopsList from '../../components/traffic/StopsList';
-import DesvioEditor from '../../components/traffic/DesvioEditor';
+import DesvioMapEditor from '../../components/traffic/DesvioMapEditor';
+import DesvioPanel from '../../components/traffic/DesvioPanel';
+import IncidenciaRapida from '../../components/traffic/IncidenciaRapida';
+import type { DesvioGuardado } from '../../services/desviosService';
+import { contarDesviosPorLinea, getDesviosPorLinea } from '../../services/desviosService';
+import { contarIncidenciasAbiertas } from '../../services/incidenciasService';
 
 const VIAJES_ACTIVOS_COL = 'viajes_activos';
 const PROXIMITY_METERS = 100;
@@ -83,16 +104,43 @@ export default function NavigationModule() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
-  const [showDesvioEditor, setShowDesvioEditor] = useState(false);
   const [userPosition, setUserPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [viajeIniciado, setViajeIniciado] = useState(false);
-  const [filterCompania, setFilterCompania] = useState<string>(TODAS);
   const [filterLinea, setFilterLinea] = useState<string>(TODAS);
   const [searchTerm, setSearchTerm] = useState('');
   const [isNavigating, setIsNavigating] = useState(false);
-  const [navigationPosition, setNavigationPosition] = useState<{ lat: number; lng: number } | null>(
-    null,
-  );
+
+  // ── Edición de nombre/origen/destino ──
+  const [showLineEditor, setShowLineEditor] = useState(false);
+  const [editNombre, setEditNombre] = useState('');
+  const [editOrigen, setEditOrigen] = useState('');
+  const [editDestino, setEditDestino] = useState('');
+  const [overridesVersion, setOverridesVersion] = useState(0);
+
+  // ── Editor de recorrido (drag tipo Google Maps) ──
+  const [showRouteEditor, setShowRouteEditor] = useState(false);
+  const [routeHasOverride, setRouteHasOverride] = useState(false);
+
+  // ── Nuevo sistema de desvíos v2 (basado en mapa, reemplaza DesvioEditor) ──
+  const [showDesvioMapEditor, setShowDesvioMapEditor] = useState(false);
+  const [editingDesvio, setEditingDesvio] = useState<DesvioGuardado | undefined>(undefined);
+  const [showDesvioPanel, setShowDesvioPanel] = useState(false);
+  const [_desviosVersion, setDesviosVersion] = useState(0);
+  const [showIncidencias, setShowIncidencias] = useState(false);
+  const [incidenciasAbiertas, setIncidenciasAbiertas] = useState(() => contarIncidenciasAbiertas());
+  // Contador para badge de desvíos en UI (se recalcula al cambiar línea o al guardar un desvío)
+  const [desviosCount, setDesviosCount] = useState<{ total: number; activos: number }>({
+    total: 0,
+    activos: 0,
+  });
+  // Desvíos completos para renderizar en el mapa como líneas punteadas
+  const [desviosEnMapa, setDesviosEnMapa] = useState<DesvioGuardado[]>([]);
+
+  const [navigationPosition, setNavigationPosition] = useState<{
+    lat: number;
+    lng: number;
+    heading?: number | null;
+  } | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const viajeDocIdRef = useRef<string | null>(null);
   const announcedStopsRef = useRef<Set<string>>(new Set());
@@ -113,27 +161,31 @@ export default function NavigationModule() {
   voiceEnabledRef.current = voiceEnabled;
   paradasRef.current = linea?.paradas ?? [];
 
-  const companiasUnicas = useMemo(() => {
-    const set = new Set<string>();
-    listCompleta.forEach((item) => {
-      if (item.empresa) set.add(item.empresa);
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [listCompleta]);
-
   const lineasUnicas = useMemo(() => {
     const set = new Set<string>();
-    listCompleta.forEach((item) => set.add(item.codigo));
+    listCompleta.forEach((item) => {
+      // Extraer código base sin sufijo a/b para agrupar IDA/VUELTA bajo un número
+      const base = item.codigo.replace(/[ab]$/i, '');
+      if (base) set.add(base);
+    });
     return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   }, [listCompleta]);
 
   const lineasDisponibles = useMemo(() => {
-    return listCompleta.filter((item) => {
-      if (filterCompania !== TODAS && item.empresa !== filterCompania) return false;
-      if (filterLinea !== TODAS && item.codigo !== filterLinea) return false;
-      return true;
-    });
-  }, [listCompleta, filterCompania, filterLinea]);
+    return listCompleta
+      .filter((item) => {
+        if (!item.codigo || String(item.codigo).startsWith('linea-')) return false;
+        if (String(item.nombre).startsWith('Competencia:')) return false;
+        if (/^(317|371|379)[a-z]?$/i.test(String(item.codigo))) return false;
+        const empresaOk = item.empresa != null && String(item.empresa).toUpperCase() === 'UCOT';
+        if (!empresaOk) return false;
+        if (filterLinea !== TODAS && item.codigo.replace(/[ab]$/i, '') !== filterLinea)
+          return false;
+        return true;
+      })
+      .map((item) => applyOverride(item.codigo, item));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listCompleta, filterLinea, overridesVersion]);
 
   const lineasFiltradas = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -164,6 +216,18 @@ export default function NavigationModule() {
   useEffect(() => {
     setViajeIniciado(false);
   }, [selectedCodigo]);
+
+  // Actualiza el contador de desvíos cada vez que cambia la línea o se guarda uno nuevo
+  useEffect(() => {
+    if (!selectedCodigo) {
+      setDesviosCount({ total: 0, activos: 0 });
+      setDesviosEnMapa([]);
+      return;
+    }
+    setDesviosCount(contarDesviosPorLinea(selectedCodigo));
+    // Cargar todos los desvíos para overlays en el mapa (con o sin vigencia)
+    setDesviosEnMapa(getDesviosPorLinea(selectedCodigo));
+  }, [selectedCodigo, _desviosVersion]);
 
   useEffect(() => {
     getLineasUCOT()
@@ -201,6 +265,23 @@ export default function NavigationModule() {
       .then((data) => {
         setLinea(data);
         setSelectedStopId(null);
+        // Autocompletar Trazado Real si está vacío (Hitos Teóricos = {lat:0, lng:0})
+        if (data && (!data.recorrido || data.recorrido.length === 0)) {
+          console.log(
+            '⚡ Línea seleccionada sin polígono de trazado GPS. Habilitando Auto-Sincronización...',
+          );
+          const numeroAPI = data?.codigo ?? selectedCodigo;
+          const baseNumero = String(numeroAPI).replace(/[ab]$/i, '') || numeroAPI;
+
+          setSyncing(true);
+          syncLineaFromAPI(selectedCodigo, baseNumero)
+            .then(() => getLineaData(selectedCodigo))
+            .then((newData) => {
+              if (newData) setLinea(newData);
+            })
+            .catch(console.error)
+            .finally(() => setSyncing(false));
+        }
       })
       .finally(() => setLoading(false));
   }, [selectedCodigo]);
@@ -217,6 +298,106 @@ export default function NavigationModule() {
   }, [conductorMode]);
 
   const navigationActive = isNavigating || (conductorMode && viajeIniciado);
+
+  // Helper to format line direction (apply manual overrides)
+  const formatNombreRecorrido = useCallback((item: LineaUCOTResumen) => {
+    const ov = applyOverride(item.codigo, item);
+    let text = ov.nombre || ov.codigo;
+    if (ov.origen && ov.destino) {
+      text = `${ov.codigo.replace(/[ab]$/i, '')} \u2014 ${ov.origen} \u2192 ${ov.destino}`;
+    } else if (text === ov.codigo.replace(/[ab]$/i, '')) {
+      text = `L\u00ednea ${ov.codigo.toUpperCase()}`;
+    }
+
+    if (ov.sentido && !text.toUpperCase().includes(ov.sentido)) {
+      text += ` (${ov.sentido})`;
+    } else if (ov.codigo.endsWith('a') && !text.toUpperCase().includes('IDA')) {
+      text += ' (IDA)';
+    } else if (ov.codigo.endsWith('b') && !text.toUpperCase().includes('VUELTA')) {
+      text += ' (VUELTA)';
+    }
+
+    return text;
+  }, []);
+
+  /** Abre el editor con los valores actuales de la l\u00ednea seleccionada. */
+  const openLineEditor = useCallback(() => {
+    if (!selectedCodigo) return;
+    const current = lineasDisponibles.find((l) => l.id === selectedCodigo);
+    const ov = getOverride(selectedCodigo);
+    setEditNombre(ov?.nombre || current?.nombre || '');
+    setEditOrigen(ov?.origen || current?.origen || '');
+    setEditDestino(ov?.destino || current?.destino || '');
+    setShowLineEditor(true);
+  }, [selectedCodigo, lineasDisponibles]);
+
+  /** Guarda las correcciones del editor. */
+  const saveLineEditor = useCallback(() => {
+    if (!selectedCodigo) return;
+    setOverride(selectedCodigo, {
+      nombre: editNombre,
+      origen: editOrigen,
+      destino: editDestino,
+    });
+    setOverridesVersion((v) => v + 1);
+    setShowLineEditor(false);
+    // Tambi\u00e9n actualizar el objeto linea en memoria
+    if (linea) {
+      setLinea({
+        ...linea,
+        ...(editNombre.trim() ? { nombre: editNombre.trim() } : {}),
+        ...(editOrigen.trim() ? { origen: editOrigen.trim() } : {}),
+        ...(editDestino.trim() ? { destino: editDestino.trim() } : {}),
+      });
+    }
+  }, [selectedCodigo, editNombre, editOrigen, editDestino, linea]);
+
+  /** Intercambio r\u00e1pido de origen \u2194 destino. */
+  const handleSwapOrigenDestino = useCallback(() => {
+    const cur = lineasDisponibles.find((l) => l.id === selectedCodigo);
+    if (!cur) return;
+    const ov = getOverride(selectedCodigo);
+    const currentOrigen = ov?.origen || cur.origen || '';
+    const currentDestino = ov?.destino || cur.destino || '';
+    swapOrigenDestino(selectedCodigo, currentOrigen, currentDestino);
+    setOverridesVersion((v) => v + 1);
+    if (linea) {
+      setLinea({ ...linea, origen: currentDestino, destino: currentOrigen });
+    }
+  }, [selectedCodigo, lineasDisponibles, linea]);
+
+  /** Abre el editor de recorrido y verifica si ya existe un override guardado. */
+  const openRouteEditor = useCallback(() => {
+    if (!selectedCodigo) return;
+    setRouteHasOverride(hasRouteOverride(selectedCodigo));
+    setShowRouteEditor(true);
+  }, [selectedCodigo]);
+
+  /** Guarda el recorrido editado y lo aplica a la línea en memoria. */
+  const handleRouteSave = useCallback(
+    (newPoints: LatLng[]) => {
+      if (!selectedCodigo || !linea) return;
+      setRouteOverride(selectedCodigo, newPoints);
+      setRouteHasOverride(true);
+      setShowRouteEditor(false);
+      // Aplicar inmediatamente al objeto linea en memoria
+      setLinea({ ...linea, recorrido: newPoints });
+    },
+    [selectedCodigo, linea],
+  );
+
+  /** Restaura el recorrido original desde el GeoServer. */
+  const handleRouteReset = useCallback(() => {
+    if (!selectedCodigo) return;
+    clearRouteOverride(selectedCodigo);
+    setRouteHasOverride(false);
+    setShowRouteEditor(false);
+    // Recargar la línea desde el servicio (sin override)
+    getLineaData(selectedCodigo)
+      .then(setLinea)
+      .catch(() => {});
+  }, [selectedCodigo]);
+
   useEffect(() => {
     if (!navigationActive || !selectedCodigo || !linea) {
       if (!navigationActive) {
@@ -241,7 +422,8 @@ export default function NavigationModule() {
     const onPosition = (position: GeolocationPosition) => {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
-      setNavigationPosition({ lat, lng });
+      const heading = position.coords.heading;
+      setNavigationPosition({ lat, lng, heading });
 
       const payload = {
         lineaId: selectedCodigo,
@@ -278,7 +460,10 @@ export default function NavigationModule() {
       }
     };
 
-    const watchId = navigator.geolocation.watchPosition(onPosition, () => {}, {
+    // Conductor Real: Seguimos el GPS del dispositivo y NO simulamos,
+    // tal como lo requiere el uso en la vida real.
+    let watchId: number | null = null;
+    watchId = navigator.geolocation.watchPosition(onPosition, () => {}, {
       enableHighAccuracy: true,
       maximumAge: 5000,
       timeout: 10000,
@@ -286,7 +471,7 @@ export default function NavigationModule() {
     watchIdRef.current = watchId;
 
     return () => {
-      navigator.geolocation.clearWatch(watchId);
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
       watchIdRef.current = null;
       const docId = viajeDocIdRef.current;
       if (docId) {
@@ -296,16 +481,7 @@ export default function NavigationModule() {
       }
       setNavigationPosition(null);
     };
-  }, [
-    navigationActive,
-    selectedCodigo,
-    linea?.empresa,
-    linea?.codigo,
-    user,
-    conductorMode,
-    viajeIniciado,
-    isNavigating,
-  ]);
+  }, [navigationActive, selectedCodigo, linea, user, conductorMode, viajeIniciado, isNavigating]);
 
   const handleActualizar = async () => {
     if (!selectedCodigo) return;
@@ -350,13 +526,48 @@ export default function NavigationModule() {
     return Array.from(puntos.keys()).sort((a, b) => (puntos.get(a) ?? 0) - (puntos.get(b) ?? 0));
   }, [selectedCodigo]);
 
-  const siguienteParada = (() => {
-    if (!viajeIniciado || !linea?.paradas.length || !userPosition) return null;
-    const dist = (p: { lat: number; lng: number }) =>
-      Math.hypot(p.lat - userPosition.lat, p.lng - userPosition.lng);
-    const sorted = [...linea.paradas].sort((a, b) => dist(a) - dist(b));
-    return sorted[0];
-  })();
+  const siguienteParada = useMemo(() => {
+    if (!viajeIniciado && !isNavigating) return null;
+    if (!linea?.paradas.length) return null;
+    const currentPos = isNavigating ? navigationPosition : conductorMode ? userPosition : null;
+    if (!currentPos) return null;
+
+    // Solo verificamos paradas que TODAVÍA NO superamos
+    const paradasRestantes = linea.paradas.filter((p) => !announcedStopsRef.current.has(p.id));
+    if (paradasRestantes.length === 0) return null; // Fin de recorrido
+
+    let minDist = Infinity;
+    let closestIndex = 0;
+
+    // Si queremos obligar al orden, podríamos solo tomar la primera que nos falta (paradasRestantes[0]).
+    // Pero asume que el chofer hace el recorrido en orden. Si entra a la mitad, se rompe.
+    // Buscamos la distancia a todas las que NO han sido anunciadas, y tomamos la más proxima
+    // Pero solo consideramos paradas que tengan coordenadas válidas para calcular la distancia.
+    paradasRestantes.forEach((p, idx) => {
+      if (p.lat === 0 || p.lng === 0) {
+        // Si no tiene coordenadas (está en Null Island / fallback), no la tomamos como mínimo.
+        // Pero si es la única, deberíamos decir N/A
+        return;
+      }
+      const d = haversineDistanceMeters(currentPos.lat, currentPos.lng, p.lat, p.lng);
+      if (d < minDist) {
+        minDist = d;
+        closestIndex = idx;
+      }
+    });
+
+    return {
+      parada: paradasRestantes[closestIndex],
+      distanciaMetros: minDist === Infinity ? -1 : Math.round(minDist),
+    };
+  }, [
+    linea?.paradas,
+    navigationPosition,
+    userPosition,
+    isNavigating,
+    viajeIniciado,
+    conductorMode,
+  ]);
 
   return (
     <div className="flex flex-col h-full min-h-0 w-full max-w-full overflow-x-hidden">
@@ -368,10 +579,7 @@ export default function NavigationModule() {
         <p className="text-slate-400 text-sm mt-1">Recorrido, paradas y desvíos por línea</p>
 
         {!isNavigating && (
-          <div
-            className="mt-4 flex flex-wrap gap-3 items-center touch-manipulation select-none"
-            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          >
+          <div className="mt-4 flex flex-wrap gap-3 items-center touch-manipulation select-none">
             {!loading && listCompleta.length === 0 && (
               <div className="basis-full flex flex-wrap items-center gap-2 p-3 rounded-xl bg-amber-900/30 border border-amber-600/50">
                 <span className="text-amber-200 text-sm">No hay líneas cargadas.</span>
@@ -399,10 +607,11 @@ export default function NavigationModule() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar línea (ej. 300, cc1)..."
                 className="min-h-[44px] w-full max-w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm placeholder-slate-500 focus:ring-2 focus:ring-primary-500 focus:outline-none touch-manipulation"
-                style={{ WebkitTapHighlightColor: 'transparent' }}
                 aria-label="Buscar línea por código o nombre"
               />
             </div>
+            {/* Ocultamos temporalmente el selector de Empresa a pedido del usuario si solo es UCOT */}
+            {/*
             <div className="flex items-center gap-2">
               <label className="text-slate-400 text-sm font-medium shrink-0">Compañía</label>
               <select
@@ -420,13 +629,13 @@ export default function NavigationModule() {
                 ))}
               </select>
             </div>
+            */}
             <div className="flex items-center gap-2">
-              <label className="text-slate-400 text-sm font-medium shrink-0">Línea</label>
+              <label className="text-slate-400 text-sm font-medium shrink-0">Línea UCOT</label>
               <select
                 value={filterLinea}
                 onChange={(e) => setFilterLinea(e.target.value)}
                 className="min-h-[44px] px-3 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm min-w-0 w-full max-w-[180px] hover:bg-slate-700 active:bg-slate-600 focus:ring-2 focus:ring-primary-500 focus:outline-none disabled:opacity-50 touch-manipulation cursor-pointer select-none"
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 aria-label="Filtrar por línea"
               >
                 <option value={TODAS}>Todas</option>
@@ -443,28 +652,73 @@ export default function NavigationModule() {
                 value={selectedCodigo}
                 onChange={(e) => setSelectedCodigo(e.target.value)}
                 className="min-h-[44px] px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white w-full max-w-full min-w-0 hover:bg-slate-700 active:bg-slate-600 focus:ring-2 focus:ring-primary-500 focus:outline-none disabled:opacity-50 touch-manipulation cursor-pointer select-none"
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 aria-label="Seleccionar recorrido"
               >
                 {opcionesRecorrido.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.nombre ||
-                      (item.origen && item.destino
-                        ? `${item.codigo} - ${item.origen} → ${item.destino}`
-                        : item.codigo)}
+                    {formatNombreRecorrido(item)}
                   </option>
                 ))}
               </select>
+              <button
+                type="button"
+                onClick={handleSwapOrigenDestino}
+                disabled={!selectedCodigo}
+                className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-amber-400 disabled:opacity-50 touch-manipulation"
+                title="Intercambiar origen / destino"
+                aria-label="Intercambiar origen y destino"
+              >
+                <ArrowUpDown className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={openLineEditor}
+                disabled={!selectedCodigo}
+                className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-blue-400 disabled:opacity-50 touch-manipulation"
+                title="Editar nombre / origen / destino"
+                aria-label="Editar datos de la línea"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsNavigating(true)}
-              disabled={!selectedCodigo}
-              className="flex items-center justify-center gap-2 min-h-[44px] px-5 py-3 rounded-xl bg-green-600 hover:bg-green-500 active:bg-green-400 text-white font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
-            >
-              <Navigation className="w-5 h-5" />
-              Iniciar Viaje
-            </button>
+
+            {/* ── Banner de desvíos: visible cuando la línea tiene desvíos configurados ── */}
+            {selectedCodigo && desviosCount.total > 0 && (
+              <div className="basis-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-orange-900/20 border border-orange-700/40">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="shrink-0 w-2 h-2 rounded-full bg-orange-400" />
+                  <span className="text-orange-200 text-xs font-medium">
+                    Esta línea tiene <strong>{desviosCount.total}</strong>{' '}
+                    {desviosCount.total === 1 ? 'desvío' : 'desvíos'} configurados
+                    {desviosCount.activos > 0 && (
+                      <span className="text-green-400">
+                        {' '}
+                        ({desviosCount.activos} activo{desviosCount.activos > 1 ? 's' : ''})
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDesvioPanel(true)}
+                  className="shrink-0 min-h-[32px] px-3 py-1 rounded-lg bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold touch-manipulation"
+                >
+                  Ver desvíos
+                </button>
+              </div>
+            )}
+
+            {!conductorMode && (
+              <button
+                type="button"
+                onClick={() => setIsNavigating(true)}
+                disabled={!selectedCodigo}
+                className="flex items-center justify-center gap-2 min-h-[44px] px-5 py-3 rounded-xl bg-green-600 hover:bg-green-500 active:bg-green-400 text-white font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+              >
+                <Navigation className="w-5 h-5" />
+                Iniciar Viaje GPS
+              </button>
+            )}
             {!conductorMode && (
               <>
                 <button
@@ -482,12 +736,43 @@ export default function NavigationModule() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowDesvioEditor(true)}
+                  onClick={() => setShowDesvioPanel(true)}
                   disabled={!selectedCodigo}
-                  className="flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-xl bg-primary-600 hover:bg-primary-500 active:bg-primary-400 text-white disabled:opacity-50 touch-manipulation"
+                  className="relative flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-xl bg-primary-600 hover:bg-primary-500 active:bg-primary-400 text-white disabled:opacity-50 touch-manipulation"
+                  title="Ver y gestionar desvíos de la línea"
                 >
                   <Plus className="w-4 h-4" />
-                  Agregar desvío
+                  Desvíos
+                  {desviosCount.total > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-bold shadow-lg border border-slate-900">
+                      {desviosCount.total}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowIncidencias(true)}
+                  disabled={!selectedCodigo}
+                  className="relative flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 active:bg-amber-400 text-white disabled:opacity-50 touch-manipulation"
+                  title="Reportar situación en ruta"
+                >
+                  <span className="text-base leading-none">🚨</span>
+                  Incidencias
+                  {incidenciasAbiertas > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-black px-1">
+                      {incidenciasAbiertas}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={openRouteEditor}
+                  disabled={!selectedCodigo || !linea}
+                  className="flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-xl bg-violet-700 hover:bg-violet-600 active:bg-violet-500 text-white disabled:opacity-50 touch-manipulation"
+                  title="Editar el trazado del recorrido arrastrando puntos"
+                >
+                  <Route className="w-4 h-4" />
+                  {routeHasOverride ? 'Recorrido editado ●' : 'Editar recorrido'}
                 </button>
               </>
             )}
@@ -515,12 +800,33 @@ export default function NavigationModule() {
                 )}
                 <button
                   type="button"
-                  onClick={() => setShowDesvioEditor(true)}
+                  onClick={() => setShowIncidencias(true)}
                   disabled={!selectedCodigo}
-                  className="flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 active:bg-amber-400 text-white disabled:opacity-50 font-medium shadow-lg touch-manipulation"
+                  className="relative flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 active:bg-amber-400 text-white disabled:opacity-50 font-medium shadow-lg touch-manipulation"
+                  title="Reportar situación en ruta"
                 >
-                  <Plus className="w-4 h-4" />
-                  Reportar en ruta
+                  <span className="text-base leading-none">🚨</span>
+                  Incidencias
+                  {incidenciasAbiertas > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-black px-1">
+                      {incidenciasAbiertas}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDesvioPanel(true)}
+                  disabled={!selectedCodigo || !linea}
+                  className="flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white disabled:opacity-50 touch-manipulation"
+                  title="Ver y gestionar desvíos de la línea"
+                >
+                  <ArrowUpDown className="w-4 h-4" />
+                  Desvíos
+                  {desviosCount.total > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-bold border border-slate-900">
+                      {desviosCount.total}
+                    </span>
+                  )}
                 </button>
               </>
             )}
@@ -529,7 +835,7 @@ export default function NavigationModule() {
 
         {(isNavigating || (conductorMode && viajeIniciado)) && linea && (
           <>
-            <div className="mt-4 md:mt-4 md:mx-0 md:rounded-xl md:shadow-xl md:backdrop-blur-md p-4 bg-slate-800/95 border border-slate-600 flex flex-wrap items-center justify-between gap-3 fixed md:relative bottom-0 left-0 right-0 w-full md:w-auto rounded-t-3xl md:rounded-xl z-[30]">
+            <div className="mt-4 md:mx-0 md:rounded-xl md:shadow-xl md:backdrop-blur-md p-4 bg-slate-800/95 border border-slate-600 flex flex-wrap items-center justify-between gap-3 fixed md:relative bottom-0 left-0 right-0 w-full md:w-auto rounded-t-3xl z-[30]">
               <div className="text-white font-medium min-w-0 flex-1">
                 <span className="text-slate-400 text-sm block">Viaje en curso</span>
                 <span className="text-lg block truncate">
@@ -633,21 +939,13 @@ export default function NavigationModule() {
         )}
       </header>
 
-      {viajeIniciado && linea && (
+      {/* Status Simplificado en Cabecera (Desktop) */}
+      {(viajeIniciado || isNavigating) && linea && !conductorMode && (
         <div className="shrink-0 mx-4 mt-2 p-3 rounded-xl bg-green-900/40 border border-green-600/50 flex flex-wrap items-center gap-3">
           <Navigation className="w-5 h-5 text-green-400 shrink-0 animate-pulse" />
           <div className="text-sm text-green-200">
-            <strong>Viaje en curso</strong> — {linea.nombre}
-            {linea.paradas.length > 0 && (
-              <span className="text-green-300/90 ml-2">· {linea.paradas.length} paradas</span>
-            )}
+            <strong>Viaje activo (simulado proxy):</strong> — {linea.nombre}
           </div>
-          {siguienteParada && (
-            <div className="text-sm text-green-100 bg-green-800/50 px-3 py-1.5 rounded-lg border border-green-600/50">
-              <span className="text-green-300/90">Próxima parada:</span>{' '}
-              {siguienteParada.nombre || `Parada ${siguienteParada.orden}`}
-            </div>
-          )}
         </div>
       )}
 
@@ -691,17 +989,59 @@ export default function NavigationModule() {
                 }
                 conductorMode={conductorMode}
                 followUser={(viajeIniciado && conductorMode) || isNavigating}
-                isNavigating={isNavigating}
+                isNavigating={isNavigating || viajeIniciado}
+                onMapClick={() => {}}
+                desviosGuardados={desviosEnMapa}
               />
+
+              {/* HUD: Panel Gigante (Head-Up Display) de Próxima Parada para Conducción */}
+              {(isNavigating || (conductorMode && viajeIniciado)) && siguienteParada && (
+                <div className="absolute top-4 left-4 right-4 z-[20] pointer-events-none">
+                  <div className="bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-slate-700/50 max-w-xl mx-auto flex">
+                    {/* Distancia Indicator */}
+                    <div className="bg-emerald-600 text-white font-bold px-6 py-4 flex flex-col items-center justify-center min-w-[100px]">
+                      <span className="text-3xl tracking-tighter shadow-md">
+                        {siguienteParada.distanciaMetros === -1
+                          ? '--'
+                          : siguienteParada.distanciaMetros > 999
+                            ? (siguienteParada.distanciaMetros / 1000).toFixed(1)
+                            : siguienteParada.distanciaMetros}
+                      </span>
+                      <span className="text-xs font-semibold uppercase opacity-90">
+                        {siguienteParada.distanciaMetros === -1
+                          ? 'GPS N/A'
+                          : siguienteParada.distanciaMetros > 999
+                            ? 'km'
+                            : 'metros'}
+                      </span>
+                    </div>
+                    {/* Nombre Indicator */}
+                    <div className="px-5 py-4 flex-1 flex flex-col justify-center">
+                      <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">
+                        Próxima Parada
+                      </p>
+                      <h2 className="text-white text-xl md:text-2xl font-black leading-tight truncate">
+                        {siguienteParada.parada.nombre || `Parada #${siguienteParada.parada.orden}`}
+                      </h2>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {conductorMode && selectedCodigo && (
                 <button
                   type="button"
-                  onClick={() => setShowDesvioEditor(true)}
-                  className="absolute bottom-4 right-4 z-[20] min-h-[44px] min-w-[44px] flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-amber-500 hover:bg-amber-400 active:bg-amber-300 text-slate-900 font-bold shadow-lg touch-manipulation"
-                  aria-label="Reportar en ruta"
+                  onClick={() => setShowIncidencias(true)}
+                  className="absolute bottom-4 right-4 z-[20] min-h-[56px] min-w-[56px] flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-amber-500 hover:bg-amber-400 active:bg-amber-300 text-slate-900 font-bold shadow-lg touch-manipulation"
+                  aria-label="Reportar incidencia"
+                  title="Reportar situación en ruta"
                 >
-                  <Plus className="w-5 h-5" />
-                  Reportar
+                  <span className="text-xl leading-none">🚨</span>
+                  {incidenciasAbiertas > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-black px-1">
+                      {incidenciasAbiertas}
+                    </span>
+                  )}
                 </button>
               )}
             </>
@@ -752,15 +1092,183 @@ export default function NavigationModule() {
         </div>
       </div>
 
-      {showDesvioEditor && selectedCodigo && (
-        <DesvioEditor
-          lineaCodigo={selectedCodigo}
-          onClose={() => setShowDesvioEditor(false)}
-          onSaved={() => {
-            getLineaData(selectedCodigo).then(setLinea);
+      {/* ── Panel de gestión de desvíos ── */}
+      {showDesvioPanel && selectedCodigo && linea && (
+        <div className="fixed inset-0 z-[90] flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm md:p-4">
+          <div className="w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col rounded-t-3xl md:rounded-2xl bg-slate-900 border border-slate-700 shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b border-slate-700 shrink-0">
+              <h3 className="text-lg font-bold text-white">
+                Desvíos — Línea {selectedCodigo.replace(/[ab]$/i, '').toUpperCase()}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowDesvioPanel(false)}
+                aria-label="Cerrar panel de desvíos"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-slate-700 text-slate-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-4">
+              <DesvioPanel
+                lineaCodigo={selectedCodigo}
+                lineaNombre={`${linea.nombre || selectedCodigo} — ${linea.origen || ''} → ${linea.destino || ''}`}
+                onOpenEditor={(desvioExistente) => {
+                  setEditingDesvio(desvioExistente);
+                  setShowDesvioPanel(false);
+                  setShowDesvioMapEditor(true);
+                }}
+                onDesviosChange={() => setDesviosVersion((v) => v + 1)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Panel de incidencias rápidas ── */}
+      {showIncidencias && (
+        <IncidenciaRapida
+          lineaCodigo={selectedCodigo ?? undefined}
+          lineaNombre={
+            linea
+              ? `${linea.nombre || selectedCodigo} — ${linea.origen || ''} → ${linea.destino || ''}`
+              : undefined
+          }
+          conductorUid={user?.uid}
+          posicionActual={navigationPosition}
+          onClose={() => {
+            setShowIncidencias(false);
+            setIncidenciasAbiertas(contarIncidenciasAbiertas());
           }}
-          userPosition={conductorMode ? userPosition : null}
-          conductorMode={conductorMode}
+        />
+      )}
+      {showLineEditor && selectedCodigo && (
+        <div className="fixed inset-0 z-[90] flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm md:p-4">
+          <div className="w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col rounded-t-3xl md:rounded-2xl bg-slate-800 border border-slate-600 shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b border-slate-700 shrink-0">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-blue-400 shrink-0" />
+                Editar L\u00ednea {selectedCodigo.replace(/[ab]$/i, '').toUpperCase()}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowLineEditor(false)}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-lg hover:bg-slate-700 active:bg-slate-600 text-slate-400 touch-manipulation"
+                aria-label="Cerrar editor"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 space-y-4">
+              <div>
+                <label className="block text-slate-400 text-sm font-medium mb-1">
+                  Nombre de la l\u00ednea
+                </label>
+                <input
+                  type="text"
+                  value={editNombre}
+                  onChange={(e) => setEditNombre(e.target.value)}
+                  placeholder="Ej: 300 \u2014 Cer. Central \u2192 Instrucciones"
+                  className="w-full min-h-[44px] px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+              <div className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <label className="block text-slate-400 text-sm font-medium mb-1">Origen</label>
+                  <input
+                    type="text"
+                    value={editOrigen}
+                    onChange={(e) => setEditOrigen(e.target.value)}
+                    placeholder="Terminal de salida"
+                    className="w-full min-h-[44px] px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tmp = editOrigen;
+                    setEditOrigen(editDestino);
+                    setEditDestino(tmp);
+                  }}
+                  className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-xl bg-amber-600 hover:bg-amber-500 active:bg-amber-400 text-white touch-manipulation"
+                  title="Intercambiar origen / destino"
+                  aria-label="Intercambiar origen y destino"
+                >
+                  <ArrowUpDown className="w-5 h-5" />
+                </button>
+                <div className="flex-1">
+                  <label className="block text-slate-400 text-sm font-medium mb-1">Destino</label>
+                  <input
+                    type="text"
+                    value={editDestino}
+                    onChange={(e) => setEditDestino(e.target.value)}
+                    placeholder="Terminal de llegada"
+                    className="w-full min-h-[44px] px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+              <p className="text-slate-500 text-xs">
+                Las correcciones se guardan localmente y se aplican autom\u00e1ticamente al
+                seleccionar esta l\u00ednea.
+              </p>
+            </div>
+            <div className="p-4 border-t border-slate-700 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowLineEditor(false)}
+                className="flex-1 min-h-[44px] px-4 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-medium touch-manipulation"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={saveLineEditor}
+                className="flex-1 min-h-[44px] px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-400 text-white font-medium flex items-center justify-center gap-2 touch-manipulation"
+              >
+                <Check className="w-4 h-4" />
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Editor de recorrido (pantalla completa, drag tipo Google Maps) ── */}
+      {showRouteEditor && selectedCodigo && linea && (
+        <RouteEditorMap
+          lineaNombre={`${linea.nombre || selectedCodigo} — ${linea.origen || ''} → ${linea.destino || ''}`}
+          initialPoints={
+            getRouteOverride(selectedCodigo) ??
+            linea.recorrido.filter((p) => p.lat !== 0 || p.lng !== 0)
+          }
+          onSave={handleRouteSave}
+          onClose={() => setShowRouteEditor(false)}
+          onReset={handleRouteReset}
+          hasOverride={routeHasOverride}
+        />
+      )}
+
+      {/* ── Editor de desvío en mapa (pantalla completa, 2 pasos) ── */}
+      {showDesvioMapEditor && selectedCodigo && linea && (
+        <DesvioMapEditor
+          lineaCodigo={selectedCodigo}
+          lineaNombre={`${linea.nombre || selectedCodigo} — ${linea.origen || ''} → ${linea.destino || ''}`}
+          rutaBase={
+            getRouteOverride(selectedCodigo) ??
+            linea.recorrido.filter((p) => p.lat !== 0 || p.lng !== 0)
+          }
+          desvioExistente={editingDesvio}
+          onSaved={() => {
+            setDesviosVersion((v) => v + 1);
+            setShowDesvioMapEditor(false);
+            setEditingDesvio(undefined);
+            setShowDesvioPanel(true);
+          }}
+          onClose={() => {
+            setShowDesvioMapEditor(false);
+            setEditingDesvio(undefined);
+            setShowDesvioPanel(true);
+          }}
         />
       )}
     </div>

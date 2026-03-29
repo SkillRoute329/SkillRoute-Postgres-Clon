@@ -1,13 +1,5 @@
 import { db } from '../config/firebase';
-import {
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where,
-  Timestamp,
-  orderBy,
-  } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, Timestamp, orderBy } from 'firebase/firestore';
 
 export type AlertType = 'ACCIDENT' | 'TRAFFIC' | 'POLICE' | 'DETOUR' | 'WEATHER' | 'OTHER';
 

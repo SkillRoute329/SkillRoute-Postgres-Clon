@@ -13,8 +13,15 @@ import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { gtfsExporter } from '../../services/gtfsExporter';
 import {
-  FileCheck, Download, AlertCircle, CheckCircle2,
-  Clock, FileText, Calendar, Shield, TrendingUp
+  FileCheck,
+  Download,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  FileText,
+  Calendar,
+  Shield,
+  TrendingUp,
 } from 'lucide-react';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -34,7 +41,10 @@ interface ReporteRequerido {
 
 // ─── Datos de reportes requeridos por regulación Uruguay ─────────────────────
 
-function calcularEstadoReporte(ultimoEnvio?: string, diaLimite = 3): {
+function calcularEstadoReporte(
+  ultimoEnvio?: string,
+  diaLimite = 3,
+): {
   estado: ReporteRequerido['estado'];
   diasRestantes: number;
 } {
@@ -53,9 +63,9 @@ function calcularEstadoReporte(ultimoEnvio?: string, diaLimite = 3): {
   fechaLimite.setTime(temp.getTime());
 
   const diasRestantes = Math.ceil((fechaLimite.getTime() - hoy.getTime()) / 86400000);
-  const yaEnviado = ultimoEnvio && ultimoEnvio.startsWith(
-    `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`
-  );
+  const yaEnviado =
+    ultimoEnvio &&
+    ultimoEnvio.startsWith(`${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`);
 
   if (yaEnviado) return { estado: 'al_dia', diasRestantes };
   if (diasRestantes < 0) return { estado: 'vencido', diasRestantes };
@@ -69,7 +79,7 @@ export default function ComplianceHub() {
   const [reportes, setReportes] = useState<ReporteRequerido[]>([]);
   const [generando, setGenerando] = useState<string | null>(null);
   const [mesSeleccionado, setMesSeleccionado] = useState<string>(
-    new Date().toISOString().slice(0, 7)
+    new Date().toISOString().slice(0, 7),
   );
 
   useEffect(() => {
@@ -86,8 +96,8 @@ export default function ComplianceHub() {
         query(
           collection(db, 'compliance_log'),
           where('mes', '==', mesSeleccionado),
-          orderBy('fechaEnvio', 'desc')
-        )
+          orderBy('fechaEnvio', 'desc'),
+        ),
       );
       snap.docs.forEach((d) => {
         const data = d.data();
@@ -106,7 +116,8 @@ export default function ComplianceHub() {
       {
         id: 'declaracion_jurada_flota',
         nombre: 'Declaración Jurada de Flota',
-        descripcion: 'Reporte mensual de vehículos activos, bajas, altas y estado técnico de la flota. Requerido por MTOP/DNT.',
+        descripcion:
+          'Reporte mensual de vehículos activos, bajas, altas y estado técnico de la flota. Requerido por MTOP/DNT.',
         frecuencia: 'mensual',
         organismoReceptor: 'MTOP — Dirección Nacional de Transporte',
         plazoLegal: 'Primeros 3 días hábiles de cada mes',
@@ -118,7 +129,8 @@ export default function ComplianceHub() {
       {
         id: 'reporte_kilometros',
         nombre: 'Reporte de Kilómetros Recorridos',
-        descripcion: 'Kilómetros recorridos por línea y por vehículo en el mes. Base para cálculo de subsidios del Estado.',
+        descripcion:
+          'Kilómetros recorridos por línea y por vehículo en el mes. Base para cálculo de subsidios del Estado.',
         frecuencia: 'mensual',
         organismoReceptor: 'MTOP — DNT',
         plazoLegal: 'Primeros 3 días hábiles de cada mes',
@@ -130,7 +142,8 @@ export default function ComplianceHub() {
       {
         id: 'informe_puntualidad',
         nombre: 'Informe de Cumplimiento de Frecuencias',
-        descripcion: 'Porcentaje de cumplimiento de los horarios programados por línea. Incluye causales de incumplimiento.',
+        descripcion:
+          'Porcentaje de cumplimiento de los horarios programados por línea. Incluye causales de incumplimiento.',
         frecuencia: 'mensual',
         organismoReceptor: 'Intendencia de Montevideo — División Movilidad',
         plazoLegal: 'Primeros 5 días hábiles de cada mes',
@@ -141,7 +154,8 @@ export default function ComplianceHub() {
       {
         id: 'gtfs_feed',
         nombre: 'Actualización Feed GTFS',
-        descripcion: 'Datos de rutas, paradas y horarios en formato GTFS para el sistema de información al pasajero de la IMM.',
+        descripcion:
+          'Datos de rutas, paradas y horarios en formato GTFS para el sistema de información al pasajero de la IMM.',
         frecuencia: 'mensual',
         organismoReceptor: 'IMM — Sistema de Información al Pasajero',
         plazoLegal: 'Primer día hábil de cada mes',
@@ -152,7 +166,8 @@ export default function ComplianceHub() {
       {
         id: 'habilitacion_vehiculos',
         nombre: 'Habilitación Anual de Vehículos',
-        descripcion: 'Revisión técnica anual de cada unidad. Certificado de aptitud para servicio público de transporte.',
+        descripcion:
+          'Revisión técnica anual de cada unidad. Certificado de aptitud para servicio público de transporte.',
         frecuencia: 'anual',
         organismoReceptor: 'MTOP — Dirección Nacional de Transporte',
         plazoLegal: 'Según vencimiento de cada vehículo',
@@ -162,7 +177,8 @@ export default function ComplianceHub() {
       {
         id: 'seguros_flota',
         nombre: 'Renovación Pólizas de Seguro',
-        descripcion: 'Seguro obligatorio de responsabilidad civil para transporte colectivo de pasajeros.',
+        descripcion:
+          'Seguro obligatorio de responsabilidad civil para transporte colectivo de pasajeros.',
         frecuencia: 'anual',
         organismoReceptor: 'BSE / Aseguradoras privadas habilitadas',
         plazoLegal: 'Según vencimiento de cada póliza',
@@ -197,7 +213,9 @@ export default function ComplianceHub() {
           alert('Reporte generado. Verificar en documentos de descarga.');
       }
     } catch (err) {
-      alert('Error al generar reporte: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+      alert(
+        'Error al generar reporte: ' + (err instanceof Error ? err.message : 'Error desconocido'),
+      );
     }
 
     setGenerando(null);
@@ -236,11 +254,15 @@ export default function ComplianceHub() {
         <div className="flex gap-4 mt-4">
           <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
             <AlertCircle className="w-4 h-4 text-red-600" />
-            <span className="text-sm font-medium text-red-800">{vencidos.length} vencido{vencidos.length !== 1 ? 's' : ''}</span>
+            <span className="text-sm font-medium text-red-800">
+              {vencidos.length} vencido{vencidos.length !== 1 ? 's' : ''}
+            </span>
           </div>
           <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
             <Clock className="w-4 h-4 text-amber-600" />
-            <span className="text-sm font-medium text-amber-800">{proximos.length} próximo{proximos.length !== 1 ? 's' : ''}</span>
+            <span className="text-sm font-medium text-amber-800">
+              {proximos.length} próximo{proximos.length !== 1 ? 's' : ''}
+            </span>
           </div>
           <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
             <CheckCircle2 className="w-4 h-4 text-green-600" />
@@ -269,11 +291,12 @@ export default function ComplianceHub() {
 
             const etiquetaEstado = {
               al_dia: 'Al día',
-              proximo: reporte.diasRestantes != null
-                ? reporte.diasRestantes <= 0
-                  ? 'Hoy vence'
-                  : `${reporte.diasRestantes}d restantes`
-                : 'Próximo',
+              proximo:
+                reporte.diasRestantes != null
+                  ? reporte.diasRestantes <= 0
+                    ? 'Hoy vence'
+                    : `${reporte.diasRestantes}d restantes`
+                  : 'Próximo',
               vencido: 'VENCIDO',
               no_aplica: 'No aplica',
             }[reporte.estado];
@@ -286,7 +309,9 @@ export default function ComplianceHub() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-slate-800">{reporte.nombre}</p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${colorEstado}`}>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full border font-medium ${colorEstado}`}
+                        >
                           {etiquetaEstado}
                         </span>
                         {reporte.generadoAutomaticamente && (
@@ -348,15 +373,17 @@ async function generarDeclaracionFlota(mes: string): Promise<void> {
   const snap = await getDocs(collection(db, 'vehicles'));
   const vehiculos = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-  const activos = vehiculos.filter((v: Record<string, unknown>) =>
-    !/mantenimiento|taller|paralizado|baja/i.test(String(v.status ?? ''))
+  const activos = vehiculos.filter(
+    (v: Record<string, unknown>) =>
+      !/mantenimiento|taller|paralizado|baja/i.test(String(v.status ?? '')),
   );
 
   const csv = [
     'ID,Numero,Tipo,Modelo,Año,Estado,Empresa',
-    ...vehiculos.map((v: Record<string, unknown>) =>
-      `${v.id},${v.numero ?? ''},${v.tipo ?? 'diesel'},${v.modelo ?? ''},${v.año ?? ''},${v.status ?? 'activo'},UCOT`
-    )
+    ...vehiculos.map(
+      (v: Record<string, unknown>) =>
+        `${v.id},${v.numero ?? ''},${v.tipo ?? 'diesel'},${v.modelo ?? ''},${v.año ?? ''},${v.status ?? 'activo'},UCOT`,
+    ),
   ].join('\n');
 
   const linea1 = `DECLARACIÓN JURADA DE FLOTA - UCOT - ${mes}\n`;
@@ -368,14 +395,15 @@ async function generarReporteKm(mes: string): Promise<void> {
   let datos = '';
   try {
     const snap = await getDocs(
-      query(collection(db, 'servicio_estado'), where('fecha', '>=', `${mes}-01`))
+      query(collection(db, 'servicio_estado'), where('fecha', '>=', `${mes}-01`)),
     );
     const rows = snap.docs.map((d) => d.data());
     datos = [
       'Fecha,Linea,CocheId,KmRecorridos,HorasServicio',
-      ...rows.map((r: Record<string, unknown>) =>
-        `${r.fecha ?? ''},${r.linea ?? ''},${r.cocheId ?? ''},${r.km ?? 0},${r.horas ?? 0}`
-      )
+      ...rows.map(
+        (r: Record<string, unknown>) =>
+          `${r.fecha ?? ''},${r.linea ?? ''},${r.cocheId ?? ''},${r.km ?? 0},${r.horas ?? 0}`,
+      ),
     ].join('\n');
   } catch {
     datos = `Fecha,Linea,CocheId,KmRecorridos\n(Sin datos disponibles para ${mes})`;

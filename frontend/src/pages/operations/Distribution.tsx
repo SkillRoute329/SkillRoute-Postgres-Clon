@@ -9,25 +9,16 @@ import clsx from 'clsx';
 const Distribution = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'assigned' | 'available'>('all');
   const [drivers, setDrivers] = useState<User[]>([]);
-  const [services, setServices] = useState<ServiceItem[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
 
-  const [filterSeason, setFilterSeason] = useState('VERANO 2026');
-  const [filterDayType, setFilterDayType] = useState('HABIL');
-
   useEffect(() => {
     // Log filters for debugging and usage to prevent TS unused var error
-    console.log(`Loading Operations view for Season: ${filterSeason}, Day: ${filterDayType}`);
-    // Dummy usage of setters to prevent TS errors
-    if (false) {
-      setFilterSeason('');
-      setFilterDayType('');
-      console.log(services);
-    }
+    console.log(`Loading Operations view`);
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getTodayStr = () => {
@@ -53,16 +44,14 @@ const Distribution = () => {
         FleetService.getVehicles(),
       ]);
 
-      // Filter for drivers only (assuming role 'driver' or 'User' for now)
       const driverList = usersData.filter(
-        (u: any) =>
+        (u: User) =>
           (u.role === 'driver' || u.role === 'chofer' || u.role === 'User') && u.internalNumber,
       );
 
       setDrivers(driverList);
       setShifts(shiftsData);
       setVehicles(fleetData);
-      setServices((pilotServices as ServiceItem[]) || []); // Store services for display
 
       if (pilotServices?.length > 0 && shiftsData.length === 0) {
         console.log('Servicios Piloto Cargados:', pilotServices.length);
@@ -90,8 +79,8 @@ const Distribution = () => {
       const categoriesResponse = await ShiftService.getCategories();
       const categories = Array.isArray(categoriesResponse)
         ? categoriesResponse
-        : (categoriesResponse as any).data || [];
-      const defaultCat = categories[0]?.id || 1;
+        : (categoriesResponse as { data?: unknown[] }).data || [];
+      const defaultCat = Number((categories[0] as { id?: number | string })?.id) || 1;
 
       // 1. Obtener Servicios Reales de la DB (Matriz Cartones)
       // TODO: En el futuro esto debe ser dinámico (detectar si es Sábado/Domingo automáticamente)
@@ -200,6 +189,8 @@ const Distribution = () => {
           <button
             onClick={loadData}
             className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl border border-slate-700"
+            aria-label="Refrescar datos"
+            title="Refrescar datos"
           >
             <RefreshCw className={clsx('w-5 h-5', loading && 'animate-spin')} />
           </button>
@@ -289,8 +280,8 @@ const Distribution = () => {
                         activeShift ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400',
                       )}
                     >
-                      {driver.firstName.charAt(0)}
-                      {driver.lastName.charAt(0)}
+                      {driver.firstName?.charAt(0) || ''}
+                      {driver.lastName?.charAt(0) || ''}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-white truncate">

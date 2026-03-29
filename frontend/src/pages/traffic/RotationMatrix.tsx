@@ -114,7 +114,7 @@ const RotationMatrix = () => {
         selectedVehicleId === 'null' || selectedVehicleId === '' ? null : Number(selectedVehicleId);
       await CartonService.swapVehicle(
         String(swapModal.service.id),
-        vid !== null ? String(vid) : null,
+        vid !== null ? String(vid) : '',
       );
       await loadData(); // Refresh to show new assignment
       closeSwapModal();
@@ -199,7 +199,7 @@ const RotationMatrix = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {orderedGroups.map((type) => {
+          {orderedGroups.map((type, groupIdx) => {
             const items = groupedServices[type];
             const isExpanded = expandedGroups[type];
             // Calculate REAL stats
@@ -237,12 +237,13 @@ const RotationMatrix = () => {
                   <div className="flex items-center gap-4">
                     <div className="hidden md:flex flex-col items-end">
                       <div className="w-32 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                        <style>{`#progress-${groupIdx} { width: ${assignedPercentage}%; }`}</style>
                         <div
+                          id={`progress-${groupIdx}`}
                           className={clsx(
                             'h-full transition-all duration-500',
                             assignedPercentage === 100 ? 'bg-emerald-500' : 'bg-amber-500',
                           )}
-                          style={{ width: `${assignedPercentage}%` }}
                         ></div>
                       </div>
                       <span

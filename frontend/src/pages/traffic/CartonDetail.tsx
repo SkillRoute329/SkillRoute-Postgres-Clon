@@ -30,7 +30,9 @@ export default function CartonDetail() {
   const decodedLineId = lineId ? decodeURIComponent(lineId) : '';
   // Normalizar serviceId: quitar sufijos como _VERANO_2026
   const rawServiceId = serviceId ? decodeURIComponent(serviceId) : null;
-  const decodedServiceId = rawServiceId ? rawServiceId.replace(/_(VERANO|INVIERNO)_\d{4}$/, '') : null;
+  const decodedServiceId = rawServiceId
+    ? rawServiceId.replace(/_(VERANO|INVIERNO)_\d{4}$/, '')
+    : null;
 
   const { alerts, loading: loadingAnalytics } = useCartonAnalytics(
     isFisico ? undefined : decodedServiceId,
@@ -59,12 +61,14 @@ export default function CartonDetail() {
         .then((data: unknown[]) => {
           const items = (data || []) as CartonData[];
           // Buscar por id, servicioId, serviceNumber, o coincidencia parcial
-          const found = items.find((x) =>
-            x.id === decodedServiceId ||
-            x.servicioId === decodedServiceId ||
-            x.serviceNumber === decodedServiceId ||
-            String(x.id).replace(/_(VERANO|INVIERNO)_\d{4}$/, '') === decodedServiceId
-          ) ?? null;
+          const found =
+            items.find(
+              (x) =>
+                x.id === decodedServiceId ||
+                x.servicioId === decodedServiceId ||
+                x.serviceNumber === decodedServiceId ||
+                String(x.id).replace(/_(VERANO|INVIERNO)_\d{4}$/, '') === decodedServiceId,
+            ) ?? null;
           setCarton(found);
         })
         .catch(console.error)
@@ -85,7 +89,9 @@ export default function CartonDetail() {
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center gap-4">
         <FileText className="w-16 h-16 text-slate-600" />
         <p className="text-slate-400 text-lg">Cartón no encontrado.</p>
-        <p className="text-slate-600 text-sm">Línea: {decodedLineId} | Servicio: {decodedServiceId}</p>
+        <p className="text-slate-600 text-sm">
+          Línea: {decodedLineId} | Servicio: {decodedServiceId}
+        </p>
         <button
           onClick={() => navigate('/dashboard/traffic/cartons')}
           className="mt-2 px-6 py-2 bg-primary-600 hover:bg-primary-500 rounded-xl font-bold transition-all"
@@ -100,7 +106,10 @@ export default function CartonDetail() {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100">
         <header className="p-4 border-b border-slate-800 bg-slate-900/50 flex items-center gap-3">
-          <button onClick={() => navigate('/dashboard/traffic/cartons')} className="text-slate-400 hover:text-white transition-colors">
+          <button
+            onClick={() => navigate('/dashboard/traffic/cartons')}
+            className="text-slate-400 hover:text-white transition-colors"
+          >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="text-lg font-bold">Cartón Físico — {decodedServiceId}</h1>
@@ -158,9 +167,14 @@ export default function CartonDetail() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-900">
-                  <th className="px-3 py-2 text-left text-slate-400 font-bold text-xs whitespace-nowrap">#</th>
+                  <th className="px-3 py-2 text-left text-slate-400 font-bold text-xs whitespace-nowrap">
+                    #
+                  </th>
                   {headers.map((h) => (
-                    <th key={h.id} className="px-3 py-2 text-left text-slate-400 font-bold text-xs whitespace-nowrap">
+                    <th
+                      key={h.id}
+                      className="px-3 py-2 text-left text-slate-400 font-bold text-xs whitespace-nowrap"
+                    >
                       {h.location ?? h.id}
                     </th>
                   ))}
@@ -168,10 +182,16 @@ export default function CartonDetail() {
               </thead>
               <tbody>
                 {rawMatrix.map((row, rowIdx) => (
-                  <tr key={rowIdx} className={rowIdx % 2 === 0 ? 'bg-slate-950' : 'bg-slate-900/40'}>
+                  <tr
+                    key={rowIdx}
+                    className={rowIdx % 2 === 0 ? 'bg-slate-950' : 'bg-slate-900/40'}
+                  >
                     <td className="px-3 py-2 text-slate-500 text-xs">{rowIdx + 1}</td>
                     {row.checkpoints.map((cp, colIdx) => (
-                      <td key={colIdx} className="px-3 py-2 text-slate-200 font-mono text-xs whitespace-nowrap">
+                      <td
+                        key={colIdx}
+                        className="px-3 py-2 text-slate-200 font-mono text-xs whitespace-nowrap"
+                      >
                         {cp}
                       </td>
                     ))}

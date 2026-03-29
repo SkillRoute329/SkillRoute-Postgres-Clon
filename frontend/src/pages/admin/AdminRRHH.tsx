@@ -11,7 +11,7 @@ import {
   Percent,
   FileUp,
   FileDown,
-  } from 'lucide-react';
+} from 'lucide-react';
 import { DepartmentService, DiscountService, DataImportService } from '../../services/api';
 import clsx from 'clsx';
 
@@ -95,7 +95,7 @@ const UsersTab = () => {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    } catch (err) {
+    } catch {
       alert('Error exportando');
     }
   };
@@ -110,7 +110,7 @@ const UsersTab = () => {
       alert('Importación completada');
       setShowImport(false);
       window.location.reload();
-    } catch (err) {
+    } catch {
       alert('Error importando');
     } finally {
       setLoading(false);
@@ -140,7 +140,7 @@ const UsersTab = () => {
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-white">Importar Personal</h2>
-              <button onClick={() => setShowImport(false)}>
+              <button onClick={() => setShowImport(false)} aria-label="Cerrar modal de importación" title="Cerrar">
                 <X className="w-6 h-6 text-slate-500" />
               </button>
             </div>
@@ -195,14 +195,14 @@ const StructureTab = () => {
     extraHourValue: '',
   });
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
     const data = await DepartmentService.getAll();
     setDepts(data);
   };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const handleSaveDept = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,7 +216,7 @@ const StructureTab = () => {
       setEditingDept(null);
       setDeptForm({ name: '', description: '' });
       loadData();
-    } catch (err) {
+    } catch {
       alert('Error');
     }
   };
@@ -239,7 +239,7 @@ const StructureTab = () => {
       setShowRoleModal(false);
       setRoleForm({ name: '', description: '', baseSalary: '', extraHourValue: '' });
       loadData();
-    } catch (err) {
+    } catch {
       alert('Error');
     }
   };
@@ -287,12 +287,16 @@ const StructureTab = () => {
                     setShowDeptModal(true);
                   }}
                   className="p-2 hover:bg-slate-700 rounded text-slate-400"
+                  aria-label={`Editar área ${dept.name}`}
+                  title={`Editar área ${dept.name}`}
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleDeleteDept(dept.id)}
                   className="p-2 hover:bg-red-500/20 rounded text-red-400"
+                  aria-label={`Eliminar área ${dept.name}`}
+                  title={`Eliminar área ${dept.name}`}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -337,6 +341,8 @@ const StructureTab = () => {
                       <button
                         onClick={() => handleDeleteRole(role.id)}
                         className="text-slate-600 hover:text-red-400"
+                        aria-label={`Eliminar cargo ${role.name}`}
+                        title={`Eliminar cargo ${role.name}`}
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -363,12 +369,16 @@ const StructureTab = () => {
                 value={deptForm.name}
                 onChange={(e) => setDeptForm({ ...deptForm, name: e.target.value })}
                 required
+                title="Nombre del área"
+                aria-label="Nombre del área"
               />
               <input
                 className="input-field w-full"
                 placeholder="Descripción"
                 value={deptForm.description}
                 onChange={(e) => setDeptForm({ ...deptForm, description: e.target.value })}
+                title="Descripción del área"
+                aria-label="Descripción del área"
               />
               <button className="btn btn-primary w-full">Guardar</button>
               <button
@@ -395,6 +405,8 @@ const StructureTab = () => {
                 value={roleForm.name}
                 onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
                 required
+                title="Nombre del cargo"
+                aria-label="Nombre del cargo"
               />
 
               <div className="grid grid-cols-2 gap-2">
@@ -446,18 +458,18 @@ const DiscountsTab = () => {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ name: '', type: 'PERCENTAGE', value: '' });
 
-  useEffect(() => {
-    load();
-  }, []);
-
   const load = async () => {
     try {
       const data = await DiscountService.getAll();
       setDiscounts(data);
-    } catch (err) {
-      
+    } catch (_err) {
+      console.error('Error cargando descuentos:', _err);
     }
   };
+
+  useEffect(() => {
+    load();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -466,7 +478,7 @@ const DiscountsTab = () => {
       setShowModal(false);
       setFormData({ name: '', type: 'PERCENTAGE', value: '' });
       load();
-    } catch (err) {
+    } catch {
       alert('Error');
     }
   };
@@ -553,6 +565,8 @@ const DiscountsTab = () => {
                     className="input-field w-full"
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    title="Tipo de descuento"
+                    aria-label="Tipo de descuento"
                   >
                     <option value="PERCENTAGE">Porcentaje (%)</option>
                     <option value="FIXED">Fijo ($)</option>

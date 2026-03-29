@@ -13,14 +13,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import {
-  MapContainer,
-  TileLayer,
-  Polyline,
-  Marker,
-  Popup,
-  CircleMarker,
-} from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Marker, Popup, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -54,20 +47,20 @@ const BRT_DATA = {
       lineasUCOTAfectadas: ['300', '306', '316', '328', '329', '330'],
       // Coordenadas aproximadas del corredor (de este a oeste)
       coordenadas: [
-        [-34.8665, -56.0100] as [number, number], // Zonamérica
-        [-34.8813, -56.0520] as [number, number], // 8 de Octubre y Av Italia
+        [-34.8665, -56.01] as [number, number], // Zonamérica
+        [-34.8813, -56.052] as [number, number], // 8 de Octubre y Av Italia
         [-34.8982, -56.1012] as [number, number], // Propios
-        [-34.9058, -56.1620] as [number, number], // Tres Cruces
-        [-34.9065, -56.1880] as [number, number], // 18 de Julio centro
-        [-34.9065, -56.2100] as [number, number], // Ciudad Vieja
+        [-34.9058, -56.162] as [number, number], // Tres Cruces
+        [-34.9065, -56.188] as [number, number], // 18 de Julio centro
+        [-34.9065, -56.21] as [number, number], // Ciudad Vieja
       ],
       estaciones: [
-        { nombre: 'Zonamérica', lat: -34.8665, lng: -56.0100 },
-        { nombre: 'Av. Italia / 8 de Octubre', lat: -34.8813, lng: -56.0520 },
+        { nombre: 'Zonamérica', lat: -34.8665, lng: -56.01 },
+        { nombre: 'Av. Italia / 8 de Octubre', lat: -34.8813, lng: -56.052 },
         { nombre: 'Propios', lat: -34.8982, lng: -56.1012 },
-        { nombre: 'Tres Cruces', lat: -34.9058, lng: -56.1620 },
-        { nombre: '18 de Julio Centro', lat: -34.9065, lng: -56.1880 },
-        { nombre: 'Ciudad Vieja', lat: -34.9065, lng: -56.2100 },
+        { nombre: 'Tres Cruces', lat: -34.9058, lng: -56.162 },
+        { nombre: '18 de Julio Centro', lat: -34.9065, lng: -56.188 },
+        { nombre: 'Ciudad Vieja', lat: -34.9065, lng: -56.21 },
       ],
     },
     {
@@ -82,18 +75,18 @@ const BRT_DATA = {
       tunnel: false,
       lineasUCOTAfectadas: [],
       coordenadas: [
-        [-34.8100, -55.9300] as [number, number], // El Pinar
-        [-34.8500, -56.0000] as [number, number], // Giannattasio
-        [-34.8813, -56.0520] as [number, number], // Av. Italia
-        [-34.9058, -56.1620] as [number, number], // Tres Cruces
-        [-34.9065, -56.1880] as [number, number], // 18 de Julio
-        [-34.9065, -56.2100] as [number, number], // Ciudad Vieja
+        [-34.81, -55.93] as [number, number], // El Pinar
+        [-34.85, -56.0] as [number, number], // Giannattasio
+        [-34.8813, -56.052] as [number, number], // Av. Italia
+        [-34.9058, -56.162] as [number, number], // Tres Cruces
+        [-34.9065, -56.188] as [number, number], // 18 de Julio
+        [-34.9065, -56.21] as [number, number], // Ciudad Vieja
       ],
       estaciones: [
-        { nombre: 'El Pinar', lat: -34.8100, lng: -55.9300 },
-        { nombre: 'Av. Italia', lat: -34.8813, lng: -56.0520 },
-        { nombre: 'Tres Cruces', lat: -34.9058, lng: -56.1620 },
-        { nombre: 'Ciudad Vieja', lat: -34.9065, lng: -56.2100 },
+        { nombre: 'El Pinar', lat: -34.81, lng: -55.93 },
+        { nombre: 'Av. Italia', lat: -34.8813, lng: -56.052 },
+        { nombre: 'Tres Cruces', lat: -34.9058, lng: -56.162 },
+        { nombre: 'Ciudad Vieja', lat: -34.9065, lng: -56.21 },
       ],
     },
   ],
@@ -101,17 +94,34 @@ const BRT_DATA = {
 
 const TIMELINE = [
   { año: 2026, evento: 'Proyecto ejecutivo finalizado', estado: 'en_curso', trimestre: 'Q1-Q2' },
-  { año: 2026, evento: 'Licitaciones abiertas (infraestructura + operadores)', estado: 'pendiente', trimestre: 'Q4' },
+  {
+    año: 2026,
+    evento: 'Licitaciones abiertas (infraestructura + operadores)',
+    estado: 'pendiente',
+    trimestre: 'Q4',
+  },
   { año: 2027, evento: 'Inicio de obras', estado: 'pendiente', trimestre: 'Q1' },
-  { año: 2028, evento: 'Pruebas con biarticulados eléctricos', estado: 'pendiente', trimestre: 'Q3' },
-  { año: 2029, evento: 'Sistema BRT operativo — Impacto total en UCOT', estado: 'pendiente', trimestre: 'Q1' },
+  {
+    año: 2028,
+    evento: 'Pruebas con biarticulados eléctricos',
+    estado: 'pendiente',
+    trimestre: 'Q3',
+  },
+  {
+    año: 2029,
+    evento: 'Sistema BRT operativo — Impacto total en UCOT',
+    estado: 'pendiente',
+    trimestre: 'Q1',
+  },
 ];
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function BRTCorridorDashboard() {
   const [corredorActivo, setCorredorActivo] = useState<string>('C1');
-  const [pestañaActiva, setPestañaActiva] = useState<'mapa' | 'impacto' | 'timeline' | 'oportunidad'>('mapa');
+  const [pestañaActiva, setPestañaActiva] = useState<
+    'mapa' | 'impacto' | 'timeline' | 'oportunidad'
+  >('mapa');
   const [añoActual] = useState(new Date().getFullYear());
 
   const corredor = BRT_DATA.corredores.find((c) => c.id === corredorActivo)!;
@@ -134,9 +144,7 @@ export default function BRTCorridorDashboard() {
               <Train className="w-5 h-5 text-red-600" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-800">
-                Proyecto BRT Montevideo
-              </h1>
+              <h1 className="text-lg font-bold text-slate-800">Proyecto BRT Montevideo</h1>
               <p className="text-sm text-slate-500">
                 Impacto en UCOT · Operativo estimado {BRT_DATA.operativoEstimado}
               </p>
@@ -147,9 +155,7 @@ export default function BRTCorridorDashboard() {
           <div className="flex items-center gap-4">
             <div className="text-center">
               <p className="text-xs text-slate-400">Financiamiento</p>
-              <p className="font-bold text-slate-700">
-                US$ {BRT_DATA.financiamiento.total}M
-              </p>
+              <p className="font-bold text-slate-700">US$ {BRT_DATA.financiamiento.total}M</p>
             </div>
             <div className="text-center">
               <p className="text-xs text-slate-400">BID</p>
@@ -201,10 +207,7 @@ export default function BRTCorridorDashboard() {
                   }`}
                   style={corredorActivo === c.id ? { backgroundColor: c.color } : {}}
                 >
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: c.color }}
-                  />
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: c.color }} />
                   {c.nombre.split(' — ')[1]}
                 </button>
               ))}
@@ -217,7 +220,9 @@ export default function BRTCorridorDashboard() {
                 <p className="text-xs text-slate-500 mt-0.5">km de recorrido</p>
               </div>
               <div className="bg-white rounded-xl border p-3 text-center">
-                <p className="text-2xl font-bold text-slate-500 line-through">{corredor.tiempoActualMin} min</p>
+                <p className="text-2xl font-bold text-slate-500 line-through">
+                  {corredor.tiempoActualMin} min
+                </p>
                 <p className="text-xs text-slate-500 mt-0.5">Tiempo actual</p>
               </div>
               <div className="bg-white rounded-xl border p-3 text-center">
@@ -231,14 +236,17 @@ export default function BRTCorridorDashboard() {
             </div>
 
             {/* Mapa */}
-            <div className="rounded-xl overflow-hidden border shadow-sm" style={{ height: '420px' }}>
+            <div
+              className="rounded-xl overflow-hidden border shadow-sm"
+              style={{ height: '420px' }}
+            >
               <MapContainer
                 center={[-34.88, -56.08]}
                 zoom={12}
                 style={{ height: '100%', width: '100%' }}
               >
                 <TileLayer
-                  attribution='&copy; OpenStreetMap contributors'
+                  attribution="&copy; OpenStreetMap contributors"
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
@@ -256,17 +264,11 @@ export default function BRTCorridorDashboard() {
 
                 {/* Estaciones del corredor activo */}
                 {corredor.estaciones.map((est) => (
-                  <Marker
-                    key={est.nombre}
-                    position={[est.lat, est.lng]}
-                    icon={estacionIcon}
-                  >
+                  <Marker key={est.nombre} position={[est.lat, est.lng]} icon={estacionIcon}>
                     <Popup>
                       <div className="text-sm">
                         <p className="font-semibold">{est.nombre}</p>
-                        <p className="text-slate-500 text-xs">
-                          Estación BRT — {corredor.nombre}
-                        </p>
+                        <p className="text-slate-500 text-xs">Estación BRT — {corredor.nombre}</p>
                         {corredor.tunnel && est.nombre.includes('Julio') && (
                           <p className="text-blue-600 text-xs mt-1">
                             🚇 Estación subterránea (túnel)
@@ -283,8 +285,8 @@ export default function BRTCorridorDashboard() {
               <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2">
                 <Info className="w-4 h-4 text-amber-600 shrink-0" />
                 <p className="text-amber-700 text-sm">
-                  Este corredor incluye un <strong>túnel de ~3.2 km bajo la Av. 18 de Julio</strong> con
-                  6 estaciones subterráneas (inversión adicional de US$ 200-300M).
+                  Este corredor incluye un <strong>túnel de ~3.2 km bajo la Av. 18 de Julio</strong>{' '}
+                  con 6 estaciones subterráneas (inversión adicional de US$ 200-300M).
                 </p>
               </div>
             )}
@@ -301,8 +303,9 @@ export default function BRTCorridorDashboard() {
                   {lineasUCOTTotal.length} líneas de UCOT serán directamente afectadas
                 </p>
                 <p className="text-amber-700 text-sm mt-1">
-                  El Corredor 1 atraviesa el eje 8 de Octubre, corazón geográfico de UCOT.
-                  Las líneas {lineasUCOTTotal.join(', ')} deberán ser reasignadas como alimentadoras del BRT.
+                  El Corredor 1 atraviesa el eje 8 de Octubre, corazón geográfico de UCOT. Las
+                  líneas {lineasUCOTTotal.join(', ')} deberán ser reasignadas como alimentadoras del
+                  BRT.
                 </p>
               </div>
             </div>
@@ -344,22 +347,22 @@ export default function BRTCorridorDashboard() {
                   <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                     <p className="text-green-800 font-medium text-sm">✅ Escenario Óptimo</p>
                     <p className="text-green-700 text-xs mt-1">
-                      UCOT opera líneas alimentadoras desde barrios a estaciones BRT.
-                      Más frecuencias, rutas cortas, menor desgaste de flota.
+                      UCOT opera líneas alimentadoras desde barrios a estaciones BRT. Más
+                      frecuencias, rutas cortas, menor desgaste de flota.
                     </p>
                   </div>
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                     <p className="text-amber-800 font-medium text-sm">⚠️ Escenario Neutro</p>
                     <p className="text-amber-700 text-xs mt-1">
-                      UCOT mantiene sus líneas en paralelo al BRT pero reduce frecuencias
-                      en el eje 8 de Octubre.
+                      UCOT mantiene sus líneas en paralelo al BRT pero reduce frecuencias en el eje
+                      8 de Octubre.
                     </p>
                   </div>
                   <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-red-800 font-medium text-sm">❌ Escenario Riesgo</p>
                     <p className="text-red-700 text-xs mt-1">
-                      Sin adaptación, las líneas paralelas al BRT perderían pasajeros
-                      al sistema troncal. Impacto directo en ingresos.
+                      Sin adaptación, las líneas paralelas al BRT perderían pasajeros al sistema
+                      troncal. Impacto directo en ingresos.
                     </p>
                   </div>
                 </div>
@@ -388,30 +391,46 @@ export default function BRTCorridorDashboard() {
                             esPasado
                               ? 'bg-green-500 border-green-500'
                               : esActual
-                              ? 'bg-blue-500 border-blue-500 animate-pulse'
-                              : 'bg-white border-slate-300'
+                                ? 'bg-blue-500 border-blue-500 animate-pulse'
+                                : 'bg-white border-slate-300'
                           }`}
                         >
                           {esPasado && (
-                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            <svg
+                              className="w-3 h-3 text-white"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={3}
+                                d="M5 13l4 4L19 7"
+                              />
                             </svg>
                           )}
                         </div>
-                        <div className={`flex-1 p-3 rounded-lg border ${
-                          esActual ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200'
-                        }`}>
+                        <div
+                          className={`flex-1 p-3 rounded-lg border ${
+                            esActual ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200'
+                          }`}
+                        >
                           <div className="flex items-center justify-between">
-                            <p className={`font-semibold text-sm ${esActual ? 'text-blue-800' : 'text-slate-700'}`}>
+                            <p
+                              className={`font-semibold text-sm ${esActual ? 'text-blue-800' : 'text-slate-700'}`}
+                            >
                               {item.evento}
                             </p>
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${
-                              esActual
-                                ? 'bg-blue-200 text-blue-800'
-                                : esPasado
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-slate-200 text-slate-600'
-                            }`}>
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded-full ${
+                                esActual
+                                  ? 'bg-blue-200 text-blue-800'
+                                  : esPasado
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-slate-200 text-slate-600'
+                              }`}
+                            >
                               {item.año} {item.trimestre}
                             </span>
                           </div>
@@ -436,8 +455,8 @@ export default function BRTCorridorDashboard() {
             <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl p-6 text-white">
               <h3 className="text-xl font-bold mb-2">🚀 UCOT como Operador Alimentador</h3>
               <p className="text-blue-100 text-sm">
-                El BRT no elimina a UCOT — la posiciona como operador esencial para
-                conectar barrios con los corredores troncales.
+                El BRT no elimina a UCOT — la posiciona como operador esencial para conectar barrios
+                con los corredores troncales.
               </p>
             </div>
 
@@ -448,8 +467,8 @@ export default function BRTCorridorDashboard() {
                 </div>
                 <h4 className="font-semibold text-slate-700 mb-2">Ingresos Estables</h4>
                 <p className="text-slate-500 text-sm">
-                  Las líneas alimentadoras tienen demanda garantizada: son el único
-                  acceso de zonas residenciales al BRT. Menor competencia directa.
+                  Las líneas alimentadoras tienen demanda garantizada: son el único acceso de zonas
+                  residenciales al BRT. Menor competencia directa.
                 </p>
               </div>
               <div className="bg-white rounded-xl border p-4">
@@ -458,8 +477,8 @@ export default function BRTCorridorDashboard() {
                 </div>
                 <h4 className="font-semibold text-slate-700 mb-2">Menor Desgaste</h4>
                 <p className="text-slate-500 text-sm">
-                  Rutas más cortas significan menos kilómetros por unidad, menor
-                  consumo de combustible y mayor vida útil de la flota.
+                  Rutas más cortas significan menos kilómetros por unidad, menor consumo de
+                  combustible y mayor vida útil de la flota.
                 </p>
               </div>
               <div className="bg-white rounded-xl border p-4">
@@ -468,8 +487,8 @@ export default function BRTCorridorDashboard() {
                 </div>
                 <h4 className="font-semibold text-slate-700 mb-2">Nuevas Zonas</h4>
                 <p className="text-slate-500 text-sm">
-                  Oportunidad para expandir a zonas hoy sin cobertura: Manga Norte,
-                  Toledo Chico, Canelones Este — conectándolas al BRT.
+                  Oportunidad para expandir a zonas hoy sin cobertura: Manga Norte, Toledo Chico,
+                  Canelones Este — conectándolas al BRT.
                 </p>
               </div>
             </div>
@@ -483,19 +502,51 @@ export default function BRTCorridorDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {[
                   { linea: 'A-300', origen: 'Manga Norte', destino: 'Est. Propios (BRT)', km: 4.2 },
-                  { linea: 'A-306', origen: 'Villa García', destino: 'Est. 8 de Octubre (BRT)', km: 5.8 },
-                  { linea: 'A-316', origen: 'Piedras Blancas Norte', destino: 'Est. Propios (BRT)', km: 3.5 },
-                  { linea: 'A-328', origen: 'Toledo Chico', destino: 'Est. Tres Cruces (BRT)', km: 7.1 },
-                  { linea: 'A-NEW1', origen: 'Canelones Este', destino: 'Est. Av. Italia (BRT)', km: 12.0, nueva: true },
-                  { linea: 'A-NEW2', origen: 'Santa Lucía del Este', destino: 'Est. Zonamérica (BRT)', km: 9.4, nueva: true },
+                  {
+                    linea: 'A-306',
+                    origen: 'Villa García',
+                    destino: 'Est. 8 de Octubre (BRT)',
+                    km: 5.8,
+                  },
+                  {
+                    linea: 'A-316',
+                    origen: 'Piedras Blancas Norte',
+                    destino: 'Est. Propios (BRT)',
+                    km: 3.5,
+                  },
+                  {
+                    linea: 'A-328',
+                    origen: 'Toledo Chico',
+                    destino: 'Est. Tres Cruces (BRT)',
+                    km: 7.1,
+                  },
+                  {
+                    linea: 'A-NEW1',
+                    origen: 'Canelones Este',
+                    destino: 'Est. Av. Italia (BRT)',
+                    km: 12.0,
+                    nueva: true,
+                  },
+                  {
+                    linea: 'A-NEW2',
+                    origen: 'Santa Lucía del Este',
+                    destino: 'Est. Zonamérica (BRT)',
+                    km: 9.4,
+                    nueva: true,
+                  },
                 ].map((l) => (
-                  <div key={l.linea} className={`flex items-center justify-between p-3 rounded-lg border ${
-                    l.nueva ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'
-                  }`}>
+                  <div
+                    key={l.linea}
+                    className={`flex items-center justify-between p-3 rounded-lg border ${
+                      l.nueva ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
                     <div className="flex items-center gap-2">
-                      <span className={`w-14 text-center py-0.5 text-xs font-bold rounded ${
-                        l.nueva ? 'bg-green-500 text-white' : 'bg-yellow-400 text-slate-900'
-                      }`}>
+                      <span
+                        className={`w-14 text-center py-0.5 text-xs font-bold rounded ${
+                          l.nueva ? 'bg-green-500 text-white' : 'bg-yellow-400 text-slate-900'
+                        }`}
+                      >
                         {l.linea}
                       </span>
                       <div>

@@ -74,7 +74,7 @@ const INTERVALOS_PREVENTIVO = {
     revision_motor_dias: 60,
     actualizacion_software_dias: 90,
     neumaticos_km: 60_000,
-    carga_ciclos_alerta: 500,  // alertar al llegar a 500 ciclos
+    carga_ciclos_alerta: 500, // alertar al llegar a 500 ciclos
   },
 };
 
@@ -92,7 +92,7 @@ class MaintenanceServiceClass {
       orderBy('fechaProgramada'),
     );
     const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as OrdenMantenimiento));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as OrdenMantenimiento);
   }
 
   async getPorVehiculo(cocheId: string): Promise<OrdenMantenimiento[]> {
@@ -102,7 +102,7 @@ class MaintenanceServiceClass {
       orderBy('fechaProgramada', 'desc'),
     );
     const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as OrdenMantenimiento));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as OrdenMantenimiento);
   }
 
   async crearOrden(orden: Omit<OrdenMantenimiento, 'id'>): Promise<string> {
@@ -184,9 +184,10 @@ class MaintenanceServiceClass {
         tipo: 'temperatura_motor',
         mensaje: `Motor a ${temperaturaMotor}°C — Por encima del umbral`,
         severidad: temperaturaMotor > 95 ? 'danger' : 'warning',
-        accionRecomendada: temperaturaMotor > 95
-          ? 'Detener servicio inmediatamente — riesgo de daño'
-          : 'Monitorear y reducir velocidad',
+        accionRecomendada:
+          temperaturaMotor > 95
+            ? 'Detener servicio inmediatamente — riesgo de daño'
+            : 'Monitorear y reducir velocidad',
       });
     }
 
@@ -224,9 +225,10 @@ class MaintenanceServiceClass {
       await this.crearOrden({
         cocheId: v.id,
         tipo: v.tipo === 'electrico' ? 'revision_electrica' : 'preventivo',
-        descripcion: v.tipo === 'electrico'
-          ? 'Revisión técnica sistema eléctrico y baterías Yutong'
-          : 'Mantenimiento preventivo general (aceite, filtros, frenos)',
+        descripcion:
+          v.tipo === 'electrico'
+            ? 'Revisión técnica sistema eléctrico y baterías Yutong'
+            : 'Mantenimiento preventivo general (aceite, filtros, frenos)',
         estado: 'pendiente',
         prioridad: 'media',
         fechaProgramada: fechaProgramada.toISOString().split('T')[0],

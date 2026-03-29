@@ -1,10 +1,5 @@
 import { db } from '../config/firebase';
-import {
-  collection,
-  doc,
-  serverTimestamp,
-  writeBatch,
-} from 'firebase/firestore';
+import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 
 export type IncidentType = 'MECANICA' | 'ACCIDENTE' | 'EVASION' | 'DEMORA';
 

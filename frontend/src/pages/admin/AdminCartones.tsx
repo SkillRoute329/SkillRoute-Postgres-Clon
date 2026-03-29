@@ -277,6 +277,8 @@ const AdminCartones = () => {
             <button
               onClick={() => setMobileView(mobileView === 'list' ? 'editor' : 'list')}
               className="bg-slate-800 p-2 rounded-lg text-white border border-slate-700"
+              aria-label="Alternar vista móvil"
+              title="Alternar vista móvil"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -359,6 +361,8 @@ const AdminCartones = () => {
               <input
                 placeholder="Buscar (ej. 1014, 300)"
                 className="w-full bg-slate-800 border-none rounded-lg py-2 pl-3 pr-8 text-sm text-white focus:ring-1 focus:ring-primary-500 placeholder-slate-500"
+                title="Buscar servicio por número o línea"
+                aria-label="Buscar servicio por número o línea"
               />
               <Search className="absolute right-2 top-2.5 w-4 h-4 text-slate-500" />
             </div>
@@ -405,7 +409,7 @@ const AdminCartones = () => {
                 ([category, items]) =>
                   items.length > 0 && (
                     <div key={category} className="mb-2">
-                      <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-400 uppercase bg-slate-800/50 hover:bg-slate-800 rounded-lg mb-1 transition-colors">
+                      <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-400 uppercase bg-slate-800/50 hover:bg-slate-800 rounded-lg mb-1 transition-colors" aria-label={`Categoría ${category}`} title={`Abrir categoría ${category}`}>
                         <span>📂 {category}</span>
                         <span className="bg-slate-900 px-1.5 rounded text-[10px]">
                           {items.length}

@@ -16,24 +16,18 @@
  *   gpsTracker.detener();
  */
 
-import {
-  doc,
-  setDoc,
-  serverTimestamp,
-  GeoPoint,
-  deleteDoc,
-} from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, GeoPoint, deleteDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export interface ConfigTrackerParams {
-  cocheId: string;       // Ej: "115", "203"
-  linea: string;         // Ej: "300a", "306b"
-  conductorId: string;   // UID de Firebase Auth
+  cocheId: string; // Ej: "115", "203"
+  linea: string; // Ej: "300a", "306b"
+  conductorId: string; // UID de Firebase Auth
   conductorNombre?: string;
-  empresa?: string;      // "UCOT" por defecto
-  intervaloMs?: number;  // Intervalo GPS en ms (por defecto 15000 = 15s)
+  empresa?: string; // "UCOT" por defecto
+  intervaloMs?: number; // Intervalo GPS en ms (por defecto 15000 = 15s)
 }
 
 export interface EstadoTracker {
@@ -50,8 +44,8 @@ export interface EstadoTracker {
 
 const COL_VIAJES = 'viajes_activos';
 const INTERVALO_DEFAULT_MS = 15_000; // 15 segundos
-const TIMEOUT_GPS_MS = 10_000;       // 10s máximo para obtener posición
-const PRECISION_MIN_METROS = 100;    // Descartar posiciones muy imprecisas
+const TIMEOUT_GPS_MS = 10_000; // 10s máximo para obtener posición
+const PRECISION_MIN_METROS = 100; // Descartar posiciones muy imprecisas
 
 // ─── Clase GPS Tracker ────────────────────────────────────────────────────────
 
@@ -190,9 +184,10 @@ class GpsTrackerService {
         lng = pos.coords.longitude;
         precision = pos.coords.accuracy;
       } catch (err) {
-        const msg = err instanceof GeolocationPositionError
-          ? this.mensajeErrorGps(err.code)
-          : 'Error desconocido de GPS';
+        const msg =
+          err instanceof GeolocationPositionError
+            ? this.mensajeErrorGps(err.code)
+            : 'Error desconocido de GPS';
         this.estado.error = msg;
         console.error('[GPS] Error obteniendo posición:', msg);
         this.emitirEstado();
@@ -211,29 +206,31 @@ class GpsTrackerService {
       const docId = this.config.cocheId;
       const ref = doc(db, COL_VIAJES, docId);
 
-      await setDoc(ref, {
-        cocheId: this.config.cocheId,
-        codigoLinea: this.config.linea,
-        conductorId: this.config.conductorId,
-        conductorNombre: this.config.conductorNombre ?? 'Conductor',
-        empresa: this.config.empresa ?? 'UCOT',
-        posicion: new GeoPoint(lat, lng),
-        updatedAt: serverTimestamp(),
-        estado: 'en_servicio',
-        // Datos extra útiles para el dashboard
-        velocidad: null,
-        rumbo: null,
-        pasajeros: null,
-      }, { merge: true });
+      await setDoc(
+        ref,
+        {
+          cocheId: this.config.cocheId,
+          codigoLinea: this.config.linea,
+          conductorId: this.config.conductorId,
+          conductorNombre: this.config.conductorNombre ?? 'Conductor',
+          empresa: this.config.empresa ?? 'UCOT',
+          posicion: new GeoPoint(lat, lng),
+          updatedAt: serverTimestamp(),
+          estado: 'en_servicio',
+          // Datos extra útiles para el dashboard
+          velocidad: null,
+          rumbo: null,
+          pasajeros: null,
+        },
+        { merge: true },
+      );
 
       this.estado.ultimaPosicion = { lat, lng };
       this.estado.ultimaActualizacion = new Date();
       this.estado.totalActualizaciones++;
       this.estado.error = null;
 
-      console.log(
-        `[GPS] ✓ Publicado — Coche ${docId} @ [${lat.toFixed(5)}, ${lng.toFixed(5)}]`,
-      );
+      console.log(`[GPS] ✓ Publicado — Coche ${docId} @ [${lat.toFixed(5)}, ${lng.toFixed(5)}]`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error Firestore';
       this.estado.error = `Error al publicar: ${msg}`;
@@ -260,10 +257,14 @@ class GpsTrackerService {
     if (this.config?.cocheId) {
       try {
         const ref = doc(db, COL_VIAJES, this.config.cocheId);
-        await setDoc(ref, {
-          estado: 'fuera_de_servicio',
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
+        await setDoc(
+          ref,
+          {
+            estado: 'fuera_de_servicio',
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
         console.log(`[GPS] Vehículo ${this.config.cocheId} marcado como fuera de servicio`);
       } catch (err) {
         console.warn('[GPS] No se pudo actualizar estado en Firestore:', err);

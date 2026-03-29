@@ -3,14 +3,7 @@ import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap } from '
 import 'leaflet/dist/leaflet.css';
 import { TrafficService, type TrafficAlert } from '../../services/trafficService';
 
-import {
-  Navigation,
-  AlertTriangle,
-  CloudRain,
-  Shield,
-  AlertOctagon,
-  Locate,
-  } from 'lucide-react';
+import { Navigation, AlertTriangle, CloudRain, Shield, AlertOctagon, Locate } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../config/firebase';
 import { collection, onSnapshot, query, where, Timestamp, limit } from 'firebase/firestore';

@@ -1,12 +1,4 @@
-import {
-  collection,
-  getDocs,
-  doc,
-  setDoc,
-  query,
-  orderBy,
-  limit,
-  } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, query, orderBy, limit } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
 import { seedServicesPhase1 } from '../data/seed_phase_1';
 

@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BulletinService } from '../../services/api';
-import {
-  BarChart3,
-  TrendingUp,
-  TrendingDown,
-  Activity,
-  Loader2,
-  Download,
-} from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, Activity, Loader2, Download } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';

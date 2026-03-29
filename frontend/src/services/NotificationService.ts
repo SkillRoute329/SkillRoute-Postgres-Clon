@@ -20,19 +20,13 @@ export const NotificationService = {
     }
 
     if (Notification.permission === 'granted') {
-      // Customize for Traffic Alerts
-      interface ExtendedOptions extends NotificationOptions {
-        vibrate?: number[];
-        requireInteraction?: boolean;
-      }
-
-      const finalOptions: ExtendedOptions = {
+      const finalOptions: NotificationOptions = {
         icon: '/pwa-192x192.png',
         badge: '/masked-icon.svg',
         vibrate: options?.isTrafficAlert ? [200, 100, 200, 100, 200] : [100], // Long vibration for alerts
         requireInteraction: options?.isTrafficAlert, // Stays until clicked
         tag: options?.tag || 'general',
-        ...options,
+        ...(options || {}),
       };
 
       // Use Service Worker if available (for better background handling)

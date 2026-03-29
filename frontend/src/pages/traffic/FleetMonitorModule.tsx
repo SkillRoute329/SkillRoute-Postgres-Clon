@@ -107,14 +107,22 @@ export default function FleetMonitorModule() {
         if (!res.ok) return;
         const data = await res.json();
 
-        const list: VehiculoEnMapa[] = data.map((b: any) => ({
-          id: `comp-${b.linea}-${b.interno}`,
-          empresa: b.empresa || 'Competencia',
-          codigoLinea: b.linea,
-          lat: b.latitud,
-          lng: b.longitud,
-          updatedAtMs: Date.now(),
-        }));
+        const list: VehiculoEnMapa[] = data.map(
+          (b: {
+            linea: string;
+            interno: string;
+            empresa?: string;
+            latitud: number;
+            longitud: number;
+          }) => ({
+            id: `comp-${b.linea}-${b.interno}`,
+            empresa: b.empresa || 'Competencia',
+            codigoLinea: b.linea,
+            lat: b.latitud,
+            lng: b.longitud,
+            updatedAtMs: Date.now(),
+          }),
+        );
         setCompetidores(list);
       } catch (e) {
         console.error('Competitor Fetch Error', e);
@@ -163,12 +171,11 @@ export default function FleetMonitorModule() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 relative w-full z-[1]" style={{ minHeight: 280 }}>
+      <div className="flex-1 min-h-[280px] relative w-full z-[1]">
         <MapContainer
           center={MONTEVIDEO_CENTER}
           zoom={DEFAULT_ZOOM}
-          className="h-full w-full rounded-b-xl"
-          style={{ height: '100%', minHeight: 280 }}
+          className="h-full w-full rounded-b-xl min-h-[280px]"
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

@@ -35,7 +35,7 @@ const DigitalCartonEditorWrapper = ({
   onUpdate,
 }: {
   serviceData: ServiceData;
-  onUpdate: (d: any) => void;
+  onUpdate: (d: ServiceDefinitionData) => void;
 }) => {
   // Transform once on load
   const initialData: ServiceDefinitionData = useMemo(() => {
@@ -46,7 +46,12 @@ const DigitalCartonEditorWrapper = ({
       isStop: true,
     }));
 
-    let rows: any[] = [];
+    let rows: Array<{
+      id: string;
+      startTime?: string;
+      serviceNumber: string;
+      times: Record<string, string>;
+    }> = [];
     if (serviceData.fullSchedule && serviceData.fullSchedule.length > 0) {
       // Map exact matrix
       rows = serviceData.fullSchedule.map((trip, idx) => {
@@ -103,6 +108,7 @@ const DigitalCartonEditorWrapper = ({
 interface AnalysisResult {
   type: 'CARTON' | 'BOLETIN' | 'DAILY' | 'UNKNOWN' | 'JSON_READY';
   count: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   preview: any[];
   message: string;
 }
@@ -233,7 +239,9 @@ const DataIngestion = () => {
         type: 'UNKNOWN',
         count: 0,
         preview: [],
-        message: 'Error al procesar archivo en navegador: ' + (error as any).message,
+        message:
+          'Error al procesar archivo en navegador: ' +
+          (error instanceof Error ? error.message : String(error)),
       });
     } finally {
       setUploading(false);
@@ -272,8 +280,11 @@ const DataIngestion = () => {
             type: 'OFFICIAL_MATRIX',
           });
           toast.success('Archivo publicado correctamente', { id: toastId });
-        } catch (e: any) {
-          toast.error('Error al subir archivo a nube: ' + e.message, { id: toastId });
+        } catch (e: unknown) {
+          toast.error(
+            'Error al subir archivo a nube: ' + (e instanceof Error ? e.message : String(e)),
+            { id: toastId },
+          );
           // We continue to Ingestion even if Cloud Upload fails?
           // Let's stop if critical? No, allow Partial success.
         }
@@ -302,7 +313,7 @@ const DataIngestion = () => {
       }
     } catch (error) {
       console.error(error);
-      alert('Error crítico de subida: ' + (error as any).message);
+      alert('Error crítico de subida: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setUploading(false);
     }
@@ -323,7 +334,7 @@ const DataIngestion = () => {
         a.click();
         a.remove();
       })
-      .catch((e) => alert('Error descargando reporte'));
+      .catch((_e) => alert('Error descargando reporte'));
   };
 
   const resetSimulation = async () => {
@@ -407,9 +418,10 @@ const DataIngestion = () => {
         </button>
         {syncProgress && (
           <div className="mt-3 h-2 bg-slate-700 rounded-full overflow-hidden">
+            <style>{`#sync-progress-bar { width: ${(syncProgress.current / syncProgress.total) * 100}%; }`}</style>
             <div
+              id="sync-progress-bar"
               className="h-full bg-primary-500 transition-all duration-300"
-              style={{ width: `${(syncProgress.current / syncProgress.total) * 100}%` }}
             />
           </div>
         )}
@@ -463,9 +475,10 @@ const DataIngestion = () => {
         </div>
         {stmProgress && (
           <div className="mt-3 h-2 bg-slate-700 rounded-full overflow-hidden">
+            <style>{`#stm-progress-bar { width: ${(stmProgress.written / stmProgress.total) * 100}%; }`}</style>
             <div
+              id="stm-progress-bar"
               className="h-full bg-amber-500 transition-all duration-300"
-              style={{ width: `${(stmProgress.written / stmProgress.total) * 100}%` }}
             />
           </div>
         )}
@@ -527,7 +540,7 @@ const DataIngestion = () => {
                 />
               </div>
             ) : (
-              <div className="w-full overflow-x-auto shadow-sm rounded-lg bg-slate-900 rounded-xl p-4 text-left">
+              <div className="w-full overflow-x-auto shadow-sm bg-slate-900 rounded-xl p-4 text-left">
                 <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">
                   Vista Previa (mostrando {analysis.preview.length} de {analysis.count} — se
                   ingestarán todos)
@@ -550,7 +563,7 @@ const DataIngestion = () => {
                       <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/50">
                         {Object.entries(row)
                           .slice(0, 8)
-                          .map(([key, val], j) => (
+                          .map(([_key, val], j) => (
                             <td key={j} className="p-2 truncate max-w-[200px]">
                               {String(val)}
                             </td>
@@ -571,7 +584,11 @@ const DataIngestion = () => {
                   <select
                     className="w-full bg-slate-900 text-white p-2 rounded border border-slate-600 outline-none"
                     value={importMode}
-                    onChange={(e) => setImportMode(e.target.value as any)}
+                    onChange={(e) =>
+                      setImportMode(e.target.value as 'AUTO' | 'ROTATION' | 'CARTON')
+                    }
+                    title="Modo de importación"
+                    aria-label="Modo de importación"
                   >
                     <option value="AUTO">Automático</option>
                     <option value="ROTATION">Rotación</option>
@@ -588,6 +605,8 @@ const DataIngestion = () => {
                       className="w-full bg-slate-900 text-white p-2 rounded border border-slate-600 outline-none"
                       value={selectedDate}
                       onChange={(e) => setSelectedDate(e.target.value)}
+                      title="Fecha de operación"
+                      aria-label="Fecha de operación"
                     />
                   </div>
                 )}
@@ -622,8 +641,12 @@ const DataIngestion = () => {
                     </label>
                     <select
                       value={uploadArea}
-                      onChange={(e) => setUploadArea(e.target.value as any)}
+                      onChange={(e) =>
+                        setUploadArea(e.target.value as 'TRAFFIC' | 'FLEET' | 'RRHH')
+                      }
                       className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-white"
+                      title="Área de publicación"
+                      aria-label="Área de publicación"
                     >
                       <option value="TRAFFIC">Tránsito (Matriz Operativa)</option>
                       <option value="FLEET">Flota (Inventario)</option>
