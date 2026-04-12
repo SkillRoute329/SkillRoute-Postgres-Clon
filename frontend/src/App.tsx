@@ -6,10 +6,22 @@ import DashboardLayout from './layouts/DashboardLayout';
 import LoginScreen from './pages/LoginScreen';
 import { ToastProvider } from './components/ToastProvider';
 import { VersionGuard } from './components/VersionGuard';
-import { CloudUploadTest } from './components/CloudUploadTest';
 
-import { SystemMonitor } from './components/SystemMonitor';
+// Lazy-loaded to keep the initial bundle small
+const CloudUploadTest = lazy(() =>
+  import('./components/CloudUploadTest').then((m) => ({ default: m.CloudUploadTest })),
+);
+const SystemMonitor = lazy(() =>
+  import('./components/SystemMonitor').then((m) => ({ default: m.SystemMonitor })),
+);
+
 import { SystemIntegrity } from './services/SystemIntegrity';
+import { usePushNotifications } from './hooks/usePushNotifications';
+
+const PushNotificationInit = () => {
+  usePushNotifications();
+  return null;
+};
 
 // Native Plugins
 import { Network } from '@capacitor/network';
@@ -22,6 +34,7 @@ const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminBalances = lazy(() => import('./pages/admin/AdminBalances'));
 const AdminRRHH = lazy(() => import('./pages/admin/AdminRRHH'));
 const RotationManager = lazy(() => import('./pages/admin/rrhh/RotationManager'));
+const FeriadosPage = lazy(() => import('./pages/admin/rrhh/FeriadosPage'));
 const AdminWhatsApp = lazy(() => import('./pages/admin/AdminWhatsApp'));
 const AdminWhatsAppSettings = lazy(() => import('./pages/admin/AdminWhatsAppSettings'));
 const MaintenanceDashboard = lazy(() => import('./pages/admin/MaintenanceDashboard'));
@@ -56,7 +69,7 @@ const CartonManager = lazy(() => import('./pages/traffic/CartonManager'));
 const CartonDetail = lazy(() => import('./pages/traffic/CartonDetail'));
 const NavigationModule = lazy(() => import('./pages/traffic/NavigationModule'));
 const FleetMonitorModule = lazy(() => import('./pages/traffic/FleetMonitorModule'));
-const DailyListManager = lazy(() => import('./pages/traffic/DailyListManager'));
+const TerminalListero = lazy(() => import('./pages/traffic/TerminalListero'));
 const CEODashboard = lazy(() => import('./pages/traffic/CEODashboard'));
 const TalentCenter = lazy(() => import('./pages/talento/TalentCenter'));
 const AdminStressTest = lazy(() => import('./pages/admin/AdminStressTest'));
@@ -65,6 +78,29 @@ const RoadAlertsPage = lazy(() => import('./pages/alerts/RoadAlertsPage'));
 const BRTCorridorDashboard = lazy(() => import('./pages/traffic/BRTCorridorDashboard'));
 const EVChargeOptimizer = lazy(() => import('./pages/fleet/EVChargeOptimizer'));
 const ComplianceHub = lazy(() => import('./pages/admin/ComplianceHub'));
+const ServiceCategoryPage = lazy(() => import('./pages/admin/ServiceCategoryPage'));
+
+// Restored Orphaned Pages (were on disk but missing routes)
+const AdminBoletines = lazy(() => import('./pages/admin/AdminBoletines'));
+const AdminConfig = lazy(() => import('./pages/admin/AdminConfig'));
+const AdminOrganization = lazy(() => import('./pages/admin/AdminOrganization'));
+const AdminSetup = lazy(() => import('./pages/admin/AdminSetup'));
+const AdminShifts = lazy(() => import('./pages/admin/AdminShifts'));
+const BusNavigation = lazy(() => import('./pages/driver/BusNavigation'));
+const Distribution = lazy(() => import('./pages/operations/Distribution'));
+const RotationMatrix = lazy(() => import('./pages/traffic/RotationMatrix'));
+const VehicleCheck = lazy(() => import('./pages/fleet/VehicleCheck'));
+const CompetitorIntelligencePage = lazy(() => import('./pages/traffic/CompetitorIntelligencePage'));
+const DigitalAgentsModule = lazy(() => import('./pages/traffic/DigitalAgentsModule'));
+const OTPDashboard = lazy(() => import('./pages/traffic/OTPDashboard'));
+const IncidentCommandCenter = lazy(() => import('./pages/traffic/IncidentCommandCenter'));
+const EconomicProjectionsPage = lazy(() => import('./pages/traffic/EconomicProjectionsPage'));
+const ContingencyManagementPage = lazy(() => import('./pages/traffic/ContingencyManagementPage'));
+const OperationsIntelligenceHub = lazy(() => import('./pages/traffic/OperationsIntelligenceHub'));
+const LiveMapPage = lazy(() => import('./pages/traffic/LiveMapPage'));
+const ShadowRadar = lazy(() => import('./pages/traffic/ShadowRadar'));
+const StmScraperStatus = lazy(() => import('./pages/admin/StmScraperStatus'));
+
 
 // Loading Component
 const PageLoader = () => (
@@ -116,7 +152,10 @@ function App() {
     <ErrorBoundary>
       <Router>
         <AuthProvider>
-          <SystemMonitor />
+          <PushNotificationInit />
+          <Suspense fallback={null}>
+            <SystemMonitor />
+          </Suspense>
           <ToastProvider>
             <VersionGuard />
             {isOffline && <OfflineBanner />}
@@ -146,6 +185,7 @@ function App() {
 
                     <Route path="admin/rrhh" element={<AdminRRHH />} />
                     <Route path="admin/rrhh/rotation" element={<RotationManager />} />
+                    <Route path="admin/rrhh/feriados" element={<FeriadosPage />} />
                     <Route path="admin/communications" element={<AdminWhatsApp />} />
                     <Route path="admin/whatsapp-bot" element={<AdminWhatsAppSettings />} />
                     <Route path="admin/maintenance" element={<MaintenanceDashboard />} />
@@ -156,6 +196,12 @@ function App() {
                     <Route path="admin/employees" element={<Employees />} />
                     <Route path="admin/stress-test" element={<AdminStressTest />} />
                     <Route path="admin/params" element={<SystemParamsPage />} />
+                    <Route path="admin/service-categories" element={<ServiceCategoryPage />} />
+                    <Route path="admin/boletines" element={<AdminBoletines />} />
+                    <Route path="admin/config" element={<AdminConfig />} />
+                    <Route path="admin/organization" element={<AdminOrganization />} />
+                    <Route path="admin/setup" element={<AdminSetup />} />
+                    <Route path="admin/shifts" element={<AdminShifts />} />
 
                     {/* Super Admin Routes */}
                     <Route path="super-admin/tenants" element={<TenantsManager />} />
@@ -166,6 +212,7 @@ function App() {
                     {/* Fleet Management Routes */}
                     <Route path="fleet" element={<VehicleList />} />
                     <Route path="fleet/inspect/:id" element={<InspectionForm />} />
+                    <Route path="fleet/check" element={<VehicleCheck />} />
 
                     {/* Universal Resource Manager Route */}
                     <Route path="universal/:entity" element={<UniversalPage />} />
@@ -183,9 +230,19 @@ function App() {
                     />
                     <Route path="traffic/navigation" element={<NavigationModule />} />
                     <Route path="traffic/fleet-monitor" element={<FleetMonitorModule />} />
-                    <Route path="traffic/daily-list" element={<DailyListManager />} />
+                    <Route path="traffic/listero" element={<TerminalListero />} />
                     <Route path="traffic/ceo" element={<CEODashboard />} />
+                    <Route path="traffic/rotation-matrix" element={<RotationMatrix />} />
+                    <Route path="traffic/intelligence" element={<OperationsIntelligenceHub />} />
+                    <Route path="traffic/live-map" element={<LiveMapPage />} />
+                    <Route path="traffic/shadow-radar" element={<ShadowRadar />} />
+                    <Route path="traffic/scraper-status" element={<StmScraperStatus />} />
+                    <Route path="traffic/agents" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
                     <Route path="traffic/brt" element={<BRTCorridorDashboard />} />
+                    <Route path="traffic/otp" element={<OTPDashboard />} />
+                    <Route path="traffic/incidents" element={<IncidentCommandCenter />} />
+                    <Route path="traffic/projections" element={<EconomicProjectionsPage />} />
+                    <Route path="traffic/contingency" element={<ContingencyManagementPage />} />
                     <Route path="fleet/ev-charge" element={<EVChargeOptimizer />} />
                     <Route path="admin/compliance" element={<ComplianceHub />} />
                     <Route path="talento" element={<TalentCenter />} />
@@ -201,6 +258,10 @@ function App() {
                     <Route path="driver/mi-servicio" element={<DriverServiceView />} />
                     <Route path="driver/navigation" element={<DriverNavigation />} />
                     <Route path="driver/report" element={<NewReport />} />
+                    <Route path="driver/bus-navigation" element={<BusNavigation />} />
+
+                    {/* Operations Routes */}
+                    <Route path="operations/distribution" element={<Distribution />} />
 
                     {/* Fallback for dead/removed routes (Critical Fix) */}
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -20,9 +20,16 @@ import {
   ClipboardList,
   Radio,
   ListOrdered,
-  Train,
-  Zap,
+  Bot,
   Shield,
+  Tag,
+  RefreshCw,
+  Clipboard,
+  Siren,
+  Search,
+  Zap,
+  MapPin,
+  Radar,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
@@ -33,7 +40,7 @@ interface SidebarProps {
 
 const Sidebar = ({ onClose }: SidebarProps) => {
   const location = useLocation();
-  const { logout, user } = useAuth();
+  const { logout, user: _user } = useAuth();
 
   const handleNavClick = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -43,46 +50,102 @@ const Sidebar = ({ onClose }: SidebarProps) => {
 
   const menuGroups = [
     {
-      title: 'Departamento de Tránsito',
+      title: 'Operaciones Diarias',
       items: [
         { path: '/dashboard/traffic/service-matrix', label: 'Matriz de Servicio', icon: Calendar },
-        { path: '/dashboard/traffic/inspector-control', label: 'Control Inspectores', icon: Activity },
-        { path: '/dashboard/traffic/inspector-capture', label: 'Captura Inspector (Móvil)', icon: Smartphone },
         { path: '/dashboard/traffic/cartons', label: 'Gestor de Cartones', icon: ClipboardList },
-        { path: '/dashboard/traffic/daily-list', label: 'Lista Diaria (Listero)', icon: ListOrdered },
+        { path: '/dashboard/traffic/listero', label: 'Terminal Listero', icon: Users },
         { path: '/dashboard/traffic/navigation', label: 'Navegador UCOT', icon: Map },
-        { path: '/dashboard/traffic/fleet-monitor', label: 'Monitoreo de Flota', icon: Radio },
-        { path: '/dashboard/traffic/statistics', label: 'Estadísticas Inspectores', icon: BarChart3 },
-        { path: '/dashboard/traffic/analytics', label: 'Analítica de Servicio', icon: BarChart3 },
-        { path: '/dashboard/traffic/ceo', label: 'Dashboard CEO', icon: BarChart3 },
-        { path: '/dashboard/traffic/brt', label: 'Proyecto BRT 2029', icon: Train },
       ],
     },
     {
-      title: 'Gestión de Flota',
+      title: 'Control y Monitoreo',
+      items: [
+        { path: '/dashboard/traffic/fleet-monitor', label: 'Monitoreo de Flota', icon: Radio },
+        { path: '/dashboard/traffic/otp', label: 'Puntualidad OTP', icon: BarChart3 },
+        { path: '/dashboard/traffic/incidents', label: 'Centro de Incidencias', icon: Siren },
+        {
+          path: '/dashboard/traffic/inspector-control',
+          label: 'Control Inspectores',
+          icon: Activity,
+        },
+        {
+          path: '/dashboard/traffic/inspector-capture',
+          label: 'Captura Inspector (Móvil)',
+          icon: Smartphone,
+        },
+      ],
+    },
+    {
+      title: 'Flota y Mantenimiento',
       items: [
         { path: '/dashboard/fleet', label: 'Coches / Inventario', icon: Bus },
         { path: '/dashboard/admin/maintenance', label: 'Mantenimiento', icon: Wrench },
+        { path: '/dashboard/fleet/check', label: 'Revisión Vehicular', icon: Clipboard },
+        {
+          path: '/dashboard/admin/service-categories',
+          label: 'Asignación de Servicios',
+          icon: Tag,
+        },
         { path: '/dashboard/alerts', label: 'Alertas de Vía', icon: AlertTriangle },
-        { path: '/dashboard/fleet/ev-charge', label: 'Carga Eléctrica', icon: Zap },
       ],
     },
     {
-      title: 'Recursos Humanos (RRHH)',
+      title: 'Recursos Humanos',
       items: [
         { path: '/dashboard/admin/rrhh', label: 'Gestión de Personal', icon: Users },
-        { path: '/dashboard/talento', label: 'Centro de Talento', icon: Users },
-        { path: '/dashboard/admin/rrhh/rotation', label: 'Motor de Rotación', icon: Calendar },
-        { path: '/dashboard/admin/employees', label: 'Fichas Médicas/CI', icon: Wallet },
+        { path: '/dashboard/admin/employees', label: 'Fichas Médicas / CI', icon: Wallet },
+        { path: '/dashboard/admin/shifts', label: 'Gestión de Turnos', icon: Calendar },
+        {
+          path: '/dashboard/traffic/rotation-matrix',
+          label: 'Matriz de Rotación',
+          icon: RefreshCw,
+        },
+        { path: '/dashboard/admin/rrhh/feriados', label: 'Feriados', icon: Calendar },
       ],
     },
     {
-      title: 'Soporte y Salud',
+      title: 'Inteligencia Operativa',
       items: [
-        { path: '/dashboard/admin/maintenance-system', label: 'Estado del Sistema', icon: ShieldCheck },
+        {
+          path: '/dashboard/traffic/statistics',
+          label: 'Estadísticas Inspectores',
+          icon: BarChart3,
+        },
+        {
+          path: '/dashboard/traffic/live-map',
+          label: '🔴 Mapa en Vivo STM',
+          icon: MapPin,
+        },
+        {
+          path: '/dashboard/traffic/intelligence',
+          label: 'Centro de Inteligencia',
+          icon: Bot,
+        },
+        {
+          path: '/dashboard/traffic/shadow-radar',
+          label: 'Radar Sombra (Táctico)',
+          icon: Radio,
+        },
+        {
+          path: '/dashboard/traffic/scraper-status',
+          label: 'Monitor STM (Ingesta)',
+          icon: Activity,
+        },
+      ],
+    },
+    {
+      title: 'Administración',
+      items: [
         { path: '/dashboard/admin/ingestion', label: 'Ingesta de Datos', icon: FileText },
-        { path: '/dashboard/admin/params', label: 'Parámetros del Sistema', icon: Settings },
+        { path: '/dashboard/admin/setup', label: 'Setup Inicial Maestro', icon: Zap },
+        {
+          path: '/dashboard/admin/maintenance-system',
+          label: 'Estado del Sistema',
+          icon: ShieldCheck,
+        },
         { path: '/dashboard/admin/compliance', label: 'Cumplimiento MTOP/IMM', icon: Shield },
+        { path: '/dashboard/admin/config', label: 'Configuración', icon: Settings },
       ],
     },
     {
@@ -101,12 +164,10 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           G
         </div>
         <div>
-          <h1 className="text-white font-black tracking-tighter text-lg leading-none">
-            Gestión UCOT
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-red-500 to-orange-400 bg-clip-text text-transparent flex items-center gap-3">
+            <Radar className={`w-8 h-8 text-red-500 animate-spin-slow`} style={{ animationDuration: '3s' }} />
+            Centro de Mando: Radar Táctico
           </h1>
-          <span className="text-[10px] text-primary-500 font-bold uppercase tracking-widest">
-            Plataforma 2.0
-          </span>
         </div>
       </div>
 
