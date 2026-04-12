@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import Sidebar from '../components/Sidebar';
 import NotificationsDropdown from '../components/NotificationsDropdown';
 import RoadAlertsWidget from '../components/RoadAlertsWidget';
+import RouteErrorBoundary from '../components/RouteErrorBoundary';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../config/firebase';
 import { getDoc, doc } from 'firebase/firestore';
@@ -36,9 +37,16 @@ const SystemStatus = () => {
       const lat = Date.now() - start;
       setLatency(lat);
       setStatus('online');
-    } catch (e) {
-      console.error('Health Check Failed:', e);
-      setStatus('offline');
+    } catch (e: any) {
+      if (e?.code === 'permission-denied') {
+        // Red está funcionando, el servidor respondió aunque haya bloqueado por reglas
+        const lat = Date.now() - start;
+        setLatency(lat);
+        setStatus('online');
+      } else {
+        console.error('Health Check Failed:', e);
+        setStatus('offline');
+      }
     }
   };
 
@@ -173,20 +181,22 @@ const DashboardLayout = () => {
           <div className="p-4 md:p-8 min-h-full flex flex-col flex-1 max-w-[100vw] w-full">
             <RoadAlertsWidget />
             <div className="flex-1 min-h-0 relative w-full max-w-full">
-              <Suspense
-                fallback={
-                  <div className="flex flex-col items-center justify-center p-12 text-slate-500">
-                    <Zap className="w-10 h-10 mb-4 animate-pulse text-primary-500" />
-                    <p className="text-xs font-black uppercase tracking-widest">
-                      Cargando Módulo...
-                    </p>
+              <RouteErrorBoundary module="Módulo">
+                <Suspense
+                  fallback={
+                    <div className="flex flex-col items-center justify-center p-12 text-slate-500">
+                      <Zap className="w-10 h-10 mb-4 animate-pulse text-primary-500" />
+                      <p className="text-xs font-black uppercase tracking-widest">
+                        Cargando Módulo...
+                      </p>
+                    </div>
+                  }
+                >
+                  <div className="h-full min-h-0 w-full max-w-full">
+                    <Outlet />
                   </div>
-                }
-              >
-                <div className="h-full min-h-0 w-full max-w-full">
-                  <Outlet />
-                </div>
-              </Suspense>
+                </Suspense>
+              </RouteErrorBoundary>
             </div>
           </div>
         </div>

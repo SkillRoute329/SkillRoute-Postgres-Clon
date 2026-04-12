@@ -6,6 +6,7 @@ import DashboardLayout from './layouts/DashboardLayout';
 import LoginScreen from './pages/LoginScreen';
 import { ToastProvider } from './components/ToastProvider';
 import { VersionGuard } from './components/VersionGuard';
+import PrivateRoute from './components/PrivateRoute';
 
 // Lazy-loaded to keep the initial bundle small
 const CloudUploadTest = lazy(() =>
@@ -179,32 +180,31 @@ function App() {
                   <Route path="/dashboard" element={<DashboardLayout />}>
                     <Route index element={<DashboardHome />} />
 
-                    {/* Admin Routes */}
-                    <Route path="admin/users" element={<AdminUsers />} />
-                    <Route path="admin/balances" element={<AdminBalances />} />
-
-                    <Route path="admin/rrhh" element={<AdminRRHH />} />
-                    <Route path="admin/rrhh/rotation" element={<RotationManager />} />
-                    <Route path="admin/rrhh/feriados" element={<FeriadosPage />} />
-                    <Route path="admin/communications" element={<AdminWhatsApp />} />
-                    <Route path="admin/whatsapp-bot" element={<AdminWhatsAppSettings />} />
-                    <Route path="admin/maintenance" element={<MaintenanceDashboard />} />
-                    <Route path="admin/maintenance-system" element={<AppMaintenance />} />
-                    <Route path="admin/ingestion" element={<DataIngestion />} />
-                    <Route path="admin/cartones" element={<AdminCartones />} />
-                    <Route path="admin/users/create" element={<UserManagement />} />
-                    <Route path="admin/employees" element={<Employees />} />
-                    <Route path="admin/stress-test" element={<AdminStressTest />} />
-                    <Route path="admin/params" element={<SystemParamsPage />} />
-                    <Route path="admin/service-categories" element={<ServiceCategoryPage />} />
-                    <Route path="admin/boletines" element={<AdminBoletines />} />
-                    <Route path="admin/config" element={<AdminConfig />} />
-                    <Route path="admin/organization" element={<AdminOrganization />} />
-                    <Route path="admin/setup" element={<AdminSetup />} />
-                    <Route path="admin/shifts" element={<AdminShifts />} />
+                    {/* Admin Routes — require ADMIN role */}
+                    <Route path="admin/users" element={<PrivateRoute roles={['ADMIN']}><AdminUsers /></PrivateRoute>} />
+                    <Route path="admin/balances" element={<PrivateRoute roles={['ADMIN']}><AdminBalances /></PrivateRoute>} />
+                    <Route path="admin/rrhh" element={<PrivateRoute roles={['ADMIN','RRHH']}><AdminRRHH /></PrivateRoute>} />
+                    <Route path="admin/rrhh/rotation" element={<PrivateRoute roles={['ADMIN','RRHH']}><RotationManager /></PrivateRoute>} />
+                    <Route path="admin/rrhh/feriados" element={<PrivateRoute roles={['ADMIN','RRHH']}><FeriadosPage /></PrivateRoute>} />
+                    <Route path="admin/communications" element={<PrivateRoute roles={['ADMIN']}><AdminWhatsApp /></PrivateRoute>} />
+                    <Route path="admin/whatsapp-bot" element={<PrivateRoute roles={['ADMIN']}><AdminWhatsAppSettings /></PrivateRoute>} />
+                    <Route path="admin/maintenance" element={<PrivateRoute roles={['ADMIN','MANTENIMIENTO']}><MaintenanceDashboard /></PrivateRoute>} />
+                    <Route path="admin/maintenance-system" element={<PrivateRoute roles={['ADMIN']}><AppMaintenance /></PrivateRoute>} />
+                    <Route path="admin/ingestion" element={<PrivateRoute roles={['ADMIN']}><DataIngestion /></PrivateRoute>} />
+                    <Route path="admin/cartones" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><AdminCartones /></PrivateRoute>} />
+                    <Route path="admin/users/create" element={<PrivateRoute roles={['ADMIN']}><UserManagement /></PrivateRoute>} />
+                    <Route path="admin/employees" element={<PrivateRoute roles={['ADMIN','RRHH']}><Employees /></PrivateRoute>} />
+                    <Route path="admin/stress-test" element={<PrivateRoute roles={['ADMIN']}><AdminStressTest /></PrivateRoute>} />
+                    <Route path="admin/params" element={<PrivateRoute roles={['ADMIN']}><SystemParamsPage /></PrivateRoute>} />
+                    <Route path="admin/service-categories" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ServiceCategoryPage /></PrivateRoute>} />
+                    <Route path="admin/boletines" element={<PrivateRoute roles={['ADMIN']}><AdminBoletines /></PrivateRoute>} />
+                    <Route path="admin/config" element={<PrivateRoute roles={['ADMIN']}><AdminConfig /></PrivateRoute>} />
+                    <Route path="admin/organization" element={<PrivateRoute roles={['ADMIN']}><AdminOrganization /></PrivateRoute>} />
+                    <Route path="admin/setup" element={<PrivateRoute roles={['ADMIN']}><AdminSetup /></PrivateRoute>} />
+                    <Route path="admin/shifts" element={<PrivateRoute roles={['ADMIN','RRHH']}><AdminShifts /></PrivateRoute>} />
 
                     {/* Super Admin Routes */}
-                    <Route path="super-admin/tenants" element={<TenantsManager />} />
+                    <Route path="super-admin/tenants" element={<PrivateRoute roles={['SUPERADMIN']}><TenantsManager /></PrivateRoute>} />
 
                     {/* Alertas de Vía (menú Gestión de Flota) */}
                     <Route path="alerts" element={<RoadAlertsPage />} />
@@ -217,51 +217,51 @@ function App() {
                     {/* Universal Resource Manager Route */}
                     <Route path="universal/:entity" element={<UniversalPage />} />
 
-                    {/* Traffic Department Routes */}
-                    <Route path="traffic/service-matrix" element={<ServiceMatrix />} />
-                    <Route path="traffic/inspector-control" element={<InspectorDashboard />} />
-                    <Route path="traffic/inspector-capture" element={<InspectorCapture />} />
-                    <Route path="traffic/statistics" element={<ServiceStatistics />} />
-                    <Route path="traffic/analytics" element={<ServiceAnalytics />} />
-                    <Route path="traffic/cartons" element={<CartonManager />} />
+                    {/* Traffic Department Routes — require TRAFFIC or ADMIN */}
+                    <Route path="traffic/service-matrix" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO','INSPECTOR']}><ServiceMatrix /></PrivateRoute>} />
+                    <Route path="traffic/inspector-control" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><InspectorDashboard /></PrivateRoute>} />
+                    <Route path="traffic/inspector-capture" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><InspectorCapture /></PrivateRoute>} />
+                    <Route path="traffic/statistics" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><ServiceStatistics /></PrivateRoute>} />
+                    <Route path="traffic/analytics" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ServiceAnalytics /></PrivateRoute>} />
+                    <Route path="traffic/cartons" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><CartonManager /></PrivateRoute>} />
                     <Route
                       path="traffic/cartons/detail/:lineId/:serviceId"
-                      element={<CartonDetail />}
+                      element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><CartonDetail /></PrivateRoute>}
                     />
-                    <Route path="traffic/navigation" element={<NavigationModule />} />
-                    <Route path="traffic/fleet-monitor" element={<FleetMonitorModule />} />
-                    <Route path="traffic/listero" element={<TerminalListero />} />
-                    <Route path="traffic/ceo" element={<CEODashboard />} />
-                    <Route path="traffic/rotation-matrix" element={<RotationMatrix />} />
-                    <Route path="traffic/intelligence" element={<OperationsIntelligenceHub />} />
-                    <Route path="traffic/live-map" element={<LiveMapPage />} />
-                    <Route path="traffic/shadow-radar" element={<ShadowRadar />} />
-                    <Route path="traffic/scraper-status" element={<StmScraperStatus />} />
+                    <Route path="traffic/navigation" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO','DRIVER','CONDUCTOR']}><NavigationModule /></PrivateRoute>} />
+                    <Route path="traffic/fleet-monitor" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><FleetMonitorModule /></PrivateRoute>} />
+                    <Route path="traffic/listero" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><TerminalListero /></PrivateRoute>} />
+                    <Route path="traffic/ceo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CEODashboard /></PrivateRoute>} />
+                    <Route path="traffic/rotation-matrix" element={<PrivateRoute roles={['ADMIN','TRAFFIC','RRHH']}><RotationMatrix /></PrivateRoute>} />
+                    <Route path="traffic/intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><OperationsIntelligenceHub /></PrivateRoute>} />
+                    <Route path="traffic/live-map" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><LiveMapPage /></PrivateRoute>} />
+                    <Route path="traffic/shadow-radar" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ShadowRadar /></PrivateRoute>} />
+                    <Route path="traffic/scraper-status" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><StmScraperStatus /></PrivateRoute>} />
                     <Route path="traffic/agents" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
-                    <Route path="traffic/brt" element={<BRTCorridorDashboard />} />
-                    <Route path="traffic/otp" element={<OTPDashboard />} />
-                    <Route path="traffic/incidents" element={<IncidentCommandCenter />} />
-                    <Route path="traffic/projections" element={<EconomicProjectionsPage />} />
-                    <Route path="traffic/contingency" element={<ContingencyManagementPage />} />
+                    <Route path="traffic/brt" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><BRTCorridorDashboard /></PrivateRoute>} />
+                    <Route path="traffic/otp" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><OTPDashboard /></PrivateRoute>} />
+                    <Route path="traffic/incidents" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><IncidentCommandCenter /></PrivateRoute>} />
+                    <Route path="traffic/projections" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><EconomicProjectionsPage /></PrivateRoute>} />
+                    <Route path="traffic/contingency" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ContingencyManagementPage /></PrivateRoute>} />
                     <Route path="fleet/ev-charge" element={<EVChargeOptimizer />} />
                     <Route path="admin/compliance" element={<ComplianceHub />} />
                     <Route path="talento" element={<TalentCenter />} />
 
-                    {/* User Routes */}
-                    <Route path="create-shift" element={<CreateShift />} />
-                    <Route path="market" element={<Marketplace />} />
-                    <Route path="abl" element={<ABLPage />} />
-                    <Route path="abl/penalizations" element={<PenalizationsPage />} />
-                    <Route path="my-shifts" element={<MyShifts />} />
-                    <Route path="my-balance" element={<MyBalance />} />
-                    <Route path="driver/schedule" element={<DriverSchedule />} />
-                    <Route path="driver/mi-servicio" element={<DriverServiceView />} />
-                    <Route path="driver/navigation" element={<DriverNavigation />} />
-                    <Route path="driver/report" element={<NewReport />} />
-                    <Route path="driver/bus-navigation" element={<BusNavigation />} />
+                    {/* User Routes — require login */}
+                    <Route path="create-shift" element={<PrivateRoute><CreateShift /></PrivateRoute>} />
+                    <Route path="market" element={<PrivateRoute><Marketplace /></PrivateRoute>} />
+                    <Route path="abl" element={<PrivateRoute roles={['ADMIN','TRAFFIC','ABL']}><ABLPage /></PrivateRoute>} />
+                    <Route path="abl/penalizations" element={<PrivateRoute roles={['ADMIN','TRAFFIC','ABL']}><PenalizationsPage /></PrivateRoute>} />
+                    <Route path="my-shifts" element={<PrivateRoute><MyShifts /></PrivateRoute>} />
+                    <Route path="my-balance" element={<PrivateRoute><MyBalance /></PrivateRoute>} />
+                    <Route path="driver/schedule" element={<PrivateRoute roles={['ADMIN','DRIVER','CONDUCTOR']}><DriverSchedule /></PrivateRoute>} />
+                    <Route path="driver/mi-servicio" element={<PrivateRoute roles={['ADMIN','DRIVER','CONDUCTOR']}><DriverServiceView /></PrivateRoute>} />
+                    <Route path="driver/navigation" element={<PrivateRoute roles={['ADMIN','DRIVER','CONDUCTOR']}><DriverNavigation /></PrivateRoute>} />
+                    <Route path="driver/report" element={<PrivateRoute roles={['ADMIN','DRIVER','CONDUCTOR']}><NewReport /></PrivateRoute>} />
+                    <Route path="driver/bus-navigation" element={<PrivateRoute roles={['ADMIN','DRIVER','CONDUCTOR']}><BusNavigation /></PrivateRoute>} />
 
                     {/* Operations Routes */}
-                    <Route path="operations/distribution" element={<Distribution />} />
+                    <Route path="operations/distribution" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><Distribution /></PrivateRoute>} />
 
                     {/* Fallback for dead/removed routes (Critical Fix) */}
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
