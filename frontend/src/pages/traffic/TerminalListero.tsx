@@ -38,14 +38,18 @@ import {
   CochePersonalService,
   CorrelativoService,
   calcularFactibilidadCorrelativo,
+  ProgramacionSemanalService,
+  esParaliza,
+  esNocturno,
 } from '../../services/firestore';
 import { ProgramacionDiariaService } from '../../services/firestore/programacionDiaria';
 import { SystemConfigService } from '../../services/firestore/systemConfig';
 import type { User, Vehicle } from '../../services/firestore/types';
 import type { ServicioEstadoRecord } from '../../services/firestore/servicioEstado';
 import type { ProgramacionDiariaRecord } from '../../services/firestore/programacionDiaria';
-import type { CochePersonal } from '../../services/firestore/cochePersonal';
+import type { CochePersonal, PersonalAsignado } from '../../services/firestore/cochePersonal';
 import type { CorrelativoRequest, TurnoCorrelativo } from '../../services/firestore/correlativo';
+import type { ProgramacionSemanalRecord, DistribucionCoche } from '../../services/firestore/programacionSemanal';
 import { validateAssignment } from '../../utils/syndicateRules';
 import { computeSemaforo } from '../../utils/semaforoListero';
 import { reportarAveria } from '../../services/assignmentService';
@@ -327,101 +331,452 @@ function TabCoches({
   );
 }
 
-// ─── TAB: Semana ─────────────────────────────────────────────────────────────
+// ─── TAB: Semana (Informe de Tránsito) ───────────────────────────────────────
 
-const DIAS_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const DIAS_SEMANA_FULL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const DIAS_SEMANA_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
-function TabSemana({
-  coches,
-  programacion,
-  users,
-  baseDate,
+/** Celda de servicio individual en el informe */
+function CeldaServicio({
+  dist,
+  onClick,
 }: {
-  coches: CochePersonal[];
-  programacion: ProgramacionDiariaRecord[];
-  users: User[];
-  baseDate: string;
+  dist: DistribucionCoche;
+  onClick?: () => void;
 }) {
-  const weekDates = getWeekDates(baseDate);
-  const userMap = new Map(users.map((u) => [String(u.uid || u.id), u]));
-  const today = todayISO();
+  const paraliza = esParaliza(dist.servicio);
+  const nocturno = esNocturno(dist.servicio);
 
-  // Índice: cocheInternalNumber → fecha → registros
-  const idx = new Map<string, Map<string, ProgramacionDiariaRecord[]>>();
-  for (const r of programacion) {
-    // ProgramacionDiariaRecord uses 'vehiculo' as the coche number
-    const coche = String(r.vehiculo || '');
-    const fecha = String(r.date || '');
-    if (!coche || !fecha) continue;
-    if (!idx.has(coche)) idx.set(coche, new Map());
-    const byFecha = idx.get(coche)!;
-    if (!byFecha.has(fecha)) byFecha.set(fecha, []);
-    byFecha.get(fecha)!.push(r);
-  }
-
-  const getConductorName = (r: ProgramacionDiariaRecord) => {
-    const uid = String(r.conductor || '');
-    if (!uid) return '—';
-    const u = userMap.get(uid);
-    if (u) return resolveUserName(u as Parameters<typeof resolveUserName>[0]);
-    return uid.slice(0, 8) + '…';
-  };
-
-  if (coches.length === 0) {
+  if (paraliza) {
     return (
-      <div className="text-center py-12 text-slate-500">
-        <Calendar className="w-10 h-10 mx-auto mb-2 opacity-30" />
-        <p>Configure coches para ver la grilla semanal.</p>
-      </div>
+      <button
+        onClick={onClick}
+        className="w-full text-left px-2 py-1 rounded bg-red-900/30 border border-red-700/40 text-red-400 font-black text-xs hover:bg-red-900/50 transition-colors"
+        title="Coche paralizado — click para ver conductores en lista"
+      >
+        Paraliza
+      </button>
     );
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs border-collapse">
-        <thead>
-          <tr className="border-b border-slate-800">
-            <th className="text-left px-3 py-2 text-slate-500 font-black uppercase tracking-widest w-20 shrink-0">
-              Coche
-            </th>
-            {weekDates.map((d, i) => (
-              <th
-                key={d}
-                className={`px-2 py-2 text-center font-black uppercase tracking-widest min-w-[80px] ${d === today ? 'text-primary-400' : 'text-slate-500'}`}
-              >
-                {DIAS_SEMANA[i]}
-                <div className="text-[10px] font-normal text-slate-600 mt-0.5">{d.slice(5)}</div>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {coches.map((coche) => (
-            <tr key={coche.id || coche.cocheInternalNumber} className="border-b border-slate-900 hover:bg-slate-900/30">
-              <td className="px-3 py-2 font-black text-white">{coche.cocheInternalNumber}</td>
-              {weekDates.map((fecha) => {
-                const recs = idx.get(coche.cocheInternalNumber)?.get(fecha) || [];
-                return (
-                  <td key={fecha} className={`px-2 py-2 align-top ${fecha === today ? 'bg-primary-900/10' : ''}`}>
-                    {recs.length === 0 ? (
-                      <span className="text-slate-800">—</span>
-                    ) : (
-                      <div className="space-y-1">
-                        {recs.map((r, ri) => (
-                          <div key={ri} className="bg-slate-800 rounded px-1.5 py-0.5 text-slate-300">
-                            <div className="font-mono">{r.servicio}</div>
-                            <div className="text-slate-500 text-[10px]">{getConductorName(r)}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+    <div className={`px-2 py-1 rounded text-xs font-mono font-bold ${
+      nocturno
+        ? 'bg-indigo-900/30 border border-indigo-700/30 text-indigo-300'
+        : 'bg-slate-800 border border-slate-700 text-slate-200'
+    }`}>
+      {dist.servicio}
+    </div>
+  );
+}
+
+/** Modal: conductores que paralizan y necesitan reasignación */
+function ModalParaliza({
+  fecha,
+  cocheInternalNumber,
+  coches,
+  distribuciones,
+  users,
+  onClose,
+  onAsignar,
+}: {
+  fecha: string;
+  cocheInternalNumber: string;
+  coches: CochePersonal[];
+  distribuciones: DistribucionCoche[];
+  users: User[];
+  onClose: () => void;
+  onAsignar: (userId: string, turnoBase: 1 | 2, targetCocheNum: string, targetServicio: string) => Promise<void>;
+}) {
+  const cocheConfig = coches.find((c) => c.cocheInternalNumber === cocheInternalNumber);
+  const userMap = new Map(users.map((u) => [String(u.uid || u.id), u]));
+  const [saving, setSaving] = useState<string | null>(null);
+  const [asignaciones, setAsignaciones] = useState<Record<string, { coche: string; servicio: string }>>({});
+
+  if (!cocheConfig) {
+    return (
+      <Modal onClose={onClose}>
+        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+          <h3 className="font-bold text-white">Coche {cocheInternalNumber} — Paraliza</h3>
+          <button onClick={onClose}><X className="w-4 h-4 text-slate-400" /></button>
+        </div>
+        <div className="p-4 text-slate-400 text-sm">
+          Coche no configurado en el sistema. Configure el personal del coche en la pestaña Coches.
+        </div>
+      </Modal>
+    );
+  }
+
+  // Servicios disponibles hoy (no paralizan, mismo día)
+  const serviciosDisponibles = distribuciones.filter((d) => !esParaliza(d.servicio));
+
+  return (
+    <Modal onClose={onClose}>
+      <div className="p-4 border-b border-slate-700 flex items-center justify-between shrink-0">
+        <div>
+          <h3 className="font-bold text-white flex items-center gap-2">
+            <span className="w-6 h-6 bg-red-500/20 border border-red-500/30 rounded text-red-400 text-xs font-black flex items-center justify-center">P</span>
+            Coche {cocheInternalNumber} Paraliza
+          </h3>
+          <p className="text-xs text-slate-400 mt-0.5">{fecha} · Asignar conductores a otra unidad</p>
+        </div>
+        <button onClick={onClose}><X className="w-4 h-4 text-slate-400" /></button>
+      </div>
+      <div className="p-4 space-y-4 overflow-y-auto flex-1">
+        <p className="text-xs text-amber-400 bg-amber-900/20 border border-amber-700/30 rounded-lg px-3 py-2">
+          ⚠️ Regla UCOT: Respetar turno del conductor. T1 → T1 en nueva unidad, T2 → T2.
+        </p>
+
+        {cocheConfig.personal.map((p) => {
+          const u = userMap.get(p.userId);
+          const nombre = u ? resolveUserName(u as Parameters<typeof resolveUserName>[0]) : (p.fullName || p.internalNumber);
+          const isT1 = cocheConfig.turnoT1Actual === p.userId || p.turnoBase === 1;
+          const turnoLabel = isT1 ? 'T1 (Mañana)' : 'T2 (Tarde)';
+          const asig = asignaciones[p.userId];
+
+          return (
+            <div key={p.userId} className="bg-slate-800/50 border border-slate-700 rounded-xl p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0">
+                  {p.internalNumber}
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-bold text-white">{nombre}</div>
+                  <div className="text-xs text-slate-500">Int. {p.internalNumber} · <span className={isT1 ? 'text-blue-400' : 'text-amber-400'}>{turnoLabel}</span></div>
+                </div>
+                {asig && <Badge color="green">Asignado</Badge>}
+              </div>
+
+              {!asig && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-bold uppercase mb-1 block">Nueva Unidad</label>
+                    <select
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white"
+                      onChange={(e) => {
+                        const [coche, servicio] = e.target.value.split('|');
+                        setAsignaciones((prev) => ({ ...prev, [p.userId]: { coche, servicio } }));
+                      }}
+                      defaultValue=""
+                    >
+                      <option value="">— Coche disponible —</option>
+                      {serviciosDisponibles.map((d) => (
+                        <option key={d.cocheInternalNumber} value={`${d.cocheInternalNumber}|${d.servicio}`}>
+                          Coche {d.cocheInternalNumber} → {d.servicio}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      disabled={!asig && !asignaciones[p.userId] || saving === p.userId}
+                      onClick={async () => {
+                        const a = asignaciones[p.userId];
+                        if (!a) return;
+                        setSaving(p.userId);
+                        await onAsignar(p.userId, p.turnoBase, a.coche, a.servicio);
+                        setSaving(null);
+                        setAsignaciones((prev) => ({ ...prev, [p.userId]: a }));
+                      }}
+                      className="w-full flex items-center justify-center gap-1 bg-primary-600/20 hover:bg-primary-600/40 text-primary-400 border border-primary-600/30 rounded-lg px-2 py-1.5 text-xs font-bold transition-colors disabled:opacity-40"
+                    >
+                      {saving === p.userId ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserPlus className="w-3 h-3" />}
+                      Asignar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {asig && (
+                <div className="text-xs text-emerald-400 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Reasignado → Coche {asig.coche} · Servicio {asig.servicio}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="p-4 border-t border-slate-700 shrink-0">
+        <button onClick={onClose} className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg py-2 text-sm text-slate-300 font-bold transition-colors">
+          Cerrar
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function TabSemana({
+  coches,
+  users,
+  baseDate,
+  onDateChange,
+}: {
+  coches: CochePersonal[];
+  users: User[];
+  baseDate: string;
+  onDateChange: (d: string) => void;
+}) {
+  const weekDates = getWeekDates(baseDate);
+  const today = todayISO();
+
+  // State: one ProgramacionSemanalRecord per day of the week
+  const [semanaData, setSemanaData] = useState<Map<string, ProgramacionSemanalRecord>>(new Map());
+  const [loadingSemana, setLoadingSemana] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedFecha, setSelectedFecha] = useState<string | null>(null);
+  const [modalParaliza, setModalParaliza] = useState<{ fecha: string; coche: string } | null>(null);
+
+  // Input buffer for editing a day's distribution
+  const [editBuffer, setEditBuffer] = useState<DistribucionCoche[]>([]);
+  const [editFecha, setEditFecha] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Load week data
+  useEffect(() => {
+    setLoadingSemana(true);
+    const d = new Date(baseDate + 'T12:00:00');
+    const day = d.getDay() || 7;
+    const mon = new Date(d);
+    mon.setDate(d.getDate() - (day - 1));
+
+    const promises = weekDates.map((fecha) =>
+      ProgramacionSemanalService.getByFecha(fecha).then((r) => ({ fecha, r })),
+    );
+    Promise.all(promises).then((results) => {
+      const map = new Map<string, ProgramacionSemanalRecord>();
+      results.forEach(({ fecha, r }) => { if (r) map.set(fecha, r); });
+      setSemanaData(map);
+      setLoadingSemana(false);
+    });
+  }, [baseDate]);
+
+  const handleParalizaAsignar = async (
+    userId: string,
+    _turnoBase: 1 | 2,
+    targetCoche: string,
+    targetServicio: string,
+  ) => {
+    const fecha = selectedFecha || today;
+    // 1. Registrar asignación en ServicioEstado y ActiveAssignments
+    await ServicioEstadoService.setState(targetServicio, fecha, {
+      choferActual: userId,
+      cocheActual: targetCoche,
+      status: 'activo',
+    });
+    await ActiveAssignmentsService.recordAssignment(targetServicio, fecha, targetCoche, userId, {});
+    // 2. Cascada: si hay un coche paralizado en el modal, marcar su personal como enLista
+    if (modalParaliza) {
+      const cocheConfig = coches.find((c) => c.cocheInternalNumber === modalParaliza.coche);
+      if (cocheConfig?.id) {
+        const otrosUserIds = cocheConfig.personal
+          .filter((p) => p.userId !== userId)
+          .map((p) => p.userId);
+        if (otrosUserIds.length > 0) {
+          await CochePersonalService.marcarEnLista(cocheConfig.id, otrosUserIds);
+        }
+      }
+    }
+  };
+
+  const handleSaveDay = async () => {
+    if (!editFecha || editBuffer.length === 0) return;
+    setSaving(true);
+    const record = await ProgramacionSemanalService.save(editFecha, editBuffer);
+    setSemanaData((prev) => new Map(prev).set(editFecha, record));
+    setSaving(false);
+    setEditMode(false);
+    setEditBuffer([]);
+  };
+
+  // Build a quick lookup: fecha → {coche → servicio}
+  const servicioMap = new Map<string, Map<string, string>>();
+  semanaData.forEach((record, fecha) => {
+    const cocheMap = new Map<string, string>();
+    record.distribuciones.forEach((d) => {
+      cocheMap.set(d.cocheInternalNumber, d.servicio);
+    });
+    servicioMap.set(fecha, cocheMap);
+  });
+
+  // All coches appearing in any day of the week (from semanaData OR configured coches)
+  const allCocheNums = new Set<string>();
+  coches.forEach((c) => allCocheNums.add(c.cocheInternalNumber));
+  semanaData.forEach((r) => r.distribuciones.forEach((d) => allCocheNums.add(d.cocheInternalNumber)));
+  const sortedCoches = Array.from(allCocheNums).sort((a, b) => Number(a) - Number(b));
+
+  return (
+    <div className="space-y-3">
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          type="date"
+          value={baseDate}
+          onChange={(e) => onDateChange(e.target.value)}
+          className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white"
+        />
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded bg-red-900/50 border border-red-700/40 inline-block" />
+            Paraliza
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded bg-indigo-900/30 border border-indigo-700/30 inline-block" />
+            Nocturn
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded bg-slate-800 border border-slate-700 inline-block" />
+            Operativo
+          </span>
+        </div>
+        <div className="ml-auto flex gap-2">
+          {editMode ? (
+            <>
+              <button onClick={() => setEditMode(false)}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-slate-300 font-bold transition-colors">
+                Cancelar
+              </button>
+              <button onClick={handleSaveDay} disabled={saving}
+                className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 border border-primary-700 rounded-lg text-xs text-white font-bold transition-colors flex items-center gap-1">
+                {saving && <Loader2 className="w-3 h-3 animate-spin" />}
+                Guardar
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => { setEditMode(true); setEditFecha(today); setEditBuffer([]); }}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-slate-300 font-bold transition-colors flex items-center gap-1">
+              <PlusCircle className="w-3 h-3" />
+              Cargar Informe
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Edit form: paste/type the day's distribution */}
+      {editMode && (
+        <div className="bg-slate-900 border border-primary-700/30 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-black text-white">Cargar Informe de Tránsito</h4>
+            <input type="date" value={editFecha} onChange={(e) => setEditFecha(e.target.value)}
+              className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white" />
+          </div>
+          <p className="text-xs text-slate-500">
+            Ingrese las distribuciones en formato: <span className="font-mono text-slate-300">COCHE SERVICIO</span> (una por línea).
+            Ejemplo: <span className="font-mono text-slate-300">35 Paraliza</span> o <span className="font-mono text-slate-300">10 1079</span> o <span className="font-mono text-slate-300">21 Noc 1048</span>
+          </p>
+          <textarea
+            rows={10}
+            placeholder={"1 Paraliza\n2 1001\n3 1042\n10 1079\n21 Noc 1048\n..."}
+            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono placeholder-slate-600 resize-y"
+            onChange={(e) => {
+              const lines = e.target.value.split('\n').filter((l) => l.trim());
+              const dists: DistribucionCoche[] = [];
+              lines.forEach((line, i) => {
+                const parts = line.trim().split(/\s+/);
+                if (parts.length < 2) return;
+                const coche = parts[0];
+                const servicio = parts.slice(1).join(' ');
+                dists.push({ cocheInternalNumber: coche, servicio, orden: i });
+              });
+              setEditBuffer(dists);
+            }}
+          />
+          <div className="text-xs text-slate-500">
+            {editBuffer.length} coches · {editBuffer.filter((d) => esParaliza(d.servicio)).length} paralizan
+          </div>
+        </div>
+      )}
+
+      {/* Grid: Informe de Tránsito format */}
+      {loadingSemana ? (
+        <div className="flex items-center justify-center h-40">
+          <Loader2 className="w-6 h-6 animate-spin text-primary-400" />
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-slate-800">
+                <th className="text-left px-3 py-2 text-slate-500 font-black uppercase tracking-widest sticky left-0 bg-slate-950 z-10 w-16">
+                  Coche
+                </th>
+                {weekDates.map((fecha) => {
+                  const dayName = DIAS_SEMANA_SHORT[new Date(fecha + 'T12:00:00').getDay()];
+                  const isToday = fecha === today;
+                  const record = semanaData.get(fecha);
+                  return (
+                    <th key={fecha}
+                      className={`px-2 py-2 text-center font-black uppercase tracking-widest min-w-[90px] ${isToday ? 'text-primary-400' : 'text-slate-500'}`}>
+                      {dayName}
+                      <div className="text-[10px] font-normal text-slate-600 mt-0.5">{fecha.slice(5)}</div>
+                      {record && (
+                        <div className="flex items-center justify-center gap-1 mt-0.5">
+                          <span className="text-[9px] text-emerald-600">{record.totalServicios}op</span>
+                          {(record.totalParalizas || 0) > 0 && (
+                            <span className="text-[9px] text-red-500">{record.totalParalizas}par</span>
+                          )}
+                        </div>
+                      )}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {sortedCoches.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-12 text-slate-600">
+                    Sin datos de distribución semanal. Use "Cargar Informe" para ingresar el Informe de Tránsito.
                   </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                </tr>
+              ) : (
+                sortedCoches.map((cocheNum) => (
+                  <tr key={cocheNum} className="border-b border-slate-900/80 hover:bg-slate-900/20 transition-colors">
+                    <td className="px-3 py-1.5 font-black text-white sticky left-0 bg-slate-950 z-10">
+                      {cocheNum}
+                    </td>
+                    {weekDates.map((fecha) => {
+                      const servicio = servicioMap.get(fecha)?.get(cocheNum);
+                      const record = semanaData.get(fecha);
+                      const dist = record?.distribuciones.find((d) => d.cocheInternalNumber === cocheNum);
+                      const isToday = fecha === today;
+                      return (
+                        <td key={fecha} className={`px-1.5 py-1 ${isToday ? 'bg-primary-900/5' : ''}`}>
+                          {servicio && dist ? (
+                            <CeldaServicio
+                              dist={dist}
+                              onClick={esParaliza(servicio) ? () => {
+                                setSelectedFecha(fecha);
+                                setModalParaliza({ fecha, coche: cocheNum });
+                              } : undefined}
+                            />
+                          ) : (
+                            <span className="text-slate-800 text-xs">—</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Paraliza modal */}
+      {modalParaliza && (
+        <ModalParaliza
+          fecha={modalParaliza.fecha}
+          cocheInternalNumber={modalParaliza.coche}
+          coches={coches}
+          distribuciones={semanaData.get(modalParaliza.fecha)?.distribuciones || []}
+          users={users}
+          onClose={() => setModalParaliza(null)}
+          onAsignar={handleParalizaAsignar}
+        />
+      )}
     </div>
   );
 }

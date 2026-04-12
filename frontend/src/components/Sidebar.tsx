@@ -30,6 +30,7 @@ import {
   Zap,
   MapPin,
   Radar,
+  Database,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
@@ -139,6 +140,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       items: [
         { path: '/dashboard/admin/ingestion', label: 'Ingesta de Datos', icon: FileText },
         { path: '/dashboard/admin/setup', label: 'Setup Inicial Maestro', icon: Zap },
+        { path: '/dashboard/admin/seed', label: 'Carga Datos UCOT', icon: Database },
         {
           path: '/dashboard/admin/maintenance-system',
           label: 'Estado del Sistema',

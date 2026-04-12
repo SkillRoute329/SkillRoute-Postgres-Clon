@@ -35,6 +35,8 @@ export { CochePersonalService, conductorLibraEnFecha, invertirMesLibra } from '.
 export type { CochePersonal, PersonalAsignado, BloqueSemanalCartones, RegimenRotacionCoche, PatronDescanso } from './cochePersonal';
 export { CorrelativoService, calcularFactibilidadCorrelativo } from './correlativo';
 export type { CorrelativoRequest, CorrelativoEstado, TurnoCorrelativo } from './correlativo';
+export { ProgramacionSemanalService, normalizarServicio, esParaliza, esNocturno, extraerNumeroCarton } from './programacionSemanal';
+export type { ProgramacionSemanalRecord, DistribucionCoche, TipoFlota } from './programacionSemanal';
 export type { PersonalRecord, DayException } from './personal';
 export type { ProgramacionDiariaRecord } from './programacionDiaria';
 export type { ServicioEstadoRecord, ServicioEstadoStatus } from './servicioEstado';

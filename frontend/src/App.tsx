@@ -85,6 +85,7 @@ const ServiceCategoryPage = lazy(() => import('./pages/admin/ServiceCategoryPage
 const AdminBoletines = lazy(() => import('./pages/admin/AdminBoletines'));
 const AdminConfig = lazy(() => import('./pages/admin/AdminConfig'));
 const AdminOrganization = lazy(() => import('./pages/admin/AdminOrganization'));
+const AdminSeed = lazy(() => import('./pages/admin/AdminSeed'));
 const AdminSetup = lazy(() => import('./pages/admin/AdminSetup'));
 const AdminShifts = lazy(() => import('./pages/admin/AdminShifts'));
 const BusNavigation = lazy(() => import('./pages/driver/BusNavigation'));
@@ -201,6 +202,7 @@ function App() {
                     <Route path="admin/config" element={<PrivateRoute roles={['ADMIN']}><AdminConfig /></PrivateRoute>} />
                     <Route path="admin/organization" element={<PrivateRoute roles={['ADMIN']}><AdminOrganization /></PrivateRoute>} />
                     <Route path="admin/setup" element={<PrivateRoute roles={['ADMIN']}><AdminSetup /></PrivateRoute>} />
+                    <Route path="admin/seed" element={<PrivateRoute roles={['ADMIN','SUPERADMIN']}><AdminSeed /></PrivateRoute>} />
                     <Route path="admin/shifts" element={<PrivateRoute roles={['ADMIN','RRHH']}><AdminShifts /></PrivateRoute>} />
 
                     {/* Super Admin Routes */}
