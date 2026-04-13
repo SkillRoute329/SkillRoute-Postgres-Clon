@@ -52,6 +52,7 @@ import type { ServicioEstadoRecord } from '../../services/firestore/servicioEsta
 import type { ProgramacionDiariaRecord } from '../../services/firestore/programacionDiaria';
 import type { CochePersonal, PersonalAsignado } from '../../services/firestore/cochePersonal';
 import type { CorrelativoRequest, TurnoCorrelativo } from '../../services/firestore/correlativo';
+import { parseDocumentoInforme, parseTextoInforme } from '../../utils/documentParser';
 import type { ProgramacionSemanalRecord, DistribucionCoche } from '../../services/firestore/programacionSemanal';
 import { validateAssignment } from '../../utils/syndicateRules';
 import { computeSemaforo } from '../../utils/semaforoListero';
@@ -536,6 +537,8 @@ function TabSemana({
   const [editBuffer, setEditBuffer] = useState<DistribucionCoche[]>([]);
   const [editFecha, setEditFecha] = useState('');
   const [saving, setSaving] = useState(false);
+  const [parseWarnings, setParseWarnings] = useState<string[]>([]);
+  const [dragOver, setDragOver] = useState(false);
 
   // Load week data
   useEffect(() => {
@@ -658,7 +661,7 @@ function TabSemana({
         </div>
       </div>
 
-      {/* Edit form: paste/type the day's distribution */}
+      {/* Edit form: paste/type/upload the day's distribution */}
       {editMode && (
         <div className="bg-slate-900 border border-primary-700/30 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -666,30 +669,63 @@ function TabSemana({
             <input type="date" value={editFecha} onChange={(e) => setEditFecha(e.target.value)}
               className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white" />
           </div>
-          <p className="text-xs text-slate-500">
-            Ingrese las distribuciones en formato: <span className="font-mono text-slate-300">COCHE SERVICIO</span> (una por línea).
-            Ejemplo: <span className="font-mono text-slate-300">35 Paraliza</span> o <span className="font-mono text-slate-300">10 1079</span> o <span className="font-mono text-slate-300">21 Noc 1048</span>
+
+          {/* Drag & drop / file picker */}
+          <label
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={async (e) => {
+              e.preventDefault(); setDragOver(false);
+              const file = e.dataTransfer.files[0];
+              if (!file) return;
+              const result = await parseDocumentoInforme(file);
+              setEditBuffer(result.distribuciones.map((d, i) => ({ cocheInternalNumber: d.cocheInternalNumber, servicio: d.servicio, orden: i })));
+              setParseWarnings([...result.errors, ...result.distribuciones.flatMap((d) => d.warnings)]);
+            }}
+            className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl py-4 cursor-pointer transition-colors ${dragOver ? 'border-primary-500 bg-primary-900/20' : 'border-slate-700 hover:border-slate-500'}`}
+          >
+            <Upload className="w-5 h-5 text-slate-500 mb-1" />
+            <span className="text-xs text-slate-500">Arrastra un archivo <span className="text-slate-300 font-bold">.docx · .xlsx · .txt · .csv</span></span>
+            <span className="text-[10px] text-slate-600 mt-0.5">o haz clic para seleccionar</span>
+            <input type="file" accept=".txt,.csv,.xlsx,.xls,.docx" className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const result = await parseDocumentoInforme(file);
+                setEditBuffer(result.distribuciones.map((d, i) => ({ cocheInternalNumber: d.cocheInternalNumber, servicio: d.servicio, orden: i })));
+                setParseWarnings([...result.errors, ...result.distribuciones.flatMap((d) => d.warnings)]);
+              }}
+            />
+          </label>
+
+          <p className="text-[10px] text-slate-600">
+            O pega el texto: <span className="font-mono text-slate-400">COCHE SERVICIO</span> por línea · <span className="font-mono text-slate-400">35 Paraliza</span> · <span className="font-mono text-slate-400">21 Noc 1048</span>
           </p>
           <textarea
-            rows={10}
-            placeholder={"1 Paraliza\n2 1001\n3 1042\n10 1079\n21 Noc 1048\n..."}
+            rows={8}
+            placeholder={"1 Paraliza\n2 1001\n10 1079\n21 Noc 1048\n..."}
             className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono placeholder-slate-600 resize-y"
             onChange={(e) => {
-              const lines = e.target.value.split('\n').filter((l) => l.trim());
-              const dists: DistribucionCoche[] = [];
-              lines.forEach((line, i) => {
-                const parts = line.trim().split(/\s+/);
-                if (parts.length < 2) return;
-                const coche = parts[0];
-                const servicio = parts.slice(1).join(' ');
-                dists.push({ cocheInternalNumber: coche, servicio, orden: i });
-              });
-              setEditBuffer(dists);
+              const result = parseTextoInforme(e.target.value);
+              setEditBuffer(result.distribuciones.map((d, i) => ({ cocheInternalNumber: d.cocheInternalNumber, servicio: d.servicio, orden: i })));
+              setParseWarnings(result.distribuciones.flatMap((d) => d.warnings));
             }}
           />
-          <div className="text-xs text-slate-500">
-            {editBuffer.length} coches · {editBuffer.filter((d) => esParaliza(d.servicio)).length} paralizan
+
+          {/* Stats + warnings */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs text-slate-500">{editBuffer.length} coches</span>
+            <span className="text-xs text-red-400">{editBuffer.filter((d) => esParaliza(d.servicio)).length} paralizan</span>
+            <span className="text-xs text-indigo-400">{editBuffer.filter((d) => esNocturno(d.servicio)).length} nocturnos</span>
           </div>
+          {parseWarnings.length > 0 && (
+            <div className="bg-amber-900/20 border border-amber-800/40 rounded-lg p-2 space-y-0.5">
+              {parseWarnings.slice(0, 5).map((w, i) => (
+                <p key={i} className="text-[10px] text-amber-400">⚠ {w}</p>
+              ))}
+              {parseWarnings.length > 5 && <p className="text-[10px] text-slate-500">+{parseWarnings.length - 5} más...</p>}
+            </div>
+          )}
         </div>
       )}
 

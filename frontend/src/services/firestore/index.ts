@@ -40,3 +40,7 @@ export type { ProgramacionSemanalRecord, DistribucionCoche, TipoFlota } from './
 export type { PersonalRecord, DayException } from './personal';
 export type { ProgramacionDiariaRecord } from './programacionDiaria';
 export type { ServicioEstadoRecord, ServicioEstadoStatus } from './servicioEstado';
+export { FeriadosService, FERIADOS_URUGUAY_2026 } from './feriados';
+export type { Feriado, TipoFeriado } from './feriados';
+export { LicenciasService, CompensatoriosService, TIPO_LICENCIA_LABEL, TIPO_LICENCIA_COLOR } from './licencias';
+export type { LicenciaPersonal, CompensatorioPersonal, TipoLicencia, EstadoLicencia } from './licencias';
