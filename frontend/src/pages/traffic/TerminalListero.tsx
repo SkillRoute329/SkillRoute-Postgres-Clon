@@ -29,6 +29,9 @@ import {
   ArrowLeftRight,
   MapPin,
   AlertCircle,
+  Search,
+  History,
+  Filter,
 } from 'lucide-react';
 import {
   UserService,
@@ -78,16 +81,18 @@ function todayISO(): string {
 function getWeekDates(baseDate: string): string[] {
   const d = new Date(baseDate + 'T12:00:00');
   const day = d.getDay();
+  // Lunes de la semana
   const mon = new Date(d);
   mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-  return Array.from({ length: 6 }, (_, i) => {
+  // 7 días: lunes → domingo
+  return Array.from({ length: 7 }, (_, i) => {
     const dd = new Date(mon);
     dd.setDate(mon.getDate() + i);
     return dd.toISOString().split('T')[0];
   });
 }
 
-type TabId = 'lista' | 'coches' | 'semana' | 'correlativos';
+type TabId = 'lista' | 'coches' | 'semana' | 'correlativos' | 'historial';
 type Semaforo = 'verde' | 'naranja' | 'rojo' | 'amarillo';
 
 interface FilaServicio {
@@ -1452,6 +1457,184 @@ function ModalNuevoCorrelativo({
   );
 }
 
+// ─── TAB HISTORIAL ────────────────────────────────────────────────────────────
+
+function TabHistorial({ users }: { users: User[] }) {
+  const today = new Date().toISOString().split('T')[0];
+  const monthAgo = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString().split('T')[0];
+
+  const [modo, setModo] = useState<'conductor' | 'coche'>('conductor');
+  const [busqueda, setBusqueda] = useState('');
+  const [desde, setDesde] = useState(monthAgo);
+  const [hasta, setHasta] = useState(today);
+  const [loading, setLoading] = useState(false);
+  const [resultados, setResultados] = useState<import('../../services/firestore/activeAssignments').ActiveAssignmentRecord[]>([]);
+  const [error, setError] = useState('');
+
+  // Buscar usuario por nº interno o apellido
+  const resolveChofer = (term: string): string | null => {
+    const norm = term.trim().toUpperCase();
+    const u = users.find(
+      (u) => u.internalNumber === norm || u.lastName?.toUpperCase().includes(norm) || u.fullName?.toUpperCase().includes(norm)
+    );
+    return u?.uid ?? null;
+  };
+
+  const buscar = async () => {
+    setError('');
+    setResultados([]);
+    const term = busqueda.trim();
+    if (!term) { setError('Ingresa un interno o apellido'); return; }
+    setLoading(true);
+    try {
+      if (modo === 'conductor') {
+        const uid = resolveChofer(term);
+        if (!uid) { setError(`No se encontró conductor: "${term}"`); setLoading(false); return; }
+        const res = await ActiveAssignmentsService.getByChofer(uid, desde, hasta);
+        setResultados(res);
+      } else {
+        const res = await ActiveAssignmentsService.getByCoche(term, desde, hasta);
+        setResultados(res);
+      }
+    } catch (e: any) {
+      setError(e.message ?? 'Error al consultar');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Para mostrar nombre de conductor
+  const nombreChofer = (uid: string | null) => {
+    if (!uid) return '—';
+    const u = users.find((u) => u.uid === uid || u.id === uid);
+    return u ? `Int.${u.internalNumber} ${u.lastName ?? u.fullName ?? ''}` : uid;
+  };
+
+  return (
+    <div className="flex flex-col gap-4 p-4 h-full overflow-y-auto">
+      {/* Filtros */}
+      <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 space-y-3">
+        <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
+          <Filter className="w-4 h-4 text-primary-400" />
+          Búsqueda Histórica
+        </div>
+
+        {/* Modo */}
+        <div className="flex gap-2">
+          {(['conductor', 'coche'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => { setModo(m); setResultados([]); setError(''); setBusqueda(''); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                modo === m
+                  ? 'bg-primary-600 border-primary-500 text-white'
+                  : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+              }`}
+            >
+              {m === 'conductor' ? 'Por Conductor' : 'Por Coche'}
+            </button>
+          ))}
+        </div>
+
+        {/* Búsqueda */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input
+              type="text"
+              placeholder={modo === 'conductor' ? 'Nº interno o apellido...' : 'Nº de coche...'}
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && buscar()}
+              className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary-500"
+            />
+          </div>
+          <input
+            type="date"
+            value={desde}
+            onChange={(e) => setDesde(e.target.value)}
+            className="px-2 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-primary-500"
+          />
+          <span className="text-slate-500 self-center text-xs">→</span>
+          <input
+            type="date"
+            value={hasta}
+            onChange={(e) => setHasta(e.target.value)}
+            className="px-2 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-primary-500"
+          />
+          <button
+            onClick={buscar}
+            disabled={loading}
+            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-lg text-sm font-bold text-white transition-colors flex items-center gap-2"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            Buscar
+          </button>
+        </div>
+
+        {error && <p className="text-red-400 text-xs">{error}</p>}
+      </div>
+
+      {/* Resultados */}
+      {resultados.length > 0 && (
+        <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-800 flex items-center gap-2">
+            <History className="w-4 h-4 text-primary-400" />
+            <span className="text-sm font-bold text-white">{resultados.length} registros encontrados</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-500 font-bold uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left">Fecha</th>
+                  <th className="px-4 py-2 text-left">Servicio</th>
+                  <th className="px-4 py-2 text-left">Coche</th>
+                  <th className="px-4 py-2 text-left">Conductor</th>
+                  <th className="px-4 py-2 text-left">Línea</th>
+                  <th className="px-4 py-2 text-left">Cambios</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resultados.map((r, i) => (
+                  <tr key={i} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+                    <td className="px-4 py-2 text-slate-300 font-mono">{r.date}</td>
+                    <td className="px-4 py-2">
+                      <span className="bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 font-bold text-white">{r.servicioId}</span>
+                    </td>
+                    <td className="px-4 py-2">
+                      {r.cocheId ? (
+                        <span className="bg-blue-900/30 border border-blue-800 rounded px-1.5 py-0.5 text-blue-300 font-bold">{r.cocheId}</span>
+                      ) : <span className="text-slate-600">—</span>}
+                    </td>
+                    <td className="px-4 py-2 text-slate-300">{nombreChofer(r.choferId)}</td>
+                    <td className="px-4 py-2 text-slate-400">{r.linea ?? '—'}</td>
+                    <td className="px-4 py-2">
+                      {r.historial.length > 0 ? (
+                        <span className="bg-amber-900/30 border border-amber-800 rounded px-1.5 py-0.5 text-amber-300 text-[10px] font-bold">
+                          {r.historial.length} cambio{r.historial.length > 1 ? 's' : ''}
+                        </span>
+                      ) : (
+                        <span className="text-slate-600 text-[10px]">sin cambios</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {!loading && resultados.length === 0 && !error && (
+        <div className="flex flex-col items-center justify-center py-16 text-slate-600">
+          <History className="w-12 h-12 mb-3 opacity-30" />
+          <p className="text-sm">Busca por conductor o coche para ver el historial de servicios</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 export default function TerminalListero() {
@@ -1647,6 +1830,7 @@ export default function TerminalListero() {
       icon: ArrowLeftRight,
       badge: correlativos.filter((c) => c.estado === 'pendiente').length || undefined,
     },
+    { id: 'historial', label: 'Historial', icon: History },
   ];
 
   return (
@@ -1735,6 +1919,9 @@ export default function TerminalListero() {
             onRechazar={async (id) => CorrelativoService.rechazar(id, authUser?.uid || 'listero')}
             onNuevoCorrelativo={() => setShowNuevoCorrelativo(true)}
           />
+        )}
+        {activeTab === 'historial' && (
+          <TabHistorial users={users} />
         )}
       </div>
 

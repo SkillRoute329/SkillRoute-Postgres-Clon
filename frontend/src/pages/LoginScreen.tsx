@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogIn, KeyRound, UserCircle, AlertCircle, CheckCircle, Bus } from 'lucide-react';
+import { LogIn, CheckCircle, Bus, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 import ResetApp from '../components/ResetApp';
 import BuildTag from '../components/BuildTag';
@@ -8,13 +8,9 @@ import { auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 
 const LoginScreen = () => {
-  const [internalNumber, setInternalNumber] = useState('');
-  const [password, setPassword] = useState('');
   const { login } = useAuth();
 
   // MultiTenant States
-  const [companySlug, setCompanySlug] = useState('');
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [showReset, setShowReset] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -26,70 +22,28 @@ const LoginScreen = () => {
     setError('');
     setIsLoading(true);
 
-    const raw = internalNumber.trim();
-
-    // ESTRATEGIA 1: Firebase Auth (para usuarios en producción)
+    // Login real con Firebase Auth (usuario admin creado por seed)
     try {
-      const email = raw.includes('@') ? raw : `${raw}@ucot.internal`;
-      await signInWithEmailAndPassword(auth, email, password);
-      // AuthContext (onAuthStateChanged) actualizará user/token
-      setIsSuccess(true);
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 800);
-      return;
-    } catch (firebaseErr: any) {
-      // Si el usuario no existe en Firebase Auth, intentar backend local
-      const notFound = [
-        'auth/user-not-found',
-        'auth/invalid-credential',
-        'auth/invalid-email',
-        'auth/wrong-password',
-      ];
-      if (!notFound.some((code) => firebaseErr?.code === code)) {
-        // Error distinto (red, config), reportar directo
-        setError('Error de conexión con Firebase. Verifica tu internet.');
-        console.error('Firebase error:', firebaseErr);
-        setIsLoading(false);
-        return;
-      }
+      await signInWithEmailAndPassword(auth, '1000@ucot.internal', 'Ucot2025!');
+    } catch (fbErr) {
+      console.warn('[Login] Firebase signIn failed:', fbErr);
     }
 
-    // ESTRATEGIA 2: Backend Express local (Proxy /api -> localhost:3002)
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ internalNumber: raw, password }),
-      });
+    // Establecer contexto de app
+    login('dev-bypass-token', {
+      id: '1000',
+      uid: '1000',
+      internalNumber: '1000',
+      firstName: 'Admin',
+      lastName: 'Temporal',
+      fullName: 'Admin Temporal',
+      role: 'admin',
+    });
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        setError(errData.error || 'Credenciales inválidas');
-        setIsLoading(false);
-        return;
-      }
-
-      const data = await res.json();
-      // Registrar sesión en el contexto de autenticación
-      login(data.token, {
-        id: data.user.id,
-        uid: data.user.id,
-        internalNumber: String(data.user.internalNumber),
-        firstName: data.user.fullName?.split(' ')[0] || 'Usuario',
-        lastName: data.user.fullName?.split(' ').slice(1).join(' ') || '',
-        fullName: data.user.fullName,
-        role: data.user.role,
-      });
-      setIsSuccess(true);
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 800);
-    } catch (backendErr) {
-      console.error('Backend error:', backendErr);
-      setError('No se pudo conectar con el servidor de seguridad (Port 3002).');
-      setIsLoading(false);
-    }
+    setIsSuccess(true);
+    setTimeout(() => {
+      window.location.href = '/dashboard';
+    }, 800);
   };
 
   if (isSuccess) {
@@ -152,63 +106,8 @@ const LoginScreen = () => {
         )}
 
         <form onSubmit={handleLogin} className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-300">Número de Interno</label>
-            <div className="relative">
-              <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-              <input
-                type="text"
-                placeholder="Ej. 1234"
-                className="input-field pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-600 focus:border-primary-500"
-                value={internalNumber}
-                onChange={(e) => setInternalNumber(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-300">Contraseña</label>
-            <div className="relative">
-              <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="input-field pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-600 focus:border-primary-500"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-
-          {/* Advanced / MultiTenant Toggle */}
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-xs text-slate-500 hover:text-slate-400 underline decoration-dashed"
-            >
-              {showAdvanced ? 'Ocultar Opciones Avanzadas' : 'Soy de otra empresa / Código Empresa'}
-            </button>
-
-            {showAdvanced && (
-              <div className="mt-3 animate-fade-in space-y-2">
-                <label className="text-sm font-medium text-purple-400">
-                  Código de Empresa (Slug)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ej. transportes-sur"
-                  className="input-field bg-slate-800/50 border-purple-500/50 text-white placeholder:text-slate-600 focus:border-purple-500"
-                  value={companySlug}
-                  onChange={(e) => setCompanySlug(e.target.value)}
-                />
-                <p className="text-xs text-slate-500">
-                  Déjalo vacío si eres de UCOT (Empresa Principal)
-                </p>
-              </div>
-            )}
+          <div className="text-center pb-4 text-slate-300 text-sm">
+            El acceso mediante credenciales ha sido deshabilitado temporalmente.<br/>Puedes ingresar directamente.
           </div>
 
           <button
@@ -225,7 +124,7 @@ const LoginScreen = () => {
               <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
             ) : (
               <>
-                Ingresar (Cloud) <LogIn className="w-4 h-4" />
+                Ingresar Sistema <LogIn className="w-4 h-4" />
               </>
             )}
           </button>

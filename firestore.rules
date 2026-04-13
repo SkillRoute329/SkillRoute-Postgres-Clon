@@ -1,51 +1,324 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Usuarios - solo el propietario puede leer/escribir
+
+    // ============================================================
+    // HELPERS — RBAC
+    // ============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Acepta tanto "role" como "rol" y normaliza a minúsculas
+    function getUserRole() {
+      let d = userDoc();
+      return d.keys().hasAny(['role'])
+        ? d.role.lower()
+        : (d.keys().hasAny(['rol']) ? d.rol.lower() : 'none');
+    }
+
+    function isAdmin() {
+      return getUserRole() in ['admin', 'superadmin', 'ADMIN', 'SUPERADMIN'];
+    }
+
+    function isAdminNorm() {
+      let r = getUserRole();
+      return r == 'admin' || r == 'superadmin';
+    }
+
+    function isTrafficOrAdmin() {
+      let r = getUserRole();
+      return r in ['admin', 'superadmin', 'traffic', 'traffic_manager', 'listero', 'inspector'];
+    }
+
+    function isDriver() {
+      let r = getUserRole();
+      return r in ['driver', 'conductor', 'chofer'];
+    }
+
+    function isInspector() {
+      return getUserRole() in ['inspector', 'admin', 'superadmin'];
+    }
+
+    function isHR() {
+      return getUserRole() in ['rrhh', 'hr', 'admin', 'superadmin'];
+    }
+
+    // ============================================================
+    // USUARIOS
+    // ============================================================
     match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
+      // Cualquier autenticado puede leer (necesario para listero/turnos con login anónimo)
+      allow read: if isAuthenticated();
+      // Solo el propio usuario o admin puede escribir
+      allow write: if request.auth.uid == userId || isAdminNorm();
     }
 
-    // Líneas - operador ve solo sus líneas
-    match /lineas/{document=**} {
-      allow read, write: if request.auth != null;
+    // ============================================================
+    // FLOTA
+    // ============================================================
+    match /vehiculos/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
     }
 
-    // Cartones
+    match /fleet/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    // ============================================================
+    // CARTONES Y SERVICIOS
+    // ============================================================
     match /cartones/{document=**} {
-      allow read, write: if request.auth != null;
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
     }
 
-    // Boletaje
-    match /boletaje/{document=**} {
-      allow read, write: if request.auth != null;
+    match /service_definitions/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
     }
 
-    // STM Horarios
+    match /cartones_de_servicio/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
+    }
+
+    // ============================================================
+    // OPERACIONES DIARIAS
+    // ============================================================
+    match /programacion_diaria/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isTrafficOrAdmin();
+    }
+
+    match /programacion_semanal/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isTrafficOrAdmin();
+    }
+
+    match /servicio_estado/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isTrafficOrAdmin();
+    }
+
+    match /active_assignments/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isTrafficOrAdmin();
+    }
+
+    match /coche_personal/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
+    }
+
+    match /correlativos/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isTrafficOrAdmin();
+    }
+
+    // ============================================================
+    // PERSONAL Y RRHH
+    // ============================================================
+    match /personal/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isHR();
+    }
+
+    match /shifts/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isHR() || isTrafficOrAdmin();
+    }
+
+    match /exceptions/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isHR();
+    }
+
+    match /rotation_rules/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    match /personal_rotation/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isHR();
+    }
+
+    // ============================================================
+    // INSPECCIONES Y MANTENIMIENTO
+    // ============================================================
+    match /inspecciones_flota/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isInspector() || isAdminNorm();
+    }
+
+    match /maintenance/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    match /mantenimiento_logs/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    match /notificaciones_flota/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
+    }
+
+    match /logs_incidencias/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // ============================================================
+    // CONFLICTOS Y ALERTAS
+    // ============================================================
+    match /assignment_conflicts/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isTrafficOrAdmin();
+    }
+
+    match /alertas_regulacion/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isInspector() || isAdminNorm();
+    }
+
+    match /alertas_trafico/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
+    }
+
+    match /road_alerts/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
+    }
+
+    // ============================================================
+    // MENSAJES Y COMUNICACIONES
+    // ============================================================
+    match /mensajes_internos/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    match /bulletins/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    // ============================================================
+    // CONFIGURACIÓN DEL SISTEMA
+    // ============================================================
+    match /system/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    match /system_config/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    match /vehicle_categories/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    match /service_category_assignments/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    match /departments/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    // ============================================================
+    // INTELIGENCIA / STM
+    // ============================================================
     match /stm_horarios/{document=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if isAuthenticated();
     }
 
-    // STM Sincronizaciones
     match /stm_sincronizaciones/{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAuthenticated();
     }
 
-    // Alertas
     match /stm_alertas_competencia/{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAuthenticated();
     }
 
-    // Recomendaciones
+    match /competencia_monitoreo/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    match /scrapping_logs/{document=**} {
+      allow read, write: if isAdminNorm();
+    }
+
+    match /shadow_tracker/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isDriver();
+    }
+
+    match /viajes_activos/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isDriver();
+    }
+
+    match /lineas/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
     match /recomendaciones/{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAuthenticated();
     }
 
-    // Default - denegar todo lo demás
+    match /boletaje/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /penalties/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
+    }
+
+    match /discounts/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    match /data_import/{document=**} {
+      allow read, write: if isAdminNorm();
+    }
+
+    match /system_health/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    match /service_matrix/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    // ============================================================
+    // REGLA DEFAULT — autenticados leen, solo admin escribe
+    // ============================================================
     match /{document=**} {
-      allow read: if request.auth != null;
-      allow write: if false;
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
     }
   }
 }

@@ -9,6 +9,8 @@ import {
   setDoc,
   query,
   where,
+  orderBy,
+  limit,
   getDocs,
   onSnapshot,
 } from 'firebase/firestore';
@@ -124,6 +126,70 @@ export const ActiveAssignmentsService = {
         };
       });
       callback(list);
+    });
+  },
+
+  /**
+   * Historial por conductor: todos los servicios que corrió en un rango de fechas.
+   */
+  async getByChofer(
+    choferId: string,
+    fechaDesde: string,
+    fechaHasta: string,
+  ): Promise<ActiveAssignmentRecord[]> {
+    const q = query(
+      collection(db, COL),
+      where('choferId', '==', choferId),
+      where('date', '>=', fechaDesde),
+      where('date', '<=', fechaHasta),
+      orderBy('date', 'desc'),
+      limit(200),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => {
+      const x = d.data();
+      return {
+        servicioId: x?.servicioId ?? d.id,
+        date: x?.date,
+        cocheId: x?.cocheId ?? null,
+        choferId: x?.choferId ?? null,
+        linea: x?.linea,
+        horaInicio: x?.horaInicio,
+        historial: (x?.historial ?? []).slice(-50),
+        updatedAt: x?.updatedAt ?? '',
+      };
+    });
+  },
+
+  /**
+   * Historial por coche: todos los servicios que corrió ese coche en un rango de fechas.
+   */
+  async getByCoche(
+    cocheId: string,
+    fechaDesde: string,
+    fechaHasta: string,
+  ): Promise<ActiveAssignmentRecord[]> {
+    const q = query(
+      collection(db, COL),
+      where('cocheId', '==', cocheId),
+      where('date', '>=', fechaDesde),
+      where('date', '<=', fechaHasta),
+      orderBy('date', 'desc'),
+      limit(200),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => {
+      const x = d.data();
+      return {
+        servicioId: x?.servicioId ?? d.id,
+        date: x?.date,
+        cocheId: x?.cocheId ?? null,
+        choferId: x?.choferId ?? null,
+        linea: x?.linea,
+        horaInicio: x?.horaInicio,
+        historial: (x?.historial ?? []).slice(-50),
+        updatedAt: x?.updatedAt ?? '',
+      };
     });
   },
 
