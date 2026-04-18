@@ -26,6 +26,13 @@ import {
   EMPRESA_CODES,
   EmpresaLive,
 } from './immRealtimeService';
+import {
+  fetchLineSchedule,
+  horarioLineaToBlocks,
+  frecuenciaLineaDominante,
+  TipoDia,
+  HorarioBlock,
+} from './stmHorariosScraperService';
 import { Competidor, LineaCompetencia } from '../types/competition';
 
 const COMPETIDORES_COLLECTION = 'competidores';
@@ -165,4 +172,144 @@ export async function ingestCompetitorsFromSTM(): Promise<IngestResult> {
   return result;
 }
 
-export default { ingestCompetitorsFromSTM };
+// ─── Enriquecimiento con horarios reales (scraper JSF) ──────────────────────
+
+export interface EnrichOptions {
+  /** Tipos de día a scrapear. Default: ['Hábiles']. */
+  tiposDia?: TipoDia[];
+  /** Pausa entre líneas (ms) para no martillar el servidor IMM. Default: 250. */
+  pauseMs?: number;
+  /** Cap defensivo de líneas por competidor (debug/test). Default: sin límite. */
+  maxLineas?: number;
+}
+
+export interface EnrichLineaResult {
+  numeroLinea: number;
+  ok: boolean;
+  variantes?: number;
+  totalSalidas?: number;
+  frecuenciaMinutos?: number;
+  error?: string;
+}
+
+export interface EnrichCompetidorResult {
+  competidorId: string;
+  nombre: string;
+  totalLineas: number;
+  enriquecidas: number;
+  fallidas: number;
+  duracionMs: number;
+  detalle: EnrichLineaResult[];
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Enriquece un Competidor con horarios reales por línea, scrapeando
+ * `montevideo.gub.uy/app/stm/horarios/` para cada `numeroLinea`.
+ *
+ * No reemplaza el doc completo: solo actualiza `lineas[].horarios` y
+ * `lineas[].frecuencia`, preservando todo lo demás (snapshots GPS, metadata).
+ *
+ * Costo: ~5 round-trips × ~400ms × N líneas. Para CUTCSA (~80 líneas) son
+ * ~3min. Por eso es opt-in y por competidor.
+ */
+export async function enrichCompetidorWithSchedules(
+  competidorId: string,
+  options: EnrichOptions = {}
+): Promise<EnrichCompetidorResult> {
+  const tiposDia = options.tiposDia ?? ['Hábiles'];
+  const pauseMs = options.pauseMs ?? 250;
+  const started = Date.now();
+
+  const ref = db.collection(COMPETIDORES_COLLECTION).doc(competidorId);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    throw new Error(`Competidor "${competidorId}" no existe`);
+  }
+  const data = snap.data() as Competidor;
+  let lineas = Array.isArray(data.lineas) ? data.lineas : [];
+  if (options.maxLineas) lineas = lineas.slice(0, options.maxLineas);
+
+  const detalle: EnrichLineaResult[] = [];
+  const lineasActualizadas: LineaCompetencia[] = [];
+
+  for (const linea of lineas) {
+    // El número guardado en el doc es number (parseInt); el scraper indexa por
+    // string ("300", "CA1"), así que probamos primero el numeroLineaTexto extra
+    // y caemos al numeroLinea numérico.
+    const numeroTexto =
+      (linea as any).numeroLineaTexto ?? String(linea.numeroLinea);
+
+    const horariosTotales: HorarioBlock[] = [];
+    let frecuenciaDominante = 0;
+    let totalSalidas = 0;
+    let fallo: string | null = null;
+
+    try {
+      for (const tipoDia of tiposDia) {
+        const h = await fetchLineSchedule(numeroTexto, tipoDia);
+        horariosTotales.push(...horarioLineaToBlocks(h));
+        totalSalidas += h.totalSalidas;
+        // La frecuencia dominante usamos la del primer tipo (Hábiles típicamente)
+        if (frecuenciaDominante === 0) frecuenciaDominante = frecuenciaLineaDominante(h);
+        if (pauseMs > 0) await sleep(pauseMs);
+      }
+    } catch (err: any) {
+      fallo = err?.message ?? String(err);
+      logger.warn(
+        `[competitorsIngestion] enrich falló linea=${numeroTexto}: ${fallo}`
+      );
+    }
+
+    if (fallo) {
+      detalle.push({ numeroLinea: linea.numeroLinea, ok: false, error: fallo });
+      lineasActualizadas.push(linea); // mantener tal cual
+      continue;
+    }
+
+    const lineaNueva: LineaCompetencia = {
+      ...linea,
+      horarios: horariosTotales as any, // HorarioBlock es estructuralmente más rico
+      frecuencia: frecuenciaDominante,
+    };
+    lineasActualizadas.push(lineaNueva);
+
+    detalle.push({
+      numeroLinea: linea.numeroLinea,
+      ok: true,
+      variantes: horariosTotales.length,
+      totalSalidas,
+      frecuenciaMinutos: frecuenciaDominante,
+    });
+  }
+
+  const enriquecidas = detalle.filter((d) => d.ok).length;
+  const fallidas = detalle.length - enriquecidas;
+
+  await ref.set(
+    {
+      lineas: lineasActualizadas,
+      ultimaActualizacion: new Date(),
+      ultimaEnrichmentHorarios: new Date(),
+    },
+    { merge: true }
+  );
+
+  const duracionMs = Date.now() - started;
+  logger.info(
+    `[competitorsIngestion] enrich ${competidorId} ${enriquecidas}/${detalle.length} en ${duracionMs}ms`
+  );
+
+  return {
+    competidorId,
+    nombre: data.nombre,
+    totalLineas: detalle.length,
+    enriquecidas,
+    fallidas,
+    duracionMs,
+    detalle,
+  };
+}
+
+export default { ingestCompetitorsFromSTM, enrichCompetidorWithSchedules };

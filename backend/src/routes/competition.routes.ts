@@ -87,4 +87,16 @@ router.post(
   competitionController.syncFromSTM
 );
 
+/**
+ * Enriquecimiento de horarios reales por competidor.
+ * Scrapea stm/horarios para cada línea del competidor y popula
+ * `lineas[].horarios` y `lineas[].frecuencia` con datos reales.
+ * Operación pesada (~5 round-trips × ~400ms × N líneas).
+ */
+router.post(
+  '/enrich-horarios/:competidorId',
+  requireRole('admin'),
+  competitionController.enrichCompetidorHorarios
+);
+
 export default router;

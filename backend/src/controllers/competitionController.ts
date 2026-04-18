@@ -1,7 +1,11 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types/index';
 import { competitionService } from '../services/competitionService';
-import { ingestCompetitorsFromSTM } from '../services/competitorsIngestionService';
+import {
+  ingestCompetitorsFromSTM,
+  enrichCompetidorWithSchedules,
+} from '../services/competitorsIngestionService';
+import { TipoDia } from '../services/stmHorariosScraperService';
 import { logger } from '../config/logger';
 import { Competidor } from '../types/competition';
 
@@ -245,6 +249,48 @@ export const competitionController = {
       res.status(502).json({
         success: false,
         error: 'No se pudo sincronizar desde STM',
+        detail: error?.message || String(error),
+      });
+    }
+  },
+
+  /**
+   * POST /api/competition/enrich-horarios/:competidorId
+   * Enriquece las líneas de un competidor con horarios reales scrapeados
+   * de stm/horarios. Body opcional:
+   *   { tiposDia?: TipoDia[], pauseMs?: number, maxLineas?: number }
+   * Solo admin (operación pesada — varios minutos por competidor grande).
+   */
+  async enrichCompetidorHorarios(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { competidorId } = req.params;
+      if (!competidorId) {
+        res.status(400).json({ success: false, error: 'competidorId requerido' });
+        return;
+      }
+
+      const body = (req.body ?? {}) as {
+        tiposDia?: TipoDia[];
+        pauseMs?: number;
+        maxLineas?: number;
+      };
+
+      const validDias: TipoDia[] = ['Ahora', 'Hábiles', 'Sábados', 'Domingos'];
+      const tiposDia = body.tiposDia?.filter((t) => validDias.includes(t));
+
+      const result = await enrichCompetidorWithSchedules(competidorId, {
+        ...(tiposDia && tiposDia.length > 0 ? { tiposDia } : {}),
+        ...(body.pauseMs !== undefined ? { pauseMs: body.pauseMs } : {}),
+        ...(body.maxLineas !== undefined ? { maxLineas: body.maxLineas } : {}),
+      });
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      logger.error(
+        `Error en enrichCompetidorHorarios: ${error?.message || error}`
+      );
+      res.status(502).json({
+        success: false,
+        error: 'No se pudo enriquecer competidor con horarios',
         detail: error?.message || String(error),
       });
     }

@@ -294,4 +294,92 @@ export async function fetchLineSchedule(
   };
 }
 
+// ─── Helpers para integrar con el modelo Competidor ──────────────────────────
+
+function tipoDiaToDiasSemana(t: TipoDia): number[] {
+  // Convención del proyecto en types/competition.ts: 0-6 lunes..domingo
+  switch (t) {
+    case 'Hábiles':
+      return [0, 1, 2, 3, 4];
+    case 'Sábados':
+      return [5];
+    case 'Domingos':
+      return [6];
+    case 'Ahora':
+      // No representa un día específico; lo dejamos vacío para no contaminar
+      return [];
+  }
+}
+
+function hhmmToMinutes(s: string): number | null {
+  const m = s.match(/^(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+/**
+ * Calcula la frecuencia promedio (minutos entre salidas) de una variante.
+ * Retorna 0 si hay menos de 2 salidas.
+ */
+export function frecuenciaPromedioVariante(v: VarianteHorario): number {
+  if (v.salidas.length < 2) return 0;
+  const minutos = v.salidas
+    .map((s) => hhmmToMinutes(s.desde))
+    .filter((m): m is number => m !== null)
+    .sort((a, b) => a - b);
+  if (minutos.length < 2) return 0;
+  let totalGap = 0;
+  for (let i = 1; i < minutos.length; i++) {
+    totalGap += minutos[i]! - minutos[i - 1]!;
+  }
+  return Math.round(totalGap / (minutos.length - 1));
+}
+
+/**
+ * Convierte un HorarioLinea (output del scraper) a una lista de bloques compatible
+ * con `LineaCompetencia.horarios`. Genera un bloque por variante.
+ */
+export interface HorarioBlock {
+  id: string;
+  origen: string;
+  destino: string;
+  horaInicio: string;
+  horaFin: string;
+  diasSemana: number[];
+  frecuenciaMinutos: number;
+  totalSalidas: number;
+}
+
+export function horarioLineaToBlocks(h: HorarioLinea): HorarioBlock[] {
+  const dias = tipoDiaToDiasSemana(h.tipoDia);
+  const blocks: HorarioBlock[] = [];
+  for (const v of h.variantes) {
+    if (v.salidas.length === 0) continue;
+    const ordenadas = [...v.salidas].sort((a, b) => a.desde.localeCompare(b.desde));
+    blocks.push({
+      id: `${h.linea}-${h.tipoDia}-${v.origen}-${v.destino}`.replace(/\s+/g, '_'),
+      origen: v.origen,
+      destino: v.destino,
+      horaInicio: ordenadas[0]!.desde,
+      horaFin: ordenadas[ordenadas.length - 1]!.desde,
+      diasSemana: dias,
+      frecuenciaMinutos: frecuenciaPromedioVariante(v),
+      totalSalidas: v.salidas.length,
+    });
+  }
+  return blocks;
+}
+
+/**
+ * Frecuencia general representativa de una línea: la frecuencia de la variante
+ * con más viajes (el sentido principal).
+ */
+export function frecuenciaLineaDominante(h: HorarioLinea): number {
+  if (h.variantes.length === 0) return 0;
+  const dominante = [...h.variantes].sort(
+    (a, b) => b.salidas.length - a.salidas.length
+  )[0]!;
+  return frecuenciaPromedioVariante(dominante);
+}
+
 export default { fetchLineCatalog, fetchLineSchedule };
