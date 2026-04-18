@@ -1,5 +1,7 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthRequest } from '../types/index';
 import { competitionService } from '../services/competitionService';
+import { ingestCompetitorsFromSTM } from '../services/competitorsIngestionService';
 import { logger } from '../config/logger';
 import { Competidor } from '../types/competition';
 
@@ -10,7 +12,7 @@ export const competitionController = {
    * GET /api/competition/overlap/:lineaId
    * Obtiene análisis de sobreposición para una línea
    */
-  async getOverlapAnalysis(req: Request, res: Response): Promise<void> {
+  async getOverlapAnalysis(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { lineaId } = req.params;
 
@@ -46,7 +48,7 @@ export const competitionController = {
    * GET /api/competition/conflicts/:lineaId
    * Obtiene conflictos de horarios para una línea
    */
-  async getConflicts(req: Request, res: Response): Promise<void> {
+  async getConflicts(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { lineaId } = req.params;
 
@@ -83,7 +85,7 @@ export const competitionController = {
    * POST /api/competition/ingress
    * Ingresa horarios de competencia manualmente
    */
-  async ingressCompetitorData(req: Request, res: Response): Promise<void> {
+  async ingressCompetitorData(req: AuthRequest, res: Response): Promise<void> {
     try {
       const competidorData = req.body as Competidor;
 
@@ -109,7 +111,7 @@ export const competitionController = {
    * GET /api/competition/analysis/:lineaId
    * Análisis completo de competitividad para una línea
    */
-  async getCompetitivityAnalysis(req: Request, res: Response): Promise<void> {
+  async getCompetitivityAnalysis(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { lineaId } = req.params;
 
@@ -134,7 +136,7 @@ export const competitionController = {
    * GET /api/competition/report
    * Reporte completo de competencia
    */
-  async getCompetitionReport(req: Request, res: Response): Promise<void> {
+  async getCompetitionReport(req: AuthRequest, res: Response): Promise<void> {
     try {
       const operador = (req.query.operador as string) || 'UCOT';
       const dias = (req.query.dias as string) || '30';
@@ -163,7 +165,7 @@ export const competitionController = {
    * GET /api/competition/threats
    * Obtiene amenazas principales (líneas más en riesgo)
    */
-  async getMainThreats(req: Request, res: Response): Promise<void> {
+  async getMainThreats(req: AuthRequest, res: Response): Promise<void> {
     try {
       const operador = (req.query.operador as string) || 'UCOT';
 
@@ -201,7 +203,7 @@ export const competitionController = {
    * GET /api/competition/recommendations/:lineaId
    * Obtiene recomendaciones para una línea específica
    */
-  async getRecommendations(req: Request, res: Response): Promise<void> {
+  async getRecommendations(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { lineaId } = req.params;
 
@@ -226,5 +228,25 @@ export const competitionController = {
       logger.error(`Error en getRecommendations: ${error}`);
       res.status(500).json({ error: 'Error obteniendo recomendaciones' });
     }
-  }
+  },
+
+  /**
+   * POST /api/competition/sync-from-stm
+   * Toma snapshot GPS en vivo del endpoint público IMM y materializa
+   * la colección `competidores` con datos reales de COETC, COME, CUTCSA.
+   * Solo admin.
+   */
+  async syncFromSTM(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const result = await ingestCompetitorsFromSTM();
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      logger.error(`Error en syncFromSTM: ${error?.message || error}`);
+      res.status(502).json({
+        success: false,
+        error: 'No se pudo sincronizar desde STM',
+        detail: error?.message || String(error),
+      });
+    }
+  },
 };

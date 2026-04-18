@@ -77,4 +77,14 @@ router.get(
   competitionController.getRecommendations
 );
 
+/**
+ * Sync desde STM en vivo
+ * Pulls GPS público de IMM, agrega por empresa y upsert en `competidores`.
+ */
+router.post(
+  '/sync-from-stm',
+  requireRole('admin'),
+  competitionController.syncFromSTM
+);
+
 export default router;
