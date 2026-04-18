@@ -1,6 +1,12 @@
 import { Router } from 'express';
 import { stmController } from '../controllers/stmController';
+import {
+  fetchLineCatalog,
+  fetchLineSchedule,
+  TipoDia,
+} from '../services/stmHorariosScraperService';
 import { requireAuth, requireRole } from '../middleware/auth';
+import { logger } from '../config/logger';
 
 const router = Router();
 
@@ -103,6 +109,65 @@ router.get(
   '/calidad-datos',
   requireRole('admin', 'manager'),
   (req, res) => stmController.obtenerCalidadDatos(req, res)
+);
+
+/**
+ * GET /api/stm/scraper/lineas
+ * Catálogo en vivo de líneas desde stm/horarios (PrimeFaces JSF).
+ * Devuelve los ~140 números de línea reales, no la lista cacheada/local.
+ */
+router.get(
+  '/scraper/lineas',
+  requireRole('admin', 'manager'),
+  async (_req, res) => {
+    try {
+      const catalogo = await fetchLineCatalog();
+      res.json({
+        success: true,
+        total: catalogo.length,
+        lineas: catalogo.map((l) => l.numero),
+      });
+    } catch (err: any) {
+      logger.error(`[stm/scraper/lineas] ${err?.message}`);
+      res.status(502).json({ success: false, error: err?.message ?? String(err) });
+    }
+  }
+);
+
+/**
+ * GET /api/stm/scraper/horarios/:linea
+ * Scrape en vivo del horario REAL de una línea específica.
+ * Query: ?tipoDia=Ahora|Hábiles|Sábados|Domingos (default: Hábiles)
+ *
+ * Ejemplo: GET /api/stm/scraper/horarios/300?tipoDia=Hábiles
+ *   → 12 variantes (pares O→D), 223 salidas total para la 300.
+ */
+router.get(
+  '/scraper/horarios/:linea',
+  requireRole('admin', 'manager'),
+  async (req, res) => {
+    try {
+      const linea = req.params.linea;
+      if (!linea) {
+        res.status(400).json({ success: false, error: 'Falta parámetro :linea' });
+        return;
+      }
+      const tipoDiaQ = (req.query.tipoDia as string) ?? 'Hábiles';
+      const valid: TipoDia[] = ['Ahora', 'Hábiles', 'Sábados', 'Domingos'];
+      if (!valid.includes(tipoDiaQ as TipoDia)) {
+        res.status(400).json({
+          success: false,
+          error: `tipoDia inválido. Valores permitidos: ${valid.join(', ')}`,
+        });
+        return;
+      }
+      const data = await fetchLineSchedule(linea, tipoDiaQ as TipoDia);
+      res.json({ success: true, data });
+    } catch (err: any) {
+      logger.error(`[stm/scraper/horarios] ${err?.message}`);
+      res.status(502).json({ success: false, error: err?.message ?? String(err) });
+    }
+  }
 );
 
 export default router;
