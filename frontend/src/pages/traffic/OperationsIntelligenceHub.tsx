@@ -1287,10 +1287,17 @@ export default function OperationsIntelligenceHub() {
 
   useEffect(() => {
     loadData();
-    // Auto-refresh cada 90 segundos
     const interval = setInterval(loadData, 90_000);
     return () => clearInterval(interval);
   }, [loadData]);
+
+  // Auto-abrir la primera línea con variantes reales para que el panel sea inmediatamente visible
+  useEffect(() => {
+    if (lines.length > 0 && !selectedLine && activeTab === 'intelligence') {
+      const first = lines.find((l) => getVariantsForLine(l.lineId).length > 0);
+      if (first) setSelectedLine(first.lineId);
+    }
+  }, [lines, activeTab]);
 
   // Cargar briefing y monitor al montar
   useEffect(() => {
