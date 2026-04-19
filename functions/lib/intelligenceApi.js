@@ -40,7 +40,9 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 app.use(cors({ origin: true }));
-const db = admin.firestore();
+// Acceso diferido a Firestore para evitar errores de inicialización top-level
+const getDb = () => admin.firestore();
+let fleetCache = null;
 /**
  * Las 29 líneas UCOT autoritativas (Wikipedia + snapshot STM 2026-04-18).
  * NO se guardan estimaciones de cicloMin ni frecuencias: todo dato operativo
@@ -94,7 +96,7 @@ const EMPRESAS = {
     10: 'COETC', 20: 'COME', 50: 'CUTCSA', 70: 'UCOT',
 };
 const EMPRESA_UCOT_ID = 70;
-const CACHE_TTL_MS = 15000;
+const CACHE_TTL_MS = 45000; // Aumentado a 45s para reducir latencia de fetch repetitivo (8MB)
 /** Radio considerado "competencia directa" en análisis por línea */
 const RADIO_COMPETENCIA_KM = 0.5;
 let _cache = null;
@@ -443,7 +445,7 @@ app.get('/api/ucot/fleet-intel', async (_req, res) => {
         // Cargar horarios_oficiales de todas las líneas UCOT en paralelo
         const tipoDia = tipoDiaHoyMontevideo();
         const hhmm = hhmmAhoraMontevideo();
-        const horarioDocs = await db.getAll(...UCOT_LINEAS.map((l) => db.collection('horarios_oficiales').doc(l.id)));
+        const horarioDocs = await getDb().getAll(...UCOT_LINEAS.map((l) => getDb().collection('horarios_oficiales').doc(l.id)));
         const horariosMap = new Map();
         horarioDocs.forEach((d) => horariosMap.set(d.id, d));
         const lineas = UCOT_LINEAS.map((meta) => {
@@ -575,7 +577,7 @@ app.get('/api/ucot/schedule/:linea', async (req, res) => {
         return;
     }
     try {
-        const doc = await db.collection('horarios_oficiales').doc(lineaId).get();
+        const doc = await getDb().collection('horarios_oficiales').doc(lineaId).get();
         if (!doc.exists) {
             res.json({
                 ok: true,

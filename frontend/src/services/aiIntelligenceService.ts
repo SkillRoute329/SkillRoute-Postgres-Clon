@@ -67,6 +67,7 @@ export class AIIntelligenceService {
     corridor?: string;
     destino?: string;
     variantCode?: string;
+    ucotBusId?: string;
     rivals?: string[];
   }): Promise<void> {
     const agent = this.getAgent(data.lineId);
@@ -117,7 +118,7 @@ export class AIIntelligenceService {
     }
 
     if (criticalChange && !this.isThinking) {
-      this.requestCommanderAI(agent, threat).catch(() => {});
+      this.requestCommanderAI(agent, threat, data.ucotBusId).catch(() => {});
     }
 
     // Respuesta rápida con contexto de corredor
@@ -129,6 +130,7 @@ export class AIIntelligenceService {
   private static async requestCommanderAI(
     agent: AgentStatus,
     threat: Record<string, unknown>,
+    ucotBusId?: string,
   ): Promise<void> {
     if (this.isThinking) return;
     this.isThinking = true;
@@ -142,6 +144,8 @@ export class AIIntelligenceService {
       const directionContext = agent.lastRivalDirection
         ? `Posición rival: ${agent.lastRivalDirection === 'AHEAD' ? 'POR DELANTE' : agent.lastRivalDirection === 'BEHIND' ? 'POR DETRÁS' : 'LATERAL'}.`
         : '';
+      
+      const busContext = ucotBusId ? `Unidad UCOT Identificada: Coche ${ucotBusId}` : 'Unidad UCOT: Confirmada en rumbo';
 
       // Contexto de horarios
       let scheduleContext = '';
@@ -162,18 +166,21 @@ export class AIIntelligenceService {
         CONTEXTO TÁCTICO UCOT (${time}):
         - Línea Operativa: ${agent.lineId}
         - ${corridorContext}
+        - ${busContext}
         - Objetivo Rival: ${threat.competitorLine || 'Desconocido'}
         - Distancia: ${threat.distance} metros (${threat.threatLevel})
         - ${directionContext}
-        - Recomendación Sistema: ${threat.recommendation}
+        - Recomendación GPS: ${threat.recommendation}
         ${speedContext}
         - ${scheduleContext}
 
-        TAREA: Actúa como el Comandante de Flota UCOT. Da una orden táctica corta, agresiva y profesional (máx 30 palabras) usando jerga de transporte uruguayo (ej. "pisalo", "aguantá", "está barriendo").
-        IMPORTANTE: 
-        1. Considerá el destino ${agent.lastDestino || 'desconocido'}.
-        2. Si el rival sale *antes* (ventaja horaria rival) o si está POR DELANTE, el agente DEBE avisar expresamente al inspector o jefe de tránsito (ej. "Aviso a Jefatura: Rival adelantado...").
-        3. Aconseja al chofer frenar/aguantar si el rival barre por delante, o acelerar si está por detrás.
+        TAREA: Actúa como el Comandante Inteligente de Flota UCOT.
+        Tu rol es SIMPLIFICARLE LA TAREA al jefe de tránsito. Como en Uruguay se cobra por boleto, tu objetivo principal es aconsejar para interceptar y "robarle" pasajeros a la competencia.
+        
+        INSTRUCCIONES CLAVE:
+        1. Escribe la orden nombrando directamente el coche UCOT (Ej: "Adelantar coche ${ucotBusId || 'X'}").
+        2. Menciona la línea, el destino y el coche rival.
+        3. Sé corto (30 palabras máximo), agresivo comercialmente y utiliza jerga uruguaya de transporte corporativo.
       `.trim();
 
       const result = await AIRouter.orchestrate(prompt);

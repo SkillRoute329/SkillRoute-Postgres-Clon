@@ -85,14 +85,30 @@ export const TrafficService = {
   // 🕵️ FETCH COMPETITOR POSITIONS
   fetchCompetitorPositions: async (lines: string[]): Promise<any[]> => {
     try {
-      const PROXY_BASE = 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/montevideoProxy';
-      const endpoint = `api/transportepublico/buses?lines=${lines.join(',')}`;
-      const url = `${PROXY_BASE}?endpoint=${encodeURIComponent(endpoint)}`;
+      const response = await fetch('/api/positions');
+      if (!response.ok) {
+        throw new Error(`API positions error: ${response.status}`);
+      }
+      const data = await response.json();
+      if (!data || !data.buses) return [];
 
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('API Proxy Error');
+      const cleanLines = lines.map((l) => l.toString().replace(/[ab]$/i, ''));
+      const activeRivals = data.buses.filter((b: any) =>
+        cleanLines.includes(String(b.linea).replace(/[ab]$/i, '')),
+      );
 
-      return await response.json();
+      // Mapear al formato que usa stmLiveService para mantener compatibilidad
+      return activeRivals.map((b: any) => ({
+        id: String(b.codigoBus || b.idBus),
+        codigoLinea: String(b.linea),
+        linea: String(b.linea),
+        latitud: Number(b.lat), // Necesario para CompetitorThreatWidget
+        longitud: Number(b.lng),
+        lat: Number(b.lat),
+        lng: Number(b.lng),
+        heading: 0,
+        empresa: b.empresa,
+      }));
     } catch (e) {
       console.error('Competitor Fetch Error', e);
       return [];
@@ -102,22 +118,29 @@ export const TrafficService = {
   // 🚍 FETCH UCOT REAL POSITIONS VIA IMM API
   fetchUcotPositions: async (lines: string[]): Promise<any[]> => {
     try {
-      const PROXY_BASE = 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/montevideoProxy';
-      const endpoint = `api/transportepublico/buses?lines=${lines.join(',')}`;
-      const url = `${PROXY_BASE}?endpoint=${encodeURIComponent(endpoint)}`;
-
-      const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!response.ok) throw new Error('API Proxy Error');
-
+      const response = await fetch('/api/positions');
+      if (!response.ok) {
+        throw new Error(`API positions error: ${response.status}`);
+      }
       const data = await response.json();
-      return data.filter(
-        (bus: any) =>
-          bus.empresa === 'UCOT' ||
-          bus.empresa === 70 ||
-          bus.empresaId === 70 ||
-          bus.codigoEmpresa === 70 ||
-          (bus.nombreEmpresa && bus.nombreEmpresa.toUpperCase() === 'UCOT'),
+      if (!data || !data.buses) return [];
+
+      const cleanLines = lines.map((l) => l.toString().replace(/[ab]$/i, ''));
+      const activeUcot = data.buses.filter((b: any) =>
+        b.empresaId === 70 && cleanLines.includes(String(b.linea).replace(/[ab]$/i, '')),
       );
+
+      return activeUcot.map((b: any) => ({
+        id: String(b.codigoBus || b.idBus),
+        codigoLinea: String(b.linea),
+        linea: String(b.linea),
+        latitud: Number(b.lat),
+        longitud: Number(b.lng),
+        lat: Number(b.lat),
+        lng: Number(b.lng),
+        heading: 0,
+        empresa: 'UCOT',
+      }));
     } catch (e) {
       console.error('UCOT Proxy Fetch Error', e);
       return [];

@@ -6,7 +6,17 @@ import cors = require('cors');
 const app = express();
 app.use(cors({ origin: true }));
 
-const db = admin.firestore();
+// Acceso diferido a Firestore para evitar errores de inicialización top-level
+const getDb = () => admin.firestore();
+
+// ─── CACHE DE DATOS STM (In-Memory) ──────────────────────────────────────────
+// Se usa para no saturar la API de la IMM (que devuelve un GeoJSON de 8MB)
+// y para acelerar la respuesta a los agentes.
+interface CachedFleet {
+  data: any;
+  timestamp: number;
+}
+let fleetCache: CachedFleet | null = null;
 
 /**
  * Las 29 líneas UCOT autoritativas (Wikipedia + snapshot STM 2026-04-18).
@@ -63,7 +73,7 @@ const EMPRESAS: Record<number, string> = {
   10: 'COETC', 20: 'COME', 50: 'CUTCSA', 70: 'UCOT',
 };
 const EMPRESA_UCOT_ID = 70;
-const CACHE_TTL_MS = 15_000;
+const CACHE_TTL_MS = 45_000; // Aumentado a 45s para reducir latencia de fetch repetitivo (8MB)
 /** Radio considerado "competencia directa" en análisis por línea */
 const RADIO_COMPETENCIA_KM = 0.5;
 
@@ -446,8 +456,8 @@ app.get('/api/ucot/fleet-intel', async (_req, res) => {
     // Cargar horarios_oficiales de todas las líneas UCOT en paralelo
     const tipoDia = tipoDiaHoyMontevideo();
     const hhmm = hhmmAhoraMontevideo();
-    const horarioDocs = await db.getAll(
-      ...UCOT_LINEAS.map((l) => db.collection('horarios_oficiales').doc(l.id)),
+    const horarioDocs = await getDb().getAll(
+      ...UCOT_LINEAS.map((l) => getDb().collection('horarios_oficiales').doc(l.id)),
     );
     const horariosMap = new Map<string, admin.firestore.DocumentSnapshot>();
     horarioDocs.forEach((d) => horariosMap.set(d.id, d));
@@ -579,7 +589,7 @@ app.get('/api/ucot/schedule/:linea', async (req, res) => {
     return;
   }
   try {
-    const doc = await db.collection('horarios_oficiales').doc(lineaId).get();
+    const doc = await getDb().collection('horarios_oficiales').doc(lineaId).get();
     if (!doc.exists) {
       res.json({
         ok: true,

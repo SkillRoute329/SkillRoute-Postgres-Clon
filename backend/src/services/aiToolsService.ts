@@ -75,8 +75,20 @@ export const READ_TOOL_SPECS: ToolSpec[] = [
     function: {
       name: 'get_active_positions',
       description:
-        'Devuelve las posiciones GPS reales en tiempo real de todos los coches UCOT que están en la calle ahora mismo, obtenido directamente de la API de la Intendencia (STM). Usar cuando el inspector pregunta "¿dónde están los coches?", "¿cuál es el más cercano?", o para ver el estado real del tráfico.',
-      parameters: { type: 'object', properties: {} },
+        'Devuelve las posiciones GPS reales en tiempo real de los coches en la calle, obtenido directamente de la API de la Intendencia (STM). Permite filtrar por línea y empresa. Usar para saber qué coches específicos (número interno) están en el recorrido ahora mismo.',
+      parameters: {
+        type: 'object',
+        properties: {
+          line_id: {
+            type: 'string',
+            description: 'Opcional: Filtrar por línea específica (ej: "300")',
+          },
+          empresa_id: {
+            type: 'number',
+            description: 'Opcional: ID de empresa (70=UCOT, 50=CUTCSA, 20=COME, 0=TODAS)',
+          },
+        },
+      },
     },
   },
   {
@@ -204,16 +216,16 @@ const handlers: Record<string, ToolHandler> = {
     };
   },
 
-  async get_active_positions() {
-    // API STM Online — requiere POST (GET devuelve 405). El endpoint ignora el
-    // filtro por empresa en el body, así que traemos todo y filtramos UCOT
-    // (codigoEmpresa === 70) en memoria. Mapeo: 20=COME, 50=CUTCSA, 70=UCOT.
+  async get_active_positions(args) {
+    const lineId = args.line_id ? String(args.line_id).trim() : null;
+    const targetEmpresa = args.empresa_id !== undefined ? Number(args.empresa_id) : 70; // Por defecto UCOT
+
     try {
       const res = await axios.post(
         'https://www.montevideo.gub.uy/buses/rest/stm-online',
         {},
         {
-          timeout: 8000,
+          timeout: 10000,
           headers: {
             'Content-Type': 'application/json',
             'User-Agent': 'TransformaFacil-Copiloto/2.0',
@@ -234,10 +246,23 @@ const handlers: Record<string, ToolHandler> = {
         geometry: { coordinates: [number, number] };
       }>;
 
-      const ucot = features
-        .filter((f) => f.properties.codigoEmpresa === 70)
+      const empresaMap: Record<number, string> = {
+        70: 'UCOT',
+        50: 'CUTCSA',
+        20: 'COME',
+        60: 'COETC',
+        10: 'RAINCOOP (Ex)',
+      };
+
+      const filtered = features
+        .filter((f) => {
+          const matchEmpresa = targetEmpresa === 0 || f.properties.codigoEmpresa === targetEmpresa;
+          const matchLinea = !lineId || f.properties.linea === lineId;
+          return matchEmpresa && matchLinea;
+        })
         .map((f) => ({
           interno: f.properties.codigoBus,
+          empresa: empresaMap[f.properties.codigoEmpresa] || `ID ${f.properties.codigoEmpresa}`,
           linea: f.properties.linea,
           sublinea: f.properties.sublinea,
           destino: f.properties.destinoDesc,
@@ -247,9 +272,10 @@ const handlers: Record<string, ToolHandler> = {
         }));
 
       return {
-        count: ucot.length,
-        source: 'IMM / STM Real-time (empresa=70 UCOT)',
-        vehicles: ucot.slice(0, 30),
+        count: filtered.length,
+        empresa_filtrada: targetEmpresa === 0 ? 'TODAS' : empresaMap[targetEmpresa] || targetEmpresa,
+        linea_filtrada: lineId || 'TODAS',
+        vehicles: filtered.slice(0, 40),
       };
     } catch (err) {
       logger.error('[AI-TOOLS] Error fetching STM positions', { error: String(err) });

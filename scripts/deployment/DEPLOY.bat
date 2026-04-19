@@ -36,23 +36,18 @@ cd ..
 echo ✅ Frontend compilado
 echo.
 
-REM PASO 2: Build Backend
-echo 📦 PASO 2: Compilando Backend...
-cd backend
+REM PASO 2: Build Cloud Functions (Backend)
+echo 📦 PASO 2: Compilando Cloud Functions...
+cd functions
 if not exist "package.json" (
-    echo ❌ Error: No encontrado backend/package.json
+    echo ❌ Error: No encontrado functions/package.json
     pause
     exit /b 1
 )
 
 call npm run build
-if not exist "dist" (
-    echo ❌ Error: No se generó backend/dist/
-    pause
-    exit /b 1
-)
 cd ..
-echo ✅ Backend compilado
+echo ✅ Backend/Functions compilado
 echo.
 
 REM PASO 3: Verificar Firebase CLI

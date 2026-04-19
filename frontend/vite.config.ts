@@ -138,6 +138,24 @@ export default defineConfig({
           'Referer': 'https://www.montevideo.gub.uy/app/stm/horarios/'
         }
       },
+      '/api/inteligencia': {
+        // Route agent intelligence calls directly to the Cloud Function
+        target: 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/intelligenceApi',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/api/positions': {
+        // Route positions endpoints to the Cloud Function
+        target: 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/intelligenceApi',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/api/ucot': {
+        // Route fleet intelligence endpoints to the Cloud Function
+        target: 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/intelligenceApi',
+        changeOrigin: true,
+        secure: true,
+      },
       '/api': {
         target: 'http://127.0.0.1:3000',
         changeOrigin: true,

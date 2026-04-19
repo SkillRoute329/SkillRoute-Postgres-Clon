@@ -89,12 +89,7 @@ export interface LineaFoto {
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
 /** URL base del backend proxy (evita CORS de la IMM) */
-const BACKEND_BASE = (() => {
-  const env = (typeof import.meta !== 'undefined' ? (import.meta as { env?: { PROD?: boolean; VITE_BRIDGE_URL?: string } }).env : undefined) || {};
-  if (env.VITE_BRIDGE_URL) return env.VITE_BRIDGE_URL;
-  if (env.PROD) return '';
-  return 'http://localhost:3099';
-})();
+const BACKEND_BASE = import.meta.env?.PROD ? '' : 'http://localhost:3099';
 
 /** URL directa de la IMM (solo disponible si el backend la proxea) */
 const IMM_BASE = 'https://www.montevideo.gub.uy/buses/rest';

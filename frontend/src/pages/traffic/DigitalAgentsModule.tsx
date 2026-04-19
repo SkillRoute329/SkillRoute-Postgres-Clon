@@ -471,7 +471,7 @@ export default function DigitalAgentsModule() {
       try {
         // Usa el proxy de Vite /api → localhost:3000 (o prod) para evitar CORS
         const res = await fetch(`/api/inteligencia/${baseId}`, {
-          signal: AbortSignal.timeout(5000), // 5s timeout para no bloquear la UI
+          signal: AbortSignal.timeout(25000), // 25s timeout para manejar cold starts pesados de Cloud Functions y fetch de 8MB del IMM
         });
         if (res.ok) {
           intelligenceData = await res.json();

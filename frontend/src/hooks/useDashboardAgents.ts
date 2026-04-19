@@ -57,32 +57,65 @@ export function useDashboardAgents(autoRefresh = true, refreshInterval = 60000):
     try {
       setError(null);
 
-      // Fetch each endpoint independently — one failure should not block the others
-      const [statusRes, alertasRes, statsRes] = await Promise.allSettled([
-        fetch('/api/agents/status').then(r => r.ok ? r.json() : null),
-        fetch('/api/agents/alerts/history').then(r => r.ok ? r.json() : null),
-        fetch('/api/agents/alerts/statistics').then(r => r.ok ? r.json() : null),
-      ]);
-
-      if (statusRes.status === 'fulfilled' && statusRes.value) {
-        setStatus(statusRes.value);
-      }
-      if (alertasRes.status === 'fulfilled' && alertasRes.value) {
-        setAlertas(alertasRes.value.alerts || []);
-      }
-      if (statsRes.status === 'fulfilled' && statsRes.value) {
-        setEstadisticas(statsRes.value.statistics || {});
+      // Consumimos el endpoint central de inteligencia de la flota (Cloud Function)
+      // Este endpoint reemplaza la necesidad del viejo bridge-server para la vista general
+      const fleetRes = await fetch('/api/ucot/fleet-intel');
+      
+      if (!fleetRes.ok) {
+        throw new Error(`Error HTTP: ${fleetRes.status}`);
       }
 
-      // Solo reportar error si TODOS fallaron
-      const allFailed = [statusRes, alertasRes, statsRes].every(r => r.status === 'rejected');
-      if (allFailed) {
-        setError('Backend de agentes no disponible. Los datos se actualizarán cuando el servidor esté activo.');
+      const fleetData = await fleetRes.json();
+
+      if (fleetData && fleetData.ok && fleetData.lineas) {
+        // Mapeamos los datos de la flota al formato que espera el Dashboard
+        const ecosystems: EcosistemaLinea[] = fleetData.lineas.map((l: any) => ({
+          lineId: l.lineId,
+          lineNombre: l.nombreComercial,
+          status: l.estadoOperativo === 'OPERATIVO' || l.estadoOperativo === 'ALERTA' ? 'ACTIVO' : 'INACTIVO',
+          totalAgents: (l.busesActivos > 0 ? 1 : 0) + l.rivalCount, // Agente inspector propio + agentes rivales
+          orchestrator: `Orquestador-${l.lineId}`,
+          ownAgents: l.busesActivos > 0 ? 1 : 0,
+          competitorAgents: l.rivalCount
+        }));
+
+        setStatus({
+          timestamp: fleetData.timestamp,
+          total_lines: fleetData.totalLineas,
+          ecosystems,
+          total_agents: ecosystems.reduce((sum, e) => sum + e.totalAgents, 0)
+        });
+
+        // Extraemos 'alertas' sintéticas basadas en las líneas con problemas
+        const lineasConAlerta = fleetData.lineas.filter((l: any) => l.nivelAlerta === 'ALTA' || l.nivelAlerta === 'MEDIA');
+        const alertasFicticias: AlertaAgente[] = lineasConAlerta.map((l: any, i: number) => ({
+          alerta_id: `alerta-dinamica-${l.lineId}-${i}`,
+          linea: parseInt(l.lineId.toString().replace(/\D/g, '') || '0'),
+          tipo: l.bunchingPares > 0 ? 'BUNCHING_DETECTADO' : 'COMPETENCIA_ALTA',
+          recorrido: '-',
+          sentido: 'Ambos',
+          tiempo_minutos: null,
+          timestamp: fleetData.timestamp,
+          mensaje: l.bunchingPares > 0 
+            ? `Se detectaron ${l.bunchingPares} pares de buses agrupados en el corredor.`
+            : `El ${l.pctFlotaEnDisputa}% de la flota está en disputa directa con la competencia.`,
+          acciones_recomendadas: ['Ingresar a la vista táctica de la línea para generar acciones.'],
+          severidad: l.nivelAlerta === 'ALTA' ? 'CRÍTICA' : 'MEDIA',
+          fuente: 'INTELIGENCIA_TIEMPO_REAL'
+        }));
+
+        setAlertas(alertasFicticias);
+        
+        // Estadísticas mockeadas temporalmente ya que la UI las usa minimamente
+        setEstadisticas({});
       }
 
       setLoading(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(err instanceof Error ? err.message : 'Error al conectar con la API de Inteligencia');
+      
+      // En entorno local sin proxy configurado, esto puede fallar si no apuntamos a /api
+      // La UI debe informar correctamente
       setLoading(false);
     }
   }, []);

@@ -107,12 +107,7 @@ export interface EventoInfraccion {
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
-const BRIDGE_BASE = (() => {
-  const env = (typeof import.meta !== 'undefined' ? (import.meta as { env?: { PROD?: boolean; VITE_BRIDGE_URL?: string } }).env : undefined) || {};
-  if (env.VITE_BRIDGE_URL) return env.VITE_BRIDGE_URL;
-  if (env.PROD) return '';
-  return 'http://localhost:3099';
-})();
+const BRIDGE_BASE = import.meta.env?.PROD ? '' : 'http://localhost:3099';
 
 const IMM_POSICION_URL = 'https://www.montevideo.gub.uy/buses/rest/posicion';
 const POSICION_CACHE_TTL_MS = 30_000; // 30 segundos

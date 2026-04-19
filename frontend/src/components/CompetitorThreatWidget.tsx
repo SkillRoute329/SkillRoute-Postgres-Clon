@@ -199,6 +199,7 @@ export const CompetitorThreatWidget: React.FC = () => {
             corridor: corridor?.label || lineId,
             destino: corridor?.destino || 'DESCONOCIDO',
             variantCode: corridor?.variantCode,
+            ucotBusId: String(ucotBus.id || ucotBus.codigoBus || ''),
             rivals: corridor?.rivals,
           });
         } else {

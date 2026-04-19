@@ -28,13 +28,31 @@ export const TIPO_DIA = {
 };
 
 export const LINEA_IDS: Record<string, string> = {
-  '104': '59',
+  // Urbanas UCOT
+  '17': '508',
+  '71': '544',
+  '79': '551',
   '300': '159',
+  '306': '673',
   '316': '165',
   '328': '266',
+  '329': '688',
   '330': '268',
-  '17': '508'
-  // Add other lines here dynamically if we map them all
+  '370': '712',
+  '396': '729',
+  // Locales UCOT
+  'L12': '1012',
+  'L13': '1013',
+  'L31': '1031',
+  'L32': '1032',
+  'L33': '1033',
+  // Diferenciales / Metropolitanas UCOT
+  'CE1': '1201',
+  'DM1': '1202',
+  '221': '1221',
+  'PB': '1224',
+  'XA1': '1231',
+  'XA2': '1232'
 };
 
 export class STMScheduleService {

@@ -52,24 +52,46 @@ interface CopilotResponse {
   model: string;
 }
 
+interface TacticalContext {
+  linea: string;
+  destino: string;
+  rivales: string[];
+  puntosCarga: string[];
+  estrategia: string;
+}
+
 interface Props {
   className?: string;
   placeholder?: string;
+  initialContext?: TacticalContext;
 }
 
 const SUGGESTED = [
   '¿Cuántos coches tenemos en servicio?',
   '¿Cómo va el interno 55?',
   'Estado general de la flota',
+  'Tácticas para la línea actual',
 ];
 
-export default function AiCopilotChat({ className, placeholder }: Props) {
+export default function AiCopilotChat({ className, placeholder, initialContext }: Props) {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastTools, setLastTools] = useState<ToolTrace[]>([]);
   const [lastLatency, setLastLatency] = useState<number | null>(null);
+
+  // Efecto para inyectar contexto táctico inicial
+  useEffect(() => {
+    if (initialContext && messages.length === 0) {
+      setMessages([
+        {
+          role: 'assistant',
+          content: `⚡ **Inteligencia Táctica Activada**\n\nLínea: **${initialContext.linea}**\nDestino: **${initialContext.destino}**\n\nRivales detectados: ${initialContext.rivales.join(', ')}\nZonas críticas: ${initialContext.puntosCarga.join(', ')}\n\n*${initialContext.estrategia}*`,
+        },
+      ]);
+    }
+  }, [initialContext, messages.length]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -97,7 +119,11 @@ export default function AiCopilotChat({ className, placeholder }: Props) {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ history: historyPayload, message: trimmed }),
+          body: JSON.stringify({ 
+            history: historyPayload, 
+            message: trimmed,
+            context: initialContext // Inyectamos el mapa de guerra al backend
+          }),
         });
 
         if (!res.ok) {

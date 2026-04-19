@@ -276,6 +276,192 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     tramosAlaDemanda: ['Av. Italia y Propios', 'Instrucciones y Rivera', 'Belloni'],
   },
 
+  '17': {
+    lineId: '17',
+    nombreComercial: 'Línea 17 — Terminal Casabó / Punta Carretas',
+    empresa: 'UCOT',
+    terminalA: 'Terminal Casabó',
+    terminalB: 'Punta Carretas',
+    zonasServidas: [
+      'Casabó',
+      'Cno. Ramírez',
+      'Ciudad Vieja',
+      'Centro',
+      'Rambla Sur',
+      'Pocitos',
+      'Punta Carretas',
+    ],
+    kmRecorrido: 18.5,
+    capacidadVehiculo: 80,
+    // Horarios derivados de scraping STM (id 508) 2026-04-19:
+    //   Hábiles 123 salidas / freq dominante 19 min / ventana 01:32-23:25
+    //   Sábados 64 salidas / freq dominante 41 min
+    //   Domingos 44 salidas / freq dominante 60 min
+    frecuencias: [
+      {
+        label: 'Pico mañana',
+        horaInicio: '06:00',
+        horaFin: '09:00',
+        frecuenciaMin: 15,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Valle día',
+        horaInicio: '09:00',
+        horaFin: '17:00',
+        frecuenciaMin: 22,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Pico tarde',
+        horaInicio: '17:00',
+        horaFin: '20:00',
+        frecuenciaMin: 15,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Nocturno',
+        horaInicio: '20:00',
+        horaFin: '23:25',
+        frecuenciaMin: 30,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Sábado',
+        horaInicio: '01:32',
+        horaFin: '23:10',
+        frecuenciaMin: 41,
+        diasAplica: ['SAB'],
+      },
+      {
+        label: 'Domingo',
+        horaInicio: '01:32',
+        horaFin: '23:25',
+        frecuenciaMin: 60,
+        diasAplica: ['DOM'],
+      },
+    ],
+    rivalesVerificados: [
+      {
+        lineId: '185',
+        empresa: 'Cutcsa',
+        solapamientoPct: 75,
+        tramoCompartido: 'Casabó → Cno. Ramírez → Ciudad Vieja',
+        frecuenciaRivalMin: 12,
+      },
+      {
+        lineId: '147',
+        empresa: 'Cutcsa',
+        solapamientoPct: 60,
+        tramoCompartido: 'Ciudad Vieja → Bvar. Artigas → Punta Carretas',
+        frecuenciaRivalMin: 10,
+      },
+      {
+        lineId: '148',
+        empresa: 'Cutcsa',
+        solapamientoPct: 40,
+        tramoCompartido: 'Cno. Ramírez → Ciudad Vieja → 18 de Julio',
+        frecuenciaRivalMin: 8,
+      },
+    ],
+    corridorBbox: [-34.93, -56.3, -34.87, -56.15],
+    tramosAlaDemanda: [
+      'Cno. Ramírez y Millán',
+      'Ciudad Vieja (Aduana)',
+      'Bvar. Artigas',
+      'Punta Carretas',
+    ],
+  },
+
+  '79': {
+    lineId: '79',
+    nombreComercial: 'Línea 79 — Ciudadela / Intercambiador Belloni',
+    empresa: 'UCOT',
+    terminalA: 'Ciudadela (Ciudad Vieja)',
+    terminalB: 'Intercambiador Belloni',
+    zonasServidas: [
+      'Ciudad Vieja',
+      'Centro',
+      '18 de Julio',
+      'Cordón',
+      'Av. Italia',
+      'Belloni',
+    ],
+    kmRecorrido: 11.0,
+    capacidadVehiculo: 80,
+    // Horarios derivados de scraping STM (id 551) 2026-04-19:
+    //   Hábiles 43 salidas / freq dominante 37 min / ventana 06:00-19:24
+    //   Sábados 16 salidas / freq dominante 100 min / variante ramal desde Uruguay/F.Crespo
+    //   Domingos 9 salidas / freq dominante 95 min
+    frecuencias: [
+      {
+        label: 'Pico mañana',
+        horaInicio: '06:00',
+        horaFin: '09:00',
+        frecuenciaMin: 25,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Valle día',
+        horaInicio: '09:00',
+        horaFin: '17:00',
+        frecuenciaMin: 40,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Pico tarde',
+        horaInicio: '17:00',
+        horaFin: '19:24',
+        frecuenciaMin: 30,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Sábado',
+        horaInicio: '07:00',
+        horaFin: '19:23',
+        frecuenciaMin: 100,
+        diasAplica: ['SAB'],
+      },
+      {
+        label: 'Domingo',
+        horaInicio: '10:20',
+        horaFin: '16:38',
+        frecuenciaMin: 95,
+        diasAplica: ['DOM'],
+      },
+    ],
+    rivalesVerificados: [
+      {
+        lineId: '103',
+        empresa: 'Cutcsa',
+        solapamientoPct: 85,
+        tramoCompartido: 'Belloni → Av. Italia → 18 de Julio → Ciudad Vieja (mismo par OD)',
+        frecuenciaRivalMin: 6,
+      },
+      {
+        lineId: '180',
+        empresa: 'Cutcsa',
+        solapamientoPct: 55,
+        tramoCompartido: 'Av. Italia → Belloni',
+        frecuenciaRivalMin: 15,
+      },
+      {
+        lineId: '125',
+        empresa: 'Cutcsa',
+        solapamientoPct: 45,
+        tramoCompartido: '18 de Julio → Cordón',
+        frecuenciaRivalMin: 7,
+      },
+    ],
+    corridorBbox: [-34.92, -56.22, -34.87, -56.09],
+    tramosAlaDemanda: [
+      'Ciudadela / Plaza Independencia',
+      '18 de Julio y Ejido',
+      'Av. Italia y Propios',
+      'Intercambiador Belloni',
+    ],
+  },
+
   '306': {
     lineId: '306',
     nombreComercial: 'Línea 306 — Casabó / Géant',
@@ -1275,7 +1461,6 @@ export class LineInspectorAgent {
     return this.config.rivalesVerificados.filter((r) => r.solapamientoPct >= 30);
   }
 
-  /** Genera reporte completo del Inspector utilizando datos geoespaciales reales cruzados con la inteligencia del backend */
   async generateReport(posicionesGPS: BusPosition[] = [], realtimeIntelligenceData?: any): Promise<InspectorReport> {
     const [{ ida, vuelta }, freq, horariosSTMOficiales] = await Promise.all([
       getLineVariants(this.config.lineId),
@@ -1283,7 +1468,9 @@ export class LineInspectorAgent {
       STMScheduleService.getSchedules(this.config.lineId)
     ]);
 
-    const numBuses = posicionesGPS.length;
+    const numBuses = posicionesGPS.length > 0 
+      ? posicionesGPS.length 
+      : (realtimeIntelligenceData?.ucot?.busesActivos || 0);
 
     const metricas = this.estimateRevenue(numBuses || 1); // EVitar 0 recaudo si no hay gps
     const competitorReport = this.getCompetitorReport();

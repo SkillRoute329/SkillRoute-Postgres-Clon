@@ -8,7 +8,7 @@
  * FUNCIONA SIN BRIDGE SERVER — cascada: LIVE → CACHE → MASTER JSON
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Zap,
@@ -66,7 +66,18 @@ import {
   generarInformeRival,
   type InformeRival,
   type AnalisisBus,
+  type BusSTM,
 } from '../../services/rivalTrackerService';
+import {
+  getVariantsForLine,
+  getVariantMaster,
+  computeVariantKPIs,
+  computeVariantAlerts,
+  type VariantKPIs,
+  type VariantAlert,
+  type Semaforo,
+  type BusPositionLite,
+} from '../../services/variantIntelligenceService';
 import AiCopilotChat from '../../components/AiCopilotChat';
 import clsx from 'clsx';
 
@@ -132,6 +143,118 @@ function posicionColors(p: string) {
     return { text: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/30' };
   return { text: 'text-slate-500', bg: 'bg-slate-700/30 border-slate-600/30' };
 }
+
+// ─── Base de Datos de Inteligencia Táctica (War Map) ──────────────────────────
+const TACTICAL_DATABASE: Record<string, Record<string, { rivales: string[], puntosCarga: string[], estrategia: string }>> = {
+  '17': {
+    'Punta Carretas': {
+      rivales: ['185 (Cutcsa)', '147 (Cutcsa)', '148 (Cutcsa)'],
+      puntosCarga: ['Cno. Ramírez y Millán', 'Ciudad Vieja (Aduana)', 'Bvar. Artigas', 'Punta Carretas'],
+      estrategia: 'Tramo inicial Casabó → Cno. Ramírez con 185 Cutcsa (solapamiento 75%, freq 12 min); luego Ciudad Vieja → Punta Carretas presionado por 147 (60%, freq 10 min). Disciplina de frecuencia 15 min en pico, límite de adelanto 3 min. Servicio nocturno hasta 23:25 requiere mantener ritmo también fuera de pico.'
+    },
+    'Terminal Casabó': {
+      rivales: ['185 (Cutcsa)', '147 (Cutcsa)'],
+      puntosCarga: ['Bvar. Artigas', 'Ciudad Vieja (Aduana)', 'Cno. Ramírez y Millán'],
+      estrategia: 'Vuelta bajo presión 147 Cutcsa en Punta Carretas → Ciudad Vieja (freq 10 min) y 185 en Cno. Ramírez. Limpieza de paradas en Bvar. Artigas y Ciudad Vieja (Aduana); no pisar carga al coche UCOT anterior.'
+    }
+  },
+  '79': {
+    'Intercambiador Belloni': {
+      rivales: ['103 (Cutcsa)', '180 (Cutcsa)', '125 (Cutcsa)'],
+      puntosCarga: ['Ciudadela / Plaza Independencia', '18 de Julio y Ejido', 'Av. Italia y Propios', 'Intercambiador Belloni'],
+      estrategia: 'CRÍTICO: 103 Cutcsa tiene IDÉNTICO par OD Belloni↔Ciudad Vieja con solapamiento 85% y freq pico 6 min (vs nuestros 25 min). Imposible ganar por frecuencia — estrategia es captación selectiva en cabeceras (Ciudadela carga turistas/centro; Belloni transbordos). Limpieza agresiva en 18 de Julio y Av. Italia y Propios; no perseguir al 103.'
+    },
+    'Ciudadela (Ciudad Vieja)': {
+      rivales: ['103 (Cutcsa)', '125 (Cutcsa)'],
+      puntosCarga: ['Av. Italia y Propios', '18 de Julio y Ejido', 'Ciudadela'],
+      estrategia: 'Vuelta por mismo corredor con misma presión 103 Cutcsa. Servicio solo diurno (06:00-19:24) — aprovechar demanda de transbordo en Belloni como punto de carga dominante. En sábados/domingos frecuencia baja a 95-100 min, mantener puntualidad estricta.'
+    }
+  },
+  '300': {
+    'Plaza Zitarrosa': {
+      rivales: ['110 (Cutcsa)', '106 (Cutcsa)', '175 (Cutcsa)'],
+      puntosCarga: ['Belloni', 'Intercambiador', '8 de Octubre / Comercio'],
+      estrategia: 'Ganar paradas locales (rival a 2-3 min). Límite de adelanto: 5 min para no pisar al compañero. Si el coche de adelante viene atrasado, considerar adelanto para apoyo.'
+    },
+    'Instrucciones': {
+      rivales: ['110 (Cutcsa)', '103 (Cutcsa)', '181 (Cutcsa)'],
+      puntosCarga: ['Herrera / 8 de Octubre', 'Intercambiador Belloni'],
+      estrategia: 'Vigilar 110 en tramo de 8 de Octubre. Si hay brecha de >3 min con el rival, sugerir posición de bloqueo. Evitar pegarse al coche anterior si este viene cargado.'
+    }
+  },
+  '316': {
+    'Pocitos': {
+      rivales: ['186 (Cutcsa)', '187 (Cutcsa)', '188 (Cutcsa)'],
+      puntosCarga: ['Av. Millán y Garzón', 'Pocitos (Bvar. España)'],
+      estrategia: 'Solapamiento 65% con 186 Cutcsa (freq 10 min) en Av. Millán → Garzón → Pocitos. Limpieza agresiva de paradas, margen 2-3 min con el coche UCOT anterior.'
+    },
+    'Cno Maldonado': {
+      rivales: ['186 (Cutcsa)', '188 (Cutcsa)'],
+      puntosCarga: ['Cno. Maldonado y Aparicio Saravia', 'Av. Millán y Garzón'],
+      estrategia: 'Tramo de captación inicial con baja presión Cutcsa. Prioridad: mantener frecuencia y no adelantar al compañero anterior salvo que traiga retraso >5 min.'
+    }
+  },
+  '306': {
+    'Géant': {
+      rivales: ['185 (Cutcsa)', 'G (Gómez)'],
+      puntosCarga: ['Cno. Ramírez y Millán', 'Ruta 1 (Paso de la Arena)', 'Géant'],
+      estrategia: 'Competencia intensiva con 185 Cutcsa (solapamiento 70%, freq 12 min) en Cno. Ramírez → Ruta 1. En tramo Ruta 1 → Géant entra Gómez (freq 20 min). Limpieza agresiva en paradas del corredor compartido, margen 2-3 min con coche UCOT anterior.'
+    },
+    'Casabó': {
+      rivales: ['185 (Cutcsa)'],
+      puntosCarga: ['Cno. Ramírez y Millán', 'Paso de la Arena'],
+      estrategia: 'Sentido contrario con misma presión Cutcsa 185 en Cno. Ramírez. Mantener 3 min de distancia táctica con compañero UCOT; evitar pisar carga.'
+    }
+  },
+  '328': {
+    'Mendoza (Est. Goes)': {
+      rivales: ['125 (Cutcsa)', '126 (Cutcsa)', 'D1 (Dinata)'],
+      puntosCarga: ['18 de Julio y Ejido', '18 de Julio y Yi', 'Goes y Mendoza'],
+      estrategia: 'Corredor 18 de Julio con presión muy alta: 125 Cutcsa (solapamiento 70%, freq 7 min) y 126 (60%, freq 8 min). Limpieza de paradas en 18 de Julio con margen 2 min del coche anterior UCOT. Vigilar D1 Dinata en tramo final Goes→Mendoza.'
+    },
+    'Punta Carretas': {
+      rivales: ['125 (Cutcsa)', '126 (Cutcsa)'],
+      puntosCarga: ['18 de Julio y Ejido', '18 de Julio y Yi'],
+      estrategia: 'Sentido inverso por 18 de Julio con misma presión Cutcsa. Si hay brecha >3 min con el rival más cercano, oportunidad de captación; no pegarse al compañero UCOT cargado.'
+    }
+  },
+  '329': {
+    'Instrucciones (Manga)': {
+      rivales: ['181 (Cutcsa)', '182 (Cutcsa)', '183 (Cutcsa)'],
+      puntosCarga: ['Av. Italia y Propios', 'Av. Italia y Rivera', 'Instrucciones y Manga'],
+      estrategia: 'Av. Italia saturado: 181 Cutcsa solapamiento 75% freq 8 min. Prioridad limpieza de paradas en Av. Italia/Propios y Av. Italia/Rivera, margen 2-3 min con coche UCOT anterior. Tramo final Manga con menor competencia, ritmo normal.'
+    },
+    'Punta Carretas': {
+      rivales: ['181 (Cutcsa)', '182 (Cutcsa)'],
+      puntosCarga: ['Av. Italia y Rivera', 'Av. Italia y Propios'],
+      estrategia: 'Vuelta por Av. Italia con misma saturación Cutcsa. Mantener frecuencia reglamentaria; adelanto solo si compañero UCOT viene con retraso >5 min.'
+    }
+  },
+  '330': {
+    'Ciudad Vieja': {
+      rivales: ['148 (Cutcsa)', '185 (Cutcsa)', '147 (Cutcsa)'],
+      puntosCarga: ['Cno. Ramírez y Millán', 'Bvar. Batlle y Ordóñez', 'Ciudad Vieja (Aduana)'],
+      estrategia: 'Competencia dominante: 148 Cutcsa (solapamiento 80%, freq 8 min) en todo el corredor Cerro → Ciudad Vieja. Limpieza agresiva en Cno. Ramírez y Bvar. Batlle, margen estricto 2 min con coche UCOT anterior. Terminal Aduana: asegurar descenso ordenado.'
+    },
+    'Cerro (Villa del Cerro)': {
+      rivales: ['148 (Cutcsa)', '147 (Cutcsa)'],
+      puntosCarga: ['Bvar. Batlle y Ordóñez', 'Cno. Ramírez y Millán'],
+      estrategia: 'Sentido vuelta con misma presión 148 Cutcsa. Vigilar brecha con rival y no sobrepasar al compañero UCOT salvo rezago >5 min.'
+    }
+  },
+  '370': {
+    'Portones de Carrasco': {
+      rivales: ['110 (Cutcsa)', '103 (Cutcsa)', '128 (Cutcsa)', '137 (Cutcsa)'],
+      puntosCarga: ['Rambla y Punta Carretas', 'Av. Italia y Propios', 'Portones (Carrasco)'],
+      estrategia: 'Corredor crítico: 110 Cutcsa (solapamiento 85%, freq 6 min) y 103 (65%, freq 6 min) en todo Rambla → Av. Italia → Carrasco. Disciplina máxima de frecuencia, límite de adelanto 3 min. Paradas Rambla/Punta Carretas y Av. Italia/Propios son las de mayor carga — no las cede al rival.'
+    },
+    'Playa del Cerro': {
+      rivales: ['110 (Cutcsa)', '103 (Cutcsa)'],
+      puntosCarga: ['Av. Italia y Propios', 'Rambla y Punta Carretas'],
+      estrategia: 'Vuelta con misma presión 110/103. Recorrido largo (28.7 km) obliga a mantener ritmo reglamentario; no perseguir rivales fuera de tramo UCOT.'
+    }
+  }
+};
 
 // ─── Sub-componentes ─────────────────────────────────────────────────────────
 
@@ -547,6 +670,108 @@ function HorarioAlertsPanel({ alertas }: { alertas: AlertaHoraria[] }) {
   );
 }
 
+// ─── Sub-componentes KPI por variante ────────────────────────────────────────
+
+function semaforoColor(s: Semaforo): { bg: string; border: string; text: string; dot: string; label: string } {
+  switch (s) {
+    case 'VERDE':
+      return { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-300', dot: 'bg-emerald-500', label: 'OK' };
+    case 'AMARILLO':
+      return { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-300', dot: 'bg-amber-500', label: 'ATENCIÓN' };
+    case 'ROJO':
+      return { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-300', dot: 'bg-red-500', label: 'CRÍTICO' };
+    case 'GRIS':
+    default:
+      return { bg: 'bg-slate-800/40', border: 'border-slate-700/30', text: 'text-slate-400', dot: 'bg-slate-500', label: 'SIN SERVICIO' };
+  }
+}
+
+function VariantKPIsCard({ kpis }: { kpis: VariantKPIs }) {
+  const sem = semaforoColor(kpis.semaforo);
+  return (
+    <div className={`rounded-xl border p-3 ${sem.bg} ${sem.border}`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full ${sem.dot} ${kpis.semaforo !== 'GRIS' ? 'animate-pulse' : ''}`} />
+          <span className={`text-xs font-black uppercase tracking-wider ${sem.text}`}>{sem.label}</span>
+        </div>
+        {kpis.sri !== null && (
+          <span className="text-[10px] text-slate-400">
+            SRI <strong className="text-white">{kpis.sri}</strong>/100
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg bg-slate-900/40 border border-slate-700/30 p-2">
+          <p className="text-[9px] text-slate-500 uppercase tracking-wider">Próxima salida</p>
+          <p className="text-sm font-black text-white mt-0.5">
+            {kpis.proximaSalida ?? '—'}
+            {kpis.minutosParaProxima !== null && (
+              <span className="text-[10px] text-emerald-400 ml-1">en {kpis.minutosParaProxima}m</span>
+            )}
+          </p>
+        </div>
+        <div className="rounded-lg bg-slate-900/40 border border-slate-700/30 p-2">
+          <p className="text-[9px] text-slate-500 uppercase tracking-wider">Frec. teórica</p>
+          <p className="text-sm font-black text-sky-300 mt-0.5">
+            {kpis.frecuenciaTeoricaMin > 0 ? `${kpis.frecuenciaTeoricaMin}m` : '—'}
+          </p>
+        </div>
+        <div className="rounded-lg bg-slate-900/40 border border-slate-700/30 p-2">
+          <p className="text-[9px] text-slate-500 uppercase tracking-wider">OTP aprox.</p>
+          <p className="text-sm font-black text-white mt-0.5">
+            {kpis.otpAprox !== null ? `${kpis.otpAprox}%` : '—'}
+          </p>
+          <p className="text-[9px] text-slate-500">{kpis.busesEnCorridor}/{kpis.salidasUltimaHora}·1h</p>
+        </div>
+        <div className="rounded-lg bg-slate-900/40 border border-slate-700/30 p-2">
+          <p className="text-[9px] text-slate-500 uppercase tracking-wider">Presión rival</p>
+          <p className="text-sm font-black text-red-300 mt-0.5">
+            {kpis.rivalPresionHeadwayMin > 0 ? `${kpis.rivalPresionHeadwayMin}m` : '—'}
+          </p>
+          <p className="text-[9px] text-slate-500">headway rival</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AlertFeedCard({ alerts }: { alerts: VariantAlert[] }) {
+  if (alerts.length === 0) {
+    return (
+      <div className="rounded-xl border border-slate-700/30 bg-slate-800/40 p-3 text-[11px] text-slate-500">
+        <Timer className="w-3 h-3 inline mr-1 text-slate-600" />
+        Sin eventos previstos en los próximos 15 min.
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-1.5">
+      {alerts.map((a) => {
+        const color =
+          a.severidad === 'CRITICO'
+            ? { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-300' }
+            : a.severidad === 'AVISO'
+              ? { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-300' }
+              : { bg: 'bg-sky-500/10', border: 'border-sky-500/30', text: 'text-sky-300' };
+        return (
+          <div key={a.id} className={`rounded-lg border p-2 ${color.bg} ${color.border}`}>
+            <div className="flex items-center justify-between">
+              <span className={`text-[11px] font-bold ${color.text}`}>{a.titulo}</span>
+              {a.etaMin !== undefined && (
+                <span className="text-[9px] text-slate-400 bg-slate-900/40 border border-slate-700/30 rounded-full px-1.5 py-0.5">
+                  {a.etaMin}m
+                </span>
+              )}
+            </div>
+            <p className="text-[10px] text-slate-400 mt-0.5">{a.detalle}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Panel detalle de línea (Intelligence tab) ───────────────────────────────
 
 function DetailPanel({
@@ -554,15 +779,24 @@ function DetailPanel({
   line,
   agent,
   onClose,
+  selectedVariantKey,
+  setSelectedVariantKey,
+  busPositionsForLine,
 }: {
   lineId: string;
   line: LineFleetStatus | undefined;
   agent: AgentStatus | undefined;
   onClose: () => void;
+  selectedVariantKey: string | null;
+  setSelectedVariantKey: (k: string | null) => void;
+  busPositionsForLine: BusPositionLite[];
 }) {
   const [schedule, setSchedule] = useState<LineScheduleResponse | null>(null);
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [tipoDia, setTipoDia] = useState<'Hábiles' | 'Sábados' | 'Domingos'>('Hábiles');
+
+  // Variantes reales scrapeadas del STM (fuente de verdad)
+  const variantesReales = useMemo(() => getVariantsForLine(lineId), [lineId]);
 
   useEffect(() => {
     let cancel = false;
@@ -571,12 +805,39 @@ function DetailPanel({
       if (cancel) return;
       setSchedule(s);
       if (s?.tipoDiaHoy) setTipoDia(s.tipoDiaHoy);
+      // Auto-seleccionar variante principal (primera en orden de volumen)
+      if (variantesReales.length > 0) {
+        setSelectedVariantKey(variantesReales[0].key);
+      }
       setScheduleLoading(false);
     });
     return () => {
       cancel = true;
     };
   }, [lineId]);
+
+  // KPIs + alerts para la variante seleccionada
+  const kpis = useMemo(() => {
+    if (!selectedVariantKey) return null;
+    return computeVariantKPIs({ lineId, variantKey: selectedVariantKey, busPositions: busPositionsForLine });
+  }, [lineId, selectedVariantKey, busPositionsForLine]);
+
+  const alerts = useMemo(() => {
+    if (!selectedVariantKey) return [];
+    return computeVariantAlerts({ lineId, variantKey: selectedVariantKey, busPositions: busPositionsForLine });
+  }, [lineId, selectedVariantKey, busPositionsForLine]);
+
+  // Semáforo por variante (para pintar cada botón del selector)
+  const semaforosPorVariante = useMemo(() => {
+    const map = new Map<string, Semaforo>();
+    for (const v of variantesReales) {
+      const k = computeVariantKPIs({ lineId, variantKey: v.key, busPositions: busPositionsForLine });
+      map.set(v.key, k.semaforo);
+    }
+    return map;
+  }, [lineId, variantesReales, busPositionsForLine]);
+
+  const varianteSel = variantesReales.find((v) => v.key === selectedVariantKey) ?? null;
 
   const colors = nivelColors(line?.nivelAlerta ?? 'SIN_SERVICIO');
   const posColors = posicionColors(agent?.posicionCompetitiva ?? 'SIN_SERVICIO');
@@ -592,15 +853,19 @@ function DetailPanel({
           ? 'text-amber-400'
           : 'text-red-400';
 
-  const diaActual = schedule?.dias?.[tipoDia] ?? null;
-  const variantes = diaActual?.variantes ?? [];
-  const salidasDominante = diaActual?.salidasDominante ?? [];
+  const hhmmAhora = schedule?.horaMontevideo ?? new Date().toTimeString().slice(0, 5);
 
-  // Próximas salidas (>=hora actual Montevideo). Cada salida es {desde, hacia}.
-  const hhmmAhora = schedule?.horaMontevideo ?? '';
-  const proximasSalidas = hhmmAhora
-    ? salidasDominante.filter((s) => s.desde >= hhmmAhora).slice(0, 12)
-    : salidasDominante.slice(0, 12);
+  // Salidas reales (master JSON scrapeado) de la variante seleccionada para el tipoDia activo
+  const salidasVariante = useMemo(() => {
+    if (!varianteSel) return [] as string[];
+    const master = getVariantMaster(lineId, varianteSel.key);
+    return master?.horarios[tipoDia]?.salidas ?? [];
+  }, [varianteSel, lineId, tipoDia]);
+
+  const proximasSalidas = useMemo(
+    () => salidasVariante.filter((s) => s >= hhmmAhora).slice(0, 12),
+    [salidasVariante, hhmmAhora]
+  );
 
   return (
     <div className="w-[450px] flex-none border-l border-slate-800/60 flex flex-col overflow-hidden bg-slate-900/60 transition-all duration-300">
@@ -752,64 +1017,136 @@ function DetailPanel({
             </div>
           )}
 
-          {!scheduleLoading && diaActual && variantes.length > 0 && (
+          {!scheduleLoading && variantesReales.length > 0 && (
             <div className="space-y-2">
-              {variantes.map((v, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl bg-slate-800/40 border border-slate-700/30 p-3"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span
-                      className="text-[11px] font-bold text-slate-200 truncate"
-                      title={`${v.origen} → ${v.destino}`}
-                    >
-                      {v.origen} → {v.destino}
-                    </span>
-                    {i === 0 && (
-                      <span className="text-[9px] text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-1.5 py-0.5">
-                        DOMINANTE
+              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-4">
+                Sentido / Variante (Origen → Destino)
+              </h4>
+              {variantesReales.map((v) => {
+                const isSel = v.key === selectedVariantKey;
+                const sem = semaforosPorVariante.get(v.key) ?? 'GRIS';
+                const semClr = semaforoColor(sem);
+                return (
+                  <button
+                    key={v.key}
+                    onClick={() => setSelectedVariantKey(v.key)}
+                    className={`w-full text-left rounded-xl border p-3 transition-all ${
+                      isSel
+                        ? 'bg-indigo-500/10 border-indigo-500/50 shadow-md shadow-indigo-500/10'
+                        : 'bg-slate-800/40 border-slate-700/30 hover:border-slate-500/50 hover:bg-slate-700/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`w-2 h-2 rounded-full flex-none ${semClr.dot} ${sem !== 'GRIS' ? 'animate-pulse' : ''}`} />
+                        <span
+                          className={`text-[11px] font-bold truncate ${isSel ? 'text-indigo-300' : 'text-slate-200'}`}
+                          title={`${v.origen} → ${v.destino}`}
+                        >
+                          {v.origen} → {v.destino}
+                        </span>
+                      </div>
+                      {v.principal && (
+                        <span className="text-[9px] text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-1.5 py-0.5 flex-none">
+                          PRINCIPAL
+                        </span>
+                      )}
+                    </div>
+                    <div className={`flex items-center gap-3 mt-1.5 text-[10px] ${isSel ? 'text-indigo-200/80' : 'text-slate-400'}`}>
+                      <span className="ml-auto">
+                        <strong className={isSel ? 'text-indigo-100' : 'text-white'}>{v.totalSalidasHabiles}</strong> salidas hábiles
                       </span>
+                    </div>
+                  </button>
+                );
+              })}
+
+              {/* KPIs de la variante seleccionada */}
+              {kpis && varianteSel && (
+                <div className="mt-4 space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    <Activity className="w-3 h-3" />
+                    KPIs · {varianteSel.origen} → {varianteSel.destino}
+                  </h4>
+                  <VariantKPIsCard kpis={kpis} />
+                </div>
+              )}
+
+              {/* Alert feed próximos 15 min */}
+              {varianteSel && (
+                <div className="mt-4 space-y-2">
+                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    <Radar className="w-3 h-3" />
+                    Próximos 15 min
+                  </h4>
+                  <AlertFeedCard alerts={alerts} />
+                </div>
+              )}
+
+              {/* Estrategia táctica por variante */}
+              {varianteSel && (
+                <div className="mt-4 rounded-xl bg-slate-800/40 border border-slate-700/30 p-3">
+                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+                    <Shield className="w-3 h-3" />
+                    Rivales en esta variante
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {varianteSel.rivales.length > 0 ? (
+                      varianteSel.rivales.map((r) => (
+                        <span key={r} className="text-[10px] font-bold uppercase px-2 py-1 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20">
+                          {r}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[10px] text-slate-500">Sin rivales verificados.</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 mt-1.5 text-[10px] text-slate-400">
-                    <span>
-                      <strong className="text-sky-400">{v.frecuenciaMin ?? '—'}min</strong> frec.
-                    </span>
-                    <span>
-                      {v.horaInicio ?? '—'} → {v.horaFin ?? '—'}
-                    </span>
-                    <span className="ml-auto">
-                      <strong className="text-white">{v.totalSalidas}</strong> salidas
-                    </span>
-                  </div>
+                  {varianteSel.puntosCarga.length > 0 && (
+                    <>
+                      <h5 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-2 mb-1">
+                        Puntos de carga clave
+                      </h5>
+                      <ul className="text-[10px] text-slate-300 space-y-0.5 list-disc list-inside">
+                        {varianteSel.puntosCarga.map((p) => (
+                          <li key={p}>{p}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  <p className="text-[10px] text-slate-300 mt-3 leading-relaxed">
+                    <strong className="text-indigo-300">Estrategia:</strong> {varianteSel.estrategia}
+                  </p>
                 </div>
-              ))}
+              )}
 
-              {/* Próximas salidas dominante */}
-              {proximasSalidas.length > 0 && (
-                <div className="mt-3">
-                  <h4 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                    <Timer className="w-3 h-3 text-amber-400" />
-                    Próximas salidas ({proximasSalidas.length})
+              {/* Salidas completas variante seleccionada */}
+              {varianteSel && proximasSalidas.length > 0 ? (
+                <div className="mt-3 bg-slate-800/40 border border-slate-700/30 p-3 rounded-xl max-h-[300px] overflow-y-auto custom-scrollbar">
+                  <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1 sticky top-0 bg-slate-800/90 pb-1 z-10 border-b border-slate-700">
+                    <Timer className="w-3 h-3 text-emerald-400" />
+                    Próximas salidas {tipoDia} · {varianteSel.destino} ({proximasSalidas.length})
                   </h4>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1.5 mt-2">
                     {proximasSalidas.map((s, i) => (
                       <span
-                        key={i}
-                        className="text-[10px] font-mono text-slate-300 bg-slate-800/60 border border-slate-700/30 rounded-md px-1.5 py-0.5"
-                        title={`Llega a destino ~${s.hacia}`}
+                        key={`${s}-${i}`}
+                        className="text-[10px] font-mono border rounded-md px-1.5 py-0.5 text-emerald-300 bg-emerald-900/20 border-emerald-500/30 font-bold"
+                        title={`Salida programada: ${s}`}
                       >
-                        {s.desde}
+                        {s}
                       </span>
                     ))}
                   </div>
                 </div>
-              )}
+              ) : varianteSel ? (
+                <div className="mt-3 bg-slate-800/40 border border-slate-700/30 p-3 rounded-xl text-[10px] text-slate-500">
+                  <Timer className="w-3 h-3 inline mr-1 text-slate-600" />
+                  No hay más salidas programadas para este sentido hoy ({tipoDia}).
+                </div>
+              ) : null}
 
               <p className="text-[9px] text-slate-600 mt-2">
-                Fuente: {schedule?.fuente ?? 'stm.horarios.jsf'} · Total salidas programadas día{' '}
-                {tipoDia}: {diaActual.totalSalidas}
+                Fuente: stm.horarios.jsf (scrape) · Total salidas hábiles variante: {varianteSel?.totalSalidasHabiles ?? 0}
               </p>
             </div>
           )}
@@ -835,6 +1172,38 @@ export default function OperationsIntelligenceHub() {
   const [lines, setLines] = useState<LineFleetStatus[]>([]);
   const [lineSource, setLineSource] = useState<DataSource>('OFFLINE');
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
+  const [selectedVariantKey, setSelectedVariantKey] = useState<string | null>(null);
+  const [ucotBusPositions, setUcotBusPositions] = useState<BusSTM[]>([]);
+
+  // Derivamos el contexto táctico para el Copiloto desde variantIntelligenceService
+  const tacticalContext = useMemo(() => {
+    if (!selectedLine) return undefined;
+    const variantes = getVariantsForLine(selectedLine);
+    if (variantes.length === 0) {
+      // Fallback: línea sin variantes scrapeadas aún
+      const lineData = TACTICAL_DATABASE[selectedLine];
+      if (lineData) {
+        const destinos = Object.keys(lineData);
+        const destino = destinos[0];
+        return { linea: selectedLine, destino, ...lineData[destino] };
+      }
+      return {
+        linea: selectedLine,
+        destino: 'General',
+        rivales: ['Competencia local STM'],
+        puntosCarga: ['Puntos de control'],
+        estrategia: 'Mantener frecuencia y vigilar bunching.',
+      };
+    }
+    const sel = variantes.find((v) => v.key === selectedVariantKey) ?? variantes[0];
+    return {
+      linea: selectedLine,
+      destino: `${sel.origen} → ${sel.destino}`,
+      rivales: sel.rivales,
+      puntosCarga: sel.puntosCarga,
+      estrategia: sel.estrategia,
+    };
+  }, [selectedLine, selectedVariantKey]);
 
   // Agents tab state
   const [agents, setAgents] = useState<AgentStatus[]>([]);
@@ -901,6 +1270,9 @@ export default function OperationsIntelligenceHub() {
         { lineId: 'D1', empresa: 'DINATRA' },
       ];
       const buses = await fetchPosicionesSTM();
+      // Persistimos las posiciones UCOT para los KPIs del DetailPanel
+      const ucotLineIds = new Set<string>(UCOT_LINEAS_REALES);
+      setUcotBusPositions(buses.filter((b) => ucotLineIds.has(b.linea)));
       const informes = await Promise.all(
         RIVALES.map((r) => generarInformeRival(r.lineId, r.empresa, buses)),
       );
@@ -1023,6 +1395,18 @@ export default function OperationsIntelligenceHub() {
             line={lines.find((l) => l.lineId === selectedLine)}
             agent={agents.find((a) => a.lineId === selectedLine)}
             onClose={() => setSelectedLine(null)}
+            selectedVariantKey={selectedVariantKey}
+            setSelectedVariantKey={setSelectedVariantKey}
+            busPositionsForLine={ucotBusPositions
+              .filter((b) => b.linea === selectedLine)
+              .map((b) => ({
+                lineId: b.linea,
+                lat: b.lat,
+                lng: b.lng,
+                velocidadKmh: b.velocidad,
+                rumboGrados: b.direccion,
+                timestamp: b.timestampGPS?.getTime?.(),
+              }))}
           />
         )}
       </div>
@@ -1639,9 +2023,13 @@ export default function OperationsIntelligenceHub() {
 
       {copilotOpen && (
         <div className="fixed bottom-24 right-6 z-40 w-[calc(100vw-3rem)] sm:w-[420px] h-[600px] max-h-[calc(100vh-8rem)] shadow-2xl">
-          <AiCopilotChat className="h-full" />
+          <AiCopilotChat 
+            className="h-full" 
+            initialContext={tacticalContext}
+          />
         </div>
       )}
     </div>
   );
 }
+
