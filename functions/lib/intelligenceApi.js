@@ -609,4 +609,118 @@ app.get('/api/ucot/schedule/:linea', async (req, res) => {
         res.status(500).json({ ok: false, error: (err === null || err === void 0 ? void 0 : err.message) || String(err) });
     }
 });
+// ─── COPILOTO TÁCTICO (/api/ai/chat) ─────────────────────────────────────────
+// Usa Claude claude-haiku-4-5-20251001 via Anthropic API con prompt caching.
+// El frontend inyecta el contexto táctico por variante seleccionada.
+const COPILOTO_SYSTEM = `Eres el Copiloto Táctico de UCOT, cooperativa de transporte público de Montevideo, Uruguay.
+Asistís a inspectores y jefes de tránsito con análisis en tiempo real y recomendaciones operativas.
+
+REGLAS:
+- Respondés en español rioplatense, tono directo, ejecutivo y breve (3-6 líneas máximo).
+- Tu misión: optimizar frecuencia y defender la línea frente a la competencia (CUTCSA, COETC, COME).
+- Identificás coches por NÚMERO INTERNO. Ejemplo: "El interno 142 lleva 3min de atraso".
+- Cada recomendación se basa en DATOS reales: frecuencia, presión rival, gaps de servicio, horario STM.
+- NUNCA inventás datos. Si no tenés información, lo decís explícitamente: "Sin señal GPS ahora mismo".
+- Si el inspector pide retener/adelantar un coche, confirmás con datos del corredor antes de sugerir.
+- Formato: respuestas cortas y directas. Si hay acción táctica clara, la proponés en negrita al final.`;
+app.post('/api/ai/chat', async (req, res) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+    const { history = [], message, context } = req.body;
+    if (!message || typeof message !== 'string') {
+        res.status(400).json({ error: 'Parámetro requerido: message' });
+        return;
+    }
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+        res.status(503).json({
+            error: 'Copiloto no disponible',
+            hint: 'ANTHROPIC_API_KEY no configurada en Firebase Functions. Ejecutá: firebase functions:secrets:set ANTHROPIC_API_KEY',
+        });
+        return;
+    }
+    let contextBlock = '';
+    if (context === null || context === void 0 ? void 0 : context.linea) {
+        contextBlock = `\n\nCONTEXTO ACTIVO DEL INSPECTOR:
+Línea seleccionada: ${context.linea}
+Variante/destino: ${(_a = context.destino) !== null && _a !== void 0 ? _a : 'no especificado'}
+Rivales verificados en este corredor: ${(_c = (_b = context.rivales) === null || _b === void 0 ? void 0 : _b.join(', ')) !== null && _c !== void 0 ? _c : 'no cargados'}
+Puntos de alta demanda: ${(_e = (_d = context.puntosCarga) === null || _d === void 0 ? void 0 : _d.join(', ')) !== null && _e !== void 0 ? _e : 'no especificados'}
+Estrategia táctica vigente: ${(_f = context.estrategia) !== null && _f !== void 0 ? _f : 'sin datos'}`;
+    }
+    const systemText = COPILOTO_SYSTEM + contextBlock;
+    try {
+        const t0 = Date.now();
+        const safeHistory = (Array.isArray(history) ? history : [])
+            .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+            .slice(-12);
+        const messages = [
+            ...safeHistory.map((m) => ({ role: m.role, content: m.content })),
+            { role: 'user', content: message },
+        ];
+        const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+                'anthropic-beta': 'prompt-caching-2024-07-31',
+            },
+            body: JSON.stringify({
+                model: 'claude-haiku-4-5-20251001',
+                max_tokens: 512,
+                system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
+                messages,
+            }),
+        });
+        if (!anthropicRes.ok) {
+            const errText = await anthropicRes.text();
+            console.error('[copiloto] Anthropic error', anthropicRes.status, errText);
+            let hint = `Error ${anthropicRes.status} de Anthropic API`;
+            try {
+                const parsed = JSON.parse(errText);
+                hint = ((_g = parsed.error) === null || _g === void 0 ? void 0 : _g.message) || hint;
+            }
+            catch (_l) { }
+            res.status(503).json({ error: 'Copiloto temporalmente no disponible', hint });
+            return;
+        }
+        const data = await anthropicRes.json();
+        const reply = (_j = (_h = data.content.find((c) => c.type === 'text')) === null || _h === void 0 ? void 0 : _h.text) !== null && _j !== void 0 ? _j : '(sin respuesta)';
+        res.json({
+            reply,
+            tools_used: [],
+            rounds: 1,
+            total_latency_ms: Date.now() - t0,
+            model: (_k = data.model) !== null && _k !== void 0 ? _k : 'claude-haiku-4-5-20251001',
+        });
+    }
+    catch (err) {
+        console.error('[copiloto] Error:', err);
+        res.status(503).json({ error: 'Error en copiloto táctico', hint: (err === null || err === void 0 ? void 0 : err.message) || String(err) });
+    }
+});
+// ─── AI ORDERS: approve/reject (Firestore) ───────────────────────────────────
+app.post('/api/ai/orders/:id/approve', async (req, res) => {
+    try {
+        const orderId = String(req.params.id);
+        await getDb().collection('ai_orders').doc(orderId).set({ status: 'approved', approvedAt: admin.firestore.FieldValue.serverTimestamp(), approvedBy: 'inspector' }, { merge: true });
+        const doc = await getDb().collection('ai_orders').doc(orderId).get();
+        res.json({ order: Object.assign({ id: orderId }, doc.data()) });
+    }
+    catch (err) {
+        res.status(400).json({ error: (err === null || err === void 0 ? void 0 : err.message) || String(err) });
+    }
+});
+app.post('/api/ai/orders/:id/reject', async (req, res) => {
+    try {
+        const orderId = String(req.params.id);
+        const { reason = 'Rechazado por inspector' } = req.body;
+        await getDb().collection('ai_orders').doc(orderId).set({ status: 'rejected', rejectedAt: admin.firestore.FieldValue.serverTimestamp(), rejectedBy: 'inspector', reason }, { merge: true });
+        const doc = await getDb().collection('ai_orders').doc(orderId).get();
+        res.json({ order: Object.assign({ id: orderId }, doc.data()) });
+    }
+    catch (err) {
+        res.status(400).json({ error: (err === null || err === void 0 ? void 0 : err.message) || String(err) });
+    }
+});
 exports.intelligenceApi = functions.https.onRequest(app);
