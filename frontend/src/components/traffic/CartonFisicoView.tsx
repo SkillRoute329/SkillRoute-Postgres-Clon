@@ -109,8 +109,7 @@ export default function CartonFisicoView({
 
   return (
     <div
-      className="relative overflow-hidden max-w-full mx-auto shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] rounded-xl border border-white/10 bg-gradient-to-br from-gray-900/90 to-gray-800/90 text-gray-100 font-sans backdrop-blur-md"
-      style={{ minWidth: '320px' }}
+      className="relative overflow-hidden max-w-full mx-auto shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] rounded-xl border border-white/10 bg-gradient-to-br from-gray-900/90 to-gray-800/90 text-gray-100 font-sans backdrop-blur-md min-w-[320px]"
       data-testid="carton-fisico-view"
     >
       {/* Decorative blobs for glassmorphism */}
@@ -156,7 +155,7 @@ export default function CartonFisicoView({
 
         {/* Cuadrícula */}
         <div className="overflow-x-auto scroller-glass pb-2">
-          <table className="w-full border-collapse text-sm" style={{ tableLayout: 'fixed' }}>
+          <table className="w-full border-collapse text-sm table-fixed">
             <thead>
               <tr>
                 <th className="w-12 min-w-[3rem] border-b border-r border-white/10 bg-gray-800/50 p-2 align-bottom font-bold text-xs text-center uppercase tracking-wider text-gray-400">
@@ -165,24 +164,10 @@ export default function CartonFisicoView({
                 {cabeceras.map((c, i) => (
                   <th
                     key={i}
-                    className="border-b border-white/10 p-2 align-bottom bg-gray-800/50 font-semibold text-xs whitespace-nowrap text-blue-100 relative group"
-                    style={{
-                      minWidth: '2.5rem',
-                      maxWidth: '4rem',
-                      height: '5rem',
-                      verticalAlign: 'bottom',
-                    }}
+                    className="border-b border-white/10 p-2 align-bottom bg-gray-800/50 font-semibold text-xs whitespace-nowrap text-blue-100 relative group min-w-[2.5rem] max-w-[4rem] h-20"
                     title={c}
                   >
-                    <span
-                      className="inline-block origin-left whitespace-nowrap transition-colors duration-300 group-hover:text-cyan-300 drop-shadow-sm"
-                      style={{
-                        transformOrigin: 'left bottom',
-                        width: '4rem',
-                        textAlign: 'left',
-                        transform: 'rotate(-65deg) translateX(-10px)',
-                      }}
-                    >
+                    <span className="inline-block whitespace-nowrap transition-colors duration-300 group-hover:text-cyan-300 drop-shadow-sm origin-bottom-left w-16 text-left -rotate-[65deg] -translate-x-[10px]">
                       {c || `P${i + 1}`}
                     </span>
                   </th>

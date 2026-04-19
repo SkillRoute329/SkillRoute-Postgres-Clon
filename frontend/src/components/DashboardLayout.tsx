@@ -28,15 +28,11 @@ export default function DashboardLayout() {
     return (
       <Link
         to={path}
-        style={{
-          display: 'block',
-          padding: '10px 16px',
-          borderRadius: 8,
-          color: isActive ? '#fff' : '#94a3b8',
-          background: isActive ? '#334155' : 'transparent',
-          textDecoration: 'none',
-          marginBottom: 4,
-        }}
+        className={`block px-4 py-2.5 rounded-lg mb-1 no-underline transition-colors ${
+          isActive
+            ? 'text-white bg-slate-700'
+            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+        }`}
       >
         {label}
       </Link>
@@ -44,71 +40,32 @@ export default function DashboardLayout() {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className="flex min-h-screen">
       {/* Sidebar como en el programa real: w-64 bg-slate-900 */}
-      <aside
-        style={{
-          width: 256,
-          background: '#0f172a',
-          borderRight: '1px solid #334155',
-          padding: '24px 16px',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <h2 style={{ margin: '0 0 24px', fontSize: 18, fontWeight: 700, color: '#e2e8f0' }}>
-          TransformaFacil
-        </h2>
-        <nav style={{ flex: 1 }}>
+      <aside className="w-64 bg-slate-900 border-r border-slate-700 py-6 px-4 flex flex-col">
+        <h2 className="m-0 mb-6 text-lg font-bold text-slate-200">TransformaFacil</h2>
+        <nav className="flex-1">
           {link('/dashboard', 'Dashboard')}
-          <div
-            style={{
-              marginTop: 16,
-              marginBottom: 8,
-              color: '#64748b',
-              fontSize: 12,
-              fontWeight: 600,
-            }}
-          >
-            Tránsito
-          </div>
+          <div className="mt-4 mb-2 text-slate-500 text-xs font-semibold">Tránsito</div>
           {link('/dashboard/transit/service-matrix', 'Matriz de Servicio')}
           {link('/dashboard/transit/statistics', 'Estadísticas')}
-          <div
-            style={{
-              marginTop: 16,
-              marginBottom: 8,
-              color: '#64748b',
-              fontSize: 12,
-              fontWeight: 600,
-            }}
-          >
-            Admin
-          </div>
+          <div className="mt-4 mb-2 text-slate-500 text-xs font-semibold">Admin</div>
           {link('/dashboard/admin/ingestion', 'Ingestion de datos')}
           {link('/dashboard/admin/users', 'Usuarios')}
         </nav>
         <button
           onClick={handleLogout}
-          style={{
-            padding: '10px 16px',
-            background: 'transparent',
-            border: '1px solid #334155',
-            borderRadius: 8,
-            color: '#94a3b8',
-            cursor: 'pointer',
-            fontSize: 14,
-          }}
+          className="px-4 py-2.5 bg-transparent border border-slate-700 rounded-lg text-slate-400 cursor-pointer text-sm hover:bg-slate-800 transition-colors mt-auto"
         >
           Cerrar sesión
         </button>
       </aside>
-      <main style={{ flex: 1, padding: 32, background: '#0f172a' }}>
-        <header style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#e2e8f0' }}>
+      <main className="flex-1 p-8 bg-slate-900 overflow-y-auto">
+        <header className="mb-6">
+          <h1 className="m-0 text-2xl font-bold text-slate-200">
             Hola, {user?.fullName ?? 'Usuario'}
           </h1>
-          <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: 14 }}>{user?.role ?? '—'}</p>
+          <p className="m-0 mt-1 text-slate-400 text-sm">{user?.role ?? '—'}</p>
         </header>
         <Outlet />
       </main>

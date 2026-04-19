@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getStorage } from 'firebase/storage';
+import { getMessaging, isSupported } from 'firebase/messaging';
 import {
   getAuth,
   setPersistence,
@@ -36,7 +37,7 @@ export const db = initializeFirestore(
         experimentalAutoDetectLongPolling: true,
         localCache: persistentLocalCache({
           tabManager: persistentMultipleTabManager(),
-        }),
+         }),
       },
 );
 
@@ -52,5 +53,13 @@ if (useEmulator) {
 setPersistence(auth, browserLocalPersistence);
 
 export const storage = getStorage(app);
+
+export const getAppMessaging = async () => {
+  const supported = await isSupported();
+  if (supported) {
+    return getMessaging(app);
+  }
+  return null;
+};
 
 export default app;

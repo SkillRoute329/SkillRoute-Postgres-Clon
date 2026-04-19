@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertaLinea, EstadoLinea } from '../../types/dashboard';
+import type { AlertaLinea, EstadoLinea } from '../../types/dashboard';
 import { AlertTriangle, AlertCircle, Zap, X } from 'lucide-react';
 
 interface AlertasPanelProps {
@@ -8,7 +8,9 @@ interface AlertasPanelProps {
 }
 
 export function AlertasPanel({ alertas, lineas }: AlertasPanelProps) {
-  const [filtroSeveridad, setFiltroSeveridad] = useState<'todas' | 'critica' | 'alta' | 'media' | 'baja'>('todas');
+  const [filtroSeveridad, setFiltroSeveridad] = useState<
+    'todas' | 'critica' | 'alta' | 'media' | 'baja'
+  >('todas');
   const [filtroTipo, setFiltroTipo] = useState<'todas' | string>('todas');
   const [expandedAlerts, setExpandedAlerts] = useState<Set<number>>(new Set());
 
@@ -19,29 +21,33 @@ export function AlertasPanel({ alertas, lineas }: AlertasPanelProps) {
         ...alerta,
         lineaId: linea.lineaId,
         numeroLinea: linea.numeroLinea,
-        key: `${linea.lineaId}-${idx}`
-      }))
+        key: `${linea.lineaId}-${idx}`,
+      })),
     )
     .concat(
       alertas.map((alerta, idx) => ({
         ...alerta,
-        key: `critica-${idx}`
-      }))
+        lineaId: '',
+        numeroLinea: 0,
+        key: `critica-${idx}`,
+      })),
     );
 
   // Filtrar
   let alertasFiltradas = todasLasAlertas;
   if (filtroSeveridad !== 'todas') {
-    alertasFiltradas = alertasFiltradas.filter(a => a.severidad === filtroSeveridad);
+    alertasFiltradas = alertasFiltradas.filter((a) => a.severidad === filtroSeveridad);
   }
   if (filtroTipo !== 'todas') {
-    alertasFiltradas = alertasFiltradas.filter(a => a.tipo === filtroTipo);
+    alertasFiltradas = alertasFiltradas.filter((a) => a.tipo === filtroTipo);
   }
 
   // Ordenar por severidad
   const severidadScore = { critica: 4, alta: 3, media: 2, baja: 1 };
   alertasFiltradas.sort(
-    (a, b) => severidadScore[b.severidad as keyof typeof severidadScore] - severidadScore[a.severidad as keyof typeof severidadScore]
+    (a, b) =>
+      severidadScore[b.severidad as keyof typeof severidadScore] -
+      severidadScore[a.severidad as keyof typeof severidadScore],
   );
 
   const getSeveridadIcon = (severidad: string) => {
@@ -70,15 +76,13 @@ export function AlertasPanel({ alertas, lineas }: AlertasPanelProps) {
     }
   };
 
-  const getTipos = Array.from(
-    new Set(todasLasAlertas.map(a => a.tipo))
-  ).sort();
+  const getTipos = Array.from(new Set(todasLasAlertas.map((a) => a.tipo))).sort();
 
   const resumen = {
     total: todasLasAlertas.length,
-    criticas: todasLasAlertas.filter(a => a.severidad === 'critica').length,
-    altas: todasLasAlertas.filter(a => a.severidad === 'alta').length,
-    medias: todasLasAlertas.filter(a => a.severidad === 'media').length
+    criticas: todasLasAlertas.filter((a) => a.severidad === 'critica').length,
+    altas: todasLasAlertas.filter((a) => a.severidad === 'alta').length,
+    medias: todasLasAlertas.filter((a) => a.severidad === 'media').length,
   };
 
   const toggleExpanded = (idx: number) => {
@@ -118,7 +122,7 @@ export function AlertasPanel({ alertas, lineas }: AlertasPanelProps) {
         <div>
           <p className="text-sm font-semibold text-gray-700 mb-2">Filtrar por severidad:</p>
           <div className="flex gap-2 flex-wrap">
-            {(['todas', 'critica', 'alta', 'media', 'baja'] as const).map(sev => (
+            {(['todas', 'critica', 'alta', 'media', 'baja'] as const).map((sev) => (
               <button
                 key={sev}
                 onClick={() => setFiltroSeveridad(sev)}
@@ -139,10 +143,12 @@ export function AlertasPanel({ alertas, lineas }: AlertasPanelProps) {
           <select
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value)}
+            aria-label="Filtrar alertas por tipo"
+            title="Filtrar alertas por tipo"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
             <option value="todas">Todos los tipos</option>
-            {getTipos.map(tipo => (
+            {getTipos.map((tipo) => (
               <option key={tipo} value={tipo}>
                 {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
               </option>
@@ -184,6 +190,8 @@ export function AlertasPanel({ alertas, lineas }: AlertasPanelProps) {
                   e.stopPropagation();
                   toggleExpanded(idx);
                 }}
+                aria-label="Cerrar detalle de alerta"
+                title="Cerrar detalle"
                 className="p-1 hover:bg-white hover:bg-opacity-20 rounded transition"
               >
                 <X className="w-4 h-4" />
@@ -212,7 +220,9 @@ export function AlertasPanel({ alertas, lineas }: AlertasPanelProps) {
       {alertasFiltradas.length === 0 && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-8 text-center">
           <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-3" />
-          <p className="text-green-800 font-semibold">✓ No hay alertas con los filtros seleccionados</p>
+          <p className="text-green-800 font-semibold">
+            ✓ No hay alertas con los filtros seleccionados
+          </p>
           <p className="text-green-700 text-sm mt-1">Operación normal de todas las líneas</p>
         </div>
       )}

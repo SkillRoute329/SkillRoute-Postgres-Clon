@@ -732,6 +732,12 @@ export const stmHorariosProxy = functions.https.onRequest((req, res) => {
 
 export { intelligenceApi } from './intelligenceApi';
 
+// ─── Horarios oficiales UCOT (scraper JSF diario) ─────────────────────────────
+export {
+  refreshHorariosUcotTick,
+  refreshHorariosUcotNow,
+} from './refreshHorariosUcot';
+
 // ─── Refresh entidad-nivel `competidores` cada 10min ─────────────────────────
 // Complementa ingestaIMMTick (cada 60s, pings GPS por bus): aquí mantenemos
 // el documento agregado por empresa que consume competitionService.

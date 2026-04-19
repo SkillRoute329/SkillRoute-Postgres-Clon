@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><body><head id="j_idt4">
+				
+				
+				<link type="text/css" rel="stylesheet" href="/app/stm/horarios/javax.faces.resource/theme.css.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces-saga&amp;v=13.0.0" /><link type="text/css" rel="stylesheet" href="/app/stm/horarios/javax.faces.resource/primeicons/primeicons.css.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0" /><link type="text/css" rel="stylesheet" href="/app/stm/horarios/javax.faces.resource/components.css.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0" /><link type="text/css" rel="stylesheet" href="/app/stm/horarios/javax.faces.resource/css/primeflex.min.css.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core" /><link type="text/css" rel="stylesheet" href="/app/stm/horarios/javax.faces.resource/css/layout.css.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core" /><link type="text/css" rel="stylesheet" href="/app/stm/horarios/javax.faces.resource/css/core.css.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core" /><link type="text/css" rel="stylesheet" href="/app/stm/horarios/javax.faces.resource/css/primefaces-theme.css.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core" /><link type="text/css" rel="stylesheet" href="/app/stm/horarios/javax.faces.resource/horarios-3.0.0.css.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=css" /><link type="text/css" rel="stylesheet" href="/app/stm/horarios/javax.faces.resource/popup-ol.css.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=css" /><link type="text/css" rel="stylesheet" href="/app/stm/horarios/javax.faces.resource/ol.css.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=css" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+			<title>Línea  - Recorrido -
+				Consulta de horarios STM</title>			           
+		<link rel="icon" href="https://montevideo.gub.uy/themes/custom/im_institucional/favicon.ico" type="image/vnd.microsoft.icon" /></head><body>
+
+		<div class="contenedor-plantilla">
+
+			<div class="contenedor-plantilla-interno">
+
+				<div class="contenedor-cabezal">
+					<div class="flex-grow-1"><a href="/app/stm/horarios/pages/mapa.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv">Línea  - </a>
+					</div>
+
+					<div class="flex-grow-0">
+					</div>
+				</div>
+
+				<div class="contenedor-version">
+					<span class="stm-username">
+					</span><span class="stm-version">3.0.0</span>
+				</div>
+
+				<div class="contenedor-cuerpo">
+<form id="j_idt27" name="j_idt27" method="post" action="/app/stm/horarios/pages/mapa.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv" enctype="application/x-www-form-urlencoded">
+<input type="hidden" name="j_idt27" value="j_idt27" />
+
+				<div class="botonAtras"><a id="j_idt27:j_idt29" href="#" class="ui-commandlink ui-widget" onclick="PrimeFaces.ab({s:&quot;j_idt27:j_idt29&quot;,f:&quot;j_idt27&quot;});return false;"><img id="j_idt27:j_idt30" src="/app/stm/horarios/javax.faces.resource/volver2.png.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=img" class="btn-atras" alt="Volver a resultado" title="Volver a resultado" /></a>
+				</div>
+				<div class="subtitulo"> - 
+				</div><input type="hidden" name="javax.faces.ViewState" id="j_id1:javax.faces.ViewState:0" value="-3132209815320329077:1084693907897647926" autocomplete="off" />
+</form><body onload="init();">
+
+	<div>
+<form id="j_idt44" name="j_idt44" method="post" action="/app/stm/horarios/pages/mapa.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv" enctype="application/x-www-form-urlencoded">
+<input type="hidden" name="j_idt44" value="j_idt44" />
+
+			<div class="titulo centrado"><span class="h2"></span>
+			</div>
+
+			<div id="popup" class="ol-popup">
+				<a href="#" id="popup-closer" class="ol-popup-closer"></a>
+				<div id="popup-content"></div>
+			</div>
+
+			<div id="map" style="height: 100vh"></div><input type="hidden" name="javax.faces.ViewState" id="j_id1:javax.faces.ViewState:1" value="-3132209815320329077:1084693907897647926" autocomplete="off" />
+</form>
+	</div><script async="true" src="https://www.googletagmanager.com/gtag/js?id=G-CFWCG01Z1X" type="text/javascript"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/jquery/jquery.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/jquery/jquery-plugins.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/core.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/components.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/locales/locale-es.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/js/plantilla.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/js/validaciones.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/conversor.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/env.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/estilosWMS.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/ol.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/map.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"></script><script id="d0d561c0-79e2-4259-b0d9-063d396ca8c3" type="text/javascript">var pf=window.PrimeFaces;
+				  window.dataLayer = window.dataLayer || [];
+				  function gtag(){dataLayer.push(arguments);}
+				  gtag('js', new Date());
+				
+				  gtag('config', 'G-CFWCG01Z1X');
+				;
+if(pf){pf.settings.locale='en_US';pf.settings.viewId='/pages/mapa.xhtml';pf.settings.contextPath='/app/stm/horarios';pf.settings.cookiesSecure=false;};
+pf.cw("CommandLink","widget_j_idt27_j_idt29",{id:"j_idt27:j_idt29"});
+$(function(){setFeatureLineasViaje(true);setFeatureVectorOrigenDestino(true);setFeatureVectorPuntoControl(true);});document.getElementById('d0d561c0-79e2-4259-b0d9-063d396ca8c3').remove();</script></body>
+				</div>
+
+			</div>
+
+		</div><div id="j_idt50"></div><div id="j_idt51" class="ui-dialog ui-widget ui-widget-content ui-corner-all ui-shadow ui-hidden-container" style="display:none"><div class="ui-dialog-content ui-widget-content" id="j_idt51_content">
+			<div class="p-text-center">
+				<i class="pi pi-spin pi-spinner loading-icon text-4xl" aria-hidden="true"></i>
+			</div></div></div><script async="true" src="https://www.googletagmanager.com/gtag/js?id=G-CFWCG01Z1X" type="text/javascript"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/jquery/jquery.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/jquery/jquery-plugins.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/core.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/components.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/locales/locale-es.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/js/plantilla.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/js/validaciones.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/conversor.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/env.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/estilosWMS.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/ol.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/map.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"></script><script id="9de8b11b-478f-4d26-a1a3-33eb4dbf3609" type="text/javascript">var pf=window.PrimeFaces;
+				  window.dataLayer = window.dataLayer || [];
+				  function gtag(){dataLayer.push(arguments);}
+				  gtag('js', new Date());
+				
+				  gtag('config', 'G-CFWCG01Z1X');
+				;
+if(pf){pf.settings.locale='en_US';pf.settings.viewId='/pages/mapa.xhtml';pf.settings.contextPath='/app/stm/horarios';pf.settings.cookiesSecure=false;};
+pf.cw("CommandLink","widget_j_idt27_j_idt29",{id:"j_idt27:j_idt29"});
+$(function(){setFeatureLineasViaje(true);setFeatureVectorOrigenDestino(true);setFeatureVectorPuntoControl(true);});
+pf.cw("AjaxStatus","widget_j_idt50",{id:"j_idt50",delay:0,start:function(){PF('statusDialog').show()},success:function(){PF('statusDialog').hide()}});
+pf.cw("Dialog","statusDialog",{id:"j_idt51",draggable:false,resizable:false});
+$(function(){setFeatureLineasViaje(true);setFeatureVectorOrigenDestino(true);setFeatureVectorPuntoControl(true);});document.getElementById('9de8b11b-478f-4d26-a1a3-33eb4dbf3609').remove();</script></body><script async="true" src="https://www.googletagmanager.com/gtag/js?id=G-CFWCG01Z1X" type="text/javascript"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/jquery/jquery.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/jquery/jquery-plugins.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/core.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/components.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/locales/locale-es.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/js/plantilla.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/js/validaciones.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/conversor.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/env.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/estilosWMS.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/ol.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"></script><script type="text/javascript" src="/app/stm/horarios/javax.faces.resource/map.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"></script><script id="e6e16e6e-4ed9-4c36-a6f9-19202b9355ff" type="text/javascript">var pf=window.PrimeFaces;
+				  window.dataLayer = window.dataLayer || [];
+				  function gtag(){dataLayer.push(arguments);}
+				  gtag('js', new Date());
+				
+				  gtag('config', 'G-CFWCG01Z1X');
+				;
+if(pf){pf.settings.locale='en_US';pf.settings.viewId='/pages/mapa.xhtml';pf.settings.contextPath='/app/stm/horarios';pf.settings.cookiesSecure=false;};
+pf.cw("CommandLink","widget_j_idt27_j_idt29",{id:"j_idt27:j_idt29"});
+$(function(){setFeatureLineasViaje(true);setFeatureVectorOrigenDestino(true);setFeatureVectorPuntoControl(true);});
+pf.cw("AjaxStatus","widget_j_idt50",{id:"j_idt50",delay:0,start:function(){PF('statusDialog').show()},success:function(){PF('statusDialog').hide()}});
+pf.cw("Dialog","statusDialog",{id:"j_idt51",draggable:false,resizable:false});
+$(function(){setFeatureLineasViaje(true);setFeatureVectorOrigenDestino(true);setFeatureVectorPuntoControl(true);});
+$(function(){setFeatureLineasViaje(true);setFeatureVectorOrigenDestino(true);setFeatureVectorPuntoControl(true);});document.getElementById('e6e16e6e-4ed9-4c36-a6f9-19202b9355ff').remove();</script></body>
+</html>

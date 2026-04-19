@@ -17,6 +17,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.server = exports.io = exports.app = void 0;
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
+const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const socket_io_1 = require("socket.io");
 const http_1 = __importDefault(require("http"));
 const logger_1 = __importDefault(require("./config/logger"));
@@ -37,12 +38,36 @@ logger_1.default.info('🚀 TransformaFacil Backend iniciando...', {
 // ═══════════════════════════════════════════════════════════════════════════
 // MIDDLEWARE GLOBAL
 // ═══════════════════════════════════════════════════════════════════════════
-// CORS
+// CORS — orígenes leídos desde CORS_ORIGINS en .env
+const corsOrigins = constants_1.Config.CORS_ORIGINS;
+const isDev = constants_1.Config.NODE_ENV === 'development';
 app.use((0, cors_1.default)({
-    origin: true, // En desarrollo permitir todos los orígenes
+    origin: isDev ? true : corsOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
 }));
+logger_1.default.info(`🔒 CORS configurado`, {
+    modo: isDev ? 'DESARROLLO (todos los orígenes)' : 'PRODUCCIÓN (restringido)',
+    origenesPermitidos: isDev ? '*' : corsOrigins,
+});
+// ─── RATE LIMITING ───────────────────────────────────────────────────────────
+const apiLimiter = (0, express_rate_limit_1.default)({
+    windowMs: constants_1.Config.RATE_LIMIT_WINDOW_MS, // default: 15 minutos
+    max: constants_1.Config.RATE_LIMIT_MAX_REQUESTS, // default: 100 requests
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        status: 429,
+        error: 'Demasiadas solicitudes. Por favor intente más tarde.',
+        retryAfter: Math.ceil(constants_1.Config.RATE_LIMIT_WINDOW_MS / 60000),
+    },
+    skip: (req) => req.path === '/api/health' || req.path === '/api/doctor',
+});
+app.use('/api', apiLimiter);
+logger_1.default.info(`🛡️  Rate Limiting activo`, {
+    ventana: `${constants_1.Config.RATE_LIMIT_WINDOW_MS / 60000} minutos`,
+    maxRequests: constants_1.Config.RATE_LIMIT_MAX_REQUESTS,
+});
 // Body parser
 app.use(express_1.default.json({ limit: constants_1.Config.JSON_LIMIT }));
 app.use(express_1.default.urlencoded({ extended: true, limit: constants_1.Config.REQUEST_LIMIT }));
@@ -65,7 +90,8 @@ app.use((_req, res, next) => {
     res.header('X-Content-Type-Options', 'nosniff');
     res.header('X-Frame-Options', 'DENY');
     res.header('X-XSS-Protection', '1; mode=block');
-    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.header('Permissions-Policy', 'geolocation=(), microphone=()');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
     next();
 });

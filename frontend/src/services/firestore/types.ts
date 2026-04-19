@@ -40,6 +40,8 @@ export interface User {
   lastName?: string;
   fullName?: string;
   role?: string;
+  /** Campo alternativo de rol (compatibilidad legacy) */
+  rol?: string;
   email?: string;
   uid?: string;
   assignedVehicleId?: string;
@@ -58,7 +60,23 @@ export interface Vehicle {
   status?: string;
   make?: string;
   year?: string;
+  /** Categoría del vehículo (ej: Híbrido, Piso Bajo, MT15) */
+  category?: string;
+  /** ID de categoría en colección vehicle_categories */
+  categoryId?: string;
+  /** Fotos/documentos subidos del vehículo */
+  photos?: Array<{ url: string; name?: string }>;
   features?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+/** Categoría de vehículo — colección Firestore: vehicle_categories */
+export interface VehicleCategory {
+  id?: string;
+  name: string;
+  description?: string;
+  color?: string;
+  createdAt?: string;
   [key: string]: unknown;
 }
 

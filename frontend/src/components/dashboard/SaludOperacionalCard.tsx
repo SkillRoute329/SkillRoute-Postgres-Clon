@@ -1,6 +1,6 @@
 import React from 'react';
 import { Activity, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
-import { SaludOperacional } from '../../types/dashboard';
+import type { SaludOperacional } from '../../types/dashboard';
 
 interface SaludOperacionalCardProps {
   salud: SaludOperacional;

@@ -1,0 +1,29 @@
+PASS: Página carga HTTP 200 HTTP 200
+PASS: Contiene componente de navegación Buscando "navigation/Navegador/UCOT" en DOM
+PASS: Selectores encontrados 2 selectores
+PASS: Botones encontrados 7 botones
+PASS: Mapa Leaflet presente 
+PASS: Selector de líneas encontrado 22 opciones
+PASS: Línea 17 disponible 
+PASS: Línea 71 disponible 
+PASS: Línea 79 disponible 
+PASS: Línea 300 disponible 
+PASS: Línea 306 disponible 
+PASS: Línea 316 disponible 
+PASS: Línea 328 disponible 
+PASS: Línea 329 disponible 
+PASS: Línea 330 disponible 
+PASS: Línea 370 disponible 
+PASS: Línea 396 disponible 
+PASS: Línea 17 seleccionada 
+PASS: Mapa renderizado 1038x635px
+PASS: Polyline de ruta visible 1 polilíneas, path más largo: 504 chars
+PASS: Tiles del mapa cargados 20 tiles
+PASS: Selector de variantes/destinos 2 opciones
+PASS: Botón Iniciar Viaje encontrado "Iniciar Viaje GPS" disabled=false
+PASS: Click en Iniciar Viaje 
+FAIL: Botón de desvío Botones: Cerrar Sesión, , OFFLINE, , Voz on, Tarifas, Finalizar Viaje, ICasabó (Bajo Valencia), 2Cno. Cibils / Cerro Norte, 3Cerro (Carlos Ma. Ramírez), 4Capurro, 5Paso Molino, 6Agraciada / La Paz, 7Centro / 18 de Julio, 8Ejido, 9Bv. Artigas / P. Rodó, FPunta Carretas
+PASS: Línea 300 muestra recorrido 
+PASS: Línea 306 muestra recorrido 
+PASS: Línea 329 muestra recorrido 
+FAIL: Centro del mapa accesible No se pudo acceder a Leaflet

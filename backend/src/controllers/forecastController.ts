@@ -1,4 +1,5 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthRequest } from '../types/index';
 import { forecastService } from '../services/forecastService';
 import { logger } from '../config/logger';
 import { CambioHorario } from '../types/analytics';
@@ -10,7 +11,7 @@ export const forecastController = {
    * POST /api/forecast/income/:lineaId
    * Genera pronóstico de ingresos con múltiples escenarios
    */
-  async getIncomesForecast(req: Request, res: Response): Promise<void> {
+  async getIncomesForecast(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { lineaId } = req.params;
 
@@ -43,7 +44,7 @@ export const forecastController = {
    * POST /api/forecast/simulate
    * Simula impacto de cambios de horario
    */
-  async simulateScheduleChanges(req: Request, res: Response): Promise<void> {
+  async simulateScheduleChanges(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { lineaId, cambios } = req.body as {
         lineaId: string;
@@ -82,7 +83,7 @@ export const forecastController = {
    * GET /api/forecast/demand/:zona
    * Calcula demanda por zona geográfica
    */
-  async getDemandByZone(req: Request, res: Response): Promise<void> {
+  async getDemandByZone(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { zona } = req.params;
 
@@ -107,7 +108,7 @@ export const forecastController = {
    * GET /api/forecast/peak-hours/:lineaId
    * Identifica horarios de alta demanda
    */
-  async getPeakHours(req: Request, res: Response): Promise<void> {
+  async getPeakHours(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { lineaId } = req.params;
 
@@ -139,7 +140,7 @@ export const forecastController = {
    * GET /api/forecast/growth/:lineaId
    * Proyecta crecimiento futuro
    */
-  async getGrowthProjection(req: Request, res: Response): Promise<void> {
+  async getGrowthProjection(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { lineaId } = req.params;
       const meses = (req.query.meses as string) || '6';
@@ -180,7 +181,7 @@ export const forecastController = {
    * GET /api/forecast/benchmark/:lineaId
    * Compara con promedio de zona
    */
-  async getBenchmark(req: Request, res: Response): Promise<void> {
+  async getBenchmark(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { lineaId } = req.params;
 
@@ -213,7 +214,7 @@ export const forecastController = {
    * GET /api/forecast/passengers-by-hour/:lineaId
    * Estima pasajeros por horario específico
    */
-  async getPassengersByHour(req: Request, res: Response): Promise<void> {
+  async getPassengersByHour(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { lineaId } = req.params;
       const { horario } = req.query as { horario?: string };

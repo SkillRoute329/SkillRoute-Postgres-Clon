@@ -244,49 +244,71 @@ service cloud.firestore {
     }
 
     // ============================================================
-    // INTELIGENCIA / STM
+    // INTELIGENCIA / STM (HARDENED)
     // ============================================================
     match /stm_horarios/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
     }
 
     match /stm_sincronizaciones/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
     }
 
     match /stm_alertas_competencia/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
     }
 
     match /competencia_monitoreo/{document=**} {
       allow read: if isAuthenticated();
-      allow write: if isAdminNorm();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
+    }
+
+    // Identidad + operación agregada por empresa competidora (COETC/COME/CUTCSA).
+    // Poblada por el cron refreshCompetidoresTick (cada 10min) y por el trigger
+    // manual POST /api/competition/sync-from-stm.
+    match /competidores/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
+    }
+
+    // Audit trail de cada snapshot GPS del endpoint IMM stm-online.
+    // Solo lectura para admin; escritura desde el cron server-side.
+    match /stm_snapshots/{document=**} {
+      allow read: if isAdminNorm() || isTrafficOrAdmin();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
     }
 
     match /scrapping_logs/{document=**} {
-      allow read, write: if isAdminNorm();
+      allow read: if isAdminNorm();
+      allow write: if isAdminNorm();
     }
 
     match /shadow_tracker/{document=**} {
       allow read: if isAuthenticated();
-      allow write: if isAdminNorm() || isDriver();
+      allow write: if isAdminNorm() || isDriver() || isTrafficOrAdmin();
     }
 
     match /viajes_activos/{document=**} {
       allow read: if isAuthenticated();
-      allow write: if isAdminNorm() || isDriver();
+      allow write: if isAdminNorm() || isDriver() || isTrafficOrAdmin();
     }
 
     match /lineas/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
     }
 
     match /recomendaciones/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
     }
 
     match /boletaje/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
     }
 
     match /penalties/{document=**} {
@@ -300,7 +322,8 @@ service cloud.firestore {
     }
 
     match /data_import/{document=**} {
-      allow read, write: if isAdminNorm();
+      allow read: if isAdminNorm();
+      allow write: if isAdminNorm();
     }
 
     match /system_health/{document=**} {
@@ -314,7 +337,19 @@ service cloud.firestore {
     }
 
     // ============================================================
-    // REGLA DEFAULT — autenticados leen, solo admin escribe
+    // IA — SUGERENCIAS DEL COPILOTO (ai_orders)
+    //   - Creación: SOLO backend (service account bypass). Nunca cliente.
+    //   - Lectura: cualquier usuario autenticado (para inbox de inspector).
+    //   - Update: prohibido al cliente. Aprobación/rechazo pasan por REST
+    //     que valida rol y transición de estado.
+    // ============================================================
+    match /ai_orders/{document=**} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if false;
+    }
+
+    // ============================================================
+    // REGLA DEFAULT — Lectura permitida para autenticados, escritura protegida
     // ============================================================
     match /{document=**} {
       allow read: if isAuthenticated();

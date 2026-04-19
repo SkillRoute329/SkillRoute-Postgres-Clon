@@ -1,0 +1,72 @@
+﻿ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+  E2E TEST: Navegador UCOT (Puppeteer)
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+
+­ƒÜÇ Lanzando Chromium...
+
+ÔöÇÔöÇ TEST 1: Carga de p├ígina ÔöÇÔöÇ
+  Ô£à P├ígina carga HTTP 200 ÔÇö HTTP 200
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\01_page_load.png
+
+ÔöÇÔöÇ TEST 2: Elementos de la UI ÔöÇÔöÇ
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\02_full_ui.png
+  Ô£à Contiene componente de navegaci├│n ÔÇö Buscando "navigation/Navegador/UCOT" en DOM
+  Ô£à Selectores encontrados ÔÇö 2 selectores
+  Ô£à Botones encontrados ÔÇö 7 botones
+  Ô£à Mapa Leaflet presente
+
+ÔöÇÔöÇ TEST 3: Selector de l├¡nea UCOT ÔöÇÔöÇ
+  Ô£à Selector de l├¡neas encontrado ÔÇö 22 opciones
+    L├¡neas disponibles: 8SR, 11A, 17, 71, 79, 103, 110, 128, 169, 185, 221, 300, 306, 316, 328, 329, 330, 370, 396, 505, 522
+  Ô£à L├¡nea 17 disponible
+  Ô£à L├¡nea 71 disponible
+  Ô£à L├¡nea 79 disponible
+  Ô£à L├¡nea 300 disponible
+  Ô£à L├¡nea 306 disponible
+  Ô£à L├¡nea 316 disponible
+  Ô£à L├¡nea 328 disponible
+  Ô£à L├¡nea 329 disponible
+  Ô£à L├¡nea 330 disponible
+  Ô£à L├¡nea 370 disponible
+  Ô£à L├¡nea 396 disponible
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\03_linea17_selected.png
+  Ô£à L├¡nea 17 seleccionada
+
+ÔöÇÔöÇ TEST 4: Mapa con recorrido ÔöÇÔöÇ
+  Ô£à Mapa renderizado ÔÇö 1038x635px
+  Ô£à Polyline de ruta visible ÔÇö 1 polil├¡neas, path m├ís largo: 504 chars
+  Ô£à Tiles del mapa cargados ÔÇö 20 tiles
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\04_map_with_route.png
+
+ÔöÇÔöÇ TEST 5: Selector de variante/destino ÔöÇÔöÇ
+  Ô£à Selector de variantes/destinos ÔÇö 2 opciones
+    Variantes: 17 ÔÇö Casab├│ (Bajo Valencia) ÔåÆ Punta Carretas (IDA) | 17 ÔÇö Punta Carretas ÔåÆ Casab├│ (Bajo Valencia) (VUELTA)
+
+ÔöÇÔöÇ TEST 6: Iniciar viaje ÔöÇÔöÇ
+  Ô£à Bot├│n Iniciar Viaje encontrado ÔÇö "Iniciar Viaje GPS" disabled=false
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\06_viaje_started.png
+  Ô£à Click en Iniciar Viaje
+
+ÔöÇÔöÇ TEST 7: Editor de desv├¡os ÔöÇÔöÇ
+  ÔØî Bot├│n de desv├¡o ÔÇö Botones: Cerrar Sesi├│n, , OFFLINE, , Voz on, Tarifas, Finalizar Viaje, ICasab├│ (Bajo Valencia), 2Cno. Cibils / Cerro Norte, 3Cerro (Carlos Ma. Ram├¡rez), 4Capurro, 5Paso Molino, 6Agraciada / La Paz, 7Centro / 18 de Julio, 8Ejido, 9Bv. Artigas / P. Rod├│, FPunta Carretas
+
+ÔöÇÔöÇ TEST 8: Otras l├¡neas UCOT ÔöÇÔöÇ
+  Ô£à L├¡nea 300 muestra recorrido
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\08_linea_300.png
+  Ô£à L├¡nea 306 muestra recorrido
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\08_linea_306.png
+  Ô£à L├¡nea 329 muestra recorrido
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\08_linea_329.png
+
+ÔöÇÔöÇ TEST 9: Coordenadas reales (Montevideo) ÔöÇÔöÇ
+  ÔØî Centro del mapa accesible ÔÇö No se pudo acceder a Leaflet
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\09_final_state.png
+
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+  RESULTADOS: 27/29 tests pasaron
+  ÔÜá 2 tests FALLARON:
+    ÔØî Bot├│n de desv├¡o: Botones: Cerrar Sesi├│n, , OFFLINE, , Voz on, Tarifas, Finalizar Viaje, ICasab├│ (Bajo Valencia), 2Cno. Cibils / Cerro Norte, 3Cerro (Carlos Ma. Ram├¡rez), 4Capurro, 5Paso Molino, 6Agraciada / La Paz, 7Centro / 18 de Julio, 8Ejido, 9Bv. Artigas / P. Rod├│, FPunta Carretas
+    ÔØî Centro del mapa accesible: No se pudo acceder a Leaflet
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+
+­ƒô© Screenshots guardados en: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots

@@ -13,12 +13,12 @@ export function ConflictDetector({
   lineaId,
   numeroLinea,
   title = 'Detección de Conflictos de Horarios',
-  height = '500px'
+  height = '500px',
 }: ConflictDetectorProps) {
   const { conflictos, loading, error } = useCompetitionData({
     lineaId,
     autoRefresh: true,
-    refreshInterval: 600000
+    refreshInterval: 600000,
   });
 
   if (loading) {
@@ -51,10 +51,10 @@ export function ConflictDetector({
 
   // Agrupar conflictos por prioridad
   const conflictosPorPrioridad = {
-    critica: conflictos.filter(c => c.prioridad === 'critica'),
-    alta: conflictos.filter(c => c.prioridad === 'alta'),
-    media: conflictos.filter(c => c.prioridad === 'media'),
-    baja: conflictos.filter(c => c.prioridad === 'baja')
+    critica: conflictos.filter((c) => c.prioridad === 'critica'),
+    alta: conflictos.filter((c) => c.prioridad === 'alta'),
+    media: conflictos.filter((c) => c.prioridad === 'media'),
+    baja: conflictos.filter((c) => c.prioridad === 'baja'),
   };
 
   const getPriorityColor = (prioridad: string) => {
@@ -71,22 +71,26 @@ export function ConflictDetector({
   };
 
   return (
-    <div style={{ height }} className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col">
+    <div
+      style={{ height }}
+      className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col"
+    >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-gray-800">{title}</h3>
         <div className="flex gap-2">
-          {Object.entries(conflictosPorPrioridad).map(([prioridad, items]) => (
-            items.length > 0 && (
-              <div
-                key={prioridad}
-                className={`px-2 py-1 rounded text-xs font-bold text-white ${
-                  getPriorityColor(prioridad).badge
-                }`}
-              >
-                {prioridad.charAt(0).toUpperCase() + prioridad.slice(1)}: {items.length}
-              </div>
-            )
-          ))}
+          {Object.entries(conflictosPorPrioridad).map(
+            ([prioridad, items]) =>
+              items.length > 0 && (
+                <div
+                  key={prioridad}
+                  className={`px-2 py-1 rounded text-xs font-bold text-white ${
+                    getPriorityColor(prioridad).badge
+                  }`}
+                >
+                  {prioridad.charAt(0).toUpperCase() + prioridad.slice(1)}: {items.length}
+                </div>
+              ),
+          )}
         </div>
       </div>
 
@@ -107,15 +111,15 @@ export function ConflictDetector({
                       {prioridad === 'critica'
                         ? '🚨 CRÍTICO'
                         : prioridad === 'alta'
-                        ? '⚠️ ALTO'
-                        : prioridad === 'media'
-                        ? '⚡ MEDIO'
-                        : '📌 BAJO'}
+                          ? '⚠️ ALTO'
+                          : prioridad === 'media'
+                            ? '⚡ MEDIO'
+                            : '📌 BAJO'}
                     </p>
                   </div>
 
                   {/* Items */}
-                  {items.map(conflicto => {
+                  {items.map((conflicto) => {
                     const colors = getPriorityColor(prioridad);
                     const diferencia = Math.abs(conflicto.diferenciaminutos);
 
@@ -129,11 +133,11 @@ export function ConflictDetector({
                             <p className="font-semibold text-gray-900">
                               {conflicto.competidor} - Línea {conflicto.lineaCompetencia}
                             </p>
-                            <p className="text-sm text-gray-600">
-                              Tu línea {numeroLinea}
-                            </p>
+                            <p className="text-sm text-gray-600">Tu línea {numeroLinea}</p>
                           </div>
-                          <span className={`px-2 py-1 rounded text-xs font-bold text-white ${colors.badge}`}>
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-bold text-white ${colors.badge}`}
+                          >
                             {prioridad.toUpperCase()}
                           </span>
                         </div>
@@ -141,9 +145,7 @@ export function ConflictDetector({
                         <div className="grid grid-cols-2 gap-2 text-sm mb-2">
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4 text-blue-600" />
-                            <span className="text-gray-700">
-                              Tú: {conflicto.horarioUCOT}
-                            </span>
+                            <span className="text-gray-700">Tú: {conflicto.horarioUCOT}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4 text-gray-600" />
@@ -168,15 +170,13 @@ export function ConflictDetector({
                         </div>
 
                         <div className="mt-2 pt-2 border-t border-gray-300 border-opacity-30 text-xs text-gray-600">
-                          <p>
-                            Riesgo: {conflicto.pasajerosEnRiesgo} pasajeros/día aproximadamente
-                          </p>
+                          <p>Riesgo: {conflicto.pasajerosEnRiesgo} pasajeros/día aproximadamente</p>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              )
+              ),
           )
         )}
       </div>
@@ -184,11 +184,11 @@ export function ConflictDetector({
       {/* Footer con recomendación */}
       {conflictosPorPrioridad.critica.length > 0 && (
         <div className="mt-4 pt-3 border-t border-gray-200 bg-red-50 p-3 rounded">
-          <p className="text-xs font-bold text-red-700 mb-1">
-            ⚠️ ACCIÓN RECOMENDADA:
-          </p>
+          <p className="text-xs font-bold text-red-700 mb-1">⚠️ ACCIÓN RECOMENDADA:</p>
           <p className="text-xs text-red-600">
-            Revisa tus horarios en línea {numeroLinea}. Tienes {conflictosPorPrioridad.critica.length} conflicto(s) crítico(s) que podrían causar pérdida de pasajeros.
+            Revisa tus horarios en línea {numeroLinea}. Tienes{' '}
+            {conflictosPorPrioridad.critica.length} conflicto(s) crítico(s) que podrían causar
+            pérdida de pasajeros.
           </p>
         </div>
       )}

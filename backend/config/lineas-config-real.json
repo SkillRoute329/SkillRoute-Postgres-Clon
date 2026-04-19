@@ -1,0 +1,491 @@
+{
+  "version": "3.0-REAL",
+  "timestamp": "2026-04-06T00:00:00Z",
+  "organizacion": "UCOT — Unión Cooperativa Obrera del Transporte",
+  "rol_usuario": "JEFE_DE_TRANSITO_UCOT",
+  "descripcion": "Sistema de Agentes Inteligentes para Jefe de Tránsito — Gestión operativa en tiempo real de líneas UCOT con monitoreo de competencia",
+  "lineas": [
+    {
+      "id": 300,
+      "nombre": "Línea 300",
+      "empresa": "UCOT",
+      "descripcion": "Montevideo — Parque Rodó / Instrucciones",
+      "orquestador_puerto": 3100,
+      "destinos": [
+        {
+          "id": "dest_300_ida",
+          "nombre": "Montevideo → Parque Rodó",
+          "sentido": "ida",
+          "paradas_clave": [
+            "Terminal Tres Cruces",
+            "Av. 8 de Octubre",
+            "Parque Rodó"
+          ]
+        },
+        {
+          "id": "dest_300_vuelta",
+          "nombre": "Parque Rodó → Montevideo",
+          "sentido": "vuelta",
+          "paradas_clave": [
+            "Parque Rodó",
+            "Av. 8 de Octubre",
+            "Terminal Tres Cruces"
+          ]
+        }
+      ],
+      "competidores": [
+        {
+          "id": "CUTCSA_103",
+          "nombre": "Línea 103 CUTCSA",
+          "empresa": "CUTCSA",
+          "codigo_stm": 50,
+          "corredores_compartidos": [
+            "Av. 8 de Octubre",
+            "Parque Rodó"
+          ]
+        },
+        {
+          "id": "CUTCSA_104",
+          "nombre": "Línea 104 CUTCSA",
+          "empresa": "CUTCSA",
+          "codigo_stm": 50,
+          "corredores_compartidos": [
+            "Av. 8 de Octubre"
+          ]
+        }
+      ],
+      "horarios_tipos": [
+        "Hábiles",
+        "Sábados",
+        "Domingos"
+      ],
+      "datos_publicos": {
+        "gtfs_feed": "https://montevideo.gub.uy/gtfs/",
+        "gps_endpoint": "https://www.montevideo.gub.uy/buses/rest/stm-online",
+        "horarios_endpoint": "https://www.montevideo.gub.uy/app/stm/horarios/pages/consultar.xhtml"
+      }
+    },
+    {
+      "id": 306,
+      "nombre": "Línea 306",
+      "empresa": "UCOT",
+      "descripcion": "Montevideo — Maldonado / Ciudad de la Costa",
+      "orquestador_puerto": 3101,
+      "destinos": [
+        {
+          "id": "dest_306_ida",
+          "nombre": "Montevideo → Maldonado",
+          "sentido": "ida",
+          "paradas_clave": [
+            "Terminal Tres Cruces",
+            "Ruta Primaria",
+            "Maldonado"
+          ]
+        },
+        {
+          "id": "dest_306_vuelta",
+          "nombre": "Maldonado → Montevideo",
+          "sentido": "vuelta",
+          "paradas_clave": [
+            "Maldonado",
+            "Ruta Primaria",
+            "Terminal Tres Cruces"
+          ]
+        }
+      ],
+      "competidores": [
+        {
+          "id": "CUTCSA_117",
+          "nombre": "Línea 117 CUTCSA",
+          "empresa": "CUTCSA",
+          "codigo_stm": 50,
+          "corredores_compartidos": [
+            "Ruta Primaria",
+            "Maldonado"
+          ]
+        },
+        {
+          "id": "COME_50",
+          "nombre": "Línea 50 COME",
+          "empresa": "COME",
+          "codigo_stm": 20,
+          "corredores_compartidos": [
+            "Ruta Primaria"
+          ]
+        }
+      ],
+      "horarios_tipos": [
+        "Hábiles",
+        "Sábados",
+        "Domingos"
+      ],
+      "datos_publicos": {
+        "gtfs_feed": "https://montevideo.gub.uy/gtfs/",
+        "gps_endpoint": "https://www.montevideo.gub.uy/buses/rest/stm-online",
+        "horarios_endpoint": "https://www.montevideo.gub.uy/app/stm/horarios/pages/consultar.xhtml"
+      }
+    },
+    {
+      "id": 316,
+      "nombre": "Línea 316",
+      "empresa": "UCOT",
+      "descripcion": "Montevideo — Canelones / Zonas Periféricas",
+      "orquestador_puerto": 3102,
+      "destinos": [
+        {
+          "id": "dest_316_ida",
+          "nombre": "Montevideo → Canelones",
+          "sentido": "ida",
+          "paradas_clave": [
+            "Terminal Tres Cruces",
+            "Ruta 5",
+            "Canelones"
+          ]
+        },
+        {
+          "id": "dest_316_vuelta",
+          "nombre": "Canelones → Montevideo",
+          "sentido": "vuelta",
+          "paradas_clave": [
+            "Canelones",
+            "Ruta 5",
+            "Terminal Tres Cruces"
+          ]
+        }
+      ],
+      "competidores": [
+        {
+          "id": "COETC_200",
+          "nombre": "Línea 200 COETC",
+          "empresa": "COETC",
+          "codigo_stm": 30,
+          "corredores_compartidos": [
+            "Ruta 5"
+          ]
+        },
+        {
+          "id": "CUTCSA_120",
+          "nombre": "Línea 120 CUTCSA",
+          "empresa": "CUTCSA",
+          "codigo_stm": 50,
+          "corredores_compartidos": [
+            "Ruta 5"
+          ]
+        }
+      ],
+      "horarios_tipos": [
+        "Hábiles",
+        "Sábados",
+        "Domingos"
+      ],
+      "datos_publicos": {
+        "gtfs_feed": "https://montevideo.gub.uy/gtfs/",
+        "gps_endpoint": "https://www.montevideo.gub.uy/buses/rest/stm-online",
+        "horarios_endpoint": "https://www.montevideo.gub.uy/app/stm/horarios/pages/consultar.xhtml"
+      }
+    },
+    {
+      "id": 328,
+      "nombre": "Línea 328",
+      "empresa": "UCOT",
+      "descripcion": "Montevideo — Noroeste / Peluquerías",
+      "orquestador_puerto": 3103,
+      "destinos": [
+        {
+          "id": "dest_328_ida",
+          "nombre": "Montevideo → Peluquerías",
+          "sentido": "ida",
+          "paradas_clave": [
+            "Terminal Tres Cruces",
+            "Av. Agraciada",
+            "Peluquerías"
+          ]
+        },
+        {
+          "id": "dest_328_vuelta",
+          "nombre": "Peluquerías → Montevideo",
+          "sentido": "vuelta",
+          "paradas_clave": [
+            "Peluquerías",
+            "Av. Agraciada",
+            "Terminal Tres Cruces"
+          ]
+        }
+      ],
+      "competidores": [
+        {
+          "id": "CUTCSA_109",
+          "nombre": "Línea 109 CUTCSA",
+          "empresa": "CUTCSA",
+          "codigo_stm": 50,
+          "corredores_compartidos": [
+            "Av. Agraciada"
+          ]
+        },
+        {
+          "id": "COETC_130",
+          "nombre": "Línea 130 COETC",
+          "empresa": "COETC",
+          "codigo_stm": 30,
+          "corredores_compartidos": [
+            "Av. Agraciada"
+          ]
+        }
+      ],
+      "horarios_tipos": [
+        "Hábiles",
+        "Sábados",
+        "Domingos"
+      ],
+      "datos_publicos": {
+        "gtfs_feed": "https://montevideo.gub.uy/gtfs/",
+        "gps_endpoint": "https://www.montevideo.gub.uy/buses/rest/stm-online",
+        "horarios_endpoint": "https://www.montevideo.gub.uy/app/stm/horarios/pages/consultar.xhtml"
+      }
+    },
+    {
+      "id": 329,
+      "nombre": "Línea 329",
+      "empresa": "UCOT",
+      "descripcion": "Montevideo — Centro — Oeste",
+      "orquestador_puerto": 3104,
+      "destinos": [
+        {
+          "id": "dest_329_ida",
+          "nombre": "Montevideo Centro → Oeste",
+          "sentido": "ida",
+          "paradas_clave": [
+            "Centro",
+            "Av. Del Libertador",
+            "Zona Oeste"
+          ]
+        },
+        {
+          "id": "dest_329_vuelta",
+          "nombre": "Oeste → Montevideo Centro",
+          "sentido": "vuelta",
+          "paradas_clave": [
+            "Zona Oeste",
+            "Av. Del Libertador",
+            "Centro"
+          ]
+        }
+      ],
+      "competidores": [
+        {
+          "id": "CUTCSA_160",
+          "nombre": "Línea 160 CUTCSA",
+          "empresa": "CUTCSA",
+          "codigo_stm": 50,
+          "corredores_compartidos": [
+            "Av. Del Libertador"
+          ]
+        }
+      ],
+      "horarios_tipos": [
+        "Hábiles",
+        "Sábados",
+        "Domingos"
+      ],
+      "datos_publicos": {
+        "gtfs_feed": "https://montevideo.gub.uy/gtfs/",
+        "gps_endpoint": "https://www.montevideo.gub.uy/buses/rest/stm-online",
+        "horarios_endpoint": "https://www.montevideo.gub.uy/app/stm/horarios/pages/consultar.xhtml"
+      }
+    },
+    {
+      "id": 330,
+      "nombre": "Línea 330",
+      "empresa": "UCOT",
+      "descripcion": "Montevideo — Cerro — Ciudad Vieja",
+      "orquestador_puerto": 3105,
+      "destinos": [
+        {
+          "id": "dest_330_ida",
+          "nombre": "Montevideo → Cerro",
+          "sentido": "ida",
+          "paradas_clave": [
+            "Centro",
+            "Pérez Castellano",
+            "Cerro"
+          ]
+        },
+        {
+          "id": "dest_330_vuelta",
+          "nombre": "Cerro → Montevideo",
+          "sentido": "vuelta",
+          "paradas_clave": [
+            "Cerro",
+            "Pérez Castellano",
+            "Centro"
+          ]
+        }
+      ],
+      "competidores": [
+        {
+          "id": "CUTCSA_135",
+          "nombre": "Línea 135 CUTCSA",
+          "empresa": "CUTCSA",
+          "codigo_stm": 50,
+          "corredores_compartidos": [
+            "Pérez Castellano"
+          ]
+        },
+        {
+          "id": "COME_7",
+          "nombre": "Línea 7 COME",
+          "empresa": "COME",
+          "codigo_stm": 20,
+          "corredores_compartidos": [
+            "Cerro"
+          ]
+        }
+      ],
+      "horarios_tipos": [
+        "Hábiles",
+        "Sábados",
+        "Domingos"
+      ],
+      "datos_publicos": {
+        "gtfs_feed": "https://montevideo.gub.uy/gtfs/",
+        "gps_endpoint": "https://www.montevideo.gub.uy/buses/rest/stm-online",
+        "horarios_endpoint": "https://www.montevideo.gub.uy/app/stm/horarios/pages/consultar.xhtml"
+      }
+    },
+    {
+      "id": 370,
+      "nombre": "Línea 370",
+      "empresa": "UCOT",
+      "descripcion": "Montevideo — Este — Pocitos",
+      "orquestador_puerto": 3106,
+      "destinos": [
+        {
+          "id": "dest_370_ida",
+          "nombre": "Montevideo → Pocitos",
+          "sentido": "ida",
+          "paradas_clave": [
+            "Centro",
+            "Rambla Francia",
+            "Pocitos"
+          ]
+        },
+        {
+          "id": "dest_370_vuelta",
+          "nombre": "Pocitos → Montevideo",
+          "sentido": "vuelta",
+          "paradas_clave": [
+            "Pocitos",
+            "Rambla Francia",
+            "Centro"
+          ]
+        }
+      ],
+      "competidores": [
+        {
+          "id": "CUTCSA_141",
+          "nombre": "Línea 141 CUTCSA",
+          "empresa": "CUTCSA",
+          "codigo_stm": 50,
+          "corredores_compartidos": [
+            "Rambla Francia"
+          ]
+        },
+        {
+          "id": "COETC_210",
+          "nombre": "Línea 210 COETC",
+          "empresa": "COETC",
+          "codigo_stm": 30,
+          "corredores_compartidos": [
+            "Rambla Francia"
+          ]
+        }
+      ],
+      "horarios_tipos": [
+        "Hábiles",
+        "Sábados",
+        "Domingos"
+      ],
+      "datos_publicos": {
+        "gtfs_feed": "https://montevideo.gub.uy/gtfs/",
+        "gps_endpoint": "https://www.montevideo.gub.uy/buses/rest/stm-online",
+        "horarios_endpoint": "https://www.montevideo.gub.uy/app/stm/horarios/pages/consultar.xhtml"
+      }
+    },
+    {
+      "id": 396,
+      "nombre": "Línea 396",
+      "empresa": "UCOT",
+      "descripcion": "Montevideo — Suburbana — Zona Metropolitana",
+      "orquestador_puerto": 3107,
+      "destinos": [
+        {
+          "id": "dest_396_ida",
+          "nombre": "Montevideo → Zona Metropolitana",
+          "sentido": "ida",
+          "paradas_clave": [
+            "Terminal Tres Cruces",
+            "Ruta Panamericana",
+            "Zona Suburbana"
+          ]
+        },
+        {
+          "id": "dest_396_vuelta",
+          "nombre": "Zona Metropolitana → Montevideo",
+          "sentido": "vuelta",
+          "paradas_clave": [
+            "Zona Suburbana",
+            "Ruta Panamericana",
+            "Terminal Tres Cruces"
+          ]
+        }
+      ],
+      "competidores": [
+        {
+          "id": "CUTCSA_180",
+          "nombre": "Línea 180 CUTCSA",
+          "empresa": "CUTCSA",
+          "codigo_stm": 50,
+          "corredores_compartidos": [
+            "Ruta Panamericana"
+          ]
+        },
+        {
+          "id": "COETC_250",
+          "nombre": "Línea 250 COETC",
+          "empresa": "COETC",
+          "codigo_stm": 30,
+          "corredores_compartidos": [
+            "Ruta Panamericana"
+          ]
+        }
+      ],
+      "horarios_tipos": [
+        "Hábiles",
+        "Sábados",
+        "Domingos"
+      ],
+      "datos_publicos": {
+        "gtfs_feed": "https://montevideo.gub.uy/gtfs/",
+        "gps_endpoint": "https://www.montevideo.gub.uy/buses/rest/stm-online",
+        "horarios_endpoint": "https://www.montevideo.gub.uy/app/stm/horarios/pages/consultar.xhtml"
+      }
+    }
+  ],
+  "context": {
+    "descripcion_rol": "Como JEFE DE TRÁNSITO, tienes control operativo total sobre las 8 líneas de UCOT. El sistema de agentes te proporciona alertas en tiempo real sobre desempeño propio y competencia.",
+    "responsabilidades": [
+      "Monitorear desempeño de cada línea (puntualidad, frecuencia, cobertura)",
+      "Recibir alertas de competencia en tiempo real",
+      "Tomar decisiones tácticas de despacho y frecuencia",
+      "Optimizar uso de flota según demanda y competencia",
+      "Asegurar cumplimiento de horarios publicados"
+    ],
+    "datos_disponibles": [
+      "GPS tiempo real de buses UCOT (dados públicos montevideo.gub.uy)",
+      "Horarios teóricos vs realizados",
+      "Posicionamiento en tiempo real de competidores (datos públicos)",
+      "Frecuencia real vs programada",
+      "Análisis de desviaciones por corredor y hora"
+    ]
+  }
+}

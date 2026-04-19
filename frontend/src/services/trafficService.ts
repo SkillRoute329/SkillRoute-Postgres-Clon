@@ -98,4 +98,58 @@ export const TrafficService = {
       return [];
     }
   },
+
+  // 🚍 FETCH UCOT REAL POSITIONS VIA IMM API
+  fetchUcotPositions: async (lines: string[]): Promise<any[]> => {
+    try {
+      const PROXY_BASE = 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/montevideoProxy';
+      const endpoint = `api/transportepublico/buses?lines=${lines.join(',')}`;
+      const url = `${PROXY_BASE}?endpoint=${encodeURIComponent(endpoint)}`;
+
+      const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!response.ok) throw new Error('API Proxy Error');
+
+      const data = await response.json();
+      return data.filter(
+        (bus: any) =>
+          bus.empresa === 'UCOT' ||
+          bus.empresa === 70 ||
+          bus.empresaId === 70 ||
+          bus.codigoEmpresa === 70 ||
+          (bus.nombreEmpresa && bus.nombreEmpresa.toUpperCase() === 'UCOT'),
+      );
+    } catch (e) {
+      console.error('UCOT Proxy Fetch Error', e);
+      return [];
+    }
+  },
+
+  // 🚍 FETCH UCOT REAL FLEET POSITIONS
+  fetchFleetPositions: async (lines: string[]): Promise<any[]> => {
+    if (!lines || lines.length === 0) return [];
+    try {
+      const chunks = [];
+      // Firestore 'in' solo soporta max 10
+      for (let i = 0; i < lines.length; i += 10) {
+        chunks.push(lines.slice(i, i + 10));
+      }
+
+      const results: any[] = [];
+      const fifteenMinsAgo = Timestamp.fromDate(new Date(Date.now() - 15 * 60000));
+
+      for (const chunk of chunks) {
+        const q = query(
+          collection(db, 'fleet_positions'),
+          where('line', 'in', chunk),
+          where('lastUpdate', '>', fifteenMinsAgo),
+        );
+        const snap = await getDocs(q);
+        results.push(...snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      }
+      return results;
+    } catch (e) {
+      console.error('Fleet Fetch Error', e);
+      return [];
+    }
+  },
 };

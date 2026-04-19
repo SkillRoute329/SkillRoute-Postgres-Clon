@@ -10,13 +10,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import {
-  collection,
-  onSnapshot,
-  query,
-  where,
-  getDocs,
-} from 'firebase/firestore';
+import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -40,7 +34,7 @@ export interface KPIs {
 
   // Financiero (si hay datos)
   boletosHoy: number | null;
-  ingresosHoy: number | null;          // En pesos UY
+  ingresosHoy: number | null; // En pesos UY
 
   // Metadata
   fechaCalculo: string;
@@ -89,24 +83,17 @@ export function useKPIs(autoRefreshMs = 60_000) {
           }).length;
 
           // Obtener resto de datos en paralelo
-          const [vehiculosSnap, estadosSnap, alertasSnap, mantenimientoSnap] =
-            await Promise.all([
-              getDocs(collection(db, 'vehicles')),
-              getDocs(
-                query(collection(db, 'servicio_estado'), where('fecha', '==', today)),
-              ),
-              getDocs(
-                query(collection(db, 'road_alerts'), where('estado', '==', 'activa')),
-              ),
-              getDocs(
-                query(collection(db, 'maintenance'), where('estado', '==', 'pendiente')),
-              ),
-            ]);
+          const [vehiculosSnap, estadosSnap, alertasSnap, mantenimientoSnap] = await Promise.all([
+            getDocs(collection(db, 'vehicles')),
+            getDocs(query(collection(db, 'servicio_estado'), where('fecha', '==', today))),
+            getDocs(query(collection(db, 'road_alerts'), where('estado', '==', 'activa'))),
+            getDocs(query(collection(db, 'maintenance'), where('estado', '==', 'pendiente'))),
+          ]);
 
           // Flota
           const total = vehiculosSnap.size;
-          const activos = vehiculosSnap.docs.filter((d) =>
-            !/mantenimiento|taller|paralizado|baja/i.test(String(d.data().status ?? '')),
+          const activos = vehiculosSnap.docs.filter(
+            (d) => !/mantenimiento|taller|paralizado|baja/i.test(String(d.data().status ?? '')),
           ).length;
 
           // Puntualidad
@@ -114,16 +101,10 @@ export function useKPIs(autoRefreshMs = 60_000) {
           const conAtraso = estados.filter((e) => e.atrasoMinutos != null);
           const puntuales = conAtraso.filter((e) => (e.atrasoMinutos ?? 0) <= 3).length;
           const puntualidadPct =
-            conAtraso.length > 0
-              ? Math.round((puntuales / conAtraso.length) * 100)
-              : null;
-          const atrasoTotal = conAtraso.reduce(
-            (s, e) => s + Number(e.atrasoMinutos ?? 0), 0,
-          );
+            conAtraso.length > 0 ? Math.round((puntuales / conAtraso.length) * 100) : null;
+          const atrasoTotal = conAtraso.reduce((s, e) => s + Number(e.atrasoMinutos ?? 0), 0);
           const atrasoPromedio =
-            conAtraso.length > 0
-              ? Math.round(atrasoTotal / conAtraso.length)
-              : 0;
+            conAtraso.length > 0 ? Math.round(atrasoTotal / conAtraso.length) : 0;
 
           const now = new Date();
           setKpis({

@@ -285,7 +285,12 @@ const TacticalRouteMap: React.FC<TacticalRouteMapProps> = ({
                   <CircleMarker
                     center={positions[0]}
                     radius={6}
-                    pathOptions={{ color: '#fff', fillColor: '#ef4444', fillOpacity: 0.9, weight: 2 }}
+                    pathOptions={{
+                      color: '#fff',
+                      fillColor: '#ef4444',
+                      fillOpacity: 0.9,
+                      weight: 2,
+                    }}
                   >
                     <Popup>
                       <strong>🔴 Rival {rival.codigo} — Origen</strong>
@@ -299,7 +304,12 @@ const TacticalRouteMap: React.FC<TacticalRouteMapProps> = ({
                   <CircleMarker
                     center={positions[positions.length - 1]}
                     radius={6}
-                    pathOptions={{ color: '#fff', fillColor: '#ef4444', fillOpacity: 0.9, weight: 2 }}
+                    pathOptions={{
+                      color: '#fff',
+                      fillColor: '#ef4444',
+                      fillOpacity: 0.9,
+                      weight: 2,
+                    }}
                   >
                     <Popup>
                       <strong>🔴 Rival {rival.codigo} — Destino</strong>
@@ -591,7 +601,8 @@ const TacticalRouteMap: React.FC<TacticalRouteMapProps> = ({
           {rivalData.length > 0 && (
             <div className="pointer-events-auto rounded-lg bg-slate-950/90 backdrop-blur border border-red-500/20 px-3 py-1.5">
               <span className="text-[10px] font-black text-red-400/70">
-                {rivalData.length} ruta{rivalData.length !== 1 ? 's' : ''} rival{rivalData.length !== 1 ? 'es' : ''}
+                {rivalData.length} ruta{rivalData.length !== 1 ? 's' : ''} rival
+                {rivalData.length !== 1 ? 'es' : ''}
               </span>
             </div>
           )}

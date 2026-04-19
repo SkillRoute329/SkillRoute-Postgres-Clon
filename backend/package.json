@@ -6,7 +6,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "bridge": "tsx watch src/bridge-server.ts",
+    "bridge:build": "npm run build && node dist/bridge-server.js"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -15,13 +17,15 @@
     "axios": "^1.13.6",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.0",
     "express": "^4.19.2",
     "express-http-proxy": "^2.1.2",
+    "express-rate-limit": "^8.3.2",
     "express-session": "^1.19.0",
     "firebase-admin": "^13.7.0",
     "jsonwebtoken": "^9.0.3",
+    "node-fetch": "^2.7.0",
     "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3",
     "winston": "^3.19.0",
     "xlsx": "^0.18.5"
   },

@@ -12,7 +12,7 @@ import { DriverTimeline, type PuntoHito } from '../../components/traffic/DriverT
 import { computeTimelineState } from '../../utils/driverTimelineUtils';
 import { LogsIncidenciasService } from '../../services/firestore/logsIncidencias';
 import { MensajesInternosService } from '../../services/firestore/mensajesInternos';
-import { Calendar, MapPin, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Calendar, MapPin, AlertTriangle, RefreshCw, CheckCircle, PenTool } from 'lucide-react';
 import type { ProgramacionDiariaRecord } from '../../services/firestore/programacionDiaria';
 
 function todayISO(): string {
@@ -39,6 +39,7 @@ export default function DriverServiceView() {
   const [horaSistema, setHoraSistema] = useState(formatHora(new Date()));
   const [reportando, setReportando] = useState(false);
   const [cambiando, setCambiando] = useState(false);
+  const [firmando, setFirmando] = useState(false);
 
   const today = todayISO();
   const driverId = user?.uid ?? user?.id ?? '';
@@ -138,6 +139,31 @@ export default function DriverServiceView() {
     }
   };
 
+  const handleFirmarCarton = async () => {
+    if (!asignacionHoy?.id) return;
+    setFirmando(true);
+    try {
+      await ProgramacionDiariaService.update(asignacionHoy.id, {
+        firmaConductor: true,
+        fechaFirma: new Date().toISOString(),
+      });
+      alert('Cartón firmado exitosamente.');
+      // Update local state to reflect the change immediately
+      setProgramacion((prev) =>
+        prev.map((p) =>
+          p.id === asignacionHoy.id
+            ? { ...p, firmaConductor: true, fechaFirma: new Date().toISOString() }
+            : p,
+        ),
+      );
+    } catch (e) {
+      console.error(e);
+      alert('Error al firmar cartón.');
+    } finally {
+      setFirmando(false);
+    }
+  };
+
   if (!driverId) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
@@ -171,24 +197,49 @@ export default function DriverServiceView() {
           atrasoMinutos={estadoAtraso}
           servicioLabel={servicioLabel}
         />
-        <button
-          type="button"
-          onClick={handleReportarIncidente}
-          disabled={reportando}
-          className="w-full min-h-[52px] rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-base flex items-center justify-center gap-3 disabled:opacity-50 touch-manipulation shadow-lg"
-        >
-          <AlertTriangle className="w-6 h-6 shrink-0" aria-hidden />
-          {reportando ? 'Enviando…' : 'Reportar Incidente'}
-        </button>
-        <button
-          type="button"
-          onClick={handleSolicitarCambioTurno}
-          disabled={cambiando}
-          className="w-full min-h-[52px] rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-black text-base flex items-center justify-center gap-3 disabled:opacity-50 touch-manipulation shadow-lg"
-        >
-          <RefreshCw className="w-6 h-6 shrink-0" aria-hidden />
-          {cambiando ? 'Enviando…' : 'Solicitar Cambio de Turno'}
-        </button>
+        <div className="space-y-3">
+          {asignacionHoy?.firmaConductor ? (
+            <div className="w-full min-h-[52px] rounded-2xl bg-emerald-900/50 border border-emerald-800 text-emerald-400 font-bold text-sm flex flex-col items-center justify-center p-2">
+              <span className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5" />
+                Cartón Firmado y Aceptado
+              </span>
+              <span className="text-xs font-normal opacity-80">
+                {asignacionHoy.fechaFirma &&
+                  new Date(asignacionHoy.fechaFirma).toLocaleString('es-UY')}
+              </span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleFirmarCarton}
+              disabled={firmando}
+              className="w-full min-h-[52px] rounded-2xl bg-primary-600 hover:bg-primary-500 text-white font-black text-base flex items-center justify-center gap-3 disabled:opacity-50 touch-manipulation shadow-lg shadow-primary-900/20"
+            >
+              <PenTool className="w-6 h-6 shrink-0" aria-hidden />
+              {firmando ? 'Firmando...' : 'Firmar Cartón de Servicio'}
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleReportarIncidente}
+            disabled={reportando}
+            className="w-full min-h-[52px] rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-base flex items-center justify-center gap-3 disabled:opacity-50 touch-manipulation shadow-lg"
+          >
+            <AlertTriangle className="w-6 h-6 shrink-0" aria-hidden />
+            {reportando ? 'Enviando…' : 'Reportar Incidente'}
+          </button>
+          <button
+            type="button"
+            onClick={handleSolicitarCambioTurno}
+            disabled={cambiando}
+            className="w-full min-h-[52px] rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-black text-base flex items-center justify-center gap-3 disabled:opacity-50 touch-manipulation shadow-lg"
+          >
+            <RefreshCw className="w-6 h-6 shrink-0" aria-hidden />
+            {cambiando ? 'Enviando…' : 'Solicitar Cambio de Turno'}
+          </button>
+        </div>
       </div>
     </div>
   );

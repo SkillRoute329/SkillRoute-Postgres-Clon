@@ -27,6 +27,8 @@ import {
   ServicioEstadoService,
   ActiveAssignmentsService,
 } from '../../services/firestore';
+import { FeriadosService } from '../../services/feriadosService';
+import type { Feriado } from '../../services/feriadosService';
 import type { AssignmentConflict, Shift, Vehicle, User } from '../../services/firestore/types';
 import type { ProgramacionDiariaRecord } from '../../services/firestore/programacionDiaria';
 import type { ServicioEstadoRecord } from '../../services/firestore/servicioEstado';
@@ -36,7 +38,6 @@ import {
   MAX_HORAS_DIA_UCOT,
 } from '../../utils/syndicateRules';
 import { computeSemaforo } from '../../utils/semaforoListero';
-import { getConductoresLibresEnMomento } from '../../hooks/useAssignmentEngine';
 import { getMasterServicios, getMasterServicioById } from '../../data/ucotMaster';
 import QuickSearchControl, {
   type QuickSearchFilters,
@@ -133,12 +134,22 @@ export default function DailyListManager() {
     null,
   );
   const [averiaConfirmando, setAveriaConfirmando] = useState(false);
+  const [feriadoHoy, setFeriadoHoy] = useState<{ isFeriado: boolean; tipo: string } | null>(null);
 
   useEffect(() => {
     SystemConfigService.get()
       .then((c) => setToleranciaMinutos(c.toleranciaMinutos))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    FeriadosService.isFeriado(selectedDate)
+      .then((f: Feriado | null) => {
+        if (f) setFeriadoHoy({ isFeriado: true, tipo: f.tipoHorario ?? 'DOMINGO' });
+        else setFeriadoHoy(null);
+      })
+      .catch(() => setFeriadoHoy(null));
+  }, [selectedDate]);
 
   useEffect(() => {
     const unsub = MensajesInternosService.subscribeCambioTurnoAlerts((list) => {
@@ -214,8 +225,8 @@ export default function DailyListManager() {
       return;
     }
     CartonService.getAll(selectedLinea)
-      .then((data: any[]) => {
-        const list = (data || []).map((x: any) => ({
+      .then((data: Record<string, unknown>[]) => {
+        const list = (data || []).map((x: Record<string, unknown>) => ({
           id: String(x.id ?? ''),
           linea: String(x.linea ?? selectedLinea),
           serviceNumber: String(x.serviceNumber ?? x.id ?? ''),
@@ -321,23 +332,6 @@ export default function DailyListManager() {
       return result.valid;
     });
   }, [personalDeLista, lastEndByDriver, conflictShiftStart]);
-
-  const conductores = useMemo(() => {
-    return users.filter((u) => /conductor|driver/i.test(String(u.role ?? u.rol ?? '')));
-  }, [users]);
-
-  const conductoresLibres1310 = useMemo(() => {
-    return getConductoresLibresEnMomento(
-      conductores,
-      shifts.map((s) => ({
-        start: s.start,
-        end: s.end,
-        assignedTo: s.assignedTo != null ? String(s.assignedTo) : undefined,
-        driverId: (s as Shift & { driverId?: string }).driverId,
-      })),
-      '13:10',
-    );
-  }, [conductores, shifts]);
 
   const serviciosConHoraReferencia = useMemo(() => {
     return getMasterServicios().filter((s) => s.horaInicioReferencia);
@@ -528,8 +522,13 @@ export default function DailyListManager() {
             Dashboard CEO →
           </a>
         </div>
-        <p className="text-slate-400 text-sm mt-1">
+        <p className="text-slate-400 text-sm mt-1 flex items-center gap-2">
           Alertas de conflicto, personal y flota disponible, grilla del día.
+          {feriadoHoy && (
+            <span className="px-2 py-0.5 rounded-md bg-cyan-900/50 text-cyan-300 border border-cyan-800 text-[10px] uppercase font-bold tracking-wider">
+              FERIADO: Grilla {feriadoHoy.tipo}
+            </span>
+          )}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-4">
           <div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDashboardData } from '../../hooks/useDashboardData';
-import { AlertTriangle, TrendingUp, TrendingDown, Activity, BarChart3 } from 'lucide-react';
+import { AlertTriangle, TrendingUp, Activity, BarChart3 } from 'lucide-react';
 import { KPICard } from './KPICard';
 import { SaludOperacionalCard } from './SaludOperacionalCard';
 import { LineasStatusPanel } from './LineasStatusPanel';
@@ -24,14 +24,16 @@ export function ExecutiveDashboard({ operador }: ExecutiveDashboardProps) {
     resumen_ejecutivo,
     loading,
     error,
-    refetch
+    refetch,
   } = useDashboardData({
     operador,
     autoRefresh: true,
-    refreshInterval: 300000 // 5 minutos
+    refreshInterval: 300000, // 5 minutos
   });
 
-  const [selectedTab, setSelectedTab] = useState<'overview' | 'lines' | 'alerts' | 'recommendations'>('overview');
+  const [selectedTab, setSelectedTab] = useState<
+    'overview' | 'lines' | 'alerts' | 'recommendations'
+  >('overview');
 
   if (loading && !dashboard) {
     return (
@@ -40,7 +42,9 @@ export function ExecutiveDashboard({ operador }: ExecutiveDashboardProps) {
           <div className="inline-block">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600"></div>
           </div>
-          <p className="mt-4 text-lg font-semibold text-gray-700">Cargando dashboard ejecutivo...</p>
+          <p className="mt-4 text-lg font-semibold text-gray-700">
+            Cargando dashboard ejecutivo...
+          </p>
         </div>
       </div>
     );
@@ -203,13 +207,9 @@ export function ExecutiveDashboard({ operador }: ExecutiveDashboardProps) {
         </div>
       )}
 
-      {selectedTab === 'lines' && (
-        <LineasStatusPanel lineas={lineas} />
-      )}
+      {selectedTab === 'lines' && <LineasStatusPanel lineas={lineas} />}
 
-      {selectedTab === 'alerts' && (
-        <AlertasPanel alertas={alertas} lineas={lineas} />
-      )}
+      {selectedTab === 'alerts' && <AlertasPanel alertas={alertas} lineas={lineas} />}
 
       {selectedTab === 'recommendations' && (
         <RecomendacionesPanel recomendaciones={recomendaciones} />

@@ -83,10 +83,13 @@ const Distribution = () => {
       const defaultCat = Number((categories[0] as { id?: number | string })?.id) || 1;
 
       // 1. Obtener Servicios Reales de la DB (Matriz Cartones)
-      // TODO: En el futuro esto debe ser dinámico (detectar si es Sábado/Domingo automáticamente)
-      // Por ahora forzamos SEASON=2 (Verano) y DAY=HABIL
-      const seasonId = 2; // Asegurarse que ID 2 es Verano 2026 o buscarlo dinámicamente si es posible
-      const dayType = 'HABIL';
+      const seasonId = 2; // TODO: En el futuro esto debe ser dinámico (detectar Temporada Actual)
+
+      const d = new Date();
+      const dayOfWeek = d.getDay();
+      let dayType = 'HABIL';
+      if (dayOfWeek === 0) dayType = 'DOMINGO';
+      else if (dayOfWeek === 6) dayType = 'SABADO';
 
       const serviceDefinitions = (await CartonService.getAll(
         String(seasonId),
@@ -94,35 +97,23 @@ const Distribution = () => {
       )) as ServiceItem[];
 
       if (!serviceDefinitions || serviceDefinitions.length === 0) {
-        alert('No se encontraron definiciones de servicio para la temporada/día seleccionados.');
+        alert(
+          `No se encontraron definiciones de servicio para Temporada ${seasonId} y Día ${dayType}.`,
+        );
         return;
       }
 
-      console.log(`Generando ${serviceDefinitions.length} turnos desde definiciones...`);
-
-      // 2. Refresh resources for Auto-Assign logic
-      const freshUsers = (await UserService.getAll()) as User[];
-      const fleetDrivers = freshUsers.filter(
-        (u: User) => u.internalNumber !== undefined && u.internalNumber.startsWith('90'),
-      );
-      fleetDrivers.sort((a: User, b: User) =>
-        (a.internalNumber || '').localeCompare(b.internalNumber || ''),
-      );
+      console.log(`Generando ${serviceDefinitions.length} turnos desde definiciones reales...`);
 
       // 3. Process Matrix: Generate Shifts from Real DB Definitions
       for (let i = 0; i < serviceDefinitions.length; i++) {
         const def = serviceDefinitions[i] as ServiceItem;
 
-        // Extraer coche sugerido del tipo de vehículo (Mapeo Simulado)
-        // En producción esto debería buscar un coche disponible real del tipo correcto.
-        // Aquí simulamos asignación 1 a 1 para demo.
-        const carNum = def.serviceCode || `9${i.toString().padStart(3, '0')}`;
+        // Extraer coche sugerido de la base de datos (Rotación)
+        // El Carton (Servicio) guarda la unidad asignada real
+        const carNum = def.assignedTo ? String(def.assignedTo) : '';
 
-        // Auto-Assign logic (Simple Round Robin for demo)
-        const driver = fleetDrivers[i % fleetDrivers.length];
-        const assignedUserId = driver ? driver.id : null;
-
-        const createdShift = await ShiftService.create({
+        await ShiftService.create({
           date: today,
           serviceNumber: def.serviceNumber,
           endTime: def.endTime || '23:59', // Usa el horario real de fin
@@ -137,9 +128,9 @@ const Distribution = () => {
           transformaFacil: false,
         });
 
-        if (createdShift && createdShift.id && assignedUserId) {
-          await ShiftService.assign(Number(createdShift.id), assignedUserId);
-        }
+        // En Operaciones Reales, NO pre-asignamos al chofer (round robin simulado eliminado).
+        // La asignación de chofer es tarea exclusiva del Listero mediante D&D respetando descanso.
+        // Si la unidad ya está asignada al cartón, el sistema ya sabe qué bus es, y el Listero provee el humano.
       }
 
       await loadData();

@@ -1,0 +1,17 @@
+﻿=== DescribeFeatureType: v_uptu_lsv_destinos ===
+Campos: v_uptu_lsv_destinosType, gid, cod_linea, desc_linea, ordinal_sublinea, cod_sublinea, desc_sublinea, cod_variante, desc_variante, the_geom, cod_variante_maximal, cod_origen, desc_origen, cod_destino, desc_destino, v_uptu_lsv_destinos
+
+=== DescribeFeatureType: v_uptu_sentido_variante ===
+Campos: v_uptu_sentido_varianteType, cod_variante, desc_variante, the_geom, invertido, v_uptu_sentido_variante
+
+=== Sample v_uptu_lsv_destinos ===
+{"gid":16009406,"cod_linea":1,"desc_linea":"402","ordinal_sublinea":1,"cod_sublinea":1,"desc_sublinea":"CIUDAD VIEJA - MALVIN","cod_variante":8,"desc_variante":"A","cod_variante_maximal":null,"cod_origen":19,"desc_origen":"PLAYA MALV├ìN","cod_destino":274,"desc_destino":"URUGUAY Y FLORIDA"}
+{"gid":165239360,"cod_linea":1,"desc_linea":"402","ordinal_sublinea":1,"cod_sublinea":1,"desc_sublinea":"CIUDAD VIEJA - MALVIN","cod_variante":10,"desc_variante":"A","cod_variante_maximal":8,"cod_origen":19,"desc_origen":"PLAYA MALV├ìN","cod_destino":97,"desc_destino":"PALACIO LEGISLATIVO"}
+{"gid":165239361,"cod_linea":1,"desc_linea":"402","ordinal_sublinea":1,"cod_sublinea":1,"desc_sublinea":"CIUDAD VIEJA - MALVIN","cod_variante":12,"desc_variante":"A","cod_variante_maximal":8,"cod_origen":19,"desc_origen":"PLAYA MALV├ìN","cod_destino":176,"desc_destino":"INTERCAMBIADOR BELLONI"}
+{"gid":16009409,"cod_linea":3,"desc_linea":"405","ordinal_sublinea":1,"cod_sublinea":3,"desc_sublinea":"PE├æAROL - PARQUE ROD├ô","cod_variante":24,"desc_variante":"B","cod_variante_maximal":null,"cod_origen":56,"desc_origen":"PARQUE ROD├ô","cod_destino":74,"desc_destino":"PE├æAROL"}
+{"gid":165239362,"cod_linea":3,"desc_linea":"405","ordinal_sublinea":1,"cod_sublinea":3,"desc_sublinea":"PE├æAROL - PARQUE ROD├ô","cod_variante":26,"desc_variante":"B","cod_variante_maximal":24,"cod_origen":56,"desc_origen":"PARQUE ROD├ô","cod_destino":47,"desc_destino":"COMPLEJO JUANA DE AM├ëRICA"}
+
+=== Sample v_uptu_sentido_variante (propiedades only) ===
+{"cod_variante":0}
+{"cod_variante":8}
+{"cod_variante":10}

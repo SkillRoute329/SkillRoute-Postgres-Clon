@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { BulletinService, CartonService, InspectionService } from '../../services/api';
 import { ActiveAssignmentsService } from '../../services/firestore';
 import { Search, Users, BarChart3, Check, Car } from 'lucide-react';
+import { ShadowDispatcherService, type AlertaRegulacion } from '../../services/ShadowDispatcherService';
 
 // Types
 
@@ -35,6 +36,18 @@ const InspectorDashboard = () => {
   >({});
   const [loads, setLoads] = useState<Record<string, string>>({}); // Key: ServiceNr -> Value: 'Malo'|'Regular'|'Bueno'|'Excelente'
   const [offsets, setOffsets] = useState<Record<string, number>>({}); // Key: ServiceNr -> Value: minutes (+/-)
+
+  // Active assignments mapping: cartonServiceId -> cocheId
+  const [cocheAssignments, setCocheAssignments] = useState<Record<string, string>>({});
+  // Active alerts mapping: cocheId -> AlertaRegulacion
+  const [activeAlerts, setActiveAlerts] = useState<Record<string, AlertaRegulacion>>({});
+  
+  // Timer for TTL evaluation on active alerts
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 30000); // 30s update
+    return () => clearInterval(t);
+  }, []);
 
   // Coches que pasaron por un punto de control en la última hora (ActiveAssignmentsService.getByDate + inspecciones)
   const [lastHourPasses, setLastHourPasses] = useState<
@@ -147,6 +160,18 @@ const InspectorDashboard = () => {
     return () => clearInterval(t);
   }, [todayStr, loadLastHourPasses]);
 
+  useEffect(() => {
+    if (!line) return;
+    // Load assignments for today
+    ActiveAssignmentsService.getByDate(todayStr).then(assignments => {
+      const mapping: Record<string, string> = {};
+      assignments.forEach(a => {
+        if (a.cocheId) mapping[a.servicioId] = a.cocheId;
+      });
+      setCocheAssignments(mapping);
+    });
+  }, [line, todayStr]);
+
   const loadActuals = async () => {
     try {
       const list = await InspectionService.getForDate(todayStr, line);
@@ -177,7 +202,7 @@ const InspectorDashboard = () => {
     }
   };
 
-  // Listener en tiempo real: inspecciones del día para la línea seleccionada (5.4)
+  // Listener en tiempo real: inspecciones del día para la línea seleccionada (5.4) + Alertas Regulacion
   useEffect(() => {
     if (!line || !matrixMode) return;
     const unsub = InspectionService.subscribeForDate(todayStr, line, (list) => {
@@ -196,7 +221,21 @@ const InspectorDashboard = () => {
       setControls(newControls as any);
       setLoads(newLoads);
     });
-    return () => unsub();
+
+    const unsubAlerts = ShadowDispatcherService.subscribeAlertasPorLinea(line, (alertas) => {
+      const active: Record<string, AlertaRegulacion> = {};
+      alertas.forEach(a => {
+        if (a.coche_id) {
+          active[a.coche_id] = a;
+        }
+      });
+      setActiveAlerts(active);
+    });
+
+    return () => {
+        unsub();
+        unsubAlerts();
+    };
   }, [line, matrixMode, todayStr]);
 
   /**
@@ -418,10 +457,41 @@ const InspectorDashboard = () => {
                     className="hover:bg-slate-800 transition-colors border-b border-slate-800/50"
                   >
                     {/* SERVICE & OFFSET */}
-                    <td className="p-2 border-r border-slate-800 sticky left-0 bg-slate-900/90 z-10">
+                    <td className="p-2 border-r border-slate-800 sticky left-0 bg-slate-900/90 z-10 w-[160px]">
                       <div className="flex flex-col gap-1">
-                        <span className="font-bold text-base text-white">#{row.serviceNumber}</span>
-                        <div className="flex items-center gap-1 bg-slate-800 rounded p-1">
+                        <div className="flex items-center justify-between">
+                            <span className="font-bold text-base text-white">#{row.serviceNumber}</span>
+                            {cocheAssignments[row.id] && !activeAlerts[cocheAssignments[row.id]] && (
+                                <span className="text-[10px] text-slate-500 font-mono bg-slate-800 px-1 rounded">
+                                    Coche {cocheAssignments[row.id]}
+                                </span>
+                            )}
+                        </div>
+                        {/* INSTRUCCIONES SHADOW DISPATCHER */}
+                        {(() => {
+                          const cocheId = cocheAssignments[row.id];
+                          if (!cocheId) return null;
+                          const alerta = activeAlerts[cocheId];
+                          if (!alerta || !alerta.timestamp) return null;
+                          
+                          // TTL 3 minutes max
+                          const ageMs = nowTick - (alerta.timestamp.seconds * 1000);
+                          if (ageMs > 3 * 60 * 1000) return null;
+
+                          const ui = ShadowDispatcherService.getInstruccionUI(alerta.instruccion);
+                          return (
+                            <div 
+                                className={`mt-1 flex flex-col p-1.5 rounded border bg-slate-950/80 shadow-[0_0_8px_rgba(0,0,0,0.5)] ${ui.bordeClase}`}
+                            >
+                                <div className={`flex items-center gap-1 text-[10px] font-bold ${ui.textoClase}`}>
+                                    <span>{ui.icono}</span>
+                                    <span>Coche {cocheId}</span>
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-wider leading-tight mt-0.5 text-white">{ui.etiqueta}</span>
+                            </div>
+                          );
+                        })()}
+                        <div className="flex items-center gap-1 bg-slate-800 rounded p-1 mt-1">
                           <button
                             onClick={() => adjustService(row.serviceNumber, -1)}
                             className="w-6 h-6 flex items-center justify-center bg-red-500/20 text-red-400 rounded hover:bg-red-500/40"

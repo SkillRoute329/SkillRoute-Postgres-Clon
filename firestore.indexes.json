@@ -80,6 +80,63 @@
         { "fieldPath": "active", "order": "ASCENDING" },
         { "fieldPath": "creado_en", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "desvios_activos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "linea_id", "order": "ASCENDING" },
+        { "fieldPath": "expirado", "order": "ASCENDING" },
+        { "fieldPath": "expire_at", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "fichas_medicas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isEligible", "order": "ASCENDING" },
+        { "fieldPath": "venc_carne_salud", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "eventos_desvio",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "coche_id", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "empresa", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "timestamp", "order": "ASCENDING" },
+        { "fieldPath": "empresa", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "alertas_regulacion",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "linea_id", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "alertas_regulacion",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "leido", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

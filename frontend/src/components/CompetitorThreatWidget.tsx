@@ -28,6 +28,7 @@ import { ScheduleService } from '../services/scheduleService';
 import { tacticalDataBus } from '../services/tacticalDataBus';
 import STMLayeredMap from './STMLayeredMap';
 import TacticalRouteMap from './TacticalRouteMap';
+import { LineStatsModal } from './LineStatsModal';
 
 interface ThreatResult {
   lineId: string;
@@ -70,6 +71,7 @@ export const CompetitorThreatWidget: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [externalRivals, setExternalRivals] = useState<Record<string, unknown>[]>([]);
   const [scheduleInfo, setScheduleInfo] = useState<ScheduleInfo | null>(null);
+  const [showStatsModal, setShowStatsModal] = useState(false);
 
   // Unique line IDs from corridor map
   const uniqueLines = useMemo(() => {
@@ -342,6 +344,16 @@ export const CompetitorThreatWidget: React.FC = () => {
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
+          <button
+            onClick={() => setShowStatsModal(true)}
+            title="Abrir Estadísticas de Análisis"
+            className="rounded-lg bg-cyan-900/40 p-2 text-cyan-400 hover:bg-cyan-900 hover:text-white transition-all border border-cyan-500/20 flex items-center gap-2"
+          >
+            <Activity className="h-3.5 w-3.5" />
+            <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline-block">
+              Estadísticas
+            </span>
+          </button>
         </div>
       </div>
 
@@ -423,7 +435,7 @@ export const CompetitorThreatWidget: React.FC = () => {
                     </button>
 
                     {/* Corridor Sub-Items (visible when line is selected) */}
-                    {isLineSelected && corridors.length > 1 && (
+                    {isLineSelected && corridors.length > 0 && (
                       <div className="bg-slate-900/60 border-l-4 border-primary-500/30">
                         {corridors.map((corridor) => {
                           const isActiveCorridor =
@@ -544,27 +556,47 @@ export const CompetitorThreatWidget: React.FC = () => {
 
                   {/* Active Corridor Rivals */}
                   {selectedCorridor && (
-                    <div className="rounded-lg bg-slate-900/60 p-3 border border-white/5">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[8px] text-slate-500 uppercase font-bold">
-                          Rivales en este corredor
-                        </span>
+                    <div className="rounded-lg bg-slate-900/80 p-4 border border-rose-500/20 shadow-[0_0_15px_rgba(225,29,72,0.1)]">
+                      <div className="flex items-center justify-between mb-3 border-b border-white/5 pb-2">
+                        <div className="flex items-center gap-2">
+                          <Activity className="h-4 w-4 text-rose-500" />
+                          <span className="text-[10px] text-rose-400 uppercase font-black tracking-widest">
+                            Líneas de Mayor Competencia
+                          </span>
+                        </div>
                         <ArrowUpDown className="h-3 w-3 text-slate-600" />
                       </div>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-col gap-2">
                         {selectedCorridor.rivals.map((rival) => {
                           const rivalDep = ScheduleService.getNextDeparture(rival);
+                          // Si ventaja > 0, UCOT sale después. Si < 0, UCOT sale antes. Aquí sólo evaluamos presencia del rival
                           return (
                             <div
                               key={rival}
-                              className="flex items-center gap-1.5 text-[10px] font-black text-red-400 bg-red-500/10 px-2 py-1 rounded border border-red-500/20"
+                              className="flex items-center justify-between bg-slate-950/50 p-2 rounded border border-white/5 hover:border-rose-500/30 transition-all group"
                             >
-                              <span>{rival}</span>
-                              {rivalDep && (
-                                <span className="text-[7px] text-red-300/60">
-                                  ⏰{rivalDep.hora}
+                              <div className="flex items-center gap-3">
+                                <div className="h-6 w-1 rounded-full bg-rose-600 group-hover:bg-rose-500 shadow-[0_0_8px_rgba(225,29,72,1)]" />
+                                <span className="text-[14px] font-black text-slate-200">
+                                  Línea {rival}
                                 </span>
-                              )}
+                              </div>
+                              <div className="flex items-center gap-4">
+                                {rivalDep ? (
+                                  <div className="flex flex-col items-end">
+                                    <span className="text-[8px] text-slate-500 font-bold uppercase">
+                                      Próxima Salida
+                                    </span>
+                                    <span className="text-[12px] text-rose-400 font-black">
+                                      {rivalDep.hora}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-slate-600 italic">
+                                    Sin datos
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
@@ -573,8 +605,22 @@ export const CompetitorThreatWidget: React.FC = () => {
                   )}
 
                   {/* Threat HUD */}
-                  <div className="rounded-xl border border-white/10 bg-slate-900/80 p-5 shadow-2xl backdrop-blur-sm">
-                    <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-2">
+                  <div
+                    className={`rounded-xl border ${selectedThreat?.threat?.threatLevel === 'CRITICAL' || (scheduleInfo && scheduleInfo.ventajaMin < 0) ? 'border-red-500/50 bg-red-950/20 shadow-[0_0_30px_rgba(239,68,68,0.2)]' : 'border-white/10 bg-slate-900/80 shadow-2xl'} p-5 backdrop-blur-sm relative overflow-hidden`}
+                  >
+                    {/* Urgency Overlay */}
+                    {((scheduleInfo && scheduleInfo.ventajaMin < 0) ||
+                      selectedThreat?.threat?.rivalDirection === 'AHEAD') && (
+                      <div className="absolute top-0 left-0 w-full bg-red-600/90 text-[10px] font-black text-white px-2 py-1 flex items-center justify-center gap-2 tracking-widest uppercase shadow-md animate-pulse z-10">
+                        <Zap className="h-3 w-3" />
+                        ¡ATENCIÓN INSPECTOR! COMPETENCIA POR DELANTE O SALIENDO ANTES
+                        <Zap className="h-3 w-3" />
+                      </div>
+                    )}
+
+                    <div
+                      className={`mb-4 flex items-center justify-between border-b border-white/10 pb-2 ${(scheduleInfo && scheduleInfo.ventajaMin < 0) || selectedThreat?.threat?.rivalDirection === 'AHEAD' ? 'pt-6' : ''}`}
+                    >
                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                         {selectedCorridor
                           ? `Corredor: ${selectedCorridor.destino}`
@@ -750,8 +796,73 @@ export const CompetitorThreatWidget: React.FC = () => {
                       p.empresa === 'UCOT' ||
                       p.empresa === 2 ||
                       (p.id as string)?.includes('sim-ucot');
+
+                    if (!selectedLineId) return isUCOT; // En vista global, mostrar todos (cuidado con la cantidad)
+                    if (isUCOT && p.codigoLinea === selectedLineId) return true;
+
+                    const cRivals =
+                      selectedCorridor?.rivals || COMPETITOR_MAP[selectedLineId] || [];
+                    const pLine = (p.codigoLinea as string)?.toString().replace(/[ab]$/i, '');
+                    return cRivals.includes(pLine);
+                  })
+                  .map((p) => {
+                    const pos = p.posicion as Record<string, unknown>;
+                    return {
+                      id: p.id as string,
+                      linea: p.codigoLinea as string,
+                      lat: Number(pos?.latitude || pos?.lat || 0),
+                      lng: Number(pos?.longitude || pos?.lng || 0),
+                      heading: Number(p.heading || 0),
+                      empresa: p.empresa as string | number,
+                    };
+                  }),
+                ...externalRivals
+                  .filter((p) => {
+                    if (!selectedLineId) return false; // NUNCA mostrar miles de rivales en vista global (crasha la app)
+                    const cRivals =
+                      selectedCorridor?.rivals || COMPETITOR_MAP[selectedLineId] || [];
+                    const pLine = (p.codigoLinea as string)?.toString().replace(/[ab]$/i, '');
+                    return cRivals.includes(pLine);
+                  })
+                  .map((p) => {
+                    const pos = p.posicion as Record<string, unknown>;
+                    return {
+                      id: p.id as string,
+                      linea: p.codigoLinea as string,
+                      lat: Number(pos?.lat || 0),
+                      lng: Number(pos?.lng || 0),
+                      heading: Number(p.heading || 0),
+                      empresa: 'RIVAL_STM' as string | number,
+                    };
+                  }),
+              ]}
+              selectedLineId={selectedLineId || undefined}
+              corridorLabel={selectedCorridor?.label}
+              corridorTerminals={
+                selectedCorridor
+                  ? `${selectedCorridor.terminalOrigen} → ${selectedCorridor.terminalDestino}`
+                  : undefined
+              }
+              corridorRivals={selectedCorridor?.rivals}
+              scheduleInfo={scheduleInfo}
+              threatLevel={selectedThreat?.threat?.threatLevel || 'SAFE'}
+              recommendation={selectedThreat?.threat?.recommendation}
+            />
+          )}
+
+          {/* ═══ RUTAS: Leaflet con recorridos REALES de la API STM ═══ */}
+          {mapMode === 'RUTAS' && (
+            <TacticalRouteMap
+              liveBuses={[
+                ...livePositions
+                  .filter((p) => {
+                    const isUCOT =
+                      p.empresa === 'UCOT' ||
+                      p.empresa === 2 ||
+                      (p.id as string)?.includes('sim-ucot');
                     if (!selectedLineId) return isUCOT;
-                    if (isUCOT) return true;
+                    if (isUCOT && p.codigoLinea === selectedLineId) return true;
+
                     const cRivals =
                       selectedCorridor?.rivals || COMPETITOR_MAP[selectedLineId] || [];
                     const pLine = (p.codigoLinea as string)?.toString().replace(/[ab]$/i, '');
@@ -801,46 +912,13 @@ export const CompetitorThreatWidget: React.FC = () => {
               recommendation={selectedThreat?.threat?.recommendation}
             />
           )}
-
-          {/* ═══ RUTAS: Leaflet con recorridos REALES de la API STM ═══ */}
-          {mapMode === 'RUTAS' && (
-            <TacticalRouteMap
-              liveBuses={[
-                ...livePositions
-                  .filter((p) => {
-                    const isUCOT =
-                      p.empresa === 'UCOT' ||
-                      p.empresa === 2 ||
-                      (p.id as string)?.includes('sim-ucot');
-                    return isUCOT;
-                  })
-                  .map((p) => {
-                    const pos = p.posicion as Record<string, unknown>;
-                    return {
-                      id: p.id as string,
-                      linea: p.codigoLinea as string,
-                      lat: Number(pos?.latitude || pos?.lat || 0),
-                      lng: Number(pos?.longitude || pos?.lng || 0),
-                      heading: Number(p.heading || 0),
-                      empresa: p.empresa as string | number,
-                    };
-                  }),
-              ]}
-              selectedLineId={selectedLineId || undefined}
-              corridorLabel={selectedCorridor?.label}
-              corridorTerminals={
-                selectedCorridor
-                  ? `${selectedCorridor.terminalOrigen} → ${selectedCorridor.terminalDestino}`
-                  : undefined
-              }
-              corridorRivals={selectedCorridor?.rivals}
-              scheduleInfo={scheduleInfo}
-              threatLevel={selectedThreat?.threat?.threatLevel || 'SAFE'}
-              recommendation={selectedThreat?.threat?.recommendation}
-            />
-          )}
         </div>
       </div>
+
+      {/* Stats Modal */}
+      {showStatsModal && (
+        <LineStatsModal onClose={() => setShowStatsModal(false)} filteredLineId={selectedLineId} />
+      )}
     </div>
   );
 };

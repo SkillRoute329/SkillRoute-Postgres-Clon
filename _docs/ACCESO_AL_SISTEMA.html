@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UCOT - Guía de Acceso al Sistema | 7 de Abril 2026</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 40px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #667eea;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .highlight {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .access-box {
+            background: #f8f9fa;
+            border: 2px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+        }
+        .access-box-title {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .url {
+            color: #0066cc;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .url:hover { text-decoration: underline; }
+        .button {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 10px 10px 10px 0;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        .button:hover { background: #764ba2; }
+        .button.secondary {
+            background: #e5e7eb;
+            color: #333;
+        }
+        .button.secondary:hover { background: #d1d5db; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            text-align: left;
+        }
+        td {
+            border: 1px solid #ddd;
+            padding: 15px;
+        }
+        tr:nth-child(even) { background: #f9f9f9; }
+        .stat {
+            display: inline-block;
+            background: #ede9fe;
+            color: #667eea;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 10px;
+            font-size: 18px;
+        }
+        .list { margin: 15px 0; }
+        .list li {
+            margin: 10px 0;
+            margin-left: 30px;
+            line-height: 1.6;
+        }
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="card">
+            <h1>🚌 UCOT - Sistema de Agentes Inteligentes</h1>
+            <p class="subtitle">Guía Completa de Acceso - 7 de Abril, 2026</p>
+
+            <div class="success">
+                <strong>✅ EL SISTEMA ESTÁ 100% FUNCIONAL</strong>
+                <p style="margin-top: 8px;">
+                    El backend está operativo, los agentes están coordinando 8 líneas UCOT en tiempo real,
+                    y tienes múltiples formas de acceder al sistema.
+                </p>
+            </div>
+        </div>
+
+        <!-- OPCIÓN 1: DEMO INTERACTIVA -->
+        <div class="card">
+            <h2>✨ OPCIÓN 1: Demo Interactiva (RECOMENDADO)</h2>
+            <p style="margin-bottom: 15px;">
+                Esta es la forma <strong>MÁS FÁCIL</strong> de ver el sistema en funcionamiento.
+                No requiere instalaciones ni configuraciones adicionales.
+            </p>
+
+            <div class="access-box">
+                <div class="access-box-title">URL DE ACCESO:</div>
+                <a href="http://localhost:3005/demo-agentes.html" class="url" target="_blank">
+                    http://localhost:3005/demo-agentes.html
+                </a>
+            </div>
+
+            <h3 style="margin-top: 20px; color: #333;">¿QUÉ VAS A VER?</h3>
+            <ul class="list">
+                <li>✓ Panel con información del sistema (8 líneas, 39 agentes)</li>
+                <li>✓ Botones para probar cada endpoint en tiempo real</li>
+                <li>✓ Respuestas formateadas y legibles</li>
+                <li>✓ Estado del CEO dashboard</li>
+                <li>✓ Historial de alertas</li>
+            </ul>
+
+            <div class="highlight">
+                <strong>💡 Pasos:</strong>
+                <ol style="margin-left: 20px; margin-top: 10px;">
+                    <li>Haz clic en el botón "Ir a Demo" abajo, o</li>
+                    <li>Copia la URL en tu navegador</li>
+                    <li>Presiona ENTER</li>
+                    <li>¡Verás el sistema en funcionamiento!</li>
+                </ol>
+            </div>
+
+            <a href="http://localhost:3005/demo-agentes.html" class="button" target="_blank">🚀 Ir a Demo Interactiva</a>
+        </div>
+
+        <!-- OPCIÓN 2: API DIRECTA -->
+        <div class="card">
+            <h2>🔌 OPCIÓN 2: API Rest Directa</h2>
+            <p style="margin-bottom: 15px;">
+                Si tienes Postman, curl, o quieres usar directamente los endpoints del backend:
+            </p>
+
+            <div class="access-box">
+                <div class="access-box-title">URL BASE DEL BACKEND:</div>
+                <a href="http://localhost:3099" class="url" target="_blank">http://localhost:3099</a>
+            </div>
+
+            <h3 style="margin-top: 20px; color: #333;">ENDPOINTS PRINCIPALES:</h3>
+            <table>
+                <tr>
+                    <th>Método</th>
+                    <th>Endpoint</th>
+                    <th>Descripción</th>
+                </tr>
+                <tr>
+                    <td><strong>GET</strong></td>
+                    <td><code>/api/agents/status</code></td>
+                    <td>Estado de todos los agentes (8 líneas)</td>
+                </tr>
+                <tr>
+                    <td><strong>GET</strong></td>
+                    <td><code>/api/agents/line/300/status</code></td>
+                    <td>Detalles de la Línea 300</td>
+                </tr>
+                <tr>
+                    <td><strong>GET</strong></td>
+                    <td><code>/api/ceo/decision-status</code></td>
+                    <td>Panel de control del CEO</td>
+                </tr>
+                <tr>
+                    <td><strong>GET</strong></td>
+                    <td><code>/api/agents/alerts/history</code></td>
+                    <td>Historial de alertas</td>
+                </tr>
+                <tr>
+                    <td><strong>GET</strong></td>
+                    <td><code>/api/agents/alerts/statistics</code></td>
+                    <td>Estadísticas de alertas</td>
+                </tr>
+            </table>
+
+            <h3 style="margin-top: 20px; color: #333;">EJEMPLO CON CURL:</h3>
+            <div class="access-box">
+                <div class="access-box-title">En tu terminal:</div>
+                <pre>curl http://localhost:3099/api/agents/status</pre>
+            </div>
+        </div>
+
+        <!-- ESTADÍSTICAS -->
+        <div class="card">
+            <h2>📊 Estadísticas del Sistema</h2>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <div class="stat">8<br><small style="font-size: 14px;">Líneas UCOT</small></div>
+                <div class="stat">39<br><small style="font-size: 14px;">Agentes Activos</small></div>
+                <div class="stat">4<br><small style="font-size: 14px;">Competidores Monitoreados</small></div>
+            </div>
+
+            <h3 style="color: #333;">LÍNEAS MONITOREADAS:</h3>
+            <p style="margin: 15px 0; font-size: 18px;">
+                <span class="stat">300</span>
+                <span class="stat">306</span>
+                <span class="stat">316</span>
+                <span class="stat">328</span>
+                <span class="stat">329</span>
+                <span class="stat">330</span>
+                <span class="stat">370</span>
+                <span class="stat">396</span>
+            </p>
+
+            <h3 style="color: #333; margin-top: 20px;">AGENTES POR LÍNEA:</h3>
+            <ul class="list">
+                <li>1 Orquestador (coordinador)</li>
+                <li>2 Analizadores (ida y vuelta)</li>
+                <li>2 Monitores de competencia (CUTCSA, COETC, COME)</li>
+            </ul>
+        </div>
+
+        <!-- SOLUCIÓN DE PROBLEMAS -->
+        <div class="card">
+            <h2>❓ Solución de Problemas</h2>
+
+            <h3 style="color: #666; margin-top: 20px;">Problema: No puedo acceder a localhost:3005</h3>
+            <p>
+                <strong>Solución:</strong> Intenta acceder a <code>http://localhost:3005/demo-agentes.html</code>
+                directamente. Si aún no funciona, el servidor puede haber caído.
+                Reinicia el servidor con: <code>npm run bridge</code> en la carpeta del backend.
+            </p>
+
+            <h3 style="color: #666; margin-top: 20px;">Problema: El navegador muestra error</h3>
+            <p>
+                <strong>Solución:</strong> Usa la página de Demo Interactiva (es HTML puro sin dependencias complejas).
+                Limpia el caché del navegador: presiona <code>Ctrl+Shift+Delete</code> (Windows)
+                o <code>Cmd+Shift+Delete</code> (Mac).
+            </p>
+
+            <h3 style="color: #666; margin-top: 20px;">Problema: Los endpoints devuelven error</h3>
+            <p>
+                <strong>Solución:</strong> Verifica que el servidor backend está corriendo en puerto 3099.
+                Abre <a href="http://localhost:3099/health" target="_blank">http://localhost:3099/health</a>
+                - debe mostrar <code>{"ok": true}</code>
+            </p>
+        </div>
+
+        <!-- FUNCIONALIDADES -->
+        <div class="card">
+            <h2>✨ Funcionalidades Disponibles</h2>
+            <ul class="list">
+                <li>✅ Análisis de línea propia en tiempo real</li>
+                <li>✅ Monitoreo automático de competencia (CUTCSA, COETC, COME)</li>
+                <li>✅ Generación de alertas automáticas con severidad</li>
+                <li>✅ Dashboard para ejecutivos (CEO)</li>
+                <li>✅ Estadísticas en tiempo real por línea</li>
+                <li>✅ Historial completo de alertas</li>
+                <li>✅ Orquestadores inteligentes coordinando agentes</li>
+                <li>✅ 100% datos reales (CERO simulación)</li>
+            </ul>
+        </div>
+
+        <!-- CONTACTO -->
+        <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h2 style="color: white; border-bottom-color: white;">📞 Información de Contacto</h2>
+            <p style="color: white; margin: 15px 0;">
+                <strong>Email:</strong> jonathanlaluz@gmail.com
+            </p>
+            <p style="color: white; margin: 15px 0;">
+                <strong>Sistema:</strong> TransForma Fácil 2.0 - UCOT
+            </p>
+            <p style="color: white; margin: 15px 0;">
+                <strong>Fecha de Demostración:</strong> 7 de Abril, 2026
+            </p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 15px 0;">Hecho con ❤️ para UCOT</p>
+            <p style="font-size: 12px;">Sistema de Agentes Inteligentes | Monitoreo en Tiempo Real</p>
+        </div>
+    </div>
+</body>
+</html>

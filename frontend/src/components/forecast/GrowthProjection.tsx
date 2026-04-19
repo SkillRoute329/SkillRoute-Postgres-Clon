@@ -15,7 +15,7 @@ export function GrowthProjection({
   numeroLinea,
   meses = 6,
   titulo = 'Proyección de Crecimiento',
-  height = '500px'
+  height = '500px',
 }: GrowthProjectionProps) {
   const { proyeccion, resumen, loading, error } = useGrowthProjection(lineaId, meses);
 
@@ -45,16 +45,21 @@ export function GrowthProjection({
   }
 
   const tendenciaColor = {
-    'creciente': 'text-green-700 bg-green-50',
-    'estable': 'text-blue-700 bg-blue-50',
-    'decreciente': 'text-red-700 bg-red-50'
+    creciente: 'text-green-700 bg-green-50',
+    estable: 'text-blue-700 bg-blue-50',
+    decreciente: 'text-red-700 bg-red-50',
   };
 
   return (
-    <div style={{ height }} className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col">
+    <div
+      style={{ height }}
+      className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col"
+    >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-gray-800">{titulo}</h3>
-        <span className="px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded">LÍNEA {numeroLinea}</span>
+        <span className="px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded">
+          LÍNEA {numeroLinea}
+        </span>
       </div>
 
       {/* Resumen */}
@@ -75,7 +80,9 @@ export function GrowthProjection({
             <p className="text-xl font-bold text-purple-700">{resumen.confianza}</p>
           </div>
 
-          <div className={`p-3 rounded border flex items-center justify-between ${tendenciaColor[resumen.tendencia as keyof typeof tendenciaColor] || 'bg-gray-50'}`}>
+          <div
+            className={`p-3 rounded border flex items-center justify-between ${tendenciaColor[resumen.tendencia as keyof typeof tendenciaColor] || 'bg-gray-50'}`}
+          >
             <p className="text-xs">Tendencia</p>
             <p className="text-sm font-bold">{resumen.tendencia}</p>
           </div>
@@ -88,7 +95,7 @@ export function GrowthProjection({
         <div className="space-y-2">
           {proyeccion.proyecciones.map((proj: any, idx: number) => {
             const maxIngreso = Math.max(
-              ...proyeccion.proyecciones.map((p: any) => p.ingresoProyectado)
+              ...proyeccion.proyecciones.map((p: any) => p.ingresoProyectado),
             );
             const porcentajeBarra = (proj.ingresoProyectado / maxIngreso) * 100;
 
@@ -96,7 +103,12 @@ export function GrowthProjection({
               <div key={idx}>
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-xs font-semibold text-gray-700">
-                    Mes {proj.mes} ({new Date(proj.fecha).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })})
+                    Mes {proj.mes} (
+                    {new Date(proj.fecha).toLocaleDateString('es-ES', {
+                      month: 'short',
+                      year: '2-digit',
+                    })}
+                    )
                   </p>
                   <p className="text-xs font-bold text-gray-900">
                     ${(proj.ingresoProyectado / 1000).toFixed(0)}K
@@ -126,8 +138,8 @@ export function GrowthProjection({
           {proyeccion.tasaCrecimientoMensual > 0
             ? `Tu línea está creciendo. A este ritmo, los ingresos aumentarán un ${Math.round(proyeccion.tasaCrecimientoMensual)}% cada mes.`
             : proyeccion.tasaCrecimientoMensual < 0
-            ? `Tu línea está decreciendo. Requiere atención inmediata y cambios estratégicos.`
-            : 'Tu línea está estable. Mantén la operación actual.'}
+              ? `Tu línea está decreciendo. Requiere atención inmediata y cambios estratégicos.`
+              : 'Tu línea está estable. Mantén la operación actual.'}
         </p>
       </div>
     </div>

@@ -15,7 +15,7 @@ export function ScheduleSimulator({
   numeroLinea,
   horarioActual = '06:00',
   titulo = 'Simulador de Horarios',
-  height = '600px'
+  height = '600px',
 }: ScheduleSimulatorProps) {
   const { simulacion, resumen, loading, error, simular, reset } = useSimulator();
 
@@ -27,22 +27,23 @@ export function ScheduleSimulator({
       {
         horarioActual,
         horarioNuevo,
-        razon
-      }
+        razon,
+      },
     ]);
   };
 
   return (
-    <div style={{ height }} className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col">
+    <div
+      style={{ height }}
+      className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col"
+    >
       <h3 className="text-lg font-bold text-gray-800 mb-4">{titulo}</h3>
 
       {/* Panel de entrada */}
       {!simulacion && (
         <div className="space-y-4 mb-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Horario Actual
-            </label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Horario Actual</label>
             <input
               type="time"
               value={horarioActual}
@@ -52,9 +53,7 @@ export function ScheduleSimulator({
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Horario Nuevo
-            </label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Horario Nuevo</label>
             <input
               type="time"
               value={horarioNuevo}
@@ -106,31 +105,37 @@ export function ScheduleSimulator({
               </p>
             </div>
 
-            <div className={`p-3 rounded border-2 ${
-              simulacion.resultados.escenarioNuevo.cambioAbsoluto > 0
-                ? 'bg-green-50 border-green-500'
-                : 'bg-red-50 border-red-500'
-            }`}>
+            <div
+              className={`p-3 rounded border-2 ${
+                simulacion.resultados.escenarioNuevo.cambioAbsoluto > 0
+                  ? 'bg-green-50 border-green-500'
+                  : 'bg-red-50 border-red-500'
+              }`}
+            >
               <p className="text-xs text-gray-600 mb-1">Escenario Nuevo</p>
               <p className="text-sm font-bold text-gray-900">
                 {simulacion.resultados.escenarioNuevo.pasajeros} pasajeros
               </p>
-              <p className={`text-xs font-bold ${
-                simulacion.resultados.escenarioNuevo.cambioAbsoluto > 0
-                  ? 'text-green-700'
-                  : 'text-red-700'
-              }`}>
+              <p
+                className={`text-xs font-bold ${
+                  simulacion.resultados.escenarioNuevo.cambioAbsoluto > 0
+                    ? 'text-green-700'
+                    : 'text-red-700'
+                }`}
+              >
                 ${simulacion.resultados.escenarioNuevo.ingresos}/día
               </p>
             </div>
           </div>
 
           {/* Cambio */}
-          <div className={`p-4 rounded-lg border-2 ${
-            simulacion.resultados.escenarioNuevo.cambioAbsoluto > 0
-              ? 'bg-green-50 border-green-500'
-              : 'bg-red-50 border-red-500'
-          }`}>
+          <div
+            className={`p-4 rounded-lg border-2 ${
+              simulacion.resultados.escenarioNuevo.cambioAbsoluto > 0
+                ? 'bg-green-50 border-green-500'
+                : 'bg-red-50 border-red-500'
+            }`}
+          >
             <div className="flex items-center justify-between mb-2">
               <p className="font-bold text-gray-900">Cambio Neto</p>
               <div className="flex items-center gap-2">
@@ -139,13 +144,15 @@ export function ScheduleSimulator({
                 ) : (
                   <TrendingDown className="w-6 h-6 text-red-600" />
                 )}
-                <span className={`text-2xl font-bold ${
-                  simulacion.resultados.escenarioNuevo.cambioAbsoluto > 0
-                    ? 'text-green-700'
-                    : 'text-red-700'
-                }`}>
-                  {simulacion.resultados.escenarioNuevo.cambioAbsoluto > 0 ? '+' : ''}
-                  ${simulacion.resultados.escenarioNuevo.cambioAbsoluto.toLocaleString()}
+                <span
+                  className={`text-2xl font-bold ${
+                    simulacion.resultados.escenarioNuevo.cambioAbsoluto > 0
+                      ? 'text-green-700'
+                      : 'text-red-700'
+                  }`}
+                >
+                  {simulacion.resultados.escenarioNuevo.cambioAbsoluto > 0 ? '+' : ''}$
+                  {simulacion.resultados.escenarioNuevo.cambioAbsoluto.toLocaleString()}
                 </span>
               </div>
             </div>
@@ -155,37 +162,47 @@ export function ScheduleSimulator({
               {simulacion.resultados.escenarioNuevo.cambioRelativo}% / día
             </p>
 
-            <p className={`text-sm font-bold mt-2 ${
-              simulacion.resultados.escenarioNuevo.cambioAbsoluto > 0
-                ? 'text-green-700'
-                : 'text-red-700'
-            }`}>
+            <p
+              className={`text-sm font-bold mt-2 ${
+                simulacion.resultados.escenarioNuevo.cambioAbsoluto > 0
+                  ? 'text-green-700'
+                  : 'text-red-700'
+              }`}
+            >
               Impacto mensual: ${simulacion.resultados.impactoTotal.toLocaleString()}
             </p>
           </div>
 
           {/* Veredicto */}
-          <div className={`p-3 rounded-lg border-2 flex items-start gap-3 ${
-            simulacion.riesgo === 'bajo'
-              ? 'bg-green-50 border-green-500'
-              : simulacion.riesgo === 'medio'
-              ? 'bg-yellow-50 border-yellow-500'
-              : 'bg-red-50 border-red-500'
-          }`}>
+          <div
+            className={`p-3 rounded-lg border-2 flex items-start gap-3 ${
+              simulacion.riesgo === 'bajo'
+                ? 'bg-green-50 border-green-500'
+                : simulacion.riesgo === 'medio'
+                  ? 'bg-yellow-50 border-yellow-500'
+                  : 'bg-red-50 border-red-500'
+            }`}
+          >
             {simulacion.riesgo === 'bajo' ? (
               <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             ) : (
               <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
             )}
             <div>
-              <p className={`font-bold ${
-                simulacion.riesgo === 'bajo'
-                  ? 'text-green-700'
+              <p
+                className={`font-bold ${
+                  simulacion.riesgo === 'bajo'
+                    ? 'text-green-700'
+                    : simulacion.riesgo === 'medio'
+                      ? 'text-yellow-700'
+                      : 'text-red-700'
+                }`}
+              >
+                {simulacion.riesgo === 'bajo'
+                  ? '✓ RECOMENDADO'
                   : simulacion.riesgo === 'medio'
-                  ? 'text-yellow-700'
-                  : 'text-red-700'
-              }`}>
-                {simulacion.riesgo === 'bajo' ? '✓ RECOMENDADO' : simulacion.riesgo === 'medio' ? '⚠️ ANALIZAR' : '✗ NO RECOMENDADO'}
+                    ? '⚠️ ANALIZAR'
+                    : '✗ NO RECOMENDADO'}
               </p>
               <p className="text-xs text-gray-700 mt-1">{simulacion.recomendacion}</p>
             </div>

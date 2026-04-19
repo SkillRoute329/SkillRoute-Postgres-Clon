@@ -80,6 +80,7 @@ export default defineConfig({
     }),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
       devOptions: { enabled: false },
       selfDestroying: false,
       manifest: {

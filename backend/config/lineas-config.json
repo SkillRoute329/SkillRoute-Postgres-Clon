@@ -1,0 +1,118 @@
+{
+  "version": "2.0",
+  "timestamp": "2026-04-06T00:00:00Z",
+  "lineas": [
+    {
+      "id": 300,
+      "nombre": "Línea 300",
+      "empresa": "UCOT",
+      "orquestador_puerto": 3100,
+      "destinos": [
+        {
+          "id": "dest_300_ida_centro",
+          "nombre": "Centro - Ida",
+          "sentido": "ida",
+          "paradas_clave": ["Terminal Tres Cruces", "Av. 8 Octubre", "Plaza Independencia"]
+        },
+        {
+          "id": "dest_300_vuelta_centro",
+          "nombre": "Centro - Vuelta",
+          "sentido": "vuelta",
+          "paradas_clave": ["Plaza Independencia", "Av. 8 Octubre", "Terminal Tres Cruces"]
+        }
+      ],
+      "competidores": [
+        {
+          "id": "COME_100",
+          "nombre": "Línea 100 COME",
+          "empresa": "COME",
+          "codigo_stm": 20,
+          "corredores_compartidos": ["8 de Octubre"]
+        },
+        {
+          "id": "CUTCSA_50",
+          "nombre": "Línea 50 CUTCSA",
+          "empresa": "CUTCSA",
+          "codigo_stm": 50,
+          "corredores_compartidos": ["8 de Octubre", "Agraciada"]
+        }
+      ],
+      "horarios_tipos": ["Hábiles", "Sábados", "Domingos"],
+      "datos_publicos": {
+        "gtfs_feed": "https://montevideo.gub.uy/gtfs/",
+        "gps_endpoint": "https://www.montevideo.gub.uy/buses/rest/stm-online",
+        "horarios_endpoint": "https://www.montevideo.gub.uy/app/stm/horarios/pages/consultar.xhtml"
+      }
+    },
+    {
+      "id": 310,
+      "nombre": "Línea 310",
+      "empresa": "UCOT",
+      "orquestador_puerto": 3101,
+      "destinos": [
+        {
+          "id": "dest_310_ida_maldonado",
+          "nombre": "Maldonado - Ida",
+          "sentido": "ida",
+          "paradas_clave": ["Terminal Três Cruces", "Camino Maldonado"]
+        },
+        {
+          "id": "dest_310_vuelta_maldonado",
+          "nombre": "Maldonado - Vuelta",
+          "sentido": "vuelta",
+          "paradas_clave": ["Camino Maldonado", "Terminal Três Cruces"]
+        }
+      ],
+      "competidores": [
+        {
+          "id": "COETC_200",
+          "nombre": "Línea 200 COETC",
+          "empresa": "COETC",
+          "codigo_stm": 30,
+          "corredores_compartidos": ["Camino Maldonado"]
+        }
+      ],
+      "horarios_tipos": ["Hábiles", "Sábados", "Domingos"],
+      "datos_publicos": {
+        "gtfs_feed": "https://montevideo.gub.uy/gtfs/",
+        "gps_endpoint": "https://www.montevideo.gub.uy/buses/rest/stm-online",
+        "horarios_endpoint": "https://www.montevideo.gub.uy/app/stm/horarios/pages/consultar.xhtml"
+      }
+    },
+    {
+      "id": 320,
+      "nombre": "Línea 320",
+      "empresa": "UCOT",
+      "orquestador_puerto": 3102,
+      "destinos": [
+        {
+          "id": "dest_320_ida_canelones",
+          "nombre": "Canelones - Ida",
+          "sentido": "ida",
+          "paradas_clave": ["Terminal Três Cruces", "Ruta 3"]
+        },
+        {
+          "id": "dest_320_vuelta_canelones",
+          "nombre": "Canelones - Vuelta",
+          "sentido": "vuelta",
+          "paradas_clave": ["Ruta 3", "Terminal Três Cruces"]
+        }
+      ],
+      "competidores": [
+        {
+          "id": "CUTCSA_60",
+          "nombre": "Línea 60 CUTCSA",
+          "empresa": "CUTCSA",
+          "codigo_stm": 50,
+          "corredores_compartidos": ["Ruta 3"]
+        }
+      ],
+      "horarios_tipos": ["Hábiles", "Sábados", "Domingos"],
+      "datos_publicos": {
+        "gtfs_feed": "https://montevideo.gub.uy/gtfs/",
+        "gps_endpoint": "https://www.montevideo.gub.uy/buses/rest/stm-online",
+        "horarios_endpoint": "https://www.montevideo.gub.uy/app/stm/horarios/pages/consultar.xhtml"
+      }
+    }
+  ]
+}

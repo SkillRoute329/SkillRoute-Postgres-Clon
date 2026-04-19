@@ -8,6 +8,20 @@ interface BootScreenProps {
   onComplete: () => void;
 }
 
+const widthMap: Record<number, string> = {
+  0: 'w-0',
+  10: 'w-[10%]',
+  20: 'w-[20%]',
+  30: 'w-[30%]',
+  40: 'w-[40%]',
+  50: 'w-[50%]',
+  60: 'w-[60%]',
+  70: 'w-[70%]',
+  80: 'w-[80%]',
+  90: 'w-[90%]',
+  100: 'w-full',
+};
+
 export const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
   const [status, setStatus] = useState<ConnectivityStatus>('ONLINE');
   const [message, setMessage] = useState('Iniciando protocolos de seguridad...');
@@ -17,7 +31,10 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
     const boot = async () => {
       // Fake progress for UX
       const interval = setInterval(() => {
-        setProgress((p) => Math.min(p + 10, 90));
+        setProgress((p) => {
+          const next = Math.min(p + 10, 90);
+          return Math.floor(next / 10) * 10; // ensure it locks to tens map
+        });
       }, 200);
 
       try {
@@ -83,13 +100,13 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
         <div
           className={clsx(
             'h-full transition-all duration-300 progress-bar-fill',
+            widthMap[progress] || 'w-0',
             status === 'BLOCKED'
               ? 'bg-red-500'
               : status === 'OFFLINE'
                 ? 'bg-orange-500'
                 : 'bg-emerald-500',
           )}
-          style={{ '--progress': `${progress}%` } as React.CSSProperties}
         />
       </div>
 

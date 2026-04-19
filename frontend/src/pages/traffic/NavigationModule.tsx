@@ -50,7 +50,7 @@ import DesvioMapEditor from '../../components/traffic/DesvioMapEditor';
 import DesvioPanel from '../../components/traffic/DesvioPanel';
 import IncidenciaRapida from '../../components/traffic/IncidenciaRapida';
 import type { DesvioGuardado } from '../../services/desviosService';
-import { contarDesviosPorLinea, getDesviosPorLinea } from '../../services/desviosService';
+import { contarDesviosLocal, listenDesviosPorLinea } from '../../services/desviosService';
 import { contarIncidenciasAbiertas } from '../../services/incidenciasService';
 
 const VIAJES_ACTIVOS_COL = 'viajes_activos';
@@ -127,7 +127,13 @@ export default function NavigationModule() {
   const [showDesvioPanel, setShowDesvioPanel] = useState(false);
   const [_desviosVersion, setDesviosVersion] = useState(0);
   const [showIncidencias, setShowIncidencias] = useState(false);
-  const [incidenciasAbiertas, setIncidenciasAbiertas] = useState(() => contarIncidenciasAbiertas());
+  const [incidenciasAbiertas, setIncidenciasAbiertas] = useState<number>(0);
+  useEffect(() => {
+    // Resolver cuenta asíncronamente
+    contarIncidenciasAbiertas()
+      .then((count) => setIncidenciasAbiertas(count))
+      .catch(() => {});
+  }, [showIncidencias]);
   // Contador para badge de desvíos en UI (se recalcula al cambiar línea o al guardar un desvío)
   const [desviosCount, setDesviosCount] = useState<{ total: number; activos: number }>({
     total: 0,
@@ -148,13 +154,32 @@ export default function NavigationModule() {
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const paradasRef = useRef<LineaUCOT['paradas']>([]);
   const [showTarifario, setShowTarifario] = useState(false);
-  // TODO: Cargar desde colección 'tarifario_stm' en Firestore.
-  const [tarifas] = useState<TarifaSTM[]>([
-    { id: '1', nombre: 'Boleto Común', precio: 55, categoria: 'URBANO' },
-    { id: '2', nombre: 'Zonal', precio: 27, categoria: 'ZONAL' },
-    { id: '3', nombre: 'Suburbano Anillo 1', precio: 70, categoria: 'SUBURBANO' },
-    { id: '4', nombre: 'Diferencial', precio: 90, categoria: 'DIFERENCIAL' },
-  ]);
+  const [tarifas, setTarifas] = useState<TarifaSTM[]>([]);
+
+  useEffect(() => {
+    // Importación dinámica para evitar ciclos
+    import('../../services/tarifarioService')
+      .then(({ listenToTarifas, setSeedTarfias }) => {
+        const unsubscribe = listenToTarifas(async (datosTarifas) => {
+          if (datosTarifas.length === 0) {
+            // Seed initial data si está vacío (por estar en DEV/TEST phase de Firebase)
+            const defaultTarifas: TarifaSTM[] = [
+              { id: '1', nombre: 'Boleto Común', precio: 55, categoria: 'URBANO' },
+              { id: '2', nombre: 'Zonal', precio: 27, categoria: 'ZONAL' },
+              { id: '3', nombre: 'Suburbano Anillo 1', precio: 70, categoria: 'SUBURBANO' },
+              { id: '4', nombre: 'Diferencial', precio: 90, categoria: 'DIFERENCIAL' },
+            ];
+            await setSeedTarfias(defaultTarifas);
+            // No devolvemos nada, el snapshopt emitirá un nuevo evento inmediatamente tras el seed
+          } else {
+            setTarifas(datosTarifas);
+          }
+        });
+        return unsubscribe;
+      })
+      .catch(console.error);
+  }, []);
+
   const { user } = useAuth();
   const conductorMode = isConductorMode();
 
@@ -224,9 +249,14 @@ export default function NavigationModule() {
       setDesviosEnMapa([]);
       return;
     }
-    setDesviosCount(contarDesviosPorLinea(selectedCodigo));
-    // Cargar todos los desvíos para overlays en el mapa (con o sin vigencia)
-    setDesviosEnMapa(getDesviosPorLinea(selectedCodigo));
+
+    // Escuchar cambios en Firestore en tiempo real para esta línea
+    const unsub = listenDesviosPorLinea(selectedCodigo, (snapshots) => {
+      setDesviosEnMapa(snapshots);
+      setDesviosCount(contarDesviosLocal(snapshots));
+    });
+
+    return () => unsub();
   }, [selectedCodigo, _desviosVersion]);
 
   useEffect(() => {
@@ -646,12 +676,12 @@ export default function NavigationModule() {
                 ))}
               </select>
             </div>
-            <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 flex-1 min-w-0 basis-full">
               <label className="text-slate-400 text-sm font-medium shrink-0">Recorrido</label>
               <select
                 value={selectedCodigo}
                 onChange={(e) => setSelectedCodigo(e.target.value)}
-                className="min-h-[44px] px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white w-full max-w-full min-w-0 hover:bg-slate-700 active:bg-slate-600 focus:ring-2 focus:ring-primary-500 focus:outline-none disabled:opacity-50 touch-manipulation cursor-pointer select-none"
+                className="min-h-[44px] px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white w-full max-w-full min-w-0 flex-1 hover:bg-slate-700 active:bg-slate-600 focus:ring-2 focus:ring-primary-500 focus:outline-none disabled:opacity-50 touch-manipulation cursor-pointer select-none"
                 aria-label="Seleccionar recorrido"
               >
                 {opcionesRecorrido.map((item) => (
@@ -660,26 +690,28 @@ export default function NavigationModule() {
                   </option>
                 ))}
               </select>
-              <button
-                type="button"
-                onClick={handleSwapOrigenDestino}
-                disabled={!selectedCodigo}
-                className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-amber-400 disabled:opacity-50 touch-manipulation"
-                title="Intercambiar origen / destino"
-                aria-label="Intercambiar origen y destino"
-              >
-                <ArrowUpDown className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={openLineEditor}
-                disabled={!selectedCodigo}
-                className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-blue-400 disabled:opacity-50 touch-manipulation"
-                title="Editar nombre / origen / destino"
-                aria-label="Editar datos de la línea"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleSwapOrigenDestino}
+                  disabled={!selectedCodigo}
+                  className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-amber-400 disabled:opacity-50 touch-manipulation"
+                  title="Intercambiar origen / destino"
+                  aria-label="Intercambiar origen y destino"
+                >
+                  <ArrowUpDown className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={openLineEditor}
+                  disabled={!selectedCodigo}
+                  className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-blue-400 disabled:opacity-50 touch-manipulation"
+                  title="Editar nombre / origen / destino"
+                  aria-label="Editar datos de la línea"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* ── Banner de desvíos: visible cuando la línea tiene desvíos configurados ── */}
@@ -1138,7 +1170,9 @@ export default function NavigationModule() {
           posicionActual={navigationPosition}
           onClose={() => {
             setShowIncidencias(false);
-            setIncidenciasAbiertas(contarIncidenciasAbiertas());
+            contarIncidenciasAbiertas()
+              .then((count) => setIncidenciasAbiertas(count))
+              .catch(() => {});
           }}
         />
       )}

@@ -22,47 +22,24 @@ export const SystemMonitor: React.FC = () => {
   if (!visible) return null;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: '20px',
-        right: '20px',
-        width: '350px',
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        color: '#00ff00',
-        fontFamily: 'monospace',
-        padding: '15px',
-        borderRadius: '8px',
-        zIndex: 9999,
-        border: '1px solid #00ff00',
-        fontSize: '12px',
-        boxShadow: '0 0 15px rgba(0, 255, 0, 0.2)',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          marginBottom: '10px',
-          borderBottom: '1px solid #333',
-        }}
-      >
+    <div className="fixed bottom-5 right-5 w-[350px] bg-black/85 text-[#00ff00] font-mono p-4 rounded-lg z-[9999] border border-[#00ff00] text-xs shadow-[0_0_15px_rgba(0,255,0,0.2)]">
+      <div className="flex justify-between mb-2.5 pb-2 border-b border-[#333]">
         <strong>🖥️ SYSTEM MONITOR (CHAOS ENGINE)</strong>
         <button
           onClick={() => setVisible(false)}
-          style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer' }}
+          className="bg-transparent border-none text-[#666] cursor-pointer hover:text-white"
         >
           ×
         </button>
       </div>
-      <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+      <div className="max-h-[200px] overflow-y-auto">
         {logs.map((log, i) => (
-          <div key={i} style={{ marginBottom: '4px' }}>
+          <div key={i} className="mb-1">
             {log}
           </div>
         ))}
       </div>
-      <div style={{ marginTop: '10px', fontSize: '10px', color: '#888' }}>
+      <div className="mt-2.5 text-[10px] text-[#888]">
         Mode: CLIENT-SIDE SIMULATION | Status: RUNNING
       </div>
     </div>

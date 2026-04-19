@@ -11,17 +11,15 @@
  * su horario de pasada por cada punto de control, y la competencia del corredor.
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Bot,
   MapPin,
   Clock,
   Activity,
-  Users,
   Bus,
   ShieldAlert,
   Send,
-  Zap,
   Target,
   RefreshCw,
   Calendar,
@@ -34,15 +32,17 @@ import {
 import clsx from 'clsx';
 import { getMasterLineas, getMasterServicios } from '../../data/ucotMaster';
 import type { MasterLinea, MasterServicio } from '../../data/ucotMaster';
-import {
-  LINE_INSPECTOR_CONFIGS,
-  getLineInspector,
-} from '../../services/LineInspectorAgent';
+import { LINE_INSPECTOR_CONFIGS, getLineInspector } from '../../services/LineInspectorAgent';
 import type {
   RivalVerificado,
   FrequencyBand,
   LineInspectorConfig,
+  InspectorReport,
 } from '../../services/LineInspectorAgent';
+import type {
+  ReporteInteligenciaCompetitiva,
+  AnalisisCompetitivo,
+} from '../../services/CompetitorIntelligenceEngine';
 import { Toast } from '@capacitor/toast';
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -80,6 +80,16 @@ interface ServicioActivo {
   estado: 'en_viaje' | 'pendiente' | 'finalizado';
   /** Diferencia en minutos entre la hora actual y el inicio del viaje */
   diffMinutos: number;
+  /** Coche o unidad física vinculada al cartón, si está definida */
+  internoAsignado?: string;
+}
+
+/** Recomendación táctica autónoma generada por el agente */
+interface RecomendacionTactica {
+  nivel: 'CRITICO' | 'ADVERTENCIA' | 'OPORTUNIDAD';
+  titulo: string;
+  detalle: string;
+  accion: string;
 }
 
 /** Estado completo del agente de una línea */
@@ -91,13 +101,36 @@ interface AgentState {
   totalServicios: number;
   inspectorConfig: LineInspectorConfig | null;
   frecuenciaActual: FrequencyBand | null;
+  /** @deprecated solo para compatibilidad — usar competitorReport */
   rivales: RivalVerificado[];
   posicionesIMM: IMMPosition[];
+  /** Reporte completo generado autónomamente por el LineInspectorAgent */
+  report: InspectorReport | null;
+  /** Reporte de inteligencia competitiva COMPLETO del Motor autónomo */
+  competitorReport: ReporteInteligenciaCompetitiva | null;
+  /** Recomendaciones tácticas calculadas automáticamente */
+  recomendaciones: RecomendacionTactica[];
+  intelligenceData: {
+    ok: boolean;
+    linea: string;
+    timestamp: string;
+    hoy: { tipo: string; descripcion: string; horaMontevideo: string };
+    ucot: {
+      busesActivos: number;
+      frecuenciaRealMinutos: number;
+      frecuenciaProgramadaMinutos: number;
+      puntualidad: number;
+    };
+    competencia: any[];
+    alertaNivel: string;
+    resumenEjecutivo: string;
+  } | null;
   loading: boolean;
   lastUpdate: Date | null;
 }
 
 // ── Helpers (sin simulación) ────────────────────────────────────────────────
+
 
 /** Parsea un string "HH:MM" a minutos desde medianoche. Retorna -1 si inválido. */
 function parseTimeToMinutes(t: string): number {
@@ -128,10 +161,15 @@ function analizarServiciosActivos(servicios: MasterServicio[]): ServicioActivo[]
 
   for (const svc of servicios) {
     // Filtrar por tipo de día si está disponible
-    if (svc.tipo_dia && svc.tipo_dia !== tipoDia) continue;
+    const svcAny = svc as unknown as { tipo_dia?: string };
+    if (svcAny.tipo_dia && svcAny.tipo_dia !== tipoDia) continue;
 
-    const headers = (svc as any).headers || [];
-    const rawMatrix = (svc as any).rawMatrix || [];
+    const svcExtended = svc as unknown as {
+      headers: { id: string; location: string }[];
+      rawMatrix: { checkpoints: string[] }[];
+    };
+    const headers = svcExtended.headers || [];
+    const rawMatrix = svcExtended.rawMatrix || [];
 
     if (rawMatrix.length === 0) continue;
 
@@ -199,8 +237,8 @@ function analizarServiciosActivos(servicios: MasterServicio[]): ServicioActivo[]
       serviceNumber: svc.serviceNumber || svc.servicioId,
       servicioId: svc.servicioId,
       lineaId: svc.lineaId || svc.linea,
-      variante: (svc as any).variante || '',
-      tipo_dia: (svc as any).tipo_dia || tipoDia,
+      variante: (svc as unknown as { variante?: string; tipo_dia?: string }).variante || '',
+      tipo_dia: (svc as unknown as { variante?: string; tipo_dia?: string }).tipo_dia || tipoDia,
       puntosControl: svc.puntosControl || [],
       headers,
       rawMatrix,
@@ -211,6 +249,7 @@ function analizarServiciosActivos(servicios: MasterServicio[]): ServicioActivo[]
       origenActual: bestOrigen,
       estado,
       diffMinutos: bestDiff,
+      internoAsignado: (svc as unknown as { coche?: string }).coche || '',
     });
   }
 
@@ -244,71 +283,257 @@ export default function DigitalAgentsModule() {
     });
   }, []);
 
-  // Cargar datos del agente al seleccionar línea
-  const loadAgent = useCallback(async (lineaId: string) => {
-    const baseId = lineaId.replace(/[ab]$/i, '');
+  // ── Motor de recomendaciones tácticas autónomas ────────────────────────────
+  // Ahora se alimenta del ReporteInteligenciaCompetitiva completo
+  const generarRecomendaciones = useCallback(
+    (
+      config: LineInspectorConfig,
+      posicionesIMM: IMMPosition[],
+      competitorReport: ReporteInteligenciaCompetitiva | null,
+    ): RecomendacionTactica[] => {
+      const recs: RecomendacionTactica[] = [];
 
-    // 1. Servicios del maestro
-    const allSvcs = getMasterServicios();
-    const serviciosLinea = allSvcs.filter((s) => {
-      const sLine = (s.linea || s.lineaId || '').replace(/[ab]$/i, '');
-      return sLine === baseId;
-    });
+      // Alimentar recomendaciones desde el Motor de Inteligencia Competitiva
+      if (competitorReport) {
+        // Acciones prioritarias definidas por el motor
+        competitorReport.accionesPrioritarias.forEach((accion) => {
+          const isCritico = accion.startsWith('🔴');
+          const isAlto = accion.startsWith('🟡');
+          recs.push({
+            nivel: isCritico ? 'CRITICO' : isAlto ? 'ADVERTENCIA' : 'OPORTUNIDAD',
+            titulo: isCritico
+              ? 'Acción Inmediata Requerida'
+              : isAlto
+                ? 'Monitoreo Activo'
+                : 'Oportunidad Detectada',
+            detalle: accion,
+            accion:
+              competitorReport.amenazaPrincipal?.recomendacion ??
+              'Revisar análisis competitivo detallado.',
+          });
+        });
 
-    // 2. Inspector config (rivales, frecuencias)
-    const inspector = getLineInspector(baseId);
-    const inspectorConfig = inspector?.lineConfig || null;
-    const frecuenciaActual = inspector?.getCurrentFrequency() || null;
-    const rivales = inspector?.getGeographicallyRelevantRivals() || [];
-
-    // 3. Analizar servicios activos según hora actual
-    const serviciosActivos = analizarServiciosActivos(serviciosLinea);
-
-    // 4. Posiciones IMM en tiempo real (datos reales)
-    let posicionesIMM: IMMPosition[] = [];
-    try {
-      const { TrafficService } = await import('../../services/trafficService');
-      const raw = await TrafficService.fetchCompetitorPositions([baseId]);
-      if (raw && Array.isArray(raw)) {
-        posicionesIMM = raw.map((p: Record<string, any>) => ({
-          lat: Number(p.latitud ?? p.lat ?? 0),
-          lng: Number(p.longitud ?? p.lng ?? 0),
-          variante: p.variante || '',
-          interno: p.interno || '',
-        }));
+        // Agregar recomendaciones individuales de rivales CRÍTICOS y ALTOS
+        competitorReport.competidoresDetectados
+          .filter((c) => c.nivelAlerta === 'CRITICO' || c.nivelAlerta === 'ALTO')
+          .slice(0, 3)
+          .forEach((c) => {
+            recs.push({
+              nivel: c.nivelAlerta === 'CRITICO' ? 'CRITICO' : 'ADVERTENCIA',
+              titulo: `${c.rivalEmpresa} Lín.${c.rivalLineId} — Score ${c.scoreAmenaza}/100`,
+              detalle: c.analisis,
+              accion: c.recomendacion,
+            });
+          });
       }
-    } catch {
-      // IMM no disponible - el agente lo reporta, NO simula
-    }
 
-    const lineaNombre = inspectorConfig?.nombreComercial
-      || `Línea ${baseId}`;
+      // Alerta GPS si hay servicios activos sin cobertura
+      if (posicionesIMM.length === 0 && config.frecuencias.length > 0) {
+        recs.push({
+          nivel: 'ADVERTENCIA',
+          titulo: 'Sin telemetría GPS activa',
+          detalle: 'No hay posiciones IMM disponibles para esta línea. Control manual necesario.',
+          accion: 'Verificar estado de transponders en vehículos asignados. Contactar despacho.',
+        });
+      }
 
-    setAgent({
-      lineaId: baseId,
-      lineaNombre,
-      servicios: serviciosLinea,
-      serviciosActivos,
-      totalServicios: serviciosLinea.length,
-      inspectorConfig,
-      frecuenciaActual,
-      rivales,
-      posicionesIMM,
-      loading: false,
-      lastUpdate: new Date(),
-    });
-  }, []);
+      // Si no hay competidores detectados, es una oportunidad
+      if (competitorReport && competitorReport.competidoresDetectados.length === 0) {
+        recs.push({
+          nivel: 'OPORTUNIDAD',
+          titulo: 'Corredor sin competencia STM significativa',
+          detalle: `Tramos de alta demanda: ${config.tramosAlaDemanda.join(', ')}.`,
+          accion:
+            'Evaluar aumento de frecuencia para consolidar mercado. Alta retención de pasajeros posible.',
+        });
+      }
 
-  const handleSelectLine = useCallback(async (lineaId: string) => {
-    setSelectedLine(lineaId);
-    setAgent((prev) => prev ? { ...prev, loading: true } : null);
-    await loadAgent(lineaId);
-  }, [loadAgent]);
+      // Deduplicar y ordenar: CRITICO primero
+      const order = { CRITICO: 0, ADVERTENCIA: 1, OPORTUNIDAD: 2 };
+      return recs.sort((a, b) => order[a.nivel] - order[b.nivel]);
+    },
+    [],
+  );
+
+  // Cargar datos del agente al seleccionar línea
+  const loadAgent = useCallback(
+    async (lineaId: string) => {
+      const baseId = lineaId.replace(/[ab]$/i, '');
+
+      // 1. Servicios del maestro — búsqueda por ID de línea (sin alias, los IDs son correctos)
+      const allSvcs = getMasterServicios();
+      const serviciosLinea = allSvcs.filter((s) => {
+        const sLine = (s.linea || s.lineaId || '').replace(/[ab]$/i, '');
+        return sLine === baseId;
+      });
+
+      // 2. Inspector config (frecuencias, corredor, zonas)
+      const inspector = getLineInspector(baseId);
+      const inspectorConfig = inspector?.lineConfig || null;
+      const frecuenciaActual = inspector?.getCurrentFrequency() || null;
+
+      // 3. ═══ MOTOR DE INTELIGENCIA COMPETITIVA AUTÓNOMO ═══
+      // Detecta competidores por destino/zona compartida en toda la red STM
+      let competitorReport: ReporteInteligenciaCompetitiva | null = null;
+      if (inspector) {
+        try {
+          competitorReport = inspector.getCompetitorReport();
+        } catch {
+          // Motor no disponible — el agente opera sin análisis competitivo
+        }
+      }
+
+      // Para compatibilidad de la UI legacy, mapear desde el reporte del motor
+      const rivales: RivalVerificado[] = competitorReport
+        ? competitorReport.competidoresDetectados.map((c) => ({
+            lineId: c.rivalLineId,
+            empresa: c.rivalEmpresa,
+            solapamientoPct: c.solapamientoRecorridoPct,
+            tramoCompartido: c.puntosCompetencia.slice(0, 2).join(' → '),
+            frecuenciaRivalMin: c.frecRivalPicoMin,
+          }))
+        : (inspectorConfig?.rivalesVerificados ?? []);
+
+      // 4. Analizar servicios activos según hora actual
+      const serviciosActivos = analizarServiciosActivos(serviciosLinea);
+
+      // 5. Posiciones Reales (Flota UCOT) — cadena de fallback sin simulación
+      let posicionesIMM: IMMPosition[] = [];
+      // 5.a Intentar Cloud Function proxy (TrafficService)
+      try {
+        const { TrafficService } = await import('../../services/trafficService');
+        const raw = await TrafficService.fetchUcotPositions([baseId]);
+        if (raw && Array.isArray(raw) && raw.length > 0) {
+          posicionesIMM = raw.map((p: Record<string, unknown>) => ({
+            lat: Number(p.latitud ?? p.lat ?? 0),
+            lng: Number(p.longitud ?? p.lng ?? 0),
+            variante: String(p.variante || p.line || ''),
+            interno: String(p.interno || p.id || ''),
+          }));
+        }
+      } catch (e) {
+        console.warn('[Agent] Cloud proxy failed, trying STM relay:', e);
+      }
+      // 5.b Fallback: STM API directa via Vite proxy (/proxy-stm)
+      if (posicionesIMM.length === 0) {
+        try {
+          const { fetchSTMPosiciones } = await import('../../services/stmLiveService');
+          const stmBuses = await fetchSTMPosiciones({ empresa: 70, lineas: [baseId] });
+          if (stmBuses && stmBuses.length > 0) {
+            posicionesIMM = stmBuses.map(b => ({
+              lat: b.lat,
+              lng: b.lng,
+              variante: b.sublinea || '',
+              interno: String(b.codigoBus || ''),
+            }));
+          }
+        } catch (e2) {
+          console.error('[Agent] Both position sources failed:', e2);
+        }
+      }
+
+      // 5.b Inyectar servicios detectados por telemetría si no están en el cartón
+      if (posicionesIMM.length > 0) {
+        const ghostServices: ServicioActivo[] = [];
+        posicionesIMM.forEach((pos, idx) => {
+          // Buscamos si el interno reportado ya empata con algún servicio real (por 'interno' o 'numero')
+          const match = pos.interno
+            ? serviciosActivos.some(
+                (s) => s.internoAsignado === pos.interno || s.serviceNumber === pos.interno,
+              )
+            : false;
+          if (!match) {
+            ghostServices.push({
+              serviceNumber: pos.interno ? `Extra-${pos.interno}` : `Extra-${idx + 1}`,
+              servicioId: `gps-${pos.interno || idx}`,
+              lineaId: baseId,
+              variante: pos.variante || 'GPS/Dinámico',
+              tipo_dia: getTipoDiaActual(),
+              puntosControl: ['Rastreo Dinámico'],
+              headers: [],
+              rawMatrix: [],
+              viajeActualIdx: 0,
+              horaInicioViaje: '--:--',
+              horaFinViaje: '--:--',
+              origenActual: 'Posición GPS detectada',
+              destinoActual: 'Servicio Libre/Fuera de Cartón',
+              estado: 'en_viaje',
+              diffMinutos: 0,
+              internoAsignado: pos.interno || '',
+            });
+          }
+        });
+        serviciosActivos.push(...ghostServices);
+      }
+
+      // 6. ═══ API DE INTELIGENCIA (BACKEND BRIDGE) ═══
+      let intelligenceData = null;
+      try {
+        // Usa el proxy de Vite /api → localhost:3000 (o prod) para evitar CORS
+        const res = await fetch(`/api/inteligencia/${baseId}`, {
+          signal: AbortSignal.timeout(5000), // 5s timeout para no bloquear la UI
+        });
+        if (res.ok) {
+          intelligenceData = await res.json();
+        }
+      } catch (e) {
+        // No crítico — el agente opera sin análisis de inteligencia externo
+        console.warn('[Agent] Intelligence bridge not available:', (e as Error)?.message);
+      }
+
+      // 7. Reporte ejecutivo completo cruzando métricas UI con los datos Reales de Inteligencia
+      let report: InspectorReport | null = null;
+      if (inspector) {
+        try {
+          // Pass the real-time competitor data from the backend to the agent's brain
+          report = await inspector.generateReport(posicionesIMM, intelligenceData);
+        } catch {
+          // No crítico — el agente opera sin reporte completo
+        }
+      }
+
+      // 8. Recomendaciones tácticas alimentadas por el Motor de Inteligencia Competitiva
+      const recomendaciones = inspectorConfig
+        ? generarRecomendaciones(inspectorConfig, posicionesIMM, competitorReport)
+        : [];
+
+      const lineaNombre = inspectorConfig?.nombreComercial || `Línea ${baseId}`;
+
+
+      setAgent({
+        lineaId: baseId,
+        lineaNombre,
+        servicios: serviciosLinea,
+        serviciosActivos,
+        totalServicios: serviciosLinea.length,
+        inspectorConfig,
+        frecuenciaActual,
+        rivales,
+        posicionesIMM,
+        report,
+        competitorReport,
+        recomendaciones,
+        intelligenceData,
+        loading: false,
+        lastUpdate: new Date(),
+      });
+    },
+    [generarRecomendaciones],
+  );
+
+  const handleSelectLine = useCallback(
+    async (lineaId: string) => {
+      setSelectedLine(lineaId);
+      setAgent((prev) => (prev ? { ...prev, loading: true } : null));
+      await loadAgent(lineaId);
+    },
+    [loadAgent],
+  );
 
   // Refresco manual
   const handleRefresh = useCallback(async () => {
     if (!selectedLine) return;
-    setAgent((prev) => prev ? { ...prev, loading: true } : null);
+    setAgent((prev) => (prev ? { ...prev, loading: true } : null));
     await loadAgent(selectedLine);
     setRefreshKey((k) => k + 1);
   }, [selectedLine, loadAgent]);
@@ -342,11 +567,10 @@ export default function DigitalAgentsModule() {
           Agentes Digitales
         </h1>
         <p className="text-slate-400 mt-2 text-sm max-w-2xl">
-          Cada agente es un especialista asignado a una línea. Conoce los servicios
-          del cartón, horarios de pasada por puntos de control, competencia en
-          corredor y coordina con{' '}
-          <strong className="text-primary-400">Inspectores Humanos</strong>{' '}
-          cuando no hay cobertura GPS.
+          Cada agente es un especialista asignado a una línea. Conoce los servicios del cartón,
+          horarios de pasada por puntos de control, competencia en corredor y coordina con{' '}
+          <strong className="text-primary-400">Inspectores Humanos</strong> cuando no hay cobertura
+          GPS.
         </p>
       </div>
 
@@ -392,13 +616,14 @@ export default function DigitalAgentsModule() {
                         <span className="font-medium text-white text-sm line-clamp-1 block">
                           {linea.nombre || `Línea ${base}`}
                         </span>
-                        <span className="text-[10px] text-slate-500">
-                          {svcsCount} servicios
-                        </span>
+                        <span className="text-[10px] text-slate-500">{svcsCount} servicios</span>
                       </div>
                     </div>
                     {hasConfig && (
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Con config de competencia" />
+                      <div
+                        className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"
+                        title="Con config de competencia"
+                      />
                     )}
                   </div>
                   {isSelected && (
@@ -419,9 +644,8 @@ export default function DigitalAgentsModule() {
               </div>
               <h3 className="text-xl font-bold text-slate-300">Ningún Agente Seleccionado</h3>
               <p className="text-slate-500 mt-2 max-w-md text-center">
-                Seleccione un Agente en el panel izquierdo. Cada agente conoce
-                todos los servicios de su línea, horarios reales de los cartones
-                y la competencia en su corredor.
+                Seleccione un Agente en el panel izquierdo. Cada agente conoce todos los servicios
+                de su línea, horarios reales de los cartones y la competencia en su corredor.
               </p>
             </div>
           ) : agent?.loading ? (
@@ -440,9 +664,7 @@ export default function DigitalAgentsModule() {
                     <Bot className="w-6 h-6 text-primary-500" />
                     Agente {agent.lineaId}
                   </h2>
-                  <p className="text-slate-400 text-sm mt-0.5">
-                    {agent.lineaNombre}
-                  </p>
+                  <p className="text-slate-400 text-sm mt-0.5">{agent.lineaNombre}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-slate-500">
@@ -503,9 +725,7 @@ export default function DigitalAgentsModule() {
                     <span className="font-bold text-white">
                       {agent.frecuenciaActual.frecuenciaMin} min
                     </span>
-                    <span className="text-slate-500 text-xs">
-                      ({agent.frecuenciaActual.label})
-                    </span>
+                    <span className="text-slate-500 text-xs">({agent.frecuenciaActual.label})</span>
                   </div>
                 )}
                 {agent.inspectorConfig && (
@@ -517,11 +737,77 @@ export default function DigitalAgentsModule() {
                     </span>
                   </div>
                 )}
+                {agent.intelligenceData && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-900/10 border border-primary-500/30 text-sm">
+                    <ShieldAlert className="w-4 h-4 text-primary-400" />
+                    <span className="text-slate-400">Puntualidad:</span>
+                    <span
+                      className={clsx(
+                        'font-bold',
+                        agent.intelligenceData.ucot.puntualidad >= 80
+                          ? 'text-emerald-400'
+                          : agent.intelligenceData.ucot.puntualidad >= 50
+                            ? 'text-amber-400'
+                            : 'text-rose-400',
+                      )}
+                    >
+                      {agent.intelligenceData.ucot.puntualidad}%
+                    </span>
+                  </div>
+                )}
               </div>
+
+              {/* ── ALERTA DE INTELIGENCIA (NUEVO) ── */}
+              {agent.intelligenceData && (
+                <div
+                  className={clsx(
+                    'p-4 rounded-2xl border flex items-center justify-between gap-4',
+                    agent.intelligenceData.alertaNivel.includes('ALTA')
+                      ? 'bg-rose-950/20 border-rose-500/30'
+                      : 'bg-emerald-950/10 border-emerald-500/20',
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={clsx(
+                        'w-10 h-10 rounded-full flex items-center justify-center shrink-0',
+                        agent.intelligenceData.alertaNivel.includes('ALTA')
+                          ? 'bg-rose-500 text-white'
+                          : 'bg-emerald-500 text-white',
+                      )}
+                    >
+                      {agent.intelligenceData.alertaNivel.includes('ALTA') ? (
+                        <AlertTriangle className="w-6 h-6" />
+                      ) : (
+                        <CheckCircle2 className="w-6 h-6" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                        Estado del Servicio · {agent.intelligenceData.alertaNivel}
+                      </p>
+                      <div className="text-sm text-slate-200 mt-0.5 space-y-1">
+                        {agent.report?.resumenEjecutivo 
+                          ? agent.report.resumenEjecutivo.split(' | ').map((line, idx) => (
+                              <p key={idx}>{line}</p>
+                            ))
+                          : <p>{agent.intelligenceData.resumenEjecutivo}</p>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] text-slate-500 uppercase font-bold">
+                      Frecuencia Real
+                    </p>
+                    <p className="text-lg font-black text-white">
+                      {agent.intelligenceData.ucot.frecuenciaRealMinutos} min
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* ── Paneles Principales ── */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
                 {/* ── Servicios del Cartón ── */}
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-48 h-48 bg-primary-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
@@ -655,9 +941,46 @@ export default function DigitalAgentsModule() {
                   <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
                     <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
                       <Activity className="w-5 h-5 text-emerald-500" />
-                      Telemetría IMM (Tiempo Real)
+                      Telemetría IMM (Portal Público)
                     </h3>
-                    {agent.posicionesIMM.length > 0 ? (
+                    {agent.intelligenceData ? (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-800">
+                            <p className="text-[10px] text-slate-500 uppercase font-bold">
+                              Programada ({agent.intelligenceData.hoy.tipo})
+                            </p>
+                            <p className="text-xl font-black text-sky-400">
+                              {agent.frecuenciaActual?.frecuenciaMin ?? agent.intelligenceData.ucot.frecuenciaProgramadaMinutos} min
+                            </p>
+                          </div>
+                          <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-800">
+                            <p className="text-[10px] text-slate-500 uppercase font-bold">
+                              Tiempo Real (GPS)
+                            </p>
+                            <p className="text-xl font-black text-emerald-400">
+                              {agent.intelligenceData.ucot.frecuenciaRealMinutos} min
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-800 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-primary-500" />
+                            <span className="text-xs text-slate-300">
+                              {agent.intelligenceData.hoy.descripcion}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {agent.intelligenceData.hoy.horaMontevideo.split(',')[1]}
+                          </span>
+                        </div>
+
+                        <p className="text-[10px] text-slate-500 italic mt-2">
+                          * Datos extraídos dinámicamente de la web de la IMM y telemetría STM.
+                        </p>
+                      </div>
+                    ) : agent.posicionesIMM.length > 0 ? (
                       <div className="space-y-2">
                         {agent.posicionesIMM.map((pos, idx) => (
                           <div
@@ -693,58 +1016,240 @@ export default function DigitalAgentsModule() {
                             </p>
                             <p className="text-amber-200/60 text-xs mt-1">
                               Los servicios activos requieren control por Inspector Humano.
-                              Esto puede deberse a que la línea no reporta al feed público
-                              de la IMM o los coches no tienen GPS activo.
                             </p>
                           </div>
                         </div>
                       </div>
                     )}
                   </div>
+                  {/* ═══ Análisis Competitivo Autónomo — Motor de Inteligencia ═══ */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-yellow-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
 
-                  {/* Competencia */}
-                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                    <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-                      <ShieldAlert className="w-5 h-5 text-yellow-500" />
-                      Competencia en Corredor
-                    </h3>
-                    {agent.rivales.length > 0 ? (
-                      <div className="space-y-2">
-                        {agent.rivales.map((r) => (
-                          <div
-                            key={r.lineId}
-                            className="flex items-center justify-between p-3 bg-slate-950/50 rounded-xl border border-slate-800"
+                    {/* Header con posición global */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="text-base font-bold text-white flex items-center gap-2">
+                          <ShieldAlert className="w-5 h-5 text-yellow-500" />
+                          Inteligencia Competitiva
+                        </h3>
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          Motor autónomo · Red STM completa (Cutcsa, COETC, COME, Copsa)
+                        </p>
+                      </div>
+                      {agent.competitorReport && (
+                        <div
+                          className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-black border ${
+                            agent.competitorReport.pozicionCompetitivaGlobal === 'CRITICA'
+                              ? 'bg-red-950/40 border-red-700/50 text-red-300'
+                              : agent.competitorReport.pozicionCompetitivaGlobal === 'VULNERABLE'
+                                ? 'bg-amber-950/40 border-amber-700/50 text-amber-300'
+                                : agent.competitorReport.pozicionCompetitivaGlobal === 'COMPETITIVA'
+                                  ? 'bg-sky-950/40 border-sky-700/50 text-sky-300'
+                                  : 'bg-emerald-950/40 border-emerald-700/50 text-emerald-300'
+                          }`}
+                        >
+                          {agent.competitorReport.pozicionCompetitivaGlobal === 'CRITICA'
+                            ? '🔴'
+                            : agent.competitorReport.pozicionCompetitivaGlobal === 'VULNERABLE'
+                              ? '🟠'
+                              : agent.competitorReport.pozicionCompetitivaGlobal === 'COMPETITIVA'
+                                ? '🔵'
+                                : '🟢'}{' '}
+                          {agent.competitorReport.pozicionCompetitivaGlobal}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Score de Riesgo Global */}
+                    {agent.competitorReport && (
+                      <div className="mb-4 p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            Score Riesgo Mercado
+                          </span>
+                          <span
+                            className={`text-lg font-black ${
+                              agent.competitorReport.scoreRiesgoMercado >= 70
+                                ? 'text-red-400'
+                                : agent.competitorReport.scoreRiesgoMercado >= 50
+                                  ? 'text-amber-400'
+                                  : agent.competitorReport.scoreRiesgoMercado >= 25
+                                    ? 'text-sky-400'
+                                    : 'text-emerald-400'
+                            }`}
                           >
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded bg-slate-800 flex items-center justify-center font-bold text-xs text-slate-400">
-                                {r.lineId}
-                              </div>
-                              <div>
-                                <div className="text-sm font-bold text-slate-200">
-                                  {r.empresa}
+                            {agent.competitorReport.scoreRiesgoMercado}
+                            <span className="text-xs text-slate-500">/100</span>
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-800 rounded-full h-1.5">
+                          <div
+                            className={`h-1.5 rounded-full transition-all ${
+                              agent.competitorReport.scoreRiesgoMercado >= 70
+                                ? 'bg-red-500'
+                                : agent.competitorReport.scoreRiesgoMercado >= 50
+                                  ? 'bg-amber-500'
+                                  : agent.competitorReport.scoreRiesgoMercado >= 25
+                                    ? 'bg-sky-500'
+                                    : 'bg-emerald-500'
+                            }`}
+                            ref={(el) => {
+                              if (el) {
+                                el.style.width = `${agent.competitorReport?.scoreRiesgoMercado}%`;
+                              }
+                            }}
+                          />
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          {agent.competitorReport.competidoresDetectados.length} competidores
+                          detectados en red STM
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Rivales ordenados por Score de Amenaza */}
+                    {agent.competitorReport &&
+                    agent.competitorReport.competidoresDetectados.length > 0 ? (
+                      <div className="space-y-2 mb-4 max-h-[40vh] overflow-y-auto custom-scrollbar pr-1">
+                        {(
+                          agent.competitorReport.competidoresDetectados as AnalisisCompetitivo[]
+                        ).map((c) => (
+                          <div
+                            key={c.rivalLineId}
+                            className={`p-3 rounded-xl border ${
+                              c.nivelAlerta === 'CRITICO'
+                                ? 'bg-red-950/20 border-red-700/30'
+                                : c.nivelAlerta === 'ALTO'
+                                  ? 'bg-amber-950/20 border-amber-700/30'
+                                  : c.nivelAlerta === 'MEDIO'
+                                    ? 'bg-slate-950/50 border-slate-700'
+                                    : 'bg-slate-950/30 border-slate-800'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div
+                                  className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center font-bold text-xs ${
+                                    c.nivelAlerta === 'CRITICO'
+                                      ? 'bg-red-900/60 text-red-300'
+                                      : c.nivelAlerta === 'ALTO'
+                                        ? 'bg-amber-900/60 text-amber-300'
+                                        : 'bg-slate-800 text-slate-400'
+                                  }`}
+                                >
+                                  {c.rivalLineId}
                                 </div>
-                                <div className="text-xs text-slate-500 line-clamp-1">
-                                  {r.tramoCompartido}
+                                <div className="min-w-0">
+                                  <div className="text-xs font-bold text-slate-200 truncate">
+                                    {c.rivalEmpresa}
+                                  </div>
+                                  <div className="text-[10px] text-slate-500 truncate">
+                                    {c.tipoCompetencia === 'AMBOS'
+                                      ? '⚔️ Destino + Recorrido'
+                                      : c.tipoCompetencia === 'DESTINO_COMPARTIDO'
+                                        ? '🎯 Mismo destino'
+                                        : '🛣️ Tramo compartido'}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <div className="text-xs font-bold text-rose-400">
-                                {r.solapamientoPct}% Solape
-                              </div>
-                              {r.frecuenciaRivalMin && (
+                              <div className="text-right shrink-0">
+                                <div
+                                  className={`text-sm font-black ${
+                                    c.nivelAlerta === 'CRITICO'
+                                      ? 'text-red-400'
+                                      : c.nivelAlerta === 'ALTO'
+                                        ? 'text-amber-400'
+                                        : c.nivelAlerta === 'MEDIO'
+                                          ? 'text-sky-400'
+                                          : 'text-slate-400'
+                                  }`}
+                                >
+                                  {c.scoreAmenaza}
+                                  <span className="text-[10px] text-slate-600">/100</span>
+                                </div>
                                 <div className="text-[10px] text-slate-500">
-                                  Frec: {r.frecuenciaRivalMin}m
+                                  c/{c.frecRivalPicoMin}m rival
                                 </div>
-                              )}
+                              </div>
                             </div>
+                            {/* Análisis narrativo del rival */}
+                            <p className="text-[10px] text-slate-500 mt-2 leading-relaxed line-clamp-2">
+                              {c.analisis}
+                            </p>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="p-3 bg-slate-950/50 border border-slate-800 rounded-xl text-sm text-slate-500 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-slate-600" />
-                        Datos de competencia no configurados para esta línea.
+                      <div className="p-3 mb-4 bg-emerald-950/20 border border-emerald-700/30 rounded-xl text-sm text-emerald-400 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Sin competidores STM significativos en este corredor.
+                      </div>
+                    )}
+
+                    {/* Recomendaciones del Motor */}
+                    {agent.recomendaciones.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
+                          Acciones del Agente
+                        </p>
+                        <div className="space-y-2">
+                          {agent.recomendaciones.slice(0, 4).map((rec, i) => (
+                            <div
+                              key={i}
+                              className={`p-3 rounded-xl border ${
+                                rec.nivel === 'CRITICO'
+                                  ? 'bg-red-950/20 border-red-700/30'
+                                  : rec.nivel === 'ADVERTENCIA'
+                                    ? 'bg-amber-950/20 border-amber-700/30'
+                                    : 'bg-emerald-950/20 border-emerald-700/30'
+                              }`}
+                            >
+                              <div className="flex items-start gap-2">
+                                <span className="text-base shrink-0">
+                                  {rec.nivel === 'CRITICO'
+                                    ? '🔴'
+                                    : rec.nivel === 'ADVERTENCIA'
+                                      ? '⚠️'
+                                      : '💡'}
+                                </span>
+                                <div>
+                                  <p
+                                    className={`text-xs font-black ${
+                                      rec.nivel === 'CRITICO'
+                                        ? 'text-red-300'
+                                        : rec.nivel === 'ADVERTENCIA'
+                                          ? 'text-amber-300'
+                                          : 'text-emerald-300'
+                                    }`}
+                                  >
+                                    {rec.titulo}
+                                  </p>
+                                  <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-2">
+                                    {rec.detalle}
+                                  </p>
+                                  <p className="text-[10px] text-slate-300 mt-1 font-semibold">
+                                    → {rec.accion}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Resumen Ejecutivo del Inspector */}
+                    {agent.report && (
+                      <div className="mt-4 p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                          Resumen Ejecutivo
+                        </p>
+                        <div className="text-[10px] text-slate-400 leading-relaxed space-y-0.5">
+                          {agent.report.resumenEjecutivo.split(' | ').map((line, i) => (
+                            <p key={i}>{line}</p>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -777,11 +1282,7 @@ function KPICard({
     <div
       className={clsx(
         'bg-slate-900 border p-4 rounded-2xl flex flex-col',
-        danger
-          ? 'border-rose-800/50'
-          : highlight
-            ? 'border-primary-500/30'
-            : 'border-slate-800',
+        danger ? 'border-rose-800/50' : highlight ? 'border-primary-500/30' : 'border-slate-800',
       )}
     >
       <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">

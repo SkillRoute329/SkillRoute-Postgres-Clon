@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { PronosticoIngreso, SimulacionResultado, CambioHorario } from '../types/analytics';
+import type { PronosticoIngreso, SimulacionResultado, CambioHorario } from '../types/analytics';
 
 // Hook para gestionar datos de pronósticos - Semana 6-7
 
@@ -13,7 +13,7 @@ interface UseForecastDataOptions {
 export function useForecastData({
   lineaId,
   autoRefresh = false,
-  refreshInterval = 600000
+  refreshInterval = 600000,
 }: UseForecastDataOptions) {
   const [pronostico, setPronostico] = useState<PronosticoIngreso | null>(null);
   const [mejorEscenario, setMejorEscenario] = useState<any>(null);
@@ -54,7 +54,7 @@ export function useForecastData({
     peorEscenario,
     loading,
     error,
-    refetch: fetchPronostico
+    refetch: fetchPronostico,
   };
 }
 
@@ -72,7 +72,7 @@ export function useSimulator() {
     try {
       const res = await axios.post('/api/forecast/simulate', {
         lineaId,
-        cambios
+        cambios,
       });
 
       setSimulacion(res.data.data.simulacion);
@@ -96,7 +96,7 @@ export function useSimulator() {
     loading,
     error,
     simular,
-    reset
+    reset,
   };
 }
 
@@ -130,7 +130,7 @@ export function usePeakHours(lineaId: string) {
     horariosAlta,
     loading,
     error,
-    refetch: fetchPeakHours
+    refetch: fetchPeakHours,
   };
 }
 
@@ -167,7 +167,7 @@ export function useGrowthProjection(lineaId: string, meses: number = 6) {
     resumen,
     loading,
     error,
-    refetch: fetchProjection
+    refetch: fetchProjection,
   };
 }
 
@@ -204,6 +204,6 @@ export function useBenchmark(lineaId: string) {
     analisis,
     loading,
     error,
-    refetch: fetchBenchmark
+    refetch: fetchBenchmark,
   };
 }

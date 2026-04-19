@@ -203,3 +203,29 @@ body {
 .progress-bar-fill {
   width: var(--progress, 0%);
 }
+
+/* Tactical War Map: Heading Arrow (driven by --heading custom property) */
+.tactical-heading-arrow {
+  transform: rotate(var(--heading, 0deg)) translateY(-2px);
+}
+
+/* ── Desvíos: Popups de Leaflet ── */
+.desvio-popup { min-width: 180px; }
+.desvio-popup__title { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 700; }
+.desvio-popup__type { font-size: 11px; color: #888; }
+.desvio-popup__vigencia { margin-top: 4px; font-size: 11px; color: #555; }
+.desvio-popup__estado { margin-top: 4px; font-size: 11px; color: #c2410c; }
+.desvio-popup__estado--inactivo { color: #92400e; }
+
+/* ── Incidencias Rápidas: Botones de tipo primario ── */
+/*
+ * El color de borde es dinámico y se pasa como data-color.
+ * Dado que CSS no puede leer data-attributes directamente como valores de color,
+ * se usan clases específicas por tipo de incidencia.
+ */
+.inc-btn-primary { border-color: rgba(100, 116, 139, 0.25); } /* slate por defecto */
+
+/* Pantallas de alta densidad táctil: garantizar target mínimo */
+@media (pointer: coarse) {
+  .inc-btn-primary { min-height: 80px; }
+}

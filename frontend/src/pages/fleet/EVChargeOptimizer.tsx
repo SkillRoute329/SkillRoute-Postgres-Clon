@@ -178,10 +178,6 @@ export default function EVChargeOptimizer() {
   const [cargandoDatos, setCargandoDatos] = useState(false);
 
   // Intentar cargar desde Firestore
-  useEffect(() => {
-    void cargarDesdeFirestore();
-  }, []);
-
   async function cargarDesdeFirestore() {
     setCargandoDatos(true);
     try {
@@ -197,6 +193,10 @@ export default function EVChargeOptimizer() {
     }
     setCargandoDatos(false);
   }
+
+  useEffect(() => {
+    void cargarDesdeFirestore();
+  }, []);
 
   function handleGenerarPlan() {
     const planNuevo = generarPlanCarga(buses);

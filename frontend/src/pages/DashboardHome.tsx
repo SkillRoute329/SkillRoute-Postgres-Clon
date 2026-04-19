@@ -56,15 +56,24 @@ const DashboardHome = () => {
                   if (
                     confirm('⚠ ¿LIMPIEZA PROFUNDA?\nEsto eliminará datos corruptos. ¿Continuar?')
                   ) {
-                    // Call AutoFix Endpoint? Or just rely on boot.
                     alert('Ejecutando protocolo Auto-Fix...');
-                    // We don't have an endpoint for this, making one or assuming boot.
-                    // For now, reload triggers boot logic if backend restarts, but here we just show alert.
                   }
                 }}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold flex items-center gap-2"
               >
                 🧹 Limpieza Profunda DB
+              </button>
+              <button
+                onClick={() => (window.location.href = '/dashboard/traffic/shadow-radar')}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-bold flex items-center gap-2 shadow-[0_0_15px_rgba(234,88,12,0.5)] animate-pulse"
+              >
+                📡 Radar Anti-Barrido
+              </button>
+              <button
+                onClick={() => (window.location.href = '/dashboard/admin/stm-scraper')}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold flex items-center gap-2"
+              >
+                🌐 Monitor Ingesta STM
               </button>
             </div>
           </div>

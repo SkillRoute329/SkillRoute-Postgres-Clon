@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificación Visual: Rutas UCOT — Datos Reales IMM</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+    #header { background: #1e293b; padding: 12px 20px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; border-bottom: 2px solid #3b82f6; }
+    #header h1 { font-size: 16px; color: #60a5fa; white-space: nowrap; }
+    #header select, #header button { 
+      padding: 8px 16px; border-radius: 6px; border: 1px solid #475569; 
+      background: #334155; color: #e2e8f0; font-size: 14px; cursor: pointer; 
+    }
+    #header select:focus, #header button:hover { border-color: #3b82f6; outline: none; }
+    #header button { background: #3b82f6; border-color: #3b82f6; font-weight: 600; }
+    #header button:hover { background: #2563eb; }
+    #header button.danger { background: #ef4444; border-color: #ef4444; }
+    #header button.success { background: #22c55e; border-color: #22c55e; }
+    #map { width: 100%; height: calc(100vh - 200px); }
+    #info { background: #1e293b; padding: 12px 20px; display: flex; gap: 20px; flex-wrap: wrap; font-size: 13px; border-top: 1px solid #334155; }
+    #info .stat { background: #334155; padding: 6px 12px; border-radius: 4px; }
+    #info .stat strong { color: #60a5fa; }
+    #comparison { position: absolute; top: 60px; right: 10px; z-index: 1000; background: rgba(30,41,59,0.95); padding: 12px; border-radius: 8px; border: 1px solid #3b82f6; max-width: 300px; display: none; }
+    #comparison h3 { font-size: 13px; color: #60a5fa; margin-bottom: 8px; }
+    #comparison a { color: #93c5fd; font-size: 12px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .badge-ok { background: #166534; color: #86efac; }
+    .badge-warn { background: #854d0e; color: #fde047; }
+    #desvio-panel { position: absolute; bottom: 80px; left: 10px; z-index: 1000; background: rgba(30,41,59,0.95); padding: 12px; border-radius: 8px; border: 1px solid #f59e0b; max-width: 320px; display: none; }
+    #desvio-panel h3 { font-size: 13px; color: #f59e0b; margin-bottom: 8px; }
+    #desvio-panel select, #desvio-panel input { 
+      width: 100%; padding: 6px; margin: 4px 0; border-radius: 4px; 
+      border: 1px solid #475569; background: #334155; color: #e2e8f0; font-size: 12px; 
+    }
+    #desvio-panel button { 
+      width: 100%; padding: 8px; margin-top: 8px; border-radius: 4px; 
+      border: none; background: #f59e0b; color: #1e293b; font-weight: 600; cursor: pointer; 
+    }
+    .pick-msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 2000; 
+      background: rgba(245,158,11,0.9); color: #1e293b; padding: 16px 24px; border-radius: 8px; 
+      font-weight: 700; font-size: 16px; pointer-events: none; display: none; }
+    .comparison-desc { font-size:12px; margin-bottom:8px; }
+    .comparison-note { font-size:11px; margin-top:8px; color:#94a3b8; }
+    .desvio-save-btn { background:#22c55e; }
+    .desvio-status { margin-top:8px; font-size:11px; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>🚌 UCOT — Verificación de Rutas Reales</h1>
+    <select id="lineSelect" title="Seleccionar línea UCOT" aria-label="Seleccionar línea UCOT"><option value="">Seleccionar línea...</option></select>
+    <select id="variantSelect" title="Seleccionar variante de recorrido" aria-label="Seleccionar variante de recorrido"><option value="">Seleccionar variante...</option></select>
+    <button id="btnViaje" onclick="toggleViaje()">🚀 Iniciar Viaje</button>
+    <button id="btnDesvio" onclick="toggleDesvioPanel()">⚠ Marcar Desvío</button>
+    <button id="btnCompare" onclick="toggleComparison()">🔍 Comparar con IMM</button>
+    <button id="btnAll" onclick="showAll()">📍 Ver Todas</button>
+  </div>
+
+  <div id="map"></div>
+
+  <div id="comparison">
+    <h3>Comparar con fuente oficial</h3>
+    <p class="comparison-desc">Abre esta línea en la web oficial de la IMM para comparar visualmente:</p>
+    <a id="immLink" href="#" target="_blank">Abrir en montevideo.gub.uy →</a>
+    <p class="comparison-note">Compara que la polilínea azul de nuestro mapa coincida con el recorrido oficial rojo/verde de la IMM.</p>
+  </div>
+
+  <div id="desvio-panel">
+    <h3>⚠ Marcar Desvío</h3>
+    <select id="desvioType">
+      <option value="temporal">Temporal (accidente, obra)</option>
+      <option value="fijo">Fijo (feria, corte permanente)</option>
+    </select>
+    <input id="desvioDesc" placeholder="Descripción del desvío..." />
+    <select id="desvioReason">
+      <option value="accidente">🚗 Accidente</option>
+      <option value="obra_temp">🚧 Obra temporal</option>
+      <option value="corte">🚫 Corte de calle</option>
+      <option value="feria">🎪 Feria barrial</option>
+      <option value="pozo">🕳 Pozo/bache</option>
+    </select>
+    <button id="btnPickStart" onclick="startPicking('start')">📍 Marcar Inicio en Mapa</button>
+    <button id="btnPickEnd" onclick="startPicking('end')">📍 Marcar Fin en Mapa</button>
+    <button onclick="saveDesvio()" class="desvio-save-btn">💾 Guardar Desvío</button>
+    <div id="desvioStatus" class="desvio-status"></div>
+  </div>
+
+  <div class="pick-msg" id="pickMsg">Haz clic en el mapa para marcar el punto</div>
+
+  <div id="info">
+    <div class="stat"><strong>Fuente:</strong> GeoServer IMM (EPSG:32721 → WGS84)</div>
+    <div class="stat"><strong>Líneas:</strong> <span id="totalLines">0</span></div>
+    <div class="stat"><strong>Variantes:</strong> <span id="totalVariants">0</span></div>
+    <div class="stat"><strong>Puntos GPS:</strong> <span id="totalPoints">0</span></div>
+    <div class="stat" id="currentInfo"></div>
+  </div>
+
+  <script>
+    // ── Estado ──
+    let routeData = {};
+    let map, currentPolyline, currentMarkers = [];
+    let allPolylines = [];
+    let viajeActivo = false;
+    let pickMode = null;
+    let desvioStart = null, desvioEnd = null;
+    let desvioMarkers = [];
+    const lineColors = {
+      '17': '#3b82f6', '71': '#ef4444', '79': '#22c55e', '300': '#f59e0b',
+      '306': '#8b5cf6', '316': '#ec4899', '328': '#14b8a6', '329': '#f97316',
+      '330': '#06b6d4', '370': '#a855f7', '396': '#84cc16'
+    };
+
+    // ── Inicializar mapa ──
+    map = L.map('map').setView([-34.88, -56.17], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: 'OSM | Datos: IMM GeoServer'
+    }).addTo(map);
+
+    // ── Cargar datos desde routesGeoData.ts (compilado en JSON) ──
+    async function loadRouteData() {
+      try {
+        // Cargar el módulo compilado
+        const resp = await fetch('/src/data/routesGeoData.ts');
+        const text = await resp.text();
+        
+        // Extraer ALL_UCOT_ROUTES del archivo TS
+        const match = text.match(/export const ALL_UCOT_ROUTES[\s\S]*?= (\{[\s\S]*?\n\};)/);
+        if (!match) {
+          console.error('No se pudo parsear routesGeoData.ts');
+          // Fallback: extraer datos con regex
+          extractDataFromTS(text);
+          return;
+        }
+        
+        // Evaluar como JavaScript (los datos son JSON-compatible)
+        try {
+          routeData = eval('(' + match[1].replace(/;\s*$/, '') + ')');
+        } catch(e) {
+          console.log('Eval falló, usando regex extraction');
+          extractDataFromTS(text);
+        }
+      } catch (e) {
+        console.error('Error cargando datos:', e);
+      }
+      
+      populateUI();
+    }
+
+    function extractDataFromTS(text) {
+      // Extraer líneas y coordenadas con regex
+      const lineBlocks = [...text.matchAll(/'(\d+)':\s*\{([\s\S]*?)(?=\n  '\d+':|$)/g)];
+      
+      for (const block of lineBlocks) {
+        const lineNum = block[1];
+        const content = block[2];
+        routeData[lineNum] = {};
+        
+        const variants = [...content.matchAll(/'(\d+)':\s*\{([\s\S]*?)coordinates:\s*\[([\s\S]*?)\],/g)];
+        for (const v of variants) {
+          const codVar = v[1];
+          const propsText = v[2];
+          const coordsText = v[3];
+          
+          const descSublinea = propsText.match(/descSublinea:\s*'([^']*)'/)?.  [1] || '';
+          const descVariante = propsText.match(/descVariante:\s*'([^']*)'/)?.  [1] || '';
+          const origen = propsText.match(/origen:\s*'([^']*)'/)?.  [1] || '';
+          const destino = propsText.match(/destino:\s*'([^']*)'/)?.  [1] || '';
+          
+          const coords = [...coordsText.matchAll(/\{ lat: ([-\d.]+), lng: ([-\d.]+) \}/g)]
+            .map(c => ({ lat: parseFloat(c[1]), lng: parseFloat(c[2]) }));
+          
+          if (coords.length > 0) {
+            routeData[lineNum][codVar] = {
+              codVariante: parseInt(codVar),
+              descSublinea, descVariante, origen, destino,
+              totalPuntos: coords.length,
+              coordinates: coords
+            };
+          }
+        }
+        
+        if (Object.keys(routeData[lineNum]).length === 0) delete routeData[lineNum];
+      }
+    }
+
+    function populateUI() {
+      const lineSelect = document.getElementById('lineSelect');
+      const lines = Object.keys(routeData).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      
+      let totalV = 0, totalP = 0;
+      for (const line of lines) {
+        const opt = document.createElement('option');
+        opt.value = line;
+        const vCount = Object.keys(routeData[line]).length;
+        opt.text = `Línea ${line} (${vCount} variantes)`;
+        lineSelect.appendChild(opt);
+        totalV += vCount;
+        for (const v of Object.values(routeData[line])) totalP += v.totalPuntos;
+      }
+      
+      document.getElementById('totalLines').textContent = lines.length;
+      document.getElementById('totalVariants').textContent = totalV;
+      document.getElementById('totalPoints').textContent = totalP.toLocaleString();
+      
+      lineSelect.addEventListener('change', onLineChange);
+      document.getElementById('variantSelect').addEventListener('change', onVariantChange);
+    }
+
+    function onLineChange() {
+      const line = document.getElementById('lineSelect').value;
+      const variantSelect = document.getElementById('variantSelect');
+      variantSelect.innerHTML = '<option value="">Seleccionar variante...</option>';
+      
+      if (!line || !routeData[line]) return;
+      
+      for (const [code, data] of Object.entries(routeData[line])) {
+        const opt = document.createElement('option');
+        opt.value = code;
+        const dir = data.descVariante === 'A' ? '→ IDA' : '← VUELTA';
+        opt.text = `${data.origen} → ${data.destino} (${dir}, ${data.totalPuntos} pts)`;
+        variantSelect.appendChild(opt);
+      }
+      
+      // Auto-seleccionar primera variante
+      if (variantSelect.options.length > 1) {
+        variantSelect.selectedIndex = 1;
+        onVariantChange();
+      }
+    }
+
+    function onVariantChange() {
+      const line = document.getElementById('lineSelect').value;
+      const variant = document.getElementById('variantSelect').value;
+      
+      if (!line || !variant || !routeData[line]?.[variant]) return;
+      
+      const data = routeData[line][variant];
+      showRoute(data, line);
+    }
+
+    function showRoute(data, lineNum) {
+      clearMap();
+      
+      const color = lineColors[lineNum] || '#3b82f6';
+      const latlngs = data.coordinates.map(c => [c.lat, c.lng]);
+      
+      currentPolyline = L.polyline(latlngs, { 
+        color, weight: 4, opacity: 0.9,
+        dashArray: null
+      }).addTo(map);
+      
+      // Marcador de inicio
+      const startMarker = L.marker(latlngs[0], {
+        icon: L.divIcon({ html: '🟢', className: '', iconSize: [20, 20] })
+      }).addTo(map).bindPopup(`<b>INICIO:</b> ${data.origen}`);
+      
+      // Marcador de fin
+      const endMarker = L.marker(latlngs[latlngs.length - 1], {
+        icon: L.divIcon({ html: '🔴', className: '', iconSize: [20, 20] })
+      }).addTo(map).bindPopup(`<b>FIN:</b> ${data.destino}`);
+      
+      currentMarkers.push(startMarker, endMarker);
+      
+      map.fitBounds(currentPolyline.getBounds(), { padding: [50, 50] });
+      
+      document.getElementById('currentInfo').innerHTML = 
+        `<strong>Línea ${lineNum}:</strong> ${data.origen} → ${data.destino} | ${data.totalPuntos} puntos GPS | <span class="badge badge-ok">DATOS REALES IMM</span>`;
+      
+      // Actualizar link de comparación
+      document.getElementById('immLink').href = 
+        `https://www.montevideo.gub.uy/app/stm/horarios/pages/mapa.xhtml`;
+    }
+
+    function clearMap() {
+      if (currentPolyline) { map.removeLayer(currentPolyline); currentPolyline = null; }
+      currentMarkers.forEach(m => map.removeLayer(m));
+      currentMarkers = [];
+      allPolylines.forEach(p => map.removeLayer(p));
+      allPolylines = [];
+      desvioMarkers.forEach(m => map.removeLayer(m));
+      desvioMarkers = [];
+    }
+
+    function showAll() {
+      clearMap();
+      document.getElementById('lineSelect').value = '';
+      document.getElementById('variantSelect').innerHTML = '<option value="">Todas las líneas</option>';
+      
+      for (const [lineNum, variants] of Object.entries(routeData)) {
+        const color = lineColors[lineNum] || '#888';
+        // Mostrar solo variante A (IDA) de cada línea
+        const firstVar = Object.values(variants).find(v => v.descVariante === 'A') || Object.values(variants)[0];
+        if (firstVar) {
+          const latlngs = firstVar.coordinates.map(c => [c.lat, c.lng]);
+          const poly = L.polyline(latlngs, { color, weight: 3, opacity: 0.7 }).addTo(map);
+          poly.bindPopup(`<b>Línea ${lineNum}</b><br>${firstVar.origen} → ${firstVar.destino}<br>${firstVar.totalPuntos} puntos GPS`);
+          allPolylines.push(poly);
+        }
+      }
+      
+      if (allPolylines.length > 0) {
+        const group = L.featureGroup(allPolylines);
+        map.fitBounds(group.getBounds(), { padding: [30, 30] });
+      }
+      
+      document.getElementById('currentInfo').innerHTML = 
+        `<strong>TODAS LAS LÍNEAS UCOT</strong> — mostrando variante IDA de cada una | <span class="badge badge-ok">${allPolylines.length} líneas</span>`;
+    }
+
+    // ── Viaje simulación ──
+    function toggleViaje() {
+      const btn = document.getElementById('btnViaje');
+      if (!viajeActivo) {
+        const line = document.getElementById('lineSelect').value;
+        if (!line) { alert('Selecciona una línea primero'); return; }
+        viajeActivo = true;
+        btn.textContent = '🛑 Finalizar Viaje';
+        btn.className = 'danger';
+        simulateTrip();
+      } else {
+        viajeActivo = false;
+        btn.textContent = '🚀 Iniciar Viaje';
+        btn.className = '';
+      }
+    }
+
+    let tripMarker = null;
+    function simulateTrip() {
+      if (!currentPolyline || !viajeActivo) return;
+      const coords = currentPolyline.getLatLngs();
+      let idx = 0;
+      
+      if (tripMarker) map.removeLayer(tripMarker);
+      tripMarker = L.marker(coords[0], {
+        icon: L.divIcon({ html: '🚌', className: '', iconSize: [30, 30] })
+      }).addTo(map);
+      
+      const timer = setInterval(() => {
+        if (!viajeActivo || idx >= coords.length) {
+          clearInterval(timer);
+          if (tripMarker) map.removeLayer(tripMarker);
+          return;
+        }
+        tripMarker.setLatLng(coords[idx]);
+        map.panTo(coords[idx], { animate: true, duration: 0.3 });
+        idx += 2; // avanzar de 2 en 2 para velocidad
+      }, 200);
+    }
+
+    // ── Desvío ──
+    function toggleDesvioPanel() {
+      const panel = document.getElementById('desvio-panel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function toggleComparison() {
+      const panel = document.getElementById('comparison');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function startPicking(type) {
+      pickMode = type;
+      document.getElementById('pickMsg').style.display = 'block';
+      map.once('click', function(e) {
+        document.getElementById('pickMsg').style.display = 'none';
+        const marker = L.marker(e.latlng, {
+          icon: L.divIcon({ 
+            html: type === 'start' ? '🔵' : '🔴', 
+            className: '', iconSize: [20, 20] 
+          })
+        }).addTo(map);
+        desvioMarkers.push(marker);
+        
+        if (type === 'start') {
+          desvioStart = e.latlng;
+          document.getElementById('btnPickStart').textContent = `✅ Inicio: ${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+        } else {
+          desvioEnd = e.latlng;
+          document.getElementById('btnPickEnd').textContent = `✅ Fin: ${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+        }
+        pickMode = null;
+      });
+    }
+
+    function saveDesvio() {
+      if (!desvioStart) { alert('Marca el punto de inicio en el mapa'); return; }
+      const desc = document.getElementById('desvioDesc').value || 'Sin descripción';
+      const tipo = document.getElementById('desvioType').value;
+      const motivo = document.getElementById('desvioReason').value;
+      const line = document.getElementById('lineSelect').value;
+      
+      // Dibujar línea de desvío si hay inicio y fin
+      if (desvioStart && desvioEnd) {
+        const desvioLine = L.polyline([desvioStart, desvioEnd], {
+          color: '#f59e0b', weight: 5, dashArray: '10,10', opacity: 0.8
+        }).addTo(map);
+        desvioLine.bindPopup(`<b>⚠ DESVÍO ${tipo.toUpperCase()}</b><br>${desc}<br>Motivo: ${motivo}<br>Línea: ${line || 'todas'}`);
+        allPolylines.push(desvioLine);
+      }
+      
+      document.getElementById('desvioStatus').innerHTML = 
+        `<span class="badge badge-ok">✅ Desvío guardado</span> ${desc} (${tipo})`;
+      
+      // Reset
+      desvioStart = null;
+      desvioEnd = null;
+      document.getElementById('btnPickStart').textContent = '📍 Marcar Inicio en Mapa';
+      document.getElementById('btnPickEnd').textContent = '📍 Marcar Fin en Mapa';
+    }
+
+    // ── Inicializar ──
+    loadRouteData();
+  </script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+﻿=== Extrayendo datos reales de la l├¡nea 17 desde GTFS oficial ===
+
+Total rutas en GTFS: 371
+
+Rutas que coinciden con "17":
+No se encontr├│ match exacto. Buscando parcial...
+
+Primeras 10 rutas como referencia:
+  route_id=5002, short=6R6, long=MDEO./SAUCE (x 6,33,17m)
+  route_id=5003, short=6R6, long=SAUCE/MDEO. (x 6,33,17m)
+  route_id=5004, short=6R6, long=MDEO./SAUCE (x R.6,Toledo)
+  route_id=5005, short=6R6, long=SAUCE/MDEO. (x R.6,Toledo)
+  route_id=5006, short=6R6, long=MDEO./SAUCE (x 17m, Toledo)
+  route_id=5007, short=6R6, long=SAUCE/MDEO. (x 17m, Toledo)
+  route_id=5008, short=6A, long=MDEO./SAUCE (x G.Flores, 33)
+  route_id=5009, short=6A, long=SAUCE/MDEO. (x G.Flores, 33)
+  route_id=5010, short=6A, long=MDEO./SAUCE (x 8 de Oct.,R.33)
+  route_id=5011, short=6A, long=SAUCE/MDEO. (x 8 de Oct.,R.33)
+
+
+Buscando rutas de UCOT...
+Encontradas 32 rutas UCOT:
+  route_id=5258, short="11A", long="MDEO./SAN BAUTISTA (x 17m)"
+  route_id=5259, short="11A", long="SAN BAUTISTA/MDEO. (x Toledo)"
+  route_id=5266, short="221", long="MDEO./PINAR"
+  route_id=5267, short="221", long="PINAR/MDEO."
+  route_id=5484, short="8SR", long="MDEO./SAN RAMON (x 8 Oct.,17 m)"
+  route_id=5485, short="8SR", long="SAN RAMON/MDEO. (x 8 Oct.,17 m)"
+  route_id=5499, short="11A", long="SANTA ROSA/MDEO."
+  route_id=5504, short="11A", long="MDEO./SANTA ROSA (x 17 m)"
+  route_id=5505, short="11A", long="SANTA ROSA/MDEO. (x 17 m)"
+  route_id=5506, short="11A", long="MDEO./SAN BAUTISTA"
+  route_id=5507, short="11A", long="SAN BAUTISTA/MDEO."
+  route_id=5508, short="11A", long="MDEO./SAN RAMON"
+  route_id=5509, short="11A", long="SAN RAMON/MDEO."
+  route_id=5514, short="11A", long="MDEO./SAN RAMON (x 17 m)"
+  route_id=5515, short="11A", long="SAN RAMON/MDEO. (x 17 m)"
+  route_id=5517, short="11A", long="CHAMIZO/MDEO."
+  route_id=5518, short="11A", long="MDEO./CHAMIZO (x 17 m)"
+  route_id=5519, short="11A", long="CHAMIZO/MDEO. (x 17 m)"
+  route_id=5520, short="8SR", long="MDEO./SANTA ROSA (x 8 Oct.,17 m)"
+  route_id=5521, short="8SR", long="SANTA ROSA/MDEO. (x 8 Oct.,17 m)"
+  route_id=5524, short="11A", long="MDEO./SAUCE (x Toledo)"
+  route_id=5525, short="11A", long="SAUCE/MDEO. (x Toledo)"
+  route_id=5526, short="11A", long="MDEO./SAUCE (x 17 m)"
+  route_id=5527, short="11A", long="SAUCE/MDEO. (x 17 m)"
+  route_id=5528, short="11A", long="MDEO./SAUCE (x 17 m, Toledo)"
+  route_id=5529, short="11A", long="SAUCE/MDEO. (x 17 m, Toledo)"
+  route_id=5647, short="11A", long="SAN RAMON/MDEO. (x Toledo)"
+  route_id=5799, short="11A", long="MDEO./SAN RAMON (x 17m,Toledo)"
+  route_id=5800, short="11A", long="SAN RAMON/MDEO. (x Toledo,17m)"
+  route_id=5803, short="11A", long="MDEO./SANTA ROSA(x 17m y Toledo)"
+  route_id=5832, short="221", long="MDEO./SOLYMAR"
+  route_id=5833, short="221", long="SOLYMAR/MDEO."
+
+
+=== Intentando descargar recorridos v├¡a GeoServer (WFS) ===
+URL: http://intgis.montevideo.gub.uy/sit/php/common/datos/generar_zip2.php?nom_tab=v_uptu_lsv&tipo=gis
+(Este recurso contiene los recorridos GIS oficiales de TODAS las l├¡neas)

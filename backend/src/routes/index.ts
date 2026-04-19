@@ -21,6 +21,7 @@ import analyticsRoutes from './analytics.routes';
 import forecastRoutes from './forecast.routes';
 import dashboardRoutes from './dashboard.routes';
 import stmRoutes from './stm.routes';
+import aiRoutes from './ai.routes';
 
 const router = Router();
 
@@ -142,5 +143,13 @@ router.use('/dashboard', dashboardRoutes);
  * POST /api/stm/...
  */
 router.use('/stm', stmRoutes);
+
+/**
+ * Rutas de IA Multi-Modelo
+ * POST /api/ai/generate  — local (gemma3, qwen2.5-coder, llama3.1)
+ * POST /api/ai/cloud     — Claude API (requiere ANTHROPIC_API_KEY)
+ * POST /api/ai/embed     — embeddings vectoriales
+ */
+router.use('/ai', aiRoutes);
 
 export default router;

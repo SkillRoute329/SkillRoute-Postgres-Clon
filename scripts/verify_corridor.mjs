@@ -1,0 +1,14 @@
+import { readFileSync } from 'fs';
+const c = readFileSync('frontend/src/services/CompetitorIntelligence.ts', 'utf8');
+console.log('size:', c.length);
+console.log('XA1 gone:', !c.includes("'XA1'"));
+console.log('DM1 gone:', !c.includes("'DM1'"));
+console.log('L12 gone:', !c.includes("lineId: 'L12'"));
+console.log('CA1 gone:', !c.includes("lineId: 'CA1'"));
+console.log('corridorBbox:', c.includes('corridorBbox'));
+console.log("161 (L300 nuevo):", c.includes("'161'"));
+console.log("186 (L316 nuevo):", c.includes("'186'"));
+console.log("C1 (L11A):", c.includes("'C1'"));
+console.log("721 (L221 nuevo):", c.includes("'721'"));
+console.log("102 gone (era L11A incorrecto):", !c.includes("rivals: ['102'"));
+console.log("110 gone (era L300 incorrecto):", !c.includes("rivals: ['110', '103']"));

@@ -13,12 +13,12 @@ export function RevenuePredictor({
   lineaId,
   numeroLinea,
   titulo = 'Predictor de Ingresos',
-  height = '600px'
+  height = '600px',
 }: RevenuePredictorProps) {
   const { pronostico, mejorEscenario, peorEscenario, loading, error } = useForecastData({
     lineaId,
     autoRefresh: true,
-    refreshInterval: 900000 // 15 minutos
+    refreshInterval: 900000, // 15 minutos
   });
 
   if (loading) {
@@ -47,14 +47,19 @@ export function RevenuePredictor({
   }
 
   return (
-    <div style={{ height }} className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col">
+    <div
+      style={{ height }}
+      className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col"
+    >
       <h3 className="text-lg font-bold text-gray-800 mb-4">{titulo}</h3>
 
       {/* Escenario actual */}
       <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-4">
         <div className="flex items-center justify-between mb-2">
           <h4 className="font-bold text-gray-900">📊 Escenario Actual</h4>
-          <span className="px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded">LÍNEA {numeroLinea}</span>
+          <span className="px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded">
+            LÍNEA {numeroLinea}
+          </span>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -63,7 +68,9 @@ export function RevenuePredictor({
           </div>
           <div>
             <p className="text-xs text-gray-600">Ingresos/día</p>
-            <p className="text-2xl font-bold text-green-700">${pronostico.ingresosActuales.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-green-700">
+              ${pronostico.ingresosActuales.toLocaleString()}
+            </p>
           </div>
         </div>
       </div>
@@ -91,16 +98,18 @@ export function RevenuePredictor({
                 </div>
                 <div>
                   <p className="text-xs text-gray-600">Ingresos</p>
-                  <p className="font-bold text-green-700">${escenario.ingresosProyectados.toLocaleString()}</p>
+                  <p className="font-bold text-green-700">
+                    ${escenario.ingresosProyectados.toLocaleString()}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-600">Mes</p>
-                  <p className="font-bold text-green-700">${(escenario.impacto / 1000).toFixed(0)}K</p>
+                  <p className="font-bold text-green-700">
+                    ${(escenario.impacto / 1000).toFixed(0)}K
+                  </p>
                 </div>
               </div>
-              <p className="text-xs text-green-700 mt-2">
-                Confianza: {escenario.confianza}%
-              </p>
+              <p className="text-xs text-green-700 mt-2">Confianza: {escenario.confianza}%</p>
             </div>
           ))}
       </div>
@@ -116,7 +125,9 @@ export function RevenuePredictor({
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-600">Impacto/mes</p>
-              <p className="font-bold text-red-700">${(peorEscenario.impacto / 1000).toFixed(0)}K</p>
+              <p className="font-bold text-red-700">
+                ${(peorEscenario.impacto / 1000).toFixed(0)}K
+              </p>
             </div>
           </div>
         )}
@@ -128,7 +139,8 @@ export function RevenuePredictor({
         {mejorEscenario && (
           <p className="text-xs text-yellow-800">
             Implementar "{mejorEscenario.nombre}" podría aumentar ingresos hasta $
-            {(mejorEscenario.impacto / 1000).toFixed(0)}K/mes con {mejorEscenario.confianza}% de confianza.
+            {(mejorEscenario.impacto / 1000).toFixed(0)}K/mes con {mejorEscenario.confianza}% de
+            confianza.
           </p>
         )}
       </div>

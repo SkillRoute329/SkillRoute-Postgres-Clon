@@ -31,6 +31,8 @@ export interface ServicioEstadoRecord {
   /** Minutos de atraso en punto de control (sin GPS simulado). Fuente: inspección / registro real. */
   atrasoMinutos?: number;
   historial?: Array<{ choferId: string; cocheId: string; at: string }>;
+  lat?: number;
+  lng?: number;
   updatedAt?: string;
 }
 

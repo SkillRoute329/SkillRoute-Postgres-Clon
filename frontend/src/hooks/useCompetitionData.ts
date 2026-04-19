@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { SobreposicionLinea, ConflictoHorario, AnalisisCompetitividadLinea } from '../types/competition';
+import type {
+  SobreposicionLinea,
+  ConflictoHorario,
+  AnalisisCompetitividadLinea,
+} from '../types/competition';
 
 // Hook para gestionar datos de competencia - Semana 4
 
@@ -13,7 +17,7 @@ interface UseCompetitionDataOptions {
 export function useCompetitionData({
   lineaId,
   autoRefresh = false,
-  refreshInterval = 300000 // 5 minutos por defecto
+  refreshInterval = 300000, // 5 minutos por defecto
 }: UseCompetitionDataOptions) {
   const [sobreposiciones, setSobreposiciones] = useState<SobreposicionLinea[]>([]);
   const [conflictos, setConflictos] = useState<ConflictoHorario[]>([]);
@@ -32,7 +36,7 @@ export function useCompetitionData({
       const [overlapRes, conflictsRes, analysisRes] = await Promise.all([
         axios.get(`/api/competition/overlap/${lineaId}`),
         axios.get(`/api/competition/conflicts/${lineaId}`),
-        axios.get(`/api/competition/analysis/${lineaId}`)
+        axios.get(`/api/competition/analysis/${lineaId}`),
       ]);
 
       setSobreposiciones(overlapRes.data.data.sobreposiciones);
@@ -59,11 +63,11 @@ export function useCompetitionData({
 
   // Funciones auxiliares
   const getSobreposicionesPorNivel = (nivel: 'critico' | 'alto' | 'medio' | 'bajo') => {
-    return sobreposiciones.filter(s => s.nivelesRiesgo === nivel);
+    return sobreposiciones.filter((s) => s.nivelesRiesgo === nivel);
   };
 
   const getConflictosPorPrioridad = (prioridad: 'critica' | 'alta' | 'media' | 'baja') => {
-    return conflictos.filter(c => c.prioridad === prioridad);
+    return conflictos.filter((c) => c.prioridad === prioridad);
   };
 
   const getTotalPasajerosEnRiesgo = () => {
@@ -71,7 +75,7 @@ export function useCompetitionData({
   };
 
   const getCompetidoresPresentes = () => {
-    return Array.from(new Set(sobreposiciones.map(s => s.competidor)));
+    return Array.from(new Set(sobreposiciones.map((s) => s.competidor)));
   };
 
   return {
@@ -98,7 +102,7 @@ export function useCompetitionData({
 
     // Métodos
     getSobreposicionesPorNivel,
-    getConflictosPorPrioridad
+    getConflictosPorPrioridad,
   };
 }
 
@@ -130,7 +134,7 @@ export function useMainThreats(operador: string = 'UCOT') {
     amenazas,
     loading,
     error,
-    refetch: fetchThreats
+    refetch: fetchThreats,
   };
 }
 
@@ -162,9 +166,9 @@ export function useCompetitionRecommendations(lineaId: string) {
 
   return {
     recomendaciones,
-    recomendacionesUrgentes: recomendaciones.filter(r => r.riesgo === 'alto'),
+    recomendacionesUrgentes: recomendaciones.filter((r) => r.riesgo === 'alto'),
     loading,
     error,
-    refetch: fetchRecommendations
+    refetch: fetchRecommendations,
   };
 }

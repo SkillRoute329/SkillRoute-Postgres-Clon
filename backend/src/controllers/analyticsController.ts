@@ -1,4 +1,5 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthRequest } from '../types/index';
 import { analyticsService } from '../services/analyticsService';
 import { logger } from '../config/logger';
 
@@ -9,7 +10,7 @@ export const analyticsController = {
    * GET /api/analytics/cartoon/:cartoonId/viability
    * Valida viabilidad de un cartón
    */
-  async getCartoonViability(req: Request, res: Response): Promise<void> {
+  async getCartoonViability(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { cartoonId } = req.params;
 
@@ -34,7 +35,7 @@ export const analyticsController = {
    * GET /api/analytics/cartoons/marginal
    * Obtiene cartones marginales o no viables
    */
-  async getMarginalCartoons(req: Request, res: Response): Promise<void> {
+  async getMarginalCartoons(req: AuthRequest, res: Response): Promise<void> {
     try {
       const operador = (req.query.operador as string) || 'UCOT';
 
@@ -62,7 +63,7 @@ export const analyticsController = {
    * GET /api/analytics/line/:lineaId/history
    * Obtiene histórico y datos de una línea
    */
-  async getLineHistory(req: Request, res: Response): Promise<void> {
+  async getLineHistory(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { lineaId } = req.params;
       const dias = (req.query.dias as string) || '30';
@@ -88,7 +89,7 @@ export const analyticsController = {
    * GET /api/analytics/lines/at-risk
    * Obtiene líneas en riesgo
    */
-  async getLinesAtRisk(req: Request, res: Response): Promise<void> {
+  async getLinesAtRisk(req: AuthRequest, res: Response): Promise<void> {
     try {
       const operador = (req.query.operador as string) || 'UCOT';
 
@@ -113,7 +114,7 @@ export const analyticsController = {
    * GET /api/analytics/summary
    * Resumen ejecutivo de analytics
    */
-  async getSummary(req: Request, res: Response): Promise<void> {
+  async getSummary(req: AuthRequest, res: Response): Promise<void> {
     try {
       const operador = (req.query.operador as string) || 'UCOT';
 

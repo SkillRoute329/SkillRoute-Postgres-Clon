@@ -77,5 +77,3 @@ export function getServiciosByPuntoControl(nombrePunto: string): MasterServicio[
     ),
   );
 }
-
-

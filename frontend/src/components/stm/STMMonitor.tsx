@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSTMLineas, useCambiosHorarios, useCalidadDatos } from '../../hooks/useSTMData';
-import { LineaSTM, CambioHorarioDetectado } from '../../types/stm';
+import type { LineaSTM, CambioHorarioDetectado } from '../../types/stm';
 import { AlertTriangle, TrendingUp, TrendingDown, Zap, Server } from 'lucide-react';
 
 /**
@@ -10,7 +10,7 @@ import { AlertTriangle, TrendingUp, TrendingDown, Zap, Server } from 'lucide-rea
 
 export function STMMonitor() {
   const { lineas, loading: lineasLoading, error: lineasError } = useSTMLineas();
-  const { calidad, loading: calidadLoading } = useCalidadDatos();
+  const { calidad, loading: _calidadLoading } = useCalidadDatos();
   const [linea_seleccionada, setLineaSeleccionada] = useState<number | null>(null);
 
   if (lineasLoading) {
@@ -50,10 +50,10 @@ export function STMMonitor() {
                 calidad.calidad_general === 'excelente'
                   ? 'bg-green-100 text-green-800'
                   : calidad.calidad_general === 'buena'
-                  ? 'bg-blue-100 text-blue-800'
-                  : calidad.calidad_general === 'regular'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-red-100 text-red-800'
+                    ? 'bg-blue-100 text-blue-800'
+                    : calidad.calidad_general === 'regular'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-red-100 text-red-800'
               }`}
             >
               {calidad.calidad_general.toUpperCase()}
@@ -91,7 +91,7 @@ export function STMMonitor() {
         <h3 className="text-lg font-bold text-gray-900 mb-4">Líneas STM Monitoreadas</h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {lineas.map(linea => (
+          {lineas.map((linea) => (
             <LineaCard
               key={linea.id}
               linea={linea}
@@ -103,9 +103,7 @@ export function STMMonitor() {
       </div>
 
       {/* Detalles de línea seleccionada */}
-      {linea_seleccionada && (
-        <LineaDetalles numeroLinea={linea_seleccionada} />
-      )}
+      {linea_seleccionada && <LineaDetalles numeroLinea={linea_seleccionada} />}
     </div>
   );
 }
@@ -116,7 +114,7 @@ export function STMMonitor() {
 function LineaCard({
   linea,
   isSelected,
-  onSelect
+  onSelect,
 }: {
   linea: LineaSTM;
   isSelected: boolean;
@@ -131,11 +129,11 @@ function LineaCard({
           : 'bg-white border-gray-200 hover:border-blue-300'
       }`}
     >
+      <style>{`.stm-linea-${linea.id} { background-color: ${linea.color || '#3b82f6'}; }`}</style>
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold"
-            style={{ backgroundColor: linea.color || '#3b82f6' }}
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold stm-linea-${linea.id}`}
           >
             {linea.numero}
           </div>
@@ -151,7 +149,8 @@ function LineaCard({
           <span className="font-semibold">Ruta:</span> {linea.inicio.nombre} → {linea.fin.nombre}
         </p>
         <p className="text-gray-700">
-          <span className="font-semibold">Distancia:</span> {linea.longitud_km} km (~{linea.duracion_promedio_minutos} min)
+          <span className="font-semibold">Distancia:</span> {linea.longitud_km} km (~
+          {linea.duracion_promedio_minutos} min)
         </p>
         <p className="text-gray-700">
           <span className="font-semibold">Frecuencia:</span> Cada {linea.frecuencia_minutos} min
@@ -167,9 +166,7 @@ function LineaCard({
           onSelect();
         }}
         className={`w-full mt-4 py-2 rounded font-semibold transition ${
-          isSelected
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+          isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
         }`}
       >
         {isSelected ? '▼ Seleccionada' : '▶ Seleccionar'}
@@ -182,8 +179,13 @@ function LineaCard({
  * Detalles de línea con cambios detectados
  */
 function LineaDetalles({ numeroLinea }: { numeroLinea: number }) {
-  const { cambios, cambios_detectados, requiere_accion, loading, error } =
-    useCambiosHorarios(numeroLinea);
+  const {
+    cambios,
+    cambios_detectados: _cambios_detectados,
+    requiere_accion,
+    loading,
+    error,
+  } = useCambiosHorarios(numeroLinea);
 
   if (loading) {
     return (
@@ -204,7 +206,9 @@ function LineaDetalles({ numeroLinea }: { numeroLinea: number }) {
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-bold text-gray-900">Cambios Detectados - Línea {numeroLinea}</h3>
+        <h3 className="text-xl font-bold text-gray-900">
+          Cambios Detectados - Línea {numeroLinea}
+        </h3>
         {requiere_accion && (
           <div className="flex items-center gap-2 bg-red-100 border border-red-300 rounded-lg px-3 py-2">
             <AlertTriangle className="w-5 h-5 text-red-600" />
@@ -220,14 +224,14 @@ function LineaDetalles({ numeroLinea }: { numeroLinea: number }) {
         </div>
       ) : (
         <div className="space-y-4">
-          {cambios.map(cambio => (
+          {cambios.map((cambio) => (
             <CambioCard key={cambio.id} cambio={cambio} />
           ))}
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
             <p className="text-sm text-blue-900 font-semibold mb-2">💡 Recomendación:</p>
             <p className="text-sm text-blue-800">
-              {cambios.some(c => c.tipo_cambio === 'adelanto')
+              {cambios.some((c) => c.tipo_cambio === 'adelanto')
                 ? 'Se detectó adelanto de competencia. Considera ejecutar el simulador de horarios para evaluar respuesta.'
                 : 'Monitorea esta línea para posibles cambios futuros.'}
             </p>
@@ -276,8 +280,8 @@ function CambioCard({ cambio }: { cambio: CambioHorarioDetectado }) {
             cambio.severidad === 'alta'
               ? 'bg-red-200 text-red-800'
               : cambio.severidad === 'media'
-              ? 'bg-yellow-200 text-yellow-800'
-              : 'bg-blue-200 text-blue-800'
+                ? 'bg-yellow-200 text-yellow-800'
+                : 'bg-blue-200 text-blue-800'
           }`}
         >
           {cambio.severidad.toUpperCase()}
@@ -298,7 +302,8 @@ function CambioCard({ cambio }: { cambio: CambioHorarioDetectado }) {
       <div className="bg-white bg-opacity-60 rounded p-3 mb-4">
         <p className="text-sm text-gray-900">
           <span className="font-bold">
-            {cambio.tipo_cambio === 'adelanto' ? '+' : ''}{cambio.minutos_diferencia} minutos
+            {cambio.tipo_cambio === 'adelanto' ? '+' : ''}
+            {cambio.minutos_diferencia} minutos
           </span>
           {' - '}
           <span className="text-gray-700">

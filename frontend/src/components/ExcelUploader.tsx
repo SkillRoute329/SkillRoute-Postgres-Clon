@@ -1,11 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import {
-  Upload,
-  CheckCircle,
-  Loader2,
-  FileUp,
-} from 'lucide-react';
+import { Upload, CheckCircle, Loader2, FileUp } from 'lucide-react';
 import { DataImportService } from '../services/api';
 import { ExcelParser, type ParsedData } from '../utils/ExcelParserV2';
 

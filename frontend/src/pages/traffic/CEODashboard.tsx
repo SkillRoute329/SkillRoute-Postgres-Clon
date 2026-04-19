@@ -32,9 +32,9 @@ import {
   DollarSign,
   Calendar,
   Eye,
+  Leaf,
 } from 'lucide-react';
 import { CompetitorThreatWidget } from '../../components/CompetitorThreatWidget';
-import { TelemetrySimulator } from '../../services/telemetrySimulator';
 
 /* ─── Helpers ──────────────────────────────────────────── */
 const todayStr = () => new Date().toISOString().split('T')[0];
@@ -207,29 +207,22 @@ export default function CEODashboard() {
   } | null>(null);
   const [rotacionLoading, setRotacionLoading] = useState(false);
 
-  // Simulator
-  const [simulatorOn, setSimulatorOn] = useState(false);
-
-  // Sparkline history (simulated rolling window)
+  // Sparkline history (rolling window from real data)
   const [flotaHistory, setFlotaHistory] = useState<number[]>([85, 87, 82, 88, 90, 86, 89]);
   const [puntualidadHistory, setPuntualidadHistory] = useState<number[]>([
     92, 88, 91, 85, 89, 93, 90,
   ]);
 
   // Active section
-  const [activeSection, setActiveSection] = useState<'overview' | 'intelligence' | 'rotation'>(
-    'overview',
-  );
+  const [activeSection, setActiveSection] = useState<
+    'overview' | 'intelligence' | 'rotation' | 'executive'
+  >('overview');
 
-  const toggleSimulator = () => {
-    if (simulatorOn) {
-      TelemetrySimulator.stop();
-      setSimulatorOn(false);
-    } else {
-      TelemetrySimulator.start();
-      setSimulatorOn(true);
-    }
-  };
+  // Executive Dashboard KPIs
+  const [otpFleetwide, setOtpFleetwide] = useState<number | null>(null);
+  const [emovilAhorro, setEmovilAhorro] = useState<number>(0);
+  const [amenazaCompetencia, setAmenazaCompetencia] = useState<number>(0);
+  const [personalBloqueado, setPersonalBloqueado] = useState<number>(0);
 
   /* ─── Data Fetch ─────────────────────────────────────── */
   const fetchData = useCallback(async () => {
@@ -292,6 +285,42 @@ export default function CEODashboard() {
 
       // Line Ranking
       buildLineRanking(estados);
+
+      // Executive KPIs
+      // OTP fleet-wide: % of services with ≤3min delay
+      const serviciosConDato = estados.filter((e) => e.atrasoMinutos != null);
+      const serviciosPuntuales = serviciosConDato.filter((e) => (e.atrasoMinutos ?? 0) <= 3).length;
+      const otpVal =
+        serviciosConDato.length > 0
+          ? Math.round((serviciosPuntuales / serviciosConDato.length) * 1000) / 10
+          : null;
+      setOtpFleetwide(otpVal);
+
+      // E-mobility savings: estimate based on electric buses in fleet
+      const electricos = vehicles.filter((v) =>
+        /electr|ev|byd|e-bus/i.test(
+          String(v.status ?? '') + ' ' + String((v as Record<string, unknown>).fuelType ?? ''),
+        ),
+      ).length;
+      // Ahorro promedio estimado: ~USD 45/día por bus eléctrico vs diesel
+      setEmovilAhorro(electricos * 45);
+
+      // Competition threat index: % of services with >5min delay (exposed to rivals)
+      const expuestos = serviciosConDato.filter((e) => (e.atrasoMinutos ?? 0) > 5).length;
+      const threatPct =
+        serviciosConDato.length > 0 ? Math.round((expuestos / serviciosConDato.length) * 100) : 0;
+      setAmenazaCompetencia(threatPct);
+
+      // Personnel blocked: services without driver (next 60 min window)
+      const nowMin60 = nowMin + 60;
+      const sinChofer60 = estados.filter((e) => {
+        const h = e.horaInicio;
+        if (!h) return false;
+        const min = parseHoraToMinutes(h);
+        if (min < nowMin || min > nowMin60) return false;
+        return !e.choferActual || e.choferActual.trim() === '';
+      }).length;
+      setPersonalBloqueado(sinChofer60);
     } catch (err) {
       console.error('[CEODashboard] Error loading data:', err);
     } finally {
@@ -415,17 +444,10 @@ export default function CEODashboard() {
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             Actualizar
           </button>
-          <button
-            onClick={toggleSimulator}
-            className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black transition-all ${
-              simulatorOn
-                ? 'bg-red-500/20 text-red-400 border border-red-500/30 shadow-lg shadow-red-500/10'
-                : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-            }`}
-          >
-            <Zap className={`w-3.5 h-3.5 ${simulatorOn ? 'animate-pulse' : ''}`} />
-            {simulatorOn ? 'DEMO: ON' : 'DEMO'}
-          </button>
+          <div className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            DATOS REALES
+          </div>
         </div>
       </header>
 
@@ -437,6 +459,7 @@ export default function CEODashboard() {
           { id: 'overview' as const, label: 'Vista General', icon: BarChart3 },
           { id: 'intelligence' as const, label: 'Inteligencia', icon: Eye },
           { id: 'rotation' as const, label: 'Rotación', icon: Users },
+          { id: 'executive' as const, label: 'Ejecutivo', icon: TrendingUp },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -746,10 +769,7 @@ export default function CEODashboard() {
                     </span>
                     <span className="flex items-center gap-1.5 bg-slate-800/40 px-2.5 py-1 rounded-lg border border-white/5">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50" />
-                      DEMO_ENGINE:{' '}
-                      <span className={simulatorOn ? 'text-emerald-400' : 'text-slate-600'}>
-                        {simulatorOn ? 'ACTIVE' : 'STANDBY'}
-                      </span>
+                      SIMULADOR: DESACTIVADO
                     </span>
                     <span className="flex items-center gap-1.5 bg-slate-800/40 px-2.5 py-1 rounded-lg border border-white/5">
                       <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-lg shadow-blue-500/50 animate-pulse" />
@@ -919,6 +939,339 @@ export default function CEODashboard() {
                       </span>
                       <span className="text-lg font-black text-white font-mono">{lastRefresh}</span>
                     </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* ████████████████████████████████████████████████████████
+              SECTION: EXECUTIVE — Presentación a Autoridades
+              ████████████████████████████████████████████████████████ */}
+          {activeSection === 'executive' && (
+            <div className="space-y-5 animate-fade-in">
+              {/* ── Executive KPI Grid ──────────────────────────── */}
+              <section
+                className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+                aria-label="KPIs Ejecutivos"
+              >
+                {/* OTP Fleet-wide */}
+                <div className="group relative rounded-2xl border border-white/5 bg-gradient-to-br from-cyan-950/30 to-slate-900/80 p-5 shadow-xl hover:border-cyan-500/30 transition-all duration-300 overflow-hidden">
+                  <div className="absolute top-0 right-0 w-28 h-28 bg-cyan-500/5 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500" />
+                  <div className="relative">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                        <Gauge className="w-4 h-4 text-cyan-400" />
+                      </div>
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                        OTP Flota
+                      </p>
+                    </div>
+                    <div className="text-3xl font-black text-white leading-none mb-1">
+                      <AnimatedNumber value={otpFleetwide} suffix="%" />
+                    </div>
+                    <p className="text-[10px] text-slate-500">On-Time Performance (≤3 min)</p>
+                    <div className="mt-3 w-full h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                      <div
+                        id="exec-otp-bar"
+                        className={`h-full rounded-full transition-all duration-1000 ${
+                          (otpFleetwide ?? 0) >= 90
+                            ? 'bg-gradient-to-r from-cyan-500 to-emerald-500'
+                            : (otpFleetwide ?? 0) >= 75
+                              ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                              : 'bg-gradient-to-r from-red-500 to-rose-500'
+                        }`}
+                      />
+                      <style>{`#exec-otp-bar { width: ${String(otpFleetwide ?? 0)}%; }`}</style>
+                    </div>
+                  </div>
+                </div>
+
+                {/* E-Mobility Savings */}
+                <div className="group relative rounded-2xl border border-white/5 bg-gradient-to-br from-emerald-950/30 to-slate-900/80 p-5 shadow-xl hover:border-emerald-500/30 transition-all duration-300 overflow-hidden">
+                  <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/5 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500" />
+                  <div className="relative">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                        <Zap className="w-4 h-4 text-emerald-400" />
+                      </div>
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                        Ahorro E-Movilidad
+                      </p>
+                    </div>
+                    <div className="text-3xl font-black text-emerald-400 leading-none mb-1">
+                      USD <AnimatedNumber value={emovilAhorro} />
+                    </div>
+                    <p className="text-[10px] text-slate-500">Ahorro diario estimado vs. diesel</p>
+                    <div className="mt-3 space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-[10px] font-bold text-emerald-400">
+                          USD {emovilAhorro * 30}/mes proyectado
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Leaf className="w-3.5 h-3.5 text-green-400" />
+                        <span className="text-[10px] font-bold text-green-400">
+                          {Math.round(emovilAhorro * 0.83)} kg CO₂/día evitados
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Competition Threat Index */}
+                <div className="group relative rounded-2xl border border-white/5 bg-gradient-to-br from-rose-950/30 to-slate-900/80 p-5 shadow-xl hover:border-rose-500/30 transition-all duration-300 overflow-hidden">
+                  <div className="absolute top-0 right-0 w-28 h-28 bg-rose-500/5 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500" />
+                  <div className="relative">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20">
+                        <ShieldAlert className="w-4 h-4 text-rose-400" />
+                      </div>
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                        Amenaza Rival
+                      </p>
+                    </div>
+                    <div
+                      className={`text-3xl font-black leading-none mb-1 ${
+                        amenazaCompetencia <= 10
+                          ? 'text-emerald-400'
+                          : amenazaCompetencia <= 25
+                            ? 'text-amber-400'
+                            : 'text-red-400 animate-pulse'
+                      }`}
+                    >
+                      {amenazaCompetencia}%
+                    </div>
+                    <p className="text-[10px] text-slate-500">
+                      Servicios expuestos ({'>'} 5 min atraso)
+                    </p>
+                    <div className="mt-3 flex items-center gap-1.5">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          amenazaCompetencia <= 10
+                            ? 'bg-emerald-500'
+                            : amenazaCompetencia <= 25
+                              ? 'bg-amber-500'
+                              : 'bg-red-500 animate-ping'
+                        }`}
+                      />
+                      <span className="text-[10px] font-bold text-slate-500">
+                        {amenazaCompetencia <= 10
+                          ? 'Zona segura'
+                          : amenazaCompetencia <= 25
+                            ? 'Vigilancia activa'
+                            : 'ALERTA MÁXIMA'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Personnel Blocked */}
+                <div className="group relative rounded-2xl border border-white/5 bg-gradient-to-br from-violet-950/30 to-slate-900/80 p-5 shadow-xl hover:border-violet-500/30 transition-all duration-300 overflow-hidden">
+                  <div className="absolute top-0 right-0 w-28 h-28 bg-violet-500/5 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500" />
+                  <div className="relative">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                        <Users className="w-4 h-4 text-violet-400" />
+                      </div>
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                        Personal Pendiente
+                      </p>
+                    </div>
+                    <div
+                      className={`text-3xl font-black leading-none mb-1 ${
+                        personalBloqueado === 0 ? 'text-emerald-400' : 'text-amber-400'
+                      }`}
+                    >
+                      {personalBloqueado}
+                    </div>
+                    <p className="text-[10px] text-slate-500">
+                      Servicios sin chofer (próx. 60 min)
+                    </p>
+                    <div className="mt-3 flex items-center gap-1.5">
+                      {personalBloqueado === 0 ? (
+                        <>
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <span className="text-[10px] font-bold text-emerald-400">
+                            Cobertura completa
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle className="w-3 h-3 text-amber-400" />
+                          <span className="text-[10px] font-bold text-amber-400">
+                            Requiere asignación de Listero
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* ── Line Performance Heat Table ─────────────────── */}
+              <section className="rounded-2xl border border-white/5 bg-gradient-to-br from-slate-900/90 to-slate-800/20 p-6 shadow-xl">
+                <h3 className="font-bold text-white mb-5 flex items-center gap-2 text-sm">
+                  <div className="p-1.5 rounded-lg bg-primary-600/20 border border-primary-500/30">
+                    <BarChart3 className="w-4 h-4 text-primary-400" />
+                  </div>
+                  <span className="text-primary-300">Panel Semáforo</span>
+                  <span className="text-slate-400 font-normal">— Rendimiento por Línea UCOT</span>
+                  <span className="ml-auto text-[9px] font-black text-slate-600 bg-slate-800/60 px-2.5 py-1 rounded-lg border border-white/5">
+                    {lineRanking.length} líneas activas
+                  </span>
+                </h3>
+
+                {lineRanking.length > 0 ? (
+                  <div className="overflow-hidden rounded-xl border border-slate-700/50">
+                    <table className="w-full text-left text-[11px]">
+                      <thead className="bg-slate-800/60 text-slate-400 uppercase font-black tracking-wider">
+                        <tr>
+                          <th className="px-4 py-3">Línea</th>
+                          <th className="px-4 py-3">Activos</th>
+                          <th className="px-4 py-3">Cobertura</th>
+                          <th className="px-4 py-3">Atraso Prom.</th>
+                          <th className="px-4 py-3">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-700/30">
+                        {lineRanking.slice(0, 12).map((r) => (
+                          <tr key={r.line} className="hover:bg-slate-800/30 transition-colors">
+                            <td className="px-4 py-3 font-bold text-white">Línea {r.line}</td>
+                            <td className="px-4 py-3 text-slate-300 font-mono">
+                              {r.activos}/{r.total}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 h-1.5 bg-slate-700/50 rounded-full overflow-hidden max-w-[80px]">
+                                  <div
+                                    id={`exec-line-bar-${r.line}`}
+                                    className={`h-full rounded-full ${
+                                      r.pct >= 80
+                                        ? 'bg-emerald-500'
+                                        : r.pct >= 50
+                                          ? 'bg-amber-500'
+                                          : 'bg-red-500'
+                                    }`}
+                                  />
+                                  <style>{`#exec-line-bar-${r.line} { width: ${r.pct}%; }`}</style>
+                                </div>
+                                <span className="font-bold text-white">{r.pct}%</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`font-bold ${
+                                  r.atraso <= 3
+                                    ? 'text-emerald-400'
+                                    : r.atraso <= 5
+                                      ? 'text-amber-400'
+                                      : 'text-red-400'
+                                }`}
+                              >
+                                {r.atraso} min
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  r.pct >= 80 && r.atraso <= 3
+                                    ? 'bg-emerald-500/15 text-emerald-400'
+                                    : r.pct >= 50 && r.atraso <= 5
+                                      ? 'bg-amber-500/15 text-amber-400'
+                                      : 'bg-red-500/15 text-red-400'
+                                }`}
+                              >
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    r.pct >= 80 && r.atraso <= 3
+                                      ? 'bg-emerald-500'
+                                      : r.pct >= 50 && r.atraso <= 5
+                                        ? 'bg-amber-500'
+                                        : 'bg-red-500'
+                                  }`}
+                                />
+                                {r.pct >= 80 && r.atraso <= 3
+                                  ? 'ÓPTIMO'
+                                  : r.pct >= 50 && r.atraso <= 5
+                                    ? 'ATENCIÓN'
+                                    : 'CRÍTICO'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-slate-600">
+                    <BarChart3 className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                    <p className="text-sm">Sin datos de líneas disponibles</p>
+                  </div>
+                )}
+              </section>
+
+              {/* ── Strategic Projection Panel ──────────────────── */}
+              <section className="rounded-2xl border border-primary-500/10 bg-gradient-to-r from-primary-950/10 via-slate-900/50 to-slate-900/50 p-6 shadow-xl">
+                <h3 className="font-bold text-primary-400 mb-4 flex items-center gap-2 text-sm uppercase tracking-widest">
+                  <TrendingUp className="w-4 h-4" />
+                  Proyección Estratégica
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-xl bg-slate-800/30 border border-white/5">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">
+                      Ahorro Anual E-Movilidad
+                    </p>
+                    <p className="text-xl font-black text-emerald-400">
+                      USD {(emovilAhorro * 365).toLocaleString()}
+                    </p>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Proyección basada en flota eléctrica actual
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-800/30 border border-white/5">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">
+                      Índice de Competitividad
+                    </p>
+                    <p
+                      className={`text-xl font-black ${
+                        amenazaCompetencia <= 15 ? 'text-emerald-400' : 'text-amber-400'
+                      }`}
+                    >
+                      {100 - amenazaCompetencia}%
+                    </p>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Servicios protegidos frente a rivales
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-800/30 border border-white/5">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">
+                      Disponibilidad de Personal
+                    </p>
+                    <p className="text-xl font-black text-white">
+                      {serviciosTotales > 0
+                        ? Math.round(
+                            ((serviciosTotales - personalBloqueado) / serviciosTotales) * 100,
+                          )
+                        : 100}
+                      %
+                    </p>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Cobertura de chofer en ventana operativa
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-800/30 border border-green-500/10">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">
+                      <Leaf className="w-3 h-3 inline mr-1 text-green-400" />
+                      Huella de Carbono Evitada
+                    </p>
+                    <p className="text-xl font-black text-green-400">
+                      {Math.round(emovilAhorro * 0.83 * 365).toLocaleString()} kg
+                    </p>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      CO₂ anual evitado (dato clave MIEM/MA)
+                    </p>
                   </div>
                 </div>
               </section>

@@ -1,11 +1,4 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  addDoc,
-  deleteDoc,
-  onSnapshot,
-} from 'firebase/firestore';
+import { collection, doc, getDocs, addDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 
 const RULES_COL = 'penalty_rules';

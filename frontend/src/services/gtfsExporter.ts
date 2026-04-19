@@ -92,29 +92,160 @@ const AGENCY_UCOT: GTFSAgency = {
 };
 
 const LINEAS_FALLBACK: GTFSRoute[] = [
-  { route_id: '300a', agency_id: 'UCOT', route_short_name: '300', route_long_name: 'Maroñas - Centro - Maroñas (Ida)', route_type: 3, route_color: 'F5A623', route_text_color: '000000', route_desc: 'Eje 8 de Octubre' },
-  { route_id: '300b', agency_id: 'UCOT', route_short_name: '300', route_long_name: 'Maroñas - Centro - Maroñas (Vuelta)', route_type: 3, route_color: 'F5A623', route_text_color: '000000', route_desc: 'Eje 8 de Octubre' },
-  { route_id: '306a', agency_id: 'UCOT', route_short_name: '306', route_long_name: 'La Unión - Pocitos (Ida)', route_type: 3, route_color: 'F5A623', route_text_color: '000000', route_desc: 'Eje 8 de Octubre' },
-  { route_id: '306b', agency_id: 'UCOT', route_short_name: '306', route_long_name: 'La Unión - Pocitos (Vuelta)', route_type: 3, route_color: 'F5A623', route_text_color: '000000', route_desc: 'Eje 8 de Octubre' },
-  { route_id: '316a', agency_id: 'UCOT', route_short_name: '316', route_long_name: 'Piedras Blancas - Centro (Ida)', route_type: 3, route_color: 'F5A623', route_text_color: '000000', route_desc: '' },
-  { route_id: '328a', agency_id: 'UCOT', route_short_name: '328', route_long_name: 'Manga - Tres Cruces (Ida)', route_type: 3, route_color: 'F5A623', route_text_color: '000000', route_desc: '' },
-  { route_id: '329a', agency_id: 'UCOT', route_short_name: '329', route_long_name: 'Melilla - Centro (Ida)', route_type: 3, route_color: 'F5A623', route_text_color: '000000', route_desc: '' },
-  { route_id: '330a', agency_id: 'UCOT', route_short_name: '330', route_long_name: 'Peñarol - Centro (Ida)', route_type: 3, route_color: 'F5A623', route_text_color: '000000', route_desc: '' },
-  { route_id: 'CE1', agency_id: 'UCOT', route_short_name: 'CE1', route_long_name: 'Diferencial Ciudad Vieja', route_type: 3, route_color: 'E8B800', route_text_color: '000000', route_desc: 'Servicio diferencial' },
-  { route_id: 'XA1', agency_id: 'UCOT', route_short_name: 'XA1', route_long_name: 'Expreso Aeropuerto Ida', route_type: 3, route_color: 'C8860A', route_text_color: '000000', route_desc: 'Servicio aeropuerto' },
-  { route_id: 'XA2', agency_id: 'UCOT', route_short_name: 'XA2', route_long_name: 'Expreso Aeropuerto Vuelta', route_type: 3, route_color: 'C8860A', route_text_color: '000000', route_desc: 'Servicio aeropuerto' },
+  {
+    route_id: '300a',
+    agency_id: 'UCOT',
+    route_short_name: '300',
+    route_long_name: 'Maroñas - Centro - Maroñas (Ida)',
+    route_type: 3,
+    route_color: 'F5A623',
+    route_text_color: '000000',
+    route_desc: 'Eje 8 de Octubre',
+  },
+  {
+    route_id: '300b',
+    agency_id: 'UCOT',
+    route_short_name: '300',
+    route_long_name: 'Maroñas - Centro - Maroñas (Vuelta)',
+    route_type: 3,
+    route_color: 'F5A623',
+    route_text_color: '000000',
+    route_desc: 'Eje 8 de Octubre',
+  },
+  {
+    route_id: '306a',
+    agency_id: 'UCOT',
+    route_short_name: '306',
+    route_long_name: 'La Unión - Pocitos (Ida)',
+    route_type: 3,
+    route_color: 'F5A623',
+    route_text_color: '000000',
+    route_desc: 'Eje 8 de Octubre',
+  },
+  {
+    route_id: '306b',
+    agency_id: 'UCOT',
+    route_short_name: '306',
+    route_long_name: 'La Unión - Pocitos (Vuelta)',
+    route_type: 3,
+    route_color: 'F5A623',
+    route_text_color: '000000',
+    route_desc: 'Eje 8 de Octubre',
+  },
+  {
+    route_id: '316a',
+    agency_id: 'UCOT',
+    route_short_name: '316',
+    route_long_name: 'Piedras Blancas - Centro (Ida)',
+    route_type: 3,
+    route_color: 'F5A623',
+    route_text_color: '000000',
+    route_desc: '',
+  },
+  {
+    route_id: '328a',
+    agency_id: 'UCOT',
+    route_short_name: '328',
+    route_long_name: 'Manga - Tres Cruces (Ida)',
+    route_type: 3,
+    route_color: 'F5A623',
+    route_text_color: '000000',
+    route_desc: '',
+  },
+  {
+    route_id: '329a',
+    agency_id: 'UCOT',
+    route_short_name: '329',
+    route_long_name: 'Melilla - Centro (Ida)',
+    route_type: 3,
+    route_color: 'F5A623',
+    route_text_color: '000000',
+    route_desc: '',
+  },
+  {
+    route_id: '330a',
+    agency_id: 'UCOT',
+    route_short_name: '330',
+    route_long_name: 'Peñarol - Centro (Ida)',
+    route_type: 3,
+    route_color: 'F5A623',
+    route_text_color: '000000',
+    route_desc: '',
+  },
+  {
+    route_id: 'CE1',
+    agency_id: 'UCOT',
+    route_short_name: 'CE1',
+    route_long_name: 'Diferencial Ciudad Vieja',
+    route_type: 3,
+    route_color: 'E8B800',
+    route_text_color: '000000',
+    route_desc: 'Servicio diferencial',
+  },
+  {
+    route_id: 'XA1',
+    agency_id: 'UCOT',
+    route_short_name: 'XA1',
+    route_long_name: 'Expreso Aeropuerto Ida',
+    route_type: 3,
+    route_color: 'C8860A',
+    route_text_color: '000000',
+    route_desc: 'Servicio aeropuerto',
+  },
+  {
+    route_id: 'XA2',
+    agency_id: 'UCOT',
+    route_short_name: 'XA2',
+    route_long_name: 'Expreso Aeropuerto Vuelta',
+    route_type: 3,
+    route_color: 'C8860A',
+    route_text_color: '000000',
+    route_desc: 'Servicio aeropuerto',
+  },
 ];
 
 const CALENDARIOS: GTFSCalendar[] = [
-  { service_id: 'LV', monday: '1', tuesday: '1', wednesday: '1', thursday: '1', friday: '1', saturday: '0', sunday: '0', start_date: '20260101', end_date: '20261231' },
-  { service_id: 'SA', monday: '0', tuesday: '0', wednesday: '0', thursday: '0', friday: '0', saturday: '1', sunday: '0', start_date: '20260101', end_date: '20261231' },
-  { service_id: 'DO', monday: '0', tuesday: '0', wednesday: '0', thursday: '0', friday: '0', saturday: '0', sunday: '1', start_date: '20260101', end_date: '20261231' },
+  {
+    service_id: 'LV',
+    monday: '1',
+    tuesday: '1',
+    wednesday: '1',
+    thursday: '1',
+    friday: '1',
+    saturday: '0',
+    sunday: '0',
+    start_date: '20260101',
+    end_date: '20261231',
+  },
+  {
+    service_id: 'SA',
+    monday: '0',
+    tuesday: '0',
+    wednesday: '0',
+    thursday: '0',
+    friday: '0',
+    saturday: '1',
+    sunday: '0',
+    start_date: '20260101',
+    end_date: '20261231',
+  },
+  {
+    service_id: 'DO',
+    monday: '0',
+    tuesday: '0',
+    wednesday: '0',
+    thursday: '0',
+    friday: '0',
+    saturday: '0',
+    sunday: '1',
+    start_date: '20260101',
+    end_date: '20261231',
+  },
 ];
 
 // ─── Clase Exportador ─────────────────────────────────────────────────────────
 
 class GTFSExporterService {
-
   // ── Generar feed completo ────────────────────────────────────────────────────
 
   async generarFeed(): Promise<{
@@ -127,7 +258,7 @@ class GTFSExporterService {
   }> {
     // Intentar cargar líneas desde Firestore
     let routes: GTFSRoute[] = [];
-    let stops: GTFSStop[] = [];
+    const stops: GTFSStop[] = [];
     const trips: GTFSTrip[] = [];
     const shapes: GTFSShape[] = [];
 
@@ -209,10 +340,12 @@ class GTFSExporterService {
     if (datos.length === 0) return '';
     const headers = Object.keys(datos[0]);
     const filas = datos.map((row) =>
-      headers.map((h) => {
-        const val = String(row[h] ?? '');
-        return val.includes(',') ? `"${val}"` : val;
-      }).join(','),
+      headers
+        .map((h) => {
+          const val = String(row[h] ?? '');
+          return val.includes(',') ? `"${val}"` : val;
+        })
+        .join(','),
     );
     return [headers.join(','), ...filas].join('\n');
   }
@@ -251,11 +384,15 @@ class GTFSExporterService {
 
   async exportarJSON(): Promise<string> {
     const feed = await this.generarFeed();
-    return JSON.stringify({
-      generatedAt: new Date().toISOString(),
-      agency: 'UCOT',
-      ...feed,
-    }, null, 2);
+    return JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        agency: 'UCOT',
+        ...feed,
+      },
+      null,
+      2,
+    );
   }
 }
 

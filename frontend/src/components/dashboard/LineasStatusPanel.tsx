@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { EstadoLinea } from '../../types/dashboard';
+import type { EstadoLinea } from '../../types/dashboard';
 import { AlertTriangle, CheckCircle, AlertCircle, Zap } from 'lucide-react';
 
 interface LineasStatusPanelProps {
@@ -7,11 +7,11 @@ interface LineasStatusPanelProps {
 }
 
 export function LineasStatusPanel({ lineas }: LineasStatusPanelProps) {
-  const [filtro, setFiltro] = useState<'todas' | 'operativa' | 'riesgo' | 'marginal' | 'critica'>('todas');
+  const [filtro, setFiltro] = useState<'todas' | 'operativa' | 'riesgo' | 'marginal' | 'critica'>(
+    'todas',
+  );
 
-  const lineasFiltradas = filtro === 'todas'
-    ? lineas
-    : lineas.filter(l => l.estado === filtro);
+  const lineasFiltradas = filtro === 'todas' ? lineas : lineas.filter((l) => l.estado === filtro);
 
   const getEstadoIcon = (estado: string) => {
     switch (estado) {
@@ -58,10 +58,10 @@ export function LineasStatusPanel({ lineas }: LineasStatusPanelProps) {
 
   const resumen = {
     total: lineas.length,
-    operativas: lineas.filter(l => l.estado === 'operativa').length,
-    riesgo: lineas.filter(l => l.estado === 'riesgo').length,
-    marginales: lineas.filter(l => l.estado === 'marginal').length,
-    criticas: lineas.filter(l => l.estado === 'critica').length
+    operativas: lineas.filter((l) => l.estado === 'operativa').length,
+    riesgo: lineas.filter((l) => l.estado === 'riesgo').length,
+    marginales: lineas.filter((l) => l.estado === 'marginal').length,
+    criticas: lineas.filter((l) => l.estado === 'critica').length,
   };
 
   return (
@@ -94,7 +94,7 @@ export function LineasStatusPanel({ lineas }: LineasStatusPanelProps) {
       <div className="bg-white rounded-lg shadow p-4">
         <p className="text-sm font-semibold text-gray-700 mb-3">Filtrar por estado:</p>
         <div className="flex gap-2 flex-wrap">
-          {(['todas', 'operativa', 'marginal', 'riesgo', 'critica'] as const).map(estado => (
+          {(['todas', 'operativa', 'marginal', 'riesgo', 'critica'] as const).map((estado) => (
             <button
               key={estado}
               onClick={() => setFiltro(estado)}
@@ -138,7 +138,9 @@ export function LineasStatusPanel({ lineas }: LineasStatusPanelProps) {
             <div className="grid grid-cols-4 gap-4 mb-4">
               <div className="bg-white bg-opacity-60 rounded p-3">
                 <p className="text-xs text-gray-600 font-semibold">Ingresos/día</p>
-                <p className="text-lg font-bold text-gray-900">${(linea.ingresos / 1000).toFixed(0)}K</p>
+                <p className="text-lg font-bold text-gray-900">
+                  ${(linea.ingresos / 1000).toFixed(0)}K
+                </p>
               </div>
               <div className="bg-white bg-opacity-60 rounded p-3">
                 <p className="text-xs text-gray-600 font-semibold">Pasajeros/día</p>
@@ -183,8 +185,8 @@ export function LineasStatusPanel({ lineas }: LineasStatusPanelProps) {
                         alerta.severidad === 'critica'
                           ? 'bg-red-100 text-red-800 border border-red-300'
                           : alerta.severidad === 'alta'
-                          ? 'bg-orange-100 text-orange-800 border border-orange-300'
-                          : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                            ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                            : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
                       }`}
                     >
                       <p className="font-semibold">{alerta.tipo.toUpperCase()}</p>

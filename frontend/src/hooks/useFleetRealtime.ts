@@ -32,9 +32,9 @@ export interface VehiculoEnMapa {
 }
 
 export interface UseFleetRealtimeOptions {
-  soloEmpresa?: string;       // Filtrar por empresa, ej: 'UCOT'
-  inactividadMin?: number;    // Descartar vehículos inactivos hace N min (default: 15)
-  habilitado?: boolean;       // Pausar el listener si false
+  soloEmpresa?: string; // Filtrar por empresa, ej: 'UCOT'
+  inactividadMin?: number; // Descartar vehículos inactivos hace N min (default: 15)
+  habilitado?: boolean; // Pausar el listener si false
 }
 
 export interface UseFleetRealtimeResult {
@@ -52,14 +52,8 @@ export interface UseFleetRealtimeResult {
 
 const COL_VIAJES = 'viajes_activos';
 
-export function useFleetRealtime(
-  opciones: UseFleetRealtimeOptions = {},
-): UseFleetRealtimeResult {
-  const {
-    soloEmpresa,
-    inactividadMin = 15,
-    habilitado = true,
-  } = opciones;
+export function useFleetRealtime(opciones: UseFleetRealtimeOptions = {}): UseFleetRealtimeResult {
+  const { soloEmpresa, inactividadMin = 15, habilitado = true } = opciones;
 
   const [vehiculos, setVehiculos] = useState<VehiculoEnMapa[]>([]);
   const [loading, setLoading] = useState(true);

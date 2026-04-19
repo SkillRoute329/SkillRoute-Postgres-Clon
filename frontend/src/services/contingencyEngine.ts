@@ -7,6 +7,7 @@ import { getDocs, query, collection, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { getMasterServicios, getMasterPuntosControl } from '../data/ucotMaster';
 import { validateAssignment } from '../utils/syndicateRules';
+import { FeriadosService } from './feriadosService';
 import type { Vehicle } from './firestore/types';
 import type { User } from './firestore/types';
 
@@ -23,6 +24,8 @@ export interface ServiceInterruptionResult {
     horaInicio?: string;
     shiftId?: string;
   }>;
+  esFeriado: boolean;
+  tipoHorario?: 'DOMINGO' | 'SABADO' | 'ESPECIAL';
   cochesLibres: Vehicle[];
   choferesReten: User[];
   sugerenciaPorPuntoControl: Array<{ puntoControl: string; servicioId: string; linea: string }>;
@@ -46,6 +49,8 @@ export async function handleServiceInterruption(
 
   const serviciosMaster = getMasterServicios();
   const puntosControl = getMasterPuntosControl();
+
+  const feriado = await FeriadosService.isFeriado(date);
 
   const serviciosAfectados: ServiceInterruptionResult['serviciosAfectados'] = [];
 
@@ -108,6 +113,8 @@ export async function handleServiceInterruption(
     cocheId,
     cocheInternalNumber,
     serviciosAfectados,
+    esFeriado: !!feriado,
+    tipoHorario: feriado?.tipoHorario,
     cochesLibres,
     choferesReten,
     sugerenciaPorPuntoControl,

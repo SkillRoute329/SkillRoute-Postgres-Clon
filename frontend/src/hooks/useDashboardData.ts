@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../config/api';
-import { DashboardEjecutivo, DashboardMetricas, EstadoLinea, AlertaLinea, RecomendacionEjecutiva, SaludOperacional, ProyeccionIngresos } from '../types/dashboard';
+import type {
+  DashboardEjecutivo,
+  DashboardMetricas,
+  EstadoLinea,
+  AlertaLinea,
+  RecomendacionEjecutiva,
+  SaludOperacional,
+  ProyeccionIngresos,
+} from '../types/dashboard';
 
 interface UseDashboardDataProps {
   operador: string;
@@ -28,7 +36,7 @@ interface UseDashboardDataReturn {
 export function useDashboardData({
   operador,
   autoRefresh = false,
-  refreshInterval = 300000 // 5 minutos por defecto
+  refreshInterval = 300000, // 5 minutos por defecto
 }: UseDashboardDataProps): UseDashboardDataReturn {
   const [dashboard, setDashboard] = useState<DashboardEjecutivo | null>(null);
   const [metricas, setMetricas] = useState<DashboardMetricas | null>(null);
@@ -48,7 +56,7 @@ export function useDashboardData({
 
       // Obtener dashboard completo
       const response = await api.get<{ data: DashboardEjecutivo }>(
-        `/dashboard/executive/${operador}`
+        `/dashboard/executive/${operador}`,
       );
 
       const data = response.data;
@@ -90,7 +98,7 @@ export function useDashboardData({
     resumen_ejecutivo,
     loading,
     error,
-    refetch: fetchDashboard
+    refetch: fetchDashboard,
   };
 }
 
@@ -108,7 +116,7 @@ export function useMetricas(operador: string) {
       try {
         setLoading(true);
         const response = await api.get<{
-          data: { metricas: DashboardMetricas; salud_operacional: SaludOperacional }
+          data: { metricas: DashboardMetricas; salud_operacional: SaludOperacional };
         }>(`/dashboard/metricas/${operador}`);
 
         setMetricas(response.data.metricas);
@@ -136,7 +144,7 @@ export function useLineasEstado(operador: string) {
     operativas: 0,
     en_riesgo: 0,
     marginales: 0,
-    criticas: 0
+    criticas: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -153,7 +161,7 @@ export function useLineasEstado(operador: string) {
           operativas: response.data.operativas,
           en_riesgo: response.data.en_riesgo,
           marginales: response.data.marginales,
-          criticas: response.data.criticas
+          criticas: response.data.criticas,
         });
       } catch (err: any) {
         setError(err.message || 'Error obteniendo líneas');
@@ -213,9 +221,7 @@ export function useRecomendaciones(operador: string) {
     const fetchRecomendaciones = async () => {
       try {
         setLoading(true);
-        const response = await api.get<{ data: any }>(
-          `/dashboard/recomendaciones/${operador}`
-        );
+        const response = await api.get<{ data: any }>(`/dashboard/recomendaciones/${operador}`);
 
         setRecomendaciones(response.data.recomendaciones);
         setImpactoTotal(response.data.impacto_total);
@@ -244,9 +250,7 @@ export function useSaludOperacional(operador: string) {
     const fetchSalud = async () => {
       try {
         setLoading(true);
-        const response = await api.get<{ data: SaludOperacional }>(
-          `/dashboard/salud/${operador}`
-        );
+        const response = await api.get<{ data: SaludOperacional }>(`/dashboard/salud/${operador}`);
 
         setSalud(response.data);
       } catch (err: any) {
@@ -276,9 +280,7 @@ export function useProyecciones(operador: string) {
     const fetchProyecciones = async () => {
       try {
         setLoading(true);
-        const response = await api.get<{ data: any }>(
-          `/dashboard/proyecciones/${operador}`
-        );
+        const response = await api.get<{ data: any }>(`/dashboard/proyecciones/${operador}`);
 
         setProyecciones(response.data.proyecciones);
         setIngresoPromedio(response.data.ingresos_promedio);

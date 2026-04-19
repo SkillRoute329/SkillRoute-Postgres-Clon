@@ -1,0 +1,16 @@
+
+<!-- Generador de archivos descargables -->
+
+Por favor aguarde mientras se procesan los datos...<b>Listo</b><br><body onload='cargar()'>Descargando...<form name=formito action = '/sit/tmp/v_uptu_lsv.zip'></form>
+<script language = "javascript">
+	function cerrar()
+	{
+		window.close();
+	}
+	function cargar()
+	{
+		document.formito.submit();
+	//	setTimeout("cerrar();",10000);
+	}
+</script>	
+</body>

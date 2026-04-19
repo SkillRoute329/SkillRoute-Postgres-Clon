@@ -3,15 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useFirestoreCollection } from '../../hooks/useFirestoreCollection';
 import { IncidentService } from '../../services/IncidentService';
 import type { IncidentType } from '../../services/IncidentService';
-import {
-  Zap,
-  Wrench,
-  Siren,
-  Timer,
-  ShieldAlert,
-  ChevronDown,
-  ChevronUp,
-} from 'lucide-react';
+import { Zap, Wrench, Siren, Timer, ShieldAlert, ChevronDown, ChevronUp } from 'lucide-react';
 import { showSuccess, showError, showLoading, dismiss } from '../../context/FeedbackProvider';
 import clsx from 'clsx';
 

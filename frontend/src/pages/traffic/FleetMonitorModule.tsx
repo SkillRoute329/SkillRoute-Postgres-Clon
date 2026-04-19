@@ -98,13 +98,15 @@ export default function FleetMonitorModule() {
   useEffect(() => {
     const fetchCompetitors = async () => {
       const lines = ['103', '128', '110', '169', '185', '505', '522']; // Common rivals
+      
+      // Intentar Cloud Function proxy primero
       try {
         const PROXY_BASE =
           'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/montevideoProxy';
         const endpoint = `api/transportepublico/buses?lines=${lines.join(',')}`;
         const url = `${PROXY_BASE}?endpoint=${encodeURIComponent(endpoint)}`;
-        const res = await fetch(url);
-        if (!res.ok) return;
+        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        if (!res.ok) throw new Error(`Proxy ${res.status}`);
         const data = await res.json();
 
         const list: VehiculoEnMapa[] = data.map(
@@ -124,8 +126,27 @@ export default function FleetMonitorModule() {
           }),
         );
         setCompetidores(list);
+        return; // éxito — no necesitamos fallback
       } catch (e) {
-        console.error('Competitor Fetch Error', e);
+        console.warn('[FleetMonitor] Cloud proxy failed, trying STM relay:', e);
+      }
+      
+      // Fallback: STM API directa via Vite proxy
+      try {
+        const { fetchSTMPosiciones } = await import('../../services/stmLiveService');
+        const buses = await fetchSTMPosiciones({ empresa: -1 });
+        const rivals = buses.filter(b => b.codigoEmpresa !== 70); // Excluir UCOT (código 70)
+        const list: VehiculoEnMapa[] = rivals.map(b => ({
+          id: `stm-${b.id}`,
+          empresa: b.empresa || 'Competencia',
+          codigoLinea: b.linea,
+          lat: b.lat,
+          lng: b.lng,
+          updatedAtMs: Date.now(),
+        }));
+        setCompetidores(list);
+      } catch (e2) {
+        console.error('[FleetMonitor] Both competitor sources failed:', e2);
       }
     };
 

@@ -82,10 +82,6 @@ export default function ComplianceHub() {
     new Date().toISOString().slice(0, 7),
   );
 
-  useEffect(() => {
-    void cargarEstadoReportes();
-  }, [mesSeleccionado]);
-
   async function cargarEstadoReportes() {
     // Cargar último envío de cada reporte desde Firestore
     let ultimoEnvioFlota = '';
@@ -187,6 +183,10 @@ export default function ComplianceHub() {
       },
     ]);
   }
+
+  useEffect(() => {
+    void cargarEstadoReportes();
+  }, [mesSeleccionado]);
 
   async function handleGenerar(reporte: ReporteRequerido) {
     setGenerando(reporte.id);

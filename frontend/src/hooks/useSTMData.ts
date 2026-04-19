@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../config/api';
-import {
+import type {
   LineaSTM,
   HorarioSTM,
   CambioHorarioDetectado,
   DatosEnVivoBus,
-  CalidadDatos
+  CalidadDatos,
 } from '../types/stm';
 
 interface UseSTMDataReturn {
@@ -143,7 +143,11 @@ export function useCambiosHorarios(numeroLinea: number): UseCambiosReturn {
 /**
  * Hook para obtener datos en vivo de un bus
  */
-export function useBusEnVivo(busId: string, autoRefresh = true, intervalo = 5000): UseBusEnVivoReturn {
+export function useBusEnVivo(
+  busId: string,
+  autoRefresh = true,
+  intervalo = 5000,
+): UseBusEnVivoReturn {
   const [datos, setDatos] = useState<DatosEnVivoBus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

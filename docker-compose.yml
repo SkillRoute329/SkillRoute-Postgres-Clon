@@ -1,16 +1,79 @@
-version: '3.8'
-services:
-  db:
-    image: postgres:15
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: transformafacil_db
-    ports:
-      - '5555:5432'
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+# ═══════════════════════════════════════════════════════════════════════════
+# DOCKER COMPOSE - TransformaFacil 2.0
+# ═══════════════════════════════════════════════════════════════════════════
+# Uso:
+# docker-compose up -d       # Iniciar todos los servicios en background
+# docker-compose down        # Detener todos los servicios
+# docker-compose logs -f     # Ver logs en tiempo real
 
-volumes:
-  postgres_data:
+version: '3.8'
+
+services:
+  # ───────────────────────────────────────────────────────────────────────
+  # Backend API (Express.js)
+  # ───────────────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: transformafacil-backend
+    ports:
+      - "3002:3002"
+    environment:
+      NODE_ENV: development
+      PORT: 3002
+    volumes:
+      - ./backend/src:/app/src
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - transformafacil-network
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Bridge Server (Port 3099)
+  # ───────────────────────────────────────────────────────────────────────
+  bridge:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: transformafacil-bridge
+    ports:
+      - "3099:3099"
+    environment:
+      NODE_ENV: development
+      BRIDGE_PORT: 3099
+      BACKEND_URL: http://backend:3002
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - transformafacil-network
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Frontend (Vite)
+  # ───────────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: transformafacil-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:3099
+    volumes:
+      - ./frontend/src:/app/src
+    depends_on:
+      - bridge
+    restart: unless-stopped
+    networks:
+      - transformafacil-network
+
+networks:
+  transformafacil-network:
+    driver: bridge

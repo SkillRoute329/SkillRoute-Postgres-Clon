@@ -1,0 +1,75 @@
+﻿­ƒôí Descargando TODOS los recorridos de l├¡neas UCOT...
+   Fuente: https://montevideo.gub.uy/app/geoserver/wfs
+   Capa: mapstore-tematicas:vyt_v_uptu_lsv
+   Conversi├│n: EPSG:31981 (UTM 21S) ÔåÆ EPSG:4326 (WGS84)
+   L├¡neas: 17, 71, 79, 300, 306, 316, 328, 329, 330, 370, 396, 11A, 221, 8SR
+
+ÔÅ│ Descargando desde WFS (puede tardar ~30s)...
+Ô£à Descargados 722 features totales
+   CRS origen: urn:ogc:def:crs:EPSG::32721
+
+­ƒöì L├¡neas UCOT encontradas: 50 variantes
+
+  Ô£ô L├¡nea 316 variante 1763 (A): C.MALD. KM. 16 - POCITOS ÔÇö 343 puntos GPS
+  Ô£ô L├¡nea 316 variante 1762 (B): C.MALD. KM. 16 - POCITOS ÔÇö 587 puntos GPS
+  Ô£ô L├¡nea 300 variante 3732 (B): TEATRO DE VERANO - INSTRUCCIONES ÔÇö 387 puntos GPS
+  Ô£ô L├¡nea 17 variante 3784 (B): PUNTA CARRETAS -- CASABO ÔÇö 487 puntos GPS
+  Ô£ô L├¡nea 17 variante 3783 (A): PUNTA CARRETAS -- CASABO ÔÇö 462 puntos GPS
+  Ô£ô L├¡nea 17 variante 3786 (B): PUNTA CARRETAS--CASABO (TC) ÔÇö 343 puntos GPS
+  Ô£ô L├¡nea 306 variante 3791 (A): CASABO--PUENTE CARRASCO ÔÇö 731 puntos GPS
+  Ô£ô L├¡nea 306 variante 3792 (B): CASABO--PUENTE CARRASCO ÔÇö 627 puntos GPS
+  Ô£ô L├¡nea 306 variante 3797 (B): PARQUE ROOSEVELT-- CASAB├ô POR (TC) ÔÇö 865 puntos GPS
+  Ô£ô L├¡nea 306 variante 3799 (B): CASAB├ô--PUENTE CARRASCO POR (TC) ÔÇö 984 puntos GPS
+  Ô£ô L├¡nea 306 variante 3801 (B): CASAB├ô--PARQUE ROOSEVELT (POR PLANTA) ÔÇö 948 puntos GPS
+  Ô£ô L├¡nea 306 variante 3800 (A): CASAB├ô--PARQUE ROOSEVELT (POR PLANTA) ÔÇö 1007 puntos GPS
+  Ô£ô L├¡nea 306 variante 3803 (B): PARQUE ROOSEVELT--CASAB├ô ÔÇö 744 puntos GPS
+  Ô£ô L├¡nea 306 variante 3802 (A): PARQUE ROOSEVELT--CASAB├ô ÔÇö 840 puntos GPS
+  Ô£ô L├¡nea 17 variante 3839 (B): TEATRO DE VERANO -- CASAB├ô (TC) ÔÇö 332 puntos GPS
+  Ô£ô L├¡nea 79 variante 8120 (A): INTER. BELLONI - CIUDADELA CIRCUITO ÔÇö 262 puntos GPS
+  Ô£ô L├¡nea 79 variante 8121 (B): INTER. BELLONI - CIUDADELA CIRCUITO ÔÇö 214 puntos GPS
+  Ô£ô L├¡nea 316 variante 8195 (A): FACULTAD DE VETERINARIA - POCITOS ÔÇö 394 puntos GPS
+  Ô£ô L├¡nea 316 variante 8196 (B): FACULTAD DE VETERINARIA - POCITOS ÔÇö 434 puntos GPS
+  Ô£ô L├¡nea 300 variante 8398 (A): INSTRUCCIONES - PLAZA ZITARROSA ÔÇö 350 puntos GPS
+  Ô£ô L├¡nea 300 variante 8385 (B): INSTRUCCIONES - PLAZA ZITARROSA ÔÇö 365 puntos GPS
+  Ô£ô L├¡nea 300 variante 8399 (A): PLAZA ZITARROSA - INSTRUCCIONES (PLANTA) ÔÇö 358 puntos GPS
+  Ô£ô L├¡nea 300 variante 8386 (B): PLAZA ZITARROSA - INSTRUCCIONES (PLANTA) ÔÇö 369 puntos GPS
+  Ô£ô L├¡nea 71 variante 8397 (A): MENDOZA - - POCITOS ÔÇö 301 puntos GPS
+  Ô£ô L├¡nea 71 variante 8387 (B): MENDOZA - - POCITOS ÔÇö 294 puntos GPS
+  Ô£ô L├¡nea 328 variante 8549 (A): MENDOZA - PUNTA CARRETAS (PLAN ABC) ÔÇö 496 puntos GPS
+  Ô£ô L├¡nea 328 variante 8550 (B): MENDOZA - PUNTA CARRETAS (PLAN ABC) ÔÇö 411 puntos GPS
+  Ô£ô L├¡nea 370 variante 4411 (B): PORTONES -- PLAYA DEL CERRO DIQUE (LICEO 11) ÔÇö 455 puntos GPS
+  Ô£ô L├¡nea 370 variante 4876 (A): PORTONES -- PLAYA DEL CERRO DIQUE (LICEO 11) ÔÇö 508 puntos GPS
+  Ô£ô L├¡nea 330 variante 4480 (A): INSTRUCCIONES -- CIUDADELA (CIRC.) ÔÇö 308 puntos GPS
+  Ô£ô L├¡nea 330 variante 4481 (B): INSTRUCCIONES -- CIUDADELA (CIRC.) ÔÇö 390 puntos GPS
+  Ô£ô L├¡nea 330 variante 4671 (A): INSTRUCCIONES --- CIUDADELA ÔÇö 314 puntos GPS
+  Ô£ô L├¡nea 330 variante 4672 (B): INSTRUCCIONES --- CIUDADELA ÔÇö 382 puntos GPS
+  Ô£ô L├¡nea 396 variante 4702 (B): INSTRUCCIONES -- CIUDADELA (PLAN ABC) ÔÇö 269 puntos GPS
+  Ô£ô L├¡nea 396 variante 4701 (A): INSTRUCCIONES -- CIUDADELA (PLAN ABC) ÔÇö 444 puntos GPS
+  Ô£ô L├¡nea 370 variante 4852 (A): PORTONES ---PLAYA DEL CERRO/DIQUE ÔÇö 493 puntos GPS
+  Ô£ô L├¡nea 370 variante 4853 (B): PORTONES ---PLAYA DEL CERRO/DIQUE ÔÇö 371 puntos GPS
+  Ô£ô L├¡nea 329 variante 4942 (A): PUNTA CARRETAS --- TERMINAL COL├ôN ÔÇö 711 puntos GPS
+  Ô£ô L├¡nea 329 variante 4941 (B): PUNTA CARRETAS --- TERMINAL COL├ôN ÔÇö 707 puntos GPS
+  Ô£ô L├¡nea 329 variante 4944 (B): PUNTA CARRETAS --- FAUQUET POR SAINT BOIS ÔÇö 924 puntos GPS
+  Ô£ô L├¡nea 329 variante 4943 (A): PUNTA CARRETAS --- FAUQUET POR SAINT BOIS ÔÇö 915 puntos GPS
+  Ô£ô L├¡nea 329 variante 4946 (B): PUNTA CARRETAS --- MELILLA ÔÇö 696 puntos GPS
+  Ô£ô L├¡nea 329 variante 4945 (A): PUNTA CARRETAS --- MELILLA ÔÇö 875 puntos GPS
+  Ô£ô L├¡nea 329 variante 4948 (B): PTA CARRETAS --- FAUQUET(PQUE AMBIENTALISTA) ÔÇö 805 puntos GPS
+  Ô£ô L├¡nea 329 variante 4947 (A): PTA CARRETAS --- FAUQUET(PQUE AMBIENTALISTA) ÔÇö 898 puntos GPS
+  Ô£ô L├¡nea 329 variante 4950 (B): PTA CARRETAS --- S BOIS (PQUE) ÔÇö 627 puntos GPS
+  Ô£ô L├¡nea 329 variante 4949 (A): PTA CARRETAS --- S BOIS (PQUE) ÔÇö 826 puntos GPS
+  Ô£ô L├¡nea 329 variante 4952 (B): PUNTA CARRETAS --- MELILLA (PQUE AMBIENTALISTA) ÔÇö 657 puntos GPS
+  Ô£ô L├¡nea 329 variante 4951 (A): PUNTA CARRETAS --- MELILLA (PQUE AMBIENTALISTA) ÔÇö 855 puntos GPS
+  Ô£ô L├¡nea 328 variante 9111 (B): MENDOZA - PUNTA CARRETAS (POR HOSPITAL ITALIANO) ÔÇö 524 puntos GPS
+
+ÔÜá L├¡neas NO encontradas en GeoServer: 11A, 221, 8SR
+  (Estas l├¡neas pueden no estar registradas con ese c├│digo en el sistema STM)
+
+­ƒôØ Generando archivo TypeScript...
+
+Ô£à Archivo generado: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\frontend\src\data\routesGeoData.ts
+   Tama├▒o: 1264.9 KB
+   L├¡neas UCOT con datos: 11
+   Total variantes: 50
+   Total puntos GPS: 27889
+
+­ƒÄë ┬íDescarga completa!

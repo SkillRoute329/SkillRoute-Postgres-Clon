@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { TrafficService, type TrafficAlert } from '../../services/trafficService';
+import { TrafficService } from '../../services/trafficService';
 
 import { Navigation, AlertTriangle, CloudRain, Shield, AlertOctagon, Locate } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -10,13 +10,14 @@ import { collection, onSnapshot, query, where, Timestamp, limit } from 'firebase
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import { getAllLines, getVariants, type GeoLine } from '../../data/geo/lines';
+import { updateDoc, doc } from 'firebase/firestore';
 
 // Helper to center map on User
 const RecenterMap = ({ lat, lng }: { lat: number; lng: number }) => {
   const map = useMap();
   useEffect(() => {
     map.flyTo([lat, lng], 15, { animate: true });
-  }, [lat, lng]);
+  }, [lat, lng, map]);
   return null;
 };
 
@@ -41,14 +42,21 @@ const BusNavigation = () => {
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [heading, setHeading] = useState(0);
   const [speed, setSpeed] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [alerts, setAlerts] = useState<any[]>([]);
+
+  // Shadow Agent FCM Alerta
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [tacticalAlert, setTacticalAlert] = useState<any | null>(null);
 
   // --- WAKE LOCK (DRIVER SAFETY) ---
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let wakeLock: any = null;
     const requestWakeLock = async () => {
       if ('wakeLock' in navigator) {
         try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           wakeLock = await (navigator as any).wakeLock.request('screen');
         } catch (err) {
           console.warn(err);
@@ -93,7 +101,7 @@ const BusNavigation = () => {
 
     const interval = setInterval(() => {
       TrafficService.broadcastPosition(
-        user.uid,
+        user.uid || 'anon',
         selectedLineCode,
         position.lat,
         position.lng,
@@ -115,6 +123,56 @@ const BusNavigation = () => {
     return () => unsub();
   }, []);
 
+  // --- TACTICAL SHADOW ALERTS LISTENER ---
+  useEffect(() => {
+    if (!user?.assignedVehicleId) return;
+
+    const q = query(
+      collection(db, 'alertas_regulacion'),
+      where('coche_id', '==', user.assignedVehicleId),
+      where('leido', '==', false),
+      limit(1),
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      if (!snap.empty) {
+        const data = snap.docs[0].data();
+        const alertId = snap.docs[0].id;
+
+        // Play very loud alarm
+        try {
+          const audio = new Audio('/alarm.mp3'); // We'll assume the file exists or browser fails silently
+          audio.volume = 1.0;
+          audio.play().catch((e) => console.warn('Audio play restricted by browser:', e));
+        } catch (e) {
+          console.warn('Audio falló', e);
+        }
+
+        setTacticalAlert({ id: alertId, ...data });
+
+        // Vibrate if supported
+        if ('vibrate' in navigator) {
+          navigator.vibrate([500, 200, 500, 200, 1000]);
+        }
+      } else {
+        setTacticalAlert(null);
+      }
+    });
+    return () => unsub();
+  }, [user]);
+
+  const markTacticalAlertRead = async () => {
+    if (!tacticalAlert) return;
+    try {
+      await updateDoc(doc(db, 'alertas_regulacion', tacticalAlert.id), {
+        leido: true,
+      });
+      setTacticalAlert(null);
+    } catch {
+      toast.error('Error confirming order');
+    }
+  };
+
   const handleReport = async (type: string, desc: string) => {
     setShowReportMenu(false);
     if (!position) {
@@ -122,6 +180,7 @@ const BusNavigation = () => {
       return;
     }
     await TrafficService.reportAlert({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       type: type as any,
       lat: position.lat,
       lng: position.lng,
@@ -141,6 +200,36 @@ const BusNavigation = () => {
 
   return (
     <div className="h-[calc(100vh-64px)] w-full relative bg-slate-900 overflow-hidden flex flex-col">
+      {/* TACTICAL FULLSCREEN ALERT (AGENTE SOMBRA) */}
+      {tacticalAlert && (
+        <div className="fixed inset-0 z-[99999] bg-red-600 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagonal-striped-brick.png')] opacity-20 pointer-events-none mix-blend-multiply"></div>
+
+          <div className="relative z-10 flex flex-col items-center text-center max-w-2xl">
+            <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center mb-8 shadow-[0_0_100px_rgba(255,255,255,0.5)] animate-pulse">
+              <AlertTriangle className="w-20 h-20 text-red-600" />
+            </div>
+
+            <h1 className="text-5xl md:text-7xl font-black text-white uppercase tracking-tighter mb-4 drop-shadow-2xl leading-none">
+              ¡ATENCIÓN!
+            </h1>
+            <h2 className="text-3xl font-bold text-red-200 mb-8 uppercase tracking-widest bg-black/40 px-6 py-2 rounded-2xl backdrop-blur-sm border border-red-400">
+              {tacticalAlert.tipo.replace(/_/g, ' ')}
+            </h2>
+
+            <p className="text-4xl md:text-5xl font-black text-white mb-12 leading-tight drop-shadow-lg">
+              "{tacticalAlert.mensaje_chofer}"
+            </p>
+
+            <button
+              onClick={markTacticalAlertRead}
+              className="w-full sm:w-auto bg-black text-white hover:bg-slate-900 active:scale-95 transition-transform px-12 py-8 rounded-[2rem] font-black text-3xl uppercase tracking-widest border-4 border-slate-700 shadow-2xl"
+            >
+              Copiado / Enterado
+            </button>
+          </div>
+        </div>
+      )}
       {/* HEADS UP DISPLAY (HUD) */}
       <div className="absolute top-0 left-0 right-0 z-[1000] p-4 pointer-events-none">
         <div className="flex justify-between items-start">
@@ -353,14 +442,14 @@ const BusNavigation = () => {
 
           {/* Smoothed Route Geometry */}
           <Polyline
-            positions={currentGeo.path as any}
+            positions={currentGeo.path as [number, number][]}
             color="#000000"
             weight={12}
             opacity={0.6}
             lineCap="round"
           />
           <Polyline
-            positions={currentGeo.path as any}
+            positions={currentGeo.path as [number, number][]}
             color={currentGeo.color}
             weight={6}
             opacity={1}
@@ -368,6 +457,7 @@ const BusNavigation = () => {
           />
 
           {/* Stops (Visible at High Zoom) */}
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {currentGeo.stops.map((stop: any) => (
             <CircleMarker
               key={stop.id}
@@ -384,6 +474,7 @@ const BusNavigation = () => {
           ))}
 
           {/* Alerts on Map */}
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {alerts.map((alert: any) => (
             <CircleMarker
               key={alert.id}
@@ -436,6 +527,8 @@ const BusNavigation = () => {
 
         <button
           onClick={() => setShowReportMenu(!showReportMenu)}
+          title="Menú de Reportes"
+          aria-label="Menú de Reportes"
           className="w-16 h-16 rounded-full bg-orange-600 text-white flex items-center justify-center shadow-xl border-4 border-orange-400 active:scale-95 transition-transform animate-in zoom-in"
         >
           <AlertTriangle className="w-8 h-8 fill-current" />

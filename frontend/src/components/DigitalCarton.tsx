@@ -355,6 +355,9 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
                   value={data.line}
                   onChange={(e) => handleChange('line', e.target.value)}
                   className="text-3xl md:text-4xl font-black text-blue-900 w-full text-center border-b border-blue-300 focus:outline-none bg-blue-50"
+                  title="Número de línea"
+                  aria-label="Número de línea"
+                  placeholder="Línea"
                 />
               ) : (
                 <p className="text-3xl md:text-4xl font-black text-blue-900">{data.line}</p>
@@ -371,6 +374,9 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
                     value={data.title}
                     onChange={(e) => handleChange('title', e.target.value)}
                     className="w-full bg-transparent text-center focus:outline-none border-b border-black/20 placeholder-black/30 font-black text-lg md:text-xl"
+                    title="Título del cartón"
+                    aria-label="Título del cartón"
+                    placeholder="Título del cartón"
                   />
                 ) : (
                   data.title
@@ -387,6 +393,9 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
                   value={data.serviceNumber}
                   onChange={(e) => handleChange('serviceNumber', e.target.value)}
                   className="text-3xl md:text-4xl font-black text-black w-full text-center border-b border-blue-300 focus:outline-none bg-blue-50"
+                  title="Número de servicio"
+                  aria-label="Número de servicio"
+                  placeholder="N° Serv."
                 />
               ) : (
                 <p className="text-3xl md:text-4xl font-black">{data.serviceNumber}</p>
@@ -424,6 +433,9 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
                             value={point.location}
                             onChange={(e) => updateHeader(idx, e.target.value)}
                             className="bg-transparent focus:outline-none focus:bg-blue-50 w-full h-full text-left"
+                            title={`Nombre de parada ${idx + 1}`}
+                            aria-label={`Nombre de parada ${idx + 1}`}
+                            placeholder="Parada"
                           />
                         ) : (
                           <span className="w-full">{point.location}</span>
@@ -464,6 +476,8 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
                             onChange={(e) => updateTime(rowIdx, point.id, e.target.value)}
                             className="w-full h-full text-center font-bold focus:outline-none bg-transparent text-[9px] md:text-[11px] min-w-[30px] md:min-w-[40px]"
                             placeholder="----"
+                            title={`Horario ${point.location}`}
+                            aria-label={`Horario fila ${rowIdx + 1} en ${point.location}`}
                           />
                         ) : (
                           <span
@@ -524,7 +538,7 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
               }}
               className="flex items-center gap-2 text-[10px] md:text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1 rounded border border-blue-200 transition-colors"
             >
-              <Plus className="w-3 h-3 md:w-4 h-4" /> Agregar Horario (Fila)
+              <Plus className="w-3 h-3 md:w-4 md:h-4" /> Agregar Horario (Fila)
             </button>
           </div>
         )}
@@ -540,12 +554,16 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
                   onChange={(e) => handleChange('startTime', e.target.value)}
                   className="w-14 md:w-16 text-center font-bold text-red-600 bg-transparent focus:outline-none text-lg md:text-xl"
                   placeholder="00:00"
+                  title="Hora saca coche"
+                  aria-label="Hora saca coche"
                 />
                 <input
                   value={data.startLocationDescription}
                   onChange={(e) => handleChange('startLocationDescription', e.target.value)}
                   className="flex-1 font-bold bg-transparent focus:outline-none uppercase"
                   placeholder="Descripción Saca Coche"
+                  title="Descripción ubicación de salida"
+                  aria-label="Descripción ubicación de salida"
                 />
                 <span className="pl-2 md:pl-4 border-l border-blue-200 uppercase">GUARDA:</span>
                 <input
@@ -553,6 +571,8 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
                   onChange={(e) => handleChange('endTime', e.target.value)}
                   className="w-14 md:w-16 text-center font-bold text-red-600 bg-transparent focus:outline-none text-lg md:text-xl ml-1"
                   placeholder="00:00"
+                  title="Hora guarda coche"
+                  aria-label="Hora guarda coche"
                 />
               </div>
             ) : (
@@ -599,6 +619,8 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
                     {isEditing ? (
                       <input
                         placeholder={shift.defaultDesc}
+                        title={`Descripción turno ${shift.index}`}
+                        aria-label={`Descripción turno ${shift.index}`}
                         className="w-full bg-transparent border-b border-dashed border-slate-300 focus:outline-none focus:border-blue-500 placeholder-slate-400 text-[9px] md:text-[10px]"
                         value={data.shiftDescriptions?.[i] || ''}
                         onChange={(e) => {
@@ -635,6 +657,8 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
                     value={data.totalHours}
                     onChange={(e) => handleChange('totalHours', e.target.value)}
                     className="w-12 md:w-14 bg-white border px-1"
+                    title="Horas totales"
+                    aria-label="Horas totales"
                   />
                 ) : (
                   <span>{data.totalHours}</span>
@@ -647,6 +671,8 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
                     value={data.waitingTime}
                     onChange={(e) => handleChange('waitingTime', e.target.value)}
                     className="w-12 md:w-14 bg-white border px-1"
+                    title="Tiempo de espera"
+                    aria-label="Tiempo de espera"
                   />
                 ) : (
                   <span>{data.waitingTime}</span>
@@ -659,6 +685,8 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
                     value={data.liquidHours}
                     onChange={(e) => handleChange('liquidHours', e.target.value)}
                     className="w-12 md:w-14 bg-white border px-1"
+                    title="Horas líquidas"
+                    aria-label="Horas líquidas"
                   />
                 ) : (
                   <span>{data.liquidHours}</span>
@@ -671,6 +699,8 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
                     value={data.kilometers}
                     onChange={(e) => handleChange('kilometers', e.target.value)}
                     className="w-16 md:w-24 bg-white border px-1"
+                    title="Kilómetros"
+                    aria-label="Kilómetros"
                   />
                 ) : (
                   <span>{data.kilometers}</span>

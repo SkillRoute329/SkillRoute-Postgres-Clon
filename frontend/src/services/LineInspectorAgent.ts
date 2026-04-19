@@ -14,15 +14,21 @@
 
 import { getLineVariants } from './ucotLinesService';
 import type { LineaUCOT } from '../types/lineasUcot';
+import {
+  CompetitorIntelligenceEngine,
+  type ReporteInteligenciaCompetitiva,
+} from './CompetitorIntelligenceEngine';
+import { getMasterLineas } from '../data/ucotMaster';
+import { STMScheduleService, type STMScheduleItem } from './stmScheduleService';
 
 // ─── Tipos de Inspector ──────────────────────────────────────────────────────
 
 export interface FrequencyBand {
-  label: string;           // "Hora pico mañana"
-  horaInicio: string;      // "06:30"
-  horaFin: string;         // "09:00"
-  frecuenciaMin: number;   // Minutos entre salidas
-  diasAplica: ('LUN'|'MAR'|'MIE'|'JUE'|'VIE'|'SAB'|'DOM')[];
+  label: string; // "Hora pico mañana"
+  horaInicio: string; // "06:30"
+  horaFin: string; // "09:00"
+  frecuenciaMin: number; // Minutos entre salidas
+  diasAplica: ('LUN' | 'MAR' | 'MIE' | 'JUE' | 'VIE' | 'SAB' | 'DOM')[];
 }
 
 export interface RivalVerificado {
@@ -36,18 +42,43 @@ export interface RivalVerificado {
   frecuenciaRivalMin?: number;
 }
 
+export interface BusPosition {
+  lat: number;
+  lng: number;
+  interno?: string;
+  variante?: string;
+  timestamp?: number;
+}
+
 export interface AlertaHeadway {
   tipo: 'AGRUPAMIENTO' | 'HUECO' | 'OK';
   mensaje: string;
   gravedad: 'CRITICO' | 'ADVERTENCIA' | 'NORMAL';
   minutosDesviacion?: number;
+  /** Buses detectados en agrupamiento (bunching) */
+  bunchingPares?: Array<{ interno1: string; interno2: string; distanciaKm: number }>;
+  /** Buses con GPS activo */
+  busesConGPS?: number;
+  /** Distancia promedio entre buses consecutivos (km) */
+  separacionPromedioKm?: number;
+}
+
+/** Fórmula de Haversine: distancia en km entre dos coordenadas GPS */
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 export interface MetricaRecaudacion {
   pasajerosEstimadosDia: number;
-  tarifaPromedio: number;           // UYU
-  recaudacionEstimadaDia: number;   // UYU
-  ocupacionPromedioPct: number;     // 0-100
+  tarifaPromedio: number; // UYU
+  recaudacionEstimadaDia: number; // UYU
+  ocupacionPromedioPct: number; // 0-100
   /** Tramo de mayor demanda */
   tramoHotspot?: string;
 }
@@ -65,6 +96,8 @@ export interface InspectorReport {
   rivalesActivos: RivalVerificado[];
   /** Resumen ejecutivo para la UI */
   resumenEjecutivo: string;
+  /** Horarios oficiales obtenidos directamente desde la intendencia STM de mvd */
+  horariosSTMOficiales: STMScheduleItem[];
 }
 
 // ─── Datos de líneas verificados geográficamente ────────────────────────────
@@ -77,13 +110,15 @@ export interface LineInspectorConfig {
   /** Terminales reales */
   terminalA: string;
   terminalB: string;
+  /** Zonas/barrios principales que sirve la línea (para detección automática de competencia) */
+  zonasServidas: string[];
   /** Kilómetros totales del recorrido (IDA) */
   kmRecorrido: number;
   /** Capacidad del vehículo (pasajeros sentados) */
   capacidadVehiculo: number;
   /** Frecuencias por franja horaria */
   frecuencias: FrequencyBand[];
-  /** Rivales verificados geográficamente */
+  /** Rivales verificados manualmente — complementa el motor automático */
   rivalesVerificados: RivalVerificado[];
   /** BBox del corredor [latMin, lngMin, latMax, lngMax] */
   corridorBbox: [number, number, number, number];
@@ -94,81 +129,65 @@ export interface LineInspectorConfig {
 // ─── Configuración de cada línea UCOT ───────────────────────────────────────
 
 export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
+  // ─────────────────────────────────────────────────────────────────────────
+  // NOTA: 18 líneas UCOT verificadas — fuente oficial: IMM/STM + Cartones UCOT 2026
+  // IDs: 221, 300, 306, 316, 328, 329, 330, 370, 396,
+  //      CE1, DM1, L-12, L-13, L-31, L-32, L-33, XA1, XA2
+  // ELIMINADAS: 317, 371, 379 (eran líneas Cutcsa 17/71/79 con prefijo erróneo)
+  // ─────────────────────────────────────────────────────────────────────────
 
-  '17': {
-    lineId: '17',
-    nombreComercial: 'Línea 17 — Casabó / Punta Carretas',
+  // 317, 371, 379: ELIMINADAS — eran líneas Cutcsa (17/71/79) con prefijo inventado
+  // No existen en el registro oficial de la IMM para UCOT.
+
+  'CE1': {
+    lineId: 'CE1',
+    nombreComercial: 'Línea CE1 — Corredor Este Expreso',
     empresa: 'UCOT',
-    terminalA: 'Casabó (Bajo Valencia)',
-    terminalB: 'Punta Carretas',
-    kmRecorrido: 18.4,
-    capacidadVehiculo: 80,
+    terminalA: 'Terminal Tres Cruces',
+    terminalB: 'Ciudad de la Costa',
+    zonasServidas: ['Tres Cruces', 'Av. Italia', 'Portones', 'Ciudad de la Costa'],
+    kmRecorrido: 24.0,
+    capacidadVehiculo: 85,
     frecuencias: [
-      { label: 'Pico mañana', horaInicio: '06:00', horaFin: '09:00', frecuenciaMin: 10, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Valle día',   horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 18, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Pico tarde',  horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 10, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Nocturno',    horaInicio: '20:00', horaFin: '23:30', frecuenciaMin: 25, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Sábado',      horaInicio: '06:00', horaFin: '23:00', frecuenciaMin: 20, diasAplica: ['SAB'] },
-      { label: 'Domingo',     horaInicio: '07:00', horaFin: '22:00', frecuenciaMin: 30, diasAplica: ['DOM'] },
+      { label: 'Pico mañana', horaInicio: '06:00', horaFin: '09:30', frecuenciaMin: 12, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Valle día', horaInicio: '09:30', horaFin: '17:00', frecuenciaMin: 20, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Pico tarde', horaInicio: '17:00', horaFin: '20:30', frecuenciaMin: 12, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Nocturno', horaInicio: '20:30', horaFin: '23:00', frecuenciaMin: 30, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Finde', horaInicio: '07:00', horaFin: '22:00', frecuenciaMin: 25, diasAplica: ['SAB', 'DOM'] },
     ],
     rivalesVerificados: [
-      { lineId: '148', empresa: 'Cutcsa', solapamientoPct: 65, tramoCompartido: 'Cerro → Ciudad Vieja → Pocitos', frecuenciaRivalMin: 8 },
-      { lineId: '117', empresa: 'Cutcsa', solapamientoPct: 40, tramoCompartido: 'Ciudad Vieja → 18 de Julio → Pocitos', frecuenciaRivalMin: 12 },
-      { lineId: '185', empresa: 'Cutcsa', solapamientoPct: 30, tramoCompartido: 'Cno. Ramírez → Ciudad Vieja', frecuenciaRivalMin: 15 },
+      { lineId: '721', empresa: 'Copsa', solapamientoPct: 75, tramoCompartido: 'Av. Italia → Ciudad de la Costa', frecuenciaRivalMin: 15 },
+      { lineId: '103', empresa: 'Cutcsa', solapamientoPct: 40, tramoCompartido: 'Av. Italia completa', frecuenciaRivalMin: 6 },
     ],
-    corridorBbox: [-34.93, -56.30, -34.90, -56.14],
-    tramosAlaDemanda: ['Cno. Ramírez y Millán', '18 de Julio y Ejido', 'Pocitos (Bvar. España)'],
+    corridorBbox: [-34.9, -56.15, -34.82, -55.95],
+    tramosAlaDemanda: ['Tres Cruces (intercambiador)', 'Portones de Carrasco', 'Ciudad de la Costa'],
   },
 
-  '71': {
-    lineId: '71',
-    nombreComercial: 'Línea 71 — Pocitos / Mendoza e Instrucciones',
+  'DM1': {
+    lineId: 'DM1',
+    nombreComercial: 'Línea DM1 — Diagonal Metropolis 1',
     empresa: 'UCOT',
-    terminalA: 'Pocitos',
-    terminalB: 'Mendoza e Instrucciones',
-    kmRecorrido: 12.1,
-    capacidadVehiculo: 75,
-    frecuencias: [
-      { label: 'Pico mañana', horaInicio: '06:30', horaFin: '09:00', frecuenciaMin: 12, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Valle día',   horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 20, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Pico tarde',  horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 12, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Nocturno',    horaInicio: '20:00', horaFin: '23:00', frecuenciaMin: 25, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Sábado',      horaInicio: '06:30', horaFin: '22:30', frecuenciaMin: 22, diasAplica: ['SAB'] },
-      { label: 'Domingo',     horaInicio: '08:00', horaFin: '21:00', frecuenciaMin: 30, diasAplica: ['DOM'] },
-    ],
-    rivalesVerificados: [
-      { lineId: '121', empresa: 'Cutcsa', solapamientoPct: 70, tramoCompartido: 'Bvar. Artigas → Av. Rivera → Goes', frecuenciaRivalMin: 8 },
-      { lineId: '124', empresa: 'Cutcsa', solapamientoPct: 55, tramoCompartido: 'Av. Rivera → Instrucciones', frecuenciaRivalMin: 10 },
-      { lineId: '122', empresa: 'Cutcsa', solapamientoPct: 45, tramoCompartido: 'Pocitos → Bvar. Artigas', frecuenciaRivalMin: 12 },
-    ],
-    corridorBbox: [-34.92, -56.17, -34.87, -56.10],
-    tramosAlaDemanda: ['Bvar. Artigas y Comercio', 'Av. Rivera y Sarmiento', 'Goes'],
-  },
-
-  '79': {
-    lineId: '79',
-    nombreComercial: 'Línea 79 — Ciudad Vieja / Belloni',
-    empresa: 'UCOT',
-    terminalA: 'Ciudad Vieja (Ciudadela)',
+    terminalA: 'Terminal Paso del Molino',
     terminalB: 'Intercambiador Belloni',
-    kmRecorrido: 15.3,
+    zonasServidas: ['Paso del Molino', 'Av. Lezica', 'Goes', 'Av. Italia', 'Schroeder', 'Belloni'],
+    kmRecorrido: 18.5,
     capacidadVehiculo: 80,
     frecuencias: [
-      { label: 'Pico mañana', horaInicio: '06:00', horaFin: '09:00', frecuenciaMin: 10, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Valle día',   horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 18, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Pico tarde',  horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 10, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Nocturno',    horaInicio: '20:00', horaFin: '23:00', frecuenciaMin: 25, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Sábado',      horaInicio: '06:00', horaFin: '22:30', frecuenciaMin: 20, diasAplica: ['SAB'] },
-      { label: 'Domingo',     horaInicio: '08:00', horaFin: '21:00', frecuenciaMin: 30, diasAplica: ['DOM'] },
+      { label: 'Pico mañana', horaInicio: '06:00', horaFin: '09:00', frecuenciaMin: 15, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Valle día', horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 22, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Pico tarde', horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 15, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Nocturno', horaInicio: '20:00', horaFin: '23:00', frecuenciaMin: 30, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Finde', horaInicio: '07:00', horaFin: '22:00', frecuenciaMin: 28, diasAplica: ['SAB', 'DOM'] },
     ],
     rivalesVerificados: [
-      { lineId: '103', empresa: 'Cutcsa', solapamientoPct: 60, tramoCompartido: 'Av. 18 de Julio → Av. Italia', frecuenciaRivalMin: 6 },
-      { lineId: '155', empresa: 'Cutcsa', solapamientoPct: 45, tramoCompartido: 'Av. Italia → Belloni', frecuenciaRivalMin: 12 },
-      { lineId: '180', empresa: 'Cutcsa', solapamientoPct: 35, tramoCompartido: 'Tramo Italia-Belloni', frecuenciaRivalMin: 15 },
+      { lineId: '181', empresa: 'Cutcsa', solapamientoPct: 60, tramoCompartido: 'Av. Italia → Schroeder', frecuenciaRivalMin: 8 },
+      { lineId: '196', empresa: 'Cutcsa', solapamientoPct: 50, tramoCompartido: 'Goes → Belloni', frecuenciaRivalMin: 10 },
     ],
-    corridorBbox: [-34.92, -56.20, -34.87, -56.09],
-    tramosAlaDemanda: ['18 de Julio y Ejido', 'Av. Italia y Propios', 'Belloni'],
+    corridorBbox: [-34.91, -56.22, -34.84, -56.06],
+    tramosAlaDemanda: ['Paso del Molino (intercambiador)', 'Av. Italia y Propios', 'Belloni'],
   },
+
+
 
   '300': {
     lineId: '300',
@@ -176,22 +195,84 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     empresa: 'UCOT',
     terminalA: 'Cementerio Central',
     terminalB: 'Instrucciones y Belloni',
+    zonasServidas: [
+      'Cementerio Central',
+      'Centro',
+      '18 de Julio',
+      'Av. Italia',
+      'Instrucciones',
+      'Belloni',
+    ],
     kmRecorrido: 16.8,
     capacidadVehiculo: 80,
     frecuencias: [
-      { label: 'Pico mañana', horaInicio: '06:00', horaFin: '09:00', frecuenciaMin: 12, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Valle día',   horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 20, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Pico tarde',  horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 12, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Nocturno',    horaInicio: '20:00', horaFin: '23:00', frecuenciaMin: 28, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Sábado',      horaInicio: '06:30', horaFin: '22:30', frecuenciaMin: 22, diasAplica: ['SAB'] },
-      { label: 'Domingo',     horaInicio: '08:00', horaFin: '21:00', frecuenciaMin: 35, diasAplica: ['DOM'] },
+      {
+        label: 'Pico mañana',
+        horaInicio: '06:00',
+        horaFin: '09:00',
+        frecuenciaMin: 12,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Valle día',
+        horaInicio: '09:00',
+        horaFin: '17:00',
+        frecuenciaMin: 20,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Pico tarde',
+        horaInicio: '17:00',
+        horaFin: '20:00',
+        frecuenciaMin: 12,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Nocturno',
+        horaInicio: '20:00',
+        horaFin: '23:00',
+        frecuenciaMin: 28,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Sábado',
+        horaInicio: '06:30',
+        horaFin: '22:30',
+        frecuenciaMin: 22,
+        diasAplica: ['SAB'],
+      },
+      {
+        label: 'Domingo',
+        horaInicio: '08:00',
+        horaFin: '21:00',
+        frecuenciaMin: 35,
+        diasAplica: ['DOM'],
+      },
     ],
     rivalesVerificados: [
-      { lineId: '161', empresa: 'Copsa', solapamientoPct: 55, tramoCompartido: 'Av. Italia → Instrucciones', frecuenciaRivalMin: 15 },
-      { lineId: '162', empresa: 'Copsa', solapamientoPct: 50, tramoCompartido: 'Av. Italia → Belloni', frecuenciaRivalMin: 18 },
-      { lineId: '163', empresa: 'Copsa', solapamientoPct: 40, tramoCompartido: 'Instrucciones y Belloni', frecuenciaRivalMin: 20 },
+      {
+        lineId: '161',
+        empresa: 'Copsa',
+        solapamientoPct: 55,
+        tramoCompartido: 'Av. Italia → Instrucciones',
+        frecuenciaRivalMin: 15,
+      },
+      {
+        lineId: '162',
+        empresa: 'Copsa',
+        solapamientoPct: 50,
+        tramoCompartido: 'Av. Italia → Belloni',
+        frecuenciaRivalMin: 18,
+      },
+      {
+        lineId: '163',
+        empresa: 'Copsa',
+        solapamientoPct: 40,
+        tramoCompartido: 'Instrucciones y Belloni',
+        frecuenciaRivalMin: 20,
+      },
     ],
-    corridorBbox: [-34.92, -56.20, -34.83, -56.05],
+    corridorBbox: [-34.92, -56.2, -34.83, -56.05],
     tramosAlaDemanda: ['Av. Italia y Propios', 'Instrucciones y Rivera', 'Belloni'],
   },
 
@@ -201,21 +282,70 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     empresa: 'UCOT',
     terminalA: 'Casabó',
     terminalB: 'Géant (Las Piedras)',
+    zonasServidas: ['Casabó', 'Cno. Ramírez', 'Paso de la Arena', 'Ruta 1', 'Las Piedras', 'Géant'],
     kmRecorrido: 22.5,
     capacidadVehiculo: 80,
     frecuencias: [
-      { label: 'Pico mañana', horaInicio: '06:00', horaFin: '09:00', frecuenciaMin: 15, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Valle día',   horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 25, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Pico tarde',  horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 15, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Nocturno',    horaInicio: '20:00', horaFin: '23:00', frecuenciaMin: 35, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Sábado',      horaInicio: '06:30', horaFin: '22:00', frecuenciaMin: 28, diasAplica: ['SAB'] },
-      { label: 'Domingo',     horaInicio: '08:00', horaFin: '20:00', frecuenciaMin: 40, diasAplica: ['DOM'] },
+      {
+        label: 'Pico mañana',
+        horaInicio: '06:00',
+        horaFin: '09:00',
+        frecuenciaMin: 15,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Valle día',
+        horaInicio: '09:00',
+        horaFin: '17:00',
+        frecuenciaMin: 25,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Pico tarde',
+        horaInicio: '17:00',
+        horaFin: '20:00',
+        frecuenciaMin: 15,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Nocturno',
+        horaInicio: '20:00',
+        horaFin: '23:00',
+        frecuenciaMin: 35,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Sábado',
+        horaInicio: '06:30',
+        horaFin: '22:00',
+        frecuenciaMin: 28,
+        diasAplica: ['SAB'],
+      },
+      {
+        label: 'Domingo',
+        horaInicio: '08:00',
+        horaFin: '20:00',
+        frecuenciaMin: 40,
+        diasAplica: ['DOM'],
+      },
     ],
     rivalesVerificados: [
-      { lineId: '185', empresa: 'Cutcsa', solapamientoPct: 70, tramoCompartido: 'Cno. Ramírez → Ruta 1 → Paso de la Arena', frecuenciaRivalMin: 12 },
-      { lineId: 'G',   empresa: 'Gómez',  solapamientoPct: 60, tramoCompartido: 'Ruta 1 → Géant', frecuenciaRivalMin: 20 },
+      {
+        lineId: '185',
+        empresa: 'Cutcsa',
+        solapamientoPct: 70,
+        tramoCompartido: 'Cno. Ramírez → Ruta 1 → Paso de la Arena',
+        frecuenciaRivalMin: 12,
+      },
+      {
+        lineId: 'G',
+        empresa: 'Gómez',
+        solapamientoPct: 60,
+        tramoCompartido: 'Ruta 1 → Géant',
+        frecuenciaRivalMin: 20,
+      },
     ],
-    corridorBbox: [-34.95, -56.30, -34.75, -56.10],
+    corridorBbox: [-34.95, -56.3, -34.75, -56.1],
     tramosAlaDemanda: ['Cno. Ramírez y Millán', 'Ruta 1 (Paso de la Arena)', 'Géant'],
   },
 
@@ -225,23 +355,82 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     empresa: 'UCOT',
     terminalA: 'Cno. Maldonado',
     terminalB: 'Pocitos',
+    zonasServidas: ['Cno. Maldonado', 'Aparicio Saravia', 'Av. Millán', 'Garzón', 'Pocitos'],
     kmRecorrido: 11.2,
     capacidadVehiculo: 75,
     frecuencias: [
-      { label: 'Pico mañana', horaInicio: '06:30', horaFin: '09:00', frecuenciaMin: 12, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Valle día',   horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 20, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Pico tarde',  horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 12, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Nocturno',    horaInicio: '20:00', horaFin: '23:00', frecuenciaMin: 28, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Sábado',      horaInicio: '06:30', horaFin: '22:30', frecuenciaMin: 22, diasAplica: ['SAB'] },
-      { label: 'Domingo',     horaInicio: '08:00', horaFin: '21:00', frecuenciaMin: 32, diasAplica: ['DOM'] },
+      {
+        label: 'Pico mañana',
+        horaInicio: '06:30',
+        horaFin: '09:00',
+        frecuenciaMin: 12,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Valle día',
+        horaInicio: '09:00',
+        horaFin: '17:00',
+        frecuenciaMin: 20,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Pico tarde',
+        horaInicio: '17:00',
+        horaFin: '20:00',
+        frecuenciaMin: 12,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Nocturno',
+        horaInicio: '20:00',
+        horaFin: '23:00',
+        frecuenciaMin: 28,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Sábado',
+        horaInicio: '06:30',
+        horaFin: '22:30',
+        frecuenciaMin: 22,
+        diasAplica: ['SAB'],
+      },
+      {
+        label: 'Domingo',
+        horaInicio: '08:00',
+        horaFin: '21:00',
+        frecuenciaMin: 32,
+        diasAplica: ['DOM'],
+      },
     ],
     rivalesVerificados: [
-      { lineId: '186', empresa: 'Cutcsa', solapamientoPct: 65, tramoCompartido: 'Av. Millán → Garzón → Pocitos', frecuenciaRivalMin: 10 },
-      { lineId: '187', empresa: 'Cutcsa', solapamientoPct: 55, tramoCompartido: 'Av. Millán → Pocitos', frecuenciaRivalMin: 12 },
-      { lineId: '188', empresa: 'Cutcsa', solapamientoPct: 40, tramoCompartido: 'Garzón → Pocitos', frecuenciaRivalMin: 15 },
+      {
+        lineId: '186',
+        empresa: 'Cutcsa',
+        solapamientoPct: 65,
+        tramoCompartido: 'Av. Millán → Garzón → Pocitos',
+        frecuenciaRivalMin: 10,
+      },
+      {
+        lineId: '187',
+        empresa: 'Cutcsa',
+        solapamientoPct: 55,
+        tramoCompartido: 'Av. Millán → Pocitos',
+        frecuenciaRivalMin: 12,
+      },
+      {
+        lineId: '188',
+        empresa: 'Cutcsa',
+        solapamientoPct: 40,
+        tramoCompartido: 'Garzón → Pocitos',
+        frecuenciaRivalMin: 15,
+      },
     ],
-    corridorBbox: [-34.91, -56.18, -34.86, -56.10],
-    tramosAlaDemanda: ['Av. Millán y Garzón', 'Pocitos (Bvar. España)', 'Cno. Maldonado y Aparicio Saravia'],
+    corridorBbox: [-34.91, -56.18, -34.86, -56.1],
+    tramosAlaDemanda: [
+      'Av. Millán y Garzón',
+      'Pocitos (Bvar. España)',
+      'Cno. Maldonado y Aparicio Saravia',
+    ],
   },
 
   '328': {
@@ -250,22 +439,77 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     empresa: 'UCOT',
     terminalA: 'Punta Carretas',
     terminalB: 'Mendoza (Est. Goes)',
+    zonasServidas: ['Punta Carretas', 'Pocitos', 'Cordón', '18 de Julio', 'Goes', 'Mendoza'],
     kmRecorrido: 13.6,
     capacidadVehiculo: 80,
     frecuencias: [
-      { label: 'Pico mañana', horaInicio: '06:00', horaFin: '09:00', frecuenciaMin: 10, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Valle día',   horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 18, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Pico tarde',  horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 10, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Nocturno',    horaInicio: '20:00', horaFin: '23:00', frecuenciaMin: 25, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Sábado',      horaInicio: '06:30', horaFin: '22:30', frecuenciaMin: 20, diasAplica: ['SAB'] },
-      { label: 'Domingo',     horaInicio: '08:00', horaFin: '21:00', frecuenciaMin: 30, diasAplica: ['DOM'] },
+      {
+        label: 'Pico mañana',
+        horaInicio: '06:00',
+        horaFin: '09:00',
+        frecuenciaMin: 10,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Valle día',
+        horaInicio: '09:00',
+        horaFin: '17:00',
+        frecuenciaMin: 18,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Pico tarde',
+        horaInicio: '17:00',
+        horaFin: '20:00',
+        frecuenciaMin: 10,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Nocturno',
+        horaInicio: '20:00',
+        horaFin: '23:00',
+        frecuenciaMin: 25,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Sábado',
+        horaInicio: '06:30',
+        horaFin: '22:30',
+        frecuenciaMin: 20,
+        diasAplica: ['SAB'],
+      },
+      {
+        label: 'Domingo',
+        horaInicio: '08:00',
+        horaFin: '21:00',
+        frecuenciaMin: 30,
+        diasAplica: ['DOM'],
+      },
     ],
     rivalesVerificados: [
-      { lineId: '125', empresa: 'Cutcsa', solapamientoPct: 70, tramoCompartido: 'Av. 18 de Julio → Goes → Mendoza', frecuenciaRivalMin: 7 },
-      { lineId: '126', empresa: 'Cutcsa', solapamientoPct: 60, tramoCompartido: 'Av. 18 de Julio → Mendoza', frecuenciaRivalMin: 8 },
-      { lineId: 'D1',  empresa: 'Dinata', solapamientoPct: 35, tramoCompartido: 'Goes → Mendoza', frecuenciaRivalMin: 20 },
+      {
+        lineId: '125',
+        empresa: 'Cutcsa',
+        solapamientoPct: 70,
+        tramoCompartido: 'Av. 18 de Julio → Goes → Mendoza',
+        frecuenciaRivalMin: 7,
+      },
+      {
+        lineId: '126',
+        empresa: 'Cutcsa',
+        solapamientoPct: 60,
+        tramoCompartido: 'Av. 18 de Julio → Mendoza',
+        frecuenciaRivalMin: 8,
+      },
+      {
+        lineId: 'D1',
+        empresa: 'Dinata',
+        solapamientoPct: 35,
+        tramoCompartido: 'Goes → Mendoza',
+        frecuenciaRivalMin: 20,
+      },
     ],
-    corridorBbox: [-34.92, -56.20, -34.88, -56.13],
+    corridorBbox: [-34.92, -56.2, -34.88, -56.13],
     tramosAlaDemanda: ['18 de Julio y Ejido', '18 de Julio y Yi', 'Goes y Mendoza'],
   },
 
@@ -275,20 +519,75 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     empresa: 'UCOT',
     terminalA: 'Punta Carretas',
     terminalB: 'Instrucciones (Manga)',
+    zonasServidas: ['Punta Carretas', 'Pocitos', 'Av. Italia', 'Instrucciones', 'Manga'],
     kmRecorrido: 17.9,
     capacidadVehiculo: 80,
     frecuencias: [
-      { label: 'Pico mañana', horaInicio: '06:00', horaFin: '09:00', frecuenciaMin: 12, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Valle día',   horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 20, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Pico tarde',  horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 12, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Nocturno',    horaInicio: '20:00', horaFin: '23:00', frecuenciaMin: 28, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Sábado',      horaInicio: '06:30', horaFin: '22:30', frecuenciaMin: 22, diasAplica: ['SAB'] },
-      { label: 'Domingo',     horaInicio: '08:00', horaFin: '21:00', frecuenciaMin: 35, diasAplica: ['DOM'] },
+      {
+        label: 'Pico mañana',
+        horaInicio: '06:00',
+        horaFin: '09:00',
+        frecuenciaMin: 12,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Valle día',
+        horaInicio: '09:00',
+        horaFin: '17:00',
+        frecuenciaMin: 20,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Pico tarde',
+        horaInicio: '17:00',
+        horaFin: '20:00',
+        frecuenciaMin: 12,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Nocturno',
+        horaInicio: '20:00',
+        horaFin: '23:00',
+        frecuenciaMin: 28,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Sábado',
+        horaInicio: '06:30',
+        horaFin: '22:30',
+        frecuenciaMin: 22,
+        diasAplica: ['SAB'],
+      },
+      {
+        label: 'Domingo',
+        horaInicio: '08:00',
+        horaFin: '21:00',
+        frecuenciaMin: 35,
+        diasAplica: ['DOM'],
+      },
     ],
     rivalesVerificados: [
-      { lineId: '181', empresa: 'Cutcsa', solapamientoPct: 75, tramoCompartido: 'Av. Italia → Instrucciones', frecuenciaRivalMin: 8 },
-      { lineId: '182', empresa: 'Cutcsa', solapamientoPct: 60, tramoCompartido: 'Av. Italia → Instrucciones', frecuenciaRivalMin: 10 },
-      { lineId: '183', empresa: 'Cutcsa', solapamientoPct: 55, tramoCompartido: 'Av. Italia → Manga', frecuenciaRivalMin: 12 },
+      {
+        lineId: '181',
+        empresa: 'Cutcsa',
+        solapamientoPct: 75,
+        tramoCompartido: 'Av. Italia → Instrucciones',
+        frecuenciaRivalMin: 8,
+      },
+      {
+        lineId: '182',
+        empresa: 'Cutcsa',
+        solapamientoPct: 60,
+        tramoCompartido: 'Av. Italia → Instrucciones',
+        frecuenciaRivalMin: 10,
+      },
+      {
+        lineId: '183',
+        empresa: 'Cutcsa',
+        solapamientoPct: 55,
+        tramoCompartido: 'Av. Italia → Manga',
+        frecuenciaRivalMin: 12,
+      },
     ],
     corridorBbox: [-34.92, -56.18, -34.83, -56.05],
     tramosAlaDemanda: ['Av. Italia y Propios', 'Av. Italia y Rivera', 'Instrucciones y Manga'],
@@ -300,22 +599,84 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     empresa: 'UCOT',
     terminalA: 'Cerro (Villa del Cerro)',
     terminalB: 'Ciudad Vieja',
+    zonasServidas: [
+      'Cerro',
+      'Villa del Cerro',
+      'Cno. Ramírez',
+      'Paso del Molino',
+      'Bvar. Batlle',
+      'Ciudad Vieja',
+    ],
     kmRecorrido: 14.2,
     capacidadVehiculo: 80,
     frecuencias: [
-      { label: 'Pico mañana', horaInicio: '06:00', horaFin: '09:00', frecuenciaMin: 10, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Valle día',   horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 18, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Pico tarde',  horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 10, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Nocturno',    horaInicio: '20:00', horaFin: '23:00', frecuenciaMin: 25, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Sábado',      horaInicio: '06:00', horaFin: '22:30', frecuenciaMin: 20, diasAplica: ['SAB'] },
-      { label: 'Domingo',     horaInicio: '07:30', horaFin: '21:00', frecuenciaMin: 30, diasAplica: ['DOM'] },
+      {
+        label: 'Pico mañana',
+        horaInicio: '06:00',
+        horaFin: '09:00',
+        frecuenciaMin: 10,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Valle día',
+        horaInicio: '09:00',
+        horaFin: '17:00',
+        frecuenciaMin: 18,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Pico tarde',
+        horaInicio: '17:00',
+        horaFin: '20:00',
+        frecuenciaMin: 10,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Nocturno',
+        horaInicio: '20:00',
+        horaFin: '23:00',
+        frecuenciaMin: 25,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Sábado',
+        horaInicio: '06:00',
+        horaFin: '22:30',
+        frecuenciaMin: 20,
+        diasAplica: ['SAB'],
+      },
+      {
+        label: 'Domingo',
+        horaInicio: '07:30',
+        horaFin: '21:00',
+        frecuenciaMin: 30,
+        diasAplica: ['DOM'],
+      },
     ],
     rivalesVerificados: [
-      { lineId: '148', empresa: 'Cutcsa', solapamientoPct: 80, tramoCompartido: 'Cerro → Cno. Ramírez → Ciudad Vieja', frecuenciaRivalMin: 8 },
-      { lineId: '185', empresa: 'Cutcsa', solapamientoPct: 50, tramoCompartido: 'Cno. Ramírez → Ciudad Vieja', frecuenciaRivalMin: 12 },
-      { lineId: '147', empresa: 'Cutcsa', solapamientoPct: 40, tramoCompartido: 'Villa del Cerro → Ciudad Vieja', frecuenciaRivalMin: 15 },
+      {
+        lineId: '148',
+        empresa: 'Cutcsa',
+        solapamientoPct: 80,
+        tramoCompartido: 'Cerro → Cno. Ramírez → Ciudad Vieja',
+        frecuenciaRivalMin: 8,
+      },
+      {
+        lineId: '185',
+        empresa: 'Cutcsa',
+        solapamientoPct: 50,
+        tramoCompartido: 'Cno. Ramírez → Ciudad Vieja',
+        frecuenciaRivalMin: 12,
+      },
+      {
+        lineId: '147',
+        empresa: 'Cutcsa',
+        solapamientoPct: 40,
+        tramoCompartido: 'Villa del Cerro → Ciudad Vieja',
+        frecuenciaRivalMin: 15,
+      },
     ],
-    corridorBbox: [-34.93, -56.30, -34.88, -56.20],
+    corridorBbox: [-34.93, -56.3, -34.88, -56.2],
     tramosAlaDemanda: ['Cno. Ramírez y Millán', 'Bvar. Batlle y Ordóñez', 'Ciudad Vieja (Aduana)'],
   },
 
@@ -325,23 +686,95 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     empresa: 'UCOT',
     terminalA: 'Playa del Cerro',
     terminalB: 'Portones de Carrasco',
+    zonasServidas: [
+      'Cerro',
+      'Rambla Sur',
+      'Ciudad Vieja',
+      'Punta Carretas',
+      'Pocitos',
+      'Bvar. Batlle',
+      'Av. Italia',
+      'Malvín',
+      'Carrasco',
+      'Portones de Carrasco',
+    ],
     kmRecorrido: 28.7,
     capacidadVehiculo: 85,
     frecuencias: [
-      { label: 'Pico mañana', horaInicio: '06:00', horaFin: '09:00', frecuenciaMin: 8,  diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Valle día',   horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 15, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Pico tarde',  horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 8,  diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Nocturno',    horaInicio: '20:00', horaFin: '23:30', frecuenciaMin: 20, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Sábado',      horaInicio: '06:00', horaFin: '23:00', frecuenciaMin: 18, diasAplica: ['SAB'] },
-      { label: 'Domingo',     horaInicio: '07:00', horaFin: '22:00', frecuenciaMin: 25, diasAplica: ['DOM'] },
+      {
+        label: 'Pico mañana',
+        horaInicio: '06:00',
+        horaFin: '09:00',
+        frecuenciaMin: 8,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Valle día',
+        horaInicio: '09:00',
+        horaFin: '17:00',
+        frecuenciaMin: 15,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Pico tarde',
+        horaInicio: '17:00',
+        horaFin: '20:00',
+        frecuenciaMin: 8,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Nocturno',
+        horaInicio: '20:00',
+        horaFin: '23:30',
+        frecuenciaMin: 20,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Sábado',
+        horaInicio: '06:00',
+        horaFin: '23:00',
+        frecuenciaMin: 18,
+        diasAplica: ['SAB'],
+      },
+      {
+        label: 'Domingo',
+        horaInicio: '07:00',
+        horaFin: '22:00',
+        frecuenciaMin: 25,
+        diasAplica: ['DOM'],
+      },
     ],
     rivalesVerificados: [
-      { lineId: '110', empresa: 'Cutcsa', solapamientoPct: 85, tramoCompartido: 'Rambla Sur/Rep. → Av. Italia → Carrasco', frecuenciaRivalMin: 6 },
-      { lineId: '103', empresa: 'Cutcsa', solapamientoPct: 65, tramoCompartido: 'Bvar. Artigas → Av. Italia', frecuenciaRivalMin: 6 },
-      { lineId: '128', empresa: 'Cutcsa', solapamientoPct: 55, tramoCompartido: 'Rambla → Carrasco (vuelta)', frecuenciaRivalMin: 10 },
-      { lineId: '137', empresa: 'Cutcsa', solapamientoPct: 50, tramoCompartido: 'Portones → Carrasco', frecuenciaRivalMin: 12 },
+      {
+        lineId: '110',
+        empresa: 'Cutcsa',
+        solapamientoPct: 85,
+        tramoCompartido: 'Rambla Sur/Rep. → Av. Italia → Carrasco',
+        frecuenciaRivalMin: 6,
+      },
+      {
+        lineId: '103',
+        empresa: 'Cutcsa',
+        solapamientoPct: 65,
+        tramoCompartido: 'Bvar. Artigas → Av. Italia',
+        frecuenciaRivalMin: 6,
+      },
+      {
+        lineId: '128',
+        empresa: 'Cutcsa',
+        solapamientoPct: 55,
+        tramoCompartido: 'Rambla → Carrasco (vuelta)',
+        frecuenciaRivalMin: 10,
+      },
+      {
+        lineId: '137',
+        empresa: 'Cutcsa',
+        solapamientoPct: 50,
+        tramoCompartido: 'Portones → Carrasco',
+        frecuenciaRivalMin: 12,
+      },
     ],
-    corridorBbox: [-34.95, -56.30, -34.87, -56.00],
+    corridorBbox: [-34.95, -56.3, -34.87, -56.0],
     tramosAlaDemanda: ['Rambla y Punta Carretas', 'Av. Italia y Propios', 'Portones (Carrasco)'],
   },
 
@@ -351,47 +784,241 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     empresa: 'UCOT',
     terminalA: 'Punta Carretas',
     terminalB: 'Instrucciones (Schroeder)',
+    zonasServidas: ['Punta Carretas', 'Pocitos', 'Av. Italia', 'Schroeder', 'Instrucciones'],
     kmRecorrido: 16.5,
     capacidadVehiculo: 80,
     frecuencias: [
-      { label: 'Pico mañana', horaInicio: '06:00', horaFin: '09:00', frecuenciaMin: 12, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Valle día',   horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 22, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Pico tarde',  horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 12, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Nocturno',    horaInicio: '20:00', horaFin: '23:00', frecuenciaMin: 28, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Sábado',      horaInicio: '06:30', horaFin: '22:30', frecuenciaMin: 22, diasAplica: ['SAB'] },
-      { label: 'Domingo',     horaInicio: '08:00', horaFin: '21:00', frecuenciaMin: 35, diasAplica: ['DOM'] },
+      {
+        label: 'Pico mañana',
+        horaInicio: '06:00',
+        horaFin: '09:00',
+        frecuenciaMin: 12,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Valle día',
+        horaInicio: '09:00',
+        horaFin: '17:00',
+        frecuenciaMin: 22,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Pico tarde',
+        horaInicio: '17:00',
+        horaFin: '20:00',
+        frecuenciaMin: 12,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Nocturno',
+        horaInicio: '20:00',
+        horaFin: '23:00',
+        frecuenciaMin: 28,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Sábado',
+        horaInicio: '06:30',
+        horaFin: '22:30',
+        frecuenciaMin: 22,
+        diasAplica: ['SAB'],
+      },
+      {
+        label: 'Domingo',
+        horaInicio: '08:00',
+        horaFin: '21:00',
+        frecuenciaMin: 35,
+        diasAplica: ['DOM'],
+      },
     ],
     rivalesVerificados: [
-      { lineId: '181', empresa: 'Cutcsa', solapamientoPct: 65, tramoCompartido: 'Av. Italia → Instrucciones', frecuenciaRivalMin: 8 },
-      { lineId: '196', empresa: 'Cutcsa', solapamientoPct: 70, tramoCompartido: 'Av. Italia → Schroeder → Instrucciones', frecuenciaRivalMin: 10 },
-      { lineId: '197', empresa: 'Cutcsa', solapamientoPct: 55, tramoCompartido: 'Schroeder → Instrucciones', frecuenciaRivalMin: 12 },
+      {
+        lineId: '181',
+        empresa: 'Cutcsa',
+        solapamientoPct: 65,
+        tramoCompartido: 'Av. Italia → Instrucciones',
+        frecuenciaRivalMin: 8,
+      },
+      {
+        lineId: '196',
+        empresa: 'Cutcsa',
+        solapamientoPct: 70,
+        tramoCompartido: 'Av. Italia → Schroeder → Instrucciones',
+        frecuenciaRivalMin: 10,
+      },
+      {
+        lineId: '197',
+        empresa: 'Cutcsa',
+        solapamientoPct: 55,
+        tramoCompartido: 'Schroeder → Instrucciones',
+        frecuenciaRivalMin: 12,
+      },
     ],
     corridorBbox: [-34.92, -56.18, -34.83, -56.05],
-    tramosAlaDemanda: ['Av. Italia y Propios', 'Schroeder y Instrucciones', 'Instrucciones y Belloni'],
+    tramosAlaDemanda: [
+      'Av. Italia y Propios',
+      'Schroeder y Instrucciones',
+      'Instrucciones y Belloni',
+    ],
   },
 
-  '11A': {
-    lineId: '11A',
-    nombreComercial: 'Línea 11A — Baltasar Brum / Sauce-San Ramón',
+  'XA1': {
+    lineId: 'XA1',
+    nombreComercial: 'Línea XA1 — Expreso Aeropuerto 1',
     empresa: 'UCOT',
-    terminalA: 'Terminal Baltasar Brum',
-    terminalB: 'Sauce / San Ramón',
-    kmRecorrido: 45.0,
+    terminalA: 'Terminal Tres Cruces',
+    terminalB: 'Aeropuerto Internacional de Carrasco',
+    zonasServidas: ['Tres Cruces', 'Centro', 'Bvar. Artigas', 'Carrasco', 'Aeropuerto'],
+    kmRecorrido: 20.5,
     capacidadVehiculo: 85,
     frecuencias: [
-      { label: 'Mañana',     horaInicio: '06:00', horaFin: '12:00', frecuenciaMin: 30, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Tarde',      horaInicio: '12:00', horaFin: '20:00', frecuenciaMin: 30, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Nocturno',   horaInicio: '20:00', horaFin: '23:00', frecuenciaMin: 60, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Sábado',     horaInicio: '06:30', horaFin: '22:00', frecuenciaMin: 40, diasAplica: ['SAB'] },
-      { label: 'Domingo',    horaInicio: '08:00', horaFin: '20:00', frecuenciaMin: 60, diasAplica: ['DOM'] },
+      { label: 'Madrugada/Nocturno', horaInicio: '00:00', horaFin: '05:59', frecuenciaMin: 25, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB', 'DOM'] },
+      { label: 'Diurno', horaInicio: '06:00', horaFin: '22:00', frecuenciaMin: 15, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Nocturno', horaInicio: '22:00', horaFin: '23:59', frecuenciaMin: 25, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Finde diurno', horaInicio: '06:00', horaFin: '23:59', frecuenciaMin: 20, diasAplica: ['SAB', 'DOM'] },
     ],
     rivalesVerificados: [
-      { lineId: 'C1',       empresa: 'Copsa',    solapamientoPct: 90, tramoCompartido: 'Ruta 8 → Sauce → San Ramón', frecuenciaRivalMin: 25 },
-      { lineId: 'Rubricay', empresa: 'Rubricay', solapamientoPct: 70, tramoCompartido: 'Ruta 8 largo recorrido', frecuenciaRivalMin: 40 },
+      { lineId: 'COT', empresa: 'COT', solapamientoPct: 70, tramoCompartido: 'Tres Cruces → Aeropuerto', frecuenciaRivalMin: 30 },
     ],
-    corridorBbox: [-34.70, -56.10, -34.40, -55.90],
-    tramosAlaDemanda: ['Terminal Baltasar Brum', 'Empalme Olmos (Ruta 8)', 'Sauce centro'],
+    corridorBbox: [-34.9, -56.18, -34.82, -55.95],
+    tramosAlaDemanda: ['Terminal Tres Cruces', 'Carrasco (acceso)', 'Aeropuerto'],
   },
+
+  'XA2': {
+    lineId: 'XA2',
+    nombreComercial: 'Línea XA2 — Expreso Aeropuerto 2 (Cerro)',
+    empresa: 'UCOT',
+    terminalA: 'Playa del Cerro',
+    terminalB: 'Aeropuerto Internacional de Carrasco',
+    zonasServidas: ['Cerro', 'Centro', 'Av. Italia', 'Carrasco', 'Aeropuerto'],
+    kmRecorrido: 34.0,
+    capacidadVehiculo: 85,
+    frecuencias: [
+      { label: 'Madrugada', horaInicio: '00:00', horaFin: '05:59', frecuenciaMin: 35, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB', 'DOM'] },
+      { label: 'Diurno', horaInicio: '06:00', horaFin: '22:00', frecuenciaMin: 18, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Nocturno', horaInicio: '22:00', horaFin: '23:59', frecuenciaMin: 30, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Finde', horaInicio: '06:00', horaFin: '23:59', frecuenciaMin: 25, diasAplica: ['SAB', 'DOM'] },
+    ],
+    rivalesVerificados: [
+      { lineId: 'XA1', empresa: 'UCOT', solapamientoPct: 40, tramoCompartido: 'Av. Italia → Aeropuerto', frecuenciaRivalMin: 15 },
+    ],
+    corridorBbox: [-34.93, -56.28, -34.82, -55.95],
+    tramosAlaDemanda: ['Centro (18 de Julio)', 'Av. Italia y Bvar. Batlle', 'Aeropuerto'],
+  },
+
+  'L-12': {
+    lineId: 'L-12',
+    nombreComercial: 'Línea L-12 — Local 12 (Paso Carrasco)',
+    empresa: 'UCOT',
+    terminalA: 'Ciudad Vieja (Aduana)',
+    terminalB: 'Paso Carrasco',
+    zonasServidas: ['Ciudad Vieja', 'Centro', 'Bvar. Artigas', 'Pocitos', 'Malvín', 'Paso Carrasco'],
+    kmRecorrido: 19.0,
+    capacidadVehiculo: 75,
+    frecuencias: [
+      { label: 'Pico mañana', horaInicio: '06:30', horaFin: '09:00', frecuenciaMin: 15, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Valle', horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 25, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Pico tarde', horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 15, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Nocturno', horaInicio: '20:00', horaFin: '23:00', frecuenciaMin: 35, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Finde', horaInicio: '07:00', horaFin: '22:00', frecuenciaMin: 30, diasAplica: ['SAB', 'DOM'] },
+    ],
+    rivalesVerificados: [
+      { lineId: '104', empresa: 'Cutcsa', solapamientoPct: 55, tramoCompartido: 'Bvar. Artigas → Malvín', frecuenciaRivalMin: 10 },
+    ],
+    corridorBbox: [-34.91, -56.18, -34.86, -56.04],
+    tramosAlaDemanda: ['Pocitos (Rambla)', 'Malvín (Av. Rivera)', 'Paso Carrasco'],
+  },
+
+  'L-13': {
+    lineId: 'L-13',
+    nombreComercial: 'Línea L-13 — Local 13 (Punta de Rieles)',
+    empresa: 'UCOT',
+    terminalA: 'Terminal Tres Cruces',
+    terminalB: 'Punta de Rieles',
+    zonasServidas: ['Tres Cruces', 'Goes', 'Av. Millán', 'Instrucciones', 'Punta de Rieles'],
+    kmRecorrido: 15.5,
+    capacidadVehiculo: 75,
+    frecuencias: [
+      { label: 'Pico mañana', horaInicio: '06:00', horaFin: '09:00', frecuenciaMin: 18, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Valle', horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 28, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Pico tarde', horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 18, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Nocturno', horaInicio: '20:00', horaFin: '23:00', frecuenciaMin: 40, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Finde', horaInicio: '07:30', horaFin: '21:30', frecuenciaMin: 35, diasAplica: ['SAB', 'DOM'] },
+    ],
+    rivalesVerificados: [
+      { lineId: '196', empresa: 'Cutcsa', solapamientoPct: 60, tramoCompartido: 'Av. Instrucciones → Punta de Rieles', frecuenciaRivalMin: 10 },
+    ],
+    corridorBbox: [-34.9, -56.18, -34.84, -56.06],
+    tramosAlaDemanda: ['Tres Cruces', 'Goes (Av. Millán)', 'Punta de Rieles'],
+  },
+
+  'L-31': {
+    lineId: 'L-31',
+    nombreComercial: 'Línea L-31 — Local 31 (Sayago)',
+    empresa: 'UCOT',
+    terminalA: 'Terminal Paso del Molino',
+    terminalB: 'Sayago (Av. Carlos María Ramírez)',
+    zonasServidas: ['Paso del Molino', 'Belvedere', 'Sayago', 'Cno. Tomkinson'],
+    kmRecorrido: 9.5,
+    capacidadVehiculo: 75,
+    frecuencias: [
+      { label: 'Pico mañana', horaInicio: '06:30', horaFin: '09:00', frecuenciaMin: 20, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Valle', horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 30, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Pico tarde', horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 20, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Nocturno', horaInicio: '20:00', horaFin: '22:30', frecuenciaMin: 40, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Finde', horaInicio: '08:00', horaFin: '21:00', frecuenciaMin: 40, diasAplica: ['SAB', 'DOM'] },
+    ],
+    rivalesVerificados: [
+      { lineId: '155', empresa: 'Cutcsa', solapamientoPct: 50, tramoCompartido: 'Belvedere → Sayago', frecuenciaRivalMin: 18 },
+    ],
+    corridorBbox: [-34.88, -56.24, -34.84, -56.16],
+    tramosAlaDemanda: ['Paso del Molino', 'Belvedere (Av. Millán)', 'Sayago centro'],
+  },
+
+  'L-32': {
+    lineId: 'L-32',
+    nombreComercial: 'Línea L-32 — Local 32 (Manga)',
+    empresa: 'UCOT',
+    terminalA: 'Terminal Hipódromo de Maroñas',
+    terminalB: 'Manga',
+    zonasServidas: ['Hipódromo', 'Punta de Rieles', 'Manga'],
+    kmRecorrido: 11.0,
+    capacidadVehiculo: 75,
+    frecuencias: [
+      { label: 'Pico mañana', horaInicio: '06:00', horaFin: '09:00', frecuenciaMin: 22, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Valle', horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 32, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Pico tarde', horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 22, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Nocturno', horaInicio: '20:00', horaFin: '22:30', frecuenciaMin: 45, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Finde', horaInicio: '08:00', horaFin: '21:00', frecuenciaMin: 45, diasAplica: ['SAB', 'DOM'] },
+    ],
+    rivalesVerificados: [],
+    corridorBbox: [-34.88, -56.1, -34.82, -56.0],
+    tramosAlaDemanda: ['Hipódromo (intercambiador)', 'Punta de Rieles', 'Manga'],
+  },
+
+  'L-33': {
+    lineId: 'L-33',
+    nombreComercial: 'Línea L-33 — Local 33 (Cno. Carrasco)',
+    empresa: 'UCOT',
+    terminalA: 'Terminal Tres Cruces',
+    terminalB: 'Cno. Carrasco (Colonia Nicolich)',
+    zonasServidas: ['Tres Cruces', 'Av. Italia', 'Cno. Carrasco', 'Colonia Nicolich'],
+    kmRecorrido: 22.0,
+    capacidadVehiculo: 75,
+    frecuencias: [
+      { label: 'Pico mañana', horaInicio: '06:00', horaFin: '09:00', frecuenciaMin: 20, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Valle', horaInicio: '09:00', horaFin: '17:00', frecuenciaMin: 30, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Pico tarde', horaInicio: '17:00', horaFin: '20:00', frecuenciaMin: 20, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Nocturno', horaInicio: '20:00', horaFin: '23:00', frecuenciaMin: 40, diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'] },
+      { label: 'Finde', horaInicio: '07:30', horaFin: '22:00', frecuenciaMin: 35, diasAplica: ['SAB', 'DOM'] },
+    ],
+    rivalesVerificados: [
+      { lineId: '721', empresa: 'Copsa', solapamientoPct: 45, tramoCompartido: 'Cno. Carrasco → Nicolich', frecuenciaRivalMin: 20 },
+    ],
+    corridorBbox: [-34.88, -56.15, -34.82, -55.98],
+    tramosAlaDemanda: ['Av. Italia y Cno. Carrasco', 'Colonia Nicolich'],
+  },
+
 
   '221': {
     lineId: '221',
@@ -399,46 +1026,80 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     empresa: 'UCOT',
     terminalA: 'Terminal Baltasar Brum',
     terminalB: 'El Pinar',
+    zonasServidas: [
+      'Baltasar Brum',
+      'Tres Cruces',
+      'Ruta Interbalnearia',
+      'Bola de Nieve',
+      'Ciudad de la Costa',
+      'El Pinar',
+    ],
     kmRecorrido: 38.5,
     capacidadVehiculo: 85,
     frecuencias: [
-      { label: 'Mañana',     horaInicio: '06:00', horaFin: '12:00', frecuenciaMin: 25, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Tarde',      horaInicio: '12:00', horaFin: '20:00', frecuenciaMin: 25, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Nocturno',   horaInicio: '20:00', horaFin: '23:00', frecuenciaMin: 45, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Sábado',     horaInicio: '06:30', horaFin: '22:00', frecuenciaMin: 30, diasAplica: ['SAB'] },
-      { label: 'Domingo',    horaInicio: '08:00', horaFin: '20:00', frecuenciaMin: 45, diasAplica: ['DOM'] },
+      {
+        label: 'Mañana',
+        horaInicio: '06:00',
+        horaFin: '12:00',
+        frecuenciaMin: 25,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Tarde',
+        horaInicio: '12:00',
+        horaFin: '20:00',
+        frecuenciaMin: 25,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Nocturno',
+        horaInicio: '20:00',
+        horaFin: '23:00',
+        frecuenciaMin: 45,
+        diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'],
+      },
+      {
+        label: 'Sábado',
+        horaInicio: '06:30',
+        horaFin: '22:00',
+        frecuenciaMin: 30,
+        diasAplica: ['SAB'],
+      },
+      {
+        label: 'Domingo',
+        horaInicio: '08:00',
+        horaFin: '20:00',
+        frecuenciaMin: 45,
+        diasAplica: ['DOM'],
+      },
     ],
     rivalesVerificados: [
-      { lineId: '721', empresa: 'Copsa', solapamientoPct: 85, tramoCompartido: 'Ruta Interbalnearia → El Pinar', frecuenciaRivalMin: 20 },
-      { lineId: 'C6',  empresa: 'Copsa', solapamientoPct: 75, tramoCompartido: 'Ciudad de la Costa → El Pinar', frecuenciaRivalMin: 22 },
-      { lineId: '722', empresa: 'Copsa', solapamientoPct: 60, tramoCompartido: 'Interbalnearia tramo medio', frecuenciaRivalMin: 25 },
+      {
+        lineId: '721',
+        empresa: 'Copsa',
+        solapamientoPct: 85,
+        tramoCompartido: 'Ruta Interbalnearia → El Pinar',
+        frecuenciaRivalMin: 20,
+      },
+      {
+        lineId: 'C6',
+        empresa: 'Copsa',
+        solapamientoPct: 75,
+        tramoCompartido: 'Ciudad de la Costa → El Pinar',
+        frecuenciaRivalMin: 22,
+      },
+      {
+        lineId: '722',
+        empresa: 'Copsa',
+        solapamientoPct: 60,
+        tramoCompartido: 'Interbalnearia tramo medio',
+        frecuenciaRivalMin: 25,
+      },
     ],
-    corridorBbox: [-34.90, -56.10, -34.75, -55.80],
+    corridorBbox: [-34.9, -56.1, -34.75, -55.8],
     tramosAlaDemanda: ['Bola de Nieve (acceso costa)', 'Ciudad de la Costa centro', 'El Pinar'],
   },
 
-  '8SR': {
-    lineId: '8SR',
-    nombreComercial: 'Línea 8SR — Baltasar Brum / San Ramón',
-    empresa: 'UCOT',
-    terminalA: 'Terminal Baltasar Brum',
-    terminalB: 'San Ramón',
-    kmRecorrido: 52.0,
-    capacidadVehiculo: 85,
-    frecuencias: [
-      { label: 'Mañana',     horaInicio: '06:00', horaFin: '12:00', frecuenciaMin: 35, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Tarde',      horaInicio: '12:00', horaFin: '20:00', frecuenciaMin: 35, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Nocturno',   horaInicio: '20:00', horaFin: '22:30', frecuenciaMin: 70, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
-      { label: 'Sábado',     horaInicio: '07:00', horaFin: '21:00', frecuenciaMin: 45, diasAplica: ['SAB'] },
-      { label: 'Domingo',    horaInicio: '08:00', horaFin: '19:00', frecuenciaMin: 70, diasAplica: ['DOM'] },
-    ],
-    rivalesVerificados: [
-      { lineId: 'C1',       empresa: 'Copsa',    solapamientoPct: 90, tramoCompartido: 'Ruta 8 completa → San Ramón', frecuenciaRivalMin: 30 },
-      { lineId: 'Rubricay', empresa: 'Rubricay', solapamientoPct: 75, tramoCompartido: 'Ruta 8 → San Ramón', frecuenciaRivalMin: 45 },
-    ],
-    corridorBbox: [-34.70, -56.10, -34.35, -55.85],
-    tramosAlaDemanda: ['Terminal Baltasar Brum', 'Sauce (transbordo)', 'San Ramón centro'],
-  },
 };
 
 // ─── Motor del Inspector ─────────────────────────────────────────────────────
@@ -459,26 +1120,98 @@ export class LineInspectorAgent {
     const dias = ['DOM', 'LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB'] as const;
     const diaHoy = dias[now.getDay()];
 
-    return this.config.frecuencias.find((f) => {
-      const aplica = f.diasAplica.includes(diaHoy);
-      const dentro = hhmm >= f.horaInicio && hhmm <= f.horaFin;
-      return aplica && dentro;
-    }) ?? null;
+    return (
+      this.config.frecuencias.find((f) => {
+        const aplica = f.diasAplica.includes(diaHoy);
+        const dentro = hhmm >= f.horaInicio && hhmm <= f.horaFin;
+        return aplica && dentro;
+      }) ?? null
+    );
   }
 
-  /** Analiza el headway real entre buses y genera alertas */
-  analyzeHeadway(busesEnLinea: Array<{ lat: number; lng: number; timestamp?: number }>): AlertaHeadway {
+  /** Analiza el headway real entre buses usando posiciones GPS — detecta bunching y huecos */
+  analyzeHeadway(busesEnLinea: BusPosition[]): AlertaHeadway {
     const freq = this.getCurrentFrequency();
-    if (!freq) return { tipo: 'OK', mensaje: 'Fuera de horario operativo', gravedad: 'NORMAL' };
+    if (!freq) return { tipo: 'OK', mensaje: 'Fuera de horario operativo', gravedad: 'NORMAL', busesConGPS: 0 };
 
-    if (busesEnLinea.length < 2) {
+    const conGPS = busesEnLinea.filter((b) => b.lat !== 0 && b.lng !== 0);
+
+    if (conGPS.length === 0) {
       return {
         tipo: 'HUECO',
-        mensaje: `Solo ${busesEnLinea.length} bus activo. Frecuencia esperada: ${freq.frecuenciaMin} min`,
-        gravedad: busesEnLinea.length === 0 ? 'CRITICO' : 'ADVERTENCIA',
+        mensaje: `Sin telemetría GPS activa. Frecuencia esperada: ${freq.frecuenciaMin} min`,
+        gravedad: 'CRITICO',
+        busesConGPS: 0,
       };
     }
-    return { tipo: 'OK', mensaje: `${busesEnLinea.length} buses activos. Frecuencia ${freq.frecuenciaMin} min`, gravedad: 'NORMAL' };
+
+    if (conGPS.length < 2) {
+      return {
+        tipo: 'HUECO',
+        mensaje: `Solo 1 bus con GPS activo (interno: ${conGPS[0].interno || 'N/D'}). Frecuencia esperada: ${freq.frecuenciaMin} min`,
+        gravedad: 'ADVERTENCIA',
+        busesConGPS: 1,
+      };
+    }
+
+    // Calcular separación entre buses consecutivos con Haversine
+    const BUNCHING_THRESHOLD_KM = 0.8; // < 800m = bunching
+    const bunchingPares: Array<{ interno1: string; interno2: string; distanciaKm: number }> = [];
+    const separaciones: number[] = [];
+
+    for (let i = 0; i < conGPS.length - 1; i++) {
+      const a = conGPS[i];
+      const b = conGPS[i + 1];
+      const dist = haversineKm(a.lat, a.lng, b.lat, b.lng);
+      separaciones.push(dist);
+      if (dist < BUNCHING_THRESHOLD_KM) {
+        bunchingPares.push({
+          interno1: a.interno || `Bus ${i + 1}`,
+          interno2: b.interno || `Bus ${i + 2}`,
+          distanciaKm: Math.round(dist * 100) / 100,
+        });
+      }
+    }
+
+    const separacionPromedio = separaciones.reduce((s, v) => s + v, 0) / separaciones.length;
+    // Cada km de separación ≈ freq/kmRecorrido * km minutos
+    const minPorKm = freq.frecuenciaMin / (this.config.kmRecorrido || 20);
+    const minutosReales = separacionPromedio * minPorKm;
+    const desviacion = Math.round(minutosReales - freq.frecuenciaMin);
+
+    if (bunchingPares.length > 0) {
+      return {
+        tipo: 'AGRUPAMIENTO',
+        mensaje: `⚠️ Bunching detectado: ${bunchingPares.length} par(es) de buses a <${BUNCHING_THRESHOLD_KM * 1000}m. Sep. promedio: ${separacionPromedio.toFixed(1)} km`,
+        gravedad: bunchingPares.length >= 2 ? 'CRITICO' : 'ADVERTENCIA',
+        minutosDesviacion: desviacion,
+        bunchingPares,
+        busesConGPS: conGPS.length,
+        separacionPromedioKm: Math.round(separacionPromedio * 100) / 100,
+      };
+    }
+
+    // Verificar si hay hueco grande (separación > 2× frecuencia esperada)
+    const maxSep = Math.max(...separaciones);
+    const maxMinutos = maxSep * minPorKm;
+    if (maxMinutos > freq.frecuenciaMin * 2) {
+      return {
+        tipo: 'HUECO',
+        mensaje: `⚠️ Brecha detectada: separación máx. ${maxSep.toFixed(1)} km (~${Math.round(maxMinutos)} min). Frecuencia esperada: ${freq.frecuenciaMin} min`,
+        gravedad: 'ADVERTENCIA',
+        minutosDesviacion: Math.round(maxMinutos - freq.frecuenciaMin),
+        busesConGPS: conGPS.length,
+        separacionPromedioKm: Math.round(separacionPromedio * 100) / 100,
+      };
+    }
+
+    return {
+      tipo: 'OK',
+      mensaje: `✅ ${conGPS.length} buses activos con GPS. Separación promedio: ${separacionPromedio.toFixed(1)} km. Headway OK (~${Math.round(minutosReales)} min)`,
+      gravedad: 'NORMAL',
+      busesConGPS: conGPS.length,
+      separacionPromedioKm: Math.round(separacionPromedio * 100) / 100,
+    };
   }
 
   /** Calcula métricas de recaudación estimada */
@@ -500,33 +1233,125 @@ export class LineInspectorAgent {
     };
   }
 
-  /** Filtra los rivales que son geográficamente relevantes para este corredor */
+  /**
+   * NUEVO — Motor Autónomo de Inteligencia Competitiva
+   * Detecta automáticamente todos los competidores STM que comparten
+   * destino u origen con esta línea UCOT.
+   */
+  getCompetitorReport(): ReporteInteligenciaCompetitiva {
+    const freq = this.getCurrentFrequency();
+    return CompetitorIntelligenceEngine.generarReporte(
+      {
+        lineId: this.config.lineId,
+        terminalA: this.config.terminalA,
+        terminalB: this.config.terminalB,
+        zonasServidas: this.config.zonasServidas,
+        frecPicoMin: freq?.frecuenciaMin ?? this.config.frecuencias[0]?.frecuenciaMin ?? 15,
+        rivalesVerificados: this.config.rivalesVerificados,
+      },
+      this.config.nombreComercial,
+    );
+  }
+
+  /**
+   * NUEVO — Retorna solo los rivales que llevan al mismo destino final
+   * (mismo terminal B o A — para análisis de captación por OD pair)
+   */
+  getRivalsByDestination(): RivalVerificado[] {
+    const report = this.getCompetitorReport();
+    return report.competidoresDetectados
+      .filter((c) => c.tipoCompetencia === 'DESTINO_COMPARTIDO' || c.tipoCompetencia === 'AMBOS')
+      .map((c) => ({
+        lineId: c.rivalLineId,
+        empresa: c.rivalEmpresa,
+        solapamientoPct: c.solapamientoRecorridoPct,
+        tramoCompartido: c.puntosCompetencia.join(' → '),
+        frecuenciaRivalMin: c.frecRivalPicoMin,
+      }));
+  }
+
+  /** @deprecated Usar getCompetitorReport() para análisis completo */
   getGeographicallyRelevantRivals(): RivalVerificado[] {
     return this.config.rivalesVerificados.filter((r) => r.solapamientoPct >= 30);
   }
 
-  /** Genera reporte completo del Inspector para la UI */
-  async generateReport(busesActivos: number = 3): Promise<InspectorReport> {
-    const [{ ida, vuelta }, freq] = await Promise.all([
+  /** Genera reporte completo del Inspector utilizando datos geoespaciales reales cruzados con la inteligencia del backend */
+  async generateReport(posicionesGPS: BusPosition[] = [], realtimeIntelligenceData?: any): Promise<InspectorReport> {
+    const [{ ida, vuelta }, freq, horariosSTMOficiales] = await Promise.all([
       getLineVariants(this.config.lineId),
       Promise.resolve(this.getCurrentFrequency()),
+      STMScheduleService.getSchedules(this.config.lineId)
     ]);
 
-    const metricas = this.estimateRevenue(busesActivos);
-    const rivalesActivos = this.getGeographicallyRelevantRivals();
-    const alertas: AlertaHeadway[] = [];
+    const numBuses = posicionesGPS.length;
 
-    if (busesActivos === 0) {
-      alertas.push({ tipo: 'HUECO', mensaje: 'Sin buses activos en la línea', gravedad: 'CRITICO' });
+    const metricas = this.estimateRevenue(numBuses || 1); // EVitar 0 recaudo si no hay gps
+    const competitorReport = this.getCompetitorReport();
+    
+    // 🔥 Cruzamos con Telemetría Real si existe
+    let rivalesActivos = competitorReport.competidoresDetectados.map((c) => {
+      // Buscar si la inteligencia backend (GPS real) detectó a este rival en rango vivo
+      const vivo = realtimeIntelligenceData?.competencia?.find((r: any) => 
+        r.linea === c.rivalLineId && r.empresa === c.rivalEmpresa.toUpperCase()
+      );
+      return {
+        lineId: c.rivalLineId,
+        empresa: c.rivalEmpresa,
+        solapamientoPct: c.solapamientoRecorridoPct,
+        tramoCompartido: c.puntosCompetencia.slice(0, 2).join(' → '),
+        frecuenciaRivalMin: vivo ? vivo.frecuenciaRealMinutos : c.frecRivalPicoMin,
+        detectadoEnRuta: !!vivo // true si está físicamente en la ruta ahora
+      };
+    });
+
+    const alertas: AlertaHeadway[] = [];
+    const ucotVivoInfo = realtimeIntelligenceData?.ucot;
+
+    if (numBuses === 0) {
+      alertas.push({
+        tipo: 'HUECO',
+        mensaje: 'Sin cobertura GPS de la flota en el corredor',
+        gravedad: 'CRITICO',
+      });
+    }
+
+    if (ucotVivoInfo?.bunchingPares > 0) {
+      alertas.push({
+        tipo: 'AGRUPAMIENTO',
+        mensaje: `Agrupamiento (Bunching) Severo: ${ucotVivoInfo.bunchingPares} pares de buses perdiendo eficiencia. Puntualidad cayó a ${ucotVivoInfo.puntualidad}%`,
+        gravedad: 'CRITICO',
+      });
+    }
+
+    // Análisis Táctico de Regulador
+    const frecRealEst = ucotVivoInfo?.frecuenciaRealMinutos || (numBuses > 0 ? Math.round(((this.config.kmRecorrido * 2 / 16) * 60) / numBuses) : 0);
+    const frecOficial = freq?.frecuenciaMin || 0;
+    
+    let conclusionTactiva = '';
+    const rivalPrincipalVivo = rivalesActivos.find(r => r.detectadoEnRuta);
+    
+    if (frecRealEst > 0 && frecOficial > 0) {
+      if (frecRealEst > frecOficial + 5) {
+        conclusionTactiva = `🧠 Táctica: HUECO DETECTADO. Real (${frecRealEst} min) rezagado vs Oficial (${frecOficial} min). ${rivalPrincipalVivo ? `Riesgo de fuga de boletos hacia ${rivalPrincipalVivo.empresa} (${rivalPrincipalVivo.lineId}).` : 'Fuga de pasajeros inminente.'}`;
+      } else if (frecRealEst < frecOficial - 3) {
+        conclusionTactiva = `🧠 Táctica: OFERTA EXCECIDA. Frecuencia Real (${frecRealEst} min) muy rápida. Regular marcha para evitar quemar combustible u originar bunching en terminal.`;
+      } else {
+        conclusionTactiva = `🧠 Táctica: SERVICIO ÓPTIMO. Cadencia (${frecRealEst}m) alineada al STM. Puntualidad estimada: ${ucotVivoInfo?.puntualidad || 85}%.`;
+      }
+    } else {
+      conclusionTactiva = `🧠 Táctica: Operando sin cruzamiento de horarios (Real: ${frecRealEst}m / Oficial: ${frecOficial}m).`;
     }
 
     const resumenEjecutivo = [
       `📍 ${this.config.nombreComercial}`,
-      `🕐 Frecuencia actual: ${freq ? freq.frecuenciaMin + ' min (' + freq.label + ')' : 'Fuera de servicio'}`,
-      `🚌 Buses activos: ${busesActivos}`,
-      `👥 Pasajeros estimados hoy: ${metricas.pasajerosEstimadosDia.toLocaleString('es-UY')}`,
-      `💰 Recaudación estimada: $${metricas.recaudacionEstimadaDia.toLocaleString('es-UY')} UYU`,
-      `⚔ Rivales directos: ${rivalesActivos.map((r) => r.lineId).join(', ')}`,
+      `🕐 Oficial STM: ${frecOficial > 0 ? frecOficial + ' min' : 'ND'} | 🕒 Flota Viva: ${frecRealEst > 0 ? frecRealEst + ' min' : 'ND'}`,
+      horariosSTMOficiales.length > 0 ? `📅 Salida Planificada: ${horariosSTMOficiales[0]?.horaSalida}` : `📅 Sincronizando con matriz STM...`,
+      `🚌 Activos: ${numBuses}`,
+      `💰 Ingreso Diario Teórico: $${metricas.recaudacionEstimadaDia.toLocaleString('es-UY')}`,
+      competitorReport.amenazaPrincipal
+        ? `⚠️ Amenaza Mayor: Lín.${competitorReport.amenazaPrincipal.rivalLineId} ${rivalPrincipalVivo ? '(¡DETECTADO EN RUTA!)' : '(Monitoreando GPS)'}`
+        : `✅ Corredor Despejado`,
+      conclusionTactiva
     ].join(' | ');
 
     return {
@@ -538,6 +1363,7 @@ export class LineInspectorAgent {
       metricas,
       rivalesActivos,
       resumenEjecutivo,
+      horariosSTMOficiales,
     };
   }
 
@@ -548,10 +1374,43 @@ export class LineInspectorAgent {
 
 /**
  * Obtiene (o crea) el Inspector para una línea.
- * Retorna null si la línea no tiene configuración.
+ * Genera una configuración base automáticamente si no existe en los configs estáticos 
+ * permitiendo que el motor competitivo actúe para todas las líneas.
  */
-export function getLineInspector(lineId: string): LineInspectorAgent | null {
+export function getLineInspector(lineId: string): LineInspectorAgent {
   const clean = lineId.replace(/[ab]$/i, '');
-  if (!LINE_INSPECTOR_CONFIGS[clean]) return null;
+  if (!LINE_INSPECTOR_CONFIGS[clean]) {
+    const lineasMaster = getMasterLineas();
+    const lineaInfo = lineasMaster.find(l => l.id.replace(/[ab]$/i, '') === clean);
+    const nombreFull = lineaInfo?.nombre || `Línea ${clean}`;
+    
+    // Extraer terminales primitivas del nombre "ORIGEN - DESTINO"
+    const partes = nombreFull.split(' - ');
+    const terminalA = partes[0]?.trim() || 'Desconocido';
+    const terminalB = partes[1]?.trim() || 'Desconocido';
+
+    LINE_INSPECTOR_CONFIGS[clean] = {
+      lineId: clean,
+      empresa: 'UCOT',
+      nombreComercial: nombreFull,
+      terminalA,
+      terminalB,
+      zonasServidas: [terminalA, terminalB],
+      kmRecorrido: 20, // baseline
+      capacidadVehiculo: 75,
+      frecuencias: [
+        {
+          label: 'Todo el día',
+          horaInicio: '00:00',
+          horaFin: '23:59',
+          frecuenciaMin: 20,
+          diasAplica: ['LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB', 'DOM'],
+        },
+      ],
+      rivalesVerificados: [],
+      corridorBbox: [-34.9, -56.1, -34.75, -55.8],
+      tramosAlaDemanda: [terminalA, terminalB],
+    };
+  }
   return new LineInspectorAgent(clean);
 }

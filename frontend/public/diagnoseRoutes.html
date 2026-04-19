@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head><title>Route Diagnostic</title>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const app = initializeApp({
+  apiKey: "AIzaSyAWS7M4TAyRLEhijVEFp5jXqNtOdDB0_JA",
+  authDomain: "ucot-gestor-cloud.firebaseapp.com",
+  projectId: "ucot-gestor-cloud",
+  storageBucket: "ucot-gestor-cloud.firebasestorage.app",
+});
+const db = getFirestore(app);
+
+async function diagnose() {
+  const out = document.getElementById('out');
+  out.textContent = 'Leyendo Firestore lineas_ucot...\n\n';
+  
+  const snap = await getDocs(collection(db, 'lineas_ucot'));
+  let total = 0;
+  const lines = {};
+  
+  snap.docs.forEach(d => {
+    const data = d.data();
+    const code = d.id;
+    const rec = data.recorrido || [];
+    const par = data.paradas || [];
+    const validRec = rec.filter(p => p.lat && p.lng && p.lat !== 0 && p.lng !== 0);
+    
+    const lineId = code.replace(/[ab]$/i, '');
+    if (!lines[lineId]) lines[lineId] = {};
+    lines[lineId][code] = {
+      recorridoPts: validRec.length,
+      paradasCount: par.length,
+      origen: data.origen || '?',
+      destino: data.destino || '?',
+      sentido: data.sentido || '?',
+      empresa: data.empresa || '?',
+    };
+    total++;
+  });
+  
+  out.textContent += `Total docs: ${total}\n\n`;
+  out.textContent += '═══════════════════════════════════════════════════════\n';
+  out.textContent += 'LINE  | CODE | RECORRIDO PTS | PARADAS | SENTIDO | ORIGEN → DESTINO\n';
+  out.textContent += '═══════════════════════════════════════════════════════\n';
+  
+  Object.keys(lines).sort().forEach(lineId => {
+    const variants = lines[lineId];
+    Object.keys(variants).sort().forEach(code => {
+      const v = variants[code];
+      const status = v.recorridoPts === 0 ? '❌' : v.recorridoPts < 50 ? '⚠️' : '✅';
+      out.textContent += `${status} ${lineId.padEnd(5)} | ${code.padEnd(5)} | ${String(v.recorridoPts).padStart(4)} pts      | ${String(v.paradasCount).padStart(3)}     | ${v.sentido.padEnd(7)} | ${v.origen} → ${v.destino}\n`;
+    });
+    out.textContent += '───────────────────────────────────────────────────────\n';
+  });
+  
+  // Also try to fetch from STM API directly to compare
+  out.textContent += '\n\n═══ Testing STM API for Line 300 (both variants) ═══\n';
+  const PROXY = 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/montevideoProxy';
+  
+  for (const variant of [0, 1]) {
+    try {
+      const url = `${PROXY}?endpoint=${encodeURIComponent(`transporteRest/infoTransporte/recorrido/300/${variant}`)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      let pts = 0;
+      if (Array.isArray(data)) pts = data.length;
+      else if (data?.recorrido) pts = data.recorrido.length;
+      else if (data?.coordinates) pts = data.coordinates.length;
+      out.textContent += `  Variant ${variant}: HTTP ${res.status}, tipo=${typeof data}, pts=${pts}\n`;
+      if (pts > 0) {
+        const sample = Array.isArray(data) ? data[0] : null;
+        out.textContent += `    Sample: ${JSON.stringify(sample)}\n`;
+      } else {
+        out.textContent += `    Raw (first 500 chars): ${JSON.stringify(data).substring(0,500)}\n`;
+      }
+    } catch(e) {
+      out.textContent += `  Variant ${variant}: ERROR ${e.message}\n`;
+    }
+  }
+  
+  // Test paradas for line 300
+  out.textContent += '\n═══ Testing STM API Paradas for Line 300 ═══\n';
+  for (const variant of [0, 1]) {
+    try {
+      const url = `${PROXY}?endpoint=${encodeURIComponent(`transporteRest/infoTransporte/paradas/300/${variant}`)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      let pts = Array.isArray(data) ? data.length : (data?.paradas?.length || 0);
+      out.textContent += `  Paradas variant ${variant}: HTTP ${res.status}, count=${pts}\n`;
+      if (pts > 0) {
+        const arr = Array.isArray(data) ? data : data.paradas;
+        out.textContent += `    First: ${JSON.stringify(arr[0])}\n`;
+        out.textContent += `    Last: ${JSON.stringify(arr[arr.length-1])}\n`;
+      }
+    } catch(e) {
+      out.textContent += `  Paradas variant ${variant}: ERROR ${e.message}\n`;
+    }
+  }
+  
+  // Also test the linea info endpoint
+  out.textContent += '\n═══ Testing STM API Linea info ═══\n';
+  for (const lineId of ['300', '306']) {
+    try {
+      const url = `${PROXY}?endpoint=${encodeURIComponent(`transporteRest/infoTransporte/linea/${lineId}`)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      out.textContent += `  Line ${lineId}: ${JSON.stringify(data).substring(0, 600)}\n`;
+    } catch(e) {
+      out.textContent += `  Line ${lineId}: ERROR ${e.message}\n`;
+    }
+  }
+}
+
+diagnose().catch(e => {
+  document.getElementById('out').textContent += `\n\nFATAL ERROR: ${e.message}\n${e.stack}`;
+});
+</script>
+</head>
+<body style="background:#111;color:#0f0;font-family:monospace;padding:20px">
+<h1 style="color:#0ff">🔍 Route Diagnostic</h1>
+<pre id="out">Initializing...</pre>
+</body>
+</html>

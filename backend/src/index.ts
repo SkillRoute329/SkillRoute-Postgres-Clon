@@ -12,6 +12,7 @@
 
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import { Server as SocketIOServer } from 'socket.io';
 import http from 'http';
 import logger from './config/logger';
@@ -19,6 +20,7 @@ import { Config } from './config/constants';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import routes from './routes/index';
 import { initializeSocket } from './services/realtimeService';
+import { AIService } from './services/aiService';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INICIALIZACIÓN
@@ -36,12 +38,41 @@ logger.info('🚀 TransformaFacil Backend iniciando...', {
 // MIDDLEWARE GLOBAL
 // ═══════════════════════════════════════════════════════════════════════════
 
-// CORS
+// CORS — orígenes leídos desde CORS_ORIGINS en .env
+const corsOrigins = Config.CORS_ORIGINS;
+const isDev = Config.NODE_ENV === 'development';
+
 app.use(cors({
-  origin: true, // En desarrollo permitir todos los orígenes
+  origin: isDev ? true : corsOrigins,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
 }));
+
+logger.info(`🔒 CORS configurado`, {
+  modo: isDev ? 'DESARROLLO (todos los orígenes)' : 'PRODUCCIÓN (restringido)',
+  origenesPermitidos: isDev ? '*' : corsOrigins,
+});
+
+// ─── RATE LIMITING ───────────────────────────────────────────────────────────
+const apiLimiter = rateLimit({
+  windowMs: Config.RATE_LIMIT_WINDOW_MS,           // default: 15 minutos
+  max: Config.RATE_LIMIT_MAX_REQUESTS,              // default: 100 requests
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 429,
+    error: 'Demasiadas solicitudes. Por favor intente más tarde.',
+    retryAfter: Math.ceil(Config.RATE_LIMIT_WINDOW_MS / 60000),
+  },
+  skip: (req) => req.path === '/api/health' || req.path === '/api/doctor',
+});
+
+app.use('/api', apiLimiter);
+
+logger.info(`🛡️  Rate Limiting activo`, {
+  ventana: `${Config.RATE_LIMIT_WINDOW_MS / 60000} minutos`,
+  maxRequests: Config.RATE_LIMIT_MAX_REQUESTS,
+});
 
 // Body parser
 app.use(express.json({ limit: Config.JSON_LIMIT }));
@@ -69,7 +100,8 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   res.header('X-Content-Type-Options', 'nosniff');
   res.header('X-Frame-Options', 'DENY');
   res.header('X-XSS-Protection', '1; mode=block');
-  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.header('Permissions-Policy', 'geolocation=(), microphone=()');
   res.header(
     'Access-Control-Allow-Headers',
     'Origin, X-Requested-With, Content-Type, Accept, Authorization',
@@ -140,6 +172,9 @@ const server = httpServer.listen(Number(PORT), '0.0.0.0', () => {
   logger.info(`🔌 WebSocket: ws://localhost:${PORT}`);
   logger.info(`📚 Health: http://localhost:${PORT}/api/health`);
   logger.info(`🔍 Doctor: http://localhost:${PORT}/api/doctor`);
+  AIService.prewarm('HEAVY');
+  AIService.prewarm('FAST');
+  AIService.prewarm('CODER');
 });
 
 // Graceful shutdown

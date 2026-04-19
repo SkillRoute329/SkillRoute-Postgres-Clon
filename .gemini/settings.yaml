@@ -1,0 +1,36 @@
+# GestionUcot - Gemini Workspace Configuration
+# Prevents AI tools from scanning heavy directories
+
+vcs:
+  provider: git
+
+workspace:
+  # Directories to NEVER scan or index
+  exclude:
+    - node_modules
+    - .venv
+    - .vs
+    - .git
+    - .firebase
+    - .augment  
+    - .agent
+    - .agents
+    - .claude
+    - backend_legacy
+    - gtfs_data
+    - test-screenshots
+    - test-verify-lines
+    - tmp
+    - dist
+    - functions/node_modules
+    - frontend/node_modules
+    - "*.xls"
+    - "*.xlsx" 
+    - "*.docx"
+    - "*.zip"
+    - gtfs_stm.zip
+    - horarios.zip
+    - eslint_out.json
+    - diff.txt
+    - package-lock.json
+    - "*.tsbuildinfo"

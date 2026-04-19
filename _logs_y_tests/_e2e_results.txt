@@ -1,0 +1,64 @@
+﻿ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+  E2E TEST: Navegador UCOT (Puppeteer)
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+
+­ƒÜÇ Lanzando Chromium...
+
+ÔöÇÔöÇ TEST 1: Carga de p├ígina ÔöÇÔöÇ
+  Ô£à P├ígina carga HTTP 200 ÔÇö HTTP 200
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\01_page_load.png
+
+ÔöÇÔöÇ TEST 2: Elementos de la UI ÔöÇÔöÇ
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\02_full_ui.png
+  Ô£à Contiene componente de navegaci├│n ÔÇö Buscando "navigation/Navegador/UCOT" en DOM
+  Ô£à Selectores encontrados ÔÇö 2 selectores
+  Ô£à Botones encontrados ÔÇö 8 botones
+  Ô£à Mapa Leaflet presente
+
+ÔöÇÔöÇ TEST 3: Selector de l├¡nea UCOT ÔöÇÔöÇ
+  ÔØî Selector de l├¡neas encontrado ÔÇö 2 selects sin l├¡neas
+
+ÔöÇÔöÇ TEST 4: Mapa con recorrido ÔöÇÔöÇ
+  ÔØî Mapa renderizado ÔÇö No encontrado
+  ÔØî Polyline de ruta visible ÔÇö undefined polil├¡neas, path m├ís largo: undefined chars
+  ÔØî Tiles del mapa cargados ÔÇö undefined tiles
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\04_map_with_route.png
+
+ÔöÇÔöÇ TEST 5: Selector de variante/destino ÔöÇÔöÇ
+  Ô£à Selector de variantes/destinos ÔÇö 0 opciones
+
+ÔöÇÔöÇ TEST 6: Iniciar viaje ÔöÇÔöÇ
+  Ô£à Bot├│n Iniciar Viaje encontrado ÔÇö "Iniciar Viaje GPS" disabled=true
+
+ÔöÇÔöÇ TEST 7: Editor de desv├¡os ÔöÇÔöÇ
+  Ô£à Bot├│n de desv├¡o encontrado ÔÇö "Agregar desv├¡o"
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\07_desvio_editor.png
+  ÔØî Editor de desv├¡o se abri├│
+
+ÔöÇÔöÇ TEST 8: Otras l├¡neas UCOT ÔöÇÔöÇ
+  ÔØî L├¡nea 300 muestra recorrido
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\08_linea_300.png
+  ÔØî L├¡nea 306 muestra recorrido
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\08_linea_306.png
+  ÔØî L├¡nea 329 muestra recorrido
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\08_linea_329.png
+
+ÔöÇÔöÇ TEST 9: Coordenadas reales (Montevideo) ÔöÇÔöÇ
+  ÔØî Centro del mapa accesible ÔÇö No se pudo acceder a Leaflet
+  ­ƒô© Screenshot: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots\09_final_state.png
+
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+  RESULTADOS: 8/17 tests pasaron
+  ÔÜá 9 tests FALLARON:
+    ÔØî Selector de l├¡neas encontrado: 2 selects sin l├¡neas
+    ÔØî Mapa renderizado: No encontrado
+    ÔØî Polyline de ruta visible: undefined polil├¡neas, path m├ís largo: undefined chars
+    ÔØî Tiles del mapa cargados: undefined tiles
+    ÔØî Editor de desv├¡o se abri├│: 
+    ÔØî L├¡nea 300 muestra recorrido: 
+    ÔØî L├¡nea 306 muestra recorrido: 
+    ÔØî L├¡nea 329 muestra recorrido: 
+    ÔØî Centro del mapa accesible: No se pudo acceder a Leaflet
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+
+­ƒô© Screenshots guardados en: C:\Users\jonat\Desktop\PROYECTOS\TransformaFacil-2.0\test-screenshots

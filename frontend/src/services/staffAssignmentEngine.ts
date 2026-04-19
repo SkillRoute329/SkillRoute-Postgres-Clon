@@ -1,6 +1,7 @@
 /**
  * Motor de Rotación de Personal.
  * Función pura generarRotacion: cruza personal, flota y cartones; aplica 15_15 / semana_semana y día de descanso.
+ * Incluye bloqueo automático por ficha médica vencida (Skill 7: Gestión Talento/Salud).
  */
 import type {
   AsignacionGenerada,
@@ -9,6 +10,56 @@ import type {
   ServicioCarton,
   VehiculoRotacion,
 } from '../types/rotation';
+import type { Feriado } from './feriadosService';
+
+/** Verifica si un documento de salud/habilitación está vencido. */
+function isDocumentoVencido(
+  fechaVencimiento: string | undefined | null,
+  fechaReferencia: string,
+): boolean {
+  if (!fechaVencimiento) return false; // Sin fecha registrada → no bloquea (pero genera advertencia)
+  return fechaReferencia > fechaVencimiento;
+}
+
+/** Resultado del chequeo de aptitud para un conductor. */
+export interface AptitudResult {
+  apto: boolean;
+  motivos: string[];
+}
+
+/** Chequea la aptitud médica y documental de un conductor. */
+export function verificarAptitud(
+  personal: PersonalRotacion,
+  fechaReferencia: string,
+): AptitudResult {
+  const motivos: string[] = [];
+
+  const carneSalud = (personal as Record<string, unknown>).carneSaludVencimiento as
+    | string
+    | undefined;
+  const libretaProfesional = (personal as Record<string, unknown>).libretaProfesionalVencimiento as
+    | string
+    | undefined;
+  const suspendido = (personal as Record<string, unknown>).suspendido as boolean | undefined;
+  const aptoPsicofisico = (personal as Record<string, unknown>).aptoPsicofisico as
+    | boolean
+    | undefined;
+
+  if (isDocumentoVencido(carneSalud, fechaReferencia)) {
+    motivos.push(`Carné de Salud vencido (${carneSalud})`);
+  }
+  if (isDocumentoVencido(libretaProfesional, fechaReferencia)) {
+    motivos.push(`Libreta Profesional vencida (${libretaProfesional})`);
+  }
+  if (suspendido === true) {
+    motivos.push('Conductor suspendido administrativamente');
+  }
+  if (aptoPsicofisico === false) {
+    motivos.push('No apto psicofísico');
+  }
+
+  return { apto: motivos.length === 0, motivos };
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -106,6 +157,7 @@ export interface GenerarRotacionParams {
   reglas: ReglaRotacion[];
   flota: VehiculoRotacion[];
   cartones: ServicioCarton[];
+  feriados?: Feriado[];
 }
 
 /**
@@ -115,7 +167,7 @@ export interface GenerarRotacionParams {
  * - Deja huecos (driverId null, esLista true) para el Listero (personal de lista).
  */
 export function generarRotacion(params: GenerarRotacionParams): AsignacionGenerada[] {
-  const { fechaInicio, fechaFin, personal, reglas, flota, cartones } = params;
+  const { fechaInicio, fechaFin, personal, reglas, flota, cartones, feriados = [] } = params;
   const reglasMap = new Map(reglas.map((r) => [r.id!, r]));
   const cocheToPersonal = new Map<string, PersonalRotacion>();
   personal.forEach((p) => {
@@ -130,6 +182,10 @@ export function generarRotacion(params: GenerarRotacionParams): AsignacionGenera
   for (let epoch = startEpoch; epoch <= endEpoch; epoch++) {
     const d = new Date(epoch * DAY_MS);
     const dateStr = d.toISOString().split('T')[0];
+    
+    // Verificamos si este día es Feriado
+    const mmdd = dateStr.substring(5);
+    const feriado = feriados.find((f) => f.fecha === dateStr || (f.recurrente && f.fecha.substring(5) === mmdd));
 
     cartones.forEach((svc) => {
       const vehicleNum = (svc.vehicleInternalNumber ?? '').toString().trim();
@@ -154,6 +210,35 @@ export function generarRotacion(params: GenerarRotacionParams): AsignacionGenera
           driverId: null,
           turno: 1,
           esLista: true,
+          esFeriado: !!feriado,
+          feriadoGrilla: feriado?.tipoHorario,
+        });
+        return;
+      }
+
+      // ── BLOQUEO POR APTITUD MÉDICA ─────────────────────────────────
+      // Skill 7 (Gestión Talento/Salud): Impide asignar servicios a personal
+      // con ficha médica vencida, libreta expirada o suspensión activa.
+      const aptitud = verificarAptitud(conductor, dateStr);
+      if (!aptitud.apto) {
+        results.push({
+          date: dateStr,
+          vehicleId,
+          vehicleInternalNumber: vehicleNum,
+          serviceId: svc.serviceNumber,
+          serviceNumber: svc.serviceNumber,
+          lineCode: svc.lineCode,
+          startTime: svc.startTime,
+          endTime: svc.endTime,
+          driverId: null,
+          internalNumber: conductor.internalNumber,
+          fullName: conductor.fullName,
+          turno: turnoParaFecha(dateStr, regla.regimen, conductor.turnoActual, startEpoch),
+          esLista: true,
+          bloqueoPorAptitud: true,
+          motivosBloqueo: aptitud.motivos,
+          esFeriado: !!feriado,
+          feriadoGrilla: feriado?.tipoHorario,
         });
         return;
       }
@@ -181,6 +266,8 @@ export function generarRotacion(params: GenerarRotacionParams): AsignacionGenera
           turno: turnoParaFecha(dateStr, regla.regimen, conductor.turnoActual, startEpoch),
           esLista: true,
           diaLibre: true,
+          esFeriado: !!feriado,
+          feriadoGrilla: feriado?.tipoHorario,
         });
         return;
       }
@@ -201,6 +288,8 @@ export function generarRotacion(params: GenerarRotacionParams): AsignacionGenera
         turno,
         esLista: false,
         diaLibre: false,
+        esFeriado: !!feriado,
+        feriadoGrilla: feriado?.tipoHorario,
       });
     });
   }

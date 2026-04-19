@@ -1,0 +1,43 @@
+﻿
+=== map.js ===
+Status: 200, Size: 36785 bytes
+Saved to stm_map.js
+URLs encontradas:
+  https://m.montevideo.gub.uy/comoir/parada?numero=
+  https://intranet.imm.gub.uy/catalogo-de-aplicaciones?title=minu
+  http://prodtmp.imm.gub.uy:8080/stmMinutasWEB/pages/visualizarRecorrido.xhtml
+  http://geoserver.imm.gub.uy:8080/geoserver/wms?WIDTH=256&SRS=EPSG%3A32721&LAYERS=imm%3Av_uptu_horarios_control&HEIGHT=256&STYLES=&
+  http://geoserver.imm.gub.uy:8080/geoserver/imm/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&FORMAT=image%2Fpng&TRANSPARENT=true&
+  https://openlayers.org/en/v5.3.0/examples/export-pdf.html?q=pdf
+Funciones: function init, function precarga, function controlarParadas, function cambiarVisible, function getNombrePublicoLinea, function borrarWms, function test, function cargarPuntosControl, function consultaMovilidadVariante, function cargarRecorridoVarianteImagen, function realizarZoom, function zoomAnimateParadas, function cargarParadasVariante, function apagar, function getValor, function cargarParadasConsultaMovilidad, function descomponerObjet, function descomponerTxt, function resetear, function cargarRecorridoVariante, function addOrigenDestinoVariante, function zoomFour, function addMarker, function addEvento, function LineString, function guardarLinea, function Poligono, function setFeatureVectorOrigenDestino, function setFeatureVectorPuntoControl, function setFeatureVectorViajes, function setFeatureVectorParadasVariante, function setFeatureLineasViaje, function visibilidadFeatureLineaSelected, function compare, function setFeatureVectorOcio, function setFeatureLineasVectorOcio, function addControl
+
+=== estilosWMS.js ===
+Status: 200, Size: 3207 bytes
+Saved to stm_estilosWMS.js
+URLs encontradas:
+  http://www.opengis.net/sld
+  http://www.opengis.net/ogc
+  http://www.w3.org/1999/xlink
+  http://www.w3.org/2001/XMLSchema-instance
+Funciones: 
+
+=== env.js ===
+Status: 200, Size: 2452 bytes
+Saved to stm_env.js
+URLs encontradas:
+  https://geoserver.montevideo.gub.uy/geoserver/wms
+  https://geoweb-desa2/geoserver/wms
+  https://geoserver.montevideo.gub.uy/geoserver/ows?service=wfs&version=2.0.0&request=GetFeature&typename=imm:v_uptu_ubic_paradas_con_horarios_deshabilitadas&outputFormat=application/json&srsname=EPSG%3A32721
+  https://geoserver.montevideo.gub.uy/geoserver/ows?service=wfs&version=2.0.0&request=GetFeature&typename=imm%3Av_uptu_sentido_variante&CQL_FILTER=cod_variante%3D3626&outputFormat=application/json&srsname=EPSG%3A32721
+  https://geoserver.montevideo.gub.uy/geoserver/imm/ows
+  http://geoserver.montevideo.gub.uy/geoserver/wms
+  http://geoserver.montevideo.gub.uy/geoserver/wms?service=WMS&version=1.1.0&request=GetMap&layers=stm_variante_destino
+  https://geoserver.montevideo.gub.uy/geoserver/ows?service=wfs&version=2.0.0&request=GetFeature&typename=imm%3Av_uptu_sentido_variante&CQL_FILTER=cod_variante%3D
+  http://geoserver.montevideo.gub.uy/geoserver/imm/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image%2Fpng&TRANSPARENT=true&STYLES&LAYERS=imm%3Av_uptu_sentido_variante&CQL_FILTER=
+  http://geoserver.imm.gub.uy:8080/geoserver/imm/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image%2Fpng&TRANSPARENT=true&LAYERS=imm%3Av_uptu_horarios_control&STYLES&CQL_FILTER=cod_variante%3D
+Funciones: 
+
+=== conversor.js ===
+Status: 200, Size: 17887 bytes
+Saved to stm_conversor.js
+Funciones: function DegToRad, function RadToDeg, function ArcLengthOfMeridian, function UTMCentralMeridian, function FootpointLatitude, function does, function MapLatLonToXY, function does, function MapXYToLatLon, function LatLonToUTMXY, function does, function UTMXYToLatLon, function btnToUTM_OnClick, function btnToGeographic_OnClick

@@ -9,11 +9,24 @@ import {
   Marker,
   Popup,
   useMap,
+  useMapEvents,
   CircleMarker,
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { LineaUCOT, PuntoLatLng } from '../../types/lineasUcot';
+import type { DesvioGuardado } from '../../services/desviosService';
+
+function MapClickHandler({ onMapClick }: { onMapClick?: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      if (onMapClick) onMapClick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
+
+export type UserPositionData = { lat: number; lng: number; heading?: null | number };
 
 const DEFAULT_CENTER: [number, number] = [-34.9, -56.16];
 const DEFAULT_ZOOM = 13;
@@ -24,8 +37,10 @@ const orangeOptions = { color: '#ea580c', weight: 4 };
 function FitBounds({ points }: { points: PuntoLatLng[] }) {
   const map = useMap();
   useEffect(() => {
-    if (points.length < 2) return;
-    const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng] as [number, number]));
+    // Filtrar (0,0) antes de construir bounds — previene zoom al Golfo de Guinea
+    const validPoints = points.filter((p) => p.lat !== 0 || p.lng !== 0);
+    if (validPoints.length < 2) return;
+    const bounds = L.latLngBounds(validPoints.map((p) => [p.lat, p.lng] as [number, number]));
     map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
   }, [map, points]);
   return null;
@@ -42,7 +57,10 @@ function CenterOnStop({
   useEffect(() => {
     if (!stopId || !paradas.length) return;
     const stop = paradas.find((p) => p.id === stopId);
-    if (stop) map.flyTo([stop.lat, stop.lng], 16, { animate: true });
+    // GUARD: never flyTo (0,0) — Null Island / África
+    if (stop && (stop.lat !== 0 || stop.lng !== 0)) {
+      map.flyTo([stop.lat, stop.lng], 16, { animate: true });
+    }
   }, [map, stopId, paradas]);
   return null;
 }
@@ -54,14 +72,14 @@ function FollowUser({
   userPosition,
   active,
 }: {
-  userPosition: { lat: number; lng: number } | null;
+  userPosition: UserPositionData | null;
   active: boolean;
 }) {
   const map = useMap();
   useEffect(() => {
     if (!active || !userPosition || (userPosition.lat === 0 && userPosition.lng === 0)) return;
     map.flyTo([userPosition.lat, userPosition.lng], GUIA_ZOOM, { duration: 1.2 });
-  }, [map, active, userPosition?.lat, userPosition?.lng]);
+  }, [map, active, userPosition]);
   return null;
 }
 
@@ -92,22 +110,33 @@ interface RouteMapProps {
   /** Parada seleccionada para centrar (desde StopsList). */
   highlightStopId: string | null;
   /** Vista conductor: centrar en ubicación del usuario. */
-  userPosition: { lat: number; lng: number } | null;
+  userPosition: UserPositionData | null;
   /** Modo mobile: solo mapa + paradas, sin paneles admin. */
   conductorMode?: boolean;
   /** Viaje iniciado: el mapa sigue la posición del conductor (guía). */
   followUser?: boolean;
   /** Navegación activa: dibujar paradas como CircleMarkers (ámbar). */
   isNavigating?: boolean;
+  onMapClick?: (lat: number, lng: number) => void;
+  pickedTemporal?: { lat: number; lng: number } | null;
+  pickedDesde?: { lat: number; lng: number } | null;
+  pickedHasta?: { lat: number; lng: number } | null;
+  /** Desvíos guardados en localStorage para mostrar como overlay punteado. */
+  desviosGuardados?: DesvioGuardado[];
 }
 
 export default function RouteMap({
   linea,
   highlightStopId,
   userPosition,
-  conductorMode = false,
+  conductorMode: _conductorMode = false,
   followUser = false,
   isNavigating = false,
+  onMapClick,
+  pickedTemporal,
+  pickedDesde,
+  pickedHasta,
+  desviosGuardados = [],
 }: RouteMapProps) {
   if (!linea) {
     return (
@@ -117,14 +146,17 @@ export default function RouteMap({
     );
   }
 
-  const positions = linea.recorrido.map((p) => [p.lat, p.lng] as [number, number]);
+  // Filtrar puntos inválidos (lat=0,lng=0) ANTES de dibujar la polyline
+  const positions = linea.recorrido
+    .filter(isValidPoint)
+    .map((p) => [p.lat, p.lng] as [number, number]);
   const desviosActivosFijos = linea.desviosFijos.filter((d) => d.activo);
   const desviosActivosTemp = linea.desviosTemporales.filter((d) => d.activo);
 
   return (
     <div className="w-full h-full min-h-[300px] rounded-xl overflow-hidden border border-slate-700 relative z-[1]">
       <MapContainer
-        center={positions.length ? positions[Math.floor(positions.length / 2)] : DEFAULT_CENTER}
+        center={positions.length > 0 ? positions[Math.floor(positions.length / 2)] : DEFAULT_CENTER}
         zoom={DEFAULT_ZOOM}
         className="h-full w-full"
         scrollWheelZoom
@@ -133,6 +165,7 @@ export default function RouteMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <MapClickHandler onMapClick={onMapClick} />
         {positions.length > 1 && !followUser && <FitBounds points={linea.recorrido} />}
         {followUser && <FollowUser userPosition={userPosition} active={followUser} />}
         {!followUser && <CenterOnStop stopId={highlightStopId} paradas={linea.paradas} />}
@@ -140,22 +173,85 @@ export default function RouteMap({
         {/* Recorrido principal */}
         <Polyline positions={positions} pathOptions={blueOptions} />
 
+        {/* ── Desvíos guardados (localStorage): overlay punteado sobre el mapa ── */}
+        {desviosGuardados
+          .filter((d) => d.rutaAlternativa && d.rutaAlternativa.length >= 2)
+          .map((d) => {
+            const isActivo = d.activo;
+            const color = isActivo ? '#f97316' : '#eab308';
+            const opacity = isActivo ? 0.9 : 0.5;
+            const weight = isActivo ? 5 : 3;
+
+            const tipoLabel: Record<string, string> = {
+              puntual: 'Puntual',
+              semanal: 'Semanal (feria/evento)',
+              indefinido: 'Indefinido (obra)',
+            };
+
+            let vigenciaInfo = '';
+            if (d.tipo === 'semanal' && d.diasSemana && d.diasSemana.length > 0) {
+              const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+              vigenciaInfo = `Activo los: ${d.diasSemana.map((n) => dias[n] ?? n).join(', ')}`;
+              if (d.horaInicioSemanal && d.horaFinSemanal) {
+                vigenciaInfo += ` (${d.horaInicioSemanal}–${d.horaFinSemanal})`;
+              }
+            } else if (d.tipo === 'puntual' && d.fecha) {
+              vigenciaInfo = `Fecha: ${d.fecha}`;
+              if (d.horaInicio && d.horaFin) vigenciaInfo += ` ${d.horaInicio}–${d.horaFin}`;
+            } else if (d.tipo === 'indefinido') {
+              vigenciaInfo = 'Siempre activo';
+            }
+
+            return (
+              <Polyline
+                key={d.id}
+                positions={d.rutaAlternativa.map((p) => [p.lat, p.lng] as [number, number])}
+                pathOptions={{
+                  color,
+                  weight,
+                  opacity,
+                  dashArray: '10, 8',
+                  lineCap: 'round',
+                  lineJoin: 'round',
+                }}
+              >
+                <Popup>
+                  <div className="desvio-popup">
+                    <strong className="desvio-popup__title">
+                      {isActivo ? '⚠️' : '🗓️'} {d.nombre || d.descripcion || 'Desvío'}
+                    </strong>
+                    <span className="desvio-popup__type">{tipoLabel[d.tipo] ?? d.tipo}</span>
+                    {vigenciaInfo && <div className="desvio-popup__vigencia">{vigenciaInfo}</div>}
+                    <div
+                      className={`desvio-popup__estado${isActivo ? '' : ' desvio-popup__estado--inactivo'}`}
+                    >
+                      Estado: {isActivo ? '✅ Activo' : '⏸️ Inactivo'}
+                    </div>
+                  </div>
+                </Popup>
+              </Polyline>
+            );
+          })}
+
         {/* Paradas como CircleMarkers en modo navegación (contraste ámbar) */}
         {isNavigating &&
           linea.paradas.length > 0 &&
-          linea.paradas.map((p) => (
-            <CircleMarker
-              key={p.id}
-              center={[p.lat, p.lng]}
-              radius={10}
-              color="#d97706"
-              fillColor="#f59e0b"
-              fillOpacity={0.9}
-              weight={2}
-            >
-              <Popup>{p.nombre || `Parada ${p.orden}`}</Popup>
-            </CircleMarker>
-          ))}
+          linea.paradas.map((p) => {
+            if (p.lat === 0 && p.lng === 0) return null;
+            return (
+              <CircleMarker
+                key={p.id}
+                center={[p.lat, p.lng]}
+                radius={10}
+                color="#d97706"
+                fillColor="#f59e0b"
+                fillOpacity={0.9}
+                weight={2}
+              >
+                <Popup>{p.nombre || `Parada ${p.orden}`}</Popup>
+              </CircleMarker>
+            );
+          })}
 
         {/* Ruta alternativa (desvíos fijos) */}
         {desviosActivosFijos.map((d) =>
@@ -242,36 +338,80 @@ export default function RouteMap({
           })}
 
         {/* Paradas */}
-        {linea.paradas.map((p, i) => (
-          <Marker
-            key={p.id}
-            position={[p.lat, p.lng]}
-            icon={createIcon(
-              i === 0 ? 'I' : i === linea.paradas.length - 1 ? 'F' : String(p.orden || i + 1),
-              i === 0 ? '#059669' : i === linea.paradas.length - 1 ? '#dc2626' : '#475569',
-            )}
-          >
-            <Popup>
-              <strong>{p.nombre}</strong>
-              <br />
-              Orden: {p.orden || i + 1}
-            </Popup>
-          </Marker>
-        ))}
+        {linea.paradas.map((p, i) => {
+          if (p.lat === 0 && p.lng === 0) return null;
+          return (
+            <Marker
+              key={p.id}
+              position={[p.lat, p.lng]}
+              icon={createIcon(
+                i === 0 ? 'I' : i === linea.paradas.length - 1 ? 'F' : String(p.orden || i + 1),
+                i === 0 ? '#059669' : i === linea.paradas.length - 1 ? '#dc2626' : '#475569',
+              )}
+            >
+              <Popup>
+                <strong>{p.nombre}</strong>
+                <br />
+                Orden: {p.orden || i + 1}
+              </Popup>
+            </Marker>
+          );
+        })}
 
-        {/* Ubicación del usuario (vista conductor) */}
+        {/* Ubicación del usuario (vista conductor/navegaciòn estilo Waze) */}
         {userPosition && (
           <Marker
             position={[userPosition.lat, userPosition.lng]}
             icon={L.divIcon({
-              html: '<div style="width:16px;height:16px;background:#2563eb;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>',
+              html: `<div style="
+                  width: 32px; height: 32px; 
+                  background-color: #3b82f6; 
+                  border: 3px solid white; 
+                  border-radius: 50%; 
+                  box-shadow: 0 4px 8px rgba(0,0,0,0.5); 
+                  display: flex; 
+                  align-items: center; 
+                  justify-content: center;
+                  transform: rotate(${userPosition.heading ?? 0}deg);
+                  transition: transform 0.5s ease;
+                ">
+                  <!-- Flecha Blanca apuntando hacia arriba visualmente -->
+                  <div style="
+                    width: 0; 
+                    height: 0; 
+                    border-left: 6px solid transparent; 
+                    border-right: 6px solid transparent; 
+                    border-bottom: 12px solid white; 
+                    margin-top: -10px;
+                  "></div>
+                </div>`,
               className: '',
-              iconSize: [22, 22],
-              iconAnchor: [11, 11],
+              iconSize: [32, 32],
+              iconAnchor: [16, 16],
             })}
           >
             <Popup>Su ubicación</Popup>
           </Marker>
+        )}
+
+        {/* Picked Locations */}
+        {pickedTemporal && (
+          <Marker
+            position={[pickedTemporal.lat, pickedTemporal.lng]}
+            icon={createIcon('📍 Temp', '#2563eb')}
+          />
+        )}
+        {pickedDesde && (
+          <Marker
+            position={[pickedDesde.lat, pickedDesde.lng]}
+            icon={createIcon('📍 Inicio', '#ea580c')}
+          />
+        )}
+        {pickedHasta && (
+          <Marker
+            position={[pickedHasta.lat, pickedHasta.lng]}
+            icon={createIcon('📍 Fin', '#dc2626')}
+          />
         )}
       </MapContainer>
     </div>

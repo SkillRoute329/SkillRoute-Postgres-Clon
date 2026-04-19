@@ -1,0 +1,136 @@
+﻿
+> stm_map.js:224:		var 
+variante = 
+ps[0].values_.cod_variante;
+  stm_map.js:225:		return 
+'Línea: ' + desc_linea + ' 
+Variante: ' + variante;
+  stm_map.js:226:	} catch 
+(e) {
+  stm_map.js:227:		return 
+null;
+> stm_map.js:247:	var 
+filter = 
+'cod_variante%20in%20(' + 
+codigos + ')';
+  stm_map.js:248:	var 
+wms_source = new 
+ol.source.TileWMS({
+  stm_map.js:249:		url: 
+geoserver.CAPA_TEST + 
+filter,
+  stm_map.js:250:		
+serverType: 'geoserver'
+> stm_map.js:274:function c
+onsultaMovilidadVariante(co
+digo, color, desc_linea) {
+  stm_map.js:275:	var 
+lineastyle = [];
+  stm_map.js:276:	
+lineastyle = [
+  stm_map.js:277:		new 
+ol.style.Style({
+> stm_map.js:322:function c
+argarRecorridoVarianteImage
+n(codigo, tipo, min, max, 
+agregar, combo, nombre) {
+  stm_map.js:323:	var 
+extent = [];
+  stm_map.js:324:	var 
+recorrido_layer;
+  stm_map.js:325:	var 
+error = false;
+> stm_map.js:501:		var 
+filter = '&CQL_FILTER=cod_v
+ariante=' + codigo + '&outp
+utFormat=application/json&s
+rsname=EPSG%3A32721';
+  stm_map.js:502:		
+sourceCollection = new 
+ol.source.Vector({
+  stm_map.js:503:			
+format: new 
+ol.format.GeoJSON(),
+  stm_map.js:504:			url: ge
+oserver.CAPA_PARADAS_VARIAN
+TE + v_uptu_paradas + 
+filter
+> stm_map.js:582:	var 
+filter = '&CQL_FILTER=cod_v
+ariante=' + codigo + '&outp
+utFormat=application/json&s
+rsname=EPSG%3A32721';
+  stm_map.js:583:	
+sourceCollection = new 
+ol.source.Vector({
+  stm_map.js:584:		format: 
+new ol.format.GeoJSON(),
+  stm_map.js:585:		url: geo
+server.CAPA_PARADAS_VARIANT
+E + v_uptu_paradas + filter
+> stm_map.js:612:	panel += 
+getValor("<p><span 
+class=key>Variante</span> 
+:<span class=value> ", feat
+ure.values_.cod_variante, 
+"</span></p>");
+  stm_map.js:613:	panel += 
+getValor("<p><span 
+class=key>Código 
+parada</span> :<span 
+class=value> ", feature.val
+ues_.cod_ubic_parada, 
+"</span></p>");
+  stm_map.js:614:	panel += 
+getValor("<p><span 
+class=key>Ordinal</span> 
+:<span class=value> ", 
+feature.values_.ordinal, 
+"</span></p>");
+  stm_map.js:615:	panel += 
+getValor("<p><span 
+class=key>Calle</span> 
+:<span class=value> ", 
+feature.values_.calle, 
+"</span></p>");
+> stm_map.js:650: * FORMAT=
+image%2Fpng&TRANSPARENT=tru
+e&SERVICE=WMS&VERSION=1.1.1
+&REQUEST=GetMap&CQL_FILTER=
+%20cod_variante%20%3D%20757
+8%20AND%20
+  stm_map.js:651: * frecuen
+cia%20%3D%201050%20AND%20ti
+po_dia%20%3D%201&BBOX=57096
+1.96875,6148460.96875,57146
+4,6148963
+  stm_map.js:652: * 
+  stm_map.js:653: * http://
+geoserver.imm.gub.uy:8080/g
+eoserver/imm/wms?SERVICE=WM
+S&VERSION=1.1.1&REQUEST=Get
+Map&FORMAT=image%2Fpng&TRAN
+SPARENT=true&
+> stm_map.js:654: * LAYERS=
+imm%3Av_uptu_horarios_contr
+ol&STYLES&CQL_FILTER=cod_va
+riante%3D3267&
+  stm_map.js:655: * SRS=EPS
+G%3A32721&WIDTH=524&HEIGHT=
+331&BBOX=553073.1359891298%
+2C6133709.833217847%2C59308
+1.3015108702%2C6158982.1667
+82153
+  stm_map.js:656: * 
+  stm_map.js:657: * 
+> stm_map.js:669:function c
+argarRecorridoVariante(codi
+go) {
+  stm_map.js:670:	// 
+console.log(codigo);
+  stm_map.js:671:	var 
+lineastyle = [];
+  stm_map.js:672:	
+lineastyle = [
+
+

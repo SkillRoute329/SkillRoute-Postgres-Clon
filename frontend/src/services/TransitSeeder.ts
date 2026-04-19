@@ -1,10 +1,4 @@
-import {
-  collection,
-  getDocs,
-  doc,
-  writeBatch,
-  Timestamp,
-  } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { DailyShift, ServiceDefinition } from '../types/traffic';
 import type { ParsedData } from '../utils/ExcelParserV2';

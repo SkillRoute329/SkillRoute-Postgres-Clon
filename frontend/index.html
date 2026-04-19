@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="google" content="notranslate" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="apple-touch-icon" href="/vite.svg" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TransForma Fácil 2.0 | Gestión UCOT</title>
@@ -11,25 +12,7 @@
       name="description"
       content="Plataforma de gestión integral para la Unión Cooperativa Obrera del Transporte. Control de flota, turnos, cartones y operaciones."
     />
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
-    <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function (registrations) {
-          for (let registration of registrations) {
-            registration.unregister();
-            console.log('ServiceWorker unregistered');
-          }
-        });
-      }
-      // Delete all caches
-      if ('caches' in window) {
-        caches.keys().then(function (names) {
-          for (let name of names) caches.delete(name);
-        });
-      }
-    </script>
+    <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
   </head>
 
   <body>

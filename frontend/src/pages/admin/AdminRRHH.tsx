@@ -140,7 +140,11 @@ const UsersTab = () => {
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-white">Importar Personal</h2>
-              <button onClick={() => setShowImport(false)} aria-label="Cerrar modal de importación" title="Cerrar">
+              <button
+                onClick={() => setShowImport(false)}
+                aria-label="Cerrar modal de importación"
+                title="Cerrar"
+              >
                 <X className="w-6 h-6 text-slate-500" />
               </button>
             </div>

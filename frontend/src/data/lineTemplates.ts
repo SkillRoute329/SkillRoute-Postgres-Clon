@@ -1,7 +1,5 @@
 import type { ServiceDefinitionData } from '../components/DigitalCarton';
 
-// ... existing imports ...
-
 export const LINE_ARCHETYPES: Record<string, any> = {
   '300': {
     headers: [
@@ -78,16 +76,100 @@ export const LINE_ARCHETYPES: Record<string, any> = {
     cycleTime: 60,
     defaultDeltas: [0, 15, 20, 15, 10],
   },
+  '17': {
+    headers: [
+      'Casabó (Bajo Valencia)',
+      'Cno. Cibils / Cerro Norte',
+      'Cerro (Carlos Ma. Ramírez)',
+      'Capurro',
+      'Paso Molino',
+      'Agraciada / La Paz',
+      'Centro / 18 de Julio',
+      'Ejido',
+      'Bv. Artigas / P. Rodó',
+      'Punta Carretas',
+    ],
+    // SIN COORDENADAS — deben provenir SOLO de fuentes oficiales (GTFS/OSM/STM)
+    // NUNCA inventar o aproximar coordenadas de rutas de transporte público
+    cycleTime: 110,
+    defaultDeltas: [0, 8, 10, 8, 5, 12, 15, 8, 12, 10],
+  },
+  '330': {
+    headers: ['Instrucciones', 'Mendoza', 'Gral Flores', 'Centro', 'Pocitos', 'Punta Carretas'],
+    cycleTime: 85,
+    defaultDeltas: [0, 10, 15, 20, 20, 20],
+  },
+  'PB': {
+    headers: ['Pajas Blancas', 'Paso de la Arena', 'Carlos Maria Ramirez', 'Terminal Cerro'],
+    cycleTime: 40,
+    defaultDeltas: [0, 15, 15, 10],
+  },
+  '71': {
+    headers: ['Pocitos', 'Bv Artigas', 'Gral Flores', 'Mendoza', 'Instrucciones'],
+    cycleTime: 70,
+    defaultDeltas: [0, 15, 15, 20, 20],
+  },
+  '79': {
+    headers: ['Villa Espanola', 'Corrales', '8 de Octubre', 'Cordón', 'Centro', 'Ciudad Vieja'],
+    cycleTime: 65,
+    defaultDeltas: [0, 15, 15, 10, 10, 15],
+  },
+  'D8': {
+    headers: ['Villa Carmen', '8 de Octubre', 'Centro', 'Ciudad Vieja'],
+    cycleTime: 55,
+    defaultDeltas: [0, 25, 20, 10],
+  },
+  'DM1': {
+    headers: ['Zonamerica', 'Cno Carrasco', 'Av Italia', 'Punta Carretas'],
+    cycleTime: 65,
+    defaultDeltas: [0, 20, 25, 20],
+  },
+  'L13': {
+    headers: ['Terminal Cerro', 'Paso de la Arena', 'Santiago Vazquez'],
+    cycleTime: 35,
+    defaultDeltas: [0, 20, 15],
+  },
+  'L31': {
+    headers: ['Pajas Blancas', 'Paso de la Arena'],
+    cycleTime: 25,
+    defaultDeltas: [0, 25],
+  },
+  'L32': {
+    headers: ['Paso de la Arena', 'Mendoza'],
+    cycleTime: 30,
+    defaultDeltas: [0, 30],
+  },
+  'L33': {
+    headers: ['Paso de la Arena', 'Cno. Cibils'],
+    cycleTime: 25,
+    defaultDeltas: [0, 25],
+  },
+  '221': {
+    headers: ['Solymar', 'Av Giannattasio', 'Centro', 'Montevideo'],
+    cycleTime: 90,
+    defaultDeltas: [0, 30, 35, 25],
+  },
+  '222': {
+    headers: ['Parque del Plata', 'Av Giannattasio', 'Aeropuerto', 'Montevideo'],
+    cycleTime: 110,
+    defaultDeltas: [0, 40, 30, 40],
+  },
+  '14': {
+    headers: ['Pocitos', 'Centro', 'Ciudad Vieja'],
+    cycleTime: 50,
+    defaultDeltas: [0, 25, 25],
+  },
+  '12': {
+    headers: ['Aduana', 'Centro', 'Pocitos', 'Punta Carretas'],
+    cycleTime: 60,
+    defaultDeltas: [0, 15, 20, 25],
+  },
 };
 
 export const line300Data: ServiceDefinitionData = {
-  // ... existing content (preserved) can be just left as is if I replace correctly
-  // Wait, the tool requires me to replace a block. I will append the NEW data at the end or begin.
-  // Let's prepend it for visibility.
   serviceNumber: 'MATRIZ-300-IDA',
   line: '300',
   title: 'CRIO. CENTRAL -> INSTRUCCIONES',
-  // ... (I will use a careful Replace to INSERT at top)
 
   startTime: '05:12',
   startLocationDescription: 'Cementerio Central',

@@ -23,10 +23,7 @@ import { db } from '../config/firebase';
 import type { LineaUCOT, ParadaUcot, PuntoLatLng, SentidoLinea } from '../types/lineasUcot';
 import { CORRIDOR_MAP } from './CompetitorIntelligence';
 import { LINE_ARCHETYPES, line300Data, line300ReverseData } from '../data/lineTemplates';
-import {
-  getRealRouteCoordinates,
-  ALL_UCOT_ROUTES,
-} from '../data/routesGeoData';
+import { getRealRouteCoordinates, ALL_UCOT_ROUTES } from '../data/routesGeoData';
 // NOTA: routeCacheService y lines.ts DESACTIVADOS — sus datos no están verificados.
 // import { getRouteWithFallback, loadStaticRoutes } from '../data/geo/routeCacheService';
 // import { LINES_DB } from '../data/geo/lines';
@@ -34,22 +31,21 @@ import {
 const COL = 'lineas_ucot';
 const PROXY_BASE = 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/montevideoProxy';
 
-/** Códigos de línea UCOT verificados. */
+/**
+ * Códigos de línea UCOT verificados contra el registro oficial IMM/STM.
+ * POLÍTICA: CERO SIMULACIÓN — solo líneas con número oficial confirmado.
+ * Fuente: https://www.montevideo.gub.uy/app/stm/horarios/
+ */
 export const LINEAS_UCOT_BASE = [
-  '300',
-  '306',
-  '316',
-  '328',
-  '329',
-  '330',
-  '370',
-  '396',
-  '17',
-  '71',
-  '79',
-  '11A',
-  '221',
-  '8SR',
+  '300',  // 300 Cementerio Central ↔ Instrucciones y Belloni
+  '306',  // 306 Casabó ↔ Géant
+  '316',  // 316 Cno. Maldonado ↔ Pocitos
+  '328',  // 328 Punta Carretas ↔ Mendoza
+  '329',  // 329 Colón ↔ Saint Bois
+  '330',  // 330 Instrucciones ↔ Ciudadela
+  '370',  // 370 Portones ↔ Cerro
+  '396',  // 396 (verificar destino en IMM)
+  // CE1, DM1, L-12, L-13, L-31, L-32, L-33, XA1, XA2 → no tienen variante a/b; tratar aparte
 ];
 
 /** Líneas de la COMPETENCIA para inteligencia de mercado. */
@@ -346,14 +342,14 @@ export async function getLineaData(codigo: string): Promise<LineaUCOT | null> {
     console.warn('[UCOT] Firestore offline para getLineaData:', codigo, firestoreError);
   }
 
-  // 2. Fallback: construir paradas desde colección cartones
-  if (!result) {
-    try {
-      result = await buildLineaFromCartones(codigo);
-    } catch (cartError) {
-      console.warn('[UCOT] Cartones no disponibles para:', codigo);
-    }
-  }
+  // 2. Fallback: construir paradas desde colección cartones (DESACTIVADO según opción 1)
+  // if (!result) {
+  //   try {
+  //     result = await buildLineaFromCartones(codigo);
+  //   } catch (cartError) {
+  //     console.warn('[UCOT] Cartones no disponibles para:', codigo);
+  //   }
+  // }
 
   // 3. Fallback: datos manuales de lineTemplates.ts
   if (!result) {
@@ -388,9 +384,9 @@ function buildLineaFromGeoData(codigo: string): LineaUCOT | null {
 
   // Buscar variante A (IDA) o B (VUELTA)
   const targetDesc = isVariantB ? 'B' : 'A';
-  const matchedVariant = Object.values(lineRoutes).find(
-    (v) => v.descVariante === targetDesc,
-  ) || Object.values(lineRoutes)[0];
+  const matchedVariant =
+    Object.values(lineRoutes).find((v) => v.descVariante === targetDesc) ||
+    Object.values(lineRoutes)[0];
 
   if (!matchedVariant || matchedVariant.coordinates.length === 0) return null;
 
@@ -402,7 +398,12 @@ function buildLineaFromGeoData(codigo: string): LineaUCOT | null {
   for (let i = 0; i < recorrido.length; i += step) {
     paradas.push({
       id: `gps-${i}`,
-      nombre: i === 0 ? matchedVariant.origen : (i + step >= recorrido.length ? matchedVariant.destino : `Punto ${paradas.length + 1}`),
+      nombre:
+        i === 0
+          ? matchedVariant.origen
+          : i + step >= recorrido.length
+            ? matchedVariant.destino
+            : `Punto ${paradas.length + 1}`,
       lat: recorrido[i].lat,
       lng: recorrido[i].lng,
       orden: paradas.length + 1,
@@ -447,8 +448,9 @@ function enrichWithOfficialGeoData(linea: LineaUCOT, codigo: string): LineaUCOT 
     const isIda = suffix !== 'b';
     // Buscar variante A (IDA) o B (VUELTA)
     const targetDesc = isIda ? 'A' : 'B';
-    const matchedVariant = Object.values(lineRoutes).find(v => v.descVariante === targetDesc)
-      || Object.values(lineRoutes)[0];
+    const matchedVariant =
+      Object.values(lineRoutes).find((v) => v.descVariante === targetDesc) ||
+      Object.values(lineRoutes)[0];
     if (matchedVariant) {
       linea.origen = matchedVariant.origen;
       linea.destino = matchedVariant.destino;
@@ -463,7 +465,7 @@ function enrichWithOfficialGeoData(linea: LineaUCOT, codigo: string): LineaUCOT 
  * Construye LineaUCOT desde la colección Firestore 'cartones'.
  * Los cartones tienen paradas[] con nombres y tiempos — que son los puntos de control del recorrido.
  */
-async function buildLineaFromCartones(codigo: string): Promise<LineaUCOT | null> {
+async function _buildLineaFromCartones(codigo: string): Promise<LineaUCOT | null> {
   const baseCodigo = codigo.replace(/[ab]$/i, '');
   const isVariantB = /b$/i.test(codigo);
   const sentido: SentidoLinea = isVariantB ? 'VUELTA' : 'IDA';
@@ -561,7 +563,9 @@ function buildLineaFromTemplates(codigo: string): LineaUCOT | null {
   } else if (archetype?.headers) {
     const headers = isVariantB ? [...archetype.headers].reverse() : archetype.headers;
     const coords = archetypeCoords
-      ? (isVariantB ? [...archetypeCoords].reverse() : archetypeCoords)
+      ? isVariantB
+        ? [...archetypeCoords].reverse()
+        : archetypeCoords
       : null;
     paradas = headers.map((name: string, i: number) => ({
       id: `p-${i}`,
@@ -707,8 +711,9 @@ export async function getLineasUCOT(): Promise<LineaUCOTResumen[]> {
     const lineRoutes = ALL_UCOT_ROUTES[baseCodigo];
     if (lineRoutes && (!origen || !destino)) {
       const targetDesc = variantCode.endsWith('b') ? 'B' : 'A';
-      const matchedVariant = Object.values(lineRoutes).find(v => v.descVariante === targetDesc)
-        || Object.values(lineRoutes)[0];
+      const matchedVariant =
+        Object.values(lineRoutes).find((v) => v.descVariante === targetDesc) ||
+        Object.values(lineRoutes)[0];
       if (matchedVariant) {
         origen = origen || matchedVariant.origen;
         destino = destino || matchedVariant.destino;
@@ -736,6 +741,7 @@ export async function getLineasUCOT(): Promise<LineaUCOTResumen[]> {
   for (const [id, item] of firestoreMap) {
     if (!result.has(id)) {
       if (id.startsWith('linea-')) continue;
+      // Bloqueo de IDs fantasma ya eliminados — no deben reaparecer desde Firestore
       if (/^(317|371|379)[a-z]?$/i.test(id)) continue;
 
       const tieneVarianteA = result.has(`${id}a`);

@@ -5,7 +5,6 @@ import ErrorBoundary from './components/ErrorBoundary';
 import DashboardLayout from './layouts/DashboardLayout';
 import LoginScreen from './pages/LoginScreen';
 import { ToastProvider } from './components/ToastProvider';
-import { VersionGuard } from './components/VersionGuard';
 import PrivateRoute from './components/PrivateRoute';
 
 // Lazy-loaded to keep the initial bundle small
@@ -159,7 +158,6 @@ function App() {
             <SystemMonitor />
           </Suspense>
           <ToastProvider>
-            <VersionGuard />
             {isOffline && <OfflineBanner />}
             <div className="h-screen w-screen max-w-[100vw] overflow-hidden bg-slate-950 text-slate-100 font-sans">
               <Suspense fallback={<PageLoader />}>

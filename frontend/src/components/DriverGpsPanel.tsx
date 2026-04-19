@@ -120,8 +120,7 @@ export default function DriverGpsPanel({
             <MapPin className="w-4 h-4 text-slate-500 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-slate-700 text-xs font-mono truncate">
-                {estado.ultimaPosicion.lat.toFixed(5)},{' '}
-                {estado.ultimaPosicion.lng.toFixed(5)}
+                {estado.ultimaPosicion.lat.toFixed(5)}, {estado.ultimaPosicion.lng.toFixed(5)}
               </p>
               {tiempoDesdeActualizacion !== null && (
                 <p className="text-slate-400 text-xs">

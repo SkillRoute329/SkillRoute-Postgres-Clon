@@ -11,7 +11,7 @@ interface LinesAtRiskPanelProps {
 export function LinesAtRiskPanel({
   operador = 'UCOT',
   titulo = 'Líneas en Riesgo',
-  height = '500px'
+  height = '500px',
 }: LinesAtRiskPanelProps) {
   const [lineasEnRiesgo, setLineasEnRiesgo] = useState<any[]>([]);
   const [resumen, setResumen] = useState<any>(null);
@@ -66,7 +66,10 @@ export function LinesAtRiskPanel({
   }
 
   return (
-    <div style={{ height }} className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col">
+    <div
+      style={{ height }}
+      className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col"
+    >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-gray-800">{titulo}</h3>
         {resumen && (
@@ -90,11 +93,8 @@ export function LinesAtRiskPanel({
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto space-y-2">
-          {lineasEnRiesgo.map(linea => (
-            <div
-              key={linea.lineaId}
-              className="p-3 bg-red-50 border-l-4 border-red-500 rounded-lg"
-            >
+          {lineasEnRiesgo.map((linea) => (
+            <div key={linea.lineaId} className="p-3 bg-red-50 border-l-4 border-red-500 rounded-lg">
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <p className="font-bold text-gray-900">Línea {linea.numeroLinea}</p>

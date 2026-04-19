@@ -18,10 +18,6 @@ const TenantsManager = () => {
 
   const [createdInfo, setCreatedInfo] = useState<any>(null);
 
-  useEffect(() => {
-    fetchTenants();
-  }, []);
-
   const fetchTenants = async () => {
     try {
       const res = await api.get('/tenants');
@@ -30,6 +26,10 @@ const TenantsManager = () => {
       console.error(error);
     }
   };
+
+  useEffect(() => {
+    void fetchTenants();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -10,6 +10,8 @@
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
+    "bridge": "node src/services/intelligence/bridge-server.js",
+    "dev:full": "concurrently \"npm run bridge\" \"npm run dev:frontend\"",
     "install:legacy": "cd backend_legacy && npm install",
     "build:legacy": "cd backend_legacy && npm run build",
     "deploy": "firebase deploy",
@@ -21,13 +23,19 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "lodash": "^4.17.23"
+    "cors": "^2.8.6",
+    "docx": "^9.6.1",
+    "express": "^5.2.1",
+    "lodash": "^4.17.23",
+    "node-html-parser": "^7.1.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0",
     "concurrently": "^9.1.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
-    "prettier": "^3.8.1"
+    "prettier": "^3.8.1",
+    "proj4": "^2.20.4",
+    "puppeteer": "^24.40.0"
   }
 }

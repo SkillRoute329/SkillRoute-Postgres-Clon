@@ -409,7 +409,11 @@ const AdminCartones = () => {
                 ([category, items]) =>
                   items.length > 0 && (
                     <div key={category} className="mb-2">
-                      <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-400 uppercase bg-slate-800/50 hover:bg-slate-800 rounded-lg mb-1 transition-colors" aria-label={`Categoría ${category}`} title={`Abrir categoría ${category}`}>
+                      <button
+                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-400 uppercase bg-slate-800/50 hover:bg-slate-800 rounded-lg mb-1 transition-colors"
+                        aria-label={`Categoría ${category}`}
+                        title={`Abrir categoría ${category}`}
+                      >
                         <span>📂 {category}</span>
                         <span className="bg-slate-900 px-1.5 rounded text-[10px]">
                           {items.length}

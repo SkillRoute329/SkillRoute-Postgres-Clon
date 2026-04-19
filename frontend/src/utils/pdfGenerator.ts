@@ -31,7 +31,11 @@ export const generateShiftTicket = (shift: Shift, user: User) => {
 
   // Shift Details
   doc.setFontSize(9);
-  doc.text(`Fecha: ${format(new Date(shift.date), 'dd/MM/yyyy', { locale: es })}`, 5, y);
+  doc.text(
+    `Fecha: ${format(shift.date ? new Date(shift.date) : new Date(), 'dd/MM/yyyy', { locale: es })}`,
+    5,
+    y,
+  );
   y += 5;
   doc.text(`Hora: ${shift.time} - ${shift.endTime || '?'}`, 5, y);
   y += 5;

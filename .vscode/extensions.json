@@ -12,6 +12,8 @@
     "formulahendry.auto-rename-tag",
     "formulahendry.auto-close-tag",
     "PKief.material-icon-theme",
-    "irongeek.vscode-env"
+    "irongeek.vscode-env",
+    "googlecloudtools.cloudcode",
+    "googlecloudtools.geminicodeassist"
   ]
 }

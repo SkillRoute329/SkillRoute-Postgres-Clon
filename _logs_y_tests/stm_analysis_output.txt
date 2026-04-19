@@ -1,0 +1,285 @@
+﻿1. Descargando p├ígina del mapa STM...
+
+Status: 200
+X-Frame-Options: (NO ESTABLECIDO - iframe posible!)
+Content-Security-Policy: (NO ESTABLECIDO)
+Content-Length: 14788 bytes
+
+P├ígina guardada en stm_mapa_page.html
+
+2. Buscando scripts y endpoints en el HTML...
+
+Scripts encontrados:
+   src="/app/stm/horarios/javax.faces.resource/jquery/jquery.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"
+   src="/app/stm/horarios/javax.faces.resource/jquery/jquery-plugins.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"
+   src="/app/stm/horarios/javax.faces.resource/core.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"
+   src="/app/stm/horarios/javax.faces.resource/components.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"
+   src="/app/stm/horarios/javax.faces.resource/locales/locale-es.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"
+   src="/app/stm/horarios/javax.faces.resource/js/plantilla.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core"
+   src="/app/stm/horarios/javax.faces.resource/js/validaciones.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core"
+   src="/app/stm/horarios/javax.faces.resource/conversor.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"
+   src="/app/stm/horarios/javax.faces.resource/env.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"
+   src="/app/stm/horarios/javax.faces.resource/estilosWMS.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"
+   src="/app/stm/horarios/javax.faces.resource/ol.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"
+   src="/app/stm/horarios/javax.faces.resource/map.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"
+   src="/app/stm/horarios/javax.faces.resource/jquery/jquery.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"
+   src="/app/stm/horarios/javax.faces.resource/jquery/jquery-plugins.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"
+   src="/app/stm/horarios/javax.faces.resource/core.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"
+   src="/app/stm/horarios/javax.faces.resource/components.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"
+   src="/app/stm/horarios/javax.faces.resource/locales/locale-es.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"
+   src="/app/stm/horarios/javax.faces.resource/js/plantilla.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core"
+   src="/app/stm/horarios/javax.faces.resource/js/validaciones.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core"
+   src="/app/stm/horarios/javax.faces.resource/conversor.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"
+   src="/app/stm/horarios/javax.faces.resource/env.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"
+   src="/app/stm/horarios/javax.faces.resource/estilosWMS.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"
+   src="/app/stm/horarios/javax.faces.resource/ol.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"
+   src="/app/stm/horarios/javax.faces.resource/map.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"
+   src="/app/stm/horarios/javax.faces.resource/jquery/jquery.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"
+   src="/app/stm/horarios/javax.faces.resource/jquery/jquery-plugins.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"
+   src="/app/stm/horarios/javax.faces.resource/core.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"
+   src="/app/stm/horarios/javax.faces.resource/components.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"
+   src="/app/stm/horarios/javax.faces.resource/locales/locale-es.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=primefaces&amp;v=13.0.0"
+   src="/app/stm/horarios/javax.faces.resource/js/plantilla.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core"
+   src="/app/stm/horarios/javax.faces.resource/js/validaciones.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=core"
+   src="/app/stm/horarios/javax.faces.resource/conversor.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"
+   src="/app/stm/horarios/javax.faces.resource/env.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"
+   src="/app/stm/horarios/javax.faces.resource/estilosWMS.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"
+   src="/app/stm/horarios/javax.faces.resource/ol.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"
+   src="/app/stm/horarios/javax.faces.resource/map.js.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv?ln=js"
+
+URLs de API/Data:
+   href="/app/stm/horarios/pages/mapa.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv
+   action="/app/stm/horarios/pages/mapa.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv
+   action="/app/stm/horarios/pages/mapa.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv
+
+Llamadas AJAX:
+
+Referencias a mapas: []
+
+Coordenadas encontradas en HTML: 0
+
+Variables JS con arrays:
+
+Acciones de formularios:
+   action="/app/stm/horarios/pages/mapa.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv"
+   action="/app/stm/horarios/pages/mapa.xhtml;jsessionid=7cS9YU3zaHg8rIUoVoTfz8sD-GvQaXoKnawISmBb.mistm101prodv"
+
+3. Buscando datos GTFS en cat├ílogo abierto...
+
+Dataset: Transporte colectivo: paradas , puntos de control y recorridos de omnibus
+  - Ubicaci├│n paradas de ├│mnibus: http://intgis.montevideo.gub.uy/sit/php/common/datos/generar_zip2.php?nom_tab=v_uptu_paradas&tipo=gis
+  - Recorridos de ├│mnibus circulares.: http://intgis.montevideo.gub.uy/sit/php/common/datos/generar_zip2.php?nom_tab=v_uptu_lsv&tipo=gis
+  - Ubicaci├│n de puntos de control de horario: http://intgis.montevideo.gub.uy/sit/php/common/datos/generar_zip2.php?nom_tab=v_uptu_controles&tipo=gis
+  - Descripci├│n de los campos: https://www.montevideo.gub.uy/sites/default/files/datos_abiertos/descripcion_uptu_0.txt
+
+Dataset: Parque automotor de Montevideo
+  - Parque Automotor 2019: https://ckan-data.montevideo.gub.uy/dataset/1b2a0354-fb44-42ef-a67e-80f6b99503d7/resource/19fdcc34-5107-4657-9dfa-ae62dc6afafe/download/parque_dag_2019.csv
+  - Tipos de veh├¡culos: https://ckan-data.montevideo.gub.uy/dataset/1b2a0354-fb44-42ef-a67e-80f6b99503d7/resource/6619e928-69a6-455f-b94a-c5c87f1ddf93/download/tipos_vehiculos_dag.csv
+  - Parque Automotor 2024: https://ckan-data.montevideo.gub.uy/dataset/1b2a0354-fb44-42ef-a67e-80f6b99503d7/resource/45c83848-3f03-4f8a-8d90-6f1ca9e67101/download/parque_dag_2024.csv
+
+Dataset: Viajes realizados en los ├│mnibus del Sistema de Transporte Metropolitano - STM
+  - Metadata asociada a los datos: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/83bc8b63-553e-4cc4-9061-d4a9b1e04f56/download/descripcion_de_los_atributos-1.ods
+  - Viajes Noviembre 2019: https://imnube.montevideo.gub.uy/share/s/eo6lhckOTpavc4FfbCI4hQ
+  - Viajes Diciembre 2019: https://imnube.montevideo.gub.uy/share/s/ROkzNjh5SCO63dSgeX8tcw
+  - Viajes Enero 2020: https://imnube.montevideo.gub.uy/share/s/2LhEd7rMRSKjBexDzmm1kQ
+  - Viajes Febrero 2020: https://imnube.montevideo.gub.uy/share/s/phV8w8v8RFqrUlZdCk1r6g
+  - Viajes Marzo 2020: https://imnube.montevideo.gub.uy/share/s/x9YAQsudTTKaubYu8au93g
+  - Viajes Abril 2020: https://imnube.montevideo.gub.uy/share/s/XIKVWNf8RTWZBPzN_kUOIA
+  - Viajes Mayo 2020: https://imnube.montevideo.gub.uy/share/s/-BeZregZS7ePeOau8m3w9g
+  - Viajes Junio 2020: https://imnube.montevideo.gub.uy/share/s/CQVWD9lMT7K2Uc_CVJFaZA
+  - Viajes Julio 2020: https://imnube.montevideo.gub.uy/share/s/06HRxplPTrW_9v2EK1-RJQ
+  - Viajes Agosto 2020: https://imnube.montevideo.gub.uy/share/s/lho2D5l5Te6QuN4AZxuXSQ
+  - Viajes Setiembre 2020: https://imnube.montevideo.gub.uy/share/s/1R82X6dgSzS3GKu5BtrwMg
+  - Viajes Octubre 2020: https://imnube.montevideo.gub.uy/share/s/3XTMJT8oQNyvNEBN9RpCOw
+  - Viajes Noviembre 2020: https://imnube.montevideo.gub.uy/share/s/y_8WS4aZRnyYbunCicGsmg
+  - Viajes Diciembre 2020: https://imnube.montevideo.gub.uy/share/s/pqxWVlaZTI6LrRkuCfUsSg
+  - Viajes Enero 2021: https://imnube.montevideo.gub.uy/share/s/x5rCHOoaRl6gdZ5a5KjFIQ
+  - Viajes Febrero 2021: https://imnube.montevideo.gub.uy/share/s/bASpkCa4SwqLyq2N72a0Dw
+  - Viajes Marzo 2021: https://imnube.montevideo.gub.uy/share/s/QHTf-LrsSkyxSaKO2tJOMA
+  - Viajes Abril 2021: https://imnube.montevideo.gub.uy/share/s/MJwOuC6aTha6alsHk7z0aw
+  - Viajes Mayo 2021: https://imnube.montevideo.gub.uy/share/s/Fa6b9Yb4Q5WMPHV-UkgcWw
+  - Viajes Junio 2021: https://imnube.montevideo.gub.uy/share/s/paE5guXxTO2ozA2-sk2LZA
+  - Viajes Julio 2021: https://imnube.montevideo.gub.uy/share/s/L2oosUPmTWi730SzvAyCkg
+  - Viajes Agosto 2021: https://imnube.montevideo.gub.uy/share/s/bFVSOCxBR5GmMRSuF7uFLQ
+  - Viajes Setiembre 2021: https://imnube.montevideo.gub.uy/share/s/SFd41NykQZ6ZhjVUR8r2vQ
+  - Viajes Octubre 2021: https://imnube.montevideo.gub.uy/share/s/k7HFcvszTjS7xpsQgVyFPA
+  - Viajes Noviembre 2021: https://imnube.montevideo.gub.uy/share/s/ZoNkzs5BQBmYcJL5rg7maw
+  - Viajes Diciembre 2021: https://imnube.montevideo.gub.uy/share/s/HgpLvauTT1e02MPLWQMsmw
+  - Viajes Enero 2022: https://imnube.montevideo.gub.uy/share/s/u0u-R-HUTN2ws0st23-2ow
+  - Viajes Febrero 2022: https://imnube.montevideo.gub.uy/share/s/IZYXcpErQfK9OAaQv7-QxA
+  - Viajes Marzo 2022: https://imnube.montevideo.gub.uy/share/s/BsNunApVQYOwwNQyOZVlAg
+  - Viajes Abril 2022: https://imnube.montevideo.gub.uy/share/s/THiuXt2vRsCLypFeNaMoIg
+  - Viajes Mayo 2022: https://imnube.montevideo.gub.uy/share/s/JIpKpSndQcCnMOSJuKkwxg
+  - Viajes Junio 2022: https://imnube.montevideo.gub.uy/share/s/G6QyhXyVTMaJUzwZ14lkyA
+  - Viajes Julio 2022: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/b933d00e-abbc-4949-a50b-340929636d84/download/viajes_stm_072022.zip
+  - Viajes Agosto 2022: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/9ce43677-349d-4286-b3dd-6f96e10bc510/download/viajes_stm_082022.zip
+  - Viajes Setiembre 2022: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/17b4b443-274d-420c-9ae6-8cff56647294/download/viajes_stm_092022.zip
+  - Viajes Octubre 2022: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/0f6630cc-eaf5-4f43-8865-ea326489a461/download/viajes_stm_102022.zip
+  - Viajes Noviembre 2022: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/f1bb6902-1346-45dd-b06c-697dca0cb3b8/download/viajes_stm_112022.zip
+  - Viajes Diciembre 2022: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/ec85f171-9bfc-4296-916d-2c1433420ff5/download/viajes_stm_122022.zip
+  - Viajes Febrero 2023: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/ebf2ff2a-8196-47ba-a52d-48bad17f963f/download/qhhhkadnq3kfwd4x67rypa.zip
+  - Viajes Marzo 2023: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/2ff2473a-2804-4134-a2f4-12eb2982711a/download/f_ke9soltjillcbpt-huwq.zip
+  - Viajes Enero 2023: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/f99bcba7-499d-4165-98f4-628b46c9d92e/download/ztluldakqdwvxbfzeo3wsg.zip
+  - Viajes Abril 2023: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/01e47802-7f08-46a4-9947-6a20e67c4826/download/o7elqy0qsei9edql3le8gw.zip
+  - Viajes Mayo 2023: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/0a19ea75-dc7e-4148-92a3-51fe976b6dd1/download/xi-_agzwt9afpgbhysquya.zip
+  - Viajes Junio 2023: https://imnube.montevideo.gub.uy/share/s/8vn7wA9_QLe73IwDJ1rPhg
+  - Viajes Julio 2023: https://imnube.montevideo.gub.uy/share/s/s-U7nBAlSjubKQMSJNktfA
+  - Viajes Agosto 2023: https://imnube.montevideo.gub.uy/share/s/kFRP086tRN6ocCrj_55yiw
+  - Viajes Setiembre 2023: https://imnube.montevideo.gub.uy/share/s/hSiykyuWTSadI1FmbeX5RQ
+  - Viajes Octubre 2023: https://imnube.montevideo.gub.uy/share/s/0df5vgT1QU6cTc4rUOo2KA
+  - Viajes Noviembre 2023: https://imnube.montevideo.gub.uy/share/s/3LaFBBldRjaPD5sBKBNRiA
+  - Viajes Diciembre 2023: https://imnube.montevideo.gub.uy/share/s/nfCQbko8TnaSOmeMjFlu-g
+  - Viajes Enero 2024: https://imnube.montevideo.gub.uy/share/s/i0qU2jRXTaqHBMi9_Tfg7A
+  - Viajes Febrero 2024: https://imnube.montevideo.gub.uy/share/s/8Y3tuD7oRxGMFyKUQgMGhg
+  - Viajes Marzo 2024: https://imnube.montevideo.gub.uy/share/s/ufsChbV3Tb-HLZkJYW4Fww
+  - Viajes Abril 2024: https://imnube.montevideo.gub.uy/share/s/ziruIEx5R_G4SSwKvHZAbQ
+  - Viajes Mayo 2024: https://imnube.montevideo.gub.uy/share/s/qVGaCxW0QcWgJc7LIVv_OA
+  - Viajes Junio 2024: https://imnube.montevideo.gub.uy/share/s/WURN2Wu6QZqtd9biBITFyA
+  - Viajes Julio 2024: https://imnube.montevideo.gub.uy/share/s/JieoWdKWTtCybN0OFdQP2Q
+  - Viajes Agosto 2024: https://imnube.montevideo.gub.uy/share/s/OPTIDr4sSSSzUy5ApwA8BQ
+  - Viajes Setiembre 2024: https://imnube.montevideo.gub.uy/share/s/PVIk6skATgG_BCznG3neMQ
+  - Viajes Octubre 2024: https://imnube.montevideo.gub.uy/share/s/WjYgv9t8Rv2CLPHmWo-uQw
+  - Viajes Noviembre 2024: https://imnube.montevideo.gub.uy/share/s/aYTOp-sAQeqa_ov1lWrFBQ
+  - Viajes Diciembre 2024: https://imnube.montevideo.gub.uy/share/s/-cbMp2fwT6iwiXbVNYeWhw
+  - Viajes Enero 2025: https://imnube.montevideo.gub.uy/share/s/P20jz_DUQTOERPj3F69y3g
+  - Viajes Febrero 2025: https://imnube.montevideo.gub.uy/share/s/m1E4ClFXQ_yke_UJLGqOig
+  - Viajes Marzo 2025: https://imnube.montevideo.gub.uy/share/s/3bjprNShQUekt2Vw0Q21wg
+  - Viajes Abril 2025: https://imnube.montevideo.gub.uy/share/s/ZVKbr6HETqq8K-PY_yTBnA
+  - Viajes Mayo 2025: https://imnube.montevideo.gub.uy/share/s/R1P3NewwTSyE7v9sKxJS2w
+  - Viajes Junio 2025: https://imnube.montevideo.gub.uy/share/s/kHAU4o6TTGmFfIZH4okEfw
+  - Viajes Julio 2025: https://imnube.montevideo.gub.uy/share/s/CKiQeW14SOSDCe1e1CsDsQ
+  - Viajes Agosto 2025: https://imnube.montevideo.gub.uy/share/s/yNde-25mQW6Mw8dzMME8Xg
+  - Viajes Setiembre 2025: https://imnube.montevideo.gub.uy/share/s/vnfwMqzhTfW5z8VE0YZ8tg
+  - Viajes Octubre 2025: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/6fe36c79-eeb4-4cd5-8e92-208b201ca858/download/viajes_stm_102025.zip
+  - Viajes Noviembre 2025: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/3228dbbb-5a6a-4686-8f09-6cca2004e141/download/viajes_stm_112025.zip
+  - Viajes Diciembre 2025: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/484ca7bb-e725-4192-83e0-f6ebf0e2e6db/download/viajes_stm_122025.zip
+  - Viajes Enero 2026: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/50905c4e-2612-4161-bc8c-5ab29373495b/download/viajes_stm_012026.zip
+
+Dataset: Conteo vehicular en las principales avenidas de Montevideo
+  - Metadata: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/e52cacfd-9817-427c-a240-3cfd374534ce/download/metadata_conteo.txt
+  - Enero a diciembre 2017: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/ec8fa6bf-99a9-479f-8d2b-d1e80d145dbd/download/enero-a-diciembre_2017.zip
+  - Enero a septiembre 2018: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/45374824-4468-4590-9fea-f4b0657e4f49/download/enero_a_septiembre_2018.zip
+  - Octubre 18 abril19: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/9832d23a-210d-4dc4-b126-2856dca5f332/download/octubre18_abril19.zip
+  - mayo 19 a setiembre 19: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/9b64e979-dc0e-4eb4-a08d-26ff728c9286/download/may19_set19.zip
+  - Conteo octubre 2019: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/7004ff00-b0a7-431e-aa5d-bc1936ce730b/download/autoscope_10_2019.csv
+  - Conteo Noviembre 2019: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/a2f40d23-a027-463e-9937-1afa1bb44c27/download/autoscope_11_2019.csv
+  - Conteo Diciembre 2019: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/3a4b6d0f-f32e-4950-b0ba-456bd30e05ca/download/autoscope_12_2019.csv
+  - Conteo Enero 2020: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/5811da52-00ac-46fb-bd9f-a70b40ceb1b1/download/autoscope_01_2020.csv
+  - Conteo Febrero 2020: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/b3b5c05a-5776-4869-a128-9483cdfa88e7/download/autoscope_02_2020.csv
+  - Conteo Marzo 2020: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/17f7e3be-e548-419e-8e8f-0d6c46e4c62f/download/autoscope_03_2020.csv
+  - Conteo Abril 2020: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/09160975-599e-4071-973e-6207635b0c4f/download/autoscope_04_2020.csv
+  - Conteo Mayo 2020: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/66f351ba-2758-4b4f-909d-4a84f40fef17/download/autoscope_05_2020.csv
+  - Conteo Junio 2020: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/040a152d-aea8-4e6c-bcf3-67c2a02a2e14/download/autoscope_06_2020.csv
+  - Conteo Julio - Setiembre 2020: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/65358849-1bc9-4041-bb9f-5f5a399b6d83/download/072020-092020.zip
+  - Conteo Octubre 2020: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/bfaba4e5-b198-4eb1-ab11-71a450ae0b6e/download/autoscope_10_2020.csv
+  - Conteo Noviembre 2020: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/84ae416a-3f85-4975-adff-ea8b6b7e20c2/download/autoscope_11_2020.csv
+  - Conteo Diciembre 2020: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/3ebc1d0a-dfe5-4713-ad40-c8981e5ef0aa/download/autoscope_12_2020.csv
+  - Conteo Enero 2021: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/d86faeb4-c5cc-408f-ba1b-b5e10191c4ea/download/autoscope_01_2021.csv
+  - Conteo Febrero 2021: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/aae7f7fa-c41c-4c3f-a1f4-59caf0812384/download/autoscope_02_2021_volumen.csv
+  - Conteo Marzo 2021: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/cab6611c-74ef-4e33-a0e4-073f9a66db1e/download/autoscope_03_2021.csv
+  - Conteo Abril 2021: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/7e78187b-0e2d-4469-b740-75cfc106c9c9/download/autoscope_04_2021_volumen.csv
+  - Conteo Mayo 2021: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/5d35264f-f050-4b9c-a17f-f3ec95d5be99/download/autoscope_05_2021_volumen.csv
+  - Conteo Junio 2021: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/c4e496c6-982b-4f0c-91a8-a33356c0de9a/download/autoscope_06_2021_volumen.csv
+  - Conteo Julio 2021: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/780decde-3609-4e25-8f23-a2c152b8838a/download/autoscope_07_2021_volumen.csv
+  - Conteo Agosto 2021: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/335c9ee9-65ea-46dd-99e8-f5a5763e91e6/download/autoscope_08_2021_volumen.csv
+  - Conteo Setiembre 2021: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/8d6d8a7d-fe7d-411f-8fce-d42c05785e3f/download/autoscope_09_2021_volumen.csv
+  - Conteo Octubre 2021: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/9ece0286-66b1-4665-9268-87558d9ee1c1/download/autoscope_10_2021_volumen.csv
+  - Conteo Noviembre 2021: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/8bdffaa8-1e94-4f46-b522-55712c4158eb/download/autoscope_11_2021_volumen.csv
+  - Conteo Diciembre 2021: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/fbafdd35-da8e-45d2-9b2b-5632d824c63f/download/autoscope_12_2021_volumen.csv
+  - Conteo Enero 2022: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/2b9a15ad-f32c-4b2c-876c-3551b28b02db/download/autoscope_01_2022_volumen.csv
+  - Conteo Febrero 2022: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/8ac58559-1ed0-409c-997e-bb6d73df08a0/download/autoscope_02_2022_volumen.csv
+  - Conteo Marzo 2022: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/1f78357e-f7d4-47b7-883b-b50d586d0171/download/autoscope_03_2022_volumen.csv
+  - Conteo Abril 2022: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/ef7c0fd1-b50b-45d3-8075-2549f8806a98/download/autoscope_04_2022_volumen.csv
+  - Conteo Mayo 2022: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/8ab69c3b-150d-4a71-8e26-4a09cb9ba8ef/download/autoscope_05_2022_volumen.csv
+  - Conteo Junio 2022: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/3e67506c-757f-4fef-af2e-b988c1c02059/download/autoscope_06_2022_volumen.csv
+  - Conteo Julio 2022: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/1b4d856f-d8d3-4e4e-bd58-8682b0c3e7a6/download/autoscope_07_2022_volumen.csv
+  - Conteo Agosto 2022: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/1ebcde6f-0d13-4f4d-826a-17e2f83c775d/download/autoscope_08_2022_volumen.csv
+  - Conteo Setiembre 2022: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/833b8d4f-04ab-4eda-b393-d77ec30fe378/download/autoscope_09_2022_volumen.csv
+  - Conteo Octubre 2022: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/f9fc394d-52c8-4542-8505-6ed22ddcad8a/download/autoscope_10_2022_volumen.csv
+  - Conteo Noviembre 2022: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/2112f6a7-96a7-429a-8e23-349f74eba6c6/download/autoscope_11_2022_volumen.csv
+  - Conteo Diciembre 2022: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/e7e36210-dfdd-4803-87be-8ab44c902a68/download/autoscope_12_2022_volumen-2.zip
+  - Conteo Enero 2023: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/600ae9b2-7a0f-4934-86d5-5f6eefaad729/download/autoscope_01_2023_volumen.csv
+  - Conteo Febrero 2023: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/66fb7b25-85f7-434e-9e47-d00145061616/download/e0nhsgp3tvuujqzc9tikpw.csv
+  - Conteo Marzo 2023: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/11c83dca-5ad4-4d0c-82ec-edb44fbf80f4/download/d33kefb1rvsn_oqbcme2rq.csv
+  - Conteo Abril 2023: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/c2c3dbcd-3e72-4cf9-93e0-1ba17b23207a/download/autoscope_04_2023_volumen.zip
+  - Conteo Mayo 2023: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/6adf775a-9c63-4966-9856-efebf473bad6/download/autoscope_05_2023_volumen.zip
+  - Conteo Junio 2023: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/8987c05b-44af-4073-85be-f54ec53edcbc/download/autoscope_06_2023_volumen.csv
+  - Conteo Julio 2023: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/888a75c9-ce31-41b9-b4b3-a719f690c4f3/download/autoscope_07_2023_volumen.csv
+  - Conteo Agosto 2023: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/146ff563-e47d-41fb-b5ae-ac634609dfed/download/autoscope_08_2023_volumen.csv
+  - Conteo Setiembre 2023: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/4e5b8031-5d07-4906-893e-fda01708fb02/download/autoscope_09_2023_volumen.csv
+  - Conteo Octubre 2023: https://imnube.montevideo.gub.uy/share/s/inNia8XQSeGjn-zaQ2ltVQ
+  - Conteo Noviembre 2023: https://imnube.montevideo.gub.uy/share/s/u9-yxMAXQbW7fgZ4l2u0ow
+  - Conteo Diciembre 2023: https://imnube.montevideo.gub.uy/share/s/VkBZ8uigSniXqFsBq5knrQ
+  - Conteo Enero 2024: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/d4c82d1f-18eb-4a88-bca7-3043c83ff50d/download/autoscope_01_2024_volumen.csv
+  - Conteo Febrero 2024: https://imnube.montevideo.gub.uy/share/s/3V9BSGHLRY2uW1U1BnPYEA
+  - Conteo Marzo 2024: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/05eb163d-3e02-45f9-a31e-7d0142ac7edf/download/autoscope_03_2024_volumen.csv
+  - Conteo Abril 2024: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/5f3fb7cf-5102-4c69-93c5-a1991d8e7634/download/autoscope_04_2024_volumen.csv
+  - Conteo Mayo 2024: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/433a6986-9483-41b0-b9d7-10ab7ffba23a/download/autoscope_05_2024_volumen.csv
+  - Conteo Junio 2024: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/90b6b287-bd28-447b-9cd9-fd19d36e4433/download/autoscope_06_2024_volumen.csv
+  - Conteo Julio 2024: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/f1015c96-7f14-4eb4-ab01-f1e46ffeb692/download/autoscope_07_2024_volumen.csv
+  - Conteo Agosto 2024: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/f5bb47f7-2adb-4563-b2f3-d478a7a22f1e/download/autoscope_08_2024_volumen.csv
+  - Conteo Setiembre 2024: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/12ba9645-d98d-4086-964d-72f503f69e42/download/autoscope_09_2024_volumen.csv
+  - Conteo Octubre 2024: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/f0a0fd08-12f7-4f98-9299-9c90c8f87f83/download/autoscope_10_2024_volumen.csv
+  - Conteo Noviembre 2024: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/0cb9f820-113c-414f-9fba-f89079277b57/download/autoscope_11_2024_volumen.csv
+  - Conteo Diciembre 2024: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/b3e32173-feb6-4396-be9b-0c537f007645/download/autoscope_12_2024_volumen.csv
+  - Conteo Enero 2025: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/17ee9ad3-4a54-4bdd-963c-d84c97bee47d/download/autoscope_01_2025_volumen.csv
+  - Conteo Febrero 2025: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/98d33190-1aa2-4af2-a0c8-6461172e3839/download/autoscope_02_2025_volumen.csv
+  - Conteo Marzo 2025: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/a2e17db7-379f-4b37-a66e-ac38d256b46b/download/autoscope_03_2025_volumen.csv
+  - Conteo Abril 2025: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/e435e0ff-0c5c-49af-acaa-29c12ad83058/download/autoscope_04_2025_volumen.csv
+  - Conteo Mayo 2025: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/5cf2ede2-877c-456c-a7e3-88e540b88bad/download/autoscope_05_2025_volumen.csv
+  - Conteo Junio 2025: https://imnube.montevideo.gub.uy/share/s/7ynO8ae_QWKPhIk074jz9g
+  - Conteo Julio 2025: https://imnube.montevideo.gub.uy/share/s/YwMnTe5cS5W5X4Txij6YTw
+  - Conteo Agosto 2025: https://imnube.montevideo.gub.uy/share/s/Clf19aJ5RcGf3MqNBKqj5A
+  - Conteo Septiembre 2025: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/527dc59f-fada-4ca3-87ec-fc5c34df58b2/download/autoscope_09_2025_volumen.zip
+  - Conteo Octubre 2025: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/542408df-552a-4873-8a9c-f1cf781f3d7c/download/autoscope_10_2025_volumen.zip
+  - Conteo Noviembre 2025: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/3c3d9152-bdc2-4611-8210-4dc18b4e32ee/download/autoscope_11_2025_volumen.zip
+  - Conteo Diciembre 2025: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/7cd9327a-5400-41cd-88ce-2859cda58e00/download/autoscope_12_2025_volumen.zip
+  - Conteo Enero 2026: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/c839b3cd-d12f-4308-976e-d4e9ff9d4d3e/download/autoscope_01_2026_volumen.zip
+  - Conteo - Febrero 2026: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/b07375c8-5d5f-452d-adcd-f6ef97d12688/download/autoscope_02_2026_volumen.zip
+  - Conteo - Marzo 2026: https://ckan-data.montevideo.gub.uy/dataset/a2b2243b-358f-4f03-b7bc-0a32c25ed10c/resource/cbb52079-9827-459d-888c-961297d96885/download/conteo_marzo_2026.zip
+
+Dataset: Prestaciones en discapacidad brindadas por la Intendencia de Montevideo
+  - Metadata: https://ckan-data.montevideo.gub.uy/dataset/16530e8f-5caf-4004-84ff-c5fcae268ed9/resource/9fbf8b8e-77ad-422b-bd7a-68ae925039ef/download/metadata.txt
+  - Prestaciones en discapacidad brindadas por la Intendencia de Montevideo: https://ckan-data.montevideo.gub.uy/dataset/16530e8f-5caf-4004-84ff-c5fcae268ed9/resource/19f7f34e-c265-497f-9692-b41ed7a244ce/download/2023-sistematizacion_-recursos-tramites-gestiones-y-disposiciones-de-la-im.csv
+
+Dataset: Recorridos ├│mnibus suburbanos
+
+Dataset: Recorrido y horarios ├│mnibus de Paysand├║
+
+Dataset: Transporte colectivo: paradas , puntos de control y recorridos de omnibus
+
+Dataset: L├¡neas de ├│mnibus (variantes no maximales)
+
+Dataset: L├¡neas de ├│mnibus, origen y destino
+
+Dataset: Horarios de ├│mnibus urbanos, por parada - STM
+  Ôÿà Horarios de ├│mnibus por parada: https://datos-abiertos.montevideo.gub.uy/uptu_pasada_variante.zip
+  Ôÿà Horarios de ├│mnibus por parada (variantes circulares): https://datos-abiertos.montevideo.gub.uy/uptu_pasada_circular.zip
+
+Dataset: Horarios de omnibus en l├¡neas interdepartamentales
+  Ôÿà Horarios Metropolitanos GTFS: https://catalogodatos.gub.uy/dataset/1d50ccf7-121d-48a7-951e-28a02858d24e/resource/9f44b654-751a-42a4-a481-af91b7c9a2e4/download/gtfs_20260326.zip
+
+Dataset: Horarios de ├│mnibus urbanos, por puntos de control - STM
+  Ôÿà Horarios de ├│mnibus por puntos de control: https://datos-abiertos.montevideo.gub.uy/HORARIOS_OMNIBUS%20datos.zip
+
+Dataset: Viajes realizados en los ├│mnibus del Sistema de Transporte Metropolitano - STM
+  Ôÿà Viajes Julio 2022: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/b933d00e-abbc-4949-a50b-340929636d84/download/viajes_stm_072022.zip
+  Ôÿà Viajes Agosto 2022: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/9ce43677-349d-4286-b3dd-6f96e10bc510/download/viajes_stm_082022.zip
+  Ôÿà Viajes Setiembre 2022: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/17b4b443-274d-420c-9ae6-8cff56647294/download/viajes_stm_092022.zip
+  Ôÿà Viajes Octubre 2022: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/0f6630cc-eaf5-4f43-8865-ea326489a461/download/viajes_stm_102022.zip
+  Ôÿà Viajes Noviembre 2022: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/f1bb6902-1346-45dd-b06c-697dca0cb3b8/download/viajes_stm_112022.zip
+  Ôÿà Viajes Diciembre 2022: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/ec85f171-9bfc-4296-916d-2c1433420ff5/download/viajes_stm_122022.zip
+  Ôÿà Viajes Febrero 2023: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/ebf2ff2a-8196-47ba-a52d-48bad17f963f/download/qhhhkadnq3kfwd4x67rypa.zip
+  Ôÿà Viajes Marzo 2023: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/2ff2473a-2804-4134-a2f4-12eb2982711a/download/f_ke9soltjillcbpt-huwq.zip
+  Ôÿà Viajes Enero 2023: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/f99bcba7-499d-4165-98f4-628b46c9d92e/download/ztluldakqdwvxbfzeo3wsg.zip
+  Ôÿà Viajes Abril 2023: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/01e47802-7f08-46a4-9947-6a20e67c4826/download/o7elqy0qsei9edql3le8gw.zip
+  Ôÿà Viajes Mayo 2023: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/0a19ea75-dc7e-4148-92a3-51fe976b6dd1/download/xi-_agzwt9afpgbhysquya.zip
+  Ôÿà Viajes Octubre 2025: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/6fe36c79-eeb4-4cd5-8e92-208b201ca858/download/viajes_stm_102025.zip
+  Ôÿà Viajes Noviembre 2025: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/3228dbbb-5a6a-4686-8f09-6cca2004e141/download/viajes_stm_112025.zip
+  Ôÿà Viajes Diciembre 2025: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/484ca7bb-e725-4192-83e0-f6ebf0e2e6db/download/viajes_stm_122025.zip
+  Ôÿà Viajes Enero 2026: https://ckan-data.montevideo.gub.uy/dataset/1205fc5c-b1b5-4478-b43e-c7411949ff15/resource/50905c4e-2612-4161-bc8c-5ab29373495b/download/viajes_stm_012026.zip
+
+Dataset: Estado de recolecci├│n de contenedores de residuos domiciliarios
+  Ôÿà Datos del 01-12-2017 a 13-12-2017: https://ckan-data.montevideo.gub.uy/dataset/1c06a7e0-7d0f-423c-b002-62d5b0c4663b/resource/a6f90fac-463a-46a2-9044-b431791a5302/download/estado_recoleccion_01122017_13122017.csv.zip
+  Ôÿà Enero Junio 2018: https://ckan-data.montevideo.gub.uy/dataset/1c06a7e0-7d0f-423c-b002-62d5b0c4663b/resource/d0a2d38c-3a13-4c9c-82c5-b3f8eb01737e/download/estado_recoleccion_enero_junio_2018.zip
+

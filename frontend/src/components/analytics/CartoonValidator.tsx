@@ -11,7 +11,7 @@ interface CartoonValidatorProps {
 export function CartoonValidator({
   cartoonId,
   titulo = 'Validador de Cartones',
-  height = '600px'
+  height = '600px',
 }: CartoonValidatorProps) {
   const [viabilidad, setViabilidad] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -67,14 +67,14 @@ export function CartoonValidator({
     'muy-viable': 'bg-green-50 border-green-500',
     viable: 'bg-blue-50 border-blue-500',
     marginal: 'bg-yellow-50 border-yellow-500',
-    'no-viable': 'bg-red-50 border-red-500'
+    'no-viable': 'bg-red-50 border-red-500',
   };
 
   const nivelBadgeColor = {
     'muy-viable': 'bg-green-600 text-white',
     viable: 'bg-blue-600 text-white',
     marginal: 'bg-yellow-600 text-white',
-    'no-viable': 'bg-red-600 text-white'
+    'no-viable': 'bg-red-600 text-white',
   };
 
   return (
@@ -149,7 +149,8 @@ export function CartoonValidator({
           </p>
         </div>
         <p className="text-sm text-gray-600">
-          ${viabilidad.margenEstimadoMes.toLocaleString()}/mes • {viabilidad.porcentajeMargen.toFixed(1)}% margen
+          ${viabilidad.margenEstimadoMes.toLocaleString()}/mes •{' '}
+          {viabilidad.porcentajeMargen.toFixed(1)}% margen
         </p>
 
         {/* Barra de progreso */}
@@ -159,13 +160,13 @@ export function CartoonValidator({
               viabilidad.margenEstimado > 5000
                 ? 'bg-green-600'
                 : viabilidad.margenEstimado > 2000
-                ? 'bg-blue-600'
-                : viabilidad.margenEstimado > 0
-                ? 'bg-yellow-600'
-                : 'bg-red-600'
+                  ? 'bg-blue-600'
+                  : viabilidad.margenEstimado > 0
+                    ? 'bg-yellow-600'
+                    : 'bg-red-600'
             }`}
             style={{
-              width: `${Math.min(100, (viabilidad.puntajeViabilidad / 100) * 100)}%`
+              width: `${Math.min(100, (viabilidad.puntajeViabilidad / 100) * 100)}%`,
             }}
           />
         </div>
@@ -182,8 +183,8 @@ export function CartoonValidator({
                 alerta.severidad === 'critica'
                   ? 'bg-red-100 text-red-800 border border-red-300'
                   : alerta.severidad === 'alta'
-                  ? 'bg-orange-100 text-orange-800 border border-orange-300'
-                  : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                    ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                    : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
               }`}
             >
               <p className="font-semibold">{alerta.titulo}</p>

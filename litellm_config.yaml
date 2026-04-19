@@ -1,0 +1,35 @@
+general_settings:
+  master_key: "sk-litellm-gemini-proxy-key-1234"
+
+litellm_settings:
+  drop_params: true
+
+model_list:
+  - model_name: claude-sonnet-4-6
+    litellm_params:
+      model: gemini/gemini-2.0-flash
+      api_key: "AIzaSyCelDMSAGW7Wte-M7OFltTxd-tHB0jOGp8"
+  - model_name: claude-sonnet-4-20250514
+    litellm_params:
+      model: gemini/gemini-2.0-flash
+      api_key: "AIzaSyCelDMSAGW7Wte-M7OFltTxd-tHB0jOGp8"
+  - model_name: claude-3-5-sonnet-20241022
+    litellm_params:
+      model: ollama/gemma3:4b
+      api_base: "http://localhost:11434"
+  - model_name: claude-3-5-sonnet-20240620
+    litellm_params:
+      model: ollama/gemma3:4b
+      api_base: "http://localhost:11434"
+  - model_name: claude-3-7-sonnet-20250219
+    litellm_params:
+      model: ollama/gemma3:4b
+      api_base: "http://localhost:11434"
+  - model_name: claude-3-opus-20240229 # Para consultas eventuales de alta calidad
+    litellm_params:
+      model: gemini/gemini-2.0-flash
+      api_key: "AIzaSyCelDMSAGW7Wte-M7OFltTxd-tHB0jOGp8"
+  - model_name: gemini-flash # Acceso directo a Gemini
+    litellm_params:
+      model: gemini/gemini-2.0-flash
+      api_key: "AIzaSyCelDMSAGW7Wte-M7OFltTxd-tHB0jOGp8"

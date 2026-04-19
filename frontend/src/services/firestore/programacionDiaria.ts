@@ -16,6 +16,8 @@ export type ProgramacionDiariaRecord = {
   conductor: string;
   horaInicio?: string;
   createdAt?: string;
+  firmaConductor?: boolean;
+  fechaFirma?: string;
 };
 
 export const ProgramacionDiariaService = {
@@ -46,5 +48,18 @@ export const ProgramacionDiariaService = {
 
   async update(id: string, data: Partial<ProgramacionDiariaRecord>): Promise<void> {
     await setDoc(doc(db, COL, id), data, { merge: true });
+  },
+
+  async getLastShiftByDriver(driverId: string): Promise<ProgramacionDiariaRecord | null> {
+    const q = query(collection(db, COL), where('conductor', '==', driverId));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ProgramacionDiariaRecord);
+    list.sort((a, b) => {
+      const dtA = `${a.date}T${a.horaInicio || '00:00'}`;
+      const dtB = `${b.date}T${b.horaInicio || '00:00'}`;
+      return dtB.localeCompare(dtA);
+    });
+    return list[0];
   },
 };

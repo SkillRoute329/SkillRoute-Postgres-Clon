@@ -1,0 +1,65 @@
+﻿=== PASO 1: Variantes de la l├¡nea 17 ===
+Variantes encontradas: 8
+  cod_variante=3783, sublinea="PUNTA CARRETAS -- CASABO", origen="CASAB├ô", destino="PUNTA CARRETAS"
+  cod_variante=3784, sublinea="PUNTA CARRETAS -- CASABO", origen="PUNTA CARRETAS", destino="CASAB├ô"
+  cod_variante=3786, sublinea="PUNTA CARRETAS--CASABO (TC)", origen="PUNTA CARRETAS", destino="CASAB├ô (POR TERMINAL DEL CERRO)"
+  cod_variante=3839, sublinea="TEATRO DE VERANO -- CASAB├ô (TC)", origen="TEATRO DE VERANO", destino="CASAB├ô (POR TERMINAL DEL CERRO)"
+  cod_variante=3854, sublinea="PUNTA CARRETAS -- CASABO", origen="CASAB├ô", destino="PARQUE ROD├ô"
+  cod_variante=3857, sublinea="PUNTA CARRETAS -- CASABO", origen="TERMINAL DEL CERRO", destino="PUNTA CARRETAS"
+  cod_variante=3862, sublinea="PUNTA CARRETAS -- CASABO", origen="PUNTA CARRETAS", destino="TERMINAL DEL CERRO"
+  cod_variante=3865, sublinea="PUNTA CARRETAS--CASABO (TC)", origen="PUNTA CARRETAS", destino="TERMINAL DEL CERRO (POR TERMINAL DEL CERRO)"
+
+=== PASO 2: Descargando geometr├¡a real ===
+
+Descargando geometr├¡a para cod_variante=3783 (CASAB├ô ÔåÆ PUNTA CARRETAS)...
+  Ô£ô 462 puntos GPS
+  Inicio: {"lat":-34.884512,"lng":-56.279564}
+  Fin: {"lat":-34.928166,"lng":-56.161623}
+
+Descargando geometr├¡a para cod_variante=3784 (PUNTA CARRETAS ÔåÆ CASAB├ô)...
+  Ô£ô 487 puntos GPS
+  Inicio: {"lat":-34.928344,"lng":-56.161848}
+  Fin: {"lat":-34.884516,"lng":-56.279566}
+
+Descargando geometr├¡a para cod_variante=3786 (PUNTA CARRETAS ÔåÆ CASAB├ô (POR TERMINAL DEL CERRO))...
+  Ô£ô 343 puntos GPS
+  Inicio: {"lat":-34.928344,"lng":-56.161848}
+  Fin: {"lat":-34.884522,"lng":-56.279546}
+
+Descargando geometr├¡a para cod_variante=3839 (TEATRO DE VERANO ÔåÆ CASAB├ô (POR TERMINAL DEL CERRO))...
+  Ô£ô 332 puntos GPS
+  Inicio: {"lat":-34.919949,"lng":-56.168947}
+  Fin: {"lat":-34.884508,"lng":-56.279561}
+
+Descargando geometr├¡a para cod_variante=3854 (CASAB├ô ÔåÆ PARQUE ROD├ô)...
+  Ô£ô 398 puntos GPS
+  Inicio: {"lat":-34.884512,"lng":-56.279564}
+  Fin: {"lat":-34.911344,"lng":-56.165639}
+
+Descargando geometr├¡a para cod_variante=3857 (TERMINAL DEL CERRO ÔåÆ PUNTA CARRETAS)...
+  Ô£ô 357 puntos GPS
+  Inicio: {"lat":-34.873316,"lng":-56.250099}
+  Fin: {"lat":-34.928166,"lng":-56.161623}
+
+Descargando geometr├¡a para cod_variante=3862 (PUNTA CARRETAS ÔåÆ TERMINAL DEL CERRO)...
+  Ô£ô 389 puntos GPS
+  Inicio: {"lat":-34.928344,"lng":-56.161848}
+  Fin: {"lat":-34.874127,"lng":-56.251334}
+
+Descargando geometr├¡a para cod_variante=3865 (PUNTA CARRETAS ÔåÆ TERMINAL DEL CERRO (POR TERMINAL DEL CERRO))...
+  Ô£ô 254 puntos GPS
+  Inicio: {"lat":-34.928344,"lng":-56.161848}
+  Fin: {"lat":-34.873307,"lng":-56.2501}
+
+=== PASO 3: Guardando resultado ===
+Ô£ô Guardado 8 variantes en linea_17_real_coordinates.json
+
+=== RESUMEN ===
+  Variante 3783: CASAB├ô ÔåÆ PUNTA CARRETAS (462 puntos)
+  Variante 3784: PUNTA CARRETAS ÔåÆ CASAB├ô (487 puntos)
+  Variante 3786: PUNTA CARRETAS ÔåÆ CASAB├ô (POR TERMINAL DEL CERRO) (343 puntos)
+  Variante 3839: TEATRO DE VERANO ÔåÆ CASAB├ô (POR TERMINAL DEL CERRO) (332 puntos)
+  Variante 3854: CASAB├ô ÔåÆ PARQUE ROD├ô (398 puntos)
+  Variante 3857: TERMINAL DEL CERRO ÔåÆ PUNTA CARRETAS (357 puntos)
+  Variante 3862: PUNTA CARRETAS ÔåÆ TERMINAL DEL CERRO (389 puntos)
+  Variante 3865: PUNTA CARRETAS ÔåÆ TERMINAL DEL CERRO (POR TERMINAL DEL CERRO) (254 puntos)

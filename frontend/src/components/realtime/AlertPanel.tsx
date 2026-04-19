@@ -75,9 +75,7 @@ export const AlertPanel: React.FC<AlertPanelProps> = ({
             <div className="flex gap-2">
               <span
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  connected
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-red-100 text-red-800'
+                  connected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                 }`}
               >
                 {connected ? '🟢 Activo' : '🔴 Inactivo'}
@@ -121,7 +119,10 @@ export const AlertPanel: React.FC<AlertPanelProps> = ({
 
           <div className="space-y-2">
             {criticalAlerts.slice(0, 3).map((alert) => (
-              <div key={`critical-${alert.vehicleId}`} className="bg-white p-3 rounded border-l-4 border-red-500">
+              <div
+                key={`critical-${alert.vehicleId}`}
+                className="bg-white p-3 rounded border-l-4 border-red-500"
+              >
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="font-bold text-red-900">Vehículo: {alert.vehicleId}</p>

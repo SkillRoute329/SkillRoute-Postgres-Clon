@@ -11,6 +11,7 @@ import {
   Cloud,
   Database,
   Map,
+  HardDrive
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { API_URL } from '../../services/api';
@@ -137,6 +138,9 @@ const DataIngestion = () => {
   const [stmProgress, setStmProgress] = useState<{ written: number; total: number } | null>(null);
   const [stmResult, setStmResult] = useState<{ written: number; errors: string[] } | null>(null);
 
+  // Data Lake Giga-Upload
+  const [dataLakeUploading, setDataLakeUploading] = useState(false);
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       setFile(acceptedFiles[0]);
@@ -216,6 +220,27 @@ const DataIngestion = () => {
       setStmUploading(false);
     }
   }, []);
+
+  const handleDataLakeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const csvFile = e.target.files?.[0];
+    if (!csvFile) return;
+    
+    setDataLakeUploading(true);
+    const toastId = toast.loading('Subiendo CSV Gigante al Data Lake... (No cierres la página)');
+    try {
+      const timestamp = Date.now();
+      const storagePath = `data_lake/uploads/${timestamp}_${csvFile.name}`;
+      const storageRef = ref(storage, storagePath);
+
+      await uploadBytes(storageRef, csvFile);
+      toast.success('¡Archivo subido exitosamente al Data Lake! Procesamiento en cola en Backend (Cloud Function).', { id: toastId, duration: 8000 });
+    } catch (err: unknown) {
+      toast.error('Error al subir CSV: ' + (err instanceof Error ? err.message : String(err)), { id: toastId });
+    } finally {
+      setDataLakeUploading(false);
+      e.target.value = ''; // Reset input
+    }
+  };
 
   // 🚀 CLIENT-SIDE PROCESSING
   const analyzeFile = async (uploadedFile: File) => {
@@ -492,6 +517,36 @@ const DataIngestion = () => {
             )}
           </div>
         )}
+      </div>
+
+      {/* INGESTA DATA LAKE (Big Data Background) */}
+      <div className="bg-slate-800/80 rounded-2xl border border-slate-700 p-6 mb-6">
+        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+          <HardDrive className="w-5 h-5 text-indigo-500" />
+          Ingesta Data Lake (Cantidades Masivas de Tickets)
+        </h3>
+        <p className="text-slate-400 text-sm mt-1 mb-4">
+          Sube tus archivos CSV pesados (Miles o Millones de filas de boletos) aquí. Se enviarán directamente al servidor y se insertarán en background en Firestore por las madrugadas.
+        </p>
+        <div className="flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-medium cursor-pointer transition-colors">
+            <Database className="w-5 h-5" />
+            <span>Seleccionar archivo CSV (Gigante)</span>
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              disabled={dataLakeUploading}
+              onChange={handleDataLakeUpload}
+            />
+          </label>
+          {dataLakeUploading && (
+            <div className="flex items-center gap-2 text-indigo-400">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Subiendo a Storage. Por favor no cierres la ventana...
+            </div>
+          )}
+        </div>
       </div>
 
       {successMsg && (

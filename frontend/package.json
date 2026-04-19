@@ -6,6 +6,7 @@
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite --port 3005 --strictPort",
+    "prebuild": "node scripts/generateVersion.mjs",
     "build": "vite build",
     "qa:audit": "node scripts/qa_audit.js",
     "lint": "eslint .",

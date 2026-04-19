@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { useLocationUpdates, useSocketLatency } from '../../hooks/useRealtimeData';
 import { useSocket } from '../../hooks/useSocket';
@@ -65,9 +65,9 @@ export const LiveVehicleMap: React.FC<LiveVehicleMapProps> = ({
       if (monitorSpecificVehicles.length === 0) return true;
       return monitorSpecificVehicles.includes(vehicleId);
     })
-    .map(([vehicleId, location]) => ({
-      vehicleId,
+    .map(([id, location]) => ({
       ...location,
+      vehicleId: id,
     }));
 
   // Centro del mapa (promedio de ubicaciones)
@@ -85,9 +85,7 @@ export const LiveVehicleMap: React.FC<LiveVehicleMapProps> = ({
       <div className="p-4 border-b border-gray-200 flex justify-between items-center">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{title}</h2>
-          <p className="text-sm text-gray-500">
-            {vehiclesToShow.length} vehículos en línea
-          </p>
+          <p className="text-sm text-gray-500">{vehiclesToShow.length} vehículos en línea</p>
         </div>
 
         {/* Status indicator */}
@@ -100,9 +98,7 @@ export const LiveVehicleMap: React.FC<LiveVehicleMapProps> = ({
 
           <div
             className={`px-3 py-1 rounded-full text-sm font-medium ${
-              connected
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
+              connected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
             }`}
           >
             {connected ? '🟢 En vivo' : '🔴 Fuera de línea'}
@@ -111,12 +107,13 @@ export const LiveVehicleMap: React.FC<LiveVehicleMapProps> = ({
       </div>
 
       {/* Mapa */}
-      <div style={{ height, width: '100%' }} className="relative">
+      <style>{`.live-map-wrapper { height: ${height}; width: 100%; } .live-map-container { height: 100%; z-index: 0; }`}</style>
+      <div className="relative live-map-wrapper">
         {vehiclesToShow.length > 0 ? (
-          <MapContainer center={center} zoom={zoom} style={{ height: '100%' }}>
+          <MapContainer center={center} zoom={zoom} className="live-map-container">
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; OpenStreetMap contributors'
+              attribution="&copy; OpenStreetMap contributors"
             />
 
             {/* Markers de vehículos */}
@@ -125,7 +122,6 @@ export const LiveVehicleMap: React.FC<LiveVehicleMapProps> = ({
                 key={vehicle.vehicleId}
                 position={[vehicle.latitude, vehicle.longitude]}
                 icon={vehicleIcon}
-                rotation={vehicle.heading || 0}
               >
                 <Popup>
                   <div className="text-sm">
@@ -144,9 +140,7 @@ export const LiveVehicleMap: React.FC<LiveVehicleMapProps> = ({
         ) : (
           <div className="h-full flex items-center justify-center bg-gray-50">
             <p className="text-gray-500">
-              {connected
-                ? 'Esperando datos de ubicación...'
-                : 'Conectando a Socket.io...'}
+              {connected ? 'Esperando datos de ubicación...' : 'Conectando a Socket.io...'}
             </p>
           </div>
         )}
@@ -159,9 +153,7 @@ export const LiveVehicleMap: React.FC<LiveVehicleMapProps> = ({
           {vehiclesToShow.map((vehicle) => (
             <div key={vehicle.vehicleId} className="text-xs p-2 bg-gray-50 rounded">
               <p className="font-medium">{vehicle.vehicleId}</p>
-              <p className="text-gray-600">
-                {vehicle.speed ? `${vehicle.speed} km/h` : 'Parado'}
-              </p>
+              <p className="text-gray-600">{vehicle.speed ? `${vehicle.speed} km/h` : 'Parado'}</p>
               <p className="text-gray-500 text-xs">
                 {new Date(vehicle.timestamp).toLocaleTimeString()}
               </p>

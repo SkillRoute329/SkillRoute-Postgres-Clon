@@ -229,10 +229,12 @@ const AdminSetup = () => {
           linea: '300',
           servicio: 'REFERENCIA-VUELTA',
           paradas: line300ReverseData.headers.map((h: { location: string }) => h.location),
-          viajes: line300ReverseData.rows.map((r: { times: Record<string, string> }, i: number) => ({
-            fila: i + 1,
-            tiempos: line300ReverseData.headers.map((h: { id: string }) => r.times[h.id] || ''),
-          })),
+          viajes: line300ReverseData.rows.map(
+            (r: { times: Record<string, string> }, i: number) => ({
+              fila: i + 1,
+              tiempos: line300ReverseData.headers.map((h: { id: string }) => r.times[h.id] || ''),
+            }),
+          ),
           notasCabecera: ['CARTÓN DE REFERENCIA GENERADO POR ADMIN SETUP'],
           notasPie: [],
           sheetName: 'REF_300_VUELTA',

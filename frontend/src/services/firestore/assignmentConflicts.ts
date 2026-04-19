@@ -1,12 +1,4 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  setDoc,
-  query,
-  where,
-  onSnapshot,
-} from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import type { AssignmentConflict } from './types';
 

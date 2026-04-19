@@ -80,6 +80,10 @@ export interface AsignacionGenerada {
   esLista: boolean;
   /** true si este día es el descanso del conductor. */
   diaLibre?: boolean;
+  /** Si la fecha coincide con un feriado registrado. */
+  esFeriado?: boolean;
+  /** Tipo de grilla a usar por el feriado (ej. SABADO, DOMINGO). */
+  feriadoGrilla?: 'DOMINGO' | 'SABADO' | 'ESPECIAL';
   [key: string]: unknown;
 }
 

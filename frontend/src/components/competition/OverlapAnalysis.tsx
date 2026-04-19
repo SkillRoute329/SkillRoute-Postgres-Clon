@@ -13,12 +13,12 @@ export function OverlapAnalysis({
   lineaId,
   numeroLinea,
   title = 'Análisis de Sobreposición',
-  height = '500px'
+  height = '500px',
 }: OverlapAnalysisProps) {
   const { sobreposiciones, loading, error, totalPasajerosEnRiesgo } = useCompetitionData({
     lineaId,
     autoRefresh: true,
-    refreshInterval: 600000 // 10 minutos
+    refreshInterval: 600000, // 10 minutos
   });
 
   const [selectedCompetidor, setSelectedCompetidor] = useState<string | null>(null);
@@ -52,13 +52,16 @@ export function OverlapAnalysis({
   }
 
   const filteredSobreposiciones = selectedCompetidor
-    ? sobreposiciones.filter(s => s.competidor === selectedCompetidor)
+    ? sobreposiciones.filter((s) => s.competidor === selectedCompetidor)
     : sobreposiciones;
 
-  const competidoresUnicos = Array.from(new Set(sobreposiciones.map(s => s.competidor)));
+  const competidoresUnicos = Array.from(new Set(sobreposiciones.map((s) => s.competidor)));
 
   return (
-    <div style={{ height }} className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col">
+    <div
+      style={{ height }}
+      className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col"
+    >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-gray-800">{title}</h3>
         <div className="flex items-center gap-2 bg-red-50 px-3 py-1 rounded">
@@ -82,7 +85,7 @@ export function OverlapAnalysis({
           >
             Todos ({sobreposiciones.length})
           </button>
-          {competidoresUnicos.map(competidor => (
+          {competidoresUnicos.map((competidor) => (
             <button
               key={competidor}
               onClick={() => setSelectedCompetidor(competidor)}
@@ -92,7 +95,7 @@ export function OverlapAnalysis({
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {competidor} ({sobreposiciones.filter(s => s.competidor === competidor).length})
+              {competidor} ({sobreposiciones.filter((s) => s.competidor === competidor).length})
             </button>
           ))}
         </div>
@@ -105,17 +108,17 @@ export function OverlapAnalysis({
             <p>No hay sobreposiciones significativas</p>
           </div>
         ) : (
-          filteredSobreposiciones.map(sobreposicion => (
+          filteredSobreposiciones.map((sobreposicion) => (
             <div
               key={sobreposicion.id}
               className={`p-3 rounded-lg border-l-4 transition ${
                 sobreposicion.nivelesRiesgo === 'critico'
                   ? 'bg-red-50 border-red-500'
                   : sobreposicion.nivelesRiesgo === 'alto'
-                  ? 'bg-orange-50 border-orange-500'
-                  : sobreposicion.nivelesRiesgo === 'medio'
-                  ? 'bg-yellow-50 border-yellow-500'
-                  : 'bg-green-50 border-green-500'
+                    ? 'bg-orange-50 border-orange-500'
+                    : sobreposicion.nivelesRiesgo === 'medio'
+                      ? 'bg-yellow-50 border-yellow-500'
+                      : 'bg-green-50 border-green-500'
               }`}
             >
               <div className="flex items-start justify-between mb-2">
@@ -123,19 +126,17 @@ export function OverlapAnalysis({
                   <p className="font-semibold text-gray-900">
                     {sobreposicion.competidor} - Línea {sobreposicion.numeroLineaCompetencia}
                   </p>
-                  <p className="text-sm text-gray-600">
-                    vs. Tu Línea {numeroLinea}
-                  </p>
+                  <p className="text-sm text-gray-600">vs. Tu Línea {numeroLinea}</p>
                 </div>
                 <span
                   className={`px-2 py-1 rounded text-xs font-bold text-white ${
                     sobreposicion.nivelesRiesgo === 'critico'
                       ? 'bg-red-600'
                       : sobreposicion.nivelesRiesgo === 'alto'
-                      ? 'bg-orange-600'
-                      : sobreposicion.nivelesRiesgo === 'medio'
-                      ? 'bg-yellow-600'
-                      : 'bg-green-600'
+                        ? 'bg-orange-600'
+                        : sobreposicion.nivelesRiesgo === 'medio'
+                          ? 'bg-yellow-600'
+                          : 'bg-green-600'
                   }`}
                 >
                   {sobreposicion.nivelesRiesgo.toUpperCase()}

@@ -1,0 +1,67 @@
+﻿=== Error crudo del GeoServer ===
+<ows:ExceptionReport xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.0.0" xsi:schemaLocation="http://www.opengis.net/ows/1.1 https://geoserver.montevideo.gub.uy/geoserver/schemas/ows/1.1.0/owsAll.xsd">
+  <ows:Exception exceptionCode="InvalidParameterValue" locator="GetFeature">
+    <ows:ExceptionText>Illegal property name: desc_linea for feature type imm:v_uptu_sentido_variante</ows:ExceptionText>
+  </ows:Exception>
+</ows:ExceptionReport>
+
+
+
+=== GetCapabilities (parcial) ===
+Capas con "uptu":
+   <Name>imm:v_uptu_paradas</Name>
+   <Name>imm:uptu_variante</Name>
+   <Name>ide:ide_v_uptu_lsv</Name>
+   <Name>imm:v_uptu_sentido_variante</Name>
+   <Name>imm:uptu_sucursales_stm</Name>
+   <Name>imm:mobile_uptu_playa</Name>
+   <Name>imm:uptu_destino</Name>
+   <Name>imm:uptu_parada_no_maximal</Name>
+   <Name>imm:uptu_patrimonio</Name>
+   <Name>imm:uptu_playa</Name>
+   <Name>imm:uptu_ubic_parada</Name>
+   <Name>imm:uptu_ubic_parada_fusionada</Name>
+   <Name>imm:uptu_variante_especial</Name>
+   <Name>imm:uptu_variante_no_maximal</Name>
+   <Name>imm:uptu_wifi</Name>
+   <Name>imm:v_uptu_lsv_destinos</Name>
+   <Name>imm:v_uptu_paradas_con_horarios</Name>
+   <Name>imm:v_uptu_ptos_intercambio</Name>
+   <Name>imm:v_uptu_ubic_paradas_con_horarios</Name>
+   <Name>imm:v_uptu_ubic_paradas_con_horarios_deshabilitadas</Name>
+   <Name>imm:v_uptu_ubic_paradas_con_horarios_fid</Name>
+   <Name>imm:v_uptu_ubic_paradas_fusionadas</Name>
+   <Name>imm:v_uptu_ubic_paradas_fusionadas_deshabilitadas</Name>
+
+
+=== Prueba con namespace imm ===
+node : Error: socket hang 
+up
+En línea: 1 Carácter: 1
++ node debug_geoserver.js 
+2>&1 | Out-File -FilePath 
+debug_geo_out.txt - ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~
+    + CategoryInfo         
+     : NotSpecified: (Err  
+  or: socket hang up:Str   
+ ing) [], RemoteExcepti    
+on
+    + FullyQualifiedErrorI 
+   d : NativeCommandError
+ 
+    at 
+TLSSocket.socketOnEnd 
+(node:_http_client:599:25)
+    at TLSSocket.emit 
+(node:events:520:35)
+    at endReadableNT (node:
+internal/streams/readable:1
+729:12)
+    at process.processTicks
+AndRejections (node:interna
+l/process/task_queues:90:21
+) {
+  code: 'ECONNRESET'
+}

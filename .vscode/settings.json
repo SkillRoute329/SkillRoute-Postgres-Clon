@@ -4,11 +4,68 @@
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
-  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.tsdk": "frontend/node_modules/typescript/lib",
   "files.associations": {
     "*.bat": "bat"
   },
   "gitlens.codeLens.enabled": true,
   "eslint.workingDirectories": ["./frontend", "./backend", "./backend_legacy"],
-  "git.ignoreLimitWarning": true
+  "git.ignoreLimitWarning": true,
+  "cSpell.enabled": false,
+  "css.lint.unknownAtRules": "ignore",
+  "java.configuration.updateBuildConfiguration": "interactive",
+  "cloudcode.project": "ucot-gestor-cloud",
+  "geminicodeassist.inlineSuggestions.enableAuto": true,
+  "geminicodeassist.inlineSuggestions.suggestionSpeed": "Fast",
+
+  "files.exclude": {
+    "**/.git": true,
+    "**/.venv": true,
+    "**/.vs": true,
+    "**/node_modules": true,
+    "**/backend_legacy": true,
+    "**/gtfs_data": true,
+    "**/test-screenshots": true,
+    "**/test-verify-lines": true,
+    "**/.augment": true,
+    "**/.agent": true,
+    "**/.agents": true,
+    "**/tmp": true,
+    "**/*.xls": true,
+    "**/*.zip": true,
+    "**/*.docx": true,
+    "**/gtfs_stm.zip": true,
+    "**/horarios.zip": true,
+    "**/eslint_out.json": true,
+    "**/diff.txt": true
+  },
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/.venv/**": true,
+    "**/.vs/**": true,
+    "**/backend_legacy/**": true,
+    "**/gtfs_data/**": true,
+    "**/test-screenshots/**": true,
+    "**/test-verify-lines/**": true,
+    "**/.augment/**": true,
+    "**/.agent/**": true,
+    "**/.agents/**": true,
+    "**/tmp/**": true,
+    "**/.firebase/**": true,
+    "**/dist/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/backend_legacy": true,
+    "**/.venv": true,
+    "**/gtfs_data": true,
+    "**/dist": true,
+    "**/*.xls": true,
+    "**/*.zip": true,
+    "**/*.docx": true,
+    "**/tmp": true,
+    "**/.firebase": true
+  }
 }

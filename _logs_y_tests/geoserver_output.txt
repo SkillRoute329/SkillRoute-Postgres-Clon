@@ -1,0 +1,15 @@
+﻿=== Paso 1: Buscar variantes de la l├¡nea 17 ===
+
+Query: ...CQL_FILTER=desc_linea='17'
+  Status: 200, Size: 547
+  Error: Unexpected token '<', "<ows:Excep"... is not valid JSON
+Query: ...CQL_FILTER=desc_linea='017'
+  Status: 200, Size: 547
+  Error: Unexpected token '<', "<ows:Excep"... is not valid JSON
+Query: ...CQL_FILTER=cod_linea=17
+  Status: 200, Size: 546
+  Error: Unexpected token '<', "<ows:Excep"... is not valid JSON
+
+
+=== Paso 2: Descubrir campo desc_linea (sample de variantes) ===
+Error: Unexpected token '<', "<ows:Excep"... is not valid JSON

@@ -1,0 +1,380 @@
+{
+  "totalLines": 14,
+  "totalVariants": 28,
+  "linesWithRoutes": 22,
+  "linesWithStops": 0,
+  "uniqueRoutes": 22,
+  "desvioButtonFound": true,
+  "desvioEditorWorks": true,
+  "lineDetails": [
+    {
+      "code": "8SRa",
+      "name": "8SR — Terminal Baltasar Brum → San Ramón (IDA)",
+      "paradas": 0,
+      "hasRoute": false,
+      "firstParadas": [],
+      "unique": true
+    },
+    {
+      "code": "8SRb",
+      "name": "8SR — San Ramón → Terminal Baltasar Brum (VUELTA)",
+      "paradas": 0,
+      "hasRoute": false,
+      "firstParadas": [],
+      "unique": true
+    },
+    {
+      "code": "11Aa",
+      "name": "11A — Terminal Baltasar Brum → Sauce / San Ramón (IDA)",
+      "paradas": 0,
+      "hasRoute": false,
+      "firstParadas": [],
+      "unique": true
+    },
+    {
+      "code": "11Ab",
+      "name": "11A — Sauce / San Ramón → Terminal Baltasar Brum (VUELTA)",
+      "paradas": 0,
+      "hasRoute": false,
+      "firstParadas": [],
+      "unique": true
+    },
+    {
+      "code": "17a",
+      "name": "17 — Casabó (Bajo Valencia) → Punta Carretas (IDA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "17b",
+      "name": "17 — Punta Carretas → Casabó (Bajo Valencia) (VUELTA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "71a",
+      "name": "71 — Pocitos → Mendoza e Instrucciones (IDA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "71b",
+      "name": "71 — Mendoza e Instrucciones → Pocitos (VUELTA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "79a",
+      "name": "79 — Ciudad Vieja (Ciudadela) → Intercambiador Belloni (IDA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "79b",
+      "name": "79 — Intercambiador Belloni → Ciudad Vieja (Ciudadela) (VUELTA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "221a",
+      "name": "221 — Terminal Baltasar Brum → El Pinar (IDA)",
+      "paradas": 0,
+      "hasRoute": false,
+      "firstParadas": [
+        "1Pinar Club Tenis",
+        "2Pinar Pda 13",
+        "3Solymar",
+        "4Solymar Tnal.",
+        "5Gian y M.Castro"
+      ],
+      "unique": true
+    },
+    {
+      "code": "221b",
+      "name": "221 — El Pinar → Terminal Baltasar Brum (VUELTA)",
+      "paradas": 0,
+      "hasRoute": false,
+      "firstParadas": [
+        "1Pinar Club Tenis",
+        "2Pinar Pda 13",
+        "3Solymar",
+        "4Solymar Tnal.",
+        "5Gian y M.Castro"
+      ],
+      "unique": true
+    },
+    {
+      "code": "300a",
+      "name": "300 — Cementerio Central → Instrucciones y Belloni (IDA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "300b",
+      "name": "300 — Instrucciones y Belloni → Cementerio Central (VUELTA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "306a",
+      "name": "306 — Casabó → Géant (IDA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "306b",
+      "name": "306 — Géant → Casabó (VUELTA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "316a",
+      "name": "316 — Cno. Maldonado → Pocitos (IDA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "316b",
+      "name": "316 — Pocitos → Cno. Maldonado (VUELTA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "328a",
+      "name": "328 — Punta Carretas → Mendoza (IDA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "328b",
+      "name": "328 — Mendoza → Punta Carretas (VUELTA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "329a",
+      "name": "329 — Punta Carretas → Instrucciones (IDA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "329b",
+      "name": "329 — Instrucciones → Punta Carretas (VUELTA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "330a",
+      "name": "330 — Cerro (Villa del Cerro) → Ciudad Vieja (IDA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "330b",
+      "name": "330 — Ciudad Vieja → Cerro (Villa del Cerro) (VUELTA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "370a",
+      "name": "370 — Playa del Cerro → Portones (IDA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "370b",
+      "name": "370 — Portones → Playa del Cerro (VUELTA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "unique": true
+    },
+    {
+      "code": "396a",
+      "name": "396 — Punta Carretas → Instrucciones (IDA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "F"
+      ],
+      "unique": true
+    },
+    {
+      "code": "396b",
+      "name": "396 — Instrucciones → Punta Carretas (VUELTA)",
+      "paradas": 0,
+      "hasRoute": true,
+      "firstParadas": [
+        "I",
+        "2",
+        "3",
+        "4",
+        "F"
+      ],
+      "unique": true
+    }
+  ],
+  "errors": []
+}

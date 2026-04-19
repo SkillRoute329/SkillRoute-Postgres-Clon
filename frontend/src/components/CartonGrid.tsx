@@ -29,15 +29,10 @@ export default function CartonGrid({ carton, className = '' }: CartonGridProps) 
     <div
       className={clsx(
         'w-full bg-white text-black p-6 rounded-sm shadow-2xl border-[1px] border-black/10 overflow-auto',
-        'font-sans',
+        'font-sans min-h-[600px]',
+        'bg-[linear-gradient(#f1f5f9_1px,transparent_1px),linear-gradient(90deg,#f1f5f9_1px,transparent_1px)] bg-[size:20px_20px]',
         className,
       )}
-      style={{
-        backgroundImage:
-          'linear-gradient(#f1f5f9 1px, transparent 1px), linear-gradient(90deg, #f1f5f9 1px, transparent 1px)',
-        backgroundSize: '20px 20px',
-        minHeight: '600px',
-      }}
     >
       {/* Physical Header Style */}
       <div className="flex justify-between items-end border-b-[3px] border-black pb-4 mb-6">

@@ -3,42 +3,38 @@
  */
 
 import { Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { auth } from '../config/firebase';
 import { AuthRequest, AppError } from '../types/index';
 import { Config } from '../config/constants';
 import logger from '../config/logger';
 
 /**
- * Verificar que el request tenga un token válido
+ * Verificar que el request tenga un token de Firebase válido
  */
-export const verifyAuth = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const verifyAuth = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const token = req.headers.authorization?.split(' ')[1];
 
   if (!token) {
-    // En desarrollo, permitir acceso anónimo como desarrollador
-    if (Config.NODE_ENV === 'development') {
-      logger.warn('[AUTH] Missing token in development - allowing as ANONYMOUS');
-      req.user = {
-        id: 'dev-user',
-        internalNumber: '0000',
-        fullName: 'Developer God',
-        role: 'SuperAdmin',
-      };
-      return next();
-    }
-
-    // En producción, rechazar
-    const error = new AppError(401, 'No token provided');
+    const error = new AppError(401, 'No token provided (Firebase ID Token required)');
     return res.status(error.statusCode).json({ error: error.message });
   }
 
   try {
-    const decoded = jwt.verify(token, Config.JWT_SECRET) as any;
-    req.user = decoded;
+    // Validar criptográficamente el Token de Firebase
+    const decodedToken = await auth.verifyIdToken(token);
+    
+    // Inyectar usuario en el request compatible con la lógica del backend
+    req.user = {
+      id: decodedToken.uid,
+      internalNumber: decodedToken.internalNumber || 'unverified',
+      fullName: decodedToken.name || decodedToken.email || 'Firebase User',
+      role: (decodedToken.role as string) || Config.Roles.USER,
+    };
+    
     next();
   } catch (err) {
-    logger.error('[AUTH] Invalid token', { error: String(err) });
-    const error = new AppError(403, 'Invalid or expired token');
+    logger.error('[AUTH] Invalid Firebase token', { error: String(err) });
+    const error = new AppError(401, 'Invalid or expired Firebase token');
     return res.status(error.statusCode).json({ error: error.message });
   }
 };

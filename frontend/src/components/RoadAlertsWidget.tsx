@@ -19,10 +19,6 @@ const RoadAlertsWidget = () => {
     severity: 'MEDIUM',
   });
 
-  useEffect(() => {
-    loadAlerts();
-  }, []);
-
   const loadAlerts = async () => {
     try {
       const data = await RoadAlertService.getAll();
@@ -36,6 +32,10 @@ const RoadAlertsWidget = () => {
       setAlerts([]);
     }
   };
+
+  useEffect(() => {
+    void loadAlerts();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,7 +199,7 @@ const RoadAlertsWidget = () => {
 
       {/* Alerts List - null-safe */}
       <div className="grid gap-3">
-        {(alerts || []).filter(Boolean).map((alert) => {
+        {(alerts || []).filter(Boolean).map((alert, idx) => {
           const a = alert as {
             id?: string;
             title?: string;
@@ -214,7 +214,7 @@ const RoadAlertsWidget = () => {
           const dateStr = a?.creado_en ?? a?.createdAt;
           return (
             <div
-              key={a?.id ?? Math.random()}
+              key={a?.id ?? idx}
               className={clsx(
                 'relative p-4 rounded-xl border-l-4 shadow-lg animate-fade-in',
                 severity === 'HIGH'

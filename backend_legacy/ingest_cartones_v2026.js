@@ -21,9 +21,9 @@ const EXCEL_PATH = path.join(
 // Helpers
 function excelTimeToHHMM(val) {
   if (typeof val === 'number') {
-    let totalSeconds = Math.round(val * 24 * 3600);
-    let hours = Math.floor(totalSeconds / 3600);
-    let minutes = Math.floor((totalSeconds % 3600) / 60);
+    const totalSeconds = Math.round(val * 24 * 3600);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   }
   if (typeof val === 'string') {

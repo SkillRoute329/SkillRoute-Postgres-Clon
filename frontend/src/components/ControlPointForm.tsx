@@ -125,23 +125,45 @@ const ControlPointForm = ({
             </label>
             <div
               className="grid grid-cols-4 gap-2"
-              role="group"
+              role="radiogroup"
               aria-labelledby="load-selector-label"
             >
-              {['VACIO', 'SENTADOS', 'LLENO', 'EXPLOTADO'].map((level) => (
-                <button
-                  key={level}
-                  onClick={() => setLoadLevel(level)}
-                  className={`py-3 rounded-xl text-xs font-bold border transition-all ${
-                    loadLevel === level
-                      ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/50'
-                      : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
-                  }`}
-                  aria-pressed={loadLevel === level}
-                >
-                  {level}
-                </button>
-              ))}
+              {['VACIO', 'SENTADOS', 'LLENO', 'EXPLOTADO'].map((level) => {
+                const isChecked = loadLevel === level;
+                const btnClass = `py-3 rounded-xl text-xs font-bold border transition-all ${
+                  isChecked
+                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/50'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                }`;
+
+                if (isChecked) {
+                  return (
+                    <button
+                      key={level}
+                      type="button"
+                      role="radio"
+                      onClick={() => setLoadLevel(level)}
+                      className={btnClass}
+                      aria-checked="true"
+                    >
+                      {level}
+                    </button>
+                  );
+                }
+
+                return (
+                  <button
+                    key={level}
+                    type="button"
+                    role="radio"
+                    onClick={() => setLoadLevel(level)}
+                    className={btnClass}
+                    aria-checked="false"
+                  >
+                    {level}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

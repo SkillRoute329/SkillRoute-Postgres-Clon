@@ -12,6 +12,7 @@ import {
   UserService,
   ActiveAssignmentsService,
 } from '../../../services/firestore';
+import { FeriadosService, type Feriado } from '../../../services/feriadosService';
 import { getMasterServicios } from '../../../data/ucotMaster';
 import { generarRotacion } from '../../../services/staffAssignmentEngine';
 import type { ReglaRotacion, PersonalRotacion } from '../../../types/rotation';
@@ -48,10 +49,10 @@ export default function RotationManager() {
   const [reglas, setReglas] = useState<ReglaRotacion[]>([]);
   const [personal, setPersonal] = useState<PersonalRotacion[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [year, _setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
-  const [cartonesTemplate, setCartonesTemplate] = useState<
+  const [cartonesTemplate, _setCartonesTemplate] = useState<
     Array<{
       serviceNumber: string;
       lineCode: string;
@@ -60,8 +61,9 @@ export default function RotationManager() {
       vehicleInternalNumber?: string;
     }>
   >([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
+  const [feriados, setFeriados] = useState<Feriado[]>([]);
   const [assignCoche, setAssignCoche] = useState('');
   const [assignChofer, setAssignChofer] = useState('');
   const [assignServicio, setAssignServicio] = useState('');
@@ -75,6 +77,7 @@ export default function RotationManager() {
     const unsubR = RotationRulesService.subscribe(setReglas);
     const unsubP = PersonalRotationService.subscribe(setPersonal);
     const unsubV = FleetService.subscribeVehicles(setVehicles);
+    const unsubF = FeriadosService.subscribe(setFeriados);
     UserService.getAll()
       .then(setUsers)
       .catch(() => setUsers([]));
@@ -82,6 +85,7 @@ export default function RotationManager() {
       unsubR();
       unsubP();
       unsubV();
+      unsubF();
     };
   }, []);
 
@@ -104,8 +108,9 @@ export default function RotationManager() {
       reglas,
       flota,
       cartones: cartonesTemplate,
+      feriados,
     });
-  }, [fechaInicio, fechaFin, personal, reglas, vehicles, cartonesTemplate]);
+  }, [fechaInicio, fechaFin, personal, reglas, vehicles, cartonesTemplate, feriados]);
 
   const daysInMonth = useMemo(() => {
     const n = new Date(year, month, 0).getDate();
@@ -181,6 +186,8 @@ export default function RotationManager() {
           <button
             type="button"
             onClick={() => setMonth((m) => (m <= 1 ? 12 : m - 1))}
+            title="Mes anterior"
+            aria-label="Mes anterior"
             className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -194,6 +201,8 @@ export default function RotationManager() {
           <button
             type="button"
             onClick={() => setMonth((m) => (m >= 12 ? 1 : m + 1))}
+            title="Mes siguiente"
+            aria-label="Mes siguiente"
             className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
           >
             <ChevronRight className="w-5 h-5" />
@@ -213,6 +222,7 @@ export default function RotationManager() {
                 <select
                   value={assignCoche}
                   onChange={(e) => setAssignCoche(e.target.value)}
+                  title="Seleccionar coche"
                   className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
                   required
                 >
@@ -234,6 +244,7 @@ export default function RotationManager() {
                 <select
                   value={assignChofer}
                   onChange={(e) => setAssignChofer(e.target.value)}
+                  title="Seleccionar conductor"
                   className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
                   required
                 >
@@ -255,6 +266,7 @@ export default function RotationManager() {
                 <select
                   value={assignServicio}
                   onChange={(e) => setAssignServicio(e.target.value)}
+                  title="Seleccionar servicio"
                   className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
                   required
                 >
@@ -277,6 +289,8 @@ export default function RotationManager() {
                   type="date"
                   value={assignDate}
                   onChange={(e) => setAssignDate(e.target.value)}
+                  title="Seleccionar fecha"
+                  placeholder="Seleccionar fecha"
                   className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
                 />
               </div>
@@ -339,6 +353,7 @@ export default function RotationManager() {
                   <select
                     value={selectedPerson.reglaId}
                     onChange={(e) => handleRegimenChange(selectedPerson.id!, e.target.value)}
+                    title="Seleccionar régimen"
                     className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
                   >
                     {reglas.map((r) => (
@@ -361,6 +376,7 @@ export default function RotationManager() {
                         e.target.value as PersonalRotacion['patronDescanso'],
                       )
                     }
+                    title="Seleccionar día de descanso"
                     className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
                   >
                     {(Object.keys(PATRON_LABEL) as (keyof typeof PATRON_LABEL)[]).map((k) => (
@@ -415,12 +431,27 @@ export default function RotationManager() {
                           const cell = asignaciones.find(
                             (a) => a.vehicleInternalNumber === veh && a.date === dateStr,
                           );
-                          if (!cell)
+                          if (!cell) {
+                              const mmdd = dateStr.substring(5);
+                              const fData = feriados.find((f) => f.fecha === dateStr || (f.recurrente && f.fecha.substring(5) === mmdd));
                             return (
                               <td key={dateStr} className="p-1 w-12">
-                                —
+                                {fData ? (
+                                  <div className="flex flex-col items-center justify-center">
+                                    <span className="text-slate-600">—</span>
+                                    <span
+                                      className="text-[8px] bg-indigo-500/20 text-indigo-300 px-1 rounded uppercase mt-0.5"
+                                      title={`Feriado: Grilla ${fData.tipoHorario || 'Normal'}`}
+                                    >
+                                      FER
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-600">—</span>
+                                )}
                               </td>
                             );
+                          }
                           if (cell.diaLibre)
                             return (
                               <td
@@ -447,7 +478,17 @@ export default function RotationManager() {
                               className="p-1 w-12 text-emerald-400"
                               title={cell.fullName ?? ''}
                             >
-                              T{cell.turno}
+                              <div className="flex flex-col items-center">
+                                <span>T{cell.turno}</span>
+                                {cell.esFeriado && (
+                                  <span
+                                    className="text-[8px] bg-indigo-500/20 text-indigo-300 px-1 rounded uppercase mt-0.5"
+                                    title={`Feriado: Grilla ${cell.feriadoGrilla || 'Normal'}`}
+                                  >
+                                    FER
+                                  </span>
+                                )}
+                              </div>
                             </td>
                           );
                         })}

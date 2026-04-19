@@ -28,6 +28,10 @@ interface DesvioEditorProps {
   userPosition?: { lat: number; lng: number } | null;
   /** Si true, título y flujo orientados a "Reportar en ruta". */
   conductorMode?: boolean;
+  pickedLocation?: { lat: number; lng: number } | null;
+  pickedDesde?: { lat: number; lng: number } | null;
+  pickedHasta?: { lat: number; lng: number } | null;
+  onRequestMapPick?: (type: 'temporal' | 'fijo-desde' | 'fijo-hasta') => void;
 }
 
 export default function DesvioEditor({
@@ -36,6 +40,10 @@ export default function DesvioEditor({
   onSaved,
   userPosition = null,
   conductorMode = false,
+  pickedLocation = null,
+  pickedDesde = null,
+  pickedHasta = null,
+  onRequestMapPick,
 }: DesvioEditorProps) {
   const { user } = useAuth();
   const [tipoCategoria, setTipoCategoria] = useState<'fijo' | 'temporal'>('temporal');
@@ -46,8 +54,11 @@ export default function DesvioEditor({
 
   const role = (user as { role?: string })?.role ?? '';
   const canCreateFijo = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'Inspector';
-  const puntoAfectado =
-    userPosition && userPosition.lat && userPosition.lng ? userPosition : { lat: 0, lng: 0 };
+  const puntoAfectado = pickedLocation
+    ? pickedLocation
+    : userPosition && userPosition.lat && userPosition.lng
+      ? userPosition
+      : { lat: 0, lng: 0 };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,17 +74,18 @@ export default function DesvioEditor({
 
       const id = `d-${Date.now()}`;
       const now = serverTimestamp();
+      const nowStr = new Date().toISOString();
 
       if (tipoCategoria === 'fijo' && canCreateFijo) {
         const nuevo: DesvioFijo = {
           id,
           tipo: tipoFijo,
           descripcion: descripcion.trim(),
-          puntoDesde: { lat: 0, lng: 0 },
-          puntoHasta: { lat: 0, lng: 0 },
+          puntoDesde: pickedDesde ? pickedDesde : { lat: 0, lng: 0 },
+          puntoHasta: pickedHasta ? pickedHasta : { lat: 0, lng: 0 },
           rutaAlternativa: [],
           activo: true,
-          creadoEn: now as DesvioFijo['creadoEn'],
+          creadoEn: nowStr as any,
         };
         const list = Array.isArray(data.desviosFijos) ? [...data.desviosFijos] : [];
         await setDoc(
@@ -88,7 +100,7 @@ export default function DesvioEditor({
           descripcion: descripcion.trim(),
           puntoAfectado,
           activo: true,
-          creadoEn: now as DesvioTemporal['creadoEn'],
+          creadoEn: nowStr as any,
           expiraEn: null,
           reportadoPor:
             (user as { uid?: string })?.uid ?? (user as { email?: string })?.email ?? 'conductor',
@@ -172,6 +184,7 @@ export default function DesvioEditor({
               <select
                 value={tipoFijo}
                 onChange={(e) => setTipoFijo(e.target.value as TipoFijo)}
+                aria-label="Tipo de desvío fijo"
                 className="w-full min-h-[44px] px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white hover:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:outline-none disabled:opacity-50"
               >
                 <option value="feria">Feria vecinal</option>
@@ -187,6 +200,7 @@ export default function DesvioEditor({
               <select
                 value={tipoTemporal}
                 onChange={(e) => setTipoTemporal(e.target.value as TipoDesvioTemporal)}
+                aria-label="Tipo de desvío temporal"
                 className="w-full min-h-[44px] px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white hover:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:outline-none disabled:opacity-50"
               >
                 {TIPOS_TEMPORAL.map((t) => (
@@ -196,6 +210,47 @@ export default function DesvioEditor({
                 ))}
               </select>
             </div>
+          )}
+
+          {!conductorMode && tipoCategoria === 'fijo' && (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => onRequestMapPick?.('fijo-desde')}
+                className={`flex-1 min-h-[44px] py-2 px-2 rounded-xl border text-sm font-medium touch-manipulation ${
+                  pickedDesde
+                    ? 'bg-green-600/20 border-green-500 text-green-300'
+                    : 'bg-slate-700 border-slate-600 text-slate-300'
+                }`}
+              >
+                {pickedDesde ? '✓ Inicio fijado' : '📍 Marcar Inicio'}
+              </button>
+              <button
+                type="button"
+                onClick={() => onRequestMapPick?.('fijo-hasta')}
+                className={`flex-1 min-h-[44px] py-2 px-2 rounded-xl border text-sm font-medium touch-manipulation ${
+                  pickedHasta
+                    ? 'bg-green-600/20 border-green-500 text-green-300'
+                    : 'bg-slate-700 border-slate-600 text-slate-300'
+                }`}
+              >
+                {pickedHasta ? '✓ Fin fijado' : '📍 Marcar Fin'}
+              </button>
+            </div>
+          )}
+
+          {!conductorMode && tipoCategoria === 'temporal' && (
+            <button
+              type="button"
+              onClick={() => onRequestMapPick?.('temporal')}
+              className={`w-full min-h-[44px] py-3 rounded-xl border text-sm font-medium touch-manipulation ${
+                pickedLocation
+                  ? 'bg-green-600/20 border-green-500 text-green-300'
+                  : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              {pickedLocation ? '✓ Ubicación seleccionada en mapa' : '📍 Seleccionar en el mapa'}
+            </button>
           )}
 
           <div>

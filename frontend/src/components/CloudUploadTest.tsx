@@ -58,40 +58,29 @@ export const CloudUploadTest: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        padding: '20px',
-        border: '2px dashed #ccc',
-        borderRadius: '10px',
-        textAlign: 'center',
-        margin: '20px',
-      }}
-    >
-      <h3>☁️ Prueba de Capacidad: Storage Directo</h3>
-      <p style={{ fontSize: '0.9em', color: '#666' }}>
+    <div className="p-5 border-2 border-dashed border-gray-300 rounded-xl text-center m-5">
+      <h3 className="text-lg font-bold">☁️ Prueba de Capacidad: Storage Directo</h3>
+      <p className="text-sm text-gray-500 mt-2">
         Sube una imagen para verificar la conexión directa con el bucket <b>ucot-gestor-cloud</b>.
         Esto salta el servidor backend completamente.
       </p>
 
-      <div style={{ marginTop: '15px' }}>
+      <div className="mt-4">
         <input
           type="file"
           accept="image/*"
           onChange={handleFileChange}
           disabled={uploading}
-          style={{ display: 'none' }}
+          className="hidden"
           id="cloud-upload-input"
         />
         <label
           htmlFor="cloud-upload-input"
-          style={{
-            cursor: uploading ? 'not-allowed' : 'pointer',
-            padding: '10px 20px',
-            backgroundColor: uploading ? '#ccc' : '#007bff',
-            color: 'white',
-            borderRadius: '5px',
-            fontWeight: 'bold',
-          }}
+          className={`px-5 py-2.5 rounded font-bold text-white inline-block transition-colors ${
+            uploading
+              ? 'cursor-not-allowed bg-gray-400'
+              : 'cursor-pointer bg-blue-600 hover:bg-blue-700'
+          }`}
         >
           {uploading ? 'Subiendo a la Nube...' : '📷 Seleccionar Foto'}
         </label>
@@ -99,42 +88,20 @@ export const CloudUploadTest: React.FC = () => {
 
       {/* Estado de Error */}
       {error && (
-        <div
-          style={{
-            marginTop: '15px',
-            padding: '10px',
-            backgroundColor: '#ffebee',
-            color: '#c62828',
-            borderRadius: '5px',
-            border: '1px solid #ffcdd2',
-            fontWeight: 'bold',
-          }}
-        >
+        <div className="mt-4 p-3 bg-red-50 text-red-800 rounded border border-red-200 font-bold">
           ❌ {error}
         </div>
       )}
 
       {/* Estado de Éxito */}
       {imageUrl && (
-        <div
-          style={{
-            marginTop: '20px',
-            padding: '15px',
-            backgroundColor: '#e8f5e9',
-            borderRadius: '8px',
-            border: '1px solid #c8e6c9',
-          }}
-        >
-          <p
-            style={{ color: '#2e7d32', fontWeight: '900', fontSize: '1.2em', margin: '0 0 10px 0' }}
-          >
-            🎉 ¡SUBIDA EXITOSA!
-          </p>
+        <div className="mt-5 p-4 bg-green-50 rounded-lg border border-green-200">
+          <p className="text-green-800 font-black text-xl mb-3">🎉 ¡SUBIDA EXITOSA!</p>
           <a
             href={imageUrl}
             target="_blank"
             rel="noreferrer"
-            style={{ fontSize: '0.8em', color: '#1565c0', wordBreak: 'break-all' }}
+            className="text-xs text-blue-700 break-all hover:underline"
           >
             Ver imagen original
           </a>
@@ -142,13 +109,7 @@ export const CloudUploadTest: React.FC = () => {
           <img
             src={imageUrl}
             alt="Uploaded Evidence"
-            style={{
-              marginTop: '10px',
-              maxWidth: '100%',
-              maxHeight: '200px',
-              borderRadius: '8px',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-            }}
+            className="mt-3 max-w-full max-h-[200px] rounded-lg shadow-md mx-auto"
           />
         </div>
       )}

@@ -55,6 +55,7 @@ const analytics_routes_1 = __importDefault(require("./analytics.routes"));
 const forecast_routes_1 = __importDefault(require("./forecast.routes"));
 const dashboard_routes_1 = __importDefault(require("./dashboard.routes"));
 const stm_routes_1 = __importDefault(require("./stm.routes"));
+const ai_routes_1 = __importDefault(require("./ai.routes"));
 const router = (0, express_1.Router)();
 // ─── PÚBLICAS (sin autenticación) ─────────────────────────────────────────
 /**
@@ -152,4 +153,11 @@ router.use('/dashboard', dashboard_routes_1.default);
  * POST /api/stm/...
  */
 router.use('/stm', stm_routes_1.default);
+/**
+ * Rutas de IA Multi-Modelo
+ * POST /api/ai/generate  — local (gemma3, qwen2.5-coder, llama3.1)
+ * POST /api/ai/cloud     — Claude API (requiere ANTHROPIC_API_KEY)
+ * POST /api/ai/embed     — embeddings vectoriales
+ */
+router.use('/ai', ai_routes_1.default);
 exports.default = router;

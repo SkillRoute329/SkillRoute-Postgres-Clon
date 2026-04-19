@@ -2,14 +2,25 @@
  * Constantes globales de la aplicación
  */
 
+import 'dotenv/config';
+
 export const Config = {
   // Server
   PORT: process.env.PORT ?? 3000,
   NODE_ENV: process.env.NODE_ENV ?? 'development',
 
   // Security
-  JWT_SECRET: process.env.JWT_SECRET ?? 'ucot-god-mode-secret-2026',
-  JWT_EXPIRATION: '24h',
+  JWT_SECRET: process.env.JWT_SECRET ?? 'dev-secret-key-change-in-production',
+  JWT_EXPIRATION: process.env.JWT_EXPIRATION ?? '24h',
+
+  // CORS
+  CORS_ORIGINS: process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
+    : ['http://localhost:5173', 'http://localhost:3000'],
+
+  // Rate Limiting
+  RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '900000', 10),
+  RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '100', 10),
 
   // Database
   FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,

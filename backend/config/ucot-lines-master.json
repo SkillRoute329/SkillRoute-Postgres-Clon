@@ -1,0 +1,293 @@
+{
+  "version": "2026-verano-saneado",
+  "generado": "2026-04-07T15:52:56.350Z",
+  "lineas": [
+    {
+      "id": "221",
+      "nombre": "Linea 221",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 30,
+      "paradas": [
+        "Tnal RBco",
+        "Acevedo Diaz",
+        "Portones",
+        "Barradas",
+        "Geant",
+        "Gian y Calcagno",
+        "Gian y Becu",
+        "Gian y M.Castro",
+        "Solymar Tnal.",
+        "Solymar",
+        "Pinar Pda 13",
+        "Pinar Club Tenis",
+        "Tres Cruces"
+      ]
+    },
+    {
+      "id": "300",
+      "nombre": "Linea 300",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 10,
+      "paradas": [
+        "Crio. Central",
+        "Bv Artigas / Zuñiga",
+        "Tres Cruces",
+        "8 oct / JB Ordoñez",
+        "Ramon Castriz",
+        "Intercamb Bell",
+        "Gral Flores",
+        "Instrucc y Bell",
+        "20 de Febrero",
+        "B.Nardone"
+      ]
+    },
+    {
+      "id": "306",
+      "nombre": "Linea 306",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 15,
+      "paradas": [
+        "Casabo",
+        "Tnal Cerro",
+        "E. Romero",
+        "Burgues",
+        "Serrato",
+        "20 de Febrero",
+        "Intercambiador",
+        "Zum Felde/Pitágoras",
+        "Pta Gorda",
+        "Geant",
+        "Ramon Castriz",
+        "Cerro - Terminal"
+      ]
+    },
+    {
+      "id": "316",
+      "nombre": "Linea 316",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 10,
+      "paradas": [
+        "Kilometro 16",
+        "Pta Rieles",
+        "Intercamb Bell",
+        "20 de Febrero",
+        "8 oct / JB Ordoñez",
+        "Rivera / Soca",
+        "Montero",
+        "316.0",
+        "Ramon Castriz"
+      ]
+    },
+    {
+      "id": "328",
+      "nombre": "Linea 328",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 30,
+      "paradas": [
+        "328.0",
+        "Mendoza",
+        "Gta.Lourdes",
+        "Burgues/Saravia",
+        "Serrato",
+        "L.A.Herrera / 8 oct",
+        "L.A.Herrera / Rivera",
+        "PCarretas Tnal"
+      ]
+    },
+    {
+      "id": "329",
+      "nombre": "Linea 329",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 12,
+      "paradas": [
+        "329.0",
+        "Melilla",
+        "Plaza Colon",
+        "Peñarol",
+        "Serrato",
+        "8 Oct y Garibaldi",
+        "L.A.Herrera / Rivera",
+        "PCarretas Tnal"
+      ]
+    },
+    {
+      "id": "330",
+      "nombre": "Linea 330",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 12,
+      "paradas": [
+        "Tnal.Juncal",
+        "Ciudadela circuito",
+        "Ciudad Vieja/T.Solis",
+        "F.Crespo",
+        "L.A.Herrera / 8 oct",
+        "GF y Guerra",
+        "Mendoza",
+        "Instrucc y Bell",
+        "Toledo Chico",
+        "17m y Ruta 6",
+        "330.0"
+      ]
+    },
+    {
+      "id": "370",
+      "nombre": "Linea 370",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 12,
+      "paradas": [
+        "Pya.Cerro/Tnal",
+        "Tnal Cerro",
+        "E. Romero",
+        "Agraciada",
+        "Uruguay / F.Crespo",
+        "L.A.Herrera y Av Italia",
+        "Veracierto",
+        "Portones",
+        "Portones Tnal"
+      ]
+    },
+    {
+      "id": "396",
+      "nombre": "Linea 396",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 10,
+      "paradas": [
+        "Mendoza",
+        "Gta.Lourdes",
+        "Burgues/Saravia",
+        "S.Martin y Hum",
+        "L.A.Herrera / S.Martin",
+        "S.Martin / Vilardebó",
+        "Uruguay / F.Crespo",
+        "Tnal.Juncal",
+        "396.0"
+      ]
+    },
+    {
+      "id": "CE1",
+      "nombre": "Linea CE1",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 15,
+      "paradas": [
+        "Ciudad Vieja/T.Solis",
+        "Ciudadela circuito",
+        "18 de Julio(Pza 33)",
+        "Pza.Lourdes",
+        "Ejido"
+      ]
+    },
+    {
+      "id": "DM1",
+      "nombre": "Linea DM1",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 15,
+      "paradas": [
+        "Cerro - Terminal",
+        "Tnal Cerro",
+        "Tnal RBco",
+        "Tres Cruces",
+        "Mvd Shopping"
+      ]
+    },
+    {
+      "id": "L-12",
+      "nombre": "Linea L-12",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 15,
+      "paradas": [
+        "Solymar",
+        "Solymar Norte",
+        "Col de Solymar",
+        "Geant",
+        "Portones"
+      ]
+    },
+    {
+      "id": "L-13",
+      "nombre": "Linea L-13",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 15,
+      "paradas": [
+        "Solymar Tnal.",
+        "Pinar Pda 13",
+        "Pinar Club Tenis",
+        "Costa Urbana",
+        "Geant Tnal"
+      ]
+    },
+    {
+      "id": "L-31",
+      "nombre": "Linea L-31",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 15,
+      "paradas": [
+        "Zonamerica",
+        "Emp Nicolich",
+        "Colonia Nicolich",
+        "R.Int. Km 24",
+        "Aeroparque"
+      ]
+    },
+    {
+      "id": "L-32",
+      "nombre": "Linea L-32",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 15,
+      "paradas": [
+        "Toledo Chico",
+        "Empalme Sauce",
+        "Colonia Nicolich",
+        "Zonamerica",
+        "Aeropuerto"
+      ]
+    },
+    {
+      "id": "L-33",
+      "nombre": "Linea L-33",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 15,
+      "paradas": [
+        "Zonamerica",
+        "Emp Nicolich",
+        "17m y Ruta 6",
+        "Aeropuerto",
+        "Aeroparque"
+      ]
+    },
+    {
+      "id": "XA1",
+      "nombre": "Linea XA1",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 15,
+      "paradas": [
+        "Tres Cruces",
+        "8 Oct y Garibaldi",
+        "L.A.Herrera y Av Italia",
+        "Portones",
+        "Costa Urbana"
+      ]
+    },
+    {
+      "id": "XA2",
+      "nombre": "Linea XA2",
+      "empresa": "UCOT",
+      "frecuenciaProgramada": 15,
+      "paradas": [
+        "Mvd Shopping",
+        "Portones Tnal",
+        "Costa Urbana",
+        "Geant Tnal",
+        "Solymar Tnal."
+      ]
+    }
+  ],
+  "auditoria": {
+    "fecha": "2026-04-07T15:52:56.350Z",
+    "accion": "Eliminación de IDs fantasma 317/371/379",
+    "lineasEliminadas": [
+      "317",
+      "371",
+      "379"
+    ]
+  }
+}
