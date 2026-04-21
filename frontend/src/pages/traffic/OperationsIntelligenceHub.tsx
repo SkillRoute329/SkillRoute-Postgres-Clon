@@ -83,7 +83,8 @@ import clsx from 'clsx';
 
 // ─── Tipos de tab ────────────────────────────────────────────────────────────
 
-type Tab = 'intelligence' | 'agents' | 'master' | 'briefing' | 'monitor';
+type Tab = 'intelligence' | 'master' | 'briefing' | 'monitor';
+type IntelView = 'operativa' | 'agentes';
 
 // ─── Helpers visuales ────────────────────────────────────────────────────────
 
@@ -339,15 +340,27 @@ function LineIntelCard({
   );
 }
 
-function AgentCard({ agent }: { agent: AgentStatus }) {
+function AgentCard({
+  agent,
+  isSelected,
+  onClick,
+}: {
+  agent: AgentStatus;
+  isSelected?: boolean;
+  onClick?: () => void;
+}) {
   const posColors = posicionColors(agent.posicionCompetitiva);
 
   return (
-    <div
-      className={`rounded-2xl border p-4 transition-all duration-200 ${
-        agent.status === 'OPERATIVO'
-          ? 'border-slate-700/60 bg-slate-800/50'
-          : 'border-slate-700/30 bg-slate-800/20'
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-left rounded-2xl border p-4 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:shadow-black/30 cursor-pointer ${
+        isSelected
+          ? 'border-indigo-500/60 bg-indigo-500/10 shadow-md shadow-indigo-500/10'
+          : agent.status === 'OPERATIVO'
+            ? 'border-slate-700/60 bg-slate-800/50'
+            : 'border-slate-700/30 bg-slate-800/20'
       }`}
     >
       <div className="flex items-start justify-between">
@@ -439,7 +452,7 @@ function AgentCard({ agent }: { agent: AgentStatus }) {
           {agent.status === 'FUERA_DE_HORA' ? 'Fuera de Hora' : agent.status.replace('_', ' ')}
         </span>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -782,6 +795,7 @@ function DetailPanel({
   selectedVariantKey,
   setSelectedVariantKey,
   busPositionsForLine,
+  informesRivales,
 }: {
   lineId: string;
   line: LineFleetStatus | undefined;
@@ -790,6 +804,7 @@ function DetailPanel({
   selectedVariantKey: string | null;
   setSelectedVariantKey: (k: string | null) => void;
   busPositionsForLine: BusPositionLite[];
+  informesRivales: InformeRival[];
 }) {
   const [schedule, setSchedule] = useState<LineScheduleResponse | null>(null);
   const [scheduleLoading, setScheduleLoading] = useState(true);
@@ -969,6 +984,64 @@ function DetailPanel({
             </p>
           </div>
         )}
+
+        {/* GPS Rivales — informes del Monitor (si hay para líneas que compiten con esta) */}
+        {(() => {
+          const rivalLines = line?.empresasDetectadas.length
+            ? informesRivales.filter((inf) =>
+                line.empresasDetectadas.some((e) =>
+                  inf.empresa.toLowerCase().includes(e.toLowerCase().split(' ')[0]),
+                ),
+              )
+            : informesRivales;
+          if (rivalLines.length === 0) return null;
+          return (
+            <div>
+              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+                <Radar className="w-3 h-3" />
+                GPS Rivales en red ({rivalLines.length} monitoreado{rivalLines.length !== 1 ? 's' : ''})
+              </h3>
+              <div className="space-y-1.5">
+                {rivalLines.map((inf) => {
+                  const amenazaClr =
+                    inf.nivelAmenaza === 'ALTO'
+                      ? 'text-red-400 border-red-500/30 bg-red-500/10'
+                      : inf.nivelAmenaza === 'MEDIO'
+                        ? 'text-amber-400 border-amber-500/30 bg-amber-500/10'
+                        : 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10';
+                  return (
+                    <div
+                      key={inf.lineId}
+                      className="flex items-center justify-between bg-slate-800/40 border border-slate-700/30 rounded-xl px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[11px] font-extrabold text-white">
+                          L{inf.lineId}
+                        </span>
+                        <span className="text-[10px] text-slate-500 truncate">{inf.empresa}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-none">
+                        <span className="text-[9px] text-slate-500">
+                          {inf.resumen.infracciones > 0 && (
+                            <span className="text-red-400 font-bold mr-1">
+                              {inf.resumen.infracciones} infracc.
+                            </span>
+                          )}
+                          {inf.buses.length} bus{inf.buses.length !== 1 ? 'es' : ''}
+                        </span>
+                        <span
+                          className={`text-[9px] font-black border rounded-full px-1.5 py-0.5 ${amenazaClr}`}
+                        >
+                          {inf.nivelAmenaza}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Selector tipoDia para horario oficial */}
         <div>
@@ -1161,9 +1234,16 @@ function DetailPanel({
 
 export default function OperationsIntelligenceHub() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = (searchParams.get('tab') as Tab) ?? 'intelligence';
+  const rawTab = searchParams.get('tab');
+  // Compat: la tab 'agents' fue fusionada en 'intelligence' con toggle de vista.
+  const initialTab: Tab =
+    rawTab === 'agents' || rawTab == null
+      ? 'intelligence'
+      : (rawTab as Tab);
+  const initialView: IntelView = rawTab === 'agents' ? 'agentes' : 'operativa';
 
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  const [intelView, setIntelView] = useState<IntelView>(initialView);
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [copilotOpen, setCopilotOpen] = useState(false);
@@ -1305,30 +1385,82 @@ export default function OperationsIntelligenceHub() {
     setSearchParams({ tab }, { replace: true });
   };
 
-  const currentSource = activeTab === 'agents' ? agentSource : lineSource;
+  const currentSource =
+    activeTab === 'intelligence' && intelView === 'agentes' ? agentSource : lineSource;
 
   // ─── KPI bar ────────────────────────────────────────────────────────────
 
-  const KPIBar = () => (
-    <div className="flex items-center gap-6 overflow-x-auto">
-      <div className="flex items-center gap-2 flex-none">
-        <Bus className="w-3.5 h-3.5 text-slate-500" />
-        <span className="text-xs text-slate-400">
-          <span className="text-white font-bold">{summary?.totalLineas ?? 21}</span> líneas
-        </span>
-      </div>
-      {summary && summary.totalBusesActivos > 0 && (
+  const KPIBar = () => {
+    if (activeTab === 'briefing' && briefing) {
+      const franjasCriticas = briefing.franjasCompetencia.filter(
+        (f) => f.nivelConflicto === 'ALTO',
+      ).length;
+      const alertasCrit = briefing.alertas.filter((a) => a.prioridad !== 'INFO').length;
+      return (
+        <div className="flex items-center gap-6 overflow-x-auto">
+          <div className="flex items-center gap-2 flex-none">
+            <Bus className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-xs text-slate-400">
+              <span className="text-white font-bold">
+                {briefing.estadoServicio.totalSalidasHoy}
+              </span>{' '}
+              salidas hoy
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-none">
+            <Radar className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-xs text-slate-400">
+              <span className="text-amber-400 font-bold">{franjasCriticas}</span> franjas críticas
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-none">
+            <Shield className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-xs text-slate-400">
+              <span className="text-red-400 font-bold">
+                {briefing.dossierResumen.infraccionesHoy}
+              </span>{' '}
+              infracc. hoy
+            </span>
+          </div>
+          {alertasCrit > 0 && (
+            <div className="flex items-center gap-2 flex-none">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+              <span className="text-xs text-red-400 font-bold">
+                {alertasCrit} alerta{alertasCrit !== 1 ? 's' : ''} activa
+                {alertasCrit !== 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
+          <div className="ml-auto flex items-center gap-1 text-[10px] text-slate-600 flex-none">
+            <Clock className="w-3 h-3" />
+            {lastRefresh.toLocaleTimeString('es-UY')}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-6 overflow-x-auto">
         <div className="flex items-center gap-2 flex-none">
-          <Activity className="w-3.5 h-3.5 text-slate-500" />
+          <Bus className="w-3.5 h-3.5 text-slate-500" />
           <span className="text-xs text-slate-400">
-            <span className="text-white font-bold">{summary.totalBusesActivos}</span> buses activos
+            <span className="text-white font-bold">{summary?.totalLineas ?? 21}</span> líneas
           </span>
         </div>
-      )}
-      {summary && (
-        <>
+        {summary && summary.totalBusesActivos > 0 && (
+          <div className="flex items-center gap-2 flex-none">
+            <Activity className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-xs text-slate-400">
+              <span className="text-white font-bold">{summary.totalBusesActivos}</span> buses
+              activos
+            </span>
+          </div>
+        )}
+        {summary && (
           <div className="flex items-center gap-1.5 flex-none">
-            <span className="text-xs text-red-400 font-bold">{summary.lineasConAlertaAlta}🔴</span>
+            <span className="text-xs text-red-400 font-bold">
+              {summary.lineasConAlertaAlta}🔴
+            </span>
             <span className="text-xs text-slate-600">·</span>
             <span className="text-xs text-amber-400 font-bold">
               {summary.lineasConAlertaMedia}🟡
@@ -1336,14 +1468,14 @@ export default function OperationsIntelligenceHub() {
             <span className="text-xs text-slate-600">·</span>
             <span className="text-xs text-emerald-400 font-bold">{summary.lineasOk}🟢</span>
           </div>
-        </>
-      )}
-      <div className="ml-auto flex items-center gap-1 text-[10px] text-slate-600 flex-none">
-        <Clock className="w-3 h-3" />
-        {lastRefresh.toLocaleTimeString('es-UY')}
+        )}
+        <div className="ml-auto flex items-center gap-1 text-[10px] text-slate-600 flex-none">
+          <Clock className="w-3 h-3" />
+          {lastRefresh.toLocaleTimeString('es-UY')}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // ─── Tab: Intelligence ──────────────────────────────────────────────────
 
@@ -1370,21 +1502,81 @@ export default function OperationsIntelligenceHub() {
       );
     }
 
+    const operativos = agents.filter((a) => a.status === 'OPERATIVO').length;
+    const criticos = agents.filter((a) => a.posicionCompetitiva === 'CRITICA').length;
+
     return (
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Grid */}
         <div
           className={`flex-1 overflow-y-auto p-4 custom-scrollbar transition-all ${selectedLine ? 'max-w-[calc(100%-380px)]' : ''}`}
         >
+          {/* Toggle de vista: Operativa / Agentes */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-1 bg-slate-900/60 rounded-xl p-1 border border-slate-800/40">
+              {(
+                [
+                  { id: 'operativa', label: 'Operativa', icon: Search },
+                  { id: 'agentes', label: 'Agentes', icon: Bot },
+                ] as { id: IntelView; label: string; icon: React.ElementType }[]
+              ).map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setIntelView(id)}
+                  className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-[11px] font-bold transition-all ${
+                    intelView === id
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/30'
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <Icon className="w-3 h-3" />
+                  {label}
+                </button>
+              ))}
+            </div>
+            {intelView === 'agentes' && (
+              <div className="flex items-center gap-3 text-[11px]">
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="text-slate-400">
+                    <span className="font-bold text-emerald-400">{operativos}</span> operativos
+                  </span>
+                </div>
+                {criticos > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                    <span className="text-slate-400">
+                      <span className="font-bold text-red-400">{criticos}</span> críticos
+                    </span>
+                  </div>
+                )}
+                <span className="text-slate-600">{agents.length} agentes</span>
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-            {lines.map((line) => (
-              <LineIntelCard
-                key={line.lineId}
-                line={line}
-                isSelected={selectedLine === line.lineId}
-                onClick={() => setSelectedLine(selectedLine === line.lineId ? null : line.lineId)}
-              />
-            ))}
+            {intelView === 'operativa'
+              ? lines.map((line) => (
+                  <LineIntelCard
+                    key={line.lineId}
+                    line={line}
+                    isSelected={selectedLine === line.lineId}
+                    onClick={() =>
+                      setSelectedLine(selectedLine === line.lineId ? null : line.lineId)
+                    }
+                  />
+                ))
+              : agents.map((agent) => (
+                  <AgentCard
+                    key={agent.lineId}
+                    agent={agent}
+                    isSelected={selectedLine === agent.lineId}
+                    onClick={() =>
+                      setSelectedLine(selectedLine === agent.lineId ? null : agent.lineId)
+                    }
+                  />
+                ))}
           </div>
         </div>
 
@@ -1407,57 +1599,9 @@ export default function OperationsIntelligenceHub() {
                 rumboGrados: b.direccion,
                 timestamp: b.timestampGPS?.getTime?.(),
               }))}
+            informesRivales={informesRivales}
           />
         )}
-      </div>
-    );
-  }
-
-  // ─── Tab: Agents ────────────────────────────────────────────────────────
-
-  function AgentsTab() {
-    if (isLoading) {
-      return (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 p-4">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-28 rounded-2xl bg-slate-800/40 border border-slate-700/30 animate-pulse"
-            />
-          ))}
-        </div>
-      );
-    }
-
-    const operativos = agents.filter((a) => a.status === 'OPERATIVO').length;
-    const criticos = agents.filter((a) => a.posicionCompetitiva === 'CRITICA').length;
-
-    return (
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {/* Mini stats */}
-        <div className="flex items-center gap-4 px-4 pt-4 pb-2">
-          <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-            <span className="text-xs text-slate-400">
-              <span className="font-bold text-emerald-400">{operativos}</span> operativos
-            </span>
-          </div>
-          {criticos > 0 && (
-            <div className="flex items-center gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-              <span className="text-xs text-slate-400">
-                <span className="font-bold text-red-400">{criticos}</span> críticos
-              </span>
-            </div>
-          )}
-          <span className="text-xs text-slate-600 ml-auto">{agents.length} agentes totales</span>
-        </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 p-4 pt-2">
-          {agents.map((agent) => (
-            <AgentCard key={agent.lineId} agent={agent} />
-          ))}
-        </div>
       </div>
     );
   }
@@ -1528,28 +1672,6 @@ export default function OperationsIntelligenceHub() {
           <p className="text-xs text-slate-500">
             Generado el {briefing.generadoEn.toLocaleString('es-UY')}
           </p>
-
-          {/* KPIs del briefing */}
-          <div className="grid grid-cols-3 gap-2 mt-3">
-            <div className="bg-slate-800/60 rounded-xl p-2.5 text-center">
-              <p className="text-lg font-extrabold text-white">
-                {briefing.estadoServicio.totalSalidasHoy}
-              </p>
-              <p className="text-[9px] text-slate-500 uppercase tracking-wider">Salidas hoy</p>
-            </div>
-            <div className="bg-slate-800/60 rounded-xl p-2.5 text-center">
-              <p className="text-lg font-extrabold text-amber-400">
-                {briefing.franjasCompetencia.filter((f) => f.nivelConflicto === 'ALTO').length}
-              </p>
-              <p className="text-[9px] text-slate-500 uppercase tracking-wider">Franjas críticas</p>
-            </div>
-            <div className="bg-slate-800/60 rounded-xl p-2.5 text-center">
-              <p className="text-lg font-extrabold text-red-400">
-                {briefing.dossierResumen.infraccionesHoy}
-              </p>
-              <p className="text-[9px] text-slate-500 uppercase tracking-wider">Infracc. hoy</p>
-            </div>
-          </div>
 
           {/* Estado de fuente */}
           <div className="flex items-center gap-2 mt-3">
@@ -1972,32 +2094,47 @@ export default function OperationsIntelligenceHub() {
           {(
             [
               { id: 'intelligence', label: 'Inteligencia', icon: Search },
-              { id: 'agents', label: 'Agentes', icon: Bot },
               { id: 'briefing', label: 'Briefing', icon: FileText },
               { id: 'monitor', label: 'Monitor GPS', icon: Radar },
               { id: 'master', label: 'Maestro', icon: BarChart3 },
             ] as { id: Tab; label: string; icon: React.ElementType }[]
-          ).map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => switchTab(id)}
-              className={`flex-none flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
-                activeTab === id
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/30'
-                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/40'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-            </button>
-          ))}
+          ).map(({ id, label, icon: Icon }) => {
+            const alertCount =
+              id === 'briefing'
+                ? (briefing?.alertas.filter((a) => a.prioridad !== 'INFO').length ?? 0)
+                : 0;
+            return (
+              <button
+                key={id}
+                onClick={() => switchTab(id)}
+                className={`flex-none flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+                  activeTab === id
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/30'
+                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/40'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+                {alertCount > 0 && (
+                  <span
+                    className={`text-[9px] font-black rounded-full px-1.5 py-0.5 min-w-[16px] text-center leading-none ${
+                      activeTab === id
+                        ? 'bg-white/20 text-white'
+                        : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                    }`}
+                  >
+                    {alertCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* ── Contenido por tab ──────────────────────────────────────────── */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {activeTab === 'intelligence' && <IntelligenceTab />}
-        {activeTab === 'agents' && <AgentsTab />}
         {activeTab === 'briefing' && <BriefingTab />}
         {activeTab === 'monitor' && <MonitorGPSTab />}
         {activeTab === 'master' && <MasterTab />}
