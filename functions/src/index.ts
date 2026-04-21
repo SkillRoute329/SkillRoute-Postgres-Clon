@@ -745,3 +745,20 @@ export {
   refreshCompetidoresTick,
   refreshCompetidoresNow,
 } from './refreshCompetidores';
+
+// ─── AutoStats Collector — GPS+GTFS cada 5min ─────────────────────────────────
+// Acumula historial de cumplimiento horario sin inspectores.
+// Funciona para UCOT, CUTCSA, COETC, COME simultáneamente.
+export {
+  autoStatsCollectorTick,
+  autoStatsCollectorNow,
+} from './autoStatsCollector';
+
+// ─── Archive Vehicle Events — Rotativo semanal a Storage ─────────────────────
+// Exporta vehicle_events a Firebase Storage y purga Firestore.
+// Mantiene Firestore pequeño (7 días) y el historial en Storage (ilimitado, barato).
+export {
+  archiveVehicleEventsTick,
+  archiveVehicleEventsNow,
+  listVehicleArchives,
+} from './archiveVehicleEvents';
