@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartonService } from '../../services/api';
-import { FileText, Search, Eye, Pencil, Loader2 } from 'lucide-react';
+import { FileText, Search, Eye, Pencil, Loader2, Clock, Bus } from 'lucide-react';
 
-type CartonItem = { id: string; linea: string; [key: string]: unknown };
+type CartonItem = { id: string; linea: string; coche?: string; tipoServicio?: string; primeraSalida?: string; ultimaLlegada?: string; totalParadas?: number; [key: string]: unknown };
 
 export default function CartonManager() {
   const navigate = useNavigate();
@@ -22,24 +22,24 @@ export default function CartonManager() {
     }));
     setList(fromMasterItems);
 
-    Promise.all([CartonService.getAll(), CartonService.getCartonesFisicos()])
-      .then(([matrizData, fisicosData]) => {
+    Promise.all([
+      CartonService.getAll(),
+      CartonService.getCartonesFisicos(),
+      fetch('/api/cartones/oficiales?limit=500').then(r => r.ok ? r.json() : { cartones: [] }).catch(() => ({ cartones: [] })),
+    ])
+      .then(([matrizData, fisicosData, oficialesData]) => {
         const fromMatriz = ((matrizData || []) as CartonItem[])
           .filter((x) => x && x.id && x.linea)
-          .map((x) => ({
-            ...x,
-            source: (x as CartonItem & { source?: string }).source ?? 'matriz',
-          }));
+          .map((x) => ({ ...x, source: (x as CartonItem & { source?: string }).source ?? 'matriz' }));
         const fromFisicos = ((fisicosData || []) as CartonItem[])
           .filter((x) => x && x.id && (x.linea || (x as { linea?: string }).linea))
-          .map((x) => ({
-            ...x,
-            linea: x.linea ?? (x as { linea?: string }).linea ?? '',
-            source: 'fisico',
-          }));
+          .map((x) => ({ ...x, linea: x.linea ?? '', source: 'fisico' }));
+        const fromOficiales = ((oficialesData?.cartones || []) as CartonItem[])
+          .map((x) => ({ ...x, source: 'oficial' }));
+
         const seen = new Set<string>();
         const merged: CartonItem[] = [];
-        for (const item of [...fromMasterItems, ...fromMatriz, ...fromFisicos]) {
+        for (const item of [...fromOficiales, ...fromMasterItems, ...fromMatriz, ...fromFisicos]) {
           const key = `${item.linea}-${item.id}`;
           if (seen.has(key)) continue;
           seen.add(key);
@@ -90,6 +90,12 @@ export default function CartonManager() {
         </h1>
         <p className="text-slate-400 text-sm mt-1">
           Cartones de servicio por línea. Ver detalle o editar.
+          {list.length > 0 && (
+            <span className="ml-2 text-slate-500">
+              ({list.filter(i => (i as any).source === 'oficial').length} oficiales UCOT
+              + {list.filter(i => (i as any).source !== 'oficial').length} maestro/físico)
+            </span>
+          )}
         </p>
         <div className="mt-4 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
@@ -119,13 +125,31 @@ export default function CartonManager() {
                 key={`${item.linea}-${item.id}`}
                 className="flex items-center justify-between gap-4 p-4 rounded-xl bg-slate-800/80 border border-slate-700"
               >
-                <div className="min-w-0">
-                  <span className="font-bold text-white">Servicio #{item.id}</span>
-                  <span className="text-slate-400 ml-2">Línea {item.linea}</span>
-                  {(item as CartonItem & { source?: string }).source === 'fisico' && (
-                    <span className="ml-2 text-xs px-2 py-0.5 rounded bg-emerald-900/50 text-emerald-300">
-                      Físico
-                    </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-white">Servicio #{item.id}</span>
+                    {item.linea && <span className="text-slate-400">Línea {item.linea}</span>}
+                    {item.coche && (
+                      <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300">
+                        <Bus className="w-3 h-3" /> Coche {item.coche}
+                      </span>
+                    )}
+                    {(item as CartonItem & { source?: string }).source === 'fisico' && (
+                      <span className="text-xs px-2 py-0.5 rounded bg-emerald-900/50 text-emerald-300">Físico</span>
+                    )}
+                    {(item as CartonItem & { source?: string }).source === 'oficial' && (
+                      <span className="text-xs px-2 py-0.5 rounded bg-blue-900/50 text-blue-300">Oficial UCOT</span>
+                    )}
+                    {item.tipoServicio === 'sabado_verano' && (
+                      <span className="text-xs px-2 py-0.5 rounded bg-amber-900/50 text-amber-300">Sábado</span>
+                    )}
+                  </div>
+                  {(item.primeraSalida || item.ultimaLlegada) && (
+                    <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                      {item.primeraSalida && <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Sale: {item.primeraSalida}</span>}
+                      {item.ultimaLlegada && <span>Llega: {item.ultimaLlegada}</span>}
+                      {item.totalParadas && <span>{item.totalParadas} paradas</span>}
+                    </div>
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

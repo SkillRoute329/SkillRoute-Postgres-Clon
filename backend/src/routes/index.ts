@@ -22,6 +22,7 @@ import forecastRoutes from './forecast.routes';
 import dashboardRoutes from './dashboard.routes';
 import stmRoutes from './stm.routes';
 import aiRoutes from './ai.routes';
+import listeroRoutes from './listero.routes';
 
 const router = Router();
 
@@ -151,5 +152,14 @@ router.use('/stm', stmRoutes);
  * POST /api/ai/embed     — embeddings vectoriales
  */
 router.use('/ai', aiRoutes);
+
+/**
+ * Rutas del Módulo Listero — programación diaria, ausencias, cascada operativa
+ * POST /api/listero/ausencia    — registrar ausencia + disparar cascada
+ * POST /api/listero/reserva     — asignar conductor de reserva
+ * POST /api/listero/vehiculo-taller — enviar vehículo a taller + cascada
+ * GET  /api/listero/resumen     — resumen del día
+ */
+router.use('/listero', listeroRoutes);
 
 export default router;

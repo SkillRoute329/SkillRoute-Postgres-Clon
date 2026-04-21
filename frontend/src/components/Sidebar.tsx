@@ -31,6 +31,11 @@ import {
   MapPin,
   Radar,
   Database,
+  Train,
+  ShieldAlert,
+  TrendingUp,
+  DollarSign,
+  Route,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
@@ -56,7 +61,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         { path: '/dashboard/traffic/service-matrix', label: 'Matriz de Servicio', icon: Calendar },
         { path: '/dashboard/traffic/cartons', label: 'Gestor de Cartones', icon: ClipboardList },
         { path: '/dashboard/traffic/listero', label: 'Terminal Listero', icon: Users },
+        { path: '/dashboard/traffic/listero-cascada', label: 'Listero Cascada (Ops)', icon: Users },
+        { path: '/dashboard/traffic/distribucion', label: 'Distribución Diaria', icon: Route },
+        { path: '/dashboard/traffic/boletin', label: 'Boletín de Inspección', icon: FileText },
         { path: '/dashboard/traffic/navigation', label: 'Navegador UCOT', icon: Map },
+
       ],
     },
     {
@@ -127,6 +136,26 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           path: '/dashboard/traffic/shadow-radar',
           label: 'Radar Sombra (Táctico)',
           icon: Radio,
+        },
+        {
+          path: '/dashboard/traffic/contingency',
+          label: 'Gestión de Contingencia',
+          icon: ShieldAlert,
+        },
+        {
+          path: '/dashboard/traffic/brt',
+          label: 'Corredores BRT 2027',
+          icon: Train,
+        },
+        {
+          path: '/dashboard/traffic/projections',
+          label: 'Proyecciones Económicas',
+          icon: DollarSign,
+        },
+        {
+          path: '/dashboard/traffic/ceo',
+          label: 'Dashboard CEO',
+          icon: TrendingUp,
         },
         {
           path: '/dashboard/traffic/scraper-status',

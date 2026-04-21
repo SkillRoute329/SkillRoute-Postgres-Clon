@@ -70,6 +70,10 @@ const CartonDetail = lazy(() => import('./pages/traffic/CartonDetail'));
 const NavigationModule = lazy(() => import('./pages/traffic/NavigationModule'));
 const FleetMonitorModule = lazy(() => import('./pages/traffic/FleetMonitorModule'));
 const TerminalListero = lazy(() => import('./pages/traffic/TerminalListero'));
+const ListeroModule = lazy(() => import('./pages/traffic/ListeroModule'));
+const DistribucionDiaria = lazy(() => import('./pages/traffic/DistribucionDiaria'));
+const BoletinInspeccion = lazy(() => import('./pages/traffic/BoletinInspeccion'));
+const PersonalUcot = lazy(() => import('./pages/traffic/PersonalUcot'));
 const CEODashboard = lazy(() => import('./pages/traffic/CEODashboard'));
 const TalentCenter = lazy(() => import('./pages/talento/TalentCenter'));
 const AdminStressTest = lazy(() => import('./pages/admin/AdminStressTest'));
@@ -231,6 +235,10 @@ function App() {
                     <Route path="traffic/navigation" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO','DRIVER','CONDUCTOR']}><NavigationModule /></PrivateRoute>} />
                     <Route path="traffic/fleet-monitor" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><FleetMonitorModule /></PrivateRoute>} />
                     <Route path="traffic/listero" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><TerminalListero /></PrivateRoute>} />
+                    <Route path="traffic/listero-cascada" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><ListeroModule /></PrivateRoute>} />
+                    <Route path="traffic/distribucion" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><DistribucionDiaria /></PrivateRoute>} />
+                    <Route path="traffic/boletin" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><BoletinInspeccion /></PrivateRoute>} />
+                    <Route path="traffic/personal" element={<PrivateRoute roles={['ADMIN','TRAFFIC','RRHH']}><PersonalUcot /></PrivateRoute>} />
                     <Route path="traffic/ceo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CEODashboard /></PrivateRoute>} />
                     <Route path="traffic/rotation-matrix" element={<PrivateRoute roles={['ADMIN','TRAFFIC','RRHH']}><RotationMatrix /></PrivateRoute>} />
                     <Route path="traffic/intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><OperationsIntelligenceHub /></PrivateRoute>} />

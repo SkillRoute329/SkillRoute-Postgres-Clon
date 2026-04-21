@@ -4,7 +4,15 @@
  * Solo visible para ADMIN / SUPERADMIN.
  */
 import { useState } from 'react';
-import { CheckCircle2, AlertTriangle, Loader2, Database, Bus, FileText, Users, CalendarDays, PlayCircle } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Loader2, Database, Bus, FileText, Users, CalendarDays, PlayCircle, CloudUpload, Clock } from 'lucide-react';
+
+// Llama a un endpoint de la API para cargar datos reales desde Excel
+async function seedViaApi(endpoint: string): Promise<string> {
+  const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Error desconocido');
+  return data.message ?? 'OK';
+}
 import {
   seedFlota,
   seedCartones,
@@ -62,10 +70,64 @@ const TASKS: SeedTask[] = [
   },
 ];
 
+// Seeds de datos reales (llaman a la Cloud Function via API)
+const REAL_DATA_TASKS: SeedTask[] = [
+  {
+    id: 'real_personal',
+    label: '691 Empleados Reales UCOT',
+    desc: 'Listado Líneas Claro Activas 2019 — conductores, inspectores, admin, taller',
+    icon: <Users className="w-5 h-5" />,
+    fn: async () => { const msg = await seedViaApi('/api/admin/seed-personal-ucot'); console.log(msg); },
+  },
+  {
+    id: 'real_vehicles',
+    label: '257 Coches Físicos UCOT (FLOTA)',
+    desc: 'Flota real: Agrale(113), Volvo(51), Yutong(67), Mercedes(11), BYD(5)... Coches 1-268.',
+    icon: <Bus className="w-5 h-5" />,
+    fn: async () => { const msg = await seedViaApi('/api/admin/seed-vehicles-ucot'); console.log(msg); },
+  },
+  {
+    id: 'real_horarios',
+    label: '185 Cartones Hábiles — Invierno 2026',
+    desc: 'Servicios hábiles con etapas y horarios por vuelta. Líneas 221/300/306/328/329/330/370. (Servicio ≠ coche físico — rotación diaria)',
+    icon: <Clock className="w-5 h-5" />,
+    fn: async () => { const msg = await seedViaApi('/api/admin/seed-horarios-ucot'); console.log(msg); },
+  },
+  {
+    id: 'real_sabado',
+    label: '113 Cartones Sábado — Verano 2026',
+    desc: 'Servicios sabaderos 2200-2312 con etapas y vueltas completas. Línea 306.',
+    icon: <Bus className="w-5 h-5" />,
+    fn: async () => { const msg = await seedViaApi('/api/admin/seed-sabado-ucot'); console.log(msg); },
+  },
+  {
+    id: 'real_boletin',
+    label: 'Boletín Hábil — 21 Líneas × 1811 Servicios',
+    desc: 'Matriz de inspección hábil invierno 2026: 300, 306, 316, 317, 328-330, 370, 371, 379, 396, 221, L-12/13/31-33, CE1, XA1/2, DM1',
+    icon: <FileText className="w-5 h-5" />,
+    fn: async () => { const msg = await seedViaApi('/api/admin/seed-boletin-ucot'); console.log(msg); },
+  },
+  {
+    id: 'real_rotacion',
+    label: 'Rotación Diaria 21/01/2026 — 137 Coches',
+    desc: 'Matriz coche→servicio del miércoles 21/01/2026. Confirma qué coche físico corre cada servicio ese día.',
+    icon: <CalendarDays className="w-5 h-5" />,
+    fn: async () => { const msg = await seedViaApi('/api/admin/seed-rotacion-ucot'); console.log(msg); },
+  },
+  {
+    id: 'real_boletin_verano',
+    label: 'Boletín Verano 2026 — 42 Líneas × 1469 Pases',
+    desc: 'Matriz de inspección verano 2026 por servicio, línea y sentido (a/b). Usado por inspectores en paradas.',
+    icon: <Clock className="w-5 h-5" />,
+    fn: async () => { const msg = await seedViaApi('/api/admin/seed-boletin-verano-ucot'); console.log(msg); },
+  },
+];
+
 export default function AdminSeed() {
   const [statuses, setStatuses] = useState<Record<string, SeedStatus>>({});
   const [logs, setLogs] = useState<Record<string, string>>({});
   const [runningAll, setRunningAll] = useState(false);
+  const [runningAllReal, setRunningAllReal] = useState(false);
 
   const setStatus = (id: string, s: SeedStatus) =>
     setStatuses((prev) => ({ ...prev, [id]: s }));
@@ -95,6 +157,22 @@ export default function AdminSeed() {
     } finally {
       setRunningAll(false);
     }
+  };
+
+  const runAllReal = async () => {
+    setRunningAllReal(true);
+    for (const t of REAL_DATA_TASKS) {
+      setStatus(t.id, 'running');
+      try {
+        await t.fn();
+        setStatus(t.id, 'ok');
+        appendLog(t.id, '✅ ' + t.label + ' completado');
+      } catch (e: unknown) {
+        setStatus(t.id, 'error');
+        appendLog(t.id, '❌ ' + (e instanceof Error ? e.message : String(e)));
+      }
+    }
+    setRunningAllReal(false);
   };
 
   const statusIcon = (s: SeedStatus) => {
@@ -168,6 +246,77 @@ export default function AdminSeed() {
                     className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white text-xs font-medium transition-colors"
                   >
                     {status === 'running' ? 'Ejecutando...' : status === 'ok' ? 'Re-ejecutar' : 'Ejecutar'}
+                  </button>
+                </div>
+              </div>
+              {log && (
+                <pre className="mt-3 text-[11px] font-mono text-slate-400 bg-slate-950 rounded-lg p-2 max-h-24 overflow-y-auto whitespace-pre-wrap">
+                  {log}
+                </pre>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── DATOS REALES UCOT ── */}
+      <div className="mt-10 mb-4">
+        <h2 className="text-lg font-bold flex items-center gap-2 text-emerald-400">
+          <CloudUpload className="w-5 h-5" />
+          Datos Reales UCOT (desde documentos oficiales)
+        </h2>
+        <p className="text-slate-500 text-xs mt-1">
+          Carga el listado real de empleados (691), flota real (185 coches) y horarios oficiales (226 servicios hábiles invierno 2026)
+          directamente a Firestore. Usa <code className="bg-slate-800 px-1 rounded">merge:true</code> — seguro re-ejecutar.
+        </p>
+      </div>
+
+      <div className="mb-5">
+        <button
+          type="button"
+          disabled={runningAllReal}
+          onClick={runAllReal}
+          className="flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold text-sm transition-colors"
+        >
+          {runningAllReal ? <Loader2 className="w-5 h-5 animate-spin" /> : <CloudUpload className="w-5 h-5" />}
+          {runningAllReal ? 'Cargando datos reales...' : 'Cargar todos los datos reales UCOT'}
+        </button>
+      </div>
+
+      <div className="space-y-3 mb-8">
+        {REAL_DATA_TASKS.map((task) => {
+          const status = statuses[task.id] ?? 'idle';
+          const log = logs[task.id] ?? '';
+          return (
+            <div
+              key={task.id}
+              className={`rounded-xl border p-4 transition-colors ${
+                status === 'ok'
+                  ? 'border-emerald-600/40 bg-emerald-950/20'
+                  : status === 'error'
+                    ? 'border-red-600/40 bg-red-950/20'
+                    : status === 'running'
+                      ? 'border-primary-600/40 bg-primary-950/20'
+                      : 'border-slate-800 bg-slate-900/40'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-emerald-400">{task.icon}</span>
+                  <div>
+                    <p className="font-semibold text-white text-sm">{task.label}</p>
+                    <p className="text-slate-500 text-xs mt-0.5">{task.desc}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  {statusIcon(status)}
+                  <button
+                    type="button"
+                    disabled={status === 'running' || runningAllReal}
+                    onClick={() => run(task)}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 disabled:opacity-40 text-white text-xs font-medium transition-colors"
+                  >
+                    {status === 'running' ? 'Cargando...' : status === 'ok' ? 'Re-cargar' : 'Cargar'}
                   </button>
                 </div>
               </div>

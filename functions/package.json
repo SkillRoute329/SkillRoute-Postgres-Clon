@@ -5,7 +5,7 @@
     "main": "lib/index.js",
     "scripts": {
         "serve": "npm run build && firebase emulators:start --only functions",
-        "build": "tsc",
+        "build": "tsc && node -e \"const fs=require('fs'),path=require('path');fs.mkdirSync('lib/data',{recursive:true});['ucot_personal','ucot_vehicles','ucot_servicios_habiles','ucot_servicios_sabado','ucot_boletin','ucot_flota_marcas','ucot_rotacion','ucot_boletin_verano'].forEach(f=>{const src='src/data/'+f+'.json';if(fs.existsSync(src))fs.copyFileSync(src,'lib/data/'+f+'.json');})\"",
         "deploy": "npm run build && firebase deploy --only functions"
     },
     "keywords": [],
@@ -25,7 +25,8 @@
         "@types/cors": "^2.8.19",
         "@types/node": "^25.3.5",
         "@types/papaparse": "^5.5.2",
-        "typescript": "^5.9.3"
+        "typescript": "^5.9.3",
+        "xlsx": "^0.18.5"
     },
     "engines": {
         "node": "20"

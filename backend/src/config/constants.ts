@@ -34,6 +34,8 @@ export const Config = {
     FLEET_CHECKS: 'fleet_checks',
     SHIFTS: 'shifts',
     USERS: 'users',
+    TURNOS_DIA: 'turnos_dia',
+    ALERTAS_OPERATIVAS: 'alertas_operativas',
   },
 
   // Roles

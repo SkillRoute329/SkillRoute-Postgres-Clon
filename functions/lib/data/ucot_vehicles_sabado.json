@@ -1,0 +1,906 @@
+[
+  {
+    "interno": "2200",
+    "coche": "2200",
+    "linea": "300",
+    "servicioNum": "2200",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2201",
+    "coche": "2201",
+    "linea": "300",
+    "servicioNum": "2201",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2203",
+    "coche": "2203",
+    "linea": "300",
+    "servicioNum": "2203",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2204",
+    "coche": "2204",
+    "linea": "300",
+    "servicioNum": "2204",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2206",
+    "coche": "2206",
+    "linea": "300",
+    "servicioNum": "2206",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2210",
+    "coche": "2210",
+    "linea": "300",
+    "servicioNum": "2210",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2211",
+    "coche": "2211",
+    "linea": "306",
+    "servicioNum": "2211",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2212",
+    "coche": "2212",
+    "linea": "306",
+    "servicioNum": "2212",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2213",
+    "coche": "2213",
+    "linea": "306",
+    "servicioNum": "2213",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2214",
+    "coche": "2214",
+    "linea": "306",
+    "servicioNum": "2214",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2215",
+    "coche": "2215",
+    "linea": "306",
+    "servicioNum": "2215",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2216",
+    "coche": "2216",
+    "linea": null,
+    "servicioNum": "2216",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2217",
+    "coche": "2217",
+    "linea": "306",
+    "servicioNum": "2217",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2218",
+    "coche": "2218",
+    "linea": "306",
+    "servicioNum": "2218",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2219",
+    "coche": "2219",
+    "linea": "306",
+    "servicioNum": "2219",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2220",
+    "coche": "2220",
+    "linea": "306",
+    "servicioNum": "2220",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2221",
+    "coche": "2221",
+    "linea": null,
+    "servicioNum": "2221",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2222",
+    "coche": "2222",
+    "linea": "306",
+    "servicioNum": "2222",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2223",
+    "coche": "2223",
+    "linea": null,
+    "servicioNum": "2223",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2224",
+    "coche": "2224",
+    "linea": null,
+    "servicioNum": "2224",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2225",
+    "coche": "2225",
+    "linea": null,
+    "servicioNum": "2225",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2226",
+    "coche": "2226",
+    "linea": "306",
+    "servicioNum": "2226",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2227",
+    "coche": "2227",
+    "linea": "306",
+    "servicioNum": "2227",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2228",
+    "coche": "2228",
+    "linea": "306",
+    "servicioNum": "2228",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2229",
+    "coche": "2229",
+    "linea": "306",
+    "servicioNum": "2229",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2230",
+    "coche": "2230",
+    "linea": null,
+    "servicioNum": "2230",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2231",
+    "coche": "2231",
+    "linea": null,
+    "servicioNum": "2231",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2233",
+    "coche": "2233",
+    "linea": null,
+    "servicioNum": "2233",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2234",
+    "coche": "2234",
+    "linea": null,
+    "servicioNum": "2234",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2235",
+    "coche": "2235",
+    "linea": "317",
+    "servicioNum": "2235",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2236",
+    "coche": "2236",
+    "linea": "328",
+    "servicioNum": "2236",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2237",
+    "coche": "2237",
+    "linea": "306",
+    "servicioNum": "2237",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2238",
+    "coche": "2238",
+    "linea": "330",
+    "servicioNum": "2238",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2239",
+    "coche": "2239",
+    "linea": null,
+    "servicioNum": "2239",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2240",
+    "coche": "2240",
+    "linea": null,
+    "servicioNum": "2240",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2241",
+    "coche": "2241",
+    "linea": "306",
+    "servicioNum": "2241",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2242",
+    "coche": "2242",
+    "linea": null,
+    "servicioNum": "2242",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2243",
+    "coche": "2243",
+    "linea": "330",
+    "servicioNum": "2243",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2245",
+    "coche": "2245",
+    "linea": "330",
+    "servicioNum": "2245",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2246",
+    "coche": "2246",
+    "linea": null,
+    "servicioNum": "2246",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2247",
+    "coche": "2247",
+    "linea": null,
+    "servicioNum": "2247",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2248",
+    "coche": "2248",
+    "linea": "371",
+    "servicioNum": "2248",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2249",
+    "coche": "2249",
+    "linea": "379",
+    "servicioNum": "2249",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2250",
+    "coche": "2250",
+    "linea": null,
+    "servicioNum": "2250",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2251",
+    "coche": "2251",
+    "linea": null,
+    "servicioNum": "2251",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2252",
+    "coche": "2252",
+    "linea": null,
+    "servicioNum": "2252",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2253",
+    "coche": "2253",
+    "linea": null,
+    "servicioNum": "2253",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2254",
+    "coche": "2254",
+    "linea": "316",
+    "servicioNum": "2254",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2255",
+    "coche": "2255",
+    "linea": "330",
+    "servicioNum": "2255",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2256",
+    "coche": "2256",
+    "linea": "306",
+    "servicioNum": "2256",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2257",
+    "coche": "2257",
+    "linea": null,
+    "servicioNum": "2257",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2258",
+    "coche": "2258",
+    "linea": null,
+    "servicioNum": "2258",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2259",
+    "coche": "2259",
+    "linea": null,
+    "servicioNum": "2259",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2260",
+    "coche": "2260",
+    "linea": "329",
+    "servicioNum": "2260",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2261",
+    "coche": "2261",
+    "linea": "329",
+    "servicioNum": "2261",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2262",
+    "coche": "2262",
+    "linea": null,
+    "servicioNum": "2262",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2263",
+    "coche": "2263",
+    "linea": null,
+    "servicioNum": "2263",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2264",
+    "coche": "2264",
+    "linea": null,
+    "servicioNum": "2264",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2265",
+    "coche": "2265",
+    "linea": "329",
+    "servicioNum": "2265",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2266",
+    "coche": "2266",
+    "linea": null,
+    "servicioNum": "2266",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2267",
+    "coche": "2267",
+    "linea": null,
+    "servicioNum": "2267",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2268",
+    "coche": "2268",
+    "linea": null,
+    "servicioNum": "2268",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2269",
+    "coche": "2269",
+    "linea": "329",
+    "servicioNum": "2269",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2270",
+    "coche": "2270",
+    "linea": null,
+    "servicioNum": "2270",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2271",
+    "coche": "2271",
+    "linea": null,
+    "servicioNum": "2271",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2272",
+    "coche": "2272",
+    "linea": null,
+    "servicioNum": "2272",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2273",
+    "coche": "2273",
+    "linea": "370",
+    "servicioNum": "2273",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2274",
+    "coche": "2274",
+    "linea": null,
+    "servicioNum": "2274",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2275",
+    "coche": "2275",
+    "linea": "306",
+    "servicioNum": "2275",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2276",
+    "coche": "2276",
+    "linea": "328",
+    "servicioNum": "2276",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2277",
+    "coche": "2277",
+    "linea": "300",
+    "servicioNum": "2277",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2278",
+    "coche": "2278",
+    "linea": "328",
+    "servicioNum": "2278",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2279",
+    "coche": "2279",
+    "linea": null,
+    "servicioNum": "2279",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2280",
+    "coche": "2280",
+    "linea": "329",
+    "servicioNum": "2280",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2281",
+    "coche": "2281",
+    "linea": "300",
+    "servicioNum": "2281",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2282",
+    "coche": "2282",
+    "linea": "329",
+    "servicioNum": "2282",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2283",
+    "coche": "2283",
+    "linea": "300",
+    "servicioNum": "2283",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2284",
+    "coche": "2284",
+    "linea": "306",
+    "servicioNum": "2284",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2285",
+    "coche": "2285",
+    "linea": "300",
+    "servicioNum": "2285",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2286",
+    "coche": "2286",
+    "linea": "300",
+    "servicioNum": "2286",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2287",
+    "coche": "2287",
+    "linea": "306",
+    "servicioNum": "2287",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2288",
+    "coche": "2288",
+    "linea": null,
+    "servicioNum": "2288",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2289",
+    "coche": "2289",
+    "linea": "300",
+    "servicioNum": "2289",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2290",
+    "coche": "2290",
+    "linea": null,
+    "servicioNum": "2290",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2291",
+    "coche": "2291",
+    "linea": null,
+    "servicioNum": "2291",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2292",
+    "coche": "2292",
+    "linea": "306",
+    "servicioNum": "2292",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2293",
+    "coche": "2293",
+    "linea": "370",
+    "servicioNum": "2293",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2294",
+    "coche": "2294",
+    "linea": "370",
+    "servicioNum": "2294",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2300",
+    "coche": "2300",
+    "linea": "L-12",
+    "servicioNum": "2300",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2301",
+    "coche": "2301",
+    "linea": "L-31",
+    "servicioNum": "2301",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2302",
+    "coche": "2302",
+    "linea": "L-32",
+    "servicioNum": "2302",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2303",
+    "coche": "2303",
+    "linea": "L-33",
+    "servicioNum": "2303",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "3590",
+    "coche": "3590",
+    "linea": "221",
+    "servicioNum": "3590",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "3591",
+    "coche": "3591",
+    "linea": "221",
+    "servicioNum": "3591",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "3592",
+    "coche": "3592",
+    "linea": "221",
+    "servicioNum": "3592",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "3593",
+    "coche": "3593",
+    "linea": "221",
+    "servicioNum": "3593",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "4650",
+    "coche": "4650",
+    "linea": "L-13",
+    "servicioNum": "4650",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "4651",
+    "coche": "4651",
+    "linea": "L-13",
+    "servicioNum": "4651",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "8501",
+    "coche": "8501",
+    "linea": "DM1",
+    "servicioNum": "8501",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "8502",
+    "coche": "8502",
+    "linea": "DM1",
+    "servicioNum": "8502",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "8503",
+    "coche": "8503",
+    "linea": "DM1",
+    "servicioNum": "8503",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "1202",
+    "coche": "1202",
+    "linea": "XA1",
+    "servicioNum": "1202",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "1503",
+    "coche": "1503",
+    "linea": "XA2",
+    "servicioNum": "1503",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "1504",
+    "coche": "1504",
+    "linea": "XA2",
+    "servicioNum": "1504",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2100",
+    "coche": "2100",
+    "linea": "CE1",
+    "servicioNum": "2100",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2145N",
+    "coche": "2145N",
+    "linea": "317",
+    "servicioNum": "2145N",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2160N",
+    "coche": "2160N",
+    "linea": "300",
+    "servicioNum": "2160",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2165N",
+    "coche": "2165N",
+    "linea": "300",
+    "servicioNum": "2165",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2170N",
+    "coche": "2170N",
+    "linea": null,
+    "servicioNum": "2170N",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2175N",
+    "coche": "2175N",
+    "linea": null,
+    "servicioNum": "2175N",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2180N",
+    "coche": "2180N",
+    "linea": "316",
+    "servicioNum": "2180",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2185N",
+    "coche": "2185N",
+    "linea": "330",
+    "servicioNum": "2185N",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  },
+  {
+    "interno": "2190N",
+    "coche": "2190N",
+    "linea": "370",
+    "servicioNum": "2190N",
+    "estado_operativo": "ACTIVO",
+    "tipo": "sabadero_verano"
+  }
+]

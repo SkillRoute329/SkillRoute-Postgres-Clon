@@ -792,7 +792,7 @@ function DetailPanel({
   busPositionsForLine: BusPositionLite[];
 }) {
   const [schedule, setSchedule] = useState<LineScheduleResponse | null>(null);
-  const [scheduleLoading, setScheduleLoading] = useState(true);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
   const [tipoDia, setTipoDia] = useState<'Hábiles' | 'Sábados' | 'Domingos'>('Hábiles');
 
   // Variantes reales scrapeadas del STM (fuente de verdad)
@@ -890,122 +890,261 @@ function DetailPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-        {/* Nivel alerta + posición competitiva */}
-        <div className={`rounded-xl border p-4 ${colors.bg} ${colors.border}`}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 uppercase tracking-wider">Nivel amenaza</span>
-            <span className={`text-sm font-black uppercase ${colors.text}`}>
-              {(line?.nivelAlerta ?? 'SIN_SERVICIO').replace(/_/g, ' ')}
-            </span>
-          </div>
-          <div className="flex items-center justify-between mt-2">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">Posición</span>
-            <span className={`text-[11px] font-black uppercase ${posColors.text}`}>
-              {agent?.posicionCompetitiva ?? 'SIN SERVICIO'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between mt-1">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">
-              Flota en disputa
-            </span>
-            <span className="text-[11px] font-bold text-white">
-              {line?.pctFlotaEnDisputa ?? 0}%
-            </span>
-          </div>
-        </div>
 
-        {/* KPIs operativos reales (GPS + horario oficial) */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-xl bg-slate-800/50 border border-slate-700/30 p-3">
-            <p className="text-[9px] text-slate-500 uppercase tracking-wider">Buses activos</p>
-            <p className="text-lg font-black text-white mt-0.5">{line?.busesActivos ?? 0}</p>
-          </div>
-          <div className="rounded-xl bg-slate-800/50 border border-slate-700/30 p-3">
-            <p className="text-[9px] text-slate-500 uppercase tracking-wider">Bunching</p>
-            <p className="text-lg font-black text-white mt-0.5">{agent?.bunchingPares ?? 0}</p>
-            <p className="text-[9px] text-slate-500">pares &lt;0.8km</p>
-          </div>
-          <div className="rounded-xl bg-slate-800/50 border border-slate-700/30 p-3">
-            <p className="text-[9px] text-slate-500 uppercase tracking-wider">Frecuencia real</p>
-            <p className="text-lg font-black text-sky-400 mt-0.5">
-              {agent?.frecuenciaActual != null ? `${agent.frecuenciaActual}min` : '—'}
-            </p>
-          </div>
-          <div className="rounded-xl bg-slate-800/50 border border-slate-700/30 p-3">
-            <p className="text-[9px] text-slate-500 uppercase tracking-wider">Frec. programada</p>
-            <p className="text-lg font-black text-indigo-400 mt-0.5">
-              {agent?.frecuenciaProgramadaMin != null
-                ? `${agent.frecuenciaProgramadaMin}min`
-                : '—'}
-            </p>
-            {brecha !== null && (
-              <p className={`text-[10px] font-bold mt-0.5 ${brechaColor}`}>
-                {brecha > 0 ? '+' : ''}
-                {brecha}% brecha
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Empresas rivales detectadas (GPS) */}
-        {line && line.empresasDetectadas.length > 0 && (
-          <div>
-            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1">
-              <Shield className="w-3 h-3" />
-              Rivales detectados ({line.empresasDetectadas.length})
-            </h3>
-            <div className="flex flex-wrap gap-1.5">
-              {line.empresasDetectadas.map((emp) => (
-                <span
-                  key={emp}
-                  className="text-[10px] font-bold uppercase px-2 py-1 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20"
+        {/* === PRIMERO: Selector de Variante / Sentido === */}
+        {variantesReales.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+              <Radar className="w-3 h-3" />
+              Sentido / Variante (Origen → Destino)
+            </h4>
+            {variantesReales.map((v) => {
+              const isSel = v.key === selectedVariantKey;
+              const sem = semaforosPorVariante.get(v.key) ?? 'GRIS';
+              const semClr = semaforoColor(sem);
+              return (
+                <button
+                  key={v.key}
+                  onClick={() => setSelectedVariantKey(v.key)}
+                  className={`w-full text-left rounded-xl border p-3 transition-all ${
+                    isSel
+                      ? 'bg-indigo-500/10 border-indigo-500/50 shadow-md shadow-indigo-500/10'
+                      : 'bg-slate-800/40 border-slate-700/30 hover:border-slate-500/50 hover:bg-slate-700/30'
+                  }`}
                 >
-                  {emp}
-                </span>
-              ))}
-            </div>
-            <p className="text-[9px] text-slate-500 mt-1.5">
-              Medido por GPS en vivo &lt;0.5km de buses UCOT de esta línea.
-            </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`w-2 h-2 rounded-full flex-none ${semClr.dot} ${sem !== 'GRIS' ? 'animate-pulse' : ''}`} />
+                      <span
+                        className={`text-[11px] font-bold truncate ${isSel ? 'text-indigo-300' : 'text-slate-200'}`}
+                        title={`${v.origen} → ${v.destino}`}
+                      >
+                        {v.origen} → {v.destino}
+                      </span>
+                    </div>
+                    {v.principal && (
+                      <span className="text-[9px] text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-1.5 py-0.5 flex-none">
+                        PRINCIPAL
+                      </span>
+                    )}
+                  </div>
+                  <div className={`flex items-center gap-3 mt-1.5 text-[10px] ${isSel ? 'text-indigo-200/80' : 'text-slate-400'}`}>
+                    <span className="ml-auto">
+                      <strong className={isSel ? 'text-indigo-100' : 'text-white'}>{v.totalSalidasHabiles}</strong> salidas hábiles
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+
+            {/* KPIs de la variante seleccionada */}
+            {kpis && varianteSel && (
+              <div className="mt-4 space-y-3">
+                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                  <Activity className="w-3 h-3" />
+                  KPIs · {varianteSel.origen} → {varianteSel.destino}
+                </h4>
+                <VariantKPIsCard kpis={kpis} />
+              </div>
+            )}
+
+            {/* Alert feed próximos 15 min */}
+            {varianteSel && (
+              <div className="mt-4 space-y-2">
+                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                  <Radar className="w-3 h-3" />
+                  Próximos 15 min
+                </h4>
+                <AlertFeedCard alerts={alerts} />
+              </div>
+            )}
+
+            {/* Estrategia táctica + rivales por variante */}
+            {varianteSel && (
+              <div className="mt-4 rounded-xl bg-slate-800/40 border border-slate-700/30 p-3">
+                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+                  <Shield className="w-3 h-3" />
+                  Rivales en esta variante
+                </h4>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {varianteSel.rivales.length > 0 ? (
+                    varianteSel.rivales.map((r) => (
+                      <span key={r} className="text-[10px] font-bold uppercase px-2 py-1 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20">
+                        {r}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-[10px] text-slate-500">Sin rivales verificados.</span>
+                  )}
+                </div>
+                {varianteSel.puntosCarga.length > 0 && (
+                  <>
+                    <h5 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-2 mb-1">
+                      Puntos de carga clave
+                    </h5>
+                    <ul className="text-[10px] text-slate-300 space-y-0.5 list-disc list-inside">
+                      {varianteSel.puntosCarga.map((p) => (
+                        <li key={p}>{p}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                <p className="text-[10px] text-slate-300 mt-3 leading-relaxed">
+                  <strong className="text-indigo-300">Estrategia:</strong> {varianteSel.estrategia}
+                </p>
+              </div>
+            )}
+
+            {/* Selector tipoDia + salidas de la variante seleccionada */}
+            {varianteSel && (
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    Horario STM
+                  </h3>
+                  {schedule?.tieneHorariosOficiales && schedule.tipoDiaHoy && (
+                    <span className="text-[9px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">
+                      HOY · {schedule.tipoDiaHoy} · {schedule.horaMontevideo}
+                    </span>
+                  )}
+                </div>
+                <div className="bg-slate-800/50 p-1 rounded-xl flex items-center gap-1 mb-2">
+                  {(['Hábiles', 'Sábados', 'Domingos'] as const).map((td) => (
+                    <button
+                      key={td}
+                      onClick={() => setTipoDia(td)}
+                      className={`flex-1 text-[10px] py-1.5 rounded-lg font-bold transition-all ${
+                        tipoDia === td
+                          ? 'bg-indigo-500 text-white shadow-md'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                      }`}
+                    >
+                      {td}
+                    </button>
+                  ))}
+                </div>
+                {proximasSalidas.length > 0 ? (
+                  <div className="bg-slate-800/40 border border-slate-700/30 p-3 rounded-xl max-h-[300px] overflow-y-auto custom-scrollbar">
+                    <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1 sticky top-0 bg-slate-800/90 pb-1 z-10 border-b border-slate-700">
+                      <Timer className="w-3 h-3 text-emerald-400" />
+                      Próximas salidas {tipoDia} · {varianteSel.destino} ({proximasSalidas.length})
+                    </h4>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {proximasSalidas.map((s, i) => (
+                        <span
+                          key={`${s}-${i}`}
+                          className="text-[10px] font-mono border rounded-md px-1.5 py-0.5 text-emerald-300 bg-emerald-900/20 border-emerald-500/30 font-bold"
+                          title={`Salida programada: ${s}`}
+                        >
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-800/40 border border-slate-700/30 p-3 rounded-xl text-[10px] text-slate-500">
+                    <Timer className="w-3 h-3 inline mr-1 text-slate-600" />
+                    No hay más salidas programadas para este sentido hoy ({tipoDia}).
+                  </div>
+                )}
+                <p className="text-[9px] text-slate-600 mt-2">
+                  Fuente: stm.horarios.jsf (scrape) · Total salidas hábiles variante: {varianteSel.totalSalidasHabiles ?? 0}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Selector tipoDia para horario oficial */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              Horario oficial STM
-            </h3>
-            {schedule?.tieneHorariosOficiales && schedule.tipoDiaHoy && (
-              <span className="text-[9px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">
-                HOY · {schedule.tipoDiaHoy} · {schedule.horaMontevideo}
+        {/* Divider — Resumen de línea */}
+        <div className="border-t border-slate-700/40 pt-3 space-y-4">
+          {/* Nivel alerta + posición competitiva */}
+          <div className={`rounded-xl border p-4 ${colors.bg} ${colors.border}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400 uppercase tracking-wider">Nivel amenaza</span>
+              <span className={`text-sm font-black uppercase ${colors.text}`}>
+                {(line?.nivelAlerta ?? 'SIN_SERVICIO').replace(/_/g, ' ')}
               </span>
-            )}
-          </div>
-          <div className="bg-slate-800/50 p-1 rounded-xl flex items-center gap-1 mb-2">
-            {(['Hábiles', 'Sábados', 'Domingos'] as const).map((td) => (
-              <button
-                key={td}
-                onClick={() => setTipoDia(td)}
-                className={`flex-1 text-[10px] py-1.5 rounded-lg font-bold transition-all ${
-                  tipoDia === td
-                    ? 'bg-indigo-500 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-                }`}
-              >
-                {td}
-              </button>
-            ))}
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-[10px] text-slate-500 uppercase tracking-wider">Posición</span>
+              <span className={`text-[11px] font-black uppercase ${posColors.text}`}>
+                {agent?.posicionCompetitiva ?? 'SIN SERVICIO'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-[10px] text-slate-500 uppercase tracking-wider">
+                Flota en disputa
+              </span>
+              <span className="text-[11px] font-bold text-white">
+                {line?.pctFlotaEnDisputa ?? 0}%
+              </span>
+            </div>
           </div>
 
+          {/* KPIs operativos reales (GPS + horario oficial) */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl bg-slate-800/50 border border-slate-700/30 p-3">
+              <p className="text-[9px] text-slate-500 uppercase tracking-wider">Buses activos</p>
+              <p className="text-lg font-black text-white mt-0.5">{line?.busesActivos ?? 0}</p>
+            </div>
+            <div className="rounded-xl bg-slate-800/50 border border-slate-700/30 p-3">
+              <p className="text-[9px] text-slate-500 uppercase tracking-wider">Bunching</p>
+              <p className="text-lg font-black text-white mt-0.5">{agent?.bunchingPares ?? 0}</p>
+              <p className="text-[9px] text-slate-500">pares &lt;0.8km</p>
+            </div>
+            <div className="rounded-xl bg-slate-800/50 border border-slate-700/30 p-3">
+              <p className="text-[9px] text-slate-500 uppercase tracking-wider">Frecuencia real</p>
+              <p className="text-lg font-black text-sky-400 mt-0.5">
+                {agent?.frecuenciaActual != null ? `${agent.frecuenciaActual}min` : '—'}
+              </p>
+            </div>
+            <div className="rounded-xl bg-slate-800/50 border border-slate-700/30 p-3">
+              <p className="text-[9px] text-slate-500 uppercase tracking-wider">Frec. programada</p>
+              <p className="text-lg font-black text-indigo-400 mt-0.5">
+                {agent?.frecuenciaProgramadaMin != null
+                  ? `${agent.frecuenciaProgramadaMin}min`
+                  : '—'}
+              </p>
+              {brecha !== null && (
+                <p className={`text-[10px] font-bold mt-0.5 ${brechaColor}`}>
+                  {brecha > 0 ? '+' : ''}
+                  {brecha}% brecha
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Empresas rivales detectadas (GPS) */}
+          {line && line.empresasDetectadas.length > 0 && (
+            <div>
+              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+                <Shield className="w-3 h-3" />
+                Rivales detectados ({line.empresasDetectadas.length})
+              </h3>
+              <div className="flex flex-wrap gap-1.5">
+                {line.empresasDetectadas.map((emp) => (
+                  <span
+                    key={emp}
+                    className="text-[10px] font-bold uppercase px-2 py-1 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20"
+                  >
+                    {emp}
+                  </span>
+                ))}
+              </div>
+              <p className="text-[9px] text-slate-500 mt-1.5">
+                Medido por GPS en vivo &lt;0.5km de buses UCOT de esta línea.
+              </p>
+            </div>
+          )}
+
+          {/* Indicador horarios oficiales */}
           {scheduleLoading && (
-            <div className="flex items-center gap-2 text-xs text-slate-500 py-3">
+            <div className="flex items-center gap-2 text-xs text-slate-500 py-2">
               <RefreshCw className="w-3 h-3 animate-spin" />
               Cargando horarios oficiales...
             </div>
           )}
-
           {!scheduleLoading && !schedule?.tieneHorariosOficiales && (
             <div className="text-[11px] text-slate-500 bg-slate-800/40 rounded-lg px-3 py-2.5">
               <AlertTriangle className="w-3 h-3 inline mr-1 text-amber-500" />
@@ -1013,140 +1152,6 @@ function DetailPanel({
               <p className="text-[9px] text-slate-600 mt-1">
                 El scraper STM corre todos los días a las 04:00. Algunas líneas metropolitanas
                 UCOT usan IDs diferentes en el catálogo STM y quedan pendientes.
-              </p>
-            </div>
-          )}
-
-          {!scheduleLoading && variantesReales.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-4">
-                Sentido / Variante (Origen → Destino)
-              </h4>
-              {variantesReales.map((v) => {
-                const isSel = v.key === selectedVariantKey;
-                const sem = semaforosPorVariante.get(v.key) ?? 'GRIS';
-                const semClr = semaforoColor(sem);
-                return (
-                  <button
-                    key={v.key}
-                    onClick={() => setSelectedVariantKey(v.key)}
-                    className={`w-full text-left rounded-xl border p-3 transition-all ${
-                      isSel
-                        ? 'bg-indigo-500/10 border-indigo-500/50 shadow-md shadow-indigo-500/10'
-                        : 'bg-slate-800/40 border-slate-700/30 hover:border-slate-500/50 hover:bg-slate-700/30'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className={`w-2 h-2 rounded-full flex-none ${semClr.dot} ${sem !== 'GRIS' ? 'animate-pulse' : ''}`} />
-                        <span
-                          className={`text-[11px] font-bold truncate ${isSel ? 'text-indigo-300' : 'text-slate-200'}`}
-                          title={`${v.origen} → ${v.destino}`}
-                        >
-                          {v.origen} → {v.destino}
-                        </span>
-                      </div>
-                      {v.principal && (
-                        <span className="text-[9px] text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-1.5 py-0.5 flex-none">
-                          PRINCIPAL
-                        </span>
-                      )}
-                    </div>
-                    <div className={`flex items-center gap-3 mt-1.5 text-[10px] ${isSel ? 'text-indigo-200/80' : 'text-slate-400'}`}>
-                      <span className="ml-auto">
-                        <strong className={isSel ? 'text-indigo-100' : 'text-white'}>{v.totalSalidasHabiles}</strong> salidas hábiles
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-
-              {/* KPIs de la variante seleccionada */}
-              {kpis && varianteSel && (
-                <div className="mt-4 space-y-3">
-                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                    <Activity className="w-3 h-3" />
-                    KPIs · {varianteSel.origen} → {varianteSel.destino}
-                  </h4>
-                  <VariantKPIsCard kpis={kpis} />
-                </div>
-              )}
-
-              {/* Alert feed próximos 15 min */}
-              {varianteSel && (
-                <div className="mt-4 space-y-2">
-                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                    <Radar className="w-3 h-3" />
-                    Próximos 15 min
-                  </h4>
-                  <AlertFeedCard alerts={alerts} />
-                </div>
-              )}
-
-              {/* Estrategia táctica por variante */}
-              {varianteSel && (
-                <div className="mt-4 rounded-xl bg-slate-800/40 border border-slate-700/30 p-3">
-                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1">
-                    <Shield className="w-3 h-3" />
-                    Rivales en esta variante
-                  </h4>
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {varianteSel.rivales.length > 0 ? (
-                      varianteSel.rivales.map((r) => (
-                        <span key={r} className="text-[10px] font-bold uppercase px-2 py-1 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20">
-                          {r}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-[10px] text-slate-500">Sin rivales verificados.</span>
-                    )}
-                  </div>
-                  {varianteSel.puntosCarga.length > 0 && (
-                    <>
-                      <h5 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-2 mb-1">
-                        Puntos de carga clave
-                      </h5>
-                      <ul className="text-[10px] text-slate-300 space-y-0.5 list-disc list-inside">
-                        {varianteSel.puntosCarga.map((p) => (
-                          <li key={p}>{p}</li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-                  <p className="text-[10px] text-slate-300 mt-3 leading-relaxed">
-                    <strong className="text-indigo-300">Estrategia:</strong> {varianteSel.estrategia}
-                  </p>
-                </div>
-              )}
-
-              {/* Salidas completas variante seleccionada */}
-              {varianteSel && proximasSalidas.length > 0 ? (
-                <div className="mt-3 bg-slate-800/40 border border-slate-700/30 p-3 rounded-xl max-h-[300px] overflow-y-auto custom-scrollbar">
-                  <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1 sticky top-0 bg-slate-800/90 pb-1 z-10 border-b border-slate-700">
-                    <Timer className="w-3 h-3 text-emerald-400" />
-                    Próximas salidas {tipoDia} · {varianteSel.destino} ({proximasSalidas.length})
-                  </h4>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {proximasSalidas.map((s, i) => (
-                      <span
-                        key={`${s}-${i}`}
-                        className="text-[10px] font-mono border rounded-md px-1.5 py-0.5 text-emerald-300 bg-emerald-900/20 border-emerald-500/30 font-bold"
-                        title={`Salida programada: ${s}`}
-                      >
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : varianteSel ? (
-                <div className="mt-3 bg-slate-800/40 border border-slate-700/30 p-3 rounded-xl text-[10px] text-slate-500">
-                  <Timer className="w-3 h-3 inline mr-1 text-slate-600" />
-                  No hay más salidas programadas para este sentido hoy ({tipoDia}).
-                </div>
-              ) : null}
-
-              <p className="text-[9px] text-slate-600 mt-2">
-                Fuente: stm.horarios.jsf (scrape) · Total salidas hábiles variante: {varianteSel?.totalSalidasHabiles ?? 0}
               </p>
             </div>
           )}
@@ -1211,6 +1216,12 @@ export default function OperationsIntelligenceHub() {
 
   // Global summary
   const [summary, setSummary] = useState<GlobalFleetSummary | null>(null);
+
+  // Alertas operativas en tiempo real (cascada del listero)
+  const [alertasCascada, setAlertasCascada] = useState<Array<{
+    id: string; tipo: string; urgencia: string; lineaId: string | null;
+    titulo: string; mensaje: string; atendida: boolean;
+  }>>([]);
 
   // Briefing tab state
   const [briefing, setBriefing] = useState<BriefingDiario | null>(null);
@@ -1290,6 +1301,34 @@ export default function OperationsIntelligenceHub() {
     const interval = setInterval(loadData, 90_000);
     return () => clearInterval(interval);
   }, [loadData]);
+
+  // Polling de alertas operativas del Listero → Inspector (cada 20s)
+  useEffect(() => {
+    const fechaHoy = new Date().toISOString().split('T')[0];
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/listero/alertas?fecha=${fechaHoy}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const alertas = (data.alertas ?? []) as Array<{ id: string; tipo: string; urgencia: string; lineaId: string | null; titulo: string; mensaje: string; atendida: boolean }>;
+        setAlertasCascada((prev) => {
+          const prevIds = new Set(prev.map((a) => a.id));
+          for (const a of alertas) {
+            if (!prevIds.has(a.id) && !a.atendida) {
+              // Notificación browser si hay permiso
+              if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                new Notification(`⚠️ ${a.titulo}`, { body: a.mensaje });
+              }
+            }
+          }
+          return alertas.slice(0, 10);
+        });
+      } catch { /* red caída — silencioso */ }
+    };
+    poll();
+    const interval = setInterval(poll, 20_000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Auto-abrir la primera línea con variantes reales para que el panel sea inmediatamente visible
   useEffect(() => {
@@ -1973,6 +2012,38 @@ export default function OperationsIntelligenceHub() {
 
         {/* KPI Bar */}
         <KPIBar />
+
+        {/* Alertas de cascada operativa (del listero → inspector en tiempo real) */}
+        {alertasCascada.filter((a) => !a.atendida).length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {alertasCascada.filter((a) => !a.atendida).slice(0, 3).map((alerta) => {
+              const urgColors: Record<string, string> = {
+                critica: 'bg-red-900/30 border-red-500/50 text-red-300',
+                alta: 'bg-orange-900/20 border-orange-500/40 text-orange-300',
+                media: 'bg-amber-900/20 border-amber-500/30 text-amber-300',
+                baja: 'bg-slate-800/40 border-slate-700/30 text-slate-400',
+              };
+              return (
+                <div
+                  key={alerta.id}
+                  className={`flex-none rounded-xl border px-3 py-2 flex items-start gap-2 max-w-xs ${urgColors[alerta.urgencia] ?? urgColors.baja}`}
+                >
+                  <AlertTriangle className="w-3.5 h-3.5 flex-none mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black truncate">{alerta.titulo}</p>
+                    <p className="text-[9px] opacity-75 truncate">{alerta.mensaje.slice(0, 80)}…</p>
+                    {alerta.lineaId && <p className="text-[9px] font-bold mt-0.5">L{alerta.lineaId}</p>}
+                  </div>
+                </div>
+              );
+            })}
+            {alertasCascada.filter((a) => !a.atendida).length > 3 && (
+              <div className="flex-none rounded-xl border border-slate-700/30 bg-slate-800/30 px-3 py-2 flex items-center">
+                <span className="text-[10px] text-slate-500">+{alertasCascada.filter((a) => !a.atendida).length - 3} más</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 bg-slate-900/60 rounded-xl p-1 border border-slate-800/40 overflow-x-auto">

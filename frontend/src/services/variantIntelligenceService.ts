@@ -172,19 +172,23 @@ function buildTacticalForVariant(
     };
   }
 
-  const rivales = cfg.rivalesVerificados.map((r) => `${r.lineId} (${r.empresa})`);
   const puntosCarga = cfg.tramosAlaDemanda ?? [];
 
-  const destMatchesB = normalizar(v.destino).includes(normalizar(cfg.terminalB));
-  const destMatchesA = normalizar(v.destino).includes(normalizar(cfg.terminalA));
-  const origMatchesA = normalizar(v.origen).includes(normalizar(cfg.terminalA));
-  const origMatchesB = normalizar(v.origen).includes(normalizar(cfg.terminalB));
-
-  const sentidoIda = destMatchesB && origMatchesA;
-  const sentidoVuelta = destMatchesA && origMatchesB;
+  const sentidoIda = matchTerminal(v.destino, cfg.terminalB) && matchTerminal(v.origen, cfg.terminalA);
+  const sentidoVuelta = matchTerminal(v.destino, cfg.terminalA) && matchTerminal(v.origen, cfg.terminalB);
   const esServicioParcial = !sentidoIda && !sentidoVuelta;
 
-  const rivalDominante = cfg.rivalesVerificados[0];
+  // Para IDA: mostrar rivales ordenados por solapamiento descendente (los que más presión hacen en ese sentido)
+  // Para VUELTA: ídem, pero priorizando los que tienen tramo compartido en vuelta
+  const rivalesOrdenados = sentidoVuelta
+    ? [...cfg.rivalesVerificados].sort((a, b) => (b.solapamientoPct ?? 0) - (a.solapamientoPct ?? 0))
+    : cfg.rivalesVerificados;
+
+  const rivales = rivalesOrdenados.map(
+    (r) => `${r.lineId} (${r.empresa})`
+  );
+
+  const rivalDominante = rivalesOrdenados[0];
   const rivalTxt = rivalDominante
     ? `${rivalDominante.lineId} ${rivalDominante.empresa} (solapamiento ${rivalDominante.solapamientoPct}%, freq ${rivalDominante.frecuenciaRivalMin} min)`
     : 'sin rival dominante detectado';
@@ -195,12 +199,23 @@ function buildTacticalForVariant(
   } else if (sentidoVuelta) {
     estrategia = `Sentido VUELTA (${cfg.terminalB} → ${cfg.terminalA}). Rival clave: ${rivalTxt}. Aprovechar captación en ${(puntosCarga[puntosCarga.length - 1] ?? 'tramo final')}; mantener frecuencia reglamentaria y no pisar al compañero UCOT.`;
   } else if (esServicioParcial) {
-    estrategia = `Servicio parcial / ramal (${v.origen} → ${v.destino}). Baja frecuencia esperada — prioridad: puntualidad estricta (no hay compañero detrás que compense retrasos).`;
+    estrategia = `Ramal (${v.origen} → ${v.destino}). Baja frecuencia esperada — prioridad: puntualidad estricta. ${rivales.length > 0 ? `Rivales en zona: ${rivales.join(', ')}.` : 'Sin rivales directos detectados en este ramal.'}`;
   } else {
     estrategia = `Sentido mixto. Rival clave: ${rivalTxt}. Seguir frecuencia reglamentaria.`;
   }
 
   return { rivales, puntosCarga, estrategia };
+}
+
+/** Matching por intersección de palabras significativas (>2 chars) para tolerar
+ *  diferencias entre nombres STM (ej. "Instrucciones Y José Belloni") y
+ *  configs internas (ej. "Instrucciones y Belloni"). */
+function matchTerminal(text: string, terminal: string): boolean {
+  const textNorm = normalizar(text);
+  const termNorm = normalizar(terminal);
+  if (textNorm === termNorm || textNorm.includes(termNorm) || termNorm.includes(textNorm)) return true;
+  const termWords = termNorm.split(' ').filter((w) => w.length > 2);
+  return termWords.length > 0 && termWords.every((w) => textNorm.includes(w));
 }
 
 function normalizar(s: string): string {

@@ -1,0 +1,6912 @@
+[
+  {
+    "interno": "1",
+    "fullName": "SERGIO SOSA",
+    "nombre": "SERGIO",
+    "apellido": "SOSA",
+    "cargo": "MANTENIMIENTO",
+    "telefono": "097346078",
+    "rol": "mantenimiento",
+    "role": "MAINTENANCE"
+  },
+  {
+    "interno": "2",
+    "fullName": "NERY MARTINEZ",
+    "nombre": "NERY",
+    "apellido": "MARTINEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097416235",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3",
+    "fullName": "EDUARDO MINTEGUI",
+    "nombre": "EDUARDO",
+    "apellido": "MINTEGUI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097400445",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "4",
+    "fullName": "PABLO MIGUEZ",
+    "nombre": "PABLO",
+    "apellido": "MIGUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120348",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "5",
+    "fullName": "RUBEN FLORES",
+    "nombre": "RUBEN",
+    "apellido": "FLORES",
+    "cargo": "PLATAFORMA",
+    "telefono": "097959225",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "7",
+    "fullName": "PABLO VERGARA",
+    "nombre": "PABLO",
+    "apellido": "VERGARA",
+    "cargo": "ASPIRANTE A INSPECTOR",
+    "telefono": "096135326",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "8",
+    "fullName": "JULIO OLIVERA",
+    "nombre": "JULIO",
+    "apellido": "OLIVERA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120969",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "9",
+    "fullName": "DAMIAN GARCIA",
+    "nombre": "DAMIAN",
+    "apellido": "GARCIA",
+    "cargo": "PLATAFORMA/C. FISCAL",
+    "telefono": "096140806",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "11",
+    "fullName": "MARIO ALVARELLOS",
+    "nombre": "MARIO",
+    "apellido": "ALVARELLOS",
+    "cargo": "DIRECTOR PRESIDENTE",
+    "telefono": "096196301",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "12",
+    "fullName": "WILKES NOBLE",
+    "nombre": "WILKES",
+    "apellido": "NOBLE",
+    "cargo": "PLATAFORMA",
+    "telefono": "097016131",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "13",
+    "fullName": "MARCOS GINZA",
+    "nombre": "MARCOS",
+    "apellido": "GINZA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097991172",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "15",
+    "fullName": "NICOLAS RODRIGUEZ",
+    "nombre": "NICOLAS",
+    "apellido": "RODRIGUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097258082",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "17",
+    "fullName": "JOSE CICCIA",
+    "nombre": "JOSE",
+    "apellido": "CICCIA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055131",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "18",
+    "fullName": "JUAN PEDRO RIVERO",
+    "nombre": "JUAN",
+    "apellido": "PEDRO RIVERO",
+    "cargo": "INSPECTOR",
+    "telefono": "096127796",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "20",
+    "fullName": "DOMINGO BONINI",
+    "nombre": "DOMINGO",
+    "apellido": "BONINI",
+    "cargo": "PLATAFORMA",
+    "telefono": "096342908",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "21",
+    "fullName": "PABLO PEDEMONTE",
+    "nombre": "PABLO",
+    "apellido": "PEDEMONTE",
+    "cargo": "PLATAFORMA",
+    "telefono": "097310008",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "23",
+    "fullName": "CLAUDIO RUAN",
+    "nombre": "CLAUDIO",
+    "apellido": "RUAN",
+    "cargo": "PLATAFORMA",
+    "telefono": "097072251",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "24",
+    "fullName": "MIRIAM DUCRET",
+    "nombre": "MIRIAM",
+    "apellido": "DUCRET",
+    "cargo": "INSPECTORA",
+    "telefono": "096120457",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "26",
+    "fullName": "JORGE RODRIGUEZ",
+    "nombre": "JORGE",
+    "apellido": "RODRIGUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096127193",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "28",
+    "fullName": "SERGIO ANZA",
+    "nombre": "SERGIO",
+    "apellido": "ANZA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096150591",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "29",
+    "fullName": "UBER PLADA",
+    "nombre": "UBER",
+    "apellido": "PLADA",
+    "cargo": "PLATAFORMA/C. de DISCIPLINA",
+    "telefono": "096122327",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "30",
+    "fullName": "MIGUEL PIRIZ",
+    "nombre": "MIGUEL",
+    "apellido": "PIRIZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096244167",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "32",
+    "fullName": "ALEJANDRO MAZZONE",
+    "nombre": "ALEJANDRO",
+    "apellido": "MAZZONE",
+    "cargo": "PLATAFORMA",
+    "telefono": "097232733",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "33",
+    "fullName": "CONRADO PERDOMO",
+    "nombre": "CONRADO",
+    "apellido": "PERDOMO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055138",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "35",
+    "fullName": "MARCELO GONZALEZ",
+    "nombre": "MARCELO",
+    "apellido": "GONZALEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096122527",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "36",
+    "fullName": "FERNANDO GONZALEZ",
+    "nombre": "FERNANDO",
+    "apellido": "GONZALEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120349",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "37",
+    "fullName": "RAFAEL PEREYRA",
+    "nombre": "RAFAEL",
+    "apellido": "PEREYRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097088152",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "38",
+    "fullName": "PABLO UMPIERREZ",
+    "nombre": "PABLO",
+    "apellido": "UMPIERREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096142191",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "39",
+    "fullName": "ENRIQUE HERNANDEZ",
+    "nombre": "ENRIQUE",
+    "apellido": "HERNANDEZ",
+    "cargo": "ADMINISTRATIVO TALLER",
+    "telefono": "097326214",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "40",
+    "fullName": "SERGIO FERNANDEZ",
+    "nombre": "SERGIO",
+    "apellido": "FERNANDEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097974377",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "42",
+    "fullName": "JOSE DA SILVA",
+    "nombre": "JOSE",
+    "apellido": "DA SILVA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124086",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "44",
+    "fullName": "EMMANUEL VILA",
+    "nombre": "EMMANUEL",
+    "apellido": "VILA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097494656",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "45",
+    "fullName": "CRISTIAN STARAKON",
+    "nombre": "CRISTIAN",
+    "apellido": "STARAKON",
+    "cargo": "PLATAFORMA",
+    "telefono": "096342930",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "47",
+    "fullName": "GONZALO ARRILLAGA",
+    "nombre": "GONZALO",
+    "apellido": "ARRILLAGA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096130886",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "48",
+    "fullName": "RICARDO ALVAREZ",
+    "nombre": "RICARDO",
+    "apellido": "ALVAREZ",
+    "cargo": "ALMACENES",
+    "telefono": "096120453",
+    "rol": "almacen",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "49",
+    "fullName": "ALVARO ASCURREIN",
+    "nombre": "ALVARO",
+    "apellido": "ASCURREIN",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124793",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "50",
+    "fullName": "ADOLFO VAZQUEZ",
+    "nombre": "ADOLFO",
+    "apellido": "VAZQUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055155",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "51",
+    "fullName": "ANIBAL CASTILLO",
+    "nombre": "ANIBAL",
+    "apellido": "CASTILLO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124097",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "52",
+    "fullName": "SEBASTIAN FONTORA",
+    "nombre": "SEBASTIAN",
+    "apellido": "FONTORA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097075134",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "53",
+    "fullName": "ALVARO PICARDO",
+    "nombre": "ALVARO",
+    "apellido": "PICARDO",
+    "cargo": "PLATAFORMA C/FISCAL",
+    "telefono": "096120472",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "54",
+    "fullName": "LUIS MACIEL",
+    "nombre": "LUIS",
+    "apellido": "MACIEL",
+    "cargo": "PLATAFORMA",
+    "telefono": "097312900",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "55",
+    "fullName": "NICOLAS MARTINEZ",
+    "nombre": "NICOLAS",
+    "apellido": "MARTINEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120455",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "56",
+    "fullName": "HECTOR GARCIA",
+    "nombre": "HECTOR",
+    "apellido": "GARCIA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120489",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "57",
+    "fullName": "JULIO BARRETO",
+    "nombre": "JULIO",
+    "apellido": "BARRETO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096243883",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "58",
+    "fullName": "FERNANDO AYALA",
+    "nombre": "FERNANDO",
+    "apellido": "AYALA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120469",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "59",
+    "fullName": "VICTOR BELEDA",
+    "nombre": "VICTOR",
+    "apellido": "BELEDA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096122520",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "60",
+    "fullName": "GERARDO ERBA",
+    "nombre": "GERARDO",
+    "apellido": "ERBA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120646",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "61",
+    "fullName": "MARCELO ESCOBAR",
+    "nombre": "MARCELO",
+    "apellido": "ESCOBAR",
+    "cargo": "PLATAFORMA",
+    "telefono": "096988955",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "62",
+    "fullName": "MARCELO ESCOBAR",
+    "nombre": "MARCELO",
+    "apellido": "ESCOBAR",
+    "cargo": "PLATAFORMA/ASCOT",
+    "telefono": "096124932",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "64",
+    "fullName": "MARCELO ESCOBAR",
+    "nombre": "MARCELO",
+    "apellido": "ESCOBAR",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055150",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "65",
+    "fullName": "MARCELO ESCOBAR",
+    "nombre": "MARCELO",
+    "apellido": "ESCOBAR",
+    "cargo": "PLATAFORMA",
+    "telefono": "096125543",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "66",
+    "fullName": "MARCELO ESCOBAR",
+    "nombre": "MARCELO",
+    "apellido": "ESCOBAR",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120485",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "67",
+    "fullName": "MARCELO ESCOBAR",
+    "nombre": "MARCELO",
+    "apellido": "ESCOBAR",
+    "cargo": "PLATAFORMA",
+    "telefono": "096133678",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "68",
+    "fullName": "MARCELO ESCOBAR",
+    "nombre": "MARCELO",
+    "apellido": "ESCOBAR",
+    "cargo": "PLATAFORMA",
+    "telefono": "097224816",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "69",
+    "fullName": "MARCELO ESCOBAR",
+    "nombre": "MARCELO",
+    "apellido": "ESCOBAR",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055142",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "70",
+    "fullName": "MARCELO ESCOBAR",
+    "nombre": "MARCELO",
+    "apellido": "ESCOBAR",
+    "cargo": "INSPECTOR",
+    "telefono": "096113400",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "71",
+    "fullName": "MARCELO ESCOBAR",
+    "nombre": "MARCELO",
+    "apellido": "ESCOBAR",
+    "cargo": "PLATAFORMA",
+    "telefono": "096131114",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "72",
+    "fullName": "MARCELO ESCOBAR",
+    "nombre": "MARCELO",
+    "apellido": "ESCOBAR",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055171",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "73",
+    "fullName": "MARCELO ESCOBAR",
+    "nombre": "MARCELO",
+    "apellido": "ESCOBAR",
+    "cargo": "PLATAFORMA",
+    "telefono": "096158827",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "74",
+    "fullName": "MARCELO ESCOBAR",
+    "nombre": "MARCELO",
+    "apellido": "ESCOBAR",
+    "cargo": "TECNOLOGÍA",
+    "telefono": "097325033",
+    "rol": "tecnologia",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "75",
+    "fullName": "ALEX GODOY",
+    "nombre": "ALEX",
+    "apellido": "GODOY",
+    "cargo": "PLATAFORMA",
+    "telefono": "096404931",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "76",
+    "fullName": "JULIAN ACOSTA",
+    "nombre": "JULIAN",
+    "apellido": "ACOSTA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097474524",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "77",
+    "fullName": "EDUARDO SILVEIRA",
+    "nombre": "EDUARDO",
+    "apellido": "SILVEIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096408262",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "80",
+    "fullName": "NESTOR PIÑA",
+    "nombre": "NESTOR",
+    "apellido": "PIÑA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097503048",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "81",
+    "fullName": "CARLOS GUTIERREZ",
+    "nombre": "CARLOS",
+    "apellido": "GUTIERREZ",
+    "cargo": "LARGADOR CENTRAL",
+    "telefono": "096342911",
+    "rol": "listero",
+    "role": "LISTERO"
+  },
+  {
+    "interno": "82",
+    "fullName": "NESTOR GOMEZ",
+    "nombre": "NESTOR",
+    "apellido": "GOMEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097225266",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "83",
+    "fullName": "PABLO DOPEREIRO",
+    "nombre": "PABLO",
+    "apellido": "DOPEREIRO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097197863",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "84",
+    "fullName": "FERNANDO MUÑIZ",
+    "nombre": "FERNANDO",
+    "apellido": "MUÑIZ",
+    "cargo": "DIRECTOR VICEPRESIDENTE",
+    "telefono": "097493599",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "85",
+    "fullName": "ROBERT ROBAINA",
+    "nombre": "ROBERT",
+    "apellido": "ROBAINA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120911",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "87",
+    "fullName": "LETICIA NUÑEZ",
+    "nombre": "LETICIA",
+    "apellido": "NUÑEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096162313",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "88",
+    "fullName": "JUAN ZAMORA",
+    "nombre": "JUAN",
+    "apellido": "ZAMORA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120342",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "90",
+    "fullName": "FERNANDO LARRAÑAGA",
+    "nombre": "FERNANDO",
+    "apellido": "LARRAÑAGA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097083277",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "91",
+    "fullName": "GONZALO LOPEZ",
+    "nombre": "GONZALO",
+    "apellido": "LOPEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097122528",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "92",
+    "fullName": "NATALIA MUNHOS",
+    "nombre": "NATALIA",
+    "apellido": "MUNHOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "097323341",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "93",
+    "fullName": "EDUARDO ALVARADO",
+    "nombre": "EDUARDO",
+    "apellido": "ALVARADO",
+    "cargo": "C/ HOGAR VACACIONAL",
+    "telefono": "096127488",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "94",
+    "fullName": "MARTIN ESPONDABURU",
+    "nombre": "MARTIN",
+    "apellido": "ESPONDABURU",
+    "cargo": "PLATAFORMA",
+    "telefono": "096123379",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "95",
+    "fullName": "JULIO MENENDEZ",
+    "nombre": "JULIO",
+    "apellido": "MENENDEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120916",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "96",
+    "fullName": "OMAR LUZ",
+    "nombre": "OMAR",
+    "apellido": "LUZ",
+    "cargo": "INSPECTOR",
+    "telefono": "096342922",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "97",
+    "fullName": "GRACIELA URCION",
+    "nombre": "GRACIELA",
+    "apellido": "URCION",
+    "cargo": "INSPECTOR",
+    "telefono": "096404344",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "98",
+    "fullName": "FEDERICO FERRARO",
+    "nombre": "FEDERICO",
+    "apellido": "FERRARO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096282336",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "99",
+    "fullName": "DIEGO GONZALEZ",
+    "nombre": "DIEGO",
+    "apellido": "GONZALEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097503045",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "100",
+    "fullName": "JOSE STEFFANO",
+    "nombre": "JOSE",
+    "apellido": "STEFFANO",
+    "cargo": "LARGADOR CENTRAL",
+    "telefono": "096342938",
+    "rol": "listero",
+    "role": "LISTERO"
+  },
+  {
+    "interno": "101",
+    "fullName": "JULIA RODRIGUEZ",
+    "nombre": "JULIA",
+    "apellido": "RODRIGUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055154",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "102",
+    "fullName": "MARTIN BURGUEZ",
+    "nombre": "MARTIN",
+    "apellido": "BURGUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096427650",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "104",
+    "fullName": "FEDERICO CURBELO",
+    "nombre": "FEDERICO",
+    "apellido": "CURBELO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096106427",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "105",
+    "fullName": "DANIEL PEBE",
+    "nombre": "DANIEL",
+    "apellido": "PEBE",
+    "cargo": "PLATAFORMA",
+    "telefono": "097992963",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "106",
+    "fullName": "MIRIAM TAY",
+    "nombre": "MIRIAM",
+    "apellido": "TAY",
+    "cargo": "AGENCIERA",
+    "telefono": "096342910",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "107",
+    "fullName": "NICHOLAS PELUAS",
+    "nombre": "NICHOLAS",
+    "apellido": "PELUAS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096409671",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "108",
+    "fullName": "NICOLAS BERROSTEGUIETA",
+    "nombre": "NICOLAS",
+    "apellido": "BERROSTEGUIETA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097122083",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "110",
+    "fullName": "KENY FAGUNDEZ",
+    "nombre": "KENY",
+    "apellido": "FAGUNDEZ",
+    "cargo": "PLATAFORMA/C. SEGURIDAD",
+    "telefono": "096125189",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "111",
+    "fullName": "MARTIN MACEDO",
+    "nombre": "MARTIN",
+    "apellido": "MACEDO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096113700",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "112",
+    "fullName": "FERNANDO RODRIGUEZ",
+    "nombre": "FERNANDO",
+    "apellido": "RODRIGUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096410821",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "113",
+    "fullName": "HORACIO MOYANO",
+    "nombre": "HORACIO",
+    "apellido": "MOYANO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097303021",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "114",
+    "fullName": "MIGUEL MOZEJKO",
+    "nombre": "MIGUEL",
+    "apellido": "MOZEJKO",
+    "cargo": "INSPECTOR",
+    "telefono": "096124335",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "115",
+    "fullName": "ALVARO COUSELO",
+    "nombre": "ALVARO",
+    "apellido": "COUSELO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097137947",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "116",
+    "fullName": "ENRIQUE TIMAR",
+    "nombre": "ENRIQUE",
+    "apellido": "TIMAR",
+    "cargo": "PLATAFORMA",
+    "telefono": "096407038",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "117",
+    "fullName": "VICENTE VIVA",
+    "nombre": "VICENTE",
+    "apellido": "VIVA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120449",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "118",
+    "fullName": "DIEGO RAMOS",
+    "nombre": "DIEGO",
+    "apellido": "RAMOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "097325433",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "119",
+    "fullName": "HECTOR MATO",
+    "nombre": "HECTOR",
+    "apellido": "MATO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097330215",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "120",
+    "fullName": "ANGEL DE PATTI",
+    "nombre": "ANGEL",
+    "apellido": "DE PATTI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097018106",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "121",
+    "fullName": "VERONICA SANTOS",
+    "nombre": "VERONICA",
+    "apellido": "SANTOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120169",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "123",
+    "fullName": "SERGIO OLID",
+    "nombre": "SERGIO",
+    "apellido": "OLID",
+    "cargo": "PLATAFORMA",
+    "telefono": "097477481",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "124",
+    "fullName": "JESUS CAL",
+    "nombre": "JESUS",
+    "apellido": "CAL",
+    "cargo": "PLATAFORMA",
+    "telefono": "096141505",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "126",
+    "fullName": "ALEJANDRO MOZEJKO",
+    "nombre": "ALEJANDRO",
+    "apellido": "MOZEJKO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135341",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "128",
+    "fullName": "RUBEN MARRERO",
+    "nombre": "RUBEN",
+    "apellido": "MARRERO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096127410",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "129",
+    "fullName": "ANGEL ALVAREZ",
+    "nombre": "ANGEL",
+    "apellido": "ALVAREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096413729",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "131",
+    "fullName": "SERGIO ABALO",
+    "nombre": "SERGIO",
+    "apellido": "ABALO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096131232",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "132",
+    "fullName": "ROBERTO LOPEZ",
+    "nombre": "ROBERTO",
+    "apellido": "LOPEZ",
+    "cargo": "ADMINISTRTIVO /OF. PERSONAL",
+    "telefono": "096126009",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "133",
+    "fullName": "ROBERT WALTER",
+    "nombre": "ROBERT",
+    "apellido": "WALTER",
+    "cargo": "PLATAFORMA",
+    "telefono": "097951574",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "134",
+    "fullName": "GUSTAVO LANDEYRA",
+    "nombre": "GUSTAVO",
+    "apellido": "LANDEYRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097235760",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "135",
+    "fullName": "RICARDO LANDONI",
+    "nombre": "RICARDO",
+    "apellido": "LANDONI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097972422",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "138",
+    "fullName": "PEDRO CORREA",
+    "nombre": "PEDRO",
+    "apellido": "CORREA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120466",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "140",
+    "fullName": "LUIS SEOANE",
+    "nombre": "LUIS",
+    "apellido": "SEOANE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096412967",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "142",
+    "fullName": "ANDRES ALONSO",
+    "nombre": "ANDRES",
+    "apellido": "ALONSO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097416361",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "143",
+    "fullName": "HECTOR FRANCO",
+    "nombre": "HECTOR",
+    "apellido": "FRANCO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096122318",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "144",
+    "fullName": "CARLOS FREIRE",
+    "nombre": "CARLOS",
+    "apellido": "FREIRE",
+    "cargo": "ADMINISTRTIVO /OF. PERSONAL",
+    "telefono": "096120747",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "145",
+    "fullName": "FERNANDO PERAZZA",
+    "nombre": "FERNANDO",
+    "apellido": "PERAZZA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124079",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "147",
+    "fullName": "ALEXIS BORREANI",
+    "nombre": "ALEXIS",
+    "apellido": "BORREANI",
+    "cargo": "TALLER",
+    "telefono": "097337054",
+    "rol": "mantenimiento",
+    "role": "MAINTENANCE"
+  },
+  {
+    "interno": "148",
+    "fullName": "ENRIQUE CANOSA",
+    "nombre": "ENRIQUE",
+    "apellido": "CANOSA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097963343",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "150",
+    "fullName": "GUSTAVO VELAZQUEZ",
+    "nombre": "GUSTAVO",
+    "apellido": "VELAZQUEZ",
+    "cargo": "ALMACENERO",
+    "telefono": "096123186",
+    "rol": "almacen",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "151",
+    "fullName": "JUAN GIMENEZ",
+    "nombre": "JUAN",
+    "apellido": "GIMENEZ",
+    "cargo": "TRANSITO Conductor Movil de Transito",
+    "telefono": "096123860",
+    "rol": "tráfico",
+    "role": "TRAFFIC"
+  },
+  {
+    "interno": "152",
+    "fullName": "NESTOR SILVEIRA",
+    "nombre": "NESTOR",
+    "apellido": "SILVEIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097316777",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "153",
+    "fullName": "OSCAR FERRAZ",
+    "nombre": "OSCAR",
+    "apellido": "FERRAZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096134456",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "155",
+    "fullName": "RODRIGO BENTANCOR",
+    "nombre": "RODRIGO",
+    "apellido": "BENTANCOR",
+    "cargo": "PLATAFORMA",
+    "telefono": "096127762",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "156",
+    "fullName": "ENRIQUE AMILIVIA",
+    "nombre": "ENRIQUE",
+    "apellido": "AMILIVIA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097258098",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "159",
+    "fullName": "DANIEL PONZONI",
+    "nombre": "DANIEL",
+    "apellido": "PONZONI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097474358",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "160",
+    "fullName": "ALVARO CONTTE",
+    "nombre": "ALVARO",
+    "apellido": "CONTTE",
+    "cargo": "INSPECTOR",
+    "telefono": "096120307",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "161",
+    "fullName": "SALVADOR CARDOZO",
+    "nombre": "SALVADOR",
+    "apellido": "CARDOZO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097073003",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "162",
+    "fullName": "JULIO VIÑAS",
+    "nombre": "JULIO",
+    "apellido": "VIÑAS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096113498",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "163",
+    "fullName": "RAMIRO SICCO",
+    "nombre": "RAMIRO",
+    "apellido": "SICCO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096415286",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "164",
+    "fullName": "SERGIO KRUTULIS",
+    "nombre": "SERGIO",
+    "apellido": "KRUTULIS",
+    "cargo": "PLATAFORMA",
+    "telefono": "097094994",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "165",
+    "fullName": "JUAN MIGUEZ",
+    "nombre": "JUAN",
+    "apellido": "MIGUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096264547",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "166",
+    "fullName": "DOUGLAS AMICONE",
+    "nombre": "DOUGLAS",
+    "apellido": "AMICONE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096400050",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "167",
+    "fullName": "CARLOS RODRIGUEZ",
+    "nombre": "CARLOS",
+    "apellido": "RODRIGUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096165761",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "168",
+    "fullName": "JORGE SUAREZ",
+    "nombre": "JORGE",
+    "apellido": "SUAREZ",
+    "cargo": "PLATAFORMA / ASCOT",
+    "telefono": "096342909",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "169",
+    "fullName": "ALEX CUTURIA",
+    "nombre": "ALEX",
+    "apellido": "CUTURIA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097314118",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "171",
+    "fullName": "ALEXIS GUTIERREZ",
+    "nombre": "ALEXIS",
+    "apellido": "GUTIERREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096113787",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "172",
+    "fullName": "ROBERTO FORTES",
+    "nombre": "ROBERTO",
+    "apellido": "FORTES",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135335",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "173",
+    "fullName": "YENNIFER SALVATIDINO",
+    "nombre": "YENNIFER",
+    "apellido": "SALVATIDINO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096133388",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "174",
+    "fullName": "RICHARD PEREIRA",
+    "nombre": "RICHARD",
+    "apellido": "PEREIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096130115",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "175",
+    "fullName": "ALEJANDRO TRIGO",
+    "nombre": "ALEJANDRO",
+    "apellido": "TRIGO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120170",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "176",
+    "fullName": "ANDRES GONZALEZ",
+    "nombre": "ANDRES",
+    "apellido": "GONZALEZ",
+    "cargo": "ENCARGADO LAVADERO",
+    "telefono": "096120480",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "177",
+    "fullName": "FEDERICO SEQUEIRA",
+    "nombre": "FEDERICO",
+    "apellido": "SEQUEIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097474353",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "178",
+    "fullName": "JOSE MARTORANO",
+    "nombre": "JOSE",
+    "apellido": "MARTORANO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096125330",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "179",
+    "fullName": "WILSON TABAREZ",
+    "nombre": "WILSON",
+    "apellido": "TABAREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096127267",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "181",
+    "fullName": "NICOLAS BRUNO",
+    "nombre": "NICOLAS",
+    "apellido": "BRUNO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096133309",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "183",
+    "fullName": "PABLO ALDECOA",
+    "nombre": "PABLO",
+    "apellido": "ALDECOA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120668",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "184",
+    "fullName": "RODRIGO SOÑORA",
+    "nombre": "RODRIGO",
+    "apellido": "SOÑORA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096240475",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "186",
+    "fullName": "JORGE FERREIRA",
+    "nombre": "JORGE",
+    "apellido": "FERREIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097137421",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "187",
+    "fullName": "MARCOS CESCHI",
+    "nombre": "MARCOS",
+    "apellido": "CESCHI",
+    "cargo": "PLATAFORMA",
+    "telefono": "096127231",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "188",
+    "fullName": "ALEJANDRO FLEITAS",
+    "nombre": "ALEJANDRO",
+    "apellido": "FLEITAS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120451",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "189",
+    "fullName": "HECTOR PAZ",
+    "nombre": "HECTOR",
+    "apellido": "PAZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096342920",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "190",
+    "fullName": "NOELIA NUÑEZ",
+    "nombre": "NOELIA",
+    "apellido": "NUÑEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096127668",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "191",
+    "fullName": "MATHIAS RODRIGUEZ",
+    "nombre": "MATHIAS",
+    "apellido": "RODRIGUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096244504",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "192",
+    "fullName": "JUAN CODESAL",
+    "nombre": "JUAN",
+    "apellido": "CODESAL",
+    "cargo": "INSPECTOR",
+    "telefono": "096442965",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "194",
+    "fullName": "HUGO FERNANDEZ",
+    "nombre": "HUGO",
+    "apellido": "FERNANDEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097258086",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "195",
+    "fullName": "JOSE BELEDA",
+    "nombre": "JOSE",
+    "apellido": "BELEDA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097258088",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "196",
+    "fullName": "DAMIAN CANCELA",
+    "nombre": "DAMIAN",
+    "apellido": "CANCELA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096127116",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "197",
+    "fullName": "ANDREA NUÑEZ",
+    "nombre": "ANDREA",
+    "apellido": "NUÑEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096163366",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "198",
+    "fullName": "DIEGO SARMIENTO",
+    "nombre": "DIEGO",
+    "apellido": "SARMIENTO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096128218",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "199",
+    "fullName": "JAVIER MONTGOMERY",
+    "nombre": "JAVIER",
+    "apellido": "MONTGOMERY",
+    "cargo": "PLATAFORMA",
+    "telefono": "097323418",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "200",
+    "fullName": "LUIS ESCUDERO",
+    "nombre": "LUIS",
+    "apellido": "ESCUDERO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096402765",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "202",
+    "fullName": "SERGIO HERNANDEZ",
+    "nombre": "SERGIO",
+    "apellido": "HERNANDEZ",
+    "cargo": "INSPECTOR",
+    "telefono": "096113364",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "206",
+    "fullName": "ANALI UMPIERREZ",
+    "nombre": "ANALI",
+    "apellido": "UMPIERREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097092240",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "207",
+    "fullName": "MONICA RAMIREZ",
+    "nombre": "MONICA",
+    "apellido": "RAMIREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097125524",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "208",
+    "fullName": "DANIEL SABECH",
+    "nombre": "DANIEL",
+    "apellido": "SABECH",
+    "cargo": "PLATAFORMA/C de DISCIPLINA",
+    "telefono": "097470161",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "209",
+    "fullName": "LUIS FREIRE",
+    "nombre": "LUIS",
+    "apellido": "FREIRE",
+    "cargo": "TECNOLOGIA",
+    "telefono": "096124096",
+    "rol": "tecnologia",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "226",
+    "fullName": "LUIS GRASSO",
+    "nombre": "LUIS",
+    "apellido": "GRASSO",
+    "cargo": "DIRECTOR TESORERO",
+    "telefono": "096113444",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "231",
+    "fullName": "GUSTAVO SOÑORA",
+    "nombre": "GUSTAVO",
+    "apellido": "SOÑORA",
+    "cargo": "DIRECTOR SECRETARIO",
+    "telefono": "096414692",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "232",
+    "fullName": "SERGIO TRUJILLO",
+    "nombre": "SERGIO",
+    "apellido": "TRUJILLO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055163",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "234",
+    "fullName": "GUSTAVO CAYMARIS",
+    "nombre": "GUSTAVO",
+    "apellido": "CAYMARIS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096424661",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "235",
+    "fullName": "CARLOS CONZE",
+    "nombre": "CARLOS",
+    "apellido": "CONZE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120346",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "236",
+    "fullName": "MARIELA PEREIRA",
+    "nombre": "MARIELA",
+    "apellido": "PEREIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096131939",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "237",
+    "fullName": "HUGO MUGNANI",
+    "nombre": "HUGO",
+    "apellido": "MUGNANI",
+    "cargo": "MANIOBRISTA",
+    "telefono": "096120165",
+    "rol": "maniobrista",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "238",
+    "fullName": "SERGIO ROSADILLA",
+    "nombre": "SERGIO",
+    "apellido": "ROSADILLA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097080790",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "300",
+    "fullName": "FEDERICO LUCAS",
+    "nombre": "FEDERICO",
+    "apellido": "LUCAS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120495",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "301",
+    "fullName": "GERARDO REYMUNDE",
+    "nombre": "GERARDO",
+    "apellido": "REYMUNDE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096433926",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "302",
+    "fullName": "ALVARO FURTADO",
+    "nombre": "ALVARO",
+    "apellido": "FURTADO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135324",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "303",
+    "fullName": "HUGO MEDINA",
+    "nombre": "HUGO",
+    "apellido": "MEDINA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055147",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "305",
+    "fullName": "GASTON VARGAS",
+    "nombre": "GASTON",
+    "apellido": "VARGAS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096126164",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "306",
+    "fullName": "JULIO KLEIN",
+    "nombre": "JULIO",
+    "apellido": "KLEIN",
+    "cargo": "INSPECTOR",
+    "telefono": "096342921",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "307",
+    "fullName": "JAVIER VISCONDE",
+    "nombre": "JAVIER",
+    "apellido": "VISCONDE",
+    "cargo": "INSPECTOR",
+    "telefono": "096342907",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "317",
+    "fullName": "JOSE LUIS PIREZ",
+    "nombre": "JOSE",
+    "apellido": "LUIS PIREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096406619",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "319",
+    "fullName": "JORGE LA LUZ",
+    "nombre": "JORGE",
+    "apellido": "LA LUZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097337870",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "323",
+    "fullName": "JUAN VARELA",
+    "nombre": "JUAN",
+    "apellido": "VARELA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096125692",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "325",
+    "fullName": "MARTIN IGARZABAL",
+    "nombre": "MARTIN",
+    "apellido": "IGARZABAL",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055149",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "328",
+    "fullName": "OMAR CURBELO",
+    "nombre": "OMAR",
+    "apellido": "CURBELO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120468",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "329",
+    "fullName": "ANTONIO SCAFIEZZO",
+    "nombre": "ANTONIO",
+    "apellido": "SCAFIEZZO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096127719",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "401",
+    "fullName": "DANIEL AROCENA",
+    "nombre": "DANIEL",
+    "apellido": "AROCENA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096446673",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "403",
+    "fullName": "ALBA DIAZ",
+    "nombre": "ALBA",
+    "apellido": "DIAZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096127677",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "405",
+    "fullName": "JAVIER FERREYRA",
+    "nombre": "JAVIER",
+    "apellido": "FERREYRA",
+    "cargo": "MANIOBRISTA",
+    "telefono": "096161131",
+    "rol": "maniobrista",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "410",
+    "fullName": "HEBERT SILVA",
+    "nombre": "HEBERT",
+    "apellido": "SILVA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120782",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "412",
+    "fullName": "ALEJANDRO VAZQUEZ",
+    "nombre": "ALEJANDRO",
+    "apellido": "VAZQUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096253415",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "414",
+    "fullName": "JUAN TOLEDO",
+    "nombre": "JUAN",
+    "apellido": "TOLEDO",
+    "cargo": "MANIOBRISTA",
+    "telefono": "096403397",
+    "rol": "maniobrista",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "415",
+    "fullName": "PABLO MANGIAROTTI",
+    "nombre": "PABLO",
+    "apellido": "MANGIAROTTI",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124864",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "416",
+    "fullName": "LUIS ESTRELLA",
+    "nombre": "LUIS",
+    "apellido": "ESTRELLA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135328",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "421",
+    "fullName": "MARCELO BERRONDO",
+    "nombre": "MARCELO",
+    "apellido": "BERRONDO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055133",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "422",
+    "fullName": "DIEGO BENTANCOR",
+    "nombre": "DIEGO",
+    "apellido": "BENTANCOR",
+    "cargo": "PLATAFORMA",
+    "telefono": "096125207",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "500",
+    "fullName": "JAVIER GIACOSA",
+    "nombre": "JAVIER",
+    "apellido": "GIACOSA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "097992830",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "501",
+    "fullName": "RICARDO VILLALBA",
+    "nombre": "RICARDO",
+    "apellido": "VILLALBA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096342939",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "502",
+    "fullName": "MATIHAS ALMADA",
+    "nombre": "MATIHAS",
+    "apellido": "ALMADA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "097091380",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "503",
+    "fullName": "MARIO GOYETCHE",
+    "nombre": "MARIO",
+    "apellido": "GOYETCHE",
+    "cargo": "DPTO. TRANSITO ENCARGADO SUB-URBANO",
+    "telefono": "097015837",
+    "rol": "tráfico",
+    "role": "TRAFFIC"
+  },
+  {
+    "interno": "504",
+    "fullName": "CARLOS CARDOZO",
+    "nombre": "CARLOS",
+    "apellido": "CARDOZO",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096437503",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "505",
+    "fullName": "ANTHONY GIMENEZ",
+    "nombre": "ANTHONY",
+    "apellido": "GIMENEZ",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096124078",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "506",
+    "fullName": "JUAN CAMEJO",
+    "nombre": "JUAN",
+    "apellido": "CAMEJO",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "097055139",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "507",
+    "fullName": "RAFAEL PERDOMO",
+    "nombre": "RAFAEL",
+    "apellido": "PERDOMO",
+    "cargo": "INSP.  SUB-URBANO CONTRATO",
+    "telefono": "096168431",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "509",
+    "fullName": "FABIAN MAYO",
+    "nombre": "FABIAN",
+    "apellido": "MAYO",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096124080",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "510",
+    "fullName": "ESBERT MARTINEZ",
+    "nombre": "ESBERT",
+    "apellido": "MARTINEZ",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096124081",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "511",
+    "fullName": "PEDRO DELGADO",
+    "nombre": "PEDRO",
+    "apellido": "DELGADO",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096124082",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "512",
+    "fullName": "GUSTAVO MARTINEZ",
+    "nombre": "GUSTAVO",
+    "apellido": "MARTINEZ",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "097496084",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "513",
+    "fullName": "SILVIO DE LEON",
+    "nombre": "SILVIO",
+    "apellido": "DE LEON",
+    "cargo": "ENCARGADO DE TALLER SUB-URBANO",
+    "telefono": "096442946",
+    "rol": "mantenimiento",
+    "role": "MAINTENANCE"
+  },
+  {
+    "interno": "514",
+    "fullName": "CARLOS COLLA",
+    "nombre": "CARLOS",
+    "apellido": "COLLA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096124083",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "517",
+    "fullName": "DANIEL MARTINEZ",
+    "nombre": "DANIEL",
+    "apellido": "MARTINEZ",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096124084",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "518",
+    "fullName": "ALEXIS CLAVIJO",
+    "nombre": "ALEXIS",
+    "apellido": "CLAVIJO",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "097258087",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "519",
+    "fullName": "GUILDO REGUEIRA",
+    "nombre": "GUILDO",
+    "apellido": "REGUEIRA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096401641",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "520",
+    "fullName": "VICTOR CIANI",
+    "nombre": "VICTOR",
+    "apellido": "CIANI",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096412261",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "521",
+    "fullName": "ROLAND ARBELO",
+    "nombre": "ROLAND",
+    "apellido": "ARBELO",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096121590",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "522",
+    "fullName": "GUILLERMO  BENTANCOR",
+    "nombre": "GUILLERMO",
+    "apellido": " BENTANCOR",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096124085",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "523",
+    "fullName": "YAMANDU CLAVIJO",
+    "nombre": "YAMANDU",
+    "apellido": "CLAVIJO",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096124093",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "524",
+    "fullName": "GONZALO RIGALI",
+    "nombre": "GONZALO",
+    "apellido": "RIGALI",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096442967",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "525",
+    "fullName": "MARIO PEREYRA",
+    "nombre": "MARIO",
+    "apellido": "PEREYRA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096124088",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "527",
+    "fullName": "RAMIRO GUTIERREZ",
+    "nombre": "RAMIRO",
+    "apellido": "GUTIERREZ",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096122082",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "529",
+    "fullName": "JAVIER AMARAL",
+    "nombre": "JAVIER",
+    "apellido": "AMARAL",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096414072",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "531",
+    "fullName": "MAURICIO CARABALLO",
+    "nombre": "MAURICIO",
+    "apellido": "CARABALLO",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096113665",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "532",
+    "fullName": "DIEGO DENES",
+    "nombre": "DIEGO",
+    "apellido": "DENES",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096124095",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "533",
+    "fullName": "EDGARDO GONZALEZ",
+    "nombre": "EDGARDO",
+    "apellido": "GONZALEZ",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096124073",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "535",
+    "fullName": "RUBEN TEJERA",
+    "nombre": "RUBEN",
+    "apellido": "TEJERA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096342914",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "536",
+    "fullName": "FREDDY DUARTE",
+    "nombre": "FREDDY",
+    "apellido": "DUARTE",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "097197145",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "537",
+    "fullName": "FABRICIO RODRIGUEZ",
+    "nombre": "FABRICIO",
+    "apellido": "RODRIGUEZ",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096126123",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "538",
+    "fullName": "DIEGO MASAGUEZ",
+    "nombre": "DIEGO",
+    "apellido": "MASAGUEZ",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096126330",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "539",
+    "fullName": "MARIO FONTES",
+    "nombre": "MARIO",
+    "apellido": "FONTES",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096126725",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "540",
+    "fullName": "ALBERTO MARTINEZ",
+    "nombre": "ALBERTO",
+    "apellido": "MARTINEZ",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "097013871",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "542",
+    "fullName": "HENRY MARTINEZ",
+    "nombre": "HENRY",
+    "apellido": "MARTINEZ",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096126751",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "543",
+    "fullName": "FRANCISCO BICA",
+    "nombre": "FRANCISCO",
+    "apellido": "BICA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096129514",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "544",
+    "fullName": "HECTOR IRALDE",
+    "nombre": "HECTOR",
+    "apellido": "IRALDE",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096126784",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "545",
+    "fullName": "MAURICIO PEREYRA",
+    "nombre": "MAURICIO",
+    "apellido": "PEREYRA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096126858",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "547",
+    "fullName": "RICHARD QUESADA",
+    "nombre": "RICHARD",
+    "apellido": "QUESADA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096159003",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "548",
+    "fullName": "DIEGO PEREYRA",
+    "nombre": "DIEGO",
+    "apellido": "PEREYRA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096120494",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "549",
+    "fullName": "CLEBERT BARONE",
+    "nombre": "CLEBERT",
+    "apellido": "BARONE",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096120486",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "550",
+    "fullName": "DIEGO METEDIERA",
+    "nombre": "DIEGO",
+    "apellido": "METEDIERA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096126862",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "551",
+    "fullName": "CARLOS REYES",
+    "nombre": "CARLOS",
+    "apellido": "REYES",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "097250962",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "553",
+    "fullName": "JOSE ENRIQUE FURLAN",
+    "nombre": "JOSE",
+    "apellido": "ENRIQUE FURLAN",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096407718",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "556",
+    "fullName": "OSCAR FALERO",
+    "nombre": "OSCAR",
+    "apellido": "FALERO",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096120467",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "557",
+    "fullName": "MARCOS CAYEUX",
+    "nombre": "MARCOS",
+    "apellido": "CAYEUX",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096124072",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "559",
+    "fullName": "GONZALO FUENTES",
+    "nombre": "GONZALO",
+    "apellido": "FUENTES",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096126885",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "560",
+    "fullName": "ADRIAN PEÑA",
+    "nombre": "ADRIAN",
+    "apellido": "PEÑA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096126898",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "561",
+    "fullName": "ALBERTO OLIVERA",
+    "nombre": "ALBERTO",
+    "apellido": "OLIVERA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096125955",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "564",
+    "fullName": "LUIS BONILLA",
+    "nombre": "LUIS",
+    "apellido": "BONILLA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096124487",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "565",
+    "fullName": "RAUL FERNANDEZ",
+    "nombre": "RAUL",
+    "apellido": "FERNANDEZ",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "097332889",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "566",
+    "fullName": "SERGIO GUERRA",
+    "nombre": "SERGIO",
+    "apellido": "GUERRA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "097471966",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "568",
+    "fullName": "DAVID MAYO",
+    "nombre": "DAVID",
+    "apellido": "MAYO",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096435347",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "569",
+    "fullName": "FABIAN ZABALA",
+    "nombre": "FABIAN",
+    "apellido": "ZABALA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096431269",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "570",
+    "fullName": "JOSE LUIS RECOBA",
+    "nombre": "JOSE",
+    "apellido": "LUIS RECOBA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096407398",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "571",
+    "fullName": "FERNANDO REY",
+    "nombre": "FERNANDO",
+    "apellido": "REY",
+    "cargo": "INSP. SUB-URBANO CONTRATO",
+    "telefono": "096989163",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "574",
+    "fullName": "PATRICIA DAVEZAC",
+    "nombre": "PATRICIA",
+    "apellido": "DAVEZAC",
+    "cargo": "ADMINISTRATIVA OF. CENTRAL",
+    "telefono": "096127029",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "575",
+    "fullName": "ALEXANDRO GONZALEZ",
+    "nombre": "ALEXANDRO",
+    "apellido": "GONZALEZ",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "097980904",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "576",
+    "fullName": "MARIO NOVA",
+    "nombre": "MARIO",
+    "apellido": "NOVA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "097496905",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "578",
+    "fullName": "MATHIAS DUARTE",
+    "nombre": "MATHIAS",
+    "apellido": "DUARTE",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "097503047",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "579",
+    "fullName": "ANGEL MINETTI",
+    "nombre": "ANGEL",
+    "apellido": "MINETTI",
+    "cargo": "INSPECTOR SUB-URBANO",
+    "telefono": "096442942",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "580",
+    "fullName": "MARTIN VIGO",
+    "nombre": "MARTIN",
+    "apellido": "VIGO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124328",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "581",
+    "fullName": "CRISTIAN MORALES",
+    "nombre": "CRISTIAN",
+    "apellido": "MORALES",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096342936",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "582",
+    "fullName": "EBER ALMEIDA",
+    "nombre": "EBER",
+    "apellido": "ALMEIDA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096442945",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "583",
+    "fullName": "OSCAR CABRERA",
+    "nombre": "OSCAR",
+    "apellido": "CABRERA",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096989143",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "585",
+    "fullName": "ANTONIA AQUINO",
+    "nombre": "ANTONIA",
+    "apellido": "AQUINO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097337367",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "586",
+    "fullName": "MAXIMILIANO NEGRI",
+    "nombre": "MAXIMILIANO",
+    "apellido": "NEGRI",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096147575",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "587",
+    "fullName": "GUILLERMO GONZALEZ",
+    "nombre": "GUILLERMO",
+    "apellido": "GONZALEZ",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096135323",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "588",
+    "fullName": "JOSE LUIS FERNANDEZ",
+    "nombre": "JOSE",
+    "apellido": "LUIS FERNANDEZ",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "097328425",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "590",
+    "fullName": "DARIO PASTORINO",
+    "nombre": "DARIO",
+    "apellido": "PASTORINO",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096127268",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "591",
+    "fullName": "DIMAR RODRIGUEZ",
+    "nombre": "DIMAR",
+    "apellido": "RODRIGUEZ",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "097325071",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "592",
+    "fullName": "JORGE ANTONACCI",
+    "nombre": "JORGE",
+    "apellido": "ANTONACCI",
+    "cargo": "PLATAFORMA SUB-URBANO",
+    "telefono": "096442966",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "600",
+    "fullName": "JORGE FERREIRA",
+    "nombre": "JORGE",
+    "apellido": "FERREIRA",
+    "cargo": "ADMINISTRATIVO TECNOLOGIA",
+    "telefono": "096342904",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "601",
+    "fullName": "IGNACIO HERNANDEZ",
+    "nombre": "IGNACIO",
+    "apellido": "HERNANDEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097300521",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "602",
+    "fullName": "GIORGIO MARTORANO",
+    "nombre": "GIORGIO",
+    "apellido": "MARTORANO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096143402",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "603",
+    "fullName": "DIEGO MOREIRA",
+    "nombre": "DIEGO",
+    "apellido": "MOREIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096264049",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "604",
+    "fullName": "PABLO SUCHE",
+    "nombre": "PABLO",
+    "apellido": "SUCHE",
+    "cargo": "PLATAFORMA",
+    "telefono": "097496061",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "605",
+    "fullName": "LUCIA PASCALE",
+    "nombre": "LUCIA",
+    "apellido": "PASCALE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096276250",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "606",
+    "fullName": "DIEGO DE LEON",
+    "nombre": "DIEGO",
+    "apellido": "DE LEON",
+    "cargo": "TALLER SECC. CARROCERIA",
+    "telefono": "096442954",
+    "rol": "mantenimiento",
+    "role": "MAINTENANCE"
+  },
+  {
+    "interno": "607",
+    "fullName": "RICHARD FERNANDEZ",
+    "nombre": "RICHARD",
+    "apellido": "FERNANDEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097081982",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "608",
+    "fullName": "JOSE RISSO",
+    "nombre": "JOSE",
+    "apellido": "RISSO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135330",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "609",
+    "fullName": "EDUARDO NUÑEZ",
+    "nombre": "EDUARDO",
+    "apellido": "NUÑEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097954290",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "610",
+    "fullName": "MONICA DEROSSI",
+    "nombre": "MONICA",
+    "apellido": "DEROSSI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055153",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "611",
+    "fullName": "RUBEN FRANCO",
+    "nombre": "RUBEN",
+    "apellido": "FRANCO",
+    "cargo": "PLATAFORMA / FISCAL",
+    "telefono": "096113394",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "612",
+    "fullName": "JUAN CARLOS RAMOS",
+    "nombre": "JUAN",
+    "apellido": "CARLOS RAMOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096146070",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "613",
+    "fullName": "ANDREA ACOSTA",
+    "nombre": "ANDREA",
+    "apellido": "ACOSTA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097338052",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "614",
+    "fullName": "GABRIEL TRONCOSO",
+    "nombre": "GABRIEL",
+    "apellido": "TRONCOSO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120301",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "615",
+    "fullName": "RICHARD RODRIGUEZ",
+    "nombre": "RICHARD",
+    "apellido": "RODRIGUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120339",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "616",
+    "fullName": "JOSE BERNARDO",
+    "nombre": "JOSE",
+    "apellido": "BERNARDO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096161084",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "617",
+    "fullName": "RICARDO SANCHEZ",
+    "nombre": "RICARDO",
+    "apellido": "SANCHEZ",
+    "cargo": "TALLER",
+    "telefono": "097326964",
+    "rol": "mantenimiento",
+    "role": "MAINTENANCE"
+  },
+  {
+    "interno": "619",
+    "fullName": "GABRIEL DOCHEFF",
+    "nombre": "GABRIEL",
+    "apellido": "DOCHEFF",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055152",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "621",
+    "fullName": "JUAN  ANDRE NUÑEZ",
+    "nombre": "JUAN",
+    "apellido": " ANDRE NUÑEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096414204",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "622",
+    "fullName": "LETICIA SURRACO",
+    "nombre": "LETICIA",
+    "apellido": "SURRACO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120478",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "623",
+    "fullName": "WENDELT RAMOS",
+    "nombre": "WENDELT",
+    "apellido": "RAMOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "097258083",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "625",
+    "fullName": "PABLO OLIVERA",
+    "nombre": "PABLO",
+    "apellido": "OLIVERA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055158",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "626",
+    "fullName": "CARLOS CANCELA",
+    "nombre": "CARLOS",
+    "apellido": "CANCELA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096413342",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "627",
+    "fullName": "CARLOS MARTINEZ",
+    "nombre": "CARLOS",
+    "apellido": "MARTINEZ",
+    "cargo": "INSPECTOR",
+    "telefono": "096342913",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "628",
+    "fullName": "ANGEL QUESADA",
+    "nombre": "ANGEL",
+    "apellido": "QUESADA",
+    "cargo": "MANIOBRISTA",
+    "telefono": "096121571",
+    "rol": "maniobrista",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "629",
+    "fullName": "YOEL PEREYRA",
+    "nombre": "YOEL",
+    "apellido": "PEREYRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124750",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "630",
+    "fullName": "ALEJANDRO PIÑEYRO",
+    "nombre": "ALEJANDRO",
+    "apellido": "PIÑEYRO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135329",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "631",
+    "fullName": "ALVARO ALBERTO PIÑOL BORGHI",
+    "nombre": "ALVARO",
+    "apellido": "ALBERTO PIÑOL BORGHI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097128673",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "632",
+    "fullName": "ALBERTO KEYMETLIAN",
+    "nombre": "ALBERTO",
+    "apellido": "KEYMETLIAN",
+    "cargo": "PLATAFORMA",
+    "telefono": "096152209",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "633",
+    "fullName": "JOSE RAMELA",
+    "nombre": "JOSE",
+    "apellido": "RAMELA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096342926",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "634",
+    "fullName": "LUCIANO FIGUEROA",
+    "nombre": "LUCIANO",
+    "apellido": "FIGUEROA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097084827",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "635",
+    "fullName": "ALEJANDRO MARCOFF",
+    "nombre": "ALEJANDRO",
+    "apellido": "MARCOFF",
+    "cargo": "PLATAFORMA",
+    "telefono": "097503044",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "636",
+    "fullName": "GERARDO BERROSTEGUIETA",
+    "nombre": "GERARDO",
+    "apellido": "BERROSTEGUIETA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096157575",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "637",
+    "fullName": "FABIAN OLIVERA",
+    "nombre": "FABIAN",
+    "apellido": "OLIVERA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055134",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "638",
+    "fullName": "FEDERICO MEDINA",
+    "nombre": "FEDERICO",
+    "apellido": "MEDINA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097137417",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "639",
+    "fullName": "CARLOS VESPA",
+    "nombre": "CARLOS",
+    "apellido": "VESPA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120147",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "640",
+    "fullName": "JAVIER PERDIGON",
+    "nombre": "JAVIER",
+    "apellido": "PERDIGON",
+    "cargo": "PLATAFORMA",
+    "telefono": "097324801",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "641",
+    "fullName": "ALVIS TARELA",
+    "nombre": "ALVIS",
+    "apellido": "TARELA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096160204",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "642",
+    "fullName": "ERNESTO POSE",
+    "nombre": "ERNESTO",
+    "apellido": "POSE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120471",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "643",
+    "fullName": "WILLIAM DIAZ",
+    "nombre": "WILLIAM",
+    "apellido": "DIAZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097438003",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "644",
+    "fullName": "RUDY LAGOS",
+    "nombre": "RUDY",
+    "apellido": "LAGOS",
+    "cargo": "INSPECTOR",
+    "telefono": "096342927",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "645",
+    "fullName": "ESTEBAN ALVAREZ",
+    "nombre": "ESTEBAN",
+    "apellido": "ALVAREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096196309",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "646",
+    "fullName": "DIEGO BAEZ",
+    "nombre": "DIEGO",
+    "apellido": "BAEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096442959",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "647",
+    "fullName": "MARTIN GUTIERREZ",
+    "nombre": "MARTIN",
+    "apellido": "GUTIERREZ",
+    "cargo": "ENCARGADO DE TALLER  URBANO",
+    "telefono": "097997855",
+    "rol": "mantenimiento",
+    "role": "MAINTENANCE"
+  },
+  {
+    "interno": "648",
+    "fullName": "MILTON SASSONE",
+    "nombre": "MILTON",
+    "apellido": "SASSONE",
+    "cargo": "TECNOLOGÍA",
+    "telefono": "096988041",
+    "rol": "tecnologia",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "649",
+    "fullName": "MARCELO GIOVANELLI",
+    "nombre": "MARCELO",
+    "apellido": "GIOVANELLI",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124858",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "650",
+    "fullName": "WALTER MACHADO",
+    "nombre": "WALTER",
+    "apellido": "MACHADO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096436724",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "651",
+    "fullName": "RAMON IGUINI",
+    "nombre": "RAMON",
+    "apellido": "IGUINI",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120461",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "652",
+    "fullName": "MARCELO DELGADO",
+    "nombre": "MARCELO",
+    "apellido": "DELGADO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055160",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "653",
+    "fullName": "MARIO ALONSO",
+    "nombre": "MARIO",
+    "apellido": "ALONSO",
+    "cargo": "TALLER SECC. ELECTRICIDAD",
+    "telefono": "096120353",
+    "rol": "mantenimiento",
+    "role": "MAINTENANCE"
+  },
+  {
+    "interno": "654",
+    "fullName": "OSCAR BATISTA",
+    "nombre": "OSCAR",
+    "apellido": "BATISTA",
+    "cargo": "ADMINISTARTIVO OF.CENTRAL",
+    "telefono": "096145910",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "655",
+    "fullName": "GARY MARTINEZ",
+    "nombre": "GARY",
+    "apellido": "MARTINEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096342933",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "656",
+    "fullName": "ARIEL CARDOZO",
+    "nombre": "ARIEL",
+    "apellido": "CARDOZO",
+    "cargo": "CONDUCTOR MOVIL DE TRANSITO",
+    "telefono": "096120182",
+    "rol": "tráfico",
+    "role": "TRAFFIC"
+  },
+  {
+    "interno": "657",
+    "fullName": "PABLO CIOSEK",
+    "nombre": "PABLO",
+    "apellido": "CIOSEK",
+    "cargo": "PLATAFORMA",
+    "telefono": "096123686",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "658",
+    "fullName": "JOSE MANUEL CALDERON",
+    "nombre": "JOSE",
+    "apellido": "MANUEL CALDERON",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135340",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "659",
+    "fullName": "GIOVANNI PRIORE",
+    "nombre": "GIOVANNI",
+    "apellido": "PRIORE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120190",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "660",
+    "fullName": "MILTON UHALDE DE SANTIS",
+    "nombre": "MILTON",
+    "apellido": "UHALDE DE SANTIS",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055166",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "661",
+    "fullName": "FERNANDO CHITTARA",
+    "nombre": "FERNANDO",
+    "apellido": "CHITTARA",
+    "cargo": "DPTO. TRANSITO ENCARGADO URBANO",
+    "telefono": "096196305",
+    "rol": "tráfico",
+    "role": "TRAFFIC"
+  },
+  {
+    "interno": "664",
+    "fullName": "LUIS MIERES",
+    "nombre": "LUIS",
+    "apellido": "MIERES",
+    "cargo": "PLATAFORMA /  C. SEGURIDAD",
+    "telefono": "097015792",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "665",
+    "fullName": "JORGE RAVIOLO",
+    "nombre": "JORGE",
+    "apellido": "RAVIOLO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097056784",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "666",
+    "fullName": "JORGE DE LEON",
+    "nombre": "JORGE",
+    "apellido": "DE LEON",
+    "cargo": "ENCARGADO DE ALMACENES URBANO /SUTU",
+    "telefono": "096404178",
+    "rol": "almacen",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "667",
+    "fullName": "MARCELO REGUEIRA",
+    "nombre": "MARCELO",
+    "apellido": "REGUEIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097338169",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "668",
+    "fullName": "PATRICIA PERA",
+    "nombre": "PATRICIA",
+    "apellido": "PERA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120304",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "669",
+    "fullName": "CARLOS MOSQUEIRA",
+    "nombre": "CARLOS",
+    "apellido": "MOSQUEIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120186",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "670",
+    "fullName": "LUCIANO PASCALE",
+    "nombre": "LUCIANO",
+    "apellido": "PASCALE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096390723",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "671",
+    "fullName": "JAVIER GUTIERREZ",
+    "nombre": "JAVIER",
+    "apellido": "GUTIERREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055736",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "672",
+    "fullName": "GABRIEL OTERO",
+    "nombre": "GABRIEL",
+    "apellido": "OTERO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097012898",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "673",
+    "fullName": "JOSE ANGERIZ",
+    "nombre": "JOSE",
+    "apellido": "ANGERIZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096123668",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "674",
+    "fullName": "LUIS SCANDROGLIO",
+    "nombre": "LUIS",
+    "apellido": "SCANDROGLIO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097450796",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "675",
+    "fullName": "SEBASTIAN  GONZALEZ",
+    "nombre": "SEBASTIAN",
+    "apellido": " GONZALEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120473",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "676",
+    "fullName": "JORGE VARELA",
+    "nombre": "JORGE",
+    "apellido": "VARELA",
+    "cargo": "ADMINISTRATIVO URBANO / SUTU",
+    "telefono": "096442958",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "677",
+    "fullName": "SERGIO ROCCA",
+    "nombre": "SERGIO",
+    "apellido": "ROCCA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096196304",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "678",
+    "fullName": "DANIELO CABRERA",
+    "nombre": "DANIELO",
+    "apellido": "CABRERA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096121724",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "679",
+    "fullName": "ALVARO VIERA",
+    "nombre": "ALVARO",
+    "apellido": "VIERA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097995160",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "680",
+    "fullName": "ALEJANDRO ALVAREZ",
+    "nombre": "ALEJANDRO",
+    "apellido": "ALVAREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097210897",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "681",
+    "fullName": "RAFAEL MARTINEZ",
+    "nombre": "RAFAEL",
+    "apellido": "MARTINEZ",
+    "cargo": "TANQUERO",
+    "telefono": "097084704",
+    "rol": "maniobrista",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "682",
+    "fullName": "CAROLINA CUADRA",
+    "nombre": "CAROLINA",
+    "apellido": "CUADRA",
+    "cargo": "INSPECTORA",
+    "telefono": "096130286",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "683",
+    "fullName": "EDUARDO ALVAREZ",
+    "nombre": "EDUARDO",
+    "apellido": "ALVAREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135337",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "684",
+    "fullName": "VICTOR LEMOS",
+    "nombre": "VICTOR",
+    "apellido": "LEMOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120667",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "685",
+    "fullName": "EDUARDO LANDONI",
+    "nombre": "EDUARDO",
+    "apellido": "LANDONI",
+    "cargo": "PLATAFORMA",
+    "telefono": "096242793",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "686",
+    "fullName": "ROBERTO LOPEZ",
+    "nombre": "ROBERTO",
+    "apellido": "LOPEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096121228",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "688",
+    "fullName": "FERNANDO FAJARDO",
+    "nombre": "FERNANDO",
+    "apellido": "FAJARDO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096438628",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "689",
+    "fullName": "ERNESTO CALCAGNO",
+    "nombre": "ERNESTO",
+    "apellido": "CALCAGNO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096125907",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "690",
+    "fullName": "ANGEL FUSCO",
+    "nombre": "ANGEL",
+    "apellido": "FUSCO",
+    "cargo": "JEFE DEL DPTO. DE TRANSITO",
+    "telefono": "096342932",
+    "rol": "tráfico",
+    "role": "TRAFFIC"
+  },
+  {
+    "interno": "692",
+    "fullName": "FLAVIO LOPEZ",
+    "nombre": "FLAVIO",
+    "apellido": "LOPEZ",
+    "cargo": "JEFE DE ADMINISTRACION",
+    "telefono": "096442969",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "693",
+    "fullName": "DANIEL ALFONSO",
+    "nombre": "DANIEL",
+    "apellido": "ALFONSO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097050945",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "694",
+    "fullName": "NICOLAS BRUGNOLI",
+    "nombre": "NICOLAS",
+    "apellido": "BRUGNOLI",
+    "cargo": "PLATAFORMA",
+    "telefono": "096232950",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "695",
+    "fullName": "MARCELO BENTANCOR",
+    "nombre": "MARCELO",
+    "apellido": "BENTANCOR",
+    "cargo": "PLATAFORMA",
+    "telefono": "096150007",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "696",
+    "fullName": "EDUARDO LEIRA",
+    "nombre": "EDUARDO",
+    "apellido": "LEIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096123987",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "697",
+    "fullName": "SERGIO VELAZQUEZ",
+    "nombre": "SERGIO",
+    "apellido": "VELAZQUEZ",
+    "cargo": "INSPECTOR",
+    "telefono": "096127775",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "699",
+    "fullName": "ANDREA PINASCO",
+    "nombre": "ANDREA",
+    "apellido": "PINASCO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120341",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "700",
+    "fullName": "JUAN PABLO VIDAL",
+    "nombre": "JUAN",
+    "apellido": "PABLO VIDAL",
+    "cargo": "PLATAFORMA",
+    "telefono": "096125038",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "701",
+    "fullName": "ADRIAN GUGLIUCCI",
+    "nombre": "ADRIAN",
+    "apellido": "GUGLIUCCI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055144",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "703",
+    "fullName": "JUAN MARTINEZ",
+    "nombre": "JUAN",
+    "apellido": "MARTINEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096146498",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "704",
+    "fullName": "GONZALO DA ROSA",
+    "nombre": "GONZALO",
+    "apellido": "DA ROSA",
+    "cargo": "ADMINISTRATIVO",
+    "telefono": "096123845",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "707",
+    "fullName": "RICARDO BARRETO",
+    "nombre": "RICARDO",
+    "apellido": "BARRETO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096149783",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "708",
+    "fullName": "PABLO GOMEZ",
+    "nombre": "PABLO",
+    "apellido": "GOMEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120166",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "709",
+    "fullName": "JUAN OLAZABAL",
+    "nombre": "JUAN",
+    "apellido": "OLAZABAL",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124065",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "710",
+    "fullName": "JUAN PABLO ARRILLAGA",
+    "nombre": "JUAN",
+    "apellido": "PABLO ARRILLAGA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120481",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "711",
+    "fullName": "EDGARDO GUIGOU",
+    "nombre": "EDGARDO",
+    "apellido": "GUIGOU",
+    "cargo": "INSPECTOR",
+    "telefono": "097474961",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "712",
+    "fullName": "HECTOR PIEDRABUENA",
+    "nombre": "HECTOR",
+    "apellido": "PIEDRABUENA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096150268",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "713",
+    "fullName": "ORLANDO SANTOS",
+    "nombre": "ORLANDO",
+    "apellido": "SANTOS",
+    "cargo": "INSPECTOR",
+    "telefono": "097258109",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "714",
+    "fullName": "MIGUEL INZAURRALDE",
+    "nombre": "MIGUEL",
+    "apellido": "INZAURRALDE",
+    "cargo": "INSPECTOR",
+    "telefono": "096342924",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "716",
+    "fullName": "CRISTIAN SOTO",
+    "nombre": "CRISTIAN",
+    "apellido": "SOTO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097344701",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "718",
+    "fullName": "OSCAR GALLO",
+    "nombre": "OSCAR",
+    "apellido": "GALLO",
+    "cargo": "PORTERIA / GDIA.",
+    "telefono": "097092707",
+    "rol": "seguridad",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "719",
+    "fullName": "ADRIAN GROMPONE",
+    "nombre": "ADRIAN",
+    "apellido": "GROMPONE",
+    "cargo": "INSPECTOR",
+    "telefono": "097055169",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "721",
+    "fullName": "DANIEL VENEZIANI",
+    "nombre": "DANIEL",
+    "apellido": "VENEZIANI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097490243",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "722",
+    "fullName": "JOSE GULARTE",
+    "nombre": "JOSE",
+    "apellido": "GULARTE",
+    "cargo": "RECAUDACION / SUTU/ C. CLUB UCOT",
+    "telefono": "096120417",
+    "rol": "recaudacion",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "724",
+    "fullName": "MARCELO NUÑEZ",
+    "nombre": "MARCELO",
+    "apellido": "NUÑEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096127274",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "725",
+    "fullName": "JORGE SCHIAFFINO",
+    "nombre": "JORGE",
+    "apellido": "SCHIAFFINO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096128102",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "726",
+    "fullName": "CARLOS ANDRADE",
+    "nombre": "CARLOS",
+    "apellido": "ANDRADE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096121509",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "728",
+    "fullName": "EDWIN KOSYDAR",
+    "nombre": "EDWIN",
+    "apellido": "KOSYDAR",
+    "cargo": "PLATAFORMA",
+    "telefono": "096162521",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "729",
+    "fullName": "CARLOS GUGLIUCCI",
+    "nombre": "CARLOS",
+    "apellido": "GUGLIUCCI",
+    "cargo": "PLATAFROMA",
+    "telefono": "096120699",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "730",
+    "fullName": "LEONARDO SOLIMANO",
+    "nombre": "LEONARDO",
+    "apellido": "SOLIMANO",
+    "cargo": "PLATAFROMA",
+    "telefono": "097055159",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "732",
+    "fullName": "RAFAEL PERAZA",
+    "nombre": "RAFAEL",
+    "apellido": "PERAZA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097080358",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "733",
+    "fullName": "SEBASTIAN SAN ROMAN",
+    "nombre": "SEBASTIAN",
+    "apellido": "SAN ROMAN",
+    "cargo": "PLATAFORMA",
+    "telefono": "096441364",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "734",
+    "fullName": "MATILDE DANZI",
+    "nombre": "MATILDE",
+    "apellido": "DANZI",
+    "cargo": "INSPECTORA",
+    "telefono": "096123977",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "735",
+    "fullName": "LUIS FERNANDEZ",
+    "nombre": "LUIS",
+    "apellido": "FERNANDEZ",
+    "cargo": "INSPECTOR",
+    "telefono": "096140101",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "736",
+    "fullName": "JOSE MIGLIONICO",
+    "nombre": "JOSE",
+    "apellido": "MIGLIONICO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120302",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "737",
+    "fullName": "CARLOS NUÑEZ",
+    "nombre": "CARLOS",
+    "apellido": "NUÑEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096229444",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "739",
+    "fullName": "ULICES VALLES",
+    "nombre": "ULICES",
+    "apellido": "VALLES",
+    "cargo": "PLATAFORMA",
+    "telefono": "096121840",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "740",
+    "fullName": "JAIMEN SUAREZ",
+    "nombre": "JAIMEN",
+    "apellido": "SUAREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096125228",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "741",
+    "fullName": "CARLOS CASINI",
+    "nombre": "CARLOS",
+    "apellido": "CASINI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097338215",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "742",
+    "fullName": "LORENZO BRUNO",
+    "nombre": "LORENZO",
+    "apellido": "BRUNO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120303",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "743",
+    "fullName": "ALVARO VARGAS",
+    "nombre": "ALVARO",
+    "apellido": "VARGAS",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055145",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "744",
+    "fullName": "CARLOS LLADO",
+    "nombre": "CARLOS",
+    "apellido": "LLADO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135336",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "745",
+    "fullName": "WASHINGTON CARDOZO",
+    "nombre": "WASHINGTON",
+    "apellido": "CARDOZO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055135",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "747",
+    "fullName": "MARCELO HERNANDEZ",
+    "nombre": "MARCELO",
+    "apellido": "HERNANDEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096245869",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "748",
+    "fullName": "JORGE OLIVERA",
+    "nombre": "JORGE",
+    "apellido": "OLIVERA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096142616",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "749",
+    "fullName": "NICOLAS LOPEZ",
+    "nombre": "NICOLAS",
+    "apellido": "LOPEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096122426",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "750",
+    "fullName": "CESAR BENITEZ",
+    "nombre": "CESAR",
+    "apellido": "BENITEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096130821",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "751",
+    "fullName": "DIEGO JORGE",
+    "nombre": "DIEGO",
+    "apellido": "JORGE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096406757",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "752",
+    "fullName": "RODRIGO TEXEIRA",
+    "nombre": "RODRIGO",
+    "apellido": "TEXEIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055143",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "754",
+    "fullName": "MARTIN VIDAL",
+    "nombre": "MARTIN",
+    "apellido": "VIDAL",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124833",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "756",
+    "fullName": "MARCEL GENTIEU",
+    "nombre": "MARCEL",
+    "apellido": "GENTIEU",
+    "cargo": "ADMINISTRATIVO CAJERO CENTRAL",
+    "telefono": "097985978",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "758",
+    "fullName": "SEBASTIAN DORREGO",
+    "nombre": "SEBASTIAN",
+    "apellido": "DORREGO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096417151",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "759",
+    "fullName": "RUY RAMOS",
+    "nombre": "RUY",
+    "apellido": "RAMOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096157702",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "760",
+    "fullName": "JUAN  ENRIQUE NUÑEZ",
+    "nombre": "JUAN",
+    "apellido": " ENRIQUE NUÑEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124060",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "761",
+    "fullName": "JORGE PEREZ",
+    "nombre": "JORGE",
+    "apellido": "PEREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055127",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "762",
+    "fullName": "HECTOR PALLAS",
+    "nombre": "HECTOR",
+    "apellido": "PALLAS",
+    "cargo": "PLATAFORMA",
+    "telefono": "097327793",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "763",
+    "fullName": "JUAN JOSE LORENZO",
+    "nombre": "JUAN",
+    "apellido": "JOSE LORENZO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096293193",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "764",
+    "fullName": "WILSON SANTO",
+    "nombre": "WILSON",
+    "apellido": "SANTO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097138919",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "765",
+    "fullName": "JUAN MANUEL VARELA",
+    "nombre": "JUAN",
+    "apellido": "MANUEL VARELA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097458453",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "768",
+    "fullName": "CECILIA FRODELLA",
+    "nombre": "CECILIA",
+    "apellido": "FRODELLA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096401184",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "769",
+    "fullName": "VICTOR MUELA",
+    "nombre": "VICTOR",
+    "apellido": "MUELA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096196303",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "770",
+    "fullName": "FREDDY CASTAÑO",
+    "nombre": "FREDDY",
+    "apellido": "CASTAÑO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120492",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "771",
+    "fullName": "HERNAN STEFANI",
+    "nombre": "HERNAN",
+    "apellido": "STEFANI",
+    "cargo": "PLATAFORMA",
+    "telefono": "096127330",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "772",
+    "fullName": "JUAN ALTEZ",
+    "nombre": "JUAN",
+    "apellido": "ALTEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124077",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "773",
+    "fullName": "GONZALO FABRA",
+    "nombre": "GONZALO",
+    "apellido": "FABRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120225",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "774",
+    "fullName": "JOSE SANTA CRUZ",
+    "nombre": "JOSE",
+    "apellido": "SANTA CRUZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135327",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "775",
+    "fullName": "JOSE SANTA CRUZ",
+    "nombre": "JOSE",
+    "apellido": "SANTA CRUZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097054393",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "776",
+    "fullName": "JOSE SANTA CRUZ",
+    "nombre": "JOSE",
+    "apellido": "SANTA CRUZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120146",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "778",
+    "fullName": "JOSE SANTA CRUZ",
+    "nombre": "JOSE",
+    "apellido": "SANTA CRUZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097081914",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "779",
+    "fullName": "JORGE MARTINEZ",
+    "nombre": "JORGE",
+    "apellido": "MARTINEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096410122",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "780",
+    "fullName": "CARLOS QUINTANA",
+    "nombre": "CARLOS",
+    "apellido": "QUINTANA",
+    "cargo": "ADMINISTRATIVO OF. DE PERSONAL",
+    "telefono": "096196302",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "781",
+    "fullName": "MAURICIO CASTAÑO",
+    "nombre": "MAURICIO",
+    "apellido": "CASTAÑO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097138678",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "782",
+    "fullName": "LEONARDO LARROSA",
+    "nombre": "LEONARDO",
+    "apellido": "LARROSA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096402182",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "783",
+    "fullName": "GUSTAVO GONZALEZ",
+    "nombre": "GUSTAVO",
+    "apellido": "GONZALEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096130822",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "784",
+    "fullName": "MIGUEL ARRILLAGA",
+    "nombre": "MIGUEL",
+    "apellido": "ARRILLAGA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135338",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "785",
+    "fullName": "JORGE CACERES",
+    "nombre": "JORGE",
+    "apellido": "CACERES",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055170",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "786",
+    "fullName": "SEBASTIAN GONZALEZ",
+    "nombre": "SEBASTIAN",
+    "apellido": "GONZALEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097228212",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "787",
+    "fullName": "LUIS ORQUEBI",
+    "nombre": "LUIS",
+    "apellido": "ORQUEBI",
+    "cargo": "MANIOBRISTA",
+    "telefono": "097418106",
+    "rol": "maniobrista",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "788",
+    "fullName": "DANIEL MOSQUEIRA",
+    "nombre": "DANIEL",
+    "apellido": "MOSQUEIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097338082",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "789",
+    "fullName": "ALBERTO LLADO",
+    "nombre": "ALBERTO",
+    "apellido": "LLADO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097102512",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "791",
+    "fullName": "ZOA FLEITAS",
+    "nombre": "ZOA",
+    "apellido": "FLEITAS",
+    "cargo": "INSPECTORA",
+    "telefono": "097417586",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "792",
+    "fullName": "ANDRES RODRIGUEZ BARCA",
+    "nombre": "ANDRES",
+    "apellido": "RODRIGUEZ BARCA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097503046",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "794",
+    "fullName": "DANI CAPRETTI",
+    "nombre": "DANI",
+    "apellido": "CAPRETTI",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120180",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "795",
+    "fullName": "ALEJANDRO SOSA",
+    "nombre": "ALEJANDRO",
+    "apellido": "SOSA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055161",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "796",
+    "fullName": "DANIEL RODRIGUEZ",
+    "nombre": "DANIEL",
+    "apellido": "RODRIGUEZ",
+    "cargo": "ENCARGADO DPTO. DE ACCIDENTES",
+    "telefono": "096342902",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "799",
+    "fullName": "FEDERICO ALFONSO",
+    "nombre": "FEDERICO",
+    "apellido": "ALFONSO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096125049",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "800",
+    "fullName": "DIEGO ECHETO",
+    "nombre": "DIEGO",
+    "apellido": "ECHETO",
+    "cargo": "PLATAFORMA/RECAUDADOR",
+    "telefono": "097405715",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "802",
+    "fullName": "RICHARD MONTEIRO",
+    "nombre": "RICHARD",
+    "apellido": "MONTEIRO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097329990",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "803",
+    "fullName": "DAMIAN  PASCALE",
+    "nombre": "DAMIAN",
+    "apellido": " PASCALE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120669",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "804",
+    "fullName": "JORGE GEPNER",
+    "nombre": "JORGE",
+    "apellido": "GEPNER",
+    "cargo": "INSPECTOR",
+    "telefono": "097072124",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "805",
+    "fullName": "PATRICIA OLIVERA",
+    "nombre": "PATRICIA",
+    "apellido": "OLIVERA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120414",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "806",
+    "fullName": "FREDDY GARCIA",
+    "nombre": "FREDDY",
+    "apellido": "GARCIA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096460540",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "808",
+    "fullName": "OSCAR ROSA",
+    "nombre": "OSCAR",
+    "apellido": "ROSA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135331",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "809",
+    "fullName": "GABRIEL DA COSTA",
+    "nombre": "GABRIEL",
+    "apellido": "DA COSTA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096249297",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "810",
+    "fullName": "GUSTAVO ARISMENDI",
+    "nombre": "GUSTAVO",
+    "apellido": "ARISMENDI",
+    "cargo": "DPTO. TRANSITO ENCARGADO URBANO",
+    "telefono": "096196307",
+    "rol": "tráfico",
+    "role": "TRAFFIC"
+  },
+  {
+    "interno": "811",
+    "fullName": "GUSTAVO FALCHI",
+    "nombre": "GUSTAVO",
+    "apellido": "FALCHI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055162",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "812",
+    "fullName": "MATIAS MOLINARI",
+    "nombre": "MATIAS",
+    "apellido": "MOLINARI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097192868",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "813",
+    "fullName": "MARIO HERNANDEZ",
+    "nombre": "MARIO",
+    "apellido": "HERNANDEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096404092",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "814",
+    "fullName": "CAROLINA DOS SANTOS",
+    "nombre": "CAROLINA",
+    "apellido": "DOS SANTOS",
+    "cargo": "ASISTENTE DE TRANSITO",
+    "telefono": "097055146",
+    "rol": "tráfico",
+    "role": "TRAFFIC"
+  },
+  {
+    "interno": "815",
+    "fullName": "PABLO MEDINA",
+    "nombre": "PABLO",
+    "apellido": "MEDINA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096133624",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "816",
+    "fullName": "CARMEN MACHADO",
+    "nombre": "CARMEN",
+    "apellido": "MACHADO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096157576",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "818",
+    "fullName": "PABLO LEON",
+    "nombre": "PABLO",
+    "apellido": "LEON",
+    "cargo": "DIRECTOR VOCAL",
+    "telefono": "096342918",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "819",
+    "fullName": "CLAUDIO DONSION",
+    "nombre": "CLAUDIO",
+    "apellido": "DONSION",
+    "cargo": "SECRETARIO ADMINISTRATIVO CONSEJO DIRECTIVO",
+    "telefono": "096125564",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "821",
+    "fullName": "LUIS CASTRO",
+    "nombre": "LUIS",
+    "apellido": "CASTRO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135343",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "822",
+    "fullName": "ALVARO ZORNOZA",
+    "nombre": "ALVARO",
+    "apellido": "ZORNOZA",
+    "cargo": "PLATAFROMA /COMISION CLUB UCOT",
+    "telefono": "097055132",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "824",
+    "fullName": "GUSTAVO CALABUIG",
+    "nombre": "GUSTAVO",
+    "apellido": "CALABUIG",
+    "cargo": "PLATAFORMA",
+    "telefono": "097081557",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "825",
+    "fullName": "JORGE WALTER  FERNANDEZ",
+    "nombre": "JORGE",
+    "apellido": "WALTER  FERNANDEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096113483",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "826",
+    "fullName": "ANIBAL SANTA CRUZ",
+    "nombre": "ANIBAL",
+    "apellido": "SANTA CRUZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096153834",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "827",
+    "fullName": "MARCELO GONZALEZ",
+    "nombre": "MARCELO",
+    "apellido": "GONZALEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096237859",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "828",
+    "fullName": "ROBERTO ZAMBON",
+    "nombre": "ROBERTO",
+    "apellido": "ZAMBON",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120305",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "829",
+    "fullName": "PABLO DENES",
+    "nombre": "PABLO",
+    "apellido": "DENES",
+    "cargo": "PLATAFORMA",
+    "telefono": "097223516",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "831",
+    "fullName": "GERARDO JAUREGUI",
+    "nombre": "GERARDO",
+    "apellido": "JAUREGUI",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124076",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "832",
+    "fullName": "JORGE CAMPAÑA",
+    "nombre": "JORGE",
+    "apellido": "CAMPAÑA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097994645",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "833",
+    "fullName": "WALTER SILVA",
+    "nombre": "WALTER",
+    "apellido": "SILVA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096413372",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "834",
+    "fullName": "ADHEMAR SILVA",
+    "nombre": "ADHEMAR",
+    "apellido": "SILVA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097337276",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "835",
+    "fullName": "VLADIMIR GOMEZ",
+    "nombre": "VLADIMIR",
+    "apellido": "GOMEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096123986",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "836",
+    "fullName": "GASTON LATOUR",
+    "nombre": "GASTON",
+    "apellido": "LATOUR",
+    "cargo": "PLATAFORMA",
+    "telefono": "097975943",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "838",
+    "fullName": "FERNANDO ESPINOSA",
+    "nombre": "FERNANDO",
+    "apellido": "ESPINOSA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096125474",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "839",
+    "fullName": "WILDER MARQUEZ",
+    "nombre": "WILDER",
+    "apellido": "MARQUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097415279",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "840",
+    "fullName": "DAVID MOZEJKO",
+    "nombre": "DAVID",
+    "apellido": "MOZEJKO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055156",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "841",
+    "fullName": "MARIA JOSE NUÑEZ",
+    "nombre": "MARIA",
+    "apellido": "JOSE NUÑEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120488",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "842",
+    "fullName": "JOSE LUIS MENDOZA",
+    "nombre": "JOSE",
+    "apellido": "LUIS MENDOZA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055141",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "846",
+    "fullName": "ANDRES SILVA",
+    "nombre": "ANDRES",
+    "apellido": "SILVA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124064",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "847",
+    "fullName": "ALEJANDRO MATEO",
+    "nombre": "ALEJANDRO",
+    "apellido": "MATEO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096121793",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "849",
+    "fullName": "SERGIO VILARIÑO",
+    "nombre": "SERGIO",
+    "apellido": "VILARIÑO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120474",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "850",
+    "fullName": "GABRIEL SALVATIDINO",
+    "nombre": "GABRIEL",
+    "apellido": "SALVATIDINO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120355",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "851",
+    "fullName": "ARIEL FERNANDEZ",
+    "nombre": "ARIEL",
+    "apellido": "FERNANDEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096140517",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "854",
+    "fullName": "IUNES COSTA",
+    "nombre": "IUNES",
+    "apellido": "COSTA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096132838",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "855",
+    "fullName": "SEBASTIAN MOLINARI",
+    "nombre": "SEBASTIAN",
+    "apellido": "MOLINARI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097337758",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "856",
+    "fullName": "GONZALO OURENS",
+    "nombre": "GONZALO",
+    "apellido": "OURENS",
+    "cargo": "PLATAFORMA",
+    "telefono": "097405277",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "857",
+    "fullName": "RODRIGO LAGOS",
+    "nombre": "RODRIGO",
+    "apellido": "LAGOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096123229",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "858",
+    "fullName": "EDGAR BOGNI",
+    "nombre": "EDGAR",
+    "apellido": "BOGNI",
+    "cargo": "INSPECTOR",
+    "telefono": "096127061",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "859",
+    "fullName": "WASHINGTON WILKINS",
+    "nombre": "WASHINGTON",
+    "apellido": "WILKINS",
+    "cargo": "PLATAFORMA",
+    "telefono": "097318549",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "861",
+    "fullName": "SANDRA CASCO",
+    "nombre": "SANDRA",
+    "apellido": "CASCO",
+    "cargo": "PORTERIA / GDIA.",
+    "telefono": "096120484",
+    "rol": "seguridad",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "862",
+    "fullName": "RUBEN BRIOZZO",
+    "nombre": "RUBEN",
+    "apellido": "BRIOZZO",
+    "cargo": "MANIOBRISTA",
+    "telefono": "096415610",
+    "rol": "maniobrista",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "864",
+    "fullName": "LEVINGTON DE BRUM",
+    "nombre": "LEVINGTON",
+    "apellido": "DE BRUM",
+    "cargo": "MANIOBRISTA",
+    "telefono": "096229426",
+    "rol": "maniobrista",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "865",
+    "fullName": "MAURICIO RODRIGUEZ",
+    "nombre": "MAURICIO",
+    "apellido": "RODRIGUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096140305",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "866",
+    "fullName": "RICHARD GADEA",
+    "nombre": "RICHARD",
+    "apellido": "GADEA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096244302",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "867",
+    "fullName": "RAFAEL SABECH",
+    "nombre": "RAFAEL",
+    "apellido": "SABECH",
+    "cargo": "PLATAFORMA",
+    "telefono": "096414269",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "868",
+    "fullName": "WILMAR CAMPEON",
+    "nombre": "WILMAR",
+    "apellido": "CAMPEON",
+    "cargo": "PLATAFORMA",
+    "telefono": "096262017",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "869",
+    "fullName": "MIGUEL CHAPARRO",
+    "nombre": "MIGUEL",
+    "apellido": "CHAPARRO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097419986",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "870",
+    "fullName": "PATRICIA MORETTO",
+    "nombre": "PATRICIA",
+    "apellido": "MORETTO",
+    "cargo": "PORTERIA / GDIA.",
+    "telefono": "096113500",
+    "rol": "seguridad",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "875",
+    "fullName": "RICHARD MARCOFF",
+    "nombre": "RICHARD",
+    "apellido": "MARCOFF",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055140",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "877",
+    "fullName": "SERGIO ALBARENQUE",
+    "nombre": "SERGIO",
+    "apellido": "ALBARENQUE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096355339",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "878",
+    "fullName": "EDUARDO RODRIGUEZ",
+    "nombre": "EDUARDO",
+    "apellido": "RODRIGUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097121371",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "879",
+    "fullName": "ALEJANDRO SANTOS",
+    "nombre": "ALEJANDRO",
+    "apellido": "SANTOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096125062",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "880",
+    "fullName": "PABLO TIRONI",
+    "nombre": "PABLO",
+    "apellido": "TIRONI",
+    "cargo": "MANIOBRISTA",
+    "telefono": "096125736",
+    "rol": "maniobrista",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "882",
+    "fullName": "RUBEN ETCHEBARNE",
+    "nombre": "RUBEN",
+    "apellido": "ETCHEBARNE",
+    "cargo": "ADMINISTRATIVO DPTO. TRANSITO",
+    "telefono": "096342901",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "883",
+    "fullName": "ADRIAN CERVIÑO",
+    "nombre": "ADRIAN",
+    "apellido": "CERVIÑO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097982318",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "884",
+    "fullName": "MARTIN PERALTA",
+    "nombre": "MARTIN",
+    "apellido": "PERALTA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124863",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "885",
+    "fullName": "CARLOS MARTINEZ",
+    "nombre": "CARLOS",
+    "apellido": "MARTINEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096125847",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "887",
+    "fullName": "SERGIO LOPEZ",
+    "nombre": "SERGIO",
+    "apellido": "LOPEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096211310",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "889",
+    "fullName": "HERNAN RAMÓN NUÑEZ BRUN",
+    "nombre": "HERNAN",
+    "apellido": "RAMÓN NUÑEZ BRUN",
+    "cargo": "PLATAFORMA",
+    "telefono": "097090940",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "890",
+    "fullName": "FREDERICK WASEN DE LEON",
+    "nombre": "FREDERICK",
+    "apellido": "WASEN DE LEON",
+    "cargo": "PLATAFORMA",
+    "telefono": "097103883",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "891",
+    "fullName": "CARLOS HERNANDEZ",
+    "nombre": "CARLOS",
+    "apellido": "HERNANDEZ",
+    "cargo": "INSPECTOR",
+    "telefono": "097234702",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "892",
+    "fullName": "GONZALO SAN ROMAN",
+    "nombre": "GONZALO",
+    "apellido": "SAN ROMAN",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120477",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "893",
+    "fullName": "NESTOR BALCON",
+    "nombre": "NESTOR",
+    "apellido": "BALCON",
+    "cargo": "PLATAFORMA",
+    "telefono": "097311894",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "894",
+    "fullName": "FERNANDO PEREYRA",
+    "nombre": "FERNANDO",
+    "apellido": "PEREYRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055167",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "895",
+    "fullName": "GABRIEL ACOSTA",
+    "nombre": "GABRIEL",
+    "apellido": "ACOSTA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120475",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "896",
+    "fullName": "DIEGO ISNARDI",
+    "nombre": "DIEGO",
+    "apellido": "ISNARDI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097337230",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "897",
+    "fullName": "OSCAR GARABEDIAN",
+    "nombre": "OSCAR",
+    "apellido": "GARABEDIAN",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120487",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "898",
+    "fullName": "VICTOR SANCHEZ",
+    "nombre": "VICTOR",
+    "apellido": "SANCHEZ",
+    "cargo": "INSPECTOR",
+    "telefono": "096442944",
+    "rol": "inspector",
+    "role": "INSPECTOR"
+  },
+  {
+    "interno": "900",
+    "fullName": "ANGEL QUINTEROS",
+    "nombre": "ANGEL",
+    "apellido": "QUINTEROS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096127174",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "901",
+    "fullName": "ADRIAN ECHETTO",
+    "nombre": "ADRIAN",
+    "apellido": "ECHETTO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096418037",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "902",
+    "fullName": "JUAN SANTOS",
+    "nombre": "JUAN",
+    "apellido": "SANTOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135325",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "904",
+    "fullName": "JUAN SANTOS",
+    "nombre": "JUAN",
+    "apellido": "SANTOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096129759",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "905",
+    "fullName": "JUAN SANTOS",
+    "nombre": "JUAN",
+    "apellido": "SANTOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096400908",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "906",
+    "fullName": "JUAN SANTOS",
+    "nombre": "JUAN",
+    "apellido": "SANTOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "097418102",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "907",
+    "fullName": "JUAN SANTOS",
+    "nombre": "JUAN",
+    "apellido": "SANTOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120665",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "908",
+    "fullName": "LEONARDO DELGADO",
+    "nombre": "LEONARDO",
+    "apellido": "DELGADO",
+    "cargo": "ADMINISTRATIVO  DPTO. DE TRANSITO",
+    "telefono": "096124330",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "909",
+    "fullName": "FABIAN BATALLA",
+    "nombre": "FABIAN",
+    "apellido": "BATALLA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097199719",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "910",
+    "fullName": "LEONARDO MALLADA",
+    "nombre": "LEONARDO",
+    "apellido": "MALLADA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120575",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "911",
+    "fullName": "WASHINGTON CARRASCO",
+    "nombre": "WASHINGTON",
+    "apellido": "CARRASCO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097477984",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "912",
+    "fullName": "FERNANDO VAZQUEZ",
+    "nombre": "FERNANDO",
+    "apellido": "VAZQUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120168",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "913",
+    "fullName": "RAMON ALBERTE",
+    "nombre": "RAMON",
+    "apellido": "ALBERTE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120450",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "914",
+    "fullName": "EMILIO SAMPIL",
+    "nombre": "EMILIO",
+    "apellido": "SAMPIL",
+    "cargo": "PLATAFORMA",
+    "telefono": "096342916",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "915",
+    "fullName": "WALTER PAEZ",
+    "nombre": "WALTER",
+    "apellido": "PAEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097989020",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "916",
+    "fullName": "ESTEBAN URRUTIA",
+    "nombre": "ESTEBAN",
+    "apellido": "URRUTIA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097342621",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "917",
+    "fullName": "NICOLAS CLAVIJO",
+    "nombre": "NICOLAS",
+    "apellido": "CLAVIJO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096342912",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "1865",
+    "fullName": "ENRIQUE GARABATO",
+    "nombre": "ENRIQUE",
+    "apellido": "GARABATO",
+    "cargo": "JEFE DE TALLERES",
+    "telefono": "096196306",
+    "rol": "admin",
+    "role": "ADMIN"
+  },
+  {
+    "interno": "3000",
+    "fullName": "MARCELO SIERRA",
+    "nombre": "MARCELO",
+    "apellido": "SIERRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096342935",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3001",
+    "fullName": "HECTOR BESADA",
+    "nombre": "HECTOR",
+    "apellido": "BESADA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096024481",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3002",
+    "fullName": "GUSTAVO CARDOSO",
+    "nombre": "GUSTAVO",
+    "apellido": "CARDOSO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096409651",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3003",
+    "fullName": "HEBER HUQUE",
+    "nombre": "HEBER",
+    "apellido": "HUQUE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096442964",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3004",
+    "fullName": "EDUARDO GARCIA",
+    "nombre": "EDUARDO",
+    "apellido": "GARCIA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055168",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3005",
+    "fullName": "SANDRA DO  CARMO",
+    "nombre": "SANDRA",
+    "apellido": "DO  CARMO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336799",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3006",
+    "fullName": "JOSE GALLARETO",
+    "nombre": "JOSE",
+    "apellido": "GALLARETO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096143401",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3007",
+    "fullName": "RICARDO GAMARRA",
+    "nombre": "RICARDO",
+    "apellido": "GAMARRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096442941",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3008",
+    "fullName": "PABLO AGUERRE",
+    "nombre": "PABLO",
+    "apellido": "AGUERRE",
+    "cargo": "PLATAFORMA",
+    "telefono": "097011696",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3009",
+    "fullName": "SANDRA DE LEON",
+    "nombre": "SANDRA",
+    "apellido": "DE LEON",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336622",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3010",
+    "fullName": "ALVARO PEREIRA",
+    "nombre": "ALVARO",
+    "apellido": "PEREIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096415013",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3013",
+    "fullName": "VICTOR MONZILLO",
+    "nombre": "VICTOR",
+    "apellido": "MONZILLO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336471",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3014",
+    "fullName": "HENDERSON DELGADO",
+    "nombre": "HENDERSON",
+    "apellido": "DELGADO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097412402",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3015",
+    "fullName": "ELMER PEREZ",
+    "nombre": "ELMER",
+    "apellido": "PEREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097095196",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3016",
+    "fullName": "CIPRIANO FERNANDEZ",
+    "nombre": "CIPRIANO",
+    "apellido": "FERNANDEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097477909",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3017",
+    "fullName": "CARLOS FERREIRA",
+    "nombre": "CARLOS",
+    "apellido": "FERREIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336160",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3018",
+    "fullName": "JOSE DE LOS SANTOS",
+    "nombre": "JOSE",
+    "apellido": "DE LOS SANTOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096442943",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3019",
+    "fullName": "OSCAR BRAZEIRO",
+    "nombre": "OSCAR",
+    "apellido": "BRAZEIRO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097013875",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3020",
+    "fullName": "GABRIEL PENCE",
+    "nombre": "GABRIEL",
+    "apellido": "PENCE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096122589",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3021",
+    "fullName": "EDISON RETAMAR",
+    "nombre": "EDISON",
+    "apellido": "RETAMAR",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120748",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3022",
+    "fullName": "LUIS MARTINEZ",
+    "nombre": "LUIS",
+    "apellido": "MARTINEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097983599",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3023",
+    "fullName": "ALVARO PEREZ",
+    "nombre": "ALVARO",
+    "apellido": "PEREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120344",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3024",
+    "fullName": "NORBERTO TAÑO",
+    "nombre": "NORBERTO",
+    "apellido": "TAÑO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097337374",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3025",
+    "fullName": "SERGIO NUÑEZ",
+    "nombre": "SERGIO",
+    "apellido": "NUÑEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097054486",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3026",
+    "fullName": "CARLOS BONE",
+    "nombre": "CARLOS",
+    "apellido": "BONE",
+    "cargo": "PLATAFORMA",
+    "telefono": "097491591",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3027",
+    "fullName": "DIEGO OLIVERA",
+    "nombre": "DIEGO",
+    "apellido": "OLIVERA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096151104",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3028",
+    "fullName": "ALEJANDRO RUIZ",
+    "nombre": "ALEJANDRO",
+    "apellido": "RUIZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097982381",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3029",
+    "fullName": "JAVIER PARDO",
+    "nombre": "JAVIER",
+    "apellido": "PARDO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096981680",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3030",
+    "fullName": "RICARDO O CAMPO",
+    "nombre": "RICARDO",
+    "apellido": "O CAMPO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097478056",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3031",
+    "fullName": "GUSTAVO DOLDAN",
+    "nombre": "GUSTAVO",
+    "apellido": "DOLDAN",
+    "cargo": "PLATAFORMA",
+    "telefono": "096402638",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3032",
+    "fullName": "EDUARDO LOSNO",
+    "nombre": "EDUARDO",
+    "apellido": "LOSNO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124075",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3033",
+    "fullName": "LUIS TEJERIA",
+    "nombre": "LUIS",
+    "apellido": "TEJERIA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097255208",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3034",
+    "fullName": "ANA CEBALLE",
+    "nombre": "ANA",
+    "apellido": "CEBALLE",
+    "cargo": "PLATAFORMA",
+    "telefono": "097496989",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3035",
+    "fullName": "HECTOR CABEZAS",
+    "nombre": "HECTOR",
+    "apellido": "CABEZAS",
+    "cargo": "PLATAFORMA",
+    "telefono": "097993926",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3036",
+    "fullName": "GUSTAVO DUDOK",
+    "nombre": "GUSTAVO",
+    "apellido": "DUDOK",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120452",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3039",
+    "fullName": "CARLOS MIGLIARINI",
+    "nombre": "CARLOS",
+    "apellido": "MIGLIARINI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055130",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3040",
+    "fullName": "PABLO POMBO",
+    "nombre": "PABLO",
+    "apellido": "POMBO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096129554",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3041",
+    "fullName": "IGNACIO BALDOVINO",
+    "nombre": "IGNACIO",
+    "apellido": "BALDOVINO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336109",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3042",
+    "fullName": "ADROALDO MORA",
+    "nombre": "ADROALDO",
+    "apellido": "MORA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096113800",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3043",
+    "fullName": "NESTOR ALVAREZ",
+    "nombre": "NESTOR",
+    "apellido": "ALVAREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097982207",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3044",
+    "fullName": "CARLOS MORAES",
+    "nombre": "CARLOS",
+    "apellido": "MORAES",
+    "cargo": "PLATAFORMA",
+    "telefono": "096442950",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3045",
+    "fullName": "GERRADO ACOSTA",
+    "nombre": "GERRADO",
+    "apellido": "ACOSTA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096342905",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3046",
+    "fullName": "RICHARD CONTE",
+    "nombre": "RICHARD",
+    "apellido": "CONTE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096197303",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3047",
+    "fullName": "GUSTAVO DIAZ",
+    "nombre": "GUSTAVO",
+    "apellido": "DIAZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096127730",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3048",
+    "fullName": "GUSTAVO MUSTO",
+    "nombre": "GUSTAVO",
+    "apellido": "MUSTO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135322",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3049",
+    "fullName": "JUAN COLMAN",
+    "nombre": "JUAN",
+    "apellido": "COLMAN",
+    "cargo": "PLATAFORMA",
+    "telefono": "096342903",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3050",
+    "fullName": "LUIS TRONCONI",
+    "nombre": "LUIS",
+    "apellido": "TRONCONI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097337736",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3051",
+    "fullName": "SERGIO DAMIAN",
+    "nombre": "SERGIO",
+    "apellido": "DAMIAN",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336798",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3052",
+    "fullName": "ANDRES RODRIGUEZ",
+    "nombre": "ANDRES",
+    "apellido": "RODRIGUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096144321",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3053",
+    "fullName": "SANDRA GARMENDIA",
+    "nombre": "SANDRA",
+    "apellido": "GARMENDIA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336554",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3054",
+    "fullName": "CARLOS FURTADO",
+    "nombre": "CARLOS",
+    "apellido": "FURTADO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097337753",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3055",
+    "fullName": "SERGIO PEREIRA",
+    "nombre": "SERGIO",
+    "apellido": "PEREIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096427590",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3056",
+    "fullName": "ALBERTO MACHADO",
+    "nombre": "ALBERTO",
+    "apellido": "MACHADO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096122739",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3057",
+    "fullName": "MARCOS  RODRIGUEZ",
+    "nombre": "MARCOS",
+    "apellido": " RODRIGUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096417431",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3058",
+    "fullName": "JAVIER CELESTINO",
+    "nombre": "JAVIER",
+    "apellido": "CELESTINO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097054461",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3059",
+    "fullName": "ALEJANDRO VILLEMUR",
+    "nombre": "ALEJANDRO",
+    "apellido": "VILLEMUR",
+    "cargo": "PLATAFORMA",
+    "telefono": "096342928",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3060",
+    "fullName": "GUSTAVO BARRERA",
+    "nombre": "GUSTAVO",
+    "apellido": "BARRERA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120351",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3061",
+    "fullName": "CARLOS MANCEBO",
+    "nombre": "CARLOS",
+    "apellido": "MANCEBO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336085",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3062",
+    "fullName": "RAFAEL VICENTE",
+    "nombre": "RAFAEL",
+    "apellido": "VICENTE",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336401",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3063",
+    "fullName": "ERNESTO PEREYRA",
+    "nombre": "ERNESTO",
+    "apellido": "PEREYRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096196312",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3064",
+    "fullName": "LEANDRO RODAS",
+    "nombre": "LEANDRO",
+    "apellido": "RODAS",
+    "cargo": "PLATAFORMA",
+    "telefono": "097474826",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3065",
+    "fullName": "FABIAN CORREA",
+    "nombre": "FABIAN",
+    "apellido": "CORREA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336284",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3066",
+    "fullName": "RICHARD FERNADEZ",
+    "nombre": "RICHARD",
+    "apellido": "FERNADEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097332297",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3067",
+    "fullName": "ALEJANDRA MARTINEZ",
+    "nombre": "ALEJANDRA",
+    "apellido": "MARTINEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096135332",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3068",
+    "fullName": "LUCIA MONETTA",
+    "nombre": "LUCIA",
+    "apellido": "MONETTA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336791",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3069",
+    "fullName": "MARCELO SCAVONE",
+    "nombre": "MARCELO",
+    "apellido": "SCAVONE",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120456",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3070",
+    "fullName": "ALVARO MARTEGANI",
+    "nombre": "ALVARO",
+    "apellido": "MARTEGANI",
+    "cargo": "PLATAFORMA",
+    "telefono": "096342923",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3071",
+    "fullName": "ANTONIO SCOLA",
+    "nombre": "ANTONIO",
+    "apellido": "SCOLA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120483",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3073",
+    "fullName": "NATALIA GARCIA",
+    "nombre": "NATALIA",
+    "apellido": "GARCIA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336586",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3074",
+    "fullName": "MARTIN GUIDOBONO",
+    "nombre": "MARTIN",
+    "apellido": "GUIDOBONO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120753",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3075",
+    "fullName": "MARIANA MARQUEZ",
+    "nombre": "MARIANA",
+    "apellido": "MARQUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336133",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3076",
+    "fullName": "JOSE VARELA",
+    "nombre": "JOSE",
+    "apellido": "VARELA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096987792",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3077",
+    "fullName": "MARCELO SAURINA",
+    "nombre": "MARCELO",
+    "apellido": "SAURINA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336343",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3078",
+    "fullName": "WILMER BOLLAZZI",
+    "nombre": "WILMER",
+    "apellido": "BOLLAZZI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097992467",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3079",
+    "fullName": "FEDERICO PEREZ",
+    "nombre": "FEDERICO",
+    "apellido": "PEREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097474527",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3080",
+    "fullName": "LEONARDO SUM",
+    "nombre": "LEONARDO",
+    "apellido": "SUM",
+    "cargo": "PLATAFORMA",
+    "telefono": "096121794",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3081",
+    "fullName": "LUIS MARTINEZ",
+    "nombre": "LUIS",
+    "apellido": "MARTINEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096125848",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3082",
+    "fullName": "STIVEN MONTIEL",
+    "nombre": "STIVEN",
+    "apellido": "MONTIEL",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120347",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3083",
+    "fullName": "HECTOR VERGA",
+    "nombre": "HECTOR",
+    "apellido": "VERGA",
+    "cargo": "TALLER",
+    "telefono": "096120306",
+    "rol": "mantenimiento",
+    "role": "MAINTENANCE"
+  },
+  {
+    "interno": "3084",
+    "fullName": "DIEGO MALDONADO",
+    "nombre": "DIEGO",
+    "apellido": "MALDONADO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096342940",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3085",
+    "fullName": "PABLO FERNANDEZ",
+    "nombre": "PABLO",
+    "apellido": "FERNANDEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120354",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3086",
+    "fullName": "LUIS RODRIGUEZ",
+    "nombre": "LUIS",
+    "apellido": "RODRIGUEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120345",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3087",
+    "fullName": "ESTEBAN DE LIMA",
+    "nombre": "ESTEBAN",
+    "apellido": "DE LIMA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097990695",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3088",
+    "fullName": "ALEJANDRA COSTA",
+    "nombre": "ALEJANDRA",
+    "apellido": "COSTA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120416",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3089",
+    "fullName": "JUAN COPPOLA",
+    "nombre": "JUAN",
+    "apellido": "COPPOLA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120418",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3090",
+    "fullName": "GUSTAVO ESPINDOLA",
+    "nombre": "GUSTAVO",
+    "apellido": "ESPINDOLA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096125992",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3091",
+    "fullName": "CARLOS LOPEZ",
+    "nombre": "CARLOS",
+    "apellido": "LOPEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120338",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3092",
+    "fullName": "LEANDRO ANTUNEZ",
+    "nombre": "LEANDRO",
+    "apellido": "ANTUNEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336844",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3093",
+    "fullName": "SERGIO SARACHO",
+    "nombre": "SERGIO",
+    "apellido": "SARACHO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336850",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3094",
+    "fullName": "GUSTAVO  GONZALEZ",
+    "nombre": "GUSTAVO",
+    "apellido": " GONZALEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336123",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3095",
+    "fullName": "CHRISITAN GAGLIARDI",
+    "nombre": "CHRISITAN",
+    "apellido": "GAGLIARDI",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120415",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3096",
+    "fullName": "HOMERO ANTELO",
+    "nombre": "HOMERO",
+    "apellido": "ANTELO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120343",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3097",
+    "fullName": "CARLOS COSTA",
+    "nombre": "CARLOS",
+    "apellido": "COSTA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120163",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3098",
+    "fullName": "WILSON GONZALEZ",
+    "nombre": "WILSON",
+    "apellido": "GONZALEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097993114",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3099",
+    "fullName": "MIGUEL SCARONE",
+    "nombre": "MIGUEL",
+    "apellido": "SCARONE",
+    "cargo": "PLATAFORMA",
+    "telefono": "097256791",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3100",
+    "fullName": "ELSO PEREZ",
+    "nombre": "ELSO",
+    "apellido": "PEREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120356",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3101",
+    "fullName": "GERMAN VAEZ",
+    "nombre": "GERMAN",
+    "apellido": "VAEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336532",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3102",
+    "fullName": "DIEGO CAMBON",
+    "nombre": "DIEGO",
+    "apellido": "CAMBON",
+    "cargo": "PLATAFORMA",
+    "telefono": "096342917",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3103",
+    "fullName": "PABLO AGUIRREZABAL",
+    "nombre": "PABLO",
+    "apellido": "AGUIRREZABAL",
+    "cargo": "PLATAFORMA",
+    "telefono": "097337318",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3104",
+    "fullName": "DIEGO DO AMARAL",
+    "nombre": "DIEGO",
+    "apellido": "DO AMARAL",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120454",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3105",
+    "fullName": "CARLOS GIMENEZ",
+    "nombre": "CARLOS",
+    "apellido": "GIMENEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097337796",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3106",
+    "fullName": "BRUNO FEBRERO",
+    "nombre": "BRUNO",
+    "apellido": "FEBRERO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097337792",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3107",
+    "fullName": "WALDEMAR PEREZ",
+    "nombre": "WALDEMAR",
+    "apellido": "PEREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120698",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3108",
+    "fullName": "2+00+0",
+    "nombre": "2+00+0",
+    "apellido": "",
+    "cargo": "PLATAFORMA",
+    "telefono": "097992640",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3109",
+    "fullName": "MAURICIO CAMPOY",
+    "nombre": "MAURICIO",
+    "apellido": "CAMPOY",
+    "cargo": "PLATAFORMA",
+    "telefono": "097050756",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3111",
+    "fullName": "FEDERICO PANIZZA",
+    "nombre": "FEDERICO",
+    "apellido": "PANIZZA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096121278",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3112",
+    "fullName": "RAFFAELE PASCALE",
+    "nombre": "RAFFAELE",
+    "apellido": "PASCALE",
+    "cargo": "PLATAFORMA",
+    "telefono": "097476105",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3113",
+    "fullName": "WILLIAM BERAZATEGUI",
+    "nombre": "WILLIAM",
+    "apellido": "BERAZATEGUI",
+    "cargo": "PLATAFORMA",
+    "telefono": "097991546",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3114",
+    "fullName": "NELSON YANIBELLI",
+    "nombre": "NELSON",
+    "apellido": "YANIBELLI",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120459",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3115",
+    "fullName": "DIEGO PEREIRA",
+    "nombre": "DIEGO",
+    "apellido": "PEREIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097993215",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3116",
+    "fullName": "ADRIAN CLIMENT",
+    "nombre": "ADRIAN",
+    "apellido": "CLIMENT",
+    "cargo": "PLATAFORMA",
+    "telefono": "097051141",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3117",
+    "fullName": "NESTOR PEREZ",
+    "nombre": "NESTOR",
+    "apellido": "PEREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336472",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3118",
+    "fullName": "DIEGO GONZALEZ",
+    "nombre": "DIEGO",
+    "apellido": "GONZALEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120460",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3119",
+    "fullName": "LORENA HOBINCHET",
+    "nombre": "LORENA",
+    "apellido": "HOBINCHET",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120458",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3120",
+    "fullName": "FRANCISCO CARABALLO",
+    "nombre": "FRANCISCO",
+    "apellido": "CARABALLO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097088655",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3121",
+    "fullName": "MIGUEL FERREIRA",
+    "nombre": "MIGUEL",
+    "apellido": "FERREIRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336263",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3122",
+    "fullName": "JOSE GARBUIO",
+    "nombre": "JOSE",
+    "apellido": "GARBUIO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097337791",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3123",
+    "fullName": "ALEJANDRO ALANIS",
+    "nombre": "ALEJANDRO",
+    "apellido": "ALANIS",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336788",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3124",
+    "fullName": "VICTOR FEIPPE",
+    "nombre": "VICTOR",
+    "apellido": "FEIPPE",
+    "cargo": "PLATAFORMA",
+    "telefono": "097013869",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3125",
+    "fullName": "DANIEL HERNADEZ",
+    "nombre": "DANIEL",
+    "apellido": "HERNADEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124089",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3126",
+    "fullName": "MARTIN ROMERO",
+    "nombre": "MARTIN",
+    "apellido": "ROMERO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097250670",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3127",
+    "fullName": "JAVIER RUSSO",
+    "nombre": "JAVIER",
+    "apellido": "RUSSO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124087",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3128",
+    "fullName": "JOSE ROMA",
+    "nombre": "JOSE",
+    "apellido": "ROMA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124092",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3129",
+    "fullName": "LEONARDO SECADAS",
+    "nombre": "LEONARDO",
+    "apellido": "SECADAS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124071",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3130",
+    "fullName": "AGUSTIN RUIZ",
+    "nombre": "AGUSTIN",
+    "apellido": "RUIZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120745",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3131",
+    "fullName": "FERNANDO PEREZ",
+    "nombre": "FERNANDO",
+    "apellido": "PEREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097991114",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3132",
+    "fullName": "MARCELO FERNADEZ",
+    "nombre": "MARCELO",
+    "apellido": "FERNADEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120482",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3133",
+    "fullName": "ALBERTO SCABADOS",
+    "nombre": "ALBERTO",
+    "apellido": "SCABADOS",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124062",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3134",
+    "fullName": "ALEXANDER MUCCI",
+    "nombre": "ALEXANDER",
+    "apellido": "MUCCI",
+    "cargo": "PLATAFORMA",
+    "telefono": "096121792",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3135",
+    "fullName": "ALDO DEMICHELI",
+    "nombre": "ALDO",
+    "apellido": "DEMICHELI",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120479",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3136",
+    "fullName": "RAUL GARCIA",
+    "nombre": "RAUL",
+    "apellido": "GARCIA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097336475",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3137",
+    "fullName": "JAVIER PRESA",
+    "nombre": "JAVIER",
+    "apellido": "PRESA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120647",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3138",
+    "fullName": "NANACY GUEVARA",
+    "nombre": "NANACY",
+    "apellido": "GUEVARA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120644",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3140",
+    "fullName": "DIEGO EIRIZ",
+    "nombre": "DIEGO",
+    "apellido": "EIRIZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120645",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3141",
+    "fullName": "JESUS PEREZ",
+    "nombre": "JESUS",
+    "apellido": "PEREZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096120493",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3142",
+    "fullName": "ROBERTO BINTOR",
+    "nombre": "ROBERTO",
+    "apellido": "BINTOR",
+    "cargo": "PLATAFORMA",
+    "telefono": "096121790",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3144",
+    "fullName": "MIGUEL LOPEZ",
+    "nombre": "MIGUEL",
+    "apellido": "LOPEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097337616",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3145",
+    "fullName": "VANESSA ORIZIO",
+    "nombre": "VANESSA",
+    "apellido": "ORIZIO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096121931",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3147",
+    "fullName": "LUIS PEREYRA",
+    "nombre": "LUIS",
+    "apellido": "PEREYRA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097991108",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3148",
+    "fullName": "CARLOS MENDOZA",
+    "nombre": "CARLOS",
+    "apellido": "MENDOZA",
+    "cargo": "PLATAFORMA",
+    "telefono": "097337793",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3149",
+    "fullName": "YOSELEM SOCA",
+    "nombre": "YOSELEM",
+    "apellido": "SOCA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096123290",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3151",
+    "fullName": "FERNANDO PIÑA",
+    "nombre": "FERNANDO",
+    "apellido": "PIÑA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124067",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3152",
+    "fullName": "GERMAN COLOMBO",
+    "nombre": "GERMAN",
+    "apellido": "COLOMBO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124063",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3153",
+    "fullName": "ANTONIO CALAFAT",
+    "nombre": "ANTONIO",
+    "apellido": "CALAFAT",
+    "cargo": "PLATAFORMA",
+    "telefono": "096415023",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3154",
+    "fullName": "RODRIGO LOPEZ",
+    "nombre": "RODRIGO",
+    "apellido": "LOPEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097475624",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3155",
+    "fullName": "PABLO DANIEL GONZALEZ",
+    "nombre": "PABLO",
+    "apellido": "DANIEL GONZALEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "097982253",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3156",
+    "fullName": "SERGIO BARREIRO",
+    "nombre": "SERGIO",
+    "apellido": "BARREIRO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097055136",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3159",
+    "fullName": "ERNESTO PEÑA",
+    "nombre": "ERNESTO",
+    "apellido": "PEÑA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096125871",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3160",
+    "fullName": "ARIEL FERNANDEZ",
+    "nombre": "ARIEL",
+    "apellido": "FERNANDEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096124094",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3161",
+    "fullName": "ALBERTO CALVELO",
+    "nombre": "ALBERTO",
+    "apellido": "CALVELO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096403022",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3162",
+    "fullName": "MARCELO MILANO",
+    "nombre": "MARCELO",
+    "apellido": "MILANO",
+    "cargo": "PLATAFORMA",
+    "telefono": "096425852",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3163",
+    "fullName": "EFRAIN ESQUIVO",
+    "nombre": "EFRAIN",
+    "apellido": "ESQUIVO",
+    "cargo": "PLATAFORMA",
+    "telefono": "097994204",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3165",
+    "fullName": "DIEGO ARIAS",
+    "nombre": "DIEGO",
+    "apellido": "ARIAS",
+    "cargo": "PLATAFORMA",
+    "telefono": "097474262",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3167",
+    "fullName": "WINCLER NOBLE",
+    "nombre": "WINCLER",
+    "apellido": "NOBLE",
+    "cargo": "GDIA.",
+    "telefono": "097051805",
+    "rol": "seguridad",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3169",
+    "fullName": "LUIS FERNANDEZ GABA",
+    "nombre": "LUIS",
+    "apellido": "FERNANDEZ GABA",
+    "cargo": "PLATAFORMA",
+    "telefono": "096126024",
+    "rol": "conductor",
+    "role": "DRIVER"
+  },
+  {
+    "interno": "3170",
+    "fullName": "DANIEL LOPEZ",
+    "nombre": "DANIEL",
+    "apellido": "LOPEZ",
+    "cargo": "PLATAFORMA",
+    "telefono": "096142617",
+    "rol": "conductor",
+    "role": "DRIVER"
+  }
+]

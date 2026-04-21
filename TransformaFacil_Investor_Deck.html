@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TransformaFacil 2.0 — Presentación para Inversores</title>
+<style>
+/* ================================================================
+   RESET & BASE
+   ================================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0f172a;
+  --bg2:       #1e293b;
+  --bg3:       #334155;
+  --indigo:    #6366f1;
+  --indigo2:   #818cf8;
+  --indigo3:   #c7d2fe;
+  --emerald:   #10b981;
+  --emerald2:  #34d399;
+  --amber:     #f59e0b;
+  --rose:      #f43f5e;
+  --slate:     #94a3b8;
+  --slate2:    #cbd5e1;
+  --white:     #f8fafc;
+  --slide-w:   1100px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #08101e;
+  color: var(--white);
+  line-height: 1.6;
+}
+
+/* ================================================================
+   NAV
+   ================================================================ */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(8, 16, 30, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(99,102,241,0.2);
+  padding: 0.6rem 1.5rem;
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+}
+nav .logo {
+  font-size: 0.9rem; font-weight: 800; letter-spacing: -0.01em;
+  color: var(--indigo2);
+  margin-right: 1rem;
+}
+nav a {
+  font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--slate); text-decoration: none;
+  padding: 0.25rem 0.6rem; border-radius: 999px;
+  transition: all 0.15s;
+}
+nav a:hover { background: rgba(99,102,241,0.15); color: var(--indigo2); }
+.nav-print {
+  margin-left: auto;
+  background: var(--indigo) !important;
+  color: var(--white) !important;
+  padding: 0.3rem 1rem !important;
+  font-size: 0.7rem !important;
+  border-radius: 6px !important;
+}
+
+/* ================================================================
+   SLIDE WRAPPER
+   ================================================================ */
+.slide-page {
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center;
+  padding: 6rem 1.5rem 3rem;
+  position: relative; overflow: hidden;
+}
+
+.slide-inner {
+  width: 100%; max-width: var(--slide-w);
+  position: relative; z-index: 2;
+}
+
+/* ================================================================
+   DECORATIVE BG GLOW
+   ================================================================ */
+.glow-tl {
+  position: absolute; top: -200px; left: -200px;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.glow-br {
+  position: absolute; bottom: -200px; right: -200px;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ================================================================
+   SLIDE NUMBER TAG
+   ================================================================ */
+.slide-tag {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--indigo2);
+  background: rgba(99,102,241,0.12);
+  border: 1px solid rgba(99,102,241,0.3);
+  padding: 0.2rem 0.7rem; border-radius: 999px;
+  display: inline-block; margin-bottom: 1.2rem;
+}
+
+/* ================================================================
+   SLIDE 1 — PORTADA
+   ================================================================ */
+#s1 {
+  background: linear-gradient(145deg, #0a0f1e 0%, #0f172a 50%, #0d1f35 100%);
+}
+.s1-bus-icon {
+  width: 80px; height: 80px;
+  background: linear-gradient(135deg, var(--indigo), #4f46e5);
+  border-radius: 18px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 0 40px rgba(99,102,241,0.35);
+}
+.s1-tag {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: rgba(16,185,129,0.1);
+  border: 1px solid rgba(16,185,129,0.3);
+  color: var(--emerald2);
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.3rem 1rem; border-radius: 999px;
+  margin-bottom: 1.5rem;
+}
+.s1-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--emerald); }
+.s1-title {
+  font-size: clamp(2.8rem, 5vw, 4.2rem);
+  font-weight: 900; letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin-bottom: 0.5rem;
+}
+.s1-title span { color: var(--indigo2); }
+.s1-version {
+  font-size: 1.4rem; font-weight: 300; color: var(--slate2);
+  letter-spacing: 0.05em;
+  margin-bottom: 1.8rem;
+}
+.s1-sub {
+  font-size: 1.15rem; color: var(--slate); max-width: 640px;
+  margin-bottom: 2.5rem; line-height: 1.7;
+}
+.s1-badges {
+  display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 2.5rem;
+}
+.badge {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--slate2);
+  font-size: 0.75rem; font-weight: 600;
+  padding: 0.35rem 0.9rem; border-radius: 6px;
+}
+.badge-green { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: var(--emerald2); }
+.badge-indigo { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.3); color: var(--indigo2); }
+.badge-amber { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: #fbbf24; }
+
+.s1-url {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  color: var(--indigo2); font-size: 0.9rem; font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(99,102,241,0.4);
+  padding-bottom: 0.1rem;
+}
+.s1-url:hover { color: white; border-color: white; }
+
+.s1-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px; background: rgba(255,255,255,0.06);
+  border-radius: 12px; overflow: hidden;
+  margin-top: 3rem;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.s1-stat {
+  background: rgba(255,255,255,0.03);
+  padding: 1.2rem 1.5rem;
+  text-align: center;
+}
+.s1-stat-n {
+  font-size: 2rem; font-weight: 900; line-height: 1;
+  background: linear-gradient(135deg, var(--indigo2), var(--emerald2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.s1-stat-l { font-size: 0.7rem; color: var(--slate); margin-top: 0.3rem; text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* ================================================================
+   SHARED SLIDE STYLES
+   ================================================================ */
+.slide-h1 {
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  font-weight: 900; letter-spacing: -0.02em;
+  line-height: 1.1; margin-bottom: 0.6rem;
+}
+.slide-h1 span { color: var(--indigo2); }
+.slide-sub {
+  font-size: 1rem; color: var(--slate); max-width: 680px;
+  margin-bottom: 2.5rem; line-height: 1.7;
+}
+
+/* divider */
+.hdiv {
+  width: 48px; height: 3px;
+  background: linear-gradient(90deg, var(--indigo), var(--emerald));
+  border-radius: 2px; margin: 0.8rem 0 1.6rem;
+}
+
+/* ================================================================
+   SLIDE 2 — PROBLEMA
+   ================================================================ */
+#s2 { background: #0d1525; }
+.problem-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 1rem; margin-top: 0.5rem;
+}
+.problem-card {
+  background: rgba(244,63,94,0.07);
+  border: 1px solid rgba(244,63,94,0.2);
+  border-radius: 12px; padding: 1.4rem;
+}
+.problem-card .icon { font-size: 2rem; margin-bottom: 0.8rem; }
+.problem-card h3 {
+  font-size: 1rem; font-weight: 700; color: var(--white);
+  margin-bottom: 0.5rem;
+}
+.problem-card p { font-size: 0.875rem; color: var(--slate); line-height: 1.6; }
+
+.pain-stat {
+  display: flex; align-items: center; gap: 1rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px; padding: 1rem 1.4rem;
+  margin-top: 1rem;
+}
+.pain-num {
+  font-size: 2.2rem; font-weight: 900;
+  color: var(--rose); flex-shrink: 0;
+}
+.pain-desc { font-size: 0.85rem; color: var(--slate2); }
+
+/* ================================================================
+   SLIDE 3 — MERCADO / BRT
+   ================================================================ */
+#s3 { background: #0b1520; }
+.market-hero {
+  background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(16,185,129,0.08));
+  border: 1px solid rgba(99,102,241,0.3);
+  border-radius: 16px; padding: 2rem 2.5rem;
+  margin-bottom: 1.5rem;
+  display: flex; align-items: center; gap: 2rem;
+}
+.market-hero-num {
+  font-size: 4rem; font-weight: 900; line-height: 1;
+  background: linear-gradient(135deg, var(--indigo2), var(--emerald2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  flex-shrink: 0;
+}
+.market-hero-desc { font-size: 1rem; color: var(--slate2); line-height: 1.7; }
+.market-hero-desc strong { color: white; }
+
+.market-cards {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+}
+.market-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 1.4rem;
+}
+.market-card-icon { font-size: 1.8rem; margin-bottom: 0.7rem; }
+.market-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; }
+.market-card p { font-size: 0.82rem; color: var(--slate); line-height: 1.6; }
+.market-card .num { font-size: 1.6rem; font-weight: 900; color: var(--emerald2); }
+
+.brt-timeline {
+  display: flex; align-items: center; gap: 0; margin-top: 1.5rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px; overflow: hidden;
+}
+.brt-phase {
+  flex: 1; padding: 0.9rem 1rem; text-align: center;
+  position: relative;
+}
+.brt-phase:not(:last-child) {
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+.brt-phase.active { background: rgba(99,102,241,0.1); }
+.brt-phase-year { font-size: 1.1rem; font-weight: 900; color: var(--indigo2); }
+.brt-phase-label { font-size: 0.7rem; color: var(--slate); margin-top: 0.2rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* ================================================================
+   SLIDE 4 — SOLUCIÓN
+   ================================================================ */
+#s4 { background: #0c1628; }
+.solution-cols {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;
+  align-items: start;
+}
+.value-prop {
+  display: flex; gap: 1rem; margin-bottom: 1.5rem; align-items: flex-start;
+}
+.value-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--indigo), #4338ca);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; flex-shrink: 0;
+}
+.value-icon.green { background: linear-gradient(135deg, var(--emerald), #059669); }
+.value-icon.amber { background: linear-gradient(135deg, var(--amber), #d97706); }
+.value-content h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; }
+.value-content p { font-size: 0.85rem; color: var(--slate); line-height: 1.6; }
+
+.mockup-box {
+  background: var(--bg2);
+  border: 1px solid rgba(99,102,241,0.25);
+  border-radius: 16px; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.mockup-bar {
+  background: rgba(99,102,241,0.15);
+  padding: 0.5rem 1rem;
+  display: flex; align-items: center; gap: 0.5rem;
+  border-bottom: 1px solid rgba(99,102,241,0.15);
+}
+.mockup-dot { width: 8px; height: 8px; border-radius: 50%; }
+.mockup-content { padding: 1.2rem; }
+.mockup-url {
+  font-size: 0.65rem; color: var(--slate); flex: 1; text-align: center;
+  font-family: monospace;
+}
+
+/* KPI bars inside mockup */
+.kpi-row {
+  display: flex; align-items: center; gap: 0.7rem;
+  margin-bottom: 0.7rem;
+}
+.kpi-label { font-size: 0.7rem; color: var(--slate); width: 110px; flex-shrink: 0; }
+.kpi-bar { flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+.kpi-fill { height: 100%; border-radius: 3px; }
+.kpi-val { font-size: 0.7rem; font-weight: 700; width: 36px; text-align: right; }
+
+/* ================================================================
+   SLIDE 5 — MÓDULOS
+   ================================================================ */
+#s5 { background: #0c1425; }
+.modules-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem;
+}
+.module-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px; padding: 1rem;
+  transition: all 0.2s;
+}
+.module-card:hover {
+  background: rgba(99,102,241,0.08);
+  border-color: rgba(99,102,241,0.3);
+  transform: translateY(-2px);
+}
+.module-card .m-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+.module-card h3 { font-size: 0.82rem; font-weight: 700; color: var(--white); margin-bottom: 0.3rem; }
+.module-card p { font-size: 0.72rem; color: var(--slate); line-height: 1.5; }
+.module-card .status {
+  display: inline-block; font-size: 0.6rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 0.15rem 0.5rem; border-radius: 999px; margin-top: 0.5rem;
+}
+.s-live { background: rgba(16,185,129,0.15); color: var(--emerald2); border: 1px solid rgba(16,185,129,0.3); }
+.s-dev { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+.s-planned { background: rgba(99,102,241,0.12); color: var(--indigo2); border: 1px solid rgba(99,102,241,0.3); }
+
+/* ================================================================
+   SLIDE 6 — DATOS DEL DESARROLLO
+   ================================================================ */
+#s6 { background: #0b1422; }
+.dev-grid {
+  display: grid; grid-template-columns: 1fr 1.6fr; gap: 2rem;
+  align-items: start;
+}
+.stat-cards {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+}
+.stat-card {
+  background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(99,102,241,0.04));
+  border: 1px solid rgba(99,102,241,0.2);
+  border-radius: 12px; padding: 1.2rem 1rem; text-align: center;
+}
+.stat-card .big { font-size: 2rem; font-weight: 900; line-height: 1; color: var(--indigo2); }
+.stat-card .lbl { font-size: 0.68rem; color: var(--slate); margin-top: 0.3rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.stat-card.green .big { color: var(--emerald2); }
+.stat-card.green { background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.03)); border-color: rgba(16,185,129,0.2); }
+
+.commit-chart {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px; padding: 1.5rem;
+}
+.commit-chart h3 { font-size: 0.85rem; font-weight: 700; margin-bottom: 1.2rem; color: var(--slate2); }
+.bar-row {
+  display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.75rem;
+}
+.bar-month { font-size: 0.75rem; color: var(--slate); width: 60px; flex-shrink: 0; }
+.bar-track { flex: 1; height: 20px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; }
+.bar-fill {
+  height: 100%; border-radius: 4px;
+  display: flex; align-items: center; padding-left: 8px;
+  font-size: 0.7rem; font-weight: 700; color: white;
+}
+.bar-fill.indigo { background: linear-gradient(90deg, var(--indigo), #818cf8); }
+.bar-fill.emerald { background: linear-gradient(90deg, #059669, var(--emerald)); }
+.bar-fill.amber { background: linear-gradient(90deg, #d97706, var(--amber)); }
+.bar-fill.slate { background: linear-gradient(90deg, #475569, #64748b); }
+
+.tech-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+.tech-tag {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--slate2); font-size: 0.72rem; font-weight: 600;
+  padding: 0.25rem 0.7rem; border-radius: 5px;
+}
+
+/* ================================================================
+   SLIDE 7 — ARQUITECTURA
+   ================================================================ */
+#s7 { background: #0d1526; }
+.arch-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+.arch-layer {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; overflow: hidden;
+}
+.arch-header {
+  padding: 0.7rem 1rem;
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.arch-header.frontend { background: rgba(99,102,241,0.15); color: var(--indigo2); }
+.arch-header.backend { background: rgba(16,185,129,0.12); color: var(--emerald2); }
+.arch-header.infra { background: rgba(245,158,11,0.12); color: #fbbf24; }
+.arch-items { padding: 0.8rem; }
+.arch-item {
+  font-size: 0.8rem; color: var(--slate2);
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.arch-item:last-child { border-bottom: none; }
+.arch-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--indigo2); flex-shrink: 0; }
+.arch-dot.green { background: var(--emerald2); }
+.arch-dot.amber { background: #fbbf24; }
+
+.arch-flow {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0.3rem; margin: 1.5rem 0;
+  flex-wrap: wrap;
+}
+.arch-node {
+  background: rgba(99,102,241,0.1);
+  border: 1px solid rgba(99,102,241,0.3);
+  color: var(--indigo2); font-size: 0.75rem; font-weight: 600;
+  padding: 0.4rem 0.9rem; border-radius: 6px;
+}
+.arch-arr { color: var(--slate); font-size: 1rem; }
+
+/* ================================================================
+   SLIDE 8 — BRT OPORTUNIDAD
+   ================================================================ */
+#s8 { background: #0a1520; }
+.brt-cols { display: grid; grid-template-columns: 1.2fr 1fr; gap: 2rem; }
+.brt-info h2 { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--emerald2); margin-bottom: 0.4rem; }
+.traza-list { margin: 1rem 0; }
+.traza-item {
+  display: flex; align-items: flex-start; gap: 0.8rem;
+  padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.traza-item:last-child { border-bottom: none; }
+.traza-icon { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
+.traza-text { font-size: 0.82rem; color: var(--slate2); line-height: 1.5; }
+.traza-text strong { color: var(--white); }
+
+.advantage-card {
+  background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(99,102,241,0.05));
+  border: 1px solid rgba(16,185,129,0.25);
+  border-radius: 12px; padding: 1.2rem;
+  margin-bottom: 0.75rem;
+}
+.advantage-card h3 { font-size: 0.9rem; font-weight: 700; color: var(--emerald2); margin-bottom: 0.3rem; }
+.advantage-card p { font-size: 0.8rem; color: var(--slate); line-height: 1.6; }
+
+/* ================================================================
+   SLIDE 9 — VALIDACIÓN / TRACCIÓN
+   ================================================================ */
+#s9 { background: #0c1523; }
+.traction-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.traction-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px; padding: 1.4rem; text-align: center;
+}
+.traction-card .big { font-size: 2.4rem; font-weight: 900; line-height: 1; }
+.traction-card .unit { font-size: 0.9rem; font-weight: 400; }
+.traction-card .lbl { font-size: 0.72rem; color: var(--slate); margin-top: 0.4rem; }
+.traction-card .src { font-size: 0.65rem; color: var(--indigo2); margin-top: 0.3rem; }
+
+.data-row {
+  display: flex; gap: 1rem;
+}
+.data-pill {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; padding: 0.8rem 1.2rem;
+  display: flex; align-items: center; gap: 0.7rem; flex: 1;
+}
+.data-pill .icon { font-size: 1.4rem; }
+.data-pill-text { font-size: 0.82rem; color: var(--slate2); line-height: 1.5; }
+.data-pill-text strong { color: var(--white); display: block; font-size: 0.9rem; }
+
+/* ================================================================
+   SLIDE 10 — MODELO DE NEGOCIO
+   ================================================================ */
+#s10 { background: #0b1521; }
+.biz-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+.biz-tier {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px; overflow: hidden; margin-bottom: 1rem;
+}
+.biz-tier-header {
+  padding: 0.8rem 1.2rem;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.biz-tier-header.t1 { background: rgba(99,102,241,0.15); }
+.biz-tier-header.t2 { background: rgba(16,185,129,0.12); }
+.biz-tier-header.t3 { background: rgba(245,158,11,0.12); }
+.biz-tier-name { font-size: 0.85rem; font-weight: 700; }
+.biz-tier-price { font-size: 1rem; font-weight: 900; }
+.t1 .biz-tier-price { color: var(--indigo2); }
+.t2 .biz-tier-price { color: var(--emerald2); }
+.t3 .biz-tier-price { color: #fbbf24; }
+.biz-tier-body { padding: 0.8rem 1.2rem; font-size: 0.8rem; color: var(--slate); line-height: 1.7; }
+
+.tam-box {
+  background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(16,185,129,0.07));
+  border: 1px solid rgba(99,102,241,0.25);
+  border-radius: 14px; padding: 1.5rem;
+}
+.tam-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.tam-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.tam-label { font-size: 0.82rem; color: var(--slate2); }
+.tam-label small { font-size: 0.7rem; color: var(--slate); display: block; margin-top: 0.1rem; }
+.tam-val { font-size: 1.2rem; font-weight: 900; color: var(--white); }
+.tam-val.emerald { color: var(--emerald2); }
+.tam-val.indigo { color: var(--indigo2); }
+
+/* ================================================================
+   SLIDE 11 — ROADMAP
+   ================================================================ */
+#s11 { background: #0c1422; }
+.roadmap { position: relative; padding-left: 1.5rem; }
+.roadmap::before {
+  content: ''; position: absolute; left: 0; top: 0.5rem; bottom: 0.5rem;
+  width: 2px; background: linear-gradient(180deg, var(--indigo), var(--emerald));
+  border-radius: 2px;
+}
+.rm-item { position: relative; margin-bottom: 1.6rem; }
+.rm-dot {
+  position: absolute; left: -1.5rem; top: 0.35rem;
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid var(--bg); margin-left: -4px;
+}
+.rm-dot.done { background: var(--emerald); }
+.rm-dot.current { background: var(--indigo2); box-shadow: 0 0 0 4px rgba(99,102,241,0.2); }
+.rm-dot.future { background: var(--bg3); border-color: var(--slate); }
+
+.rm-date { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--slate); margin-bottom: 0.2rem; }
+.rm-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; }
+.rm-items { font-size: 0.8rem; color: var(--slate); line-height: 1.7; }
+.rm-items span {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  margin-right: 0.8rem;
+}
+
+/* ================================================================
+   SLIDE 12 — POR QUÉ AHORA
+   ================================================================ */
+#s12 { background: #0d1524; }
+.why-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.why-card {
+  background: rgba(255,255,255,0.03);
+  border-radius: 12px; padding: 1.4rem;
+  border: 1px solid rgba(255,255,255,0.07);
+  position: relative; overflow: hidden;
+}
+.why-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.why-card.c1::before { background: linear-gradient(90deg, var(--indigo), var(--indigo2)); }
+.why-card.c2::before { background: linear-gradient(90deg, var(--emerald), var(--emerald2)); }
+.why-card.c3::before { background: linear-gradient(90deg, var(--amber), #fbbf24); }
+.why-card.c4::before { background: linear-gradient(90deg, var(--rose), #fb7185); }
+.why-card .icon { font-size: 1.8rem; margin-bottom: 0.7rem; }
+.why-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem; }
+.why-card p { font-size: 0.8rem; color: var(--slate); line-height: 1.6; }
+.why-card em { color: var(--white); font-style: normal; font-weight: 600; }
+
+/* ================================================================
+   SLIDE 13 — EQUIPO
+   ================================================================ */
+#s13 { background: #0b1420; }
+.team-cols { display: grid; grid-template-columns: 1fr 1.3fr; gap: 2rem; }
+.team-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px; padding: 1.6rem;
+  text-align: center;
+}
+.team-avatar {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--indigo), #4338ca);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; margin: 0 auto 1rem;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.3);
+}
+.team-name { font-size: 1.1rem; font-weight: 800; }
+.team-role { font-size: 0.82rem; color: var(--indigo2); margin: 0.2rem 0 0.8rem; }
+.team-desc { font-size: 0.82rem; color: var(--slate); line-height: 1.6; }
+.team-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center; margin-top: 0.8rem; }
+.team-tag {
+  background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2);
+  color: var(--indigo2); font-size: 0.68rem; font-weight: 600;
+  padding: 0.2rem 0.6rem; border-radius: 999px;
+}
+
+.built-with { padding: 1.4rem; background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: 12px; }
+.built-with h3 { font-size: 0.85rem; font-weight: 700; color: var(--emerald2); margin-bottom: 1rem; }
+.built-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.7rem; }
+.built-row .icon { font-size: 1.1rem; }
+.built-row .text { font-size: 0.82rem; color: var(--slate2); line-height: 1.5; }
+.built-row .text strong { color: var(--white); }
+
+/* ================================================================
+   SLIDE 14 — CTA
+   ================================================================ */
+#s14 {
+  background: linear-gradient(145deg, #0a0e1c 0%, #0f172a 50%, #0b1830 100%);
+}
+.cta-center { text-align: center; }
+.cta-title { font-size: clamp(2.2rem, 4vw, 3.2rem); font-weight: 900; letter-spacing: -0.03em; margin-bottom: 0.5rem; }
+.cta-title span { color: var(--indigo2); }
+.cta-sub { font-size: 1rem; color: var(--slate); margin-bottom: 2.5rem; max-width: 600px; margin-left: auto; margin-right: auto; }
+.cta-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2.5rem; }
+.cta-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 1.4rem;
+}
+.cta-card .ck { font-size: 2rem; margin-bottom: 0.6rem; }
+.cta-card h3 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.4rem; }
+.cta-card p { font-size: 0.8rem; color: var(--slate); line-height: 1.6; }
+
+.cta-contact {
+  display: inline-flex; align-items: center; gap: 0.7rem;
+  background: var(--indigo); color: white;
+  padding: 0.9rem 2rem; border-radius: 10px;
+  font-size: 0.95rem; font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 0 30px rgba(99,102,241,0.4);
+  transition: all 0.2s;
+  margin: 0.4rem;
+}
+.cta-contact:hover { background: var(--indigo2); transform: translateY(-1px); }
+.cta-url {
+  display: inline-flex; align-items: center; gap: 0.7rem;
+  background: rgba(16,185,129,0.1); color: var(--emerald2);
+  border: 1px solid rgba(16,185,129,0.3);
+  padding: 0.9rem 2rem; border-radius: 10px;
+  font-size: 0.95rem; font-weight: 700;
+  text-decoration: none; margin: 0.4rem;
+  transition: all 0.2s;
+}
+.cta-url:hover { background: rgba(16,185,129,0.2); }
+
+/* ================================================================
+   SECTION DIVIDERS
+   ================================================================ */
+.section-line {
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(99,102,241,0.3), transparent);
+  margin: 0;
+}
+
+/* ================================================================
+   PRINT STYLES
+   ================================================================ */
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  nav { display: none !important; }
+  .slide-page {
+    min-height: 0;
+    page-break-after: always;
+    padding: 2cm;
+    break-after: page;
+  }
+  body { background: #0f172a !important; }
+  .glow-tl, .glow-br { display: none; }
+
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+}
+
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+@media (max-width: 768px) {
+  .problem-grid, .solution-cols, .market-cards, .brt-cols,
+  .traction-grid, .biz-cols, .why-grid, .team-cols,
+  .cta-cards, .arch-cols, .dev-grid, .modules-grid {
+    grid-template-columns: 1fr;
+  }
+  .s1-stats { grid-template-columns: 1fr 1fr; }
+  nav a:not(.nav-print):not(:nth-child(-n+4)) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ====== NAVIGATION ====== -->
+<nav>
+  <div class="logo">🚌 TransformaFacil 2.0</div>
+  <a href="#s1">Inicio</a>
+  <a href="#s2">Problema</a>
+  <a href="#s3">Mercado</a>
+  <a href="#s4">Solución</a>
+  <a href="#s5">Módulos</a>
+  <a href="#s6">Dev</a>
+  <a href="#s8">BRT</a>
+  <a href="#s10">Negocio</a>
+  <a href="#s11">Roadmap</a>
+  <a href="#s14">Contacto</a>
+  <a href="#" class="nav-print" onclick="window.print(); return false;">🖨 Imprimir / PDF</a>
+</nav>
+
+<!-- ===================================================================
+     SLIDE 1 — PORTADA
+     =================================================================== -->
+<section class="slide-page" id="s1">
+  <div class="glow-tl"></div>
+  <div class="glow-br"></div>
+  <div class="slide-inner">
+    <div class="s1-bus-icon">🚌</div>
+    <div class="s1-tag">
+      <div class="s1-dot"></div>
+      Sistema en producción · ucot-gestor-cloud.web.app
+    </div>
+    <div class="s1-title">Transforma<span>Facil</span> 2.0</div>
+    <div class="s1-version">El ERP de Transporte Público para América Latina</div>
+    <div class="s1-sub">
+      Plataforma integral de gestión operacional para operadores de transporte público.
+      Inteligencia competitiva real, KPIs internacionales UITP y el único sistema
+      preparado para el BRT US$800M de Uruguay.
+    </div>
+    <div class="s1-badges">
+      <span class="badge badge-green">✅ Producción activa</span>
+      <span class="badge badge-indigo">React 19 + Firebase</span>
+      <span class="badge badge-amber">BRT-Ready 2027</span>
+      <span class="badge">Multi-tenant SaaS</span>
+      <span class="badge">PWA + Android</span>
+    </div>
+    <a href="https://ucot-gestor-cloud.web.app/dashboard" target="_blank" class="s1-url">
+      🔗 ucot-gestor-cloud.web.app/dashboard
+    </a>
+    <div class="s1-stats">
+      <div class="s1-stat">
+        <div class="s1-stat-n">124K</div>
+        <div class="s1-stat-l">Líneas de código</div>
+      </div>
+      <div class="s1-stat">
+        <div class="s1-stat-n">437</div>
+        <div class="s1-stat-l">Commits en Git</div>
+      </div>
+      <div class="s1-stat">
+        <div class="s1-stat-n">3.5</div>
+        <div class="s1-stat-l">Meses de desarrollo</div>
+      </div>
+      <div class="s1-stat">
+        <div class="s1-stat-n">76</div>
+        <div class="s1-stat-l">Pantallas operativas</div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="section-line"></div>
+
+<!-- ===================================================================
+     SLIDE 2 — EL PROBLEMA
+     =================================================================== -->
+<section class="slide-page" id="s2">
+  <div class="glow-tl"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">El Problema</div>
+    <h1 class="slide-h1">Los operadores de transporte<br><span>gestionan en la oscuridad</span></h1>
+    <div class="hdiv"></div>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="icon">📋</div>
+        <h3>Sin inteligencia competitiva real</h3>
+        <p>Los operadores no saben en tiempo real dónde están los buses de la competencia, cuántas líneas se superponen, ni qué corredores están en riesgo. Las decisiones se toman con datos de semanas atrás.</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">📊</div>
+        <h3>KPIs manuales y desactualizados</h3>
+        <p>Hojas de cálculo Excel para medir puntualidad, ocupación y costos. Sin estándares internacionales (UITP), sin alertas automáticas, sin comparativa con benchmarks de la industria.</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">🗺️</div>
+        <h3>Red rediseñada por intuición</h3>
+        <p>El BRT 2029 obliga a reestructurar 140+ líneas en toda la red metropolitana. Hoy ningún operador tiene herramientas para modelar qué líneas reconvertir, con qué evidencia y en qué orden.</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">👷</div>
+        <h3>Gestión de conductores y flota analógica</h3>
+        <p>Planillas físicas de cartones (hojas de ruta), sin sistema para asignar turnos, gestionar 691 empleados o controlar el mantenimiento de 257 vehículos desde una única plataforma.</p>
+      </div>
+    </div>
+    <div class="pain-stat">
+      <div class="pain-num">US$ 800M</div>
+      <div class="pain-desc">El Proyecto de Transporte Metropolitano de Uruguay — el mayor proyecto de infraestructura urbana del país — obliga a todos los operadores a reestructurar su red antes de 2029. <strong>Ninguno tiene hoy las herramientas para hacerlo.</strong></div>
+    </div>
+  </div>
+</section>
+<div class="section-line"></div>
+
+<!-- ===================================================================
+     SLIDE 3 — EL MERCADO
+     =================================================================== -->
+<section class="slide-page" id="s3">
+  <div class="glow-br"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">El Mercado</div>
+    <h1 class="slide-h1">Una ventana de oportunidad<br><span>única y acotada</span></h1>
+    <div class="hdiv"></div>
+    <div class="market-hero">
+      <div class="market-hero-num">US$800M</div>
+      <div class="market-hero-desc">
+        <strong>BID US$500M (Nov 2025) + CAF US$300M (2026)</strong> para el Proyecto de
+        Transporte Metropolitano de Uruguay. Financiamiento asegurado. Licitación fin 2026.
+        Obras 2027–2029. <strong>Todos los operadores tienen 18 meses para prepararse.</strong>
+        TransformaFacil es el único sistema con la traza BRT ya cargada y el simulador
+        de reconversión de red listo.
+      </div>
+    </div>
+    <div class="market-cards">
+      <div class="market-card">
+        <div class="market-card-icon">🇺🇾</div>
+        <div class="num">4</div>
+        <h3>Operadores Uruguay</h3>
+        <p>UCOT, CUTCSA, COETC, COME — todos con necesidad urgente de herramientas para el proceso BRT. Mercado inmediato, sin competencia directa.</p>
+      </div>
+      <div class="market-card">
+        <div class="market-card-icon">🌎</div>
+        <div class="num">12+</div>
+        <h3>Países con proyectos BRT activos</h3>
+        <p>Colombia, Chile, Ecuador, Perú, Argentina — todos con proyectos BRT financiados por BID/CAF. El mismo modelo se replica región. Multi-tenant desde el diseño.</p>
+      </div>
+      <div class="market-card">
+        <div class="market-card-icon">🏛️</div>
+        <div class="num">1</div>
+        <h3>Regulador como cliente</h3>
+        <p>IM + MTOP necesitan una plataforma para gestionar el cambio de modelo. El módulo BRT es exportable como herramienta regulatoria. Exportador GTFS integrado.</p>
+      </div>
+    </div>
+    <div class="brt-timeline">
+      <div class="brt-phase">
+        <div class="brt-phase-year">2026</div>
+        <div class="brt-phase-label">Licitación BRT</div>
+      </div>
+      <div class="brt-phase active">
+        <div class="brt-phase-year" style="color:#6366f1">AHORA</div>
+        <div class="brt-phase-label" style="color:#818cf8">Ventana crítica</div>
+      </div>
+      <div class="brt-phase">
+        <div class="brt-phase-year">2027</div>
+        <div class="brt-phase-label">Inicio obras</div>
+      </div>
+      <div class="brt-phase">
+        <div class="brt-phase-year">2028</div>
+        <div class="brt-phase-label">Rediseño de red</div>
+      </div>
+      <div class="brt-phase">
+        <div class="brt-phase-year">2029</div>
+        <div class="brt-phase-label">Apertura BRT</div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="section-line"></div>
+
+<!-- ===================================================================
+     SLIDE 4 — LA SOLUCIÓN
+     =================================================================== -->
+<section class="slide-page" id="s4">
+  <div class="glow-tl"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">La Solución</div>
+    <h1 class="slide-h1">Una plataforma que convierte datos<br><span>en decisiones operacionales</span></h1>
+    <div class="hdiv"></div>
+    <div class="solution-cols">
+      <div>
+        <div class="value-prop">
+          <div class="value-icon">🛰️</div>
+          <div class="value-content">
+            <h3>Inteligencia GPS real — no simulada</h3>
+            <p>Integración directa con el endpoint público de la IM (STM Online). Monitoreo de TODOS los buses del sistema en tiempo real: UCOT, CUTCSA, COETC, COME. Único sistema en el mercado con esta capacidad.</p>
+          </div>
+        </div>
+        <div class="value-prop">
+          <div class="value-icon green">📐</div>
+          <div class="value-content">
+            <h3>Estándares UITP internacionales</h3>
+            <p>Scorecard con los 5 KPIs críticos de la Unión Internacional de Transporte Público: OTP (puntualidad), Load Factor, Fleet Availability, CPK y Revenue/VKm. Benchmarks comparables con TfL, NYC MTA y STM Montreal.</p>
+          </div>
+        </div>
+        <div class="value-prop">
+          <div class="value-icon amber">🗺️</div>
+          <div class="value-content">
+            <h3>BRT-Ready: único en el mercado</h3>
+            <p>Traza oficial BRT-A y BRT-B ya cargadas con hitos editables y fuentes citadas. Simulador de alimentadoras que cruza la traza contra los buses GPS activos de cada línea UCOT. Exportador GTFS estándar Google Maps/Moovit.</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="mockup-box">
+          <div class="mockup-bar">
+            <div class="mockup-dot" style="background:#ff6058"></div>
+            <div class="mockup-dot" style="background:#ffbc2e"></div>
+            <div class="mockup-dot" style="background:#28c840"></div>
+            <div class="mockup-url">ucot-gestor-cloud.web.app/dashboard</div>
+          </div>
+          <div class="mockup-content">
+            <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.8rem;font-weight:700">KPIs UITP — Tiempo Real</div>
+            <div class="kpi-row">
+              <div class="kpi-label">Puntualidad OTP</div>
+              <div class="kpi-bar"><div class="kpi-fill" style="width:84%;background:linear-gradient(90deg,#10b981,#34d399)"></div></div>
+              <div class="kpi-val" style="color:#34d399">84%</div>
+            </div>
+            <div class="kpi-row">
+              <div class="kpi-label">Ocupación media</div>
+              <div class="kpi-bar"><div class="kpi-fill" style="width:68%;background:linear-gradient(90deg,#6366f1,#818cf8)"></div></div>
+              <div class="kpi-val" style="color:#818cf8">68%</div>
+            </div>
+            <div class="kpi-row">
+              <div class="kpi-label">Flota disponible</div>
+              <div class="kpi-bar"><div class="kpi-fill" style="width:82%;background:linear-gradient(90deg,#10b981,#34d399)"></div></div>
+              <div class="kpi-val" style="color:#34d399">82%</div>
+            </div>
+            <div class="kpi-row">
+              <div class="kpi-label">GPS activos hoy</div>
+              <div class="kpi-bar"><div class="kpi-fill" style="width:91%;background:linear-gradient(90deg,#6366f1,#a5b4fc)"></div></div>
+              <div class="kpi-val" style="color:#a5b4fc">312</div>
+            </div>
+            <div style="margin-top:1rem;padding-top:0.8rem;border-top:1px solid rgba(255,255,255,0.06)">
+              <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.6rem;font-weight:700">Proyección BRT 2029</div>
+              <div style="font-size:0.78rem;color:#94a3b8;line-height:1.6">
+                🟢 <strong style="color:#fff">3 líneas</strong> → Alimentadoras<br>
+                🔵 <strong style="color:#fff">4 líneas</strong> → Reestructurar<br>
+                🔴 <strong style="color:#fff">2 líneas</strong> → Competencia directa BRT
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="section-line"></div>
+
+<!-- ===================================================================
+     SLIDE 5 — MÓDULOS
+     =================================================================== -->
+<section class="slide-page" id="s5">
+  <div class="glow-br"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">Módulos del Sistema</div>
+    <h1 class="slide-h1"><span>14 módulos operativos</span> — Una sola plataforma</h1>
+    <div class="hdiv"></div>
+    <div class="modules-grid">
+      <div class="module-card">
+        <div class="m-icon">📊</div>
+        <h3>Dashboard CEO</h3>
+        <p>KPIs ejecutivos, health score, alertas críticas en tiempo real</p>
+        <span class="status s-live">Live</span>
+      </div>
+      <div class="module-card">
+        <div class="m-icon">🛰️</div>
+        <h3>Inteligencia GPS</h3>
+        <p>Posición en vivo de competidores por empresa (API STM-online)</p>
+        <span class="status s-live">Live</span>
+      </div>
+      <div class="module-card">
+        <div class="m-icon">📋</div>
+        <h3>Gestión Cartones</h3>
+        <p>Hojas de ruta diarias de conductores con validación digital</p>
+        <span class="status s-live">Live</span>
+      </div>
+      <div class="module-card">
+        <div class="m-icon">📈</div>
+        <h3>Pronósticos</h3>
+        <p>6 escenarios con elasticidades UITP/TCRP Report 95</p>
+        <span class="status s-dev">En desarrollo</span>
+      </div>
+      <div class="module-card">
+        <div class="m-icon">🚌</div>
+        <h3>Gestión de Flota</h3>
+        <p>257 coches, mantenimiento preventivo, disponibilidad real</p>
+        <span class="status s-live">Live</span>
+      </div>
+      <div class="module-card">
+        <div class="m-icon">🏆</div>
+        <h3>KPIs UITP</h3>
+        <p>Scorecard internacional: OTP, Load Factor, CPK, Fleet Avail.</p>
+        <span class="status s-live">Live</span>
+      </div>
+      <div class="module-card">
+        <div class="m-icon">⚙️</div>
+        <h3>Parámetros</h3>
+        <p>Tarifa, costos, elasticidades con vigencia temporal editable</p>
+        <span class="status s-live">Live</span>
+      </div>
+      <div class="module-card">
+        <div class="m-icon">🎯</div>
+        <h3>Proyección BRT</h3>
+        <p>Traza oficial, simulador alimentadoras, heatmap carga por parada</p>
+        <span class="status s-live">Live</span>
+      </div>
+      <div class="module-card">
+        <div class="m-icon">👥</div>
+        <h3>RRHH</h3>
+        <p>691 empleados, rotaciones, feriados, legajos digitales</p>
+        <span class="status s-live">Live</span>
+      </div>
+      <div class="module-card">
+        <div class="m-icon">⚖️</div>
+        <h3>ABL / Penalizaciones</h3>
+        <p>Motor de reglas de negocio y penalizaciones configurables</p>
+        <span class="status s-dev">En desarrollo</span>
+      </div>
+      <div class="module-card">
+        <div class="m-icon">🤖</div>
+        <h3>Agentes IA</h3>
+        <p>Copiloto operacional con Ollama local + Claude API</p>
+        <span class="status s-dev">En desarrollo</span>
+      </div>
+      <div class="module-card">
+        <div class="m-icon">📡</div>
+        <h3>Exportador GTFS</h3>
+        <p>Estándar Google Maps/Moovit/Apple Maps — publicación automática</p>
+        <span class="status s-planned">Próximamente</span>
+      </div>
+      <div class="module-card">
+        <div class="m-icon">📱</div>
+        <h3>App Móvil + Desktop</h3>
+        <p>Android (Capacitor) y Electron para uso offline en campo</p>
+        <span class="status s-dev">En desarrollo</span>
+      </div>
+      <div class="module-card">
+        <div class="m-icon">🏢</div>
+        <h3>Multi-Tenant</h3>
+        <p>Arquitectura para escalar a cualquier operador de LATAM</p>
+        <span class="status s-live">Activo</span>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="section-line"></div>
+
+<!-- ===================================================================
+     SLIDE 6 — DATOS DEL DESARROLLO
+     =================================================================== -->
+<section class="slide-page" id="s6">
+  <div class="glow-tl"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">Datos del Proyecto</div>
+    <h1 class="slide-h1">3.5 meses de desarrollo intensivo.<br><span>Resultado comprobable en producción.</span></h1>
+    <div class="hdiv"></div>
+    <div class="dev-grid">
+      <div>
+        <div class="stat-cards">
+          <div class="stat-card"><div class="big">124K</div><div class="lbl">Líneas de código fuente</div></div>
+          <div class="stat-card green"><div class="big">437</div><div class="lbl">Commits en Git</div></div>
+          <div class="stat-card"><div class="big">600+</div><div class="lbl">Horas de desarrollo</div></div>
+          <div class="stat-card green"><div class="big">76</div><div class="lbl">Pantallas/vistas</div></div>
+          <div class="stat-card"><div class="big">79</div><div class="lbl">Componentes UI</div></div>
+          <div class="stat-card green"><div class="big">19</div><div class="lbl">Servicios backend</div></div>
+        </div>
+        <div class="tech-tags" style="margin-top:1.2rem">
+          <span class="tech-tag">React 19</span>
+          <span class="tech-tag">TypeScript strict</span>
+          <span class="tech-tag">Firebase</span>
+          <span class="tech-tag">Node.js</span>
+          <span class="tech-tag">Socket.io</span>
+          <span class="tech-tag">PWA</span>
+          <span class="tech-tag">Capacitor Android</span>
+          <span class="tech-tag">Electron</span>
+          <span class="tech-tag">Tailwind CSS</span>
+          <span class="tech-tag">Vite</span>
+        </div>
+      </div>
+      <div>
+        <div class="commit-chart">
+          <h3>Actividad de commits por período</h3>
+          <div class="bar-row">
+            <div class="bar-month">Ene 2026</div>
+            <div class="bar-track"><div class="bar-fill indigo" style="width:94%">411</div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-month">Feb 2026</div>
+            <div class="bar-track"><div class="bar-fill emerald" style="width:18%">—</div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-month">Mar 2026</div>
+            <div class="bar-track"><div class="bar-fill amber" style="width:5%">11</div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-month">Abr 2026</div>
+            <div class="bar-track"><div class="bar-fill slate" style="width:7%">15</div></div>
+          </div>
+          <div style="margin-top:1.2rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.06);font-size:0.75rem;color:#64748b;line-height:1.7">
+            <strong style="color:#94a3b8;display:block;margin-bottom:0.3rem">Inicio del proyecto: 8 de enero de 2026</strong>
+            Desarrollo principal completado en el primer sprint de enero. Refinamiento continuo en iteraciones posteriores con mejoras de calidad de datos, módulo BRT y estándares UITP.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="section-line"></div>
+
+<!-- ===================================================================
+     SLIDE 7 — ARQUITECTURA
+     =================================================================== -->
+<section class="slide-page" id="s7">
+  <div class="glow-br"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">Arquitectura Técnica</div>
+    <h1 class="slide-h1">Stack moderno, <span>probado en producción</span></h1>
+    <div class="hdiv"></div>
+    <div class="arch-flow">
+      <div class="arch-node">GPS STM</div>
+      <div class="arch-arr">→</div>
+      <div class="arch-node">Backend API</div>
+      <div class="arch-arr">→</div>
+      <div class="arch-node">Firestore</div>
+      <div class="arch-arr">→</div>
+      <div class="arch-node">Socket.io</div>
+      <div class="arch-arr">→</div>
+      <div class="arch-node">React Frontend</div>
+      <div class="arch-arr">→</div>
+      <div class="arch-node">PWA / Android</div>
+    </div>
+    <div class="arch-cols">
+      <div class="arch-layer">
+        <div class="arch-header frontend">Frontend</div>
+        <div class="arch-items">
+          <div class="arch-item"><div class="arch-dot"></div>React 19 + TypeScript strict</div>
+          <div class="arch-item"><div class="arch-dot"></div>Vite + Tailwind CSS</div>
+          <div class="arch-item"><div class="arch-dot"></div>PWA (Service Worker)</div>
+          <div class="arch-item"><div class="arch-dot"></div>Capacitor Android + Electron</div>
+          <div class="arch-item"><div class="arch-dot"></div>Socket.io client (tiempo real)</div>
+          <div class="arch-item"><div class="arch-dot"></div>76 páginas · 79 componentes</div>
+        </div>
+      </div>
+      <div class="arch-layer">
+        <div class="arch-header backend">Backend</div>
+        <div class="arch-items">
+          <div class="arch-item"><div class="arch-dot green"></div>Express.js + TypeScript</div>
+          <div class="arch-item"><div class="arch-dot green"></div>Firebase Admin SDK</div>
+          <div class="arch-item"><div class="arch-dot green"></div>Socket.io server</div>
+          <div class="arch-item"><div class="arch-dot green"></div>19 servicios de negocio</div>
+          <div class="arch-item"><div class="arch-dot green"></div>RBAC: 5 roles (Admin, Tráfico, CFO…)</div>
+          <div class="arch-item"><div class="arch-dot green"></div>Integración GPS STM-Online</div>
+          <div class="arch-item"><div class="arch-dot green"></div>Ingesta CKAN IM (carga/parada)</div>
+        </div>
+      </div>
+      <div class="arch-layer">
+        <div class="arch-header infra">Infraestructura</div>
+        <div class="arch-items">
+          <div class="arch-item"><div class="arch-dot amber"></div>Firebase Firestore (NoSQL)</div>
+          <div class="arch-item"><div class="arch-dot amber"></div>Firebase Hosting (CDN)</div>
+          <div class="arch-item"><div class="arch-dot amber"></div>Firebase Authentication</div>
+          <div class="arch-item"><div class="arch-dot amber"></div>Firebase Cloud Functions</div>
+          <div class="arch-item"><div class="arch-dot amber"></div>Docker-ready</div>
+          <div class="arch-item"><div class="arch-dot amber"></div>GTFS exporter (estándar IM)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="section-line"></div>
+
+<!-- ===================================================================
+     SLIDE 8 — BRT OPORTUNIDAD
+     =================================================================== -->
+<section class="slide-page" id="s8">
+  <div class="glow-tl"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">La Oportunidad BRT</div>
+    <h1 class="slide-h1">Somos los únicos preparados<br><span>para el cambio de modelo</span></h1>
+    <div class="hdiv"></div>
+    <div class="brt-cols">
+      <div class="brt-info">
+        <h2>Traza oficial — Troncal A y B</h2>
+        <p style="font-size:0.82rem;color:#94a3b8;margin-bottom:1rem">Datos verbatim de fuentes citables (IM, El Observador, Bloomberg Línea). Cada hito editable con historial de cambios.</p>
+        <div class="traza-list">
+          <div class="traza-item">
+            <div class="traza-icon" style="color:#34d399">●</div>
+            <div class="traza-text"><strong>BRT-A — Troncal Este:</strong> Zonamérica → Camino Maldonado → Av. 8 de Octubre → Tres Cruces → 18 de Julio → Ciudad Vieja (7 hitos, 2 pasos subterráneos)</div>
+          </div>
+          <div class="traza-item">
+            <div class="traza-icon" style="color:#818cf8">●</div>
+            <div class="traza-text"><strong>BRT-B — Troncal Costa:</strong> El Pinar (Canelones) → Av. Giannattasio → Av. Italia → Tres Cruces → 18 de Julio → Ciudad Vieja (8 hitos, 3 pasos subterráneos)</div>
+          </div>
+          <div class="traza-item">
+            <div class="traza-icon" style="color:#fbbf24">◆</div>
+            <div class="traza-text"><strong>Nodo Tres Cruces:</strong> Intercambio subterráneo común a ambas troncales. Punto clave de transbordo para alimentadoras.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:0.6rem;margin-top:1rem;flex-wrap:wrap">
+          <span class="badge badge-indigo">Traza cargada hoy</span>
+          <span class="badge badge-green">Simulador activo</span>
+          <span class="badge badge-amber">GTFS exportable</span>
+        </div>
+      </div>
+      <div>
+        <div class="advantage-card">
+          <h3>🎯 Simulador de alimentadoras</h3>
+          <p>Cruza la traza BRT con zonas de cobertura reales de 29 líneas UCOT + buses GPS activos. Genera score 0-100 y argumentos listos para defender el rediseño ante IM/STM. <em>Ningún otro operador tiene esto.</em></p>
+        </div>
+        <div class="advantage-card">
+          <h3>🔥 Mapa de calor de carga por parada</h3>
+          <p>Ingesta del dataset público IM (124.000+ ascensos/mes/parada). Muestra cuáles paradas son críticas en el eje BRT — argumento duro de demanda real ante el regulador.</p>
+        </div>
+        <div class="advantage-card">
+          <h3>📤 Exportador GTFS estándar</h3>
+          <p>La traza BRT editada en el sistema se exporta como GTFS-static para publicación en Google Maps, Moovit y Apple Maps. Estándar internacional requerido por IM.</p>
+        </div>
+        <div class="advantage-card">
+          <h3>📅 Gantt de transición 2026-2029</h3>
+          <p>Cada línea UCOT tiene su fila de transición: operativa → reestructurada → alimentadora. Coordina el proceso de 3 años con el cronograma oficial del BRT.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="section-line"></div>
+
+<!-- ===================================================================
+     SLIDE 9 — VALIDACIÓN Y TRACCIÓN
+     =================================================================== -->
+<section class="slide-page" id="s9">
+  <div class="glow-br"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">Validación y Tracción</div>
+    <h1 class="slide-h1">Datos reales. <span>No proyecciones.</span></h1>
+    <div class="hdiv"></div>
+    <div class="traction-grid">
+      <div class="traction-card">
+        <div class="big" style="color:#818cf8">312<span class="unit"> buses</span></div>
+        <div class="lbl">Monitoreados en tiempo real hoy via GPS STM</div>
+        <div class="src">Verificado · stm-online API · &lt;500ms</div>
+      </div>
+      <div class="traction-card">
+        <div class="big" style="color:#34d399">691<span class="unit"> emp.</span></div>
+        <div class="lbl">Empleados UCOT cargados en el sistema</div>
+        <div class="src">Datos reales · UCOT 2026</div>
+      </div>
+      <div class="traction-card">
+        <div class="big" style="color:#fbbf24">1,811<span class="unit"> serv.</span></div>
+        <div class="lbl">Servicios del boletín UCOT ingresados</div>
+        <div class="src">Dataset real · operativo</div>
+      </div>
+      <div class="traction-card">
+        <div class="big" style="color:#818cf8">257<span class="unit"> coches</span></div>
+        <div class="lbl">Flota UCOT completa en gestión</div>
+        <div class="src">Datos reales · 2026</div>
+      </div>
+      <div class="traction-card">
+        <div class="big" style="color:#34d399">29<span class="unit"> líneas</span></div>
+        <div class="lbl">Líneas UCOT bajo auditoría de calidad</div>
+        <div class="src">Seed verificado contra STM</div>
+      </div>
+      <div class="traction-card">
+        <div class="big" style="color:#fbbf24">US$800M</div>
+        <div class="lbl">Financiamiento BRT asegurado como catalizador de demanda</div>
+        <div class="src">BID + CAF · Nov 2025–2026</div>
+      </div>
+    </div>
+    <div class="data-row">
+      <div class="data-pill">
+        <div class="icon">📊</div>
+        <div class="data-pill-text">
+          <strong>Dataset CKAN IM verificado</strong>
+          Ascensos por parada (124K+ registros/mes) disponibles en ckan-data.montevideo.gub.uy. Pipeline de ingesta automático implementado.
+        </div>
+      </div>
+      <div class="data-pill">
+        <div class="icon">🛰️</div>
+        <div class="data-pill-text">
+          <strong>API GPS STM verificada y activa</strong>
+          POST stm-online devuelve GeoJSON con posición de todos los buses del sistema &lt;500ms. Integración live en producción.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="section-line"></div>
+
+<!-- ===================================================================
+     SLIDE 10 — MODELO DE NEGOCIO
+     =================================================================== -->
+<section class="slide-page" id="s10">
+  <div class="glow-tl"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">Modelo de Negocio</div>
+    <h1 class="slide-h1">SaaS recurrente + consultoría estratégica<br><span>en un mercado sin competencia directa</span></h1>
+    <div class="hdiv"></div>
+    <div class="biz-cols">
+      <div>
+        <p style="font-size:0.85rem;color:#94a3b8;margin-bottom:1.2rem;line-height:1.7">El mercado de software operacional para transporte público en Uruguay y LATAM es prácticamente inexistente. Los operadores usan Excel, WhatsApp y sistemas legacy obsoletos. TransformaFacil es el primero en integrar GPS real, estándares UITP y herramientas BRT en una sola plataforma SaaS.</p>
+        <div class="biz-tier">
+          <div class="biz-tier-header t1">
+            <span class="biz-tier-name">🇺🇾 Operador Uruguay</span>
+            <span class="biz-tier-price">USD 500–2.000/mes</span>
+          </div>
+          <div class="biz-tier-body">UCOT, CUTCSA, COETC, COME. Acceso completo a módulos operativos, KPIs UITP, módulo BRT y soporte. 4 operadores = mercado inmediato.</div>
+        </div>
+        <div class="biz-tier">
+          <div class="biz-tier-header t2">
+            <span class="biz-tier-name">🌎 Expansión LATAM</span>
+            <span class="biz-tier-price">USD 1.000–5.000/mes</span>
+          </div>
+          <div class="biz-tier-body">Arquitectura multi-tenant preparada. Colombia, Chile, Ecuador, Perú — todos con proyectos BRT activos financiados por BID/CAF. El mismo playbook se replica.</div>
+        </div>
+        <div class="biz-tier">
+          <div class="biz-tier-header t3">
+            <span class="biz-tier-name">🏛️ Módulo Regulador</span>
+            <span class="biz-tier-price">Proyecto + licencia</span>
+          </div>
+          <div class="biz-tier-body">IM/MTOP necesita herramientas para coordinar el cambio de modelo 2026-2029. El módulo BRT es exportable como plataforma regulatoria con GTFS y gestión de la transición.</div>
+        </div>
+      </div>
+      <div>
+        <div class="tam-box">
+          <div style="font-size:0.8rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:1.2rem">Mercado Potencial</div>
+          <div class="tam-row">
+            <div class="tam-label">
+              Uruguay — 4 operadores
+              <small>Mercado inmediato · win rate alto</small>
+            </div>
+            <div class="tam-val">USD 24K–96K<span style="font-size:0.7rem;color:#64748b">/año</span></div>
+          </div>
+          <div class="tam-row">
+            <div class="tam-label">
+              LATAM — 50+ operadores (Fase 2)
+              <small>Colombia, Chile, Ecuador, Perú, Argentina</small>
+            </div>
+            <div class="tam-val emerald">USD 600K+<span style="font-size:0.7rem;color:#64748b">/año</span></div>
+          </div>
+          <div class="tam-row">
+            <div class="tam-label">
+              Reguladores + Consultorías
+              <small>IM, MTOP, Banco Mundial, CAF</small>
+            </div>
+            <div class="tam-val indigo">USD 200K+<span style="font-size:0.7rem;color:#64748b">/proyecto</span></div>
+          </div>
+          <div style="margin-top:1.2rem;padding:0.8rem;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:8px;font-size:0.8rem;color:#94a3b8;line-height:1.6">
+            <strong style="color:#34d399">Margen SaaS estimado: 70-80%</strong> — Infraestructura Firebase escala con uso. El costo marginal de un nuevo cliente es casi cero.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="section-line"></div>
+
+<!-- ===================================================================
+     SLIDE 11 — ROADMAP
+     =================================================================== -->
+<section class="slide-page" id="s11">
+  <div class="glow-br"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">Roadmap 2026–2029</div>
+    <h1 class="slide-h1">Alineado con el <span>cronograma del BRT</span></h1>
+    <div class="hdiv"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;align-items:start">
+      <div class="roadmap">
+        <div class="rm-item">
+          <div class="rm-dot done"></div>
+          <div class="rm-date">Enero – Abril 2026 ✅</div>
+          <div class="rm-title">MVP en Producción</div>
+          <div class="rm-items">
+            <span>✅ 124K líneas de código</span>
+            <span>✅ GPS STM real</span>
+            <span>✅ KPIs UITP</span>
+            <span>✅ Módulo BRT-A/B cargado</span>
+            <span>✅ Simulador alimentadoras</span>
+            <span>✅ Carga por parada CKAN</span>
+          </div>
+        </div>
+        <div class="rm-item">
+          <div class="rm-dot current"></div>
+          <div class="rm-date" style="color:#818cf8">Mayo – Agosto 2026 → Ahora</div>
+          <div class="rm-title" style="color:#a5b4fc">Presentación a UCOT + Primeros clientes</div>
+          <div class="rm-items">
+            <span>🎯 Cierre contrato UCOT</span>
+            <span>🎯 Exportador GTFS</span>
+            <span>🎯 Gantt transición BRT</span>
+            <span>🎯 App Android lista</span>
+            <span>🎯 Piloto con 2° operador</span>
+          </div>
+        </div>
+      </div>
+      <div class="roadmap">
+        <div class="rm-item">
+          <div class="rm-dot future"></div>
+          <div class="rm-date">Sep 2026 – Dic 2026</div>
+          <div class="rm-title">Licitación BRT — Posicionamiento regulador</div>
+          <div class="rm-items">
+            <span>📌 Módulo regulador IM/STM</span>
+            <span>📌 Integración GTFS público</span>
+            <span>📌 2–4 operadores Uruguay activos</span>
+            <span>📌 Trip-chaining O/D completo</span>
+          </div>
+        </div>
+        <div class="rm-item">
+          <div class="rm-dot future"></div>
+          <div class="rm-date">2027 – 2028</div>
+          <div class="rm-title">Obras BRT — Expansión LATAM</div>
+          <div class="rm-items">
+            <span>📌 Primer cliente Colombia</span>
+            <span>📌 Módulo gestión de obras</span>
+            <span>📌 API pública de datos</span>
+          </div>
+        </div>
+        <div class="rm-item">
+          <div class="rm-dot future"></div>
+          <div class="rm-date">2029</div>
+          <div class="rm-title">Apertura BRT — Plataforma regional</div>
+          <div class="rm-items">
+            <span>📌 10+ operadores LATAM</span>
+            <span>📌 Datos abiertos ciudadanos</span>
+            <span>📌 IA predictiva (SARIMA)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="section-line"></div>
+
+<!-- ===================================================================
+     SLIDE 12 — POR QUÉ AHORA
+     =================================================================== -->
+<section class="slide-page" id="s12">
+  <div class="glow-tl"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">¿Por qué ahora?</div>
+    <h1 class="slide-h1">4 razones por las que<br><span>la ventana se cierra en 2026</span></h1>
+    <div class="hdiv"></div>
+    <div class="why-grid">
+      <div class="why-card c1">
+        <div class="icon">⏰</div>
+        <h3>Licitación BRT en meses</h3>
+        <p>La IM llama a licitación fin de 2026. El operador que llegue con <em>datos de demanda reales por parada y simulación de rediseño</em> tiene ventaja competitiva directa en el proceso regulatorio. Ese operador puede ser UCOT.</p>
+      </div>
+      <div class="why-card c2">
+        <div class="icon">🚀</div>
+        <h3>Sistema funcional hoy</h3>
+        <p>No es un prototipo. <em>124K líneas de código en producción</em>, GPS real funcionando, dataset CKAN integrado, traza BRT cargada. El tiempo de "construcción" ya pasó. Lo que sigue es escalar.</p>
+      </div>
+      <div class="why-card c3">
+        <div class="icon">🤖</div>
+        <h3>IA operacional como diferenciador</h3>
+        <p>Los agentes digitales con Ollama local permiten a jefes de tráfico consultar en lenguaje natural. En 2025-2026 esto es un diferenciador. En 2028 será commodity. <em>El que entra primero define el estándar.</em></p>
+      </div>
+      <div class="why-card c4">
+        <div class="icon">🌊</div>
+        <h3>Primer ola de BRT en LATAM</h3>
+        <p>Uruguay, Colombia, Ecuador, Chile y Perú tienen proyectos BRT activos financiados por BID/CAF en simultaneo. <em>La misma plataforma, el mismo playbook.</em> El que gana Uruguay tiene la referencia para toda la región.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="section-line"></div>
+
+<!-- ===================================================================
+     SLIDE 13 — EQUIPO
+     =================================================================== -->
+<section class="slide-page" id="s13">
+  <div class="glow-br"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">El Equipo</div>
+    <h1 class="slide-h1">Construido con <span>conocimiento profundo</span><br>del problema</h1>
+    <div class="hdiv"></div>
+    <div class="team-cols">
+      <div>
+        <div class="team-card">
+          <div class="team-avatar">👨‍💻</div>
+          <div class="team-name">Jonathan Laluz</div>
+          <div class="team-role">Fundador · Full-Stack Lead</div>
+          <div class="team-desc">Desarrolló el sistema completo de 124K líneas en 3.5 meses, integrando GPS real STM, estándares UITP internacionales y el módulo BRT alineado con las fuentes oficiales de IM/MTOP. Experiencia directa con la operativa de UCOT.</div>
+          <div class="team-tags">
+            <span class="team-tag">React 19</span>
+            <span class="team-tag">Firebase</span>
+            <span class="team-tag">Node.js</span>
+            <span class="team-tag">UITP</span>
+            <span class="team-tag">GTFS</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="built-with">
+          <h3>Construido con — y para — operadores reales</h3>
+          <div class="built-row">
+            <div class="icon">🚌</div>
+            <div class="text"><strong>UCOT como validador desde el inicio</strong> — los datos de 691 empleados, 257 coches y 1.811 servicios son datos reales del operador.</div>
+          </div>
+          <div class="built-row">
+            <div class="icon">📡</div>
+            <div class="text"><strong>API GPS verificada en campo</strong> — smoke test confirmado: 312 buses en &lt;500ms. No es simulación.</div>
+          </div>
+          <div class="built-row">
+            <div class="icon">📊</div>
+            <div class="text"><strong>Dataset IM integrado</strong> — ascensos por parada desde ckan-data.montevideo.gub.uy. Fuente primaria citada.</div>
+          </div>
+          <div class="built-row">
+            <div class="icon">🏆</div>
+            <div class="text"><strong>Estándares internacionales</strong> — UITP, TCRP Report 95, GTFS, elasticidades del Transportation Research Board.</div>
+          </div>
+          <div class="built-row">
+            <div class="icon">🌐</div>
+            <div class="text"><strong>Deploy en producción</strong> — Firebase Hosting activo, URL pública, funcional hoy desde cualquier dispositivo.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="section-line"></div>
+
+<!-- ===================================================================
+     SLIDE 14 — CTA
+     =================================================================== -->
+<section class="slide-page" id="s14">
+  <div class="glow-tl"></div>
+  <div class="glow-br"></div>
+  <div class="slide-inner">
+    <div class="cta-center">
+      <div class="slide-tag" style="margin:0 auto 1.5rem">Próximos pasos</div>
+      <h1 class="cta-title">Únete antes de que<br>se cierren las puertas <span>del BRT</span></h1>
+      <p class="cta-sub">El sistema está funcionando. Los datos son reales. El mercado tiene una ventana de 18 meses. Lo que falta es un socio estratégico que escale esto a la velocidad que la oportunidad requiere.</p>
+      <div class="cta-cards">
+        <div class="cta-card">
+          <div class="ck">🎯</div>
+          <h3>Presentación técnica</h3>
+          <p>Demo en vivo del sistema con datos GPS real, módulo BRT y simulador de alimentadoras. 45 minutos.</p>
+        </div>
+        <div class="cta-card">
+          <div class="ck">📊</div>
+          <h3>Due diligence</h3>
+          <p>Acceso al repositorio de código, documentación técnica (80+ docs), y datos de operación en producción.</p>
+        </div>
+        <div class="cta-card">
+          <div class="ck">🤝</div>
+          <h3>Propuesta de inversión</h3>
+          <p>Estructura flexible: inversión de capital, acuerdo de licencia, o partnership estratégico para expansión LATAM.</p>
+        </div>
+      </div>
+      <div>
+        <a href="mailto:jonathanlaluz@gmail.com" class="cta-contact">
+          ✉️ jonathanlaluz@gmail.com
+        </a>
+        <a href="https://ucot-gestor-cloud.web.app/dashboard" target="_blank" class="cta-url">
+          🔗 Ver sistema en producción
+        </a>
+      </div>
+      <div style="margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,0.06);font-size:0.75rem;color:#475569;text-align:center">
+        TransformaFacil 2.0 / GestionUcot · Desarrollado en Montevideo, Uruguay · Enero–Abril 2026<br>
+        Stack: React 19 · Firebase · Node.js · TypeScript · Deploy: Firebase Hosting
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

@@ -57,6 +57,7 @@
     "react-window": "^2.2.5",
     "recharts": "^3.8.0",
     "shpjs": "^6.2.0",
+    "socket.io-client": "^4.8.3",
     "tailwind-merge": "^3.4.0",
     "typescript": "^5.9.3",
     "xlsx": "^0.18.5"

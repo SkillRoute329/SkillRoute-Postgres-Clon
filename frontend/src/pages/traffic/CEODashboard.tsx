@@ -233,19 +233,31 @@ export default function CEODashboard() {
     const ventanaFin = nowMin + 30;
 
     try {
-      const [vehicles, estados] = await Promise.all([
+      const [vehicles, estados, posRes, resumenRes] = await Promise.all([
         FleetService.getVehicles(),
         ServicioEstadoService.getByDate(today),
+        fetch('/api/positions').then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(`/api/listero/resumen?fecha=${today}`).then(r => r.ok ? r.json() : null).catch(() => null),
       ]);
 
-      // Fleet KPIs
-      const total = vehicles.length;
+      // Fleet KPIs — usa GPS en vivo si hay datos, si no usa Firestore
+      const ucotEnVivoGPS: number = posRes?.features
+        ? posRes.features.filter((f: any) => f.properties?.codigoEmpresa === 70).length
+        : 0;
+      const total = Math.max(vehicles.length, ucotEnVivoGPS > 0 ? 185 : 0); // 185 = flota UCOT real
       const taller = vehicles.filter((v) =>
         /mantenimiento|taller|paralizado|baja/i.test(String(v.status ?? '')),
       ).length;
-      const activos = total - taller;
-      setFlotaTotal(total);
+      const activos = ucotEnVivoGPS > 0 ? ucotEnVivoGPS : total - taller;
+      setFlotaTotal(ucotEnVivoGPS > 0 ? 185 : total);
       setFlotaActiva(activos);
+
+      // Si el resumen del listero tiene más info, úsala
+      if (resumenRes?.resumen) {
+        const r = resumenRes.resumen;
+        if (r.totalTurnos > 0) setServiciosTotales(r.totalTurnos);
+        if (r.activos > 0) setServiciosActivos(r.activos);
+      }
       setVehiculosTaller(taller);
       const pct = total > 0 ? Math.round((activos / total) * 1000) / 10 : null;
       setFlotaActivaPct(pct);

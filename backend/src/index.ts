@@ -21,6 +21,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import routes from './routes/index';
 import { initializeSocket } from './services/realtimeService';
 import { AIService } from './services/aiService';
+import { setSocketServer } from './services/cascadeEngineService';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INICIALIZACIÓN
@@ -157,6 +158,9 @@ const io = new SocketIOServer(httpServer, {
 
 // Inicializar Socket.io con autenticación y eventos
 initializeSocket(io);
+
+// Conectar el motor de cascada al Socket.io para emitir alertas en tiempo real
+setSocketServer(io);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // START SERVER
