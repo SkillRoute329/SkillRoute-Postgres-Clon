@@ -23,6 +23,7 @@ import dashboardRoutes from './dashboard.routes';
 import stmRoutes from './stm.routes';
 import aiRoutes from './ai.routes';
 import listeroRoutes from './listero.routes';
+import autoStatsRoutes from './autoStats.routes';
 
 const router = Router();
 
@@ -161,5 +162,14 @@ router.use('/ai', aiRoutes);
  * GET  /api/listero/resumen     — resumen del día
  */
 router.use('/listero', listeroRoutes);
+
+/**
+ * AutoStats — Estadísticas automáticas GPS + GTFS (sin inspectores)
+ * GET /api/autostats/agencies
+ * GET /api/autostats/compliance/:agencyId
+ * GET /api/autostats/routes/:agencyId
+ * GET /api/autostats/vehicle/:idBus
+ */
+router.use('/autostats', autoStatsRoutes);
 
 export default router;

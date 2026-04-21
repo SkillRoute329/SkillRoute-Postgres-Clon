@@ -63,6 +63,7 @@ const PenalizationsPage = lazy(() => import('./pages/abl/penalizations/Penalizat
 const ServiceMatrix = lazy(() => import('./pages/traffic/ServiceMatrix'));
 const InspectorDashboard = lazy(() => import('./pages/operations/InspectorDashboard'));
 const InspectorCapture = lazy(() => import('./pages/traffic/InspectorCapture'));
+const AutoStatsModule = lazy(() => import('./pages/traffic/AutoStatsModule'));
 const ServiceStatistics = lazy(() => import('./pages/traffic/ServiceStatistics'));
 const ServiceAnalytics = lazy(() => import('./pages/traffic/ServiceAnalytics'));
 const CartonManager = lazy(() => import('./pages/traffic/CartonManager'));
@@ -226,6 +227,7 @@ function App() {
                     <Route path="traffic/inspector-control" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><InspectorDashboard /></PrivateRoute>} />
                     <Route path="traffic/inspector-capture" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><InspectorCapture /></PrivateRoute>} />
                     <Route path="traffic/statistics" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><ServiceStatistics /></PrivateRoute>} />
+                    <Route path="traffic/autostats" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><AutoStatsModule /></PrivateRoute>} />
                     <Route path="traffic/analytics" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ServiceAnalytics /></PrivateRoute>} />
                     <Route path="traffic/cartons" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><CartonManager /></PrivateRoute>} />
                     <Route

@@ -118,6 +118,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       title: 'Inteligencia Operativa',
       items: [
         {
+          path: '/dashboard/traffic/autostats',
+          label: 'Estadísticas Automáticas',
+          icon: BarChart3,
+        },
+        {
           path: '/dashboard/traffic/statistics',
           label: 'Estadísticas Inspectores',
           icon: BarChart3,
