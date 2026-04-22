@@ -13,6 +13,7 @@ import {
   getActiveBusesSnapshot,
   getLastKnownBusesSnapshot,
   getEndpointHealth,
+  getLineSummaryHistory,
 } from '../services/vehicleHistoryService';
 import { logger } from '../config/logger';
 
@@ -50,7 +51,7 @@ export async function getComplianceRealtime(req: Request, res: Response) {
     // GPS caído: devolver último snapshot conocido desde Firestore
     logger.warn('[AutoStats] GPS fallido, usando historial Firestore:', err?.message);
     try {
-      const { buses, dataTimestamp } = await getLastKnownBusesSnapshot(agencyId, 24);
+      const { buses, dataTimestamp, hoursBack } = await getLastKnownBusesSnapshot(agencyId, 24);
       const summary = buses.reduce<Record<string, any>>((acc, b) => {
         if (!acc[b.linea]) acc[b.linea] = { linea: b.linea, busesActivos: 0, enTiempo: 0, atrasados: 0, adelantados: 0, sinHorario: 0, pctCumplimiento: 0 };
         acc[b.linea].busesActivos++;
@@ -73,6 +74,7 @@ export async function getComplianceRealtime(req: Request, res: Response) {
         buses,
         gpsSource: 'historical',
         dataTimestamp,
+        hoursBack,
         gpsError: err?.message,
       });
     } catch (fbErr: any) {
@@ -134,6 +136,18 @@ export async function getVehicleHistoryHandler(req: Request, res: Response) {
     res.json({ ok: true, idBus, days, summary, history });
   } catch (err: any) {
     logger.error('[AutoStats] vehicle history error:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
+/** GET /api/autostats/history/:agencyId?days=7 — resumen histórico por línea, siempre disponible */
+export async function getHistorySummaryHandler(req: Request, res: Response) {
+  const { agencyId } = req.params;
+  const days = Math.min(parseInt(req.query.days as string) || 7, 30);
+  try {
+    const lines = await getLineSummaryHistory(agencyId, days);
+    res.json({ ok: true, agencyId, days, lines });
+  } catch (err: any) {
     res.status(500).json({ ok: false, error: err.message });
   }
 }

@@ -13,9 +13,11 @@ import {
 } from 'lucide-react';
 import {
   fetchAgencies, fetchComplianceRealtime, fetchVehicleHistory, fetchEndpointHealth,
+  fetchHistorySummary,
   AGENCY_LABELS, AGENCY_COLORS,
   type AgencyInfo, type ComplianceResponse,
   type BusComplianceResult, type VehicleHistoryResponse, type EndpointHealth,
+  type LineSummary,
 } from '../../services/autoStatsService';
 
 // ── Helpers visuales ──────────────────────────────────────────────────────
@@ -205,6 +207,108 @@ function VehicleProfilePanel({ idBus, onClose }: { idBus: string; onClose: () =>
   );
 }
 
+// ── Panel de historial por línea ─────────────────────────────────────────
+
+function HistoryPanel({ agencyId, forceDays }: { agencyId: string; forceDays?: number }) {
+  const [lines, setLines] = useState<LineSummary[]>([]);
+  const [days, setDays] = useState(forceDays ?? 7);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchHistorySummary(agencyId, days)
+      .then(r => setLines(r.lines))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [agencyId, days]);
+
+  useEffect(() => { if (forceDays) setDays(forceDays); }, [forceDays]);
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-10">
+      <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  if (lines.length === 0) return (
+    <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
+      <BarChart3 className="w-8 h-8 text-slate-700" />
+      <p className="text-slate-500 text-sm">Sin datos históricos aún.</p>
+      <p className="text-slate-600 text-xs">Los datos se acumulan con cada ciclo GPS (cada 5 min).</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      {/* Selector días */}
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black flex items-center gap-1">
+          <TrendingUp className="w-3 h-3" /> {lines.length} líneas · {lines.reduce((s, l) => s + l.totalEventos, 0).toLocaleString()} registros
+        </p>
+        {!forceDays && (
+          <div className="flex gap-1 bg-slate-800/50 rounded-xl p-0.5">
+            {[1, 7, 30].map(d => (
+              <button key={d} onClick={() => setDays(d)}
+                className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all ${days === d ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
+                {d === 1 ? 'Hoy' : `${d}d`}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Tabla por línea */}
+      <div className="space-y-1.5">
+        {lines.map(l => (
+          <div key={l.linea} className="bg-slate-800/40 border border-slate-700/30 rounded-xl px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-extrabold text-white w-12 flex-none">{l.linea}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between text-[10px] mb-1">
+                  <span className="text-slate-500">{l.busesUnicos} coches · {l.totalEventos.toLocaleString()} registros</span>
+                  <span className={`font-bold ${l.pctEnTiempo >= 70 ? 'text-emerald-400' : l.pctEnTiempo >= 40 ? 'text-amber-400' : 'text-red-400'}`}>
+                    {l.pctEnTiempo}% en tiempo
+                  </span>
+                </div>
+                {/* Barra de cumplimiento */}
+                <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden flex">
+                  <div className="bg-emerald-500 transition-all duration-700" style={{ width: `${l.pctEnTiempo}%` }} />
+                  <div className="bg-red-500 transition-all duration-700" style={{ width: `${l.pctAtrasado}%` }} />
+                  <div className="bg-sky-500 transition-all duration-700" style={{ width: `${l.pctAdelantado}%` }} />
+                </div>
+                <div className="flex gap-3 mt-1">
+                  <span className="text-[9px] text-slate-600 flex items-center gap-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> {l.pctEnTiempo}%
+                  </span>
+                  <span className="text-[9px] text-slate-600 flex items-center gap-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" /> {l.pctAtrasado}% atr.
+                  </span>
+                  <span className="text-[9px] text-slate-600 flex items-center gap-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-sky-500 inline-block" /> {l.pctAdelantado}% adel.
+                  </span>
+                  {l.desviacionMediaMin != null && (
+                    <span className={`text-[9px] font-bold ml-auto ${Math.abs(l.desviacionMediaMin) > 3 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                      desv. {l.desviacionMediaMin > 0 ? '+' : ''}{l.desviacionMediaMin} min
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex-none text-right">
+                <p className="text-xs font-bold text-slate-300">{l.velocidadMedia} <span className="text-slate-600 font-normal">km/h</span></p>
+                {l.ultimaActividad && (
+                  <p className="text-[9px] text-slate-700 mt-0.5">
+                    {new Date(l.ultimaActividad).toLocaleString('es-UY', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Banner de estado del endpoint GPS ────────────────────────────────────
 
 function GpsStatusBanner({ health, dataTimestamp }: { health: EndpointHealth | null; dataTimestamp?: string | null }) {
@@ -256,6 +360,7 @@ export default function AutoStatsModule() {
   const [selectedBus, setSelectedBus] = useState<string | null>(null);
   const [filterEstado, setFilterEstado] = useState<string>('TODOS');
   const [filterLinea, setFilterLinea] = useState<string>('TODAS');
+  const [activeTab, setActiveTab] = useState<'live' | 'history'>('live');
 
   // Cargar lista de empresas
   useEffect(() => {
@@ -272,8 +377,15 @@ export default function AutoStatsModule() {
       setCompliance(data);
       setHealth(healthData);
       setLastUpdate(new Date());
+      // Si GPS caído y sin buses live, ir a historial automáticamente
+      if (data.gpsSource === 'historical' && data.totalBuses === 0) {
+        setActiveTab('history');
+      } else if (data.gpsSource === 'live') {
+        setActiveTab('live');
+      }
     } catch (err) {
       console.error('[AutoStats] Error:', err);
+      setActiveTab('history');
     } finally {
       setLoading(false);
     }
@@ -347,16 +459,32 @@ export default function AutoStatsModule() {
           </button>
         </div>
 
-        {/* Selector de empresa */}
-        <div className="flex gap-2 overflow-x-auto pb-0.5">
-          {(['70', '10', '50', '20'] as string[]).map(agId => (
-            <AgencyPill
-              key={agId}
-              agencyId={agId}
-              active={selectedAgency === agId}
-              onClick={() => { setSelectedAgency(agId); setSelectedBus(null); setFilterLinea('TODAS'); }}
-            />
-          ))}
+        {/* Selector de empresa + tabs */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex gap-2 overflow-x-auto">
+            {(['70', '10', '50', '20'] as string[]).map(agId => (
+              <AgencyPill
+                key={agId}
+                agencyId={agId}
+                active={selectedAgency === agId}
+                onClick={() => { setSelectedAgency(agId); setSelectedBus(null); setFilterLinea('TODAS'); }}
+              />
+            ))}
+          </div>
+          <div className="ml-auto flex bg-slate-800/50 rounded-xl p-0.5 border border-slate-700/30">
+            <button
+              onClick={() => setActiveTab('live')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'live' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <Wifi className="w-3 h-3" /> En vivo
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'history' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <BarChart3 className="w-3 h-3" /> Historial
+            </button>
+          </div>
         </div>
 
         {/* KPI Bar global */}
@@ -395,140 +523,168 @@ export default function AutoStatsModule() {
 
       {/* Contenido */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Panel izquierdo: resumen por línea + lista de buses */}
-        <div className={`flex flex-col flex-1 min-h-0 overflow-hidden transition-all ${selectedBus ? 'max-w-[calc(100%-420px)]' : ''}`}>
-          {/* Filtros */}
-          <div className="flex-none flex items-center gap-2 px-4 pt-3 pb-2 flex-wrap">
-            {/* Buscar coche */}
-            <div className="flex items-center gap-1.5 bg-slate-800/50 border border-slate-700/40 rounded-xl px-2.5 py-1.5 flex-none">
-              <Search className="w-3 h-3 text-slate-500" />
-              <input
-                type="text"
-                placeholder="Buscar coche #"
-                value={searchBus}
-                onChange={e => setSearchBus(e.target.value)}
-                className="bg-transparent text-xs text-slate-300 placeholder-slate-600 outline-none w-24"
-              />
-            </div>
-            {/* Filtro estado */}
-            <select
-              value={filterEstado}
-              onChange={e => setFilterEstado(e.target.value)}
-              className="bg-slate-800/50 border border-slate-700/40 text-xs text-slate-300 rounded-xl px-2.5 py-1.5 outline-none"
-            >
-              <option value="TODOS">Todos los estados</option>
-              <option value="EN_TIEMPO">En tiempo</option>
-              <option value="ATRASADO">Atrasados</option>
-              <option value="ADELANTADO">Adelantados</option>
-              <option value="SIN_HORARIO">Sin horario GTFS</option>
-            </select>
-            {/* Filtro línea */}
-            <select
-              value={filterLinea}
-              onChange={e => setFilterLinea(e.target.value)}
-              className="bg-slate-800/50 border border-slate-700/40 text-xs text-slate-300 rounded-xl px-2.5 py-1.5 outline-none"
-            >
-              <option value="TODAS">Todas las líneas</option>
-              {lineasDisponibles.map(l => <option key={l} value={l}>Línea {l}</option>)}
-            </select>
+
+        {/* TAB: Historial */}
+        {activeTab === 'history' && (
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-3">
+            <HistoryPanel agencyId={selectedAgency} />
           </div>
+        )}
 
-          {/* Tabla de resumen por línea */}
-          {summaryList.length > 0 && !searchBus && filterEstado === 'TODOS' && filterLinea === 'TODAS' && (
-            <div className="flex-none px-4 pb-2">
-              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1">
-                <BarChart3 className="w-3 h-3" /> Resumen por línea
-              </h3>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-1.5">
-                {summaryList.map(s => (
-                  <button
-                    key={s.linea}
-                    onClick={() => setFilterLinea(s.linea)}
-                    className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/30 rounded-xl px-3 py-2 text-left hover:border-slate-500/50 transition-all"
-                  >
-                    <span className="text-sm font-extrabold text-white w-10 flex-none">{s.linea}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="h-1 bg-slate-700 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${s.pctCumplimiento >= 70 ? 'bg-emerald-500' : s.pctCumplimiento >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
-                          style={{ width: `${s.pctCumplimiento}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between mt-0.5">
-                        <span className="text-[9px] text-slate-600">{s.busesActivos} buses</span>
-                        <span className={`text-[9px] font-bold ${s.pctCumplimiento >= 70 ? 'text-emerald-400' : s.pctCumplimiento >= 40 ? 'text-amber-400' : 'text-red-400'}`}>
-                          {s.pctCumplimiento}%
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                ))}
+        {/* TAB: En vivo */}
+        {activeTab === 'live' && (
+          <>
+            {/* Panel izquierdo: resumen por línea + lista de buses */}
+            <div className={`flex flex-col flex-1 min-h-0 overflow-hidden transition-all ${selectedBus ? 'max-w-[calc(100%-420px)]' : ''}`}>
+              {/* Filtros */}
+              <div className="flex-none flex items-center gap-2 px-4 pt-3 pb-2 flex-wrap">
+                <div className="flex items-center gap-1.5 bg-slate-800/50 border border-slate-700/40 rounded-xl px-2.5 py-1.5 flex-none">
+                  <Search className="w-3 h-3 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Buscar coche #"
+                    value={searchBus}
+                    onChange={e => setSearchBus(e.target.value)}
+                    className="bg-transparent text-xs text-slate-300 placeholder-slate-600 outline-none w-24"
+                  />
+                </div>
+                <select
+                  value={filterEstado}
+                  onChange={e => setFilterEstado(e.target.value)}
+                  className="bg-slate-800/50 border border-slate-700/40 text-xs text-slate-300 rounded-xl px-2.5 py-1.5 outline-none"
+                >
+                  <option value="TODOS">Todos los estados</option>
+                  <option value="EN_TIEMPO">En tiempo</option>
+                  <option value="ATRASADO">Atrasados</option>
+                  <option value="ADELANTADO">Adelantados</option>
+                  <option value="SIN_HORARIO">Sin horario GTFS</option>
+                </select>
+                <select
+                  value={filterLinea}
+                  onChange={e => setFilterLinea(e.target.value)}
+                  className="bg-slate-800/50 border border-slate-700/40 text-xs text-slate-300 rounded-xl px-2.5 py-1.5 outline-none"
+                >
+                  <option value="TODAS">Todas las líneas</option>
+                  {lineasDisponibles.map(l => <option key={l} value={l}>Línea {l}</option>)}
+                </select>
               </div>
-            </div>
-          )}
 
-          {/* Lista de buses */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-4">
-            {loading && filteredBuses.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                <p className="text-slate-500 text-xs">Consultando GPS + GTFS…</p>
-              </div>
-            )}
-            {!loading && filteredBuses.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-                <WifiOff className="w-10 h-10 text-slate-700" />
-                <p className="text-slate-500 text-sm">Sin buses que coincidan con los filtros.</p>
-              </div>
-            )}
-            {filteredBuses.length > 0 && (
-              <div className="space-y-1.5 mt-1">
-                <p className="text-[10px] text-slate-600 mb-2">
-                  {filteredBuses.length} bus{filteredBuses.length !== 1 ? 'es' : ''} mostrado{filteredBuses.length !== 1 ? 's' : ''}
-                </p>
-                {filteredBuses.map(bus => {
-                  const cfg = ESTADO_CONFIG[bus.estadoCumplimiento] ?? ESTADO_CONFIG.SIN_HORARIO;
-                  const isSelected = selectedBus === bus.idBus;
-                  return (
+              {/* Tabla de resumen por línea (vista rápida) */}
+              {summaryList.length > 0 && !searchBus && filterEstado === 'TODOS' && filterLinea === 'TODAS' && (
+                <div className="flex-none px-4 pb-2">
+                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+                    <BarChart3 className="w-3 h-3" /> Resumen por línea
+                  </h3>
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-1.5">
+                    {summaryList.map(s => (
+                      <button
+                        key={s.linea}
+                        onClick={() => setFilterLinea(s.linea)}
+                        className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/30 rounded-xl px-3 py-2 text-left hover:border-slate-500/50 transition-all"
+                      >
+                        <span className="text-sm font-extrabold text-white w-10 flex-none">{s.linea}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="h-1 bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${s.pctCumplimiento >= 70 ? 'bg-emerald-500' : s.pctCumplimiento >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+                              style={{ width: `${s.pctCumplimiento}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between mt-0.5">
+                            <span className="text-[9px] text-slate-600">{s.busesActivos} buses</span>
+                            <span className={`text-[9px] font-bold ${s.pctCumplimiento >= 70 ? 'text-emerald-400' : s.pctCumplimiento >= 40 ? 'text-amber-400' : 'text-red-400'}`}>
+                              {s.pctCumplimiento}%
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Lista de buses */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-4">
+                {loading && filteredBuses.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-16 gap-3">
+                    <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-slate-500 text-xs">Consultando GPS + GTFS…</p>
+                  </div>
+                )}
+                {!loading && filteredBuses.length === 0 && compliance?.gpsSource === 'historical' && (
+                  <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
+                    <WifiOff className="w-8 h-8 text-amber-700/50" />
+                    <p className="text-slate-400 text-sm font-bold">GPS temporalmente no disponible</p>
+                    <p className="text-slate-600 text-xs max-w-xs">
+                      No hay datos recientes en Firestore. El sistema reconecta automáticamente.
+                    </p>
                     <button
-                      key={`${bus.idBus}-${bus.linea}`}
-                      onClick={() => setSelectedBus(isSelected ? null : bus.idBus)}
-                      className={`w-full text-left flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-all hover:scale-[1.01] ${
-                        isSelected
-                          ? 'bg-indigo-500/10 border-indigo-500/50'
-                          : `bg-slate-800/30 border-slate-700/30 hover:border-slate-500/50 ${bus.estadoCumplimiento === 'ATRASADO' ? 'border-l-2 border-l-red-500/60' : ''}`
-                      }`}
+                      onClick={() => setActiveTab('history')}
+                      className="mt-2 flex items-center gap-2 bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold px-4 py-2 rounded-xl hover:bg-indigo-600/30 transition-all"
                     >
-                      <div className={`w-2 h-2 rounded-full flex-none ${cfg.dot}`} />
-                      <span className="text-sm font-extrabold text-white w-12 flex-none">#{bus.idBus}</span>
-                      <span className="text-[11px] font-bold text-slate-400 w-8 flex-none">L{bus.linea}</span>
-                      <EstadoBadge estado={bus.estadoCumplimiento} />
-                      {bus.desviacionMin != null && (
-                        <span className={`text-[10px] font-bold ml-auto ${Math.abs(bus.desviacionMin) > 3 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                          {bus.desviacionMin > 0 ? '+' : ''}{bus.desviacionMin} min
-                        </span>
-                      )}
-                      {bus.proximaParadaControl && (
-                        <span className="text-[9px] text-slate-600 ml-1 hidden lg:block truncate max-w-[120px]" title={bus.proximaParadaControl.name}>
-                          → {bus.proximaParadaControl.name}
-                        </span>
-                      )}
-                      <span className="text-[9px] text-slate-500 flex-none">{Math.round(bus.velocidad)} km/h</span>
-                      {isSelected && <ChevronRight className="w-3 h-3 text-indigo-400 flex-none" />}
+                      <BarChart3 className="w-3.5 h-3.5" /> Ver estadísticas históricas
                     </button>
-                  );
-                })}
+                  </div>
+                )}
+                {!loading && filteredBuses.length === 0 && compliance?.gpsSource !== 'historical' && (
+                  <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+                    <WifiOff className="w-10 h-10 text-slate-700" />
+                    <p className="text-slate-500 text-sm">Sin buses que coincidan con los filtros.</p>
+                  </div>
+                )}
+                {filteredBuses.length > 0 && (
+                  <div className="space-y-1.5 mt-1">
+                    <p className="text-[10px] text-slate-600 mb-2">
+                      {filteredBuses.length} bus{filteredBuses.length !== 1 ? 'es' : ''} mostrado{filteredBuses.length !== 1 ? 's' : ''}
+                      {compliance?.gpsSource === 'historical' && compliance.hoursBack && (
+                        <span className="text-amber-600 ml-1">· datos de hace {compliance.hoursBack >= 24 ? `${Math.round(compliance.hoursBack / 24)}d` : `${compliance.hoursBack}h`}</span>
+                      )}
+                    </p>
+                    {filteredBuses.map(bus => {
+                      const cfg = ESTADO_CONFIG[bus.estadoCumplimiento] ?? ESTADO_CONFIG.SIN_HORARIO;
+                      const isSelected = selectedBus === bus.idBus;
+                      return (
+                        <button
+                          key={`${bus.idBus}-${bus.linea}`}
+                          onClick={() => setSelectedBus(isSelected ? null : bus.idBus)}
+                          className={`w-full text-left flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-all hover:scale-[1.01] ${
+                            isSelected
+                              ? 'bg-indigo-500/10 border-indigo-500/50'
+                              : `bg-slate-800/30 border-slate-700/30 hover:border-slate-500/50 ${bus.estadoCumplimiento === 'ATRASADO' ? 'border-l-2 border-l-red-500/60' : ''}`
+                          }`}
+                        >
+                          <div className={`w-2 h-2 rounded-full flex-none ${cfg.dot}`} />
+                          <span className="text-sm font-extrabold text-white w-12 flex-none">#{bus.idBus}</span>
+                          <span className="text-[11px] font-bold text-slate-400 w-8 flex-none">L{bus.linea}</span>
+                          <EstadoBadge estado={bus.estadoCumplimiento} />
+                          {bus.desviacionMin != null && (
+                            <span className={`text-[10px] font-bold ml-auto ${Math.abs(bus.desviacionMin) > 3 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                              {bus.desviacionMin > 0 ? '+' : ''}{bus.desviacionMin} min
+                            </span>
+                          )}
+                          {bus.proximaParadaControl && (
+                            <span className="text-[9px] text-slate-600 ml-1 hidden lg:block truncate max-w-[120px]" title={bus.proximaParadaControl.name}>
+                              → {bus.proximaParadaControl.name}
+                            </span>
+                          )}
+                          <span className="text-[9px] text-slate-500 flex-none">{Math.round(bus.velocidad)} km/h</span>
+                          {isSelected && <ChevronRight className="w-3 h-3 text-indigo-400 flex-none" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
 
-        {/* Panel derecho: perfil del coche seleccionado */}
-        {selectedBus && (
-          <VehicleProfilePanel
-            idBus={selectedBus}
-            onClose={() => setSelectedBus(null)}
-          />
+            {/* Panel derecho: perfil del coche seleccionado */}
+            {selectedBus && (
+              <VehicleProfilePanel
+                idBus={selectedBus}
+                onClose={() => setSelectedBus(null)}
+              />
+            )}
+          </>
         )}
       </div>
     </div>

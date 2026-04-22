@@ -175,40 +175,122 @@ export interface BusSnapshot {
 
 /**
  * Último snapshot conocido de Firestore (fallback cuando GPS está caído).
- * Busca el evento más reciente por bus dentro de la ventana hoursBack.
+ * Extiende la ventana automáticamente: 24h → 48h → 7 días → 30 días.
  */
 export async function getLastKnownBusesSnapshot(
   agencyId: string,
   hoursBack = 24,
-): Promise<{ buses: BusSnapshot[]; dataTimestamp: string | null }> {
+): Promise<{ buses: BusSnapshot[]; dataTimestamp: string | null; hoursBack: number }> {
   const db = getFirestore();
-  const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
+  const windows = [hoursBack, 48, 7 * 24, 30 * 24].filter(h => h >= hoursBack);
+
+  for (const hours of windows) {
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    const snap = await db
+      .collection(COLLECTION)
+      .where('agencyId', '==', agencyId)
+      .where('createdAt', '>=', Timestamp.fromDate(since))
+      .orderBy('createdAt', 'desc')
+      .limit(500)
+      .get();
+
+    if (snap.empty) continue;
+
+    const seen = new Set<string>();
+    const buses: BusSnapshot[] = [];
+    let latestTs: string | null = null;
+
+    snap.docs.forEach(d => {
+      const e = d.data() as VehicleEvent;
+      if (!seen.has(e.idBus)) {
+        seen.add(e.idBus);
+        buses.push({
+          idBus: e.idBus, linea: e.linea, velocidad: e.velocidad,
+          estadoCumplimiento: e.estadoCumplimiento, lat: e.lat, lon: e.lon,
+          desviacionMin: e.desviacionMin, timestampGPS: e.timestampGPS,
+        });
+        if (!latestTs || e.timestampGPS > latestTs) latestTs = e.timestampGPS;
+      }
+    });
+
+    if (buses.length > 0) return { buses, dataTimestamp: latestTs, hoursBack: hours };
+  }
+
+  return { buses: [], dataTimestamp: null, hoursBack };
+}
+
+export interface LineSummary {
+  linea: string;
+  totalEventos: number;
+  busesUnicos: number;
+  pctEnTiempo: number;
+  pctAtrasado: number;
+  pctAdelantado: number;
+  pctSinHorario: number;
+  desviacionMediaMin: number | null;
+  velocidadMedia: number;
+  ultimaActividad: string | null;
+}
+
+/** Resumen agregado por línea para los últimos N días (siempre disponible, independiente de GPS). */
+export async function getLineSummaryHistory(
+  agencyId: string,
+  days = 7,
+): Promise<LineSummary[]> {
+  const db = getFirestore();
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const snap = await db
     .collection(COLLECTION)
     .where('agencyId', '==', agencyId)
     .where('createdAt', '>=', Timestamp.fromDate(since))
     .orderBy('createdAt', 'desc')
-    .limit(500)
+    .limit(5000)
     .get();
 
-  const seen = new Set<string>();
-  const buses: BusSnapshot[] = [];
-  let latestTs: string | null = null;
+  const byLine: Record<string, {
+    buses: Set<string>; eventos: number;
+    enTiempo: number; atrasado: number; adelantado: number; sinHorario: number;
+    desviaciones: number[]; velocidades: number[]; ultimaActividad: string | null;
+  }> = {};
 
   snap.docs.forEach(d => {
     const e = d.data() as VehicleEvent;
-    if (!seen.has(e.idBus)) {
-      seen.add(e.idBus);
-      buses.push({
-        idBus: e.idBus, linea: e.linea, velocidad: e.velocidad,
-        estadoCumplimiento: e.estadoCumplimiento, lat: e.lat, lon: e.lon,
-        desviacionMin: e.desviacionMin, timestampGPS: e.timestampGPS,
-      });
-      if (!latestTs || e.timestampGPS > latestTs) latestTs = e.timestampGPS;
+    if (!byLine[e.linea]) {
+      byLine[e.linea] = { buses: new Set(), eventos: 0, enTiempo: 0, atrasado: 0, adelantado: 0, sinHorario: 0, desviaciones: [], velocidades: [], ultimaActividad: null };
     }
+    const l = byLine[e.linea];
+    l.buses.add(e.idBus);
+    l.eventos++;
+    if (e.estadoCumplimiento === 'EN_TIEMPO') l.enTiempo++;
+    else if (e.estadoCumplimiento === 'ATRASADO') l.atrasado++;
+    else if (e.estadoCumplimiento === 'ADELANTADO') l.adelantado++;
+    else l.sinHorario++;
+    if (e.desviacionMin != null) l.desviaciones.push(e.desviacionMin);
+    if (e.velocidad > 0) l.velocidades.push(e.velocidad);
+    if (!l.ultimaActividad || e.timestampGPS > l.ultimaActividad) l.ultimaActividad = e.timestampGPS;
   });
 
-  return { buses, dataTimestamp: latestTs };
+  return Object.entries(byLine).map(([linea, l]) => {
+    const conSchedule = l.enTiempo + l.atrasado + l.adelantado;
+    const desv = l.desviaciones.length > 0
+      ? Math.round(l.desviaciones.reduce((a, b) => a + b, 0) / l.desviaciones.length)
+      : null;
+    const vel = l.velocidades.length > 0
+      ? Math.round(l.velocidades.reduce((a, b) => a + b, 0) / l.velocidades.length)
+      : 0;
+    return {
+      linea,
+      totalEventos: l.eventos,
+      busesUnicos: l.buses.size,
+      pctEnTiempo: conSchedule > 0 ? Math.round((l.enTiempo / conSchedule) * 100) : 0,
+      pctAtrasado: conSchedule > 0 ? Math.round((l.atrasado / conSchedule) * 100) : 0,
+      pctAdelantado: conSchedule > 0 ? Math.round((l.adelantado / conSchedule) * 100) : 0,
+      pctSinHorario: l.eventos > 0 ? Math.round((l.sinHorario / l.eventos) * 100) : 0,
+      desviacionMediaMin: desv,
+      velocidadMedia: vel,
+      ultimaActividad: l.ultimaActividad,
+    };
+  }).sort((a, b) => b.totalEventos - a.totalEventos);
 }
 
 export interface StmEndpointHealth {

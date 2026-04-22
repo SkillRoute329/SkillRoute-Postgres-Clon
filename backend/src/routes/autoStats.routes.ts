@@ -8,6 +8,7 @@ import {
   getVehicleHistoryHandler,
   getActiveSnapshot,
   getEndpointHealthHandler,
+  getHistorySummaryHandler,
 } from '../controllers/autoStatsController';
 
 const router = Router();
@@ -22,5 +23,6 @@ router.get('/routes/:agencyId',                 getAgencyRoutes);
 router.get('/routes/:agencyId/:routeShort/active', getActiveTrips);
 router.get('/vehicle/:idBus',                   getVehicleHistoryHandler);
 router.get('/active/:agencyId',                 getActiveSnapshot);
+router.get('/history/:agencyId',                getHistorySummaryHandler);
 
 export default router;

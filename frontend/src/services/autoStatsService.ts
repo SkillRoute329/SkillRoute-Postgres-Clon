@@ -33,7 +33,24 @@ export interface ComplianceResponse {
   buses: BusComplianceResult[];
   gpsSource?: 'live' | 'historical';
   dataTimestamp?: string | null;
+  hoursBack?: number;
   gpsError?: string;
+}
+
+export interface LineSummary {
+  linea: string;
+  totalEventos: number;
+  busesUnicos: number;
+  pctEnTiempo: number;
+  pctAtrasado: number;
+  pctAdelantado: number;
+  pctSinHorario: number;
+  desviacionMediaMin: number | null;
+  velocidadMedia: number;
+  ultimaActividad: string | null;
+}
+export interface HistorySummaryResponse {
+  ok: boolean; agencyId: string; days: number; lines: LineSummary[];
 }
 
 export interface EndpointHealth {
@@ -82,6 +99,12 @@ export async function fetchAgencyRoutes(agencyId: string): Promise<RouteMetaInfo
 export async function fetchVehicleHistory(idBus: string, days = 7): Promise<VehicleHistoryResponse> {
   const h = await authHeaders();
   const { data } = await axios.get(`${BASE}/autostats/vehicle/${idBus}?days=${days}`, { headers: h });
+  return data;
+}
+
+export async function fetchHistorySummary(agencyId: string, days = 7): Promise<HistorySummaryResponse> {
+  const h = await authHeaders();
+  const { data } = await axios.get(`${BASE}/autostats/history/${agencyId}?days=${days}`, { headers: h });
   return data;
 }
 
