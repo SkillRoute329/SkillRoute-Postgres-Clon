@@ -166,3 +166,75 @@ export async function getActiveBusesSnapshot(agencyId: string): Promise<
   });
   return buses as any;
 }
+
+export interface BusSnapshot {
+  idBus: string; linea: string; velocidad: number;
+  estadoCumplimiento: string; lat: number; lon: number;
+  desviacionMin: number | null; timestampGPS: string;
+}
+
+/**
+ * Último snapshot conocido de Firestore (fallback cuando GPS está caído).
+ * Busca el evento más reciente por bus dentro de la ventana hoursBack.
+ */
+export async function getLastKnownBusesSnapshot(
+  agencyId: string,
+  hoursBack = 24,
+): Promise<{ buses: BusSnapshot[]; dataTimestamp: string | null }> {
+  const db = getFirestore();
+  const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
+  const snap = await db
+    .collection(COLLECTION)
+    .where('agencyId', '==', agencyId)
+    .where('createdAt', '>=', Timestamp.fromDate(since))
+    .orderBy('createdAt', 'desc')
+    .limit(500)
+    .get();
+
+  const seen = new Set<string>();
+  const buses: BusSnapshot[] = [];
+  let latestTs: string | null = null;
+
+  snap.docs.forEach(d => {
+    const e = d.data() as VehicleEvent;
+    if (!seen.has(e.idBus)) {
+      seen.add(e.idBus);
+      buses.push({
+        idBus: e.idBus, linea: e.linea, velocidad: e.velocidad,
+        estadoCumplimiento: e.estadoCumplimiento, lat: e.lat, lon: e.lon,
+        desviacionMin: e.desviacionMin, timestampGPS: e.timestampGPS,
+      });
+      if (!latestTs || e.timestampGPS > latestTs) latestTs = e.timestampGPS;
+    }
+  });
+
+  return { buses, dataTimestamp: latestTs };
+}
+
+export interface StmEndpointHealth {
+  status: 'UP' | 'DOWN' | 'UNKNOWN';
+  lastCheck: string | null;
+  downSince: string | null;
+  upSince: string | null;
+  consecutiveFailures: number;
+  lastSuccessfulCollection: string | null;
+}
+
+/** Lee el estado del endpoint GPS desde Firestore (escrito por autoStatsCollector) */
+export async function getEndpointHealth(): Promise<StmEndpointHealth> {
+  const db = getFirestore();
+  const doc = await db.collection('system_status').doc('stm_gps').get();
+  if (!doc.exists) {
+    return { status: 'UNKNOWN', lastCheck: null, downSince: null, upSince: null, consecutiveFailures: 0, lastSuccessfulCollection: null };
+  }
+  const d = doc.data()!;
+  const toISO = (v: any) => v?.toDate?.()?.toISOString?.() ?? null;
+  return {
+    status: d.status ?? 'UNKNOWN',
+    lastCheck: toISO(d.lastCheck),
+    downSince: toISO(d.downSince),
+    upSince: toISO(d.upSince),
+    consecutiveFailures: d.consecutiveFailures ?? 0,
+    lastSuccessfulCollection: toISO(d.lastSuccessfulCollection),
+  };
+}

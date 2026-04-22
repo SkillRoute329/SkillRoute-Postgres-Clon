@@ -31,6 +31,18 @@ export interface ComplianceResponse {
   totalBuses: number;
   summary: Record<string, RouteSummary>;
   buses: BusComplianceResult[];
+  gpsSource?: 'live' | 'historical';
+  dataTimestamp?: string | null;
+  gpsError?: string;
+}
+
+export interface EndpointHealth {
+  status: 'UP' | 'DOWN' | 'UNKNOWN';
+  lastCheck: string | null;
+  downSince: string | null;
+  upSince: string | null;
+  consecutiveFailures: number;
+  lastSuccessfulCollection: string | null;
 }
 export interface VehicleSummary {
   idBus: string; empresa: string; lineasOperadas: string[];
@@ -71,6 +83,12 @@ export async function fetchVehicleHistory(idBus: string, days = 7): Promise<Vehi
   const h = await authHeaders();
   const { data } = await axios.get(`${BASE}/autostats/vehicle/${idBus}?days=${days}`, { headers: h });
   return data;
+}
+
+export async function fetchEndpointHealth(): Promise<EndpointHealth> {
+  const h = await authHeaders();
+  const { data } = await axios.get(`${BASE}/autostats/health`, { headers: h });
+  return data.health ?? { status: 'UNKNOWN', lastCheck: null, downSince: null, upSince: null, consecutiveFailures: 0, lastSuccessfulCollection: null };
 }
 
 export const AGENCY_LABELS: Record<string, string> = {

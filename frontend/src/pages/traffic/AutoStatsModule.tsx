@@ -12,10 +12,10 @@ import {
   Building2, Route,
 } from 'lucide-react';
 import {
-  fetchAgencies, fetchComplianceRealtime, fetchAgencyRoutes, fetchVehicleHistory,
+  fetchAgencies, fetchComplianceRealtime, fetchVehicleHistory, fetchEndpointHealth,
   AGENCY_LABELS, AGENCY_COLORS,
-  type AgencyInfo, type ComplianceResponse, type RouteSummary,
-  type BusComplianceResult, type VehicleSummary, type VehicleHistoryResponse,
+  type AgencyInfo, type ComplianceResponse,
+  type BusComplianceResult, type VehicleHistoryResponse, type EndpointHealth,
 } from '../../services/autoStatsService';
 
 // ── Helpers visuales ──────────────────────────────────────────────────────
@@ -205,12 +205,51 @@ function VehicleProfilePanel({ idBus, onClose }: { idBus: string; onClose: () =>
   );
 }
 
+// ── Banner de estado del endpoint GPS ────────────────────────────────────
+
+function GpsStatusBanner({ health, dataTimestamp }: { health: EndpointHealth | null; dataTimestamp?: string | null }) {
+  if (!health || health.status === 'UP' || health.status === 'UNKNOWN') return null;
+
+  const downSince = health.downSince ? new Date(health.downSince) : null;
+  const lastOk = health.lastSuccessfulCollection
+    ? new Date(health.lastSuccessfulCollection).toLocaleString('es-UY', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
+    : null;
+
+  let elapsed = '';
+  if (downSince) {
+    const mins = Math.round((Date.now() - downSince.getTime()) / 60000);
+    elapsed = mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)}h ${mins % 60}min`;
+  }
+
+  return (
+    <div className="flex-none mx-4 mt-3 flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3">
+      <WifiOff className="w-4 h-4 text-amber-400 flex-none mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-bold text-amber-300">
+          Fuente GPS no disponible
+          {elapsed && <span className="font-normal text-amber-400/70"> · caída hace {elapsed}</span>}
+        </p>
+        <p className="text-[10px] text-amber-500/80 mt-0.5">
+          Mostrando último estado conocido
+          {dataTimestamp && ` al ${new Date(dataTimestamp).toLocaleString('es-UY', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}`}
+          {' · '}reconectando automáticamente cada 5 min
+          {health.consecutiveFailures > 1 && ` (intento #${health.consecutiveFailures})`}
+        </p>
+      </div>
+      {lastOk && (
+        <span className="text-[9px] text-amber-600 flex-none">Último OK: {lastOk}</span>
+      )}
+    </div>
+  );
+}
+
 // ── Componente principal ──────────────────────────────────────────────────
 
 export default function AutoStatsModule() {
   const [agencies, setAgencies] = useState<AgencyInfo[]>([]);
   const [selectedAgency, setSelectedAgency] = useState<string>('70'); // UCOT por defecto
   const [compliance, setCompliance] = useState<ComplianceResponse | null>(null);
+  const [health, setHealth] = useState<EndpointHealth | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [searchBus, setSearchBus] = useState('');
@@ -226,8 +265,12 @@ export default function AutoStatsModule() {
   const loadCompliance = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchComplianceRealtime(selectedAgency);
+      const [data, healthData] = await Promise.all([
+        fetchComplianceRealtime(selectedAgency),
+        fetchEndpointHealth().catch(() => null),
+      ]);
       setCompliance(data);
+      setHealth(healthData);
       setLastUpdate(new Date());
     } catch (err) {
       console.error('[AutoStats] Error:', err);
@@ -286,8 +329,12 @@ export default function AutoStatsModule() {
               <Activity className="w-5 h-5 text-emerald-400" />
               Estadísticas Automáticas
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              GPS en vivo + Malla GTFS oficial · Sin inspectores
+            <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+              {health?.status === 'DOWN'
+                ? <><WifiOff className="w-3 h-3 text-amber-500" /><span className="text-amber-500">GPS no disponible</span></>
+                : <><Wifi className="w-3 h-3 text-emerald-500" /><span>GPS en vivo</span></>
+              }
+              <span>· Malla GTFS oficial · Sin inspectores</span>
             </p>
           </div>
           <button
@@ -342,6 +389,9 @@ export default function AutoStatsModule() {
           </div>
         )}
       </div>
+
+      {/* Banner GPS caído */}
+      <GpsStatusBanner health={health} dataTimestamp={compliance?.dataTimestamp} />
 
       {/* Contenido */}
       <div className="flex flex-1 min-h-0 overflow-hidden">

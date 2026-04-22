@@ -7,6 +7,7 @@ import {
   getActiveTrips,
   getVehicleHistoryHandler,
   getActiveSnapshot,
+  getEndpointHealthHandler,
 } from '../controllers/autoStatsController';
 
 const router = Router();
@@ -14,6 +15,7 @@ const router = Router();
 // Todas las rutas requieren auth
 router.use(verifyToken);
 
+router.get('/health',                           getEndpointHealthHandler);
 router.get('/agencies',                         listAgencies);
 router.get('/compliance/:agencyId',             getComplianceRealtime);
 router.get('/routes/:agencyId',                 getAgencyRoutes);
