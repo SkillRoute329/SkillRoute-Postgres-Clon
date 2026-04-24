@@ -181,12 +181,29 @@ function ProgressRing({
   );
 }
 
+/* ─── Operadores del sistema metropolitano ────────────────
+ * SkillRoute es cross-operador (DIRECTRIZ 2026-04-24).
+ * Códigos de empresa según endpoint IMM stm-online.
+ * Mantener sincronizado con ShadowRadar.tsx y CLAUDE.md.
+ */
+const EMPRESAS_OPCIONES: ReadonlyArray<{ codigo: number; label: string }> = [
+  { codigo: 70, label: 'UCOT' },
+  { codigo: 50, label: 'CUTCSA' },
+  { codigo: 20, label: 'COME' },
+  { codigo: 10, label: 'COETC' },
+];
+
 /* ═══════════════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════ */
 export default function CEODashboard() {
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(timeNow());
+
+  // Empresa propia — controla qué KPIs y filtros se muestran. Default UCOT (70).
+  const [empresaPropia, setEmpresaPropia] = useState<number>(70);
+  const empresaLabel =
+    EMPRESAS_OPCIONES.find((e) => e.codigo === empresaPropia)?.label ?? 'Propia';
 
   // Core KPIs
   const [flotaActivaPct, setFlotaActivaPct] = useState<number | null>(null);
@@ -256,16 +273,19 @@ export default function CEODashboard() {
         fetch(`/api/listero/resumen?fecha=${today}`).then(r => r.ok ? r.json() : null).catch(() => null),
       ]);
 
-      // Fleet KPIs — usa GPS en vivo si hay datos, si no usa Firestore
-      const ucotEnVivoGPS: number = posRes?.features
-        ? posRes.features.filter((f: any) => f.properties?.codigoEmpresa === 70).length
+      // Fleet KPIs — usa GPS en vivo si hay datos, si no usa Firestore.
+      // Filtro por empresaPropia (cross-operador, DIRECTRIZ 2026-04-24).
+      const propiaEnVivoGPS: number = posRes?.features
+        ? posRes.features.filter((f: any) => f.properties?.codigoEmpresa === empresaPropia).length
         : 0;
-      const total = Math.max(vehicles.length, ucotEnVivoGPS > 0 ? 185 : 0); // 185 = flota UCOT real
       const taller = vehicles.filter((v) =>
         /mantenimiento|taller|paralizado|baja/i.test(String(v.status ?? '')),
       ).length;
-      const activos = ucotEnVivoGPS > 0 ? ucotEnVivoGPS : total - taller;
-      setFlotaTotal(ucotEnVivoGPS > 0 ? 185 : total);
+      // Total de flota: priorizar GPS en vivo. Si hay datos GPS, ese es el universo
+      // operando AHORA. Si no, usar el conteo de Firestore (vehicles del operador).
+      const total = propiaEnVivoGPS > 0 ? propiaEnVivoGPS : Math.max(vehicles.length, 0);
+      const activos = propiaEnVivoGPS > 0 ? propiaEnVivoGPS : total - taller;
+      setFlotaTotal(total);
       setFlotaActiva(activos);
 
       // Si el resumen del listero tiene más info, úsala
@@ -355,7 +375,7 @@ export default function CEODashboard() {
       setLoading(false);
       setLastRefresh(timeNow());
     }
-  }, []);
+  }, [empresaPropia]);
 
   function buildLineRanking(estados: ServicioEstadoRecord[]) {
     const lineMap: Record<
@@ -486,6 +506,24 @@ export default function CEODashboard() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Selector de empresa propia — cross-operador (DIRECTRIZ 2026-04-24) */}
+          <label className="flex items-center gap-2">
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+              Operador
+            </span>
+            <select
+              value={empresaPropia}
+              onChange={(e) => setEmpresaPropia(Number(e.target.value))}
+              className="bg-slate-950 border border-blue-500/60 rounded-lg px-3 py-2.5 text-xs font-bold text-white focus:outline-none focus:border-blue-400 transition-all"
+              aria-label="Empresa propia"
+            >
+              {EMPRESAS_OPCIONES.map((e) => (
+                <option key={e.codigo} value={e.codigo}>
+                  {e.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             onClick={fetchData}
             disabled={loading}
@@ -806,7 +844,7 @@ export default function CEODashboard() {
                   <p className="text-[11px] text-slate-400 leading-relaxed">
                     Monitoreo de integridad activo. Los datos de competencia se sincronizan con los
                     buses STM vía Proxy Central. Las recomendaciones están basadas en optimización
-                    de recaudación por parada garantizando la ventaja competitiva de UCOT.
+                    de recaudación por parada garantizando la ventaja competitiva de {empresaLabel}.
                   </p>
                   <div className="mt-4 flex flex-wrap gap-4 text-[9px] font-black text-slate-500 uppercase">
                     <span className="flex items-center gap-1.5 bg-slate-800/40 px-2.5 py-1 rounded-lg border border-white/5">
@@ -836,7 +874,7 @@ export default function CEODashboard() {
               ████████████████████████████████████████████████████████ */}
           {activeSection === 'intelligence' && (
             <div className="space-y-4 animate-fade-in">
-              <CompetitorThreatWidget />
+              <CompetitorThreatWidget empresaPropia={empresaPropia} />
             </div>
           )}
 
@@ -1044,6 +1082,9 @@ export default function CEODashboard() {
                   )}
                 </div>
 
+                {/* Columnas 2-3: Integraciones UCOT (disponibles sólo para este operador) */}
+                {empresaPropia === 70 && (
+                <>
                 {/* Columna 2: Servicios UCOT Portal */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -1122,6 +1163,22 @@ export default function CEODashboard() {
                     </div>
                   )}
                 </div>
+                </>
+                )}
+                {/* Estado vacío cuando no es UCOT — explicar por qué */}
+                {empresaPropia !== 70 && (
+                  <div className="lg:col-span-2 rounded-xl border border-dashed border-white/10 bg-slate-900/30 p-6 flex flex-col items-center justify-center text-center gap-2">
+                    <Eye className="w-10 h-10 opacity-20 text-slate-500" />
+                    <p className="text-sm font-bold text-slate-400">
+                      Integraciones de cartones y portal disponibles sólo para UCOT
+                    </p>
+                    <p className="text-[11px] text-slate-600 max-w-md">
+                      {empresaLabel} no tiene portal JSF público equivalente al de UCOT.
+                      Cuando sumemos integración con su sistema interno, las columnas
+                      Servicios y Cartón se habilitan automáticamente.
+                    </p>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -1300,7 +1357,7 @@ export default function CEODashboard() {
                     <BarChart3 className="w-4 h-4 text-primary-400" />
                   </div>
                   <span className="text-primary-300">Panel Semáforo</span>
-                  <span className="text-slate-400 font-normal">— Rendimiento por Línea UCOT</span>
+                  <span className="text-slate-400 font-normal">— Rendimiento por Línea {empresaLabel}</span>
                   <span className="ml-auto text-[9px] font-black text-slate-600 bg-slate-800/60 px-2.5 py-1 rounded-lg border border-white/5">
                     {lineRanking.length} líneas activas
                   </span>

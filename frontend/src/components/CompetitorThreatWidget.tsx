@@ -62,7 +62,22 @@ interface ScheduleInfo {
   terminalDestino: string;
 }
 
-export const CompetitorThreatWidget: React.FC = () => {
+/**
+ * Props del widget — prop empresaPropia agregada en refactor cross-operador
+ * (DIRECTRIZ 2026-04-24). Default UCOT (70). Por ahora el algoritmo de
+ * threat-scan sigue usando LINEAS_UCOT_BASE / COMPETITOR_MAP (UCOT-only),
+ * pero el prop ya viaja para que cuando se generalice no haya que tocar
+ * el contrato del componente. El parent puede esconder el widget cuando
+ * empresaPropia ≠ 70 si quiere; aquí simplemente mostramos un banner
+ * indicando que los datos competitivos cargados son los de UCOT.
+ */
+interface CompetitorThreatWidgetProps {
+  empresaPropia?: number;
+}
+
+export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
+  empresaPropia = 70,
+}) => {
   const [activeThreats, setActiveThreats] = useState<ThreatResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
@@ -317,7 +332,7 @@ export const CompetitorThreatWidget: React.FC = () => {
           </div>
           <div>
             <h3 className="text-sm font-black tracking-tighter text-white">
-              UCOT CORRIDOR COMMAND <span className="text-primary-500">v5.0</span>
+              {empresaPropia === 70 ? 'UCOT' : empresaPropia === 50 ? 'CUTCSA' : empresaPropia === 20 ? 'COME' : empresaPropia === 10 ? 'COETC' : 'OPERADOR'} CORRIDOR COMMAND <span className="text-primary-500">v5.0</span>
             </h3>
             <div className="flex items-center gap-2">
               <div
