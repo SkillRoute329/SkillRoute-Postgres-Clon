@@ -719,7 +719,7 @@ export const stmHorariosProxy = functions.https.onRequest((req, res) => {
       const response = await axios(config);
       
       // Copy content-type from STM
-      res.set('Content-Type', response.headers['content-type'] || 'text/html; charset=UTF-8');
+      res.set('Content-Type', String(response.headers['content-type'] || 'text/html; charset=UTF-8'));
       
       // Send raw buffer back
       res.send(response.data);
@@ -754,6 +754,12 @@ export {
   autoStatsCollectorNow,
 } from './autoStatsCollector';
 
+// ─── Refresh horarios STM completo (todas las empresas, todas las líneas) ─────
+export {
+  refreshAllStmHorariosNow,
+  refreshAllStmHorariosTick,
+} from './refreshAllStmHorarios';
+
 // ─── Archive Vehicle Events — Rotativo semanal a Storage ─────────────────────
 // Exporta vehicle_events a Firebase Storage y purga Firestore.
 // Mantiene Firestore pequeño (7 días) y el historial en Storage (ilimitado, barato).
@@ -762,3 +768,48 @@ export {
   archiveVehicleEventsNow,
   listVehicleArchives,
 } from './archiveVehicleEvents';
+
+// ─── Shape Reconstruction — shapes cross-operador desde vehicle_events ────────
+// DIRECTRIZ 2026-04-24: SkillRoute analiza el sistema metropolitano completo.
+// Reconstruye polilíneas de UCOT/CUTCSA/COME/COETC desde el histórico GPS.
+// Base para la matriz DRO (v2) y snap-to-shape en ShadowRadar.
+export {
+  reconstructShapesTick,
+  reconstructShapesNow,
+} from './shapeReconstruction';
+
+// ─── GTFS-Realtime Publisher ─────────────────────────────────────────────────
+// Fase 1 #5 (2026-04-23): publica VehiclePositions GTFS-RT para integración
+// con Google Maps, Moovit, Citymapper y cualquier agregador MaaS.
+// URLs tras deploy:
+//   /gtfsRealtime/vehicle-positions.pb   — protobuf (producción)
+//   /gtfsRealtime/vehicle-positions.json — JSON (debug)
+//   /gtfsRealtime/feed-info              — metadata
+export { gtfsRealtime } from './gtfsRealtime';
+
+
+// ─── GTFS-Static Publisher ───────────────────────────────────────────────────
+// Trim+ #1 (2026-04-23): dataset estático (routes, stops, trips, shapes) que
+// complementa GTFS-RT. Agregadores MaaS consumen ambos.
+//   /gtfsStatic/feed.zip    — application/zip (producción)
+//   /gtfsStatic/feed-info   — metadata JSON
+export { gtfsStatic } from './gtfsStatic';
+
+// ─── SIRI-Lite Publisher (mercado UE) ────────────────────────────────────────
+// Trim+ #68 (2026-04-23): VehicleMonitoring + StopMonitoring en formato SIRI-Lite JSON
+// para agregadores MaaS europeos.
+//   /siriRealtime/vm.json
+//   /siriRealtime/sm.json
+//   /siriRealtime/discovery.json
+export { siriRealtime } from './siriRealtime';
+
+// ─── System Health Monitoring (operational observability) ────────────────────
+// Trim+ #72 (2026-04-23): agrega estado de todos los componentes en un JSON.
+//   /systemHealth          — estado completo (cache 30s)
+//   /systemHealth?fresh=1  — force refresh
+export { systemHealth } from './systemHealth';
+
+// ─── NeTEx Framework Discovery (EU/Interop stds) ─────────────────────────────
+// GET /netexEndpoint/discovery.{xml,json} para agregadores MaaS europeos.
+export { netexEndpoint } from './netexEndpoint';
+
