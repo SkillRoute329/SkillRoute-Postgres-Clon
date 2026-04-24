@@ -149,6 +149,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           icon: Network,
         },
         {
+          path: '/dashboard/traffic/corridor-map',
+          label: 'Mapa de Corredores',
+          icon: Map,
+        },
+        {
           path: '/dashboard/traffic/contingency',
           label: 'Gestión de Contingencia',
           icon: ShieldAlert,
