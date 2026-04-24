@@ -13,9 +13,62 @@
 
 import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const axios = require('axios');
 
 const db = admin.firestore();
 const messaging = admin.messaging();
+
+// ─── STM GPS directo ──────────────────────────────────────────────────────────
+const STM_URL = 'https://www.montevideo.gub.uy/buses/rest/stm-online';
+const STM_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/121.0.0.0 Safari/537.36',
+  'Content-Type': 'application/json',
+  'Accept': 'application/json',
+  'Referer': 'https://www.montevideo.gub.uy/buses/',
+  'Origin': 'https://www.montevideo.gub.uy',
+};
+const EMPRESA_UCOT_ID = 70;
+
+interface BusSTMLive {
+  cocheId: string;
+  lineaId: string;
+  sublinea: string;
+  sentido: 'IDA' | 'VUELTA' | 'DESCONOCIDO';
+  destino: string;
+  empresa: string;
+  empresaId: number;
+  lat: number;
+  lng: number;
+}
+
+
+async function fetchBusesSTM(): Promise<BusSTMLive[]> {
+  const res = await axios.post(STM_URL, { empresa: '-1' }, { headers: STM_HEADERS, timeout: 20_000 });
+  const features: any[] = res.data?.features || [];
+  return features
+    .map((f: any) => {
+      const p = f.properties || {};
+      const coords = f.geometry?.coordinates || [];
+      const lat = coords[1];
+      const lng = coords[0];
+      if (!lat || !lng || lat >= 0 || lng >= 0) return null;
+      const sublinea = String(p.sublinea || '');
+      const destino = String(p.destinoDesc || '');
+      return {
+        cocheId: String(p.codigoBus || ''),
+        lineaId: p.linea ? String(p.linea) : '',
+        sublinea,
+        sentido: 'DESCONOCIDO' as const,
+        destino,
+        empresa: ({ 10: 'COETC', 20: 'COME', 50: 'CUTCSA', 70: 'UCOT' } as Record<number,string>)[p.codigoEmpresa] || `EMP_${p.codigoEmpresa}`,
+        empresaId: Number(p.codigoEmpresa || 0),
+        lat,
+        lng,
+      } as BusSTMLive;
+    })
+    .filter((b): b is BusSTMLive => b !== null && b.cocheId !== '');
+}
 
 // ─── Parámetros del Sistema (defaults — se sobreescriben desde Firestore) ─────
 const DEFAULTS = {
@@ -156,39 +209,95 @@ export const shadowDispatcherTick = functions
 
     // 1. Cargar parámetros del sistema desde Firestore (fallback a DEFAULTS)
     let params = { ...DEFAULTS };
+    let empresaPropiaId = EMPRESA_UCOT_ID;
     try {
       const paramDoc = await db.collection('parametros_sistema').doc('default').get();
       if (paramDoc.exists) {
-        params = { ...DEFAULTS, ...paramDoc.data() };
+        const data = paramDoc.data()!;
+        params = { ...DEFAULTS, ...data };
+        if (data.empresaPropiaId) empresaPropiaId = Number(data.empresaPropiaId);
       }
     } catch {
       // Usar defaults
     }
 
-    // 2. Leer todos los cartones de servicio activos (expire_at > ahora)
-    const cartonesSnap = await db
-      .collection('cartones_de_servicio')
-      .where('expire_at', '>', ahoraTs)
-      .get();
-
-    if (cartonesSnap.empty) {
-      console.log('[shadowDispatcher] Sin cartones activos en este ciclo.');
+    // 2. Obtener TODOS los buses del STM en tiempo real (GPS live)
+    let todosLosBuses: BusSTMLive[] = [];
+    try {
+      todosLosBuses = await fetchBusesSTM();
+    } catch (err) {
+      console.error('[shadowDispatcher] Error llamando STM GPS:', err);
       return;
     }
 
-    console.log(`[shadowDispatcher] Procesando ${cartonesSnap.size} cartones activos.`);
+    if (todosLosBuses.length === 0) {
+      console.log('[shadowDispatcher] STM no devolvió buses en este ciclo.');
+      return;
+    }
 
-    // 3. Procesar cada cartón de forma aislada
-    const resultados = await Promise.allSettled(
-      cartonesSnap.docs.map((cartonDoc) =>
-        procesarAgente(cartonDoc.data() as CartonServicio, ahora, params)
-      )
-    );
+    const busesPropia = todosLosBuses.filter((b) => b.empresaId === empresaPropiaId);
+    const busesRivales = todosLosBuses.filter((b) => b.empresaId !== empresaPropiaId);
 
-    // Log de resumen sin bloquear
-    const exitosos = resultados.filter((r) => r.status === 'fulfilled').length;
-    const fallidos = resultados.filter((r) => r.status === 'rejected').length;
-    console.log(`[shadowDispatcher] Ciclo completo. Exitosos: ${exitosos}/${cartonesSnap.size}. Fallidos: ${fallidos}.`);
+    console.log(`[shadowDispatcher] ${busesPropia.length} buses propios (emp ${empresaPropiaId}), ${busesRivales.length} rivales.`);
+
+    if (busesPropia.length === 0) {
+      console.log('[shadowDispatcher] Sin buses de empresa propia activos.');
+      return;
+    }
+
+    // 3. Detectar rivalidad: por cada bus propio, buscar rivales dentro del umbral
+    const alertasEscritas: Array<Promise<unknown>> = [];
+    const UMBRAL_M = params.PROXIMIDAD_RIVAL_M;
+    const ahora_str = ahora.toISOString();
+
+    for (const busProp of busesPropia) {
+      const rivalesCercanos = busesRivales.filter((r) => {
+        // Criterio único confiable sin historial: proximidad física (mismo corredor)
+        // El heading requiere 2 snapshots consecutivos — no disponible en snapshot estático
+        return haversineMetros(busProp.lat, busProp.lng, r.lat, r.lng) <= UMBRAL_M;
+      });
+
+      if (rivalesCercanos.length === 0) continue;
+
+      const rival = rivalesCercanos[0];
+      const dist = Math.round(haversineMetros(busProp.lat, busProp.lng, rival.lat, rival.lng));
+      const sentidoLabel = busProp.sentido !== 'DESCONOCIDO' ? ` [${busProp.sentido}]` : '';
+      const mensaje = `🚨 ATENCIÓN COCHE ${busProp.cocheId}${sentidoLabel}: Rival ${rival.empresa} #${rival.cocheId} a ${dist}m. Mantenga la marcha. Regule ${Math.round(dist / 50)} minutos.`;
+
+      const alertaRef = db.collection('alertas_regulacion').doc(`${busProp.cocheId}_${rival.cocheId}`);
+      alertasEscritas.push(
+        alertaRef.set({
+          tipo: 'RIVAL_PISANDO_TURNO',
+          rival_empresa: rival.empresa,
+          rival_interno: rival.cocheId,
+          rival_linea: rival.lineaId,
+          distancia_metros: dist,
+          instruccion: 'REGULAR_MARCHA',
+          mensaje_chofer: mensaje,
+          linea_id: busProp.lineaId,
+          coche_id: busProp.cocheId,
+          empresa_id: empresaPropiaId,
+          sentido: busProp.sentido,
+          destino_propio: busProp.destino,
+          destino_rival: rival.destino,
+          lat_propio: busProp.lat,
+          lng_propio: busProp.lng,
+          lat_rival: rival.lat,
+          lng_rival: rival.lng,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          leido: false,
+          generado_en: ahora_str,
+        }, { merge: true })
+      );
+    }
+
+    if (alertasEscritas.length === 0) {
+      console.log('[shadowDispatcher] Sin rivalidades detectadas en este ciclo.');
+      return;
+    }
+
+    await Promise.allSettled(alertasEscritas);
+    console.log(`[shadowDispatcher] Ciclo completo. ${alertasEscritas.length} alertas escritas.`);
   });
 
 // ─── Agente Aislado: Lógica por Coche ────────────────────────────────────────
