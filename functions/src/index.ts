@@ -778,6 +778,15 @@ export {
   reconstructShapesNow,
 } from './shapeReconstruction';
 
+// ─── DRO Matrix — Directional Route Overlap entre shapes ─────────────────────
+// Consume shapes_cross_operator y produce corridor_overlap con pctAInB,
+// sharedKm, sameEmpresa (para intra-empresa canibalización).
+// Reemplaza la heurística de destino/heading en ShadowRadar.
+export {
+  droMatrixTick,
+  recomputeDroMatrixNow,
+} from './droMatrix';
+
 // ─── GTFS-Realtime Publisher ─────────────────────────────────────────────────
 // Fase 1 #5 (2026-04-23): publica VehiclePositions GTFS-RT para integración
 // con Google Maps, Moovit, Citymapper y cualquier agregador MaaS.
