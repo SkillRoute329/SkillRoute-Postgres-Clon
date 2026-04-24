@@ -106,12 +106,41 @@ const EMPRESAS_OPCIONES = [
   { codigo: 10, label: 'COETC' },
 ] as const;
 
+/** Mapeo nombre-operador → agencyId usado en shapes_cross_operator y corridor_overlap. */
+const EMPRESA_TO_AGENCY: Record<string, string> = {
+  UCOT: '70',
+  CUTCSA: '50',
+  COME: '20',
+  COETC: '10',
+};
+
+/** DRO tier para cada rival detectado. */
+type DroTier = 'T1' | 'T2' | 'T3';
+
+interface CorridorOverlapDoc {
+  key: string;
+  shapeAKey: string;
+  shapeBKey: string;
+  agencyA: string;
+  empresaA: string;
+  lineaA: string;
+  sentidoA: 'IDA' | 'VUELTA';
+  agencyB: string;
+  empresaB: string;
+  lineaB: string;
+  sentidoB: 'IDA' | 'VUELTA';
+  pctAInB: number;
+  sharedKm: number;
+  sameEmpresa: boolean;
+}
+
 const ShadowRadar: React.FC = () => {
   const [alertas, setAlertas] = useState<AlertaRegulacion[]>([]);
   const [ucotFlotaFirestore, setUcotFlotaFirestore] = useState<VehiculoRadar[]>([]);
   const [ucotFlotaVE, setUcotFlotaVE] = useState<VehiculoRadar[]>([]); // vehicle_events (cron STM)
   const [ucotFlotaIMM, setUcotFlotaIMM] = useState<VehiculoRadar[]>([]);
   const [competidores, setCompetidores] = useState<VehiculoRadar[]>([]);
+  const [corridorOverlaps, setCorridorOverlaps] = useState<CorridorOverlapDoc[]>([]);
   const [isScanning, setIsScanning] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [empresaPropia, setEmpresaPropia] = useState<number>(70);
@@ -338,10 +367,32 @@ const ShadowRadar: React.FC = () => {
     fetchCompetidores();
     const rivalInterval = setInterval(fetchCompetidores, 15000);
 
+    // 5. corridor_overlap — matriz DRO pre-calculada. Lee SOLO los pares donde
+    //    la empresa propia es el "A" (perspectiva egocéntrica de esta sesión).
+    //    Se recarga si cambia empresaPropia. Limit alto porque la tabla es
+    //    chica (~1800 docs en todo el sistema metropolitano).
+    const qOverlap = query(
+      collection(db, 'corridor_overlap'),
+      where('agencyA', '==', String(empresaPropia)),
+      limit(2000),
+    );
+    const unsubOverlap = onSnapshot(
+      qOverlap,
+      (snapshot) => {
+        const list: CorridorOverlapDoc[] = [];
+        snapshot.docs.forEach((docSnap) => {
+          list.push(docSnap.data() as CorridorOverlapDoc);
+        });
+        setCorridorOverlaps(list);
+      },
+      (err) => console.warn('[ShadowRadar] corridor_overlap no disponible:', err),
+    );
+
     return () => {
       unsubAlertas();
       unsubViajes();
       unsubVehicleEvents();
+      unsubOverlap();
       clearInterval(rivalInterval);
     };
   }, [isScanning, fetchCompetidores, empresaPropia]);
@@ -409,30 +460,96 @@ const ShadowRadar: React.FC = () => {
   }, [ucotFlota, selectedLinea, selectedSentido]);
 
   // Para cada coche UCOT, encontrar rivales cercanos en la misma línea
+  /**
+   * Dado un UCOT bus, devuelve la mejor entrada de corridor_overlap que
+   * matchea su línea (ambos sentidos) → pctAInB + sharedKm máximo.
+   * Indexado por `${agencyB}-${lineaB}` para lookup O(1) contra rivales.
+   */
+  const overlapsByRivalKey = useMemo(() => {
+    // key: `${agencyA-lineaA}__${agencyB-lineaB}` → mejor pctAInB entre sentidos
+    const map = new Map<string, { pctAInB: number; sharedKm: number; sameEmpresa: boolean }>();
+    for (const o of corridorOverlaps) {
+      const k = `${o.agencyA}-${o.lineaA}__${o.agencyB}-${o.lineaB}`;
+      const existing = map.get(k);
+      if (!existing || o.pctAInB > existing.pctAInB) {
+        map.set(k, { pctAInB: o.pctAInB, sharedKm: o.sharedKm, sameEmpresa: o.sameEmpresa });
+      }
+    }
+    return map;
+  }, [corridorOverlaps]);
+
   const emparejamientos = useMemo(() => {
+    const agencyUcot = String(empresaPropia);
+
     return ucotFiltrados.map(ucot => {
       if (!ucot.lat || !ucot.lng) return { ucot, rivales: [], estado: 'SIN_GPS' as const };
 
-      // Buscar rivales en el mismo corredor (por proximidad, sin importar la línea exacta)
-      const rivalesDetectables = competidores.filter(r => r.lat && r.lng);
+      // ── Intento 1: matching DRO cross-operador ────────────────────────
+      // Para cada competidor, buscamos entrada en la matriz DRO
+      // (agencyUcot, lineaUcot) x (agencyRival, lineaRival). Si existe,
+      // asignamos tier según pctAInB + distancia.
+      type RivalConMetrica = VehiculoRadar & {
+        distanciaMetros: number;
+        tier: DroTier;
+        pctAInB?: number;
+        sharedKm?: number;
+      };
 
-      const rivalesCercanos = rivalesDetectables
-        .map(r => {
-          const dist = haversineMetros(ucot.lat, ucot.lng, r.lat, r.lng);
-          return { ...r, distanciaMetros: Math.round(dist) };
-        })
+      const droRivales: RivalConMetrica[] = [];
+      const heuristicPool: VehiculoRadar[] = [];
+
+      for (const r of competidores) {
+        if (!r.lat || !r.lng) continue;
+        const dist = Math.round(haversineMetros(ucot.lat, ucot.lng, r.lat, r.lng));
+        if (dist > 2000) continue;
+
+        const rivalAgency = EMPRESA_TO_AGENCY[r.empresa];
+        if (!rivalAgency) {
+          // Operador desconocido — mandamos al pool heurístico
+          heuristicPool.push(r);
+          continue;
+        }
+
+        const key = `${agencyUcot}-${ucot.codigoLinea}__${rivalAgency}-${r.codigoLinea}`;
+        const overlap = overlapsByRivalKey.get(key);
+        if (!overlap) {
+          // No hay entrada DRO para este par → pool heurístico (T3)
+          heuristicPool.push(r);
+          continue;
+        }
+
+        // Tenemos entrada DRO → tiering
+        let tier: DroTier;
+        if (overlap.pctAInB >= 20 && dist <= 1500) tier = 'T1';
+        else if (overlap.pctAInB >= 10) tier = 'T2';
+        else {
+          // DRO marginal → dejarlo al fallback heurístico
+          heuristicPool.push(r);
+          continue;
+        }
+
+        droRivales.push({
+          ...r,
+          distanciaMetros: dist,
+          tier,
+          pctAInB: overlap.pctAInB,
+          sharedKm: overlap.sharedKm,
+        });
+      }
+
+      // ── Intento 2 (fallback): heurística destino/heading para los rivales
+      //    sin entrada DRO. Preserva la lógica actual y evita perder cobertura
+      //    cuando las shapes de esa línea aún no están reconstruidas.
+      const heuristicRivales: RivalConMetrica[] = heuristicPool
+        .map(r => ({
+          ...r,
+          distanciaMetros: Math.round(haversineMetros(ucot.lat, ucot.lng, r.lat, r.lng)),
+          tier: 'T3' as DroTier,
+        }))
         .filter(r => {
-          // Filtro por distancia (radio 2km)
-          if (r.distanciaMetros > 2000) return false;
-
-          // REGLA DE NEGOCIO: un bus en dirección opuesta NO es competencia, no lo contamos.
-          // Determinar dirección con la mejor señal disponible (destino > heading > descartar).
           const ucotDest = (ucot.destino ?? '').trim();
           const rivalDest = (r.destino ?? '').trim();
-
           if (ucotDest && rivalDest) {
-            // Capa 1 (fuerte): destino del STM.
-            // Si coinciden tokens largos → mismo sentido geográfico → sí es rival.
             const da = ucotDest.toUpperCase().replace(/[^A-Z0-9]/g, ' ').trim();
             const db2 = rivalDest.toUpperCase().replace(/[^A-Z0-9]/g, ' ').trim();
             const tokensA = da.split(' ').filter(t => t.length >= 5);
@@ -440,22 +557,32 @@ const ShadowRadar: React.FC = () => {
             const hayCoincidencia = tokensA.some(t => db2.includes(t)) || tokensB.some(t => da.includes(t));
             return hayCoincidencia;
           }
-
           if (ucot.heading !== undefined && r.heading !== undefined) {
-            // Capa 2 (media): heading calculado entre snapshots.
-            // < 60° de diferencia → sentido similar → sí es rival.
             const hDiff = Math.abs(ucot.heading - r.heading) % 360;
             const shortestDiff = hDiff > 180 ? 360 - hDiff : hDiff;
             return shortestDiff <= 60;
           }
-
-          // Sin info de dirección (primer snapshot y destino ausente) → conservador: no cuenta.
           return false;
-        })
-        .sort((a, b) => a.distanciaMetros - b.distanciaMetros);
+        });
+
+      // Merge priorizando DRO (T1/T2) sobre heurística (T3).
+      const rivalesCercanos = [...droRivales, ...heuristicRivales]
+        .sort((a, b) => {
+          // Primero por tier (T1 < T2 < T3), luego por distancia.
+          const tierRank: Record<DroTier, number> = { T1: 0, T2: 1, T3: 2 };
+          if (tierRank[a.tier] !== tierRank[b.tier]) {
+            return tierRank[a.tier] - tierRank[b.tier];
+          }
+          return a.distanciaMetros - b.distanciaMetros;
+        });
 
       let estado: 'FIJADO_AL_BLANCO' | 'PELIGRO_BUNCHING' | 'VIA_LIBRE' | 'SIN_GPS';
-      if (rivalesCercanos.length > 0 && rivalesCercanos[0].distanciaMetros < 500) {
+      // El estado crítico se dispara si hay T1 (rival confirmado por corredor)
+      // o si hay cualquier rival a <500m.
+      const hayT1Cercano = rivalesCercanos.some(r => r.tier === 'T1' && r.distanciaMetros < 500);
+      if (hayT1Cercano) {
+        estado = 'FIJADO_AL_BLANCO';
+      } else if (rivalesCercanos.length > 0 && rivalesCercanos[0].distanciaMetros < 500) {
         estado = 'FIJADO_AL_BLANCO';
       } else if (rivalesCercanos.length > 0) {
         estado = 'PELIGRO_BUNCHING';
@@ -465,7 +592,7 @@ const ShadowRadar: React.FC = () => {
 
       return { ucot, rivales: rivalesCercanos, estado };
     });
-  }, [ucotFiltrados, competidores]);
+  }, [ucotFiltrados, competidores, overlapsByRivalKey, empresaPropia]);
 
   // ─── ShadowDispatcher automático (useEffect) ─────────────────────────────
   // Se declara acá (después del useMemo emparejamientos) para evitar TDZ.
@@ -827,22 +954,51 @@ const ShadowRadar: React.FC = () => {
                           {estadoBadge(emp.estado)}
                         </div>
 
-                        {/* Rivales detectados */}
+                        {/* Rivales detectados (con tier DRO + métricas) */}
                         {emp.rivales.length > 0 && (
                           <div className="mt-2 space-y-1">
-                            {emp.rivales.slice(0, 3).map((r, i) => (
-                              <div key={i} className="flex items-center justify-between text-xs bg-slate-900/80 rounded px-2 py-1 border border-slate-800">
-                                <span className="text-red-400 font-bold flex items-center gap-1">
-                                  <ShieldAlert className="w-3 h-3" />
-                                  {r.empresa} #{r.cocheId}
-                                </span>
-                                <span className={`font-mono font-bold ${
-                                  r.distanciaMetros < 500 ? 'text-red-400' : 'text-orange-400'
-                                }`}>
-                                  {r.distanciaMetros}m
-                                </span>
-                              </div>
-                            ))}
+                            {emp.rivales.slice(0, 3).map((r, i) => {
+                              const tier = r.tier ?? 'T3';
+                              const tierColor =
+                                tier === 'T1'
+                                  ? 'bg-red-900/60 text-red-300 border-red-700'
+                                  : tier === 'T2'
+                                  ? 'bg-amber-900/50 text-amber-300 border-amber-700'
+                                  : 'bg-slate-800 text-slate-400 border-slate-700';
+                              const tierLabel =
+                                tier === 'T1'
+                                  ? 'CORREDOR'
+                                  : tier === 'T2'
+                                  ? 'POSIBLE'
+                                  : 'HEURÍSTICA';
+                              const tierTitle =
+                                tier === 'T1'
+                                  ? `Corredor confirmado por matriz DRO (${r.pctAInB?.toFixed(0)}% solapado, ${r.sharedKm?.toFixed(1)} km)`
+                                  : tier === 'T2'
+                                  ? `Solapamiento menor (${r.pctAInB?.toFixed(0)}% DRO)`
+                                  : 'Sin matriz DRO para esta línea, detección por destino/heading';
+                              return (
+                                <div key={i} className="flex items-center justify-between text-xs bg-slate-900/80 rounded px-2 py-1 border border-slate-800 gap-2">
+                                  <span className="text-red-400 font-bold flex items-center gap-1 min-w-0">
+                                    <ShieldAlert className="w-3 h-3 shrink-0" />
+                                    <span className="truncate">{r.empresa} #{r.cocheId} L{r.codigoLinea}</span>
+                                  </span>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <span
+                                      className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold border ${tierColor}`}
+                                      title={tierTitle}
+                                    >
+                                      {tierLabel}
+                                    </span>
+                                    <span className={`font-mono font-bold ${
+                                      r.distanciaMetros < 500 ? 'text-red-400' : 'text-orange-400'
+                                    }`}>
+                                      {r.distanciaMetros}m
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
