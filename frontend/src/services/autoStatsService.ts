@@ -114,9 +114,64 @@ export async function fetchEndpointHealth(): Promise<EndpointHealth> {
   return data.health ?? { status: 'UNKNOWN', lastCheck: null, downSince: null, upSince: null, consecutiveFailures: 0, lastSuccessfulCollection: null };
 }
 
+export interface UcotGpsBus {
+  idBus: string; lat: number; lon: number; velocidad: number;
+  servicio: string | null; cartel: string; parado: boolean; rumbo: number;
+}
+export interface UcotGpsResponse {
+  ok: boolean; buses: UcotGpsBus[]; total: number; timestamp: string;
+}
+export interface UcotServicioAsignado { fecha: string; servicio: string; }
+export interface UcotRotacionResponse {
+  ok: boolean; coche: string; servicios: UcotServicioAsignado[];
+}
+
+export async function fetchUcotGps(coche = '0'): Promise<UcotGpsResponse> {
+  const h = await authHeaders();
+  const { data } = await axios.get(`${BASE}/ucot/gps?coche=${coche}`, { headers: h });
+  return data;
+}
+
+export async function fetchUcotRotacion(coche: string): Promise<UcotRotacionResponse> {
+  const h = await authHeaders();
+  const { data } = await axios.get(`${BASE}/ucot/rotacion/${coche}`, { headers: h });
+  return data;
+}
+
+export function getUcotCartonUrl(servicio: string, minuta = 'HABILES'): string {
+  return `${BASE}/ucot/carton/${servicio}?minuta=${minuta}`;
+}
+
 export const AGENCY_LABELS: Record<string, string> = {
   '10': 'COETC', '20': 'COME', '50': 'CUTCSA', '70': 'UCOT',
 };
 export const AGENCY_COLORS: Record<string, string> = {
   '10': 'indigo', '20': 'sky', '50': 'amber', '70': 'emerald',
 };
+
+export interface ArchiveFileInfo {
+  file: string;
+  week: string;
+  sizeKb: number;
+}
+
+export interface ArchiveWeekData {
+  ok: boolean;
+  week: string;
+  agencyId: string;
+  totalRecords: number;
+  lines: LineSummary[];
+}
+
+export async function fetchArchiveList(): Promise<ArchiveFileInfo[]> {
+  const h = await authHeaders();
+  const { data } = await axios.get(`${BASE}/autostats/archives`, { headers: h });
+  return data.archives ?? [];
+}
+
+export async function fetchArchiveData(week: string, agencyId?: string): Promise<ArchiveWeekData | null> {
+  const h = await authHeaders();
+  const qs = agencyId ? `?agencyId=${agencyId}` : '';
+  const { data } = await axios.get(`${BASE}/autostats/archive/${week}${qs}`, { headers: h });
+  return data.ok ? data : null;
+}
