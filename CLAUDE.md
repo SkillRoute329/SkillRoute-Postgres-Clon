@@ -50,6 +50,60 @@ bash scripts/check_integrity.sh
 
 Si exit != 0, avisar y no terminar.
 
+### 8. Continuidad entre sesiones (DIRECTRIZ 2026-04-24)
+
+Para que cualquier sesión nueva (Cowork con esta carpeta o Claude Code en
+esta carpeta) retome sin tener que re-explicar contexto, hay dos archivos
+gestionados automáticamente por Claude:
+
+- **`docs/SESION_ACTUAL.md`** — estado vivo. Lo que está en curso, próximo
+  paso concreto, decisiones tomadas pendientes de implementar, bugs
+  conocidos no críticos, backlog priorizado. Se reescribe al final de
+  cada sesión (no se appendea — siempre refleja el estado AHORA).
+
+- **`docs/HISTORIAL_SESIONES.md`** — append-only. Una entrada por cada
+  sesión productiva con qué se entregó, métricas medidas, decisiones,
+  truncamientos sufridos. Sirve como auditoría sin tener que leer git
+  log. **NO borrar entradas viejas.**
+
+**Protocolo obligatorio para Claude:**
+
+**Al ABRIR sesión** (orden estricto):
+1. Leer `CLAUDE.md` (este archivo)
+2. Leer `docs/SESION_ACTUAL.md` para saber dónde quedó la sesión previa
+3. Si el usuario dice "continuamos" o similar, retomar el "PRÓXIMO PASO
+   INMEDIATO" del SESION_ACTUAL.md sin pedir contexto
+4. Si el usuario propone algo nuevo que cambie el plan, actualizar
+   SESION_ACTUAL.md antes de empezar el trabajo
+
+**Al CERRAR sesión** (antes de que el usuario diga "vamos con el commit"):
+1. Reescribir `docs/SESION_ACTUAL.md` con:
+   - Última actualización (fecha)
+   - "EN CURSO" (qué quedó a mitad y por qué)
+   - "PRÓXIMO PASO INMEDIATO" (el paso 1 concreto que la próxima sesión
+     debe ejecutar — con líneas de código si aplica)
+   - Backlog actualizado
+   - Bugs conocidos no críticos
+   - Decisiones operativas tomadas durante esta sesión
+2. Appendear una entrada nueva a `docs/HISTORIAL_SESIONES.md` con:
+   - Tabla de features entregadas
+   - Métricas medidas en producción
+   - Decisiones que quedaron afuera y por qué
+3. Verificar con `bash scripts/check_integrity.sh` antes de proponer
+   commit.
+
+**Si la sesión se interrumpe** (truncamiento grave, error inrecuperable,
+contexto agotado): dejar `SESION_ACTUAL.md` en estado consistente — qué
+se hizo hasta ahora y qué hay que terminar. Nunca dejar el archivo a
+medio actualizar.
+
+**Para el usuario (Jonathan)**: estos archivos los gestiona Claude, no
+los toques manualmente salvo emergencia. Si necesitás cambiar prioridades
+fuera de sesión, escribí en `SESION_ACTUAL.md` un bloque "## NOTA DE
+JONATHAN" arriba del todo y Claude lo recoge en la próxima sesión.
+
+---
+
 ### 7. Verificación funcional SIEMPRE es responsabilidad del agente (DIRECTRIZ 2026-04-24)
 
 Jonathan no hace pruebas manuales. Después de cualquier cambio desplegado o
