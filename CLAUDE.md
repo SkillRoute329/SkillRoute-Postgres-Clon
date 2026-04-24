@@ -50,6 +50,37 @@ bash scripts/check_integrity.sh
 
 Si exit != 0, avisar y no terminar.
 
+### 7. Verificación funcional SIEMPRE es responsabilidad del agente (DIRECTRIZ 2026-04-24)
+
+Jonathan no hace pruebas manuales. Después de cualquier cambio desplegado o
+deployable, el agente verifica por sí mismo usando las herramientas
+disponibles:
+
+- **Cambios frontend**: Claude in Chrome navega al componente afectado,
+  extrae el DOM/consola, confirma que renderiza datos reales y que los
+  indicadores críticos (tiers, contadores, badges) muestran lo esperado.
+- **Cambios backend**: `curl` al endpoint HTTP nuevo o modificado,
+  verificación del JSON de respuesta, conteo de docs afectados en Firestore
+  si aplica.
+- **Cambios de datos/schema**: query de lectura sobre la colección tocada
+  para confirmar que los docs tienen la forma esperada.
+- **Regresiones**: si el cambio toca un archivo que ya tenía uso en producción
+  (ej. ShadowRadar), verificar que la funcionalidad previa sigue andando, no
+  sólo la nueva.
+
+No se acepta "probalo vos y avisame". Si una herramienta no está disponible
+(Chrome MCP desconectado, sin acceso a Firestore, etc.), decirlo explícito
+y buscar alternativa (web_fetch, shell, etc.). Pasarle el testing al
+usuario sólo es aceptable cuando:
+(a) la verificación requiere credenciales que el agente no puede usar
+    (ej. login humano con 2FA);
+(b) es una acción irreversible que prefiero que el usuario autorice
+    (deploy de producción con efectos financieros, por ejemplo).
+
+En esos casos, ejecutar todo lo verificable automáticamente antes de
+pedir la acción humana. Incluir en el reporte qué se verificó y qué queda
+pendiente por su intervención específica.
+
 ---
 
 ## 📘 Documentos que debe leer el agente antes de tocar código
