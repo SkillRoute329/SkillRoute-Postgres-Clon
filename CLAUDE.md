@@ -135,6 +135,79 @@ En esos casos, ejecutar todo lo verificable automáticamente antes de
 pedir la acción humana. Incluir en el reporte qué se verificó y qué queda
 pendiente por su intervención específica.
 
+**Refuerzo (DIRECTRIZ 2026-04-24 bis):** Jonathan no testea nunca. Si
+Claude no tiene cómo ejecutar un comando o verificación (sandbox sin
+acceso a la red de Windows, dev server no corriendo en sandbox, acción
+con 2FA, etc.), Claude **redacta la orden completa para Claude Code** y
+la deja en `docs/SESION_ACTUAL.md` bajo "PRÓXIMO PASO INMEDIATO". La orden
+debe ser pegable tal cual, no un esbozo. Si una tarea queda con
+verificación pendiente, el reporte al usuario lo dice explícito y le da
+la orden lista. **Nunca** decirle a Jonathan "probalo vos".
+
+---
+
+### 9. Workflow Cowork ↔ Claude Code (DIRECTRIZ 2026-04-24)
+
+Jonathan trabaja en dos entornos en paralelo: **Cowork** (sandbox Linux con
+acceso a la carpeta) y **Claude Code** (terminal en Windows con git
+funcional). El sandbox de Cowork **no puede commitear** porque
+`.git/index.lock` queda colgado del lado Windows. Por lo tanto:
+
+**División de roles fija:**
+
+| Entorno | Hace | No hace |
+|---|---|---|
+| **Cowork (sandbox)** | Edita código, corre tsc/integrity, actualiza docs, hace verificación funcional vía Chrome MCP cuando hay dev server corriendo | `git commit`, `git push`, `git rm` (permisos del mount lo bloquean) |
+| **Claude Code (Windows)** | Levanta `npm run dev`, hace verificación funcional con browser/Playwright si Cowork no pudo, ejecuta `git add/commit/push` y `git rm` de archivos legacy | Edits estructurales grandes (eso lo hace mejor Cowork con Python atomic write) |
+
+**Protocolo al cerrar una sesión de Cowork:**
+
+Cowork termina actualizando `docs/SESION_ACTUAL.md` con un bloque
+"PRÓXIMO PASO INMEDIATO" que enumera:
+
+1. Qué tiene que verificar visualmente el browser (URLs, KPIs a chequear,
+   selectores a probar).
+2. Qué chequeos de TS/integrity tiene que correr Claude Code antes del
+   commit.
+3. El mensaje de commit completo, listo para pegar.
+
+**Prompt estándar para arrancar la sesión en Claude Code:**
+
+```
+Continuamos la sesión de Cowork. Leé CLAUDE.md y docs/SESION_ACTUAL.md.
+Ejecutá el "PRÓXIMO PASO INMEDIATO". Verificá funcionalmente con
+browser. Si todo OK, commiteá con el mensaje que dejó Cowork. Si algo
+falla, escribí "## NOTA DE JONATHAN" arriba de SESION_ACTUAL.md
+describiendo el problema y avisame.
+```
+
+Jonathan pega ese prompt en Claude Code y no tiene que reescribir nada.
+Cowork debe asegurarse de dejar SESION_ACTUAL.md en estado consumible
+por ese prompt (es decir: PRÓXIMO PASO INMEDIATO concreto, mensaje de
+commit redactado, comandos de verificación pegables).
+
+**Cuando Cowork SÍ puede verificar con browser:**
+
+Si en la sesión activa de Cowork el dev server ya está levantado en
+`http://localhost:5173` (Jonathan lo arrancó manualmente o quedó vivo
+de antes), Cowork debe usar Chrome MCP directamente y dejar la
+verificación cerrada antes de pasarle el commit a Claude Code. En ese
+caso, el "PRÓXIMO PASO INMEDIATO" para Claude Code se reduce a "tsc
+fresco + commit + push", sin verificación visual.
+
+**Cuando Cowork NO puede verificar con browser:**
+
+(El caso típico — el sandbox no puede mantener procesos vivos entre
+llamadas bash). Cowork debe:
+
+1. Hacer la máxima verificación estática posible (tsc fresco con
+   `--tsBuildInfoFile /tmp/...`, integrity script, Read del archivo
+   final para detectar truncamientos).
+2. Documentar en SESION_ACTUAL.md exactamente qué tiene que mirar
+   Claude Code en el browser, con los pasos numerados.
+3. Nunca decir "está listo" si la verificación visual quedó pendiente —
+   decirle a Jonathan qué pasos quedan para Claude Code.
+
 ---
 
 ## 📘 Documentos que debe leer el agente antes de tocar código

@@ -4,109 +4,140 @@
 
 > **Para Jonathan**: este archivo se actualiza automáticamente al final de cada sesión productiva. No lo borres ni lo edites manualmente — Claude lo gestiona.
 
-**Última actualización:** 2026-04-24, sesión Claude/Cowork
+**Última actualización:** 2026-04-24 (sesión bis 2 — V7 Network Command), Cowork
 
 ---
 
 ## 🎯 EN CURSO
 
-### Refactor cross-operador del CEO Dashboard
-**Archivo:** `frontend/src/pages/traffic/CEODashboard.tsx` (1.467 líneas)
+Nada en curso. Sesión cerrada con **CEODashboardV7.tsx (Network Command)**
+construido desde cero, ruta `/dashboard/traffic/ceo-v7` agregada, entrada en
+sidebar con label "⭐ Network Command v7". El CEODashboard.tsx legacy queda
+intacto (zero regresión, directriz operativa).
 
-**Estado:** 0% — plan acordado, no se tocó código todavía.
-
-**Por qué:** dashboard hoy es UCOT-only, viola la directriz "Alcance del producto" (CLAUDE.md líneas 189+). Mezcla KPIs estratégicos del sistema con integraciones operativas internas de UCOT. Se siente confuso para un directivo no-UCOT.
-
-**Plan acordado con Jonathan (sesión 2026-04-24):**
-
-Edits identificados con `grep` sobre el archivo:
-
-1. **Constantes + state** (después de imports, alrededor de línea 80-100):
-   - `EMPRESAS_OPCIONES = [{ codigo: 70, label: "UCOT" }, { codigo: 50, label: "CUTCSA" }, { codigo: 20, label: "COME" }, { codigo: 10, label: "COETC" }]`
-   - `useState empresaPropia: number = 70`
-   - `empresaLabel = EMPRESAS_OPCIONES.find(e => e.codigo === empresaPropia)?.label ?? "Propia"`
-
-2. **Línea 261** (fetchData filter):
-   - antes: `f.properties?.codigoEmpresa === 70`
-   - después: `f.properties?.codigoEmpresa === empresaPropia`
-
-3. **Líneas 263 y 268** — quitar el hardcode `185`:
-   - `total = ucotEnVivoGPS > 0 ? ucotEnVivoGPS : Math.max(vehicles.length, 0)`
-   - El comentario "// 185 = flota UCOT real" desaparece.
-
-4. **Header del JSX** — agregar `<select>` de empresa propia, mismo estilo que el de `ShadowRadar.tsx` (`bg-slate-950 border-blue-500/60 rounded-lg px-3 py-2.5`).
-
-5. **Línea 809** — texto:
-   - antes: `"ventaja competitiva de UCOT"`
-   - después: `` `ventaja competitiva de ${empresaLabel}` ``
-
-6. **Línea 1303** — texto:
-   - antes: `"Rendimiento por Línea UCOT"`
-   - después: `` `Rendimiento por Línea ${empresaLabel}` ``
-
-7. **Sección Portal UCOT** (líneas ~418 y 1047-1089):
-   - Envolver en `{empresaPropia === 70 && (...)}` con un `<section>` wrapper
-   - Título nuevo: "Integraciones UCOT (disponibles sólo para este operador)"
-   - Las otras 3 empresas no tienen portal JSF equivalente todavía.
-
-8. **CompetitorThreatWidget** (línea ~219):
-   - Si acepta prop `empresaPropia`, pasársela.
-   - Si no, leer su archivo `frontend/src/components/CompetitorThreatWidget.tsx` y agregar el prop.
-
-**Reglas de ejecución:**
-- Archivo grande (1.467 líneas) → **Python atomic write con `os.replace(tmp, path)` para todos los edits >50 líneas**. Edits chicos (<20 líneas) pueden ser `Edit` tool pero verificando con `bash scripts/check_integrity.sh` después de cada uno.
-- Después de cada edit estructural: `cd frontend && npx tsc --noEmit 2>&1 | grep "ShadowRadar"` (cero errores).
-- **Verificación final** (directriz 7 de CLAUDE.md): `bash scripts/check_integrity.sh` + Claude in Chrome navegando a `/dashboard/traffic/ceo`, cambiando entre las 4 empresas con el selector y confirmando:
-  - Los KPIs cambian según empresa
-  - El bloque "Portal UCOT" desaparece cuando empresaPropia ≠ 70
-  - Los textos `${empresaLabel}` se sustituyen correctamente
-- Cuando termines, dejar el archivo listo para commit pero **sin commitear** — Jonathan committea desde Claude Code (el sandbox no puede tocar `.git/index.lock`).
+**Cambios sin commitear (working tree):**
+- `frontend/src/pages/traffic/CEODashboardV7.tsx` (nuevo, ~720 líneas)
+- `frontend/src/App.tsx` (+2 líneas: lazy import + route)
+- `frontend/src/components/Sidebar.tsx` (+5 líneas: nueva entrada V7 + label legacy)
+- `CLAUDE.md` (refuerzo de directriz 7: testing es responsabilidad del agente, nunca de Jonathan)
+- `docs/SESION_ACTUAL.md` (este archivo)
+- `docs/HISTORIAL_SESIONES.md` (entrada appendeada)
+- (de la sesión bis 1) `frontend/src/pages/traffic/CEODashboard.tsx` y
+  `frontend/src/components/CompetitorThreatWidget.tsx` (refactor cross-operador, ya documentado).
 
 ---
 
-## 📋 PRÓXIMO PASO INMEDIATO
+## 📋 PRÓXIMO PASO INMEDIATO — ORDEN PARA CLAUDE CODE
 
-Arrancar el refactor del CEO Dashboard según el plan de arriba. El primer edit es agregar las constantes + state (paso 1) — es el más chico y prepara el terreno para los demás.
+Pegar este bloque tal cual en Claude Code (cwd = `C:\Users\jonat\Desktop\PROYECTOS\GestionUcot`):
+
+```
+Continuamos la sesión de Cowork. Leé CLAUDE.md y docs/SESION_ACTUAL.md primero.
+
+Tu trabajo:
+
+1) VERIFICACIÓN FUNCIONAL DEL V7 (browser):
+   - Levantá el dev server: cd frontend && npm run dev (esperá puerto activo)
+   - Si Vite quedó corriendo de antes, reiniciálo (Ctrl+C y npm run dev otra vez) — el lazy chunk del CEODashboard fue editado y el cache puede mentir.
+   - Navegá a http://localhost:3005/dashboard/traffic/ceo-v7 (o el puerto que use tu Vite — chequeá la consola que tira al levantar).
+   - Confirmá:
+     a. El header muestra "Network Command v7" + chip "CROSS-OPERADOR".
+     b. El selector "Operador" arranca en UCOT y al cambiar a CUTCSA todas las métricas se recalculan.
+     c. El gauge "Network Health" muestra un score 0-100 y los 4 sub-componentes (OTP / Bunch / Cover / Risk).
+     d. La sección Hot Zones muestra top 5 corredores cross-operador o un mensaje de estado vacío explicativo.
+     e. La sección Market Share muestra una tabla con buses propios vs rivales por línea, o estado vacío.
+     f. La sección Riesgos muestra incidencias críticas / personal sin asignar / vehículos en taller (o "Sin riesgos críticos").
+     g. El sidebar muestra dos entradas: "Dashboard CEO (legacy)" y "⭐ Network Command v7".
+
+2) VERIFICACIÓN DEL LEGACY (zero regresión):
+   - Navegá a http://localhost:3005/dashboard/traffic/ceo (el viejo).
+   - Confirmá que sigue funcionando igual que antes + tiene el selector Operador en el header (refactor cross-operador previo).
+   - Si está roto, escribí "## NOTA DE JONATHAN" arriba de SESION_ACTUAL.md describiendo el problema y avisame ANTES de commitear.
+
+3) CHEQUEO PRE-COMMIT:
+   - bash scripts/check_integrity.sh (exit 0 obligatorio)
+   - cd frontend && npx tsc --noEmit --tsBuildInfoFile /tmp/fresh.tsbuildinfo -p tsconfig.app.json | grep -E "CEODashboardV7|App\.tsx|Sidebar\.tsx|CEODashboard\.tsx|CompetitorThreatWidget" (no debe haber output — los ~98 errores TS pre-existentes en otros archivos están aceptados como deuda).
+
+4) COMMIT (un solo commit grande con todo):
+   git add frontend/src/pages/traffic/CEODashboardV7.tsx frontend/src/pages/traffic/CEODashboard.tsx frontend/src/components/CompetitorThreatWidget.tsx frontend/src/App.tsx frontend/src/components/Sidebar.tsx CLAUDE.md docs/SESION_ACTUAL.md docs/HISTORIAL_SESIONES.md
+
+   git commit -m "feat(ceo-dashboard): Network Command V7 + cross-operador refactor del legacy
+
+- Crea /dashboard/traffic/ceo-v7 (Network Command V7) con Health Score 0-100,
+  KPIs UITP-style (Service Reliability, Bunching Index, Service Delivery,
+  Riesgo Operativo), Hot Zones desde corridor_overlap, Market Share live por
+  línea desde GPS STM, panel de Riesgos compacto. Cross-operador desde el
+  primer pixel (UCOT/CUTCSA/COME/COETC). Inspirado en Optibus Network Health,
+  Swiftly Service Reliability, TfL EWT, NYC MTA Bunching Index, RATP Régularité.
+- Cada KPI linkea a su módulo especializado (ShadowRadar, OTPDashboard,
+  CorridorIntelligence, etc.) — evita duplicación de cálculos.
+- Mantiene CEODashboard.tsx legacy intacto en /dashboard/traffic/ceo.
+  Sidebar muestra ambos para comparación lado a lado.
+- Refuerzo directriz 7 en CLAUDE.md: las pruebas son siempre responsabilidad
+  del agente; si no puede ejecutar, redacta orden completa para Claude Code.
+
+Verificado: tsc fresco 0 errores en archivos tocados. Integrity script OK.
+Errores TS pre-existentes en otros componentes (~98) quedan como deuda.
+
+Ref: directrices Alcance del producto + Filosofía de producto + Nivel
+internacional por defecto en CLAUDE.md."
+
+   git push
+
+5) Si todo sale bien, decime "listo, V7 desplegado" y nada más. Si falla algo, escribí ## NOTA DE JONATHAN en SESION_ACTUAL.md.
+```
 
 ---
 
 ## 🔮 BACKLOG DE PRÓXIMAS SESIONES
 
-En orden de prioridad acordado:
-
-1. **CEO Dashboard cross-operador** ← (esta sesión)
-2. **Driver app UI para ACK de FCM** — cuando llega push, mostrar modal con botón "RECIBIDO" → llama a `acknowledgeAlerta` endpoint (ya existe en backend desde 2026-04-24).
-3. **ShadowRadar UI: mostrar estado ACK** — icono ✓ en alertas reconocidas + response_time_sec. Query simple sobre `ack_at`.
-4. **ShadowAnalytics: tab "ACK Performance"** — `ack_rate` y `avg_response_time_sec` por línea/conductor. KPI de eficiencia operativa.
-5. **Bug "Document already exists"** — el frontend ShadowRadar usa `addDoc` que a veces colisiona con el backend `shadowDispatcher`. Solución: migrar a `setDoc` con ID determinístico tipo `${empresaPropia}_${coche}_${rival}_${Math.floor(Date.now()/(5*60*1000))}` (una alerta cada 5 min máx por par).
-6. **Verificar que los 3 archivos legacy se borraron de git** — `OperationsIntelligenceHub.tsx`, `LiveMapPage.tsx`, `ServiceStatistics.tsx`. El sandbox no pudo borrarlos por permisos del mount; Claude Code en Windows debe haberlo hecho en el último commit. Si no, ejecutar `git rm` desde Claude Code.
+1. ~~CEO Dashboard cross-operador legacy~~ ✅ cerrado.
+2. ~~Network Command V7 (Fase 1: build paralelo)~~ ✅ cerrado en esta sesión.
+3. **Fase 2 V7 — promover a default**: Una vez validado v7 en producción durante 1-2 días, redirigir `/ceo` → `/ceo-v7` y eliminar el legacy. Limpiar Sidebar para dejar sólo "Network Command".
+4. **Períodos 7d/30d en V7**: Hoy los botones están deshabilitados con tooltip "Próximamente — backend de históricos en construcción". Implementar:
+   - Histórico de OTP: agregación diaria desde `auto_stats_diarios` o similar.
+   - Histórico de bunching: ya existe `alertas_regulacion`, query con range.
+   - Histórico de Service Delivery: requiere pipeline `cartones_planificados` vs `cartones_ejecutados`.
+5. **Driver app UI para ACK de FCM** — cuando llega push, mostrar modal con botón "RECIBIDO" → llama a `acknowledgeAlerta` endpoint (ya existe en backend).
+6. **ShadowRadar UI: mostrar estado ACK** — icono ✓ en alertas reconocidas + response_time_sec.
+7. **ShadowAnalytics: tab "ACK Performance"** — `ack_rate` y `avg_response_time_sec` por línea/conductor.
+8. **Bug "Document already exists"** en `alertas_regulacion`: migrar a `setDoc` con ID determinístico.
+9. **Generalizar `CompetitorThreatWidget` a CUTCSA/COME/COETC** — hoy el prop `empresaPropia` viaja pero el algoritmo interno sigue usando `LINEAS_UCOT_BASE` (UCOT-only).
+10. **Limpiar errores TS pre-existentes** (~98) en componentes de competition/forecast. Tech debt heredado.
+11. **Verificar git rm de los 3 archivos legacy** (`OperationsIntelligenceHub.tsx`, `LiveMapPage.tsx`, `ServiceStatistics.tsx`) — si están todavía en HEAD, borrarlos desde Claude Code.
 
 ---
 
 ## 🐛 BUGS CONOCIDOS Y NO CRÍTICOS
 
-- **Document already exists** en `alertas_regulacion`: aparece como warning en consola del browser, ~100 veces por sesión activa de ShadowRadar. No rompe nada (el throttle dispatchedRef previene la mayoría), pero ensucia los logs. Detalle en backlog item #5.
-- **Sesión auth se pierde con reloads** en localhost: probablemente normal en dev (cookie de Firebase Auth puede caducar rápido), no se observa en producción. Si molesta, revisar `frontend/src/context/AuthContext.tsx` y `tf_user` localStorage handling.
+- **Document already exists** en `alertas_regulacion`: ~100 warnings/sesión por colisión `addDoc` frontend vs `shadowDispatcher` backend.
+- **Sesión auth se pierde con reloads** en localhost.
+- **Errores TS pre-existentes** (~98) ocultos por cache incremental.
+- **Truncamiento recurrente del Edit tool** en archivos grandes: la sesión actual sufrió 4 truncamientos (CEODashboard.tsx, CompetitorThreatWidget.tsx, App.tsx, Sidebar.tsx). Todos rescatados con Python `os.replace(tmp, path)` reconstruyendo desde `git show HEAD:`. Patrón documentado en CLAUDE.md.
 
 ---
 
-## 📌 DECISIONES OPERATIVAS DE LA SESIÓN PREVIA
+## 📌 DECISIONES OPERATIVAS DE LA SESIÓN
 
-(2026-04-24, ordenadas cronológicamente)
+(2026-04-24 sesión bis 2, ordenadas cronológicamente)
 
-- **Priorizamos** el aprolijamiento del módulo "Inteligencia Operativa" antes del refactor del CEO porque el sidebar abarrotado rompía la sensación "Optibus/Swiftly" del producto.
-- **Dividimos** el sidebar en 3 bloques con identidad: INTELIGENCIA DE RED · OPERACIÓN TÁCTICA · ANÁLISIS FINANCIERO.
-- **Borramos** 3 archivos legacy con redirects para no romper bookmarks: `OperationsIntelligenceHub`, `LiveMapPage`, `ServiceStatistics`.
-- **Renombramos** "Estadísticas Automáticas" → "Cumplimiento Horario" (describe mejor: GPS+GTFS sin inspectores).
-- **Movimos a Admin**: "Referencia BRT 2027" y "Monitor Ingesta STM" porque no son inteligencia operativa propiamente dicha.
-- **Agregamos directriz nueva a CLAUDE.md**: "Nivel internacional por defecto" (pregunta canónica antes de cerrar feature: ¿cómo lo hace Optibus/Swiftly/Remix/TfL/RATP?).
-- **No tocamos hoy** el CEO Dashboard porque el archivo es 1.467 líneas y la sesión ya tenía 4 truncamientos sufridos. Lo dejamos para sesión fresca.
+- **No tocar el CEODashboard legacy** durante Fase 1 V7 — directriz "no regresión de avances logrados". V7 vive paralelo en `/ceo-v7` para comparar.
+- **Network Health Score 0-100** con pesos UITP: 40% OTP / 25% Bunching / 20% Cobertura / 15% Riesgo. Documentado en pantalla con tooltip.
+- **KPIs canónicos de la industria** en lugar de inventados: Service Reliability (UITP), Bunching Index (NYC MTA), Service Delivery (TfL/Swiftly), Riesgo Operativo. Cada uno con explicación inline de qué mide.
+- **Cada KPI linkea al módulo especializado** — el V7 NO recalcula lo que otros módulos ya calculan, sólo agrega y resume. Evita duplicación documentada en análisis previo.
+- **Datos reales desde colecciones existentes**: corridor_overlap (matriz DRO), shapes_cross_operator, alertas_regulacion (24h window), incidencias, ServicioEstadoService.getByDate, /api/positions, FleetService.getVehicles. Cero datos mockeados.
+- **Estados vacíos explicativos** en cada sección (Hot Zones, Market Share, Riesgos) — directriz "production-grade" / "Filosofía de producto".
+- **Botones de período 7d/30d disabled con tooltip** "Próximamente — backend de históricos en construcción". No prometer features que no están listas.
+- **Refuerzo directriz 7 en CLAUDE.md**: las pruebas son responsabilidad del agente. Si no puede ejecutar (sin acceso a la red de Windows, dev server no corriendo en sandbox, etc.), redacta orden completa pegable para Claude Code. **Nunca** decirle a Jonathan "probalo vos".
+- **Sidebar muestra "⭐ Network Command v7"** con estrella para que Jonathan sepa cuál es el nuevo. Y "Dashboard CEO (legacy)" para indicar que el viejo está en sunset.
 
 ---
 
 ## ⚙️ RECORDATORIOS DE PROCESO
 
-- Nunca hacer `git commit` desde el sandbox — `.git/index.lock` está colgado del lado Windows. Jonathan committea desde Claude Code, donde sí funciona.
-- Para edits sobre archivos >500 líneas: **Python atomic write** (`os.replace(tmp, path)`). Patrón documentado en CLAUDE.md líneas 96-100.
-- Antes de decir "listo" o cerrar sesión: **siempre** correr `bash scripts/check_integrity.sh`. Exit 0 = OK.
-- Verificación funcional (directriz 7) la hace Claude, no Jonathan. Browser via Claude in Chrome MCP.
+- Nunca hacer `git commit` desde el sandbox.
+- Para edits sobre archivos >500 líneas: **Python atomic write** obligatorio.
+- Para detectar truncamientos AUNQUE tsc diga 0 errores: usar
+  `--tsBuildInfoFile /tmp/fresh.tsbuildinfo` para invalidar el cache incremental.
+- Verificación funcional siempre la hace Claude. Si no puede, deja la orden
+  completa pegable en SESION_ACTUAL.md para Claude Code (directriz 7 reforzada).

@@ -135,7 +135,12 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         },
         {
           path: '/dashboard/traffic/ceo',
-          label: 'Dashboard CEO',
+          label: 'Dashboard CEO (legacy)',
+          icon: TrendingUp,
+        },
+        {
+          path: '/dashboard/traffic/ceo-v7',
+          label: '⭐ Network Command v7',
           icon: TrendingUp,
         },
       ],

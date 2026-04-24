@@ -76,6 +76,7 @@ const DistribucionDiaria = lazy(() => import('./pages/traffic/DistribucionDiaria
 const BoletinInspeccion = lazy(() => import('./pages/traffic/BoletinInspeccion'));
 const PersonalUcot = lazy(() => import('./pages/traffic/PersonalUcot'));
 const CEODashboard = lazy(() => import('./pages/traffic/CEODashboard'));
+const CEODashboardV7 = lazy(() => import('./pages/traffic/CEODashboardV7'));
 const TalentCenter = lazy(() => import('./pages/talento/TalentCenter'));
 const AdminStressTest = lazy(() => import('./pages/admin/AdminStressTest'));
 const SystemParamsPage = lazy(() => import('./pages/admin/SystemParamsPage'));
@@ -254,6 +255,7 @@ function App() {
                     <Route path="traffic/boletin" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><BoletinInspeccion /></PrivateRoute>} />
                     <Route path="traffic/personal" element={<PrivateRoute roles={['ADMIN','TRAFFIC','RRHH']}><PersonalUcot /></PrivateRoute>} />
                     <Route path="traffic/ceo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CEODashboard /></PrivateRoute>} />
+                    <Route path="traffic/ceo-v7" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CEODashboardV7 /></PrivateRoute>} />
                     <Route path="traffic/rotation-matrix" element={<PrivateRoute roles={['ADMIN','TRAFFIC','RRHH']}><RotationMatrix /></PrivateRoute>} />
                     {/* Redirect legacy: Centro de Inteligencia → Inteligencia de Corredores (v3) */}
                     <Route path="traffic/intelligence" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />
