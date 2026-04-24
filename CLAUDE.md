@@ -3,6 +3,66 @@
 
 ---
 
+## 🤖 Comportamientos automáticos del agente (OBLIGATORIOS)
+
+Estas instrucciones se aplican **automáticamente** al inicio de cualquier sesión donde se toque código. No requieren que el usuario las pida.
+
+### 1. Chequeo de hotspots al empezar
+
+Si la tarea implica **editar varios archivos o refactorizar**, la primera acción debe ser:
+
+```bash
+bash scripts/hotspots.sh
+```
+
+La salida lista archivos que superan los límites de `docs/CONVENCIONES.md` §5. **Cualquier archivo >400 líneas que se vaya a editar más de una vez en esta sesión DEBE dividirse ANTES** (patrón de ADR 003). Dividir primero baja el consumo de tokens ~6× en las ediciones siguientes.
+
+### 2. Scout rule al tocar un archivo grande
+
+Si se va a **editar un archivo >400 líneas** (aunque sea una sola vez), considerar si se puede dejar más chico en la misma edición extrayendo un subdominio. Regla: dejar el archivo como máximo igual de grande, nunca más grande.
+
+### 3. Lectura parcial, no total
+
+Al abrir un archivo grande (>500 líneas), usar `Read` con `offset` + `limit` para leer solo la sección relevante. Nunca releer el archivo completo si ya está en contexto.
+
+### 4. Python atómico para cambios grandes
+
+Si un cambio afecta >50 líneas de un archivo >500 líneas, usar Python con `os.replace(tmp, path)` en lugar de `Edit` de string largo. Los Edit grandes sobre archivos grandes tienen historial de truncamiento (ver patrón en CLAUDE.md).
+
+### 5. Verificar después de cada cambio estructural
+
+Después de mover código entre archivos:
+
+```bash
+cd functions && npx tsc --noEmit 2>&1 | grep -E "^src/.*error TS"
+cd ../frontend && npx tsc --noEmit 2>&1 | grep -E "^src/.*error TS"
+```
+
+Si hay errores, arreglar ANTES de seguir. No acumular deuda.
+
+### 6. Chequeo de integridad antes de terminar
+
+Antes de decir "listo" al usuario, correr:
+
+```bash
+bash scripts/check_integrity.sh
+```
+
+Si exit != 0, avisar y no terminar.
+
+---
+
+## 📘 Documentos que debe leer el agente antes de tocar código
+
+Si la tarea implica crear, mover, renombrar o reorganizar archivos, **leer primero**:
+
+1. **`docs/CONVENCIONES.md`** — reglas operativas cortas (dónde va cada tipo de código, sufijos, idioma, límites de tamaño). Consulta rápida <30s.
+2. **`ARQUITECTURA_OBJETIVO.md`** — estructura objetivo completa, plan de migración, inventario de limpieza. Leer cuando haya que decidir refactors.
+
+Estas reglas son vinculantes para código nuevo. Convertir código legacy es incremental (scout rule, no refactor masivo).
+
+---
+
 ## Reglas de Eficiencia (OBLIGATORIAS — aplicar siempre sin que el usuario las pida)
 
 ### Modelo según complejidad
@@ -27,13 +87,34 @@ Cuando el contexto supera 10 archivos abiertos o la sesión lleva más de 30 min
 - No explicar lo que se va a hacer, hacerlo directamente
 - No resumir al final lo que se acaba de hacer
 
+### OBLIGATORIO antes de cada deploy: `bash scripts/check_integrity.sh`
+Este script detecta patrones de truncamiento que vienen ocurriendo al editar archivos grandes. Chequea bytes null, exports críticos en `functions/src/index.ts`, y corre `tsc --noEmit` en frontend y functions. Exit 0 = OK para deploy. No desplegar si marca problema.
+
+### Patrón de truncamiento observado
+Archivos grandes editados con `Edit` de strings largos o `>>` heredocs a veces quedan truncados a mitad de expresión. Ya ocurrió en `intelligenceApi.ts`, `index.ts`, `gtfsRealtime.ts`, `scheduleComplianceEngine.ts`, `forecastService.ts`, `competitionService.ts`, `ShadowRadar.tsx`.
+
+**Mitigaciones aplicables en orden de preferencia:**
+1. **Python atómico con `os.replace(tmp, path)`** — escritura a temporal + rename atómico. Lo más seguro para cambios grandes.
+2. **Edits múltiples pequeños** (1-20 líneas cada uno) en lugar de un Edit gigante. Verificar con `tsc --noEmit` después de cada uno.
+3. **Correr `scripts/check_integrity.sh`** al final para capturar cualquier truncamiento residual (bytes null, exports faltantes).
+4. Si un archivo queda corrupto, limpiar bytes null con `python3 -c "open('file','wb').write(open('file','rb').read().replace(b'\x00', b''))"` y reaplicar cambios faltantes con Edit o append verificado.
+
 ---
 
 ## ¿Qué es este proyecto?
-Sistema ERP de gestión integral de transporte público para **UCOT** (Uruguay).  
-Nombre del sistema: **SkillRoute** (antes TransformaFacil 2.0) / **GestionUcot**  
-Propósito: Análisis competitivo, gestión de flota, KPIs, pronósticos de ingresos, agentes digitales.  
-**Plataforma multi-empresa** — no solo UCOT, se venderá a cualquier operador de transporte.
+Sistema ERP + inteligencia de mercado para el **sistema metropolitano de transporte público de Uruguay** (Montevideo + área metropolitana).
+Nombre: **SkillRoute** (antes TransformaFacil 2.0) / **GestionUcot** (nombre heredado del repo, no del producto).
+Propósito: Análisis competitivo cross-operador, gestión de flota, KPIs, pronósticos de ingresos, agentes digitales.
+
+## 🎯 Alcance del producto (DIRECTRIZ 2026-04-24)
+**SkillRoute NO es un producto para UCOT. Es un producto para TODO el sistema metropolitano de Uruguay.**
+
+- Operadores en scope desde el MVP: **UCOT (70), CUTCSA (50), COME (20), COETC (10)** + cualquier otro operador del sistema metropolitano que se sume.
+- Los datos UCOT específicos que ya existen en el repo (cartones, documentos, nóminas, boletines) son **demo / prueba de concepto** — sirvieron para demostrar que con un operador ya funciona. No son el producto final.
+- Toda funcionalidad nueva debe ser **cross-operador por diseño**: la empresa propia es una variable, no un hard-code.
+- Todo algoritmo nuevo (ej. matriz DRO, HRR, market share por corredor) se calcula para el sistema completo y se presenta filtrable por operador.
+- Ninguna mejora puede romper funcionalidad actual. Solo agregar capacidad o corregir. Las features específicas de UCOT que ya existen se preservan como "demo multi-tenant" hasta migrarlas al modelo genérico.
+- El pitch a CUTCSA se apoya en esto: el diferenciador es la inteligencia de la red completa, imposible de reproducir por un operador individual.
 
 ## Stack Técnico
 | Capa | Tecnología |
@@ -89,11 +170,13 @@ reglas explícitas para colecciones con naming inconsistente
 - Scraper JSF de horarios/paradas por línea.
 - Scheduler/Cloud Function para refresh periódico.
 
-### 🔴 ShadowRadar — datos estáticos (pendiente fix)
-`/dashboard/traffic/shadow-radar` muestra datos estáticos.
-- `viajes_activos` está vacío (no hay app mobile corriendo)
-- `shadowDispatcher` requiere `cartones_de_servicio` activos — sin ellos no genera alertas
-- Fix pendiente: usar `vehicle_events` (agencyId=70, últimos 8 min) como fuente UCOT y STM para rivales
+### 🟢 ShadowRadar — datos live cross-operador (fix 2026-04-24)
+Corregidos: TDZ en useEffect, truncamiento de archivo, race condition entre
+listeners, filtro estricto de dirección (destino coincidente + heading ≤60°),
+buses sin `linea` ahora se descartan en las 3 fuentes (IMM, vehicle_events,
+viajes_activos). Plan de evolución: matriz DRO offline + snap-to-shape (MVP),
+HRR en vivo (v2), dashboard corredores seat-km (v3). Todo cross-operador desde
+el MVP — ver DIRECTRIZ 2026-04-24.
 
 ### 🟡 FUNCIONALIDAD INCOMPLETA
 - Socket.io integrado pero listeners faltantes en frontend
@@ -132,10 +215,10 @@ catalogodatos.gub.uy                          → WAF bloquea acceso programáti
 |--------|-----------------|--------|
 | Dashboard CEO | `CEODashboard.tsx` | 🟡 Parcial |
 | Análisis Competencia | `CompetitorIntelligencePage.tsx` + `competitionService.ts` | 🟡 GPS real OK; horarios pendientes |
-| Gestión Cartones | `CartonManager.tsx` + `cartonService.ts` | 🟡 Funcional |
+| Gestión Cartones | `CartonManager.tsx` + `cartonService.ts` | 🟡 Funcional (demo UCOT) |
 | Pronósticos | `EconomicProjectionsPage.tsx` + `forecastService.ts` | 🟡 Sin datos reales |
 | Flota | `FleetMonitorModule.tsx` + `fleetService.ts` | 🟡 Básico |
-| ShadowRadar | `ShadowRadar.tsx` | 🔴 Datos estáticos — fix pendiente |
+| ShadowRadar | `ShadowRadar.tsx` | 🟢 Live cross-operador (2026-04-24) |
 | Agentes Digitales | `DigitalAgentsModule.tsx` | 🔴 Incompleto |
 | Seguridad | `firestore.rules` | 🟢 RBAC OK |
 
@@ -149,18 +232,26 @@ catalogodatos.gub.uy                          → WAF bloquea acceso programáti
 | Boletín | Documento oficial con tiempos de tránsito entre paradas |
 | Variante | Recorrido alternativo de una misma línea (ej: 300a, 300b) |
 | Shadow | Rastreo de posición de vehículos de competencia |
+| DRO | Directional Route Overlap — % de ruta A cubierta por ruta B en mismo sentido (TCRP 195) |
+| HRR | Headway-to-Rival Ratio — headway propio / tiempo al próximo rival en el tramo compartido |
 
 ## Prioridades Actuales (Abril 2026)
 1. ~~Conectar datos reales desde IMM~~ — ✅ GPS lista. Falta scraper JSF horarios.
 2. ~~Corregir reglas Firestore~~ — ✅ Hechas (commit 97093ce6).
-3. **🔴 Fix ShadowRadar** — datos estáticos, crítico para presentación
-4. Schedule/Cloud Function refresh periódico `competidores`
-5. Scraper JSF horarios reales por línea
-6. Completar listeners Socket.io frontend
-7. Generar APK Android
+3. ~~Fix ShadowRadar datos estáticos~~ — ✅ Resuelto (2026-04-24).
+4. **🟢 MVP matriz DRO cross-operador** — reemplazar heurística destino/heading actual
+5. Schedule/Cloud Function refresh periódico `competidores`
+6. Scraper JSF horarios reales por línea
+7. v2 HRR en vivo + v3 dashboard seat-km market share
+8. Completar listeners Socket.io frontend
+9. Generar APK Android
 
 ## Notas de Contexto
-- El desarrollador trabaja con Claude varias veces al día con créditos limitados
-- Presentación del proyecto próximamente — priorizar lo visible y funcional
-- El objetivo es un sistema de nivel internacional (estándares UITP, GTFS)
-- Prioridad: funcionalidad real antes que features nuevas
+- Jonathan no es programador — es emprendedor con conocimiento profundo del negocio de transporte
+- Presentación inminente a **CUTCSA** (empresa 50, mayor operador de Montevideo)
+- CUTCSA tiene departamento tecnológico propio, desarrollan hardware y software internamente
+- CUTCSA accede a cámaras de seguridad de todos los buses de Montevideo
+- El diferenciador real de SkillRoute: datos cruzados de TODOS los operadores (UCOT+COME+COETC+CUTCSA) — imposible de replicar internamente por cualquier operador individual
+- Pitch central: no vendemos software, vendemos inteligencia del mercado completo
+- Prioridad absoluta: simulador de ingresos + ROI en reducción de inspectores + gestión de desvíos con notificación a conductores
+- El objetivo es un sistema de nivel internacional (estándares UITP, GTFS, TCRP)

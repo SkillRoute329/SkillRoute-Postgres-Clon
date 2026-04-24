@@ -5,6 +5,7 @@ import {
   orderBy,
   onSnapshot,
   limit,
+  where,
   Timestamp,
   addDoc,
 } from 'firebase/firestore';
@@ -35,6 +36,7 @@ interface VehiculoRadar {
   cocheId: string;
   empresa: string;
   codigoLinea: string;
+  destino?: string;
   conductorNombre?: string;
   lat: number;
   lng: number;
@@ -72,24 +74,18 @@ function haversineMetros(lat1: number, lng1: number, lat2: number, lng2: number)
 
 function toMillis(ts: unknown): number {
   if (!ts) return 0;
+  if (typeof ts === 'number') return ts;
   const timestamp = ts as { toMillis?: () => number; seconds?: number };
   if (typeof timestamp.toMillis === 'function') return timestamp.toMillis();
   if (typeof timestamp.seconds === 'number') return timestamp.seconds * 1000;
   return 0;
 }
 
+// Sweep timestamps #65 (2026-04-23): usa helper Montevideo para consistencia UTC-3.
+// Si el servidor corre en UTC, `toLocaleTimeString()` nativo genera desfase de 3h.
+import { formatHoraMvd } from '../../utils/formatTimestamp';
 function formatTimestamp(ts: unknown): string {
-  if (!ts) return 'Sin fecha';
-  const timestamp = ts as { toDate?: () => Date; seconds?: number } | string | number;
-  if (typeof timestamp === 'object' && timestamp !== null) {
-    if (timestamp.toDate) return timestamp.toDate().toLocaleTimeString();
-    if (timestamp.seconds) return new Date(timestamp.seconds * 1000).toLocaleTimeString();
-  }
-  try {
-    return new Date(timestamp as string | number).toLocaleTimeString();
-  } catch {
-    return 'Fecha inválida';
-  }
+  return formatHoraMvd(ts, 'Sin fecha');
 }
 
 function minutesSince(ts: unknown): number {
@@ -101,26 +97,39 @@ function minutesSince(ts: unknown): number {
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 const PROXY_BASE = 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/montevideoProxy';
-const LINEAS_UCOT = ['300', '306', '316', '330', '17'];
 const INACTIVITY_MS = 15 * 60 * 1000;
+
+const EMPRESAS_OPCIONES = [
+  { codigo: 70, label: 'UCOT' },
+  { codigo: 50, label: 'CUTCSA' },
+  { codigo: 20, label: 'COME' },
+  { codigo: 10, label: 'COETC' },
+] as const;
 
 const ShadowRadar: React.FC = () => {
   const [alertas, setAlertas] = useState<AlertaRegulacion[]>([]);
   const [ucotFlotaFirestore, setUcotFlotaFirestore] = useState<VehiculoRadar[]>([]);
+  const [ucotFlotaVE, setUcotFlotaVE] = useState<VehiculoRadar[]>([]); // vehicle_events (cron STM)
   const [ucotFlotaIMM, setUcotFlotaIMM] = useState<VehiculoRadar[]>([]);
   const [competidores, setCompetidores] = useState<VehiculoRadar[]>([]);
   const [isScanning, setIsScanning] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [empresaPropia, setEmpresaPropia] = useState<number>(70);
 
   // Buffer para tracking direccional
   const prevPositionsRef = useRef<Record<string, { lat: number; lng: number; heading?: number }>>({});
 
   const ucotFlota = useMemo(() => {
     const map = new Map<string, VehiculoRadar>();
+    // Prioridad ascendente: el último set() gana.
+    // 1) vehicle_events (cron STM cada 5 min) — fallback de relleno si IMM no capturó el bus.
+    ucotFlotaVE.forEach(v => map.set(v.cocheId, v));
+    // 2) IMM (API STM público, 15s, trae linea + destino + velocidad fresca) — gana sobre VE.
     ucotFlotaIMM.forEach(v => map.set(v.cocheId, v));
+    // 3) viajes_activos (app mobile del chofer) — fuente interna más confiable, gana siempre.
     ucotFlotaFirestore.forEach(v => map.set(v.cocheId, v));
     return Array.from(map.values());
-  }, [ucotFlotaFirestore, ucotFlotaIMM]);
+  }, [ucotFlotaFirestore, ucotFlotaVE, ucotFlotaIMM]);
 
   // Filtros
   const [selectedLinea, setSelectedLinea] = useState<string>('');
@@ -143,6 +152,9 @@ const ShadowRadar: React.FC = () => {
       const listUcotExt: VehiculoRadar[] = [];
 
       buses.forEach((b) => {
+        // Regla: si el STM no reporta linea, el bus no es ni UCOT operativo ni rival competidor.
+        const lineaStr = String(b.linea ?? '').trim();
+        if (!lineaStr || lineaStr === '-' || lineaStr === '—') return;
         const idStr = `stm-${b.id}`;
         const prev = prevPositionsRef.current[idStr];
         let currentHeading = prev?.heading;
@@ -169,9 +181,11 @@ const ShadowRadar: React.FC = () => {
           fuente: 'api_imm',
           velocidad: b.velocidad,
           pasajeros: 0,
+          updatedAt: Date.now(),
+          destino: b.destinoDesc || '',
         };
         
-        if (b.codigoEmpresa === 70 || (b.empresa || '').toUpperCase() === 'UCOT') {
+        if (b.codigoEmpresa === empresaPropia) {
           listUcotExt.push(v);
         } else {
           listRival.push(v);
@@ -184,13 +198,18 @@ const ShadowRadar: React.FC = () => {
     } catch (e) {
       console.error('[ShadowRadar] Error fetching buses IMM:', e);
     }
-  }, [isScanning]);
+  }, [isScanning, empresaPropia]);
 
   useEffect(() => {
     if (!isScanning) return;
 
-    // 1. Alertas de regulación
-    const qAlertas = query(collection(db, 'alertas_regulacion'), orderBy('timestamp', 'desc'), limit(20));
+    // 1. Alertas de regulación — filtradas por empresa propia seleccionada
+    const qAlertas = query(
+      collection(db, 'alertas_regulacion'),
+      where('empresa_id', '==', empresaPropia),
+      orderBy('timestamp', 'desc'),
+      limit(20),
+    );
     const unsubAlertas = onSnapshot(
       qAlertas,
       (snapshot) => {
@@ -198,7 +217,16 @@ const ShadowRadar: React.FC = () => {
         snapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() } as AlertaRegulacion));
         setAlertas(data);
       },
-      (err) => console.error('[ShadowRadar] Error alertas:', err),
+      (err) => {
+        // Fallback sin filtro si el índice no existe aún
+        console.warn('[ShadowRadar] Query con empresa_id falló, usando sin filtro:', err);
+        const qFallback = query(collection(db, 'alertas_regulacion'), orderBy('timestamp', 'desc'), limit(20));
+        onSnapshot(qFallback, (snap) => {
+          const data: AlertaRegulacion[] = [];
+          snap.forEach((doc) => data.push({ id: doc.id, ...doc.data() } as AlertaRegulacion));
+          setAlertas(data);
+        });
+      },
     );
 
     // 2. Viajes activos — UCOT fleet GPS (igual que FleetMonitor)
@@ -229,11 +257,15 @@ const ShadowRadar: React.FC = () => {
           
           prevPositionsRef.current[idStr] = { lat: pos.latitude, lng: pos.longitude, heading: currentHeading };
 
+          // Regla: saltar coches sin línea asignada (no son competencia ni mostrables).
+          const lineaVA = String(data.codigoLinea ?? '').trim();
+          if (!lineaVA || lineaVA === '-' || lineaVA === '—') return;
+
           list.push({
             id: idStr,
             cocheId: String(data.cocheId ?? docSnap.id),
             empresa: String(data.empresa ?? 'UCOT').trim(),
-            codigoLinea: String(data.codigoLinea ?? '—').trim(),
+            codigoLinea: lineaVA,
             conductorNombre: data.conductorNombre ? String(data.conductorNombre) : undefined,
             lat: pos.latitude,
             lng: pos.longitude,
@@ -250,16 +282,75 @@ const ShadowRadar: React.FC = () => {
       (err) => console.error('[ShadowRadar] Error viajes_activos:', err),
     );
 
-    // 3. Competidores del API IMM (cada 30s)
+    // 3. vehicle_events (cron autoStatsCollector cada 5 min) — fuente GPS estable.
+    //    Se guarda en un state propio para que no sea pisado por viajes_activos (vacío).
+    //    El useMemo `ucotFlota` combina ambas fuentes con prioridad correcta.
+    const since8min = new Date(Date.now() - 8 * 60 * 1000);
+    const qVehicleEvents = query(
+      collection(db, 'vehicle_events'),
+      where('agencyId', '==', '70'),
+      where('timestampGPS', '>=', since8min.toISOString()),
+      orderBy('timestampGPS', 'desc'),
+      limit(500),
+    );
+    const unsubVehicleEvents = onSnapshot(
+      qVehicleEvents,
+      (snapshot) => {
+        const byBus = new Map<string, VehiculoRadar>();
+        snapshot.docs.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (!data.lat || !data.lon || !data.idBus) return;
+          const lineaVE = String(data.linea ?? '').trim();
+          if (!lineaVE || lineaVE === '-' || lineaVE === '—') return;
+          const cocheId = String(data.idBus);
+          if (byBus.has(cocheId)) return; // ya tenemos el más reciente (orderBy desc)
+
+          const idStr = `ve-${cocheId}`;
+          const prev = prevPositionsRef.current[idStr];
+          let currentHeading = prev?.heading;
+          if (prev && (prev.lat !== data.lat || prev.lng !== data.lon)) {
+            const dist = haversineMetros(prev.lat, prev.lng, data.lat, data.lon);
+            if (dist > 5) currentHeading = calculateBearing(prev.lat, prev.lng, data.lat, data.lon);
+          }
+          prevPositionsRef.current[idStr] = { lat: data.lat, lng: data.lon, heading: currentHeading };
+
+          byBus.set(cocheId, {
+            id: idStr,
+            cocheId,
+            empresa: 'UCOT',
+            codigoLinea: lineaVE,
+            lat: data.lat,
+            lng: data.lon,
+            heading: currentHeading,
+            estado: 'en_servicio',
+            velocidad: typeof data.velocidad === 'number' ? data.velocidad : 0,
+            fuente: 'firestore',
+            updatedAt: data.timestampGPS,
+          });
+        });
+        // Siempre actualizamos — evita que datos viejos queden congelados.
+        setUcotFlotaVE(Array.from(byBus.values()));
+      },
+      (err) => console.warn('[ShadowRadar] vehicle_events no disponible:', err),
+    );
+
+    // 4. Competidores del API IMM (cada 15s — construye heading más rápido)
     fetchCompetidores();
-    const rivalInterval = setInterval(fetchCompetidores, 30000);
+    const rivalInterval = setInterval(fetchCompetidores, 15000);
 
     return () => {
       unsubAlertas();
       unsubViajes();
+      unsubVehicleEvents();
       clearInterval(rivalInterval);
     };
-  }, [isScanning, fetchCompetidores]);
+  }, [isScanning, fetchCompetidores, empresaPropia]);
+
+  // ─── ShadowDispatcher automático ─────────────────────────────────────────
+  // Throttle: no repetir la misma alerta por el mismo coche en menos de 5 min
+  // NOTA: el useEffect se declara MÁS ABAJO, después del useMemo `emparejamientos`,
+  // para evitar TDZ (TS2448). Acá solo queda el ref que se puede declarar arriba.
+  const dispatchedRef = useRef<Record<string, number>>({});
 
   // ─── Disparar alerta manual ───────────────────────────────────────────────
 
@@ -300,11 +391,22 @@ const ShadowRadar: React.FC = () => {
     return Array.from(set).sort();
   }, [ucotFlota]);
 
-  // Coches UCOT filtrados por línea seleccionada
-  const ucotFiltrados = useMemo(() => {
-    if (!selectedLinea) return ucotFlota;
-    return ucotFlota.filter(v => v.codigoLinea === selectedLinea);
+  // Destinos únicos de la línea seleccionada (para el dropdown de sentido)
+  const destinosDisponibles = useMemo(() => {
+    const base = selectedLinea ? ucotFlota.filter(v => v.codigoLinea === selectedLinea) : ucotFlota;
+    const set = new Set<string>();
+    base.forEach(v => { if (v.destino) set.add(v.destino); });
+    return Array.from(set).sort();
   }, [ucotFlota, selectedLinea]);
+
+  // Coches filtrados por línea y destino/sentido
+  const ucotFiltrados = useMemo(() => {
+    let lista = selectedLinea ? ucotFlota.filter(v => v.codigoLinea === selectedLinea) : ucotFlota;
+    if (selectedSentido) {
+      lista = lista.filter(v => !v.destino || v.destino === selectedSentido);
+    }
+    return lista;
+  }, [ucotFlota, selectedLinea, selectedSentido]);
 
   // Para cada coche UCOT, encontrar rivales cercanos en la misma línea
   const emparejamientos = useMemo(() => {
@@ -320,16 +422,35 @@ const ShadowRadar: React.FC = () => {
           return { ...r, distanciaMetros: Math.round(dist) };
         })
         .filter(r => {
-          // Filtro por distancia
+          // Filtro por distancia (radio 2km)
           if (r.distanciaMetros > 2000) return false;
-          
-          // Filtro Vectorial por Rumbo (Oposición)
-          if (ucot.heading !== undefined && r.heading !== undefined) {
-             const hDiff = Math.abs(ucot.heading - r.heading) % 360;
-             const shortestDiff = hDiff > 180 ? 360 - hDiff : hDiff;
-             if (shortestDiff > 80) return false; // si superan 80 grados de diff, ignorarlos (están en direcciones cruzadas o de frente)
+
+          // REGLA DE NEGOCIO: un bus en dirección opuesta NO es competencia, no lo contamos.
+          // Determinar dirección con la mejor señal disponible (destino > heading > descartar).
+          const ucotDest = (ucot.destino ?? '').trim();
+          const rivalDest = (r.destino ?? '').trim();
+
+          if (ucotDest && rivalDest) {
+            // Capa 1 (fuerte): destino del STM.
+            // Si coinciden tokens largos → mismo sentido geográfico → sí es rival.
+            const da = ucotDest.toUpperCase().replace(/[^A-Z0-9]/g, ' ').trim();
+            const db2 = rivalDest.toUpperCase().replace(/[^A-Z0-9]/g, ' ').trim();
+            const tokensA = da.split(' ').filter(t => t.length >= 5);
+            const tokensB = db2.split(' ').filter(t => t.length >= 5);
+            const hayCoincidencia = tokensA.some(t => db2.includes(t)) || tokensB.some(t => da.includes(t));
+            return hayCoincidencia;
           }
-          return true;
+
+          if (ucot.heading !== undefined && r.heading !== undefined) {
+            // Capa 2 (media): heading calculado entre snapshots.
+            // < 60° de diferencia → sentido similar → sí es rival.
+            const hDiff = Math.abs(ucot.heading - r.heading) % 360;
+            const shortestDiff = hDiff > 180 ? 360 - hDiff : hDiff;
+            return shortestDiff <= 60;
+          }
+
+          // Sin info de dirección (primer snapshot y destino ausente) → conservador: no cuenta.
+          return false;
         })
         .sort((a, b) => a.distanciaMetros - b.distanciaMetros);
 
@@ -346,6 +467,55 @@ const ShadowRadar: React.FC = () => {
     });
   }, [ucotFiltrados, competidores]);
 
+  // ─── ShadowDispatcher automático (useEffect) ─────────────────────────────
+  // Se declara acá (después del useMemo emparejamientos) para evitar TDZ.
+  useEffect(() => {
+    if (!isScanning || emparejamientos.length === 0) return;
+
+    const now = Date.now();
+    const THROTTLE_MS = 5 * 60 * 1000;
+
+    emparejamientos.forEach(({ ucot, rivales: rivalesCercanos, estado }) => {
+      if (estado !== 'FIJADO_AL_BLANCO' && estado !== 'PELIGRO_BUNCHING') return;
+      if (!ucot.cocheId || ucot.cocheId === 'undefined') return;
+
+      const tipo = estado === 'FIJADO_AL_BLANCO' ? 'RIVAL_PISANDO_TURNO' : 'PELIGRO_BUNCHING';
+      const throttleKey = `${ucot.cocheId}-${tipo}`;
+      const lastSent = dispatchedRef.current[throttleKey] ?? 0;
+      if (now - lastSent < THROTTLE_MS) return;
+
+      dispatchedRef.current[throttleKey] = now;
+
+      const rivalPrincipal = rivalesCercanos[0];
+      const distText = rivalPrincipal ? `${rivalPrincipal.distanciaMetros}m` : '?m';
+      const rivalEmpresa = rivalPrincipal?.empresa ?? 'Rival';
+      const rivalLinea = rivalPrincipal?.codigoLinea ?? '?';
+
+      const instruccion = estado === 'FIJADO_AL_BLANCO'
+        ? 'REGULACION_MARCHA'
+        : 'VIGILAR_RIVAL';
+
+      const mensaje = estado === 'FIJADO_AL_BLANCO'
+        ? `⚠️ COCHE ${ucot.cocheId} línea ${ucot.codigoLinea}: ${rivalEmpresa} L${rivalLinea} a solo ${distText}. Regule marcha para no perder la parada.`
+        : `👁 COCHE ${ucot.cocheId} línea ${ucot.codigoLinea}: ${rivalEmpresa} L${rivalLinea} a ${distText}. Mantenga frecuencia.`;
+
+      addDoc(collection(db, 'alertas_regulacion'), {
+        tipo,
+        coche_id: ucot.cocheId,
+        linea_id: ucot.codigoLinea,
+        empresa_id: empresaPropia,
+        rival_empresa: rivalEmpresa,
+        rival_linea: rivalLinea,
+        distancia_metros: rivalPrincipal?.distanciaMetros ?? 0,
+        instruccion,
+        mensaje_chofer: mensaje,
+        timestamp: Timestamp.now(),
+        leido: false,
+        fuente: 'auto_shadow_dispatcher',
+      }).catch((err) => console.warn('[ShadowDispatcher] No se pudo escribir alerta:', err));
+    });
+  }, [emparejamientos, isScanning, empresaPropia]);
+
   // Agrupar por línea
   const porLinea = useMemo(() => {
     const map = new Map<string, typeof emparejamientos>();
@@ -356,6 +526,8 @@ const ShadowRadar: React.FC = () => {
     });
     return map;
   }, [emparejamientos]);
+
+  const empresaLabel = EMPRESAS_OPCIONES.find(e => e.codigo === empresaPropia)?.label ?? 'Propia';
 
   // ─── Helpers UI ───────────────────────────────────────────────────────────
 
@@ -487,7 +659,7 @@ const ShadowRadar: React.FC = () => {
             Radar Táctico Anti-Barrido
           </h1>
           <p className="text-slate-400 mt-2 text-sm max-w-2xl">
-            Detecta coches UCOT en la calle, identifica rivales por línea y distancia, y genera alertas tácticas.
+            Detecta coches {empresaLabel} en la calle, identifica rivales por línea, distancia y sentido de marcha.
           </p>
         </div>
         <div className="mt-4 md:mt-0 flex items-center gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800 shadow-xl">
@@ -512,13 +684,13 @@ const ShadowRadar: React.FC = () => {
       {/* Resumen en vivo */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <div className="text-xs text-slate-500 uppercase tracking-wider font-bold">UCOT en Calle</div>
+          <div className="text-xs text-slate-500 uppercase tracking-wider font-bold">{empresaLabel} en Calle</div>
           <div className="text-3xl font-bold text-blue-400 mt-1">{ucotFlota.length}</div>
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <div className="text-xs text-slate-500 uppercase tracking-wider font-bold">Rivales Detectados</div>
           <div className="text-3xl font-bold text-red-400 mt-1">{competidores.length}</div>
-          {lastRefresh && <div className="text-[10px] text-slate-600 mt-1">API IMM: {lastRefresh.toLocaleTimeString()}</div>}
+          {lastRefresh && <div className="text-[10px] text-slate-600 mt-1">API IMM: {formatHoraMvd(lastRefresh)}</div>}
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <div className="text-xs text-slate-500 uppercase tracking-wider font-bold">Fijados al Blanco</div>
@@ -532,9 +704,21 @@ const ShadowRadar: React.FC = () => {
         </div>
       </div>
 
-      {/* Selector de Línea */}
+      {/* Selector de Empresa + Línea */}
       <div className="mb-6 bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
         <div className="flex flex-col sm:flex-row gap-4 items-end">
+          <div className="sm:w-48 w-full">
+            <label className="block text-xs font-bold text-slate-400 mb-1 tracking-wider uppercase">Empresa Propia</label>
+            <select
+              value={empresaPropia}
+              onChange={(e) => { setEmpresaPropia(Number(e.target.value)); setSelectedLinea(''); }}
+              className="w-full bg-slate-950 border border-blue-500/60 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-400 font-semibold"
+            >
+              {EMPRESAS_OPCIONES.map(({ codigo, label }) => (
+                <option key={codigo} value={codigo}>{label} ({codigo})</option>
+              ))}
+            </select>
+          </div>
           <div className="flex-1 w-full">
             <label className="block text-xs font-bold text-slate-400 mb-1 tracking-wider uppercase">Línea Objetivo</label>
             <select
@@ -542,11 +726,10 @@ const ShadowRadar: React.FC = () => {
               onChange={(e) => setSelectedLinea(e.target.value)}
               className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
             >
-              <option value="">Todas las líneas ({ucotFlota.length} coches UCOT activos)</option>
+              <option value="">Todas las líneas ({ucotFlota.length} coches {empresaLabel} activos)</option>
               {lineasDisponibles.map(l => {
                 const count = ucotFlota.filter(v => v.codigoLinea === l).length;
-                const rivCount = competidores.filter(v => v.codigoLinea === l).length;
-                return <option key={l} value={l}>Línea {l} — {count} UCOT, {rivCount} rivales</option>;
+                return <option key={l} value={l}>Línea {l} — {count} coches {empresaLabel}</option>;
               })}
             </select>
           </div>
@@ -558,9 +741,10 @@ const ShadowRadar: React.FC = () => {
               disabled={!selectedLinea}
               className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50"
             >
-              <option value="">Ambos sentidos</option>
-              <option value="IDA">Ida</option>
-              <option value="VUELTA">Vuelta</option>
+              <option value="">Todos los destinos</option>
+              {destinosDisponibles.map(d => (
+                <option key={d} value={d}>{d}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -573,7 +757,7 @@ const ShadowRadar: React.FC = () => {
         <div className="xl:col-span-2 flex flex-col gap-4">
           <h2 className="text-lg font-bold text-slate-300 flex items-center gap-2">
             <Crosshair className="w-5 h-5 text-emerald-400" />
-            Emparejamiento UCOT vs Competencia
+            Emparejamiento {empresaLabel} vs Competencia
             {selectedLinea && <span className="text-sm font-normal text-slate-500 ml-2">(Foco: Línea {selectedLinea})</span>}
           </h2>
 
@@ -582,14 +766,14 @@ const ShadowRadar: React.FC = () => {
               <Bus className="w-12 h-12 text-slate-700 mb-4" />
               <p className="text-slate-500 font-medium text-center">
                 {ucotFlota.length === 0
-                  ? 'No hay vehículos UCOT reportando GPS en este momento.'
-                  : `No hay coches UCOT activos en la línea ${selectedLinea}.`
+                  ? `No hay vehículos ${empresaLabel} reportando GPS en este momento.`
+                  : `No hay coches ${empresaLabel} activos en la línea ${selectedLinea}.`
                 }
               </p>
               {ucotFlota.length === 0 && (
                 <p className="text-slate-600 text-xs mt-2 text-center max-w-sm">
-                  El radar analiza datos de <code className="text-slate-400">viajes_activos</code> en tiempo real.
-                  Los coches aparecerán aquí cuando reporten posición GPS.
+                  El radar carga datos GPS del STM en tiempo real.
+                  Los coches aparecerán al seleccionar empresa y esperar el ciclo de actualización (30s).
                 </p>
               )}
             </div>
@@ -600,7 +784,7 @@ const ShadowRadar: React.FC = () => {
                   <div className="bg-slate-800/50 px-4 py-2 border-b border-slate-800 flex justify-between items-center">
                     <span className="font-bold text-sm bg-blue-500 text-white px-2.5 py-0.5 rounded">Línea {linea}</span>
                     <div className="flex items-center gap-3 text-xs text-slate-400">
-                      <span className="flex items-center gap-1"><Bus className="w-3 h-3" /> {items.length} UCOT</span>
+                      <span className="flex items-center gap-1"><Bus className="w-3 h-3" /> {items.length} {empresaLabel}</span>
                       <span className="flex items-center gap-1 text-red-400">
                         <Users className="w-3 h-3" />
                         {items.reduce((acc, e) => acc + e.rivales.length, 0)} rivales cerca
@@ -624,7 +808,7 @@ const ShadowRadar: React.FC = () => {
                         <div className="flex justify-between items-center">
                           <span className="font-bold text-slate-200 flex items-center gap-2">
                             <Bus className="w-4 h-4 text-blue-400" />
-                            UCOT #{emp.ucot.cocheId}
+                            {empresaLabel} #{emp.ucot.cocheId}
                           </span>
                           <span className="text-[10px] text-slate-500">
                             hace {minutesSince(emp.ucot.updatedAt)} min
