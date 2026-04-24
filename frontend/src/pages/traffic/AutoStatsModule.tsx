@@ -5,19 +5,25 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Activity, Bus, CheckCircle2, XCircle, AlertTriangle, Clock,
   RefreshCw, Search, BarChart3, TrendingUp, TrendingDown,
   Shield, Wifi, WifiOff, ChevronRight, Timer, User,
-  Building2, Route,
+  Building2, Route, DollarSign, TrendingDown as LossIcon, Zap,
+  Archive, FileDown, ChevronDown,
 } from 'lucide-react';
 import {
+  getAllVersiones, getValorActual, PARAMETRO_META as PM_META,
+  type VersionParametro, type ParametroId,
+} from '../../services/parametrosService';
+import {
   fetchAgencies, fetchComplianceRealtime, fetchVehicleHistory, fetchEndpointHealth,
-  fetchHistorySummary,
+  fetchHistorySummary, fetchArchiveList, fetchArchiveData,
   AGENCY_LABELS, AGENCY_COLORS,
   type AgencyInfo, type ComplianceResponse,
   type BusComplianceResult, type VehicleHistoryResponse, type EndpointHealth,
-  type LineSummary,
+  type LineSummary, type ArchiveFileInfo,
 } from '../../services/autoStatsService';
 
 // ── Helpers visuales ──────────────────────────────────────────────────────
@@ -347,6 +353,181 @@ function GpsStatusBanner({ health, dataTimestamp }: { health: EndpointHealth | n
   );
 }
 
+// ── Panel de archivo histórico ────────────────────────────────────────────
+
+function ArchivePanel({ defaultAgency }: { defaultAgency: string }) {
+  const [archives, setArchives] = useState<ArchiveFileInfo[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<string>('');
+  const [agencyFilter, setAgencyFilter] = useState<string>(defaultAgency);
+  const [lines, setLines] = useState<LineSummary[]>([]);
+  const [totalRecords, setTotalRecords] = useState<number>(0);
+  const [loadingList, setLoadingList] = useState(true);
+  const [loadingData, setLoadingData] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoadingList(true);
+    fetchArchiveList()
+      .then(a => {
+        setArchives(a);
+        if (a.length > 0) setSelectedWeek(a[0].week);
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoadingList(false));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedWeek) return;
+    setLoadingData(true);
+    setLines([]);
+    fetchArchiveData(selectedWeek, agencyFilter || undefined)
+      .then(d => {
+        if (d) { setLines(d.lines); setTotalRecords(d.totalRecords); }
+        else setLines([]);
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoadingData(false));
+  }, [selectedWeek, agencyFilter]);
+
+  if (loadingList) return (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  if (error) return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center p-8">
+      <XCircle className="w-8 h-8 text-red-500" />
+      <p className="text-red-400 text-sm">{error}</p>
+    </div>
+  );
+
+  if (archives.length === 0) return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-8">
+      <Archive className="w-10 h-10 text-slate-700" />
+      <p className="text-slate-500 text-sm font-bold">Sin archivos históricos aún</p>
+      <p className="text-slate-600 text-xs max-w-xs">
+        El sistema archiva automáticamente los eventos cada domingo a medianoche.
+        El primer archivo estará disponible el próximo domingo.
+      </p>
+    </div>
+  );
+
+  return (
+    <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-3 space-y-4">
+      {/* Controles */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* Selector de semana */}
+        <div className="flex items-center gap-2 bg-slate-800/50 border border-slate-700/40 rounded-xl px-3 py-1.5">
+          <Archive className="w-3.5 h-3.5 text-slate-500 flex-none" />
+          <select
+            value={selectedWeek}
+            onChange={e => setSelectedWeek(e.target.value)}
+            className="bg-transparent text-xs text-slate-300 outline-none cursor-pointer"
+          >
+            {archives.map(a => (
+              <option key={a.week} value={a.week}>
+                Semana del {a.week} · {a.sizeKb > 0 ? `${a.sizeKb} KB` : 'archivado'}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="w-3 h-3 text-slate-600" />
+        </div>
+
+        {/* Filtro empresa */}
+        <div className="flex gap-1 bg-slate-800/40 rounded-xl p-0.5 border border-slate-700/30">
+          <button
+            onClick={() => setAgencyFilter('')}
+            className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all ${agencyFilter === '' ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            Todas
+          </button>
+          {(['70', '50', '10', '20'] as const).map(id => (
+            <button
+              key={id}
+              onClick={() => setAgencyFilter(id)}
+              className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all ${agencyFilter === id ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              {AGENCY_LABELS[id]}
+            </button>
+          ))}
+        </div>
+
+        {totalRecords > 0 && (
+          <p className="text-[10px] text-slate-600 ml-auto">
+            {totalRecords.toLocaleString()} registros archivados
+          </p>
+        )}
+      </div>
+
+      {/* Spinner de datos */}
+      {loadingData && (
+        <div className="flex items-center justify-center py-10">
+          <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+
+      {/* Tabla de líneas del archivo */}
+      {!loadingData && lines.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
+          <BarChart3 className="w-8 h-8 text-slate-700" />
+          <p className="text-slate-500 text-sm">Sin datos para esta semana y empresa.</p>
+        </div>
+      )}
+
+      {!loadingData && lines.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black flex items-center gap-1">
+            <TrendingUp className="w-3 h-3" /> {lines.length} líneas · semana del {selectedWeek}
+          </p>
+          <div className="space-y-1.5">
+            {lines.map(l => (
+              <div key={l.linea} className="bg-slate-800/40 border border-slate-700/30 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-extrabold text-white w-12 flex-none">{l.linea}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between text-[10px] mb-1">
+                      <span className="text-slate-500">{l.busesUnicos} coches · {l.totalEventos.toLocaleString()} registros</span>
+                      <span className={`font-bold ${l.pctEnTiempo >= 70 ? 'text-emerald-400' : l.pctEnTiempo >= 40 ? 'text-amber-400' : 'text-red-400'}`}>
+                        {l.pctEnTiempo}% en tiempo
+                      </span>
+                    </div>
+                    <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden flex">
+                      <div className="bg-emerald-500 transition-all duration-700" style={{ width: `${l.pctEnTiempo}%` }} />
+                      <div className="bg-red-500 transition-all duration-700" style={{ width: `${l.pctAtrasado}%` }} />
+                      <div className="bg-sky-500 transition-all duration-700" style={{ width: `${l.pctAdelantado}%` }} />
+                    </div>
+                    <div className="flex gap-3 mt-1">
+                      <span className="text-[9px] text-slate-600 flex items-center gap-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> {l.pctEnTiempo}%
+                      </span>
+                      <span className="text-[9px] text-slate-600 flex items-center gap-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" /> {l.pctAtrasado}% atr.
+                      </span>
+                      <span className="text-[9px] text-slate-600 flex items-center gap-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-sky-500 inline-block" /> {l.pctAdelantado}% adel.
+                      </span>
+                      {l.desviacionMediaMin != null && (
+                        <span className={`text-[9px] font-bold ml-auto ${Math.abs(l.desviacionMediaMin) > 3 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                          desv. {l.desviacionMediaMin > 0 ? '+' : ''}{l.desviacionMediaMin} min
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-none text-right">
+                    <p className="text-xs font-bold text-slate-300">{l.velocidadMedia} <span className="text-slate-600 font-normal">km/h</span></p>
+                    <p className="text-[9px] text-slate-600 mt-0.5">{l.pctSinHorario}% sin horario</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Componente principal ──────────────────────────────────────────────────
 
 export default function AutoStatsModule() {
@@ -360,11 +541,18 @@ export default function AutoStatsModule() {
   const [selectedBus, setSelectedBus] = useState<string | null>(null);
   const [filterEstado, setFilterEstado] = useState<string>('TODOS');
   const [filterLinea, setFilterLinea] = useState<string>('TODAS');
-  const [activeTab, setActiveTab] = useState<'live' | 'history'>('live');
+  const [activeTab, setActiveTab] = useState<'live' | 'history' | 'perdida' | 'archivo'>('live');
+  const [simParams, setSimParams] = useState<Record<ParametroId, VersionParametro[]> | null>(null);
+  const navigate = useNavigate();
 
   // Cargar lista de empresas
   useEffect(() => {
     fetchAgencies().then(setAgencies).catch(console.error);
+  }, []);
+
+  // Cargar parámetros tarifarios una sola vez
+  useEffect(() => {
+    getAllVersiones().then(setSimParams).catch(() => {});
   }, []);
 
   const loadCompliance = useCallback(async () => {
@@ -416,6 +604,49 @@ export default function AutoStatsModule() {
   const summaryList = Object.values(compliance?.summary ?? {}).sort(
     (a, b) => b.busesActivos - a.busesActivos,
   );
+
+  // ── Cálculo de pérdida en vivo ──────────────────────────────────────────
+  const perdidaData = useMemo(() => {
+    if (!compliance || compliance.buses.length === 0) return null;
+    const hoy = new Date().toISOString().slice(0, 10);
+    const tarifa = simParams
+      ? getValorActual(simParams.tarifa_base, PM_META.tarifa_base.defaultValor)
+      : PM_META.tarifa_base.defaultValor;
+    const paxPico = simParams
+      ? getValorActual(simParams.pasajeros_pico, PM_META.pasajeros_pico.defaultValor)
+      : PM_META.pasajeros_pico.defaultValor;
+    const paxValle = simParams
+      ? getValorActual(simParams.pasajeros_valle, PM_META.pasajeros_valle.defaultValor)
+      : PM_META.pasajeros_valle.defaultValor;
+
+    // Agrupar por línea
+    const byLine: Record<string, { atrasados: number; adelantados: number; total: number }> = {};
+    for (const bus of compliance.buses) {
+      if (!byLine[bus.linea]) byLine[bus.linea] = { atrasados: 0, adelantados: 0, total: 0 };
+      byLine[bus.linea].total++;
+      if (bus.estadoCumplimiento === 'ATRASADO')   byLine[bus.linea].atrasados++;
+      if (bus.estadoCumplimiento === 'ADELANTADO') byLine[bus.linea].adelantados++;
+    }
+
+    // Pérdida por línea:
+    // - Atrasados: pasajeros que desisten al no ver el bus a tiempo (~20% abandono)
+    // - Bunching (>1 adelantado mismo línea): segundo bus va casi vacío (~50% pérdida)
+    const lineas = Object.entries(byLine)
+      .map(([linea, s]) => {
+        const perdidaAtrasados  = s.atrasados  * paxPico  * tarifa * 0.20;
+        const bunchingExtra     = Math.max(0, s.adelantados - 1) * paxValle * tarifa * 0.50;
+        const perdidaTotal      = perdidaAtrasados + bunchingExtra;
+        return { linea, ...s, perdidaAtrasados, bunchingExtra, perdidaTotal };
+      })
+      .filter(l => l.perdidaTotal > 0)
+      .sort((a, b) => b.perdidaTotal - a.perdidaTotal);
+
+    const totalHora         = lineas.reduce((s, l) => s + l.perdidaTotal, 0);
+    const top3              = lineas.slice(0, 3);
+    const recuperacionHora  = top3.reduce((s, l) => s + l.perdidaTotal * 0.70, 0);
+
+    return { lineas, totalHora, top3, recuperacionHora, tarifa, paxPico, paxValle, hoy };
+  }, [compliance, simParams]);
 
   const globalStats = useMemo(() => {
     if (!compliance) return null;
@@ -484,6 +715,18 @@ export default function AutoStatsModule() {
             >
               <BarChart3 className="w-3 h-3" /> Historial
             </button>
+            <button
+              onClick={() => setActiveTab('perdida')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'perdida' ? 'bg-red-700 text-white' : 'text-red-500/70 hover:text-red-400'}`}
+            >
+              <DollarSign className="w-3 h-3" /> Pérdida en Vivo
+            </button>
+            <button
+              onClick={() => setActiveTab('archivo')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'archivo' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <Archive className="w-3 h-3" /> Archivo
+            </button>
           </div>
         </div>
 
@@ -529,6 +772,11 @@ export default function AutoStatsModule() {
           <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-3">
             <HistoryPanel agencyId={selectedAgency} />
           </div>
+        )}
+
+        {/* TAB: Archivo histórico */}
+        {activeTab === 'archivo' && (
+          <ArchivePanel defaultAgency={selectedAgency} />
         )}
 
         {/* TAB: En vivo */}
@@ -685,6 +933,135 @@ export default function AutoStatsModule() {
               />
             )}
           </>
+        )}
+
+        {/* TAB: Pérdida en Vivo */}
+        {activeTab === 'perdida' && (
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-4 space-y-4">
+
+            {/* Sin datos de compliance */}
+            {!compliance || compliance.buses.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
+                <WifiOff className="w-10 h-10 text-slate-700" />
+                <p className="text-slate-500 text-sm">Sin datos GPS activos.</p>
+                <p className="text-slate-600 text-xs">Seleccioná una empresa con buses en calle para ver el análisis de pérdida.</p>
+              </div>
+            ) : !perdidaData || perdidaData.totalHora === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
+                <CheckCircle2 className="w-10 h-10 text-emerald-700" />
+                <p className="text-emerald-400 text-sm font-bold">Sin pérdida detectable ahora mismo.</p>
+                <p className="text-slate-600 text-xs">Todos los buses están en tiempo o la desviación es mínima.</p>
+              </div>
+            ) : (
+              <>
+                {/* ── NÚMERO GRANDE: pérdida total ───────────────────── */}
+                <div className="bg-red-950/40 border border-red-500/30 rounded-2xl p-6 text-center">
+                  <p className="text-[10px] text-red-400/70 uppercase tracking-widest font-bold mb-2">
+                    La red está perdiendo ahora mismo
+                  </p>
+                  <p className="text-5xl font-black text-red-400 tracking-tight">
+                    ${Math.round(perdidaData.totalHora).toLocaleString('es-UY')}
+                    <span className="text-2xl text-red-500/60 font-normal">/hora</span>
+                  </p>
+                  <p className="text-xs text-red-400/50 mt-2">
+                    {perdidaData.lineas.length} línea{perdidaData.lineas.length !== 1 ? 's' : ''} con ineficiencia ·
+                    Tarifa ${perdidaData.tarifa}/pax · {perdidaData.paxPico} pax pico · {perdidaData.paxValle} pax valle
+                    {!simParams && <span className="text-amber-500"> · parámetros por defecto</span>}
+                  </p>
+                </div>
+
+                {/* ── TOP 3 líneas que más pierden ───────────────────── */}
+                <div>
+                  <h3 className="text-[10px] text-slate-500 uppercase tracking-widest font-black mb-2 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3 text-red-500" /> Líneas con mayor pérdida
+                  </h3>
+                  <div className="space-y-2">
+                    {perdidaData.top3.map((l, i) => (
+                      <div
+                        key={l.linea}
+                        className="bg-slate-900 border border-slate-700/50 rounded-xl p-4 flex items-center gap-4"
+                      >
+                        <span className={`text-lg font-black flex-none w-6 text-center ${i === 0 ? 'text-red-400' : i === 1 ? 'text-orange-400' : 'text-amber-400'}`}>
+                          {i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-black text-white">Línea {l.linea}</span>
+                            {l.atrasados > 0 && (
+                              <span className="text-[9px] text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded-full font-bold">
+                                {l.atrasados} atrasado{l.atrasados !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                            {l.bunchingExtra > 0 && (
+                              <span className="text-[9px] text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full font-bold">
+                                bunching
+                              </span>
+                            )}
+                          </div>
+                          <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-red-500 rounded-full"
+                              style={{ width: `${Math.round((l.perdidaTotal / perdidaData.top3[0].perdidaTotal) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex-none text-right">
+                          <p className="text-base font-black text-red-400">
+                            -${Math.round(l.perdidaTotal).toLocaleString('es-UY')}
+                          </p>
+                          <p className="text-[9px] text-slate-600">por hora</p>
+                        </div>
+                        <button
+                          onClick={() => navigate('/dashboard/traffic/cutcsa-fleet')}
+                          className="flex-none flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold hover:bg-emerald-600/30 transition-colors"
+                        >
+                          <Zap className="w-3 h-3" /> Ver solución
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── Franja verde: recuperación potencial ───────────── */}
+                <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-5 flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-none">
+                    <TrendingUp className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] text-emerald-400/70 uppercase tracking-widest font-bold">
+                      Si aplicás las sugerencias de frecuencia
+                    </p>
+                    <p className="text-2xl font-black text-emerald-400 mt-0.5">
+                      +${Math.round(perdidaData.recuperacionHora).toLocaleString('es-UY')}
+                      <span className="text-sm font-normal text-emerald-500/60">/hora recuperados</span>
+                    </p>
+                    <p className="text-[10px] text-emerald-500/50 mt-0.5">
+                      +${Math.round(perdidaData.recuperacionHora * 16 * 26).toLocaleString('es-UY')} / mes estimado
+                      · basado en optimizar las 3 líneas más críticas (70% de recuperación)
+                    </p>
+                  </div>
+                </div>
+
+                {/* ── Tabla completa de líneas ────────────────────────── */}
+                {perdidaData.lineas.length > 3 && (
+                  <div>
+                    <h3 className="text-[10px] text-slate-500 uppercase tracking-widest font-black mb-2">
+                      Todas las líneas con pérdida ({perdidaData.lineas.length})
+                    </h3>
+                    <div className="space-y-1">
+                      {perdidaData.lineas.slice(3).map((l) => (
+                        <div key={l.linea} className="flex items-center gap-3 bg-slate-800/30 border border-slate-700/20 rounded-lg px-3 py-2">
+                          <span className="text-xs font-black text-white w-8">L{l.linea}</span>
+                          <span className="text-[10px] text-slate-500 flex-1">{l.atrasados} atr. · {l.adelantados} adel. · {l.total} total</span>
+                          <span className="text-xs font-bold text-red-400">-${Math.round(l.perdidaTotal).toLocaleString('es-UY')}/h</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>

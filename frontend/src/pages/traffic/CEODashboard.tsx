@@ -35,6 +35,12 @@ import {
   Leaf,
 } from 'lucide-react';
 import { CompetitorThreatWidget } from '../../components/CompetitorThreatWidget';
+import {
+  fetchVehicleHistory,
+  fetchUcotRotacion,
+  getUcotCartonUrl,
+} from '../../services/autoStatsService';
+import type { VehicleSummary, UcotServicioAsignado } from '../../services/autoStatsService';
 
 /* ─── Helpers ──────────────────────────────────────────── */
 const todayStr = () => new Date().toISOString().split('T')[0];
@@ -42,8 +48,10 @@ const yearMonth = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
-const timeNow = () =>
-  new Date().toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+// Sweep timestamps #74 (2026-04-23): helper Montevideo UTC-3
+import { formatHoraSegundosMvd, formatFechaHoraMvd } from '../../utils/formatTimestamp';
+
+const timeNow = () => formatHoraSegundosMvd(new Date());
 
 function parseHoraToMinutes(h: string): number {
   const [hh, mm] = h.trim().split(':').map(Number);
@@ -207,11 +215,19 @@ export default function CEODashboard() {
   } | null>(null);
   const [rotacionLoading, setRotacionLoading] = useState(false);
 
-  // Sparkline history (rolling window from real data)
-  const [flotaHistory, setFlotaHistory] = useState<number[]>([85, 87, 82, 88, 90, 86, 89]);
-  const [puntualidadHistory, setPuntualidadHistory] = useState<number[]>([
-    92, 88, 91, 85, 89, 93, 90,
-  ]);
+  // Bus data panel — GPS stats + UCOT portal
+  const [busGpsStats, setBusGpsStats] = useState<VehicleSummary | null>(null);
+  const [busGpsLoading, setBusGpsLoading] = useState(false);
+  const [ucotServicios, setUcotServicios] = useState<UcotServicioAsignado[] | null>(null);
+  const [ucotLoading, setUcotLoading] = useState(false);
+  const [cartonServicio, setCartonServicio] = useState<string | null>(null);
+  const [showCarton, setShowCarton] = useState(false);
+
+  // Sparkline history (rolling window from real data).
+  // Pre-CUTCSA #1 (2026-04-23): arrancan vacíos para no mostrar valores falsos
+  // en el primer render. Se poblarán cuando fetchData reciba datos reales.
+  const [flotaHistory, setFlotaHistory] = useState<number[]>([]);
+  const [puntualidadHistory, setPuntualidadHistory] = useState<number[]>([]);
 
   // Active section
   const [activeSection, setActiveSection] = useState<
@@ -386,6 +402,28 @@ export default function CEODashboard() {
       .then(setRotacion)
       .catch(() => setRotacion(null))
       .finally(() => setRotacionLoading(false));
+  }, [cocheRotacionId]);
+
+  /* ─── Bus GPS Stats (vehicle_events) ────────────────── */
+  useEffect(() => {
+    if (!cocheRotacionId.trim()) return;
+    setBusGpsLoading(true);
+    setBusGpsStats(null);
+    fetchVehicleHistory(cocheRotacionId.trim(), 7)
+      .then(r => setBusGpsStats(r.summary))
+      .catch(() => setBusGpsStats(null))
+      .finally(() => setBusGpsLoading(false));
+  }, [cocheRotacionId]);
+
+  /* ─── UCOT Portal — Servicios asignados ─────────────── */
+  const loadUcotRotacion = useCallback(() => {
+    if (!cocheRotacionId.trim()) return;
+    setUcotLoading(true);
+    setUcotServicios(null);
+    fetchUcotRotacion(cocheRotacionId.trim())
+      .then(r => setUcotServicios(r.servicios))
+      .catch(() => setUcotServicios(null))
+      .finally(() => setUcotLoading(false));
   }, [cocheRotacionId]);
 
   /* ─── Derived Values ─────────────────────────────────── */
@@ -806,7 +844,8 @@ export default function CEODashboard() {
               SECTION: ROTATION
               ████████████████████████████████████████████████████████ */}
           {activeSection === 'rotation' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-fade-in">
+            <div className="space-y-4 animate-fade-in">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* ── Rotation History ────────────────────────── */}
               <section className="rounded-2xl border border-white/5 bg-gradient-to-br from-slate-900/80 to-slate-800/20 p-6 shadow-xl">
                 <h3 className="font-bold text-white mb-4 flex items-center gap-2 text-base">
@@ -954,6 +993,138 @@ export default function CEODashboard() {
                   </div>
                 </div>
               </section>
+            </div>
+
+            {/* ── Panel de Datos del Coche ──────────────────────── */}
+            <section className="rounded-2xl border border-white/5 bg-gradient-to-br from-slate-900/80 to-slate-800/20 p-6 shadow-xl">
+              <h3 className="font-bold text-white mb-5 flex items-center gap-2 text-base">
+                <div className="p-2 rounded-lg bg-primary-500/10 border border-primary-500/20">
+                  <Bus className="w-5 h-5 text-primary-400" />
+                </div>
+                Datos del Coche {cocheRotacionId}
+              </h3>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {/* Columna 1: GPS Compliance Stats */}
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    <Activity className="w-3 h-3" /> Estadísticas GPS (7 días)
+                  </p>
+                  {busGpsLoading ? (
+                    <div className="flex items-center gap-2 py-4">
+                      <Loader2 className="w-4 h-4 animate-spin text-primary-400" />
+                      <span className="text-xs text-slate-500">Cargando...</span>
+                    </div>
+                  ) : busGpsStats ? (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { label: 'En Tiempo', value: `${busGpsStats.pctEnTiempo}%`, color: 'emerald' },
+                          { label: 'Atrasado',  value: `${busGpsStats.pctAtrasado}%`, color: 'red' },
+                          { label: 'Vel. Media', value: `${busGpsStats.velocidadMedia} km/h`, color: 'blue' },
+                          { label: 'Eventos',   value: busGpsStats.totalEventos.toString(), color: 'violet' },
+                        ].map(s => (
+                          <div key={s.label} className={`p-3 rounded-xl bg-slate-800/40 border border-${s.color}-500/10`}>
+                            <p className="text-[9px] text-slate-500 uppercase">{s.label}</p>
+                            <p className={`text-lg font-black text-${s.color}-400`}>{s.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-800/30 text-[10px] text-slate-500">
+                        Líneas: {busGpsStats.lineasOperadas.join(', ') || '—'}
+                      </div>
+                      {busGpsStats.ultimaActividad && (
+                        <p className="text-[10px] text-slate-600">
+                          Última actividad: {formatFechaHoraMvd(busGpsStats.ultimaActividad)}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-600 py-4">Sin datos GPS para este coche.</p>
+                  )}
+                </div>
+
+                {/* Columna 2: Servicios UCOT Portal */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                      <Calendar className="w-3 h-3" /> Servicios UCOT
+                    </p>
+                    <button
+                      onClick={loadUcotRotacion}
+                      disabled={ucotLoading}
+                      className="text-[10px] px-2 py-1 rounded-lg bg-primary-500/10 border border-primary-500/20 text-primary-400 hover:bg-primary-500/20 transition-all disabled:opacity-50 flex items-center gap-1"
+                    >
+                      {ucotLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                      Consultar
+                    </button>
+                  </div>
+                  {ucotLoading ? (
+                    <div className="flex items-center gap-2 py-4">
+                      <Loader2 className="w-4 h-4 animate-spin text-primary-400" />
+                      <span className="text-xs text-slate-500">Consultando portal...</span>
+                    </div>
+                  ) : ucotServicios && ucotServicios.length > 0 ? (
+                    <div className="space-y-1.5 max-h-[220px] overflow-y-auto custom-scrollbar">
+                      {ucotServicios.map((s, i) => (
+                        <div
+                          key={i}
+                          className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all cursor-pointer ${
+                            cartonServicio === s.servicio
+                              ? 'bg-primary-500/10 border-primary-500/30'
+                              : 'bg-slate-800/30 border-white/5 hover:border-primary-500/20'
+                          }`}
+                          onClick={() => { setCartonServicio(s.servicio); setShowCarton(true); }}
+                        >
+                          <Calendar className="w-3 h-3 text-slate-500 flex-shrink-0" />
+                          <span className="text-slate-400 font-mono text-xs">{s.fecha}</span>
+                          <span className="text-white font-bold text-sm ml-auto">S {s.servicio}</span>
+                          <Eye className="w-3 h-3 text-primary-400 flex-shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-6 text-center text-slate-600 text-xs">
+                      <Calendar className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                      Presione "Consultar" para obtener servicios del portal UCOT.
+                    </div>
+                  )}
+                </div>
+
+                {/* Columna 3: Cartón PDF */}
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    <Eye className="w-3 h-3" /> Cartón de Servicio
+                  </p>
+                  {showCarton && cartonServicio ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400 font-bold">Servicio {cartonServicio}</span>
+                        <button
+                          onClick={() => setShowCarton(false)}
+                          className="text-[10px] text-slate-500 hover:text-white transition-colors"
+                        >✕ Cerrar</button>
+                      </div>
+                      <iframe
+                        src={getUcotCartonUrl(cartonServicio)}
+                        title={`Cartón Servicio ${cartonServicio}`}
+                        className="w-full rounded-xl border border-white/10"
+                        style={{ height: '280px' }}
+                        sandbox="allow-same-origin allow-scripts"
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-[220px] flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 text-slate-600 gap-3">
+                      <Eye className="w-10 h-10 opacity-20" />
+                      <p className="text-xs text-center">
+                        Seleccioná un servicio de la lista para ver el cartón.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+
             </div>
           )}
 

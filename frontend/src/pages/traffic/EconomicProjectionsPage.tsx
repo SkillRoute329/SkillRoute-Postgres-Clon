@@ -30,16 +30,31 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-/* ─── Constantes Económicas UCOT (ajustables) ─────────── */
+/* ─── Constantes Económicas — fuente única en parametros-operativos.ts ────
+ * Fix #2 (2026-04-23): antes hardcodeados aquí (tarifa 45) y en backend (56).
+ * Ahora ambos leen del mismo módulo. Editable por Super Admin sin rebuild.
+ * ────────────────────────────────────────────────────────────────────────── */
+import {
+  v,
+  TARIFA_STM,
+  COSTO_COMBUSTIBLE_KM as COMB_PARAM,
+  COSTO_CONDUCTOR_DIA as CONDUCTOR_PARAM,
+  COSTO_MANTENIMIENTO_KM as MANT_PARAM,
+  KM_PROMEDIO_VIAJE as KM_PARAM,
+  PASAJEROS_PROMEDIO_VIAJE as PAX_PARAM,
+  ELASTICIDAD_FLOTA_DEMANDA as ELASTICIDAD_PARAM,
+} from '../../config/parametros-operativos';
 
-const TARIFA_STM_UYU = 45; // Tarifa STM en pesos uruguayos (abono promedio)
-const COSTO_COMBUSTIBLE_KM = 12; // UYU por km (gasoil + lubricantes)
-const COSTO_CONDUCTOR_DIA = 1800; // UYU salario diario promedio por conductor
-const COSTO_MANTENIMIENTO_KM = 3; // UYU por km (revisiones, repuestos)
-const KM_PROMEDIO_VIAJE = 18; // km promedio por viaje completo (IDA)
-const PASAJEROS_PROMEDIO_VIAJE = 28; // baseline si no hay inspecciones reales
-const OCUPACION_PICO = 0.85; // 85% capacidad en hora pico
-const OCUPACION_VALLE = 0.45; // 45% en valle
+const TARIFA_STM_UYU = v(TARIFA_STM);
+const COSTO_COMBUSTIBLE_KM = v(COMB_PARAM);
+const COSTO_CONDUCTOR_DIA = v(CONDUCTOR_PARAM);
+const COSTO_MANTENIMIENTO_KM = v(MANT_PARAM);
+const KM_PROMEDIO_VIAJE = v(KM_PARAM);
+const PASAJEROS_PROMEDIO_VIAJE = v(PAX_PARAM);
+/** Fix #3: factor de elasticidad frecuencia→demanda (Balcombe et al. 2004, TRL593). */
+const ELASTICIDAD_FLOTA = v(ELASTICIDAD_PARAM);
+const OCUPACION_PICO = 0.85;
+const OCUPACION_VALLE = 0.45;
 const DIAS_PROYECCION = 30;
 
 /* ─── Líneas UCOT con prefijoş en ScheduleService ─────── */
@@ -236,7 +251,7 @@ export default function EconomicProjectionsPage() {
 
         // Si reducimos viajes, la demanda se agrupa pero asumiendo una penalización 
         // Para simplificar: Pierde 0.2% de pasajeros por cada 1% de viaje reducido (fricción)
-        const penalizacionDemanda = flotaDelta > 0 ? (1 - (flotaDelta * 0.002)) : 1; 
+        const penalizacionDemanda = flotaDelta > 0 ? (1 - (flotaDelta * ELASTICIDAD_FLOTA)) : 1;
         const ingresosAjustados = Math.round(base.ingresosDia * penalizacionDemanda * tarifaFactor);
         
         const margenAjustado = ingresosAjustados - costosAjustados;
