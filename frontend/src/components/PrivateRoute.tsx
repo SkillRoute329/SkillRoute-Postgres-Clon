@@ -25,8 +25,8 @@ function normalizeRole(role: string | undefined | null): string {
 function hasRequiredRole(userRole: string | undefined, allowed: string[]): boolean {
   if (allowed.length === 0) return true;
   const nr = normalizeRole(userRole);
-  // ADMIN tiene acceso universal
-  if (nr === 'admin') return true;
+  // SUPERADMIN y ADMIN tienen acceso universal
+  if (nr === 'superadmin' || nr === 'admin') return true;
   return allowed.some((r) => r.toLowerCase() === nr);
 }
 

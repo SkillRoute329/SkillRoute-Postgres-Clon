@@ -48,6 +48,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('✅ [AuthContext] Firebase Session Restored:', firebaseUser.email);
           const freshToken = await firebaseUser.getIdToken();
 
+          // Intentar recuperar rol previo de localStorage para no degradarlo
+          const storedPrev = localStorage.getItem('tf_user');
+          const prevRole = storedPrev ? (JSON.parse(storedPrev) as User)?.role : null;
+
           let finalUser: User = {
             id: firebaseUser.uid,
             uid: firebaseUser.uid,
@@ -55,7 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             firstName: firebaseUser.displayName?.split(' ')[0] || 'Usuario',
             lastName: '',
             fullName: firebaseUser.displayName || 'Usuario Sistema',
-            role: 'User',
+            role: prevRole || 'USER',
             email: firebaseUser.email || undefined,
           };
 
@@ -70,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 internalNumber: userData?.datos_empresa?.legajo || '----',
                 firstName: userData?.datos_personales?.nombre || finalUser.firstName,
                 lastName: userData?.datos_personales?.apellido || '',
-                role: userData?.rol || 'USER',
+                role: userData?.rol || prevRole || 'USER',
               };
             }
           } catch (dbError) {
