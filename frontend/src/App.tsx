@@ -70,6 +70,7 @@ const CartonManager = lazy(() => import('./pages/traffic/CartonManager'));
 const CartonDetail = lazy(() => import('./pages/traffic/CartonDetail'));
 const NavigationModule = lazy(() => import('./pages/traffic/NavigationModule'));
 const FleetMonitorModule = lazy(() => import('./pages/traffic/FleetMonitorModule'));
+const CUTCSAFleetDashboard = lazy(() => import('./pages/traffic/CUTCSAFleetDashboard'));
 const TerminalListero = lazy(() => import('./pages/traffic/TerminalListero'));
 const ListeroModule = lazy(() => import('./pages/traffic/ListeroModule'));
 const DistribucionDiaria = lazy(() => import('./pages/traffic/DistribucionDiaria'));
@@ -88,6 +89,12 @@ const ServiceCategoryPage = lazy(() => import('./pages/admin/ServiceCategoryPage
 // Restored Orphaned Pages (were on disk but missing routes)
 const AdminBoletines = lazy(() => import('./pages/admin/AdminBoletines'));
 const AdminConfig = lazy(() => import('./pages/admin/AdminConfig'));
+const AdminParametros = lazy(() => import('./pages/admin/AdminParametros'));
+// Fase 1 (2026-04-23): UI Super Admin para parámetros operativos (tarifa, costos, elasticidad, radio competencia…)
+const AdminParametrosOperativos = lazy(() => import('./pages/admin/AdminParametrosOperativos'));
+// Trim+ #69 (2026-04-23): gestión de disrupciones operacionales
+// Migrado a feature-first 2026-04-24 (ADR 002)
+const AdminDisruptionsPage = lazy(() => import('./features/disruptions').then(m => ({ default: m.AdminDisruptionsPage })));
 const AdminOrganization = lazy(() => import('./pages/admin/AdminOrganization'));
 const AdminSeed = lazy(() => import('./pages/admin/AdminSeed'));
 const AdminSetup = lazy(() => import('./pages/admin/AdminSetup'));
@@ -105,6 +112,7 @@ const ContingencyManagementPage = lazy(() => import('./pages/traffic/Contingency
 const OperationsIntelligenceHub = lazy(() => import('./pages/traffic/OperationsIntelligenceHub'));
 const LiveMapPage = lazy(() => import('./pages/traffic/LiveMapPage'));
 const ShadowRadar = lazy(() => import('./pages/traffic/ShadowRadar'));
+const CorridorIntelligence = lazy(() => import('./pages/traffic/CorridorIntelligence'));
 const StmScraperStatus = lazy(() => import('./pages/admin/StmScraperStatus'));
 
 
@@ -203,6 +211,9 @@ function App() {
                     <Route path="admin/service-categories" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ServiceCategoryPage /></PrivateRoute>} />
                     <Route path="admin/boletines" element={<PrivateRoute roles={['ADMIN']}><AdminBoletines /></PrivateRoute>} />
                     <Route path="admin/config" element={<PrivateRoute roles={['ADMIN']}><AdminConfig /></PrivateRoute>} />
+                    <Route path="admin/parametros" element={<PrivateRoute roles={['ADMIN']}><AdminParametros /></PrivateRoute>} />
+                    <Route path="admin/parametros-operativos" element={<PrivateRoute roles={['ADMIN','SUPERADMIN']}><AdminParametrosOperativos /></PrivateRoute>} />
+                    <Route path="admin/disruptions" element={<PrivateRoute roles={['ADMIN','SUPERADMIN','TRAFFIC']}><AdminDisruptionsPage /></PrivateRoute>} />
                     <Route path="admin/organization" element={<PrivateRoute roles={['ADMIN']}><AdminOrganization /></PrivateRoute>} />
                     <Route path="admin/setup" element={<PrivateRoute roles={['ADMIN']}><AdminSetup /></PrivateRoute>} />
                     <Route path="admin/seed" element={<PrivateRoute roles={['ADMIN','SUPERADMIN']}><AdminSeed /></PrivateRoute>} />
@@ -236,6 +247,7 @@ function App() {
                     />
                     <Route path="traffic/navigation" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO','DRIVER','CONDUCTOR']}><NavigationModule /></PrivateRoute>} />
                     <Route path="traffic/fleet-monitor" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><FleetMonitorModule /></PrivateRoute>} />
+                    <Route path="traffic/cutcsa-fleet" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CUTCSAFleetDashboard /></PrivateRoute>} />
                     <Route path="traffic/listero" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><TerminalListero /></PrivateRoute>} />
                     <Route path="traffic/listero-cascada" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><ListeroModule /></PrivateRoute>} />
                     <Route path="traffic/distribucion" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><DistribucionDiaria /></PrivateRoute>} />
@@ -246,6 +258,7 @@ function App() {
                     <Route path="traffic/intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><OperationsIntelligenceHub /></PrivateRoute>} />
                     <Route path="traffic/live-map" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><LiveMapPage /></PrivateRoute>} />
                     <Route path="traffic/shadow-radar" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ShadowRadar /></PrivateRoute>} />
+                    <Route path="traffic/corridor-intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorridorIntelligence /></PrivateRoute>} />
                     <Route path="traffic/scraper-status" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><StmScraperStatus /></PrivateRoute>} />
                     <Route path="traffic/agents" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
                     <Route path="traffic/brt" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><BRTCorridorDashboard /></PrivateRoute>} />

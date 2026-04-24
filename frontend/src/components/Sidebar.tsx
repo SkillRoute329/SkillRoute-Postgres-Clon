@@ -36,6 +36,7 @@ import {
   TrendingUp,
   DollarSign,
   Route,
+  Network,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
@@ -143,6 +144,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           icon: Radio,
         },
         {
+          path: '/dashboard/traffic/corridor-intelligence',
+          label: 'Inteligencia de Corredores',
+          icon: Network,
+        },
+        {
           path: '/dashboard/traffic/contingency',
           label: 'Gestión de Contingencia',
           icon: ShieldAlert,
@@ -200,9 +206,8 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           G
         </div>
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-red-500 to-orange-400 bg-clip-text text-transparent flex items-center gap-3">
-            <Radar className={`w-8 h-8 text-red-500 animate-spin-slow`} style={{ animationDuration: '3s' }} />
-            Centro de Mando: Radar Táctico
+          <h1 className="text-2xl font-black bg-gradient-to-r from-blue-400 to-orange-400 bg-clip-text text-transparent">
+            SkillRoute
           </h1>
         </div>
       </div>
