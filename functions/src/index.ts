@@ -787,6 +787,16 @@ export {
   recomputeDroMatrixNow,
 } from './droMatrix';
 
+// ─── FCM Alert Dispatcher — push al conductor + ACK loop ──────────────────────
+// DIRECTRIZ 2026-04-24: cierra el loop operacional (Swiftly/Optibus-style).
+// onAlertaCreated: dispara FCM cada vez que se crea un doc en alertas_regulacion.
+// acknowledgeAlerta: HTTP endpoint que marca ack_at + response_time_sec cuando
+// el chofer toca "OK" en la notificación.
+export {
+  onAlertaCreated,
+  acknowledgeAlerta,
+} from './fcmAlertDispatcher';
+
 // ─── GTFS-Realtime Publisher ─────────────────────────────────────────────────
 // Fase 1 #5 (2026-04-23): publica VehiclePositions GTFS-RT para integración
 // con Google Maps, Moovit, Citymapper y cualquier agregador MaaS.

@@ -64,7 +64,6 @@ const ServiceMatrix = lazy(() => import('./pages/traffic/ServiceMatrix'));
 const InspectorDashboard = lazy(() => import('./pages/operations/InspectorDashboard'));
 const InspectorCapture = lazy(() => import('./pages/traffic/InspectorCapture'));
 const AutoStatsModule = lazy(() => import('./pages/traffic/AutoStatsModule'));
-const ServiceStatistics = lazy(() => import('./pages/traffic/ServiceStatistics'));
 const ServiceAnalytics = lazy(() => import('./pages/traffic/ServiceAnalytics'));
 const CartonManager = lazy(() => import('./pages/traffic/CartonManager'));
 const CartonDetail = lazy(() => import('./pages/traffic/CartonDetail'));
@@ -109,8 +108,6 @@ const OTPDashboard = lazy(() => import('./pages/traffic/OTPDashboard'));
 const IncidentCommandCenter = lazy(() => import('./pages/traffic/IncidentCommandCenter'));
 const EconomicProjectionsPage = lazy(() => import('./pages/traffic/EconomicProjectionsPage'));
 const ContingencyManagementPage = lazy(() => import('./pages/traffic/ContingencyManagementPage'));
-const OperationsIntelligenceHub = lazy(() => import('./pages/traffic/OperationsIntelligenceHub'));
-const LiveMapPage = lazy(() => import('./pages/traffic/LiveMapPage'));
 const ShadowRadar = lazy(() => import('./pages/traffic/ShadowRadar'));
 const CorridorIntelligence = lazy(() => import('./pages/traffic/CorridorIntelligence'));
 const CorridorMap = lazy(() => import('./pages/traffic/CorridorMap'));
@@ -239,7 +236,8 @@ function App() {
                     <Route path="traffic/service-matrix" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO','INSPECTOR']}><ServiceMatrix /></PrivateRoute>} />
                     <Route path="traffic/inspector-control" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><InspectorDashboard /></PrivateRoute>} />
                     <Route path="traffic/inspector-capture" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><InspectorCapture /></PrivateRoute>} />
-                    <Route path="traffic/statistics" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><ServiceStatistics /></PrivateRoute>} />
+                    {/* Redirect legacy: Estadisticas Inspectores deprecada -> CEO Dashboard */}
+                    <Route path="traffic/statistics" element={<Navigate to="/dashboard/traffic/ceo" replace />} />
                     <Route path="traffic/autostats" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><AutoStatsModule /></PrivateRoute>} />
                     <Route path="traffic/analytics" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ServiceAnalytics /></PrivateRoute>} />
                     <Route path="traffic/cartons" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><CartonManager /></PrivateRoute>} />
