@@ -1,8 +1,8 @@
 /**
- * Tipos centralizados — TransformaFacil 2.0
+ * Tipos centralizados — SkillRoute 2.0
  * ==========================================
- * DÓNDE COLOCAR: frontend/src/types/transformafacil.ts
- * Importar en cualquier módulo: import type { ... } from '../types/transformafacil'
+ * DÓNDE COLOCAR: frontend/src/types/skillroute.ts
+ * Importar en cualquier módulo: import type { ... } from '../types/skillroute'
  */
 
 // ─── Vehículo / Flota ─────────────────────────────────────────────────────────

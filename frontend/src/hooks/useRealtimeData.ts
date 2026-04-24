@@ -7,6 +7,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { collection, query, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { LocationUpdate, ServiceStatusChange, InspectorAlert, FleetCheckCompleted, UserConnected } from '../services/socketService';
+// Zod #73 (2026-04-23): validación de shape para hooks real-time
+import { safeParseOrLog, ViajeActivoSchema } from '../schemas';
 
 export function useLocationUpdates() {
   const [locations, setLocations] = useState<Map<string, LocationUpdate>>(new Map());
@@ -18,9 +20,12 @@ export function useLocationUpdates() {
       setLocations((prev) => {
         const newMap = new Map(prev);
         snapshot.docChanges().forEach((change) => {
-          const data = change.doc.data();
+          const raw = change.doc.data();
+          // Zod #73: valida shape antes de usar. Si falla, loggea + omite.
+          const parsed = safeParseOrLog(ViajeActivoSchema, raw, `viajes_activos/${change.doc.id}`);
+          const data = (parsed ?? raw) as any;  // si Zod falla mantenemos retrocompatibilidad
           const vehicleId = data.cocheId || data.vehicleId || change.doc.id;
-          
+
           if (change.type === 'removed') {
             newMap.delete(vehicleId);
           } else {
@@ -28,7 +33,7 @@ export function useLocationUpdates() {
             const pos = data.posicion as { latitude?: number; longitude?: number } | undefined;
             const lat = pos?.latitude ?? data.latitude ?? data.lat;
             const lng = pos?.longitude ?? data.longitude ?? data.lng;
-            
+
             if (typeof lat === 'number' && typeof lng === 'number' && (lat !== 0 || lng !== 0)) {
               const locUpdate: LocationUpdate = {
                 vehicleId,
@@ -97,6 +102,11 @@ export function useServiceStatusUpdates() {
   return { services: Object.fromEntries(services), lastUpdate, getStatus };
 }
 
+// Zod #66 (2026-04-23): validación de shape en el boundary Firestore → hook.
+// Si Firestore devuelve un doc con shape inesperado, safeParseOrLog loggea
+// + omite el doc en lugar de romper la UI.
+import { safeParseOrLog, AlertaRegulacionSchema } from '../schemas';
+
 export function useInspectorAlerts() {
   const [alerts, setAlerts] = useState<InspectorAlert[]>([]);
   const [criticalAlerts, setCriticalAlerts] = useState<InspectorAlert[]>([]);
@@ -106,24 +116,36 @@ export function useInspectorAlerts() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const newAlerts: InspectorAlert[] = [];
       const newCriticals: InspectorAlert[] = [];
-      
+
       snapshot.forEach((doc) => {
-        const data = doc.data();
+        const raw = doc.data();
+        const parsed = safeParseOrLog(
+          AlertaRegulacionSchema,
+          raw,
+          `alertas_regulacion/${doc.id}`,
+        );
+        if (!parsed) return; // doc malformado — se loggea y se omite
+        const p = parsed as any;
         const alert: InspectorAlert = {
-          vehicleId: data.vehicleId || 'Unknown',
-          severity: data.severity || 'info',
-          message: data.message || '',
-          timestamp: data.timestamp?.toMillis?.() || Date.now(),
+          vehicleId: String(p.vehicleId ?? p.coche_id ?? 'Unknown'),
+          severity: (p.severity ?? 'info') as InspectorAlert['severity'],
+          message: String(p.message ?? p.mensaje_chofer ?? ''),
+          timestamp:
+            typeof p.timestamp === 'object' && p.timestamp?.toMillis
+              ? p.timestamp.toMillis()
+              : Date.now(),
         };
         newAlerts.push(alert);
         if (alert.severity === 'critical') newCriticals.push(alert);
       });
-      
+
       setAlerts(newAlerts);
-      
+
       if (newCriticals.length > criticalAlerts.length && newCriticals.length > 0) {
         try {
-          const audio = new Audio('data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==');
+          const audio = new Audio(
+            'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==',
+          );
           audio.play().catch(() => {});
         } catch (e) {}
       }
@@ -135,7 +157,12 @@ export function useInspectorAlerts() {
 
   const clearCriticalAlerts = useCallback(() => setCriticalAlerts([]), []);
 
-  return { alerts, criticalAlerts, hasCriticalAlerts: criticalAlerts.length > 0, clearCriticalAlerts };
+  return {
+    alerts,
+    criticalAlerts,
+    hasCriticalAlerts: criticalAlerts.length > 0,
+    clearCriticalAlerts,
+  };
 }
 
 export function useFleetChecks() {

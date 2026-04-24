@@ -233,7 +233,7 @@ class MaintenanceServiceClass {
         prioridad: 'media',
         fechaProgramada: fechaProgramada.toISOString().split('T')[0],
         tecnicoId,
-        observaciones: `Programado automáticamente por TransformaFacil el ${hoy.toLocaleDateString('es-UY')}`,
+        observaciones: `Programado automáticamente por SkillRoute el ${hoy.toLocaleDateString('es-UY')}`,
       });
 
       creados++;

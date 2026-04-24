@@ -106,7 +106,7 @@ const ShiftCard = ({ shift, onAction, variant = 'user' }: ShiftCardProps) => {
         {shift.transformaFacil && (
           <div className="flex items-center gap-1.5 text-primary-400 bg-primary-900/20 px-2 py-1 rounded-lg border border-primary-500/20">
             <CheckCircle className="w-3.5 h-3.5" />
-            <span className="text-xs font-bold">TransForma-</span>
+            <span className="text-xs font-bold">SkillRoute</span>
           </div>
         )}
       </div>

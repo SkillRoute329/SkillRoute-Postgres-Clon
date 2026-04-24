@@ -179,7 +179,7 @@ function PanelOperacional() {
             { label: 'Terminal del Listero', href: '/dashboard/traffic/listero', color: 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300', desc: 'Programación y ausencias' },
             { label: 'Hub de Inteligencia', href: '/dashboard/traffic/intelligence', color: 'bg-emerald-600/20 border-emerald-500/40 text-emerald-300', desc: 'Análisis de competencia en vivo' },
             { label: 'Radar de Flota', href: '/dashboard/traffic/fleet-monitor', color: 'bg-amber-600/20 border-amber-500/40 text-amber-300', desc: 'GPS tiempo real' },
-            { label: 'Competencia', href: '/dashboard/traffic/competitors', color: 'bg-red-600/20 border-red-500/40 text-red-300', desc: 'CUTCSA, COME, COETC' },
+            { label: 'Competencia', href: '/dashboard/traffic/live-map', color: 'bg-red-600/20 border-red-500/40 text-red-300', desc: 'CUTCSA, COME, COETC' },
           ].map(({ label, href, color, desc }) => (
             <a
               key={label}

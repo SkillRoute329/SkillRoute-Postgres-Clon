@@ -43,7 +43,7 @@ export default function DashboardLayout() {
     <div className="flex min-h-screen">
       {/* Sidebar como en el programa real: w-64 bg-slate-900 */}
       <aside className="w-64 bg-slate-900 border-r border-slate-700 py-6 px-4 flex flex-col">
-        <h2 className="m-0 mb-6 text-lg font-bold text-slate-200">TransformaFacil</h2>
+        <h2 className="m-0 mb-6 text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-orange-400">SkillRoute</h2>
         <nav className="flex-1">
           {link('/dashboard', 'Dashboard')}
           <div className="mt-4 mb-2 text-slate-500 text-xs font-semibold">Tránsito</div>

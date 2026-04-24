@@ -711,7 +711,7 @@ const DigitalCarton = ({ data: initialData, isEditable = false, onSave }: Digita
         </div>
 
         <div className="mt-2 text-[8px] text-center text-slate-400 font-sans tracking-widest uppercase">
-          TransForma- Digital System
+          SkillRoute Digital System
         </div>
       </div>
       <div className="h-20 md:hidden"></div> {/* Mobile Bottom Spacer */}

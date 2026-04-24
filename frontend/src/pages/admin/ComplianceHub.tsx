@@ -412,7 +412,7 @@ async function generarReporteKm(mes: string): Promise<void> {
 }
 
 async function generarInformePuntualidad(mes: string): Promise<void> {
-  const datos = `INFORME DE PUNTUALIDAD - UCOT - ${mes}\n\nGenerado automáticamente por TransformaFacil 2.0\nFecha: ${new Date().toLocaleDateString('es-UY')}\n\n(Completar con datos del mes seleccionado desde Firestore)`;
+  const datos = `INFORME DE PUNTUALIDAD - UCOT - ${mes}\n\nGenerado automáticamente por SkillRoute 2.0\nFecha: ${new Date().toLocaleDateString('es-UY')}\n\n(Completar con datos del mes seleccionado desde Firestore)`;
   descargarTexto(`puntualidad_${mes}.txt`, datos);
 }
 

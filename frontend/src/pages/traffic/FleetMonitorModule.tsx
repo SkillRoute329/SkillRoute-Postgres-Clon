@@ -282,7 +282,9 @@ export default function FleetMonitorModule() {
               <div key={i} className="flex items-center gap-1.5 bg-red-900/20 border border-red-500/30 rounded-lg px-2 py-1 text-[10px] text-red-300">
                 <AlertTriangle className="w-3 h-3 text-red-400" />
                 <span className="font-bold">L{a.linea}</span>
-                <span>INT {a.bus1} y {a.bus2} — {a.distanciaKm}km</span>
+                <span title={`Bunching: dos UCOT misma línea a ${a.distanciaKm} km — degrada headway`}>
+                  INT {a.bus1} y {a.bus2} — {a.distanciaKm} km
+                </span>
               </div>
             ))}
             {alertas.length > 4 && (

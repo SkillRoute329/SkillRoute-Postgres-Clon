@@ -96,7 +96,7 @@ export const DigitalCartonViewer: React.FC<Props> = ({ card }) => {
         <div className="mt-4 flex justify-between items-center text-[10px] text-gray-500 uppercase tracking-widest print:text-gray-400">
           <span>{new Date().toLocaleDateString('es-UY')}</span>
           <span className="font-bold text-teal-500/50 print:text-black">
-            Sistema TransForma v2.0 - Edición Oficial
+            SkillRoute v4.0 - Sistema de Gestión
           </span>
         </div>
       </div>

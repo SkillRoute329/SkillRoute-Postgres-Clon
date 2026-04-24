@@ -44,6 +44,12 @@ import type {
   AnalisisCompetitivo,
 } from '../../services/CompetitorIntelligenceEngine';
 import { Toast } from '@capacitor/toast';
+// Sweep timestamps #74 (2026-04-23): helper Montevideo UTC-3
+import { formatHoraMvd } from '../../utils/formatTimestamp';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../config/firebase';
+import { auth } from '../../config/firebase';
+// Fix #6 (2026-04-23): persistencia real de delegaciones al inspector humano.
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -538,13 +544,34 @@ export default function DigitalAgentsModule() {
     setRefreshKey((k) => k + 1);
   }, [selectedLine, loadAgent]);
 
-  // Delegación al inspector humano
-  const handleDelegarInspector = useCallback((serviceNumber: string) => {
-    Toast.show({
-      text: `🚨 Solicitud enviada a Inspector Humano para Servicio ${serviceNumber}`,
-      duration: 'long',
-    });
-  }, []);
+  // Fix #6 (2026-04-23): Delegación al inspector humano — ahora persiste en
+  // Firestore (colección `delegaciones_inspector`). Antes solo mostraba un toast
+  // sin dejar rastro, lo que era un riesgo de cumplimiento operacional.
+  const handleDelegarInspector = useCallback(async (serviceNumber: string) => {
+    try {
+      const user = auth.currentUser;
+      await addDoc(collection(db, 'delegaciones_inspector'), {
+        serviceNumber,
+        lineaId: selectedLine ?? null,
+        requestedBy: user?.uid ?? 'anonymous',
+        requestedByName: user?.displayName ?? user?.email ?? 'Operador sin identificar',
+        status: 'pending',     // pending | acknowledged | completed | cancelled
+        createdAt: serverTimestamp(),
+        // Fuente del disparo para trazabilidad
+        source: 'DigitalAgentsModule',
+      });
+      await Toast.show({
+        text: `✅ Solicitud registrada para Servicio ${serviceNumber}. Inspector notificado.`,
+        duration: 'long',
+      });
+    } catch (err) {
+      console.error('[DigitalAgents] Error delegando inspector:', err);
+      await Toast.show({
+        text: `❌ No se pudo registrar la solicitud. Reintentá o usá radio tradicional.`,
+        duration: 'long',
+      });
+    }
+  }, [selectedLine]);
 
   // Stats derivados (cero simulación)
   const stats = useMemo(() => {
@@ -668,7 +695,7 @@ export default function DigitalAgentsModule() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-slate-500">
-                    Actualizado: {agent.lastUpdate?.toLocaleTimeString('es-UY') || '—'}
+                    Actualizado: {formatHoraMvd(agent.lastUpdate, '—')}
                   </span>
                   <button
                     onClick={handleRefresh}

@@ -195,9 +195,9 @@ function buildTacticalForVariant(
 
   let estrategia: string;
   if (sentidoIda) {
-    estrategia = `Sentido IDA (${cfg.terminalA} → ${cfg.terminalB}). Rival clave: ${rivalTxt}. Limpieza de paradas en ${(puntosCarga[0] ?? 'tramo principal')}, margen 2-3 min con coche UCOT anterior. No perseguir al rival fuera del corredor de solapamiento.`;
+    estrategia = `Sentido IDA (${cfg.terminalA} → ${cfg.terminalB}). Rival clave: ${rivalTxt}. Limpieza de paradas en ${(puntosCarga[0] ?? 'tramo principal')}, margen 2-3 min con el coche anterior de la misma empresa. No perseguir al rival fuera del corredor de solapamiento.`;
   } else if (sentidoVuelta) {
-    estrategia = `Sentido VUELTA (${cfg.terminalB} → ${cfg.terminalA}). Rival clave: ${rivalTxt}. Aprovechar captación en ${(puntosCarga[puntosCarga.length - 1] ?? 'tramo final')}; mantener frecuencia reglamentaria y no pisar al compañero UCOT.`;
+    estrategia = `Sentido VUELTA (${cfg.terminalB} → ${cfg.terminalA}). Rival clave: ${rivalTxt}. Aprovechar captación en ${(puntosCarga[puntosCarga.length - 1] ?? 'tramo final')}; mantener frecuencia reglamentaria y no pisar al compañero anterior.`;
   } else if (esServicioParcial) {
     estrategia = `Ramal (${v.origen} → ${v.destino}). Baja frecuencia esperada — prioridad: puntualidad estricta. ${rivales.length > 0 ? `Rivales en zona: ${rivales.join(', ')}.` : 'Sin rivales directos detectados en este ramal.'}`;
   } else {

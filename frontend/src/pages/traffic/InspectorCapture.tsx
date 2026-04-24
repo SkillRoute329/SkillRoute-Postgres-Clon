@@ -198,6 +198,26 @@ const InspectorCapture = () => {
         await uploadBytes(storageRef, photoFile);
         photoUrl = await getDownloadURL(storageRef);
       }
+      // Mes+1 #7 (2026-04-23): capturar geolocalización del dispositivo móvil al
+      // registrar la inspección. Timeout 5s, accuracy alta. Si falla o el navegador
+      // no soporta, seguimos con lat/lng null (la inspección se guarda igual).
+      let capturedLat: number | null = null;
+      let capturedLng: number | null = null;
+      try {
+        if (typeof navigator !== 'undefined' && navigator.geolocation) {
+          const pos: GeolocationPosition = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 5000,
+              maximumAge: 30_000,
+            });
+          });
+          capturedLat = pos.coords.latitude;
+          capturedLng = pos.coords.longitude;
+        }
+      } catch (geoErr) {
+        console.warn('[InspectorCapture] geolocalización no disponible:', geoErr);
+      }
       await InspectionService.create({
         cartonServiceId: selectedServiceId,
         lineId: selectedLineId,
@@ -208,6 +228,10 @@ const InspectorCapture = () => {
         timeDeltaMinutes: timeDelta,
         passengerLoad: load,
         inspectorId: (user as { uid?: string })?.uid ?? undefined,
+        // Mes+1 #7: coordenadas GPS del inspector al momento de la captura
+        ...(capturedLat !== null && capturedLng !== null
+          ? { lat: capturedLat, lng: capturedLng }
+          : {}),
         ...(photoUrl && { photoUrl }),
       });
       setLastSaved(true);

@@ -16,7 +16,7 @@ const GENESIS_CONFIG = {
   defaults: {
     system_settings: {
       _config: {
-        appName: 'TransformaFacil 2.0',
+        appName: 'SkillRoute 2.0',
         version: '2.0.0',
         maintenanceMode: false,
         initializedAt: new Date().toISOString(),

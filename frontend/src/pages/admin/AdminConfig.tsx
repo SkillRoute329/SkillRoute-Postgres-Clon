@@ -34,7 +34,7 @@ interface PriceHistory {
 
 const AdminConfig = () => {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [transformaFacilDiscount, setTransformaFacilDiscount] = useState('0');
+  const [transformaFacilDiscount, setSkillRouteDiscount] = useState('0');
   const [isLoading, setIsLoading] = useState(true);
 
   // Create State
@@ -70,7 +70,7 @@ const AdminConfig = () => {
       ]);
       if (Array.isArray(cats)) setCategories(cats);
       if (config && (config as Record<string, unknown>).TRANSFORMA_FACIL_DISCOUNT != null)
-        setTransformaFacilDiscount(
+        setSkillRouteDiscount(
           String((config as Record<string, unknown>).TRANSFORMA_FACIL_DISCOUNT),
         );
     } catch (error) {
@@ -273,7 +273,7 @@ const AdminConfig = () => {
 
           <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-800/50">
             <label className="block text-sm font-medium text-slate-300 mb-2">
-              Descuento "TransForma-" (A Canje)
+              Descuento "SkillRoute" (A Canje)
             </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -281,7 +281,7 @@ const AdminConfig = () => {
                 <input
                   type="number"
                   value={transformaFacilDiscount}
-                  onChange={(e) => setTransformaFacilDiscount(e.target.value)}
+                  onChange={(e) => setSkillRouteDiscount(e.target.value)}
                   className="input-field pl-9 w-full bg-slate-800 border-slate-700 text-white focus:ring-primary-500/50"
                 />
               </div>
@@ -294,7 +294,7 @@ const AdminConfig = () => {
             </div>
             <p className="text-xs text-slate-500 mt-3 flex gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-primary-400" />
-              Monto fijo descontado automáticamente al usar la opción TransForma- (A Canje).
+              Monto fijo descontado automáticamente al usar la opción SkillRoute (A Canje).
             </p>
           </div>
         </div>

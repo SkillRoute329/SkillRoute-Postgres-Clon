@@ -12,6 +12,7 @@
 
 import { getMasterLineas, getMasterServicios, type MasterLinea, type MasterServicio } from '../data/ucotMaster';
 import { LINE_INSPECTOR_CONFIGS, type LineInspectorConfig } from './LineInspectorAgent';
+import { fetchSTMPosiciones } from './stmLiveService';
 
 // ─── Tipos públicos ──────────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ export interface LineFleetStatus {
   rivalCount: number;
   topRival?: string;
   empresasDetectadas: string[];
+  saludServicio?: number;
   source: DataSource;
 }
 
@@ -65,6 +67,7 @@ export interface AgentStatus {
   bunchingPares: number;
   rivalesDetectados: number;
   empresasDetectadas: string[];
+  saludServicio?: number;
   lastUpdate: Date;
   source: DataSource;
 }
@@ -101,6 +104,7 @@ interface FleetIntelLinea {
     | 'DISPUTADA'
     | 'CRITICA'
     | 'SIN_SERVICIO';
+  saludServicio: number; // 0-100 score ejecutivo
 }
 
 interface FleetIntelResponse {
@@ -116,17 +120,50 @@ interface FleetIntelResponse {
   lineas: FleetIntelLinea[];
 }
 
-// ─── Cache local (evita 3 fetches simultáneos en el mismo render) ────────────
+// ─── Tipos para selección multi-empresa ──────────────────────────────────────
 
+export interface AgencyLine {
+  lineId: string;
+  nombre: string;
+  categoria: string;
+  busesActivos?: number;
+}
+
+export const AGENCY_OPTIONS = [
+  { id: '70', label: 'UCOT',   color: 'emerald' },
+  { id: '50', label: 'CUTCSA', color: 'blue' },
+  { id: '20', label: 'COME',   color: 'sky' },
+  { id: '10', label: 'COETC',  color: 'indigo' },
+] as const;
+
+export async function fetchAgencyLines(agencyId: string): Promise<AgencyLine[]> {
+  try {
+    const res = await fetch(`${BRIDGE_BASE}/api/agency-lines/${agencyId}`, {
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.lines ?? [];
+  } catch {
+    return agencyId === '70' ? UCOT_LINEAS_REALES.map((id) => ({ lineId: id, nombre: `Línea ${id}`, categoria: 'urbana' })) : [];
+  }
+}
+
+// ─── Cache local — clave incluye agencyId + lineIds ───────────────────────────
+
+let _cacheKey = '';
 let _cache: FleetIntelResponse | null = null;
 let _cacheTs = 0;
 const CACHE_MS = 12_000;
 
-async function fetchFleetIntel(): Promise<FleetIntelResponse | null> {
+async function fetchFleetIntel(agencyId = '70', lineIds?: string[]): Promise<FleetIntelResponse | null> {
+  const key = `${agencyId}:${(lineIds ?? []).join(',')}`;
   const now = Date.now();
-  if (_cache && now - _cacheTs < CACHE_MS) return _cache;
+  if (_cache && _cacheKey === key && now - _cacheTs < CACHE_MS) return _cache;
   try {
-    const res = await fetch(`${BRIDGE_BASE}/api/ucot/fleet-intel`, {
+    const qs = new URLSearchParams({ agencyId });
+    if (lineIds && lineIds.length > 0) qs.set('lineIds', lineIds.join(','));
+    const res = await fetch(`${BRIDGE_BASE}/api/ucot/fleet-intel?${qs}`, {
       signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) return null;
@@ -134,6 +171,7 @@ async function fetchFleetIntel(): Promise<FleetIntelResponse | null> {
     if (!data.ok) return null;
     _cache = data;
     _cacheTs = now;
+    _cacheKey = key;
     return data;
   } catch {
     return null;
@@ -163,6 +201,7 @@ function lineToStatus(l: FleetIntelLinea, source: DataSource): LineFleetStatus {
     rivalCount: l.rivalCount,
     topRival: l.empresasDetectadas[0],
     empresasDetectadas: l.empresasDetectadas,
+    saludServicio: l.saludServicio,
     source,
   };
 }
@@ -190,6 +229,7 @@ function lineToAgent(l: FleetIntelLinea, source: DataSource): AgentStatus {
     bunchingPares: l.bunchingPares,
     rivalesDetectados: l.rivalCount,
     empresasDetectadas: l.empresasDetectadas,
+    saludServicio: l.saludServicio,
     lastUpdate: new Date(),
     source,
   };
@@ -233,42 +273,105 @@ function offlineAgent(lineId: string): AgentStatus {
   };
 }
 
+// ─── Fallback GPS directo (cuando fleet-intel no está disponible en prod) ──────
+
+function gpsLine(lineId: string, busesActivos: number): LineFleetStatus {
+  const master = getMasterLineas().find((l) => l.id === lineId);
+  const cfg = LINE_INSPECTOR_CONFIGS[lineId] ?? null;
+  return {
+    lineId,
+    nombreComercial: cfg?.nombreComercial ?? master?.nombre ?? `Línea ${lineId}`,
+    categoria: 'urbana',
+    busesActivos,
+    pctFlotaEnDisputa: 0,
+    nivelAlerta: busesActivos === 0 ? 'SIN_SERVICIO' : 'BAJA',
+    rivalCount: 0,
+    empresasDetectadas: [],
+    source: 'LIVE',
+  };
+}
+
+function gpsAgent(lineId: string, busesActivos: number): AgentStatus {
+  const master = getMasterLineas().find((l) => l.id === lineId);
+  const cfg = LINE_INSPECTOR_CONFIGS[lineId] ?? null;
+  return {
+    lineId,
+    nombreComercial: cfg?.nombreComercial ?? master?.nombre ?? `Línea ${lineId}`,
+    categoria: 'urbana',
+    status: busesActivos === 0 ? 'SIN_SERVICIO' : 'OPERATIVO',
+    posicionCompetitiva: busesActivos === 0 ? 'SIN_SERVICIO' : 'SIN_RIVALES_VISIBLES',
+    busesActivos,
+    frecuenciaActual: null,
+    cicloMin: 0,
+    bunchingPares: 0,
+    rivalesDetectados: 0,
+    empresasDetectadas: [],
+    lastUpdate: new Date(),
+    source: 'LIVE',
+  };
+}
+
+async function fetchFromGPS(): Promise<{ byLine: Map<string, number> } | null> {
+  try {
+    const buses = await fetchSTMPosiciones({ empresa: 70 });
+    if (buses.length === 0) return null;
+    const byLine = new Map<string, number>();
+    buses.forEach((b) => byLine.set(b.linea, (byLine.get(b.linea) ?? 0) + 1));
+    return { byLine };
+  } catch {
+    return null;
+  }
+}
+
 // ─── API Pública ──────────────────────────────────────────────────────────────
 
-export async function fetchAllLineStatuses(): Promise<{
+export async function fetchAllLineStatuses(agencyId = '70', lineIds?: string[]): Promise<{
   lines: LineFleetStatus[];
   source: DataSource;
 }> {
-  const data = await fetchFleetIntel();
-  if (!data) {
-    const lines = UCOT_LINEAS_REALES.map(offlineLine);
-    return { lines, source: 'OFFLINE' };
+  const data = await fetchFleetIntel(agencyId, lineIds);
+  if (data) {
+    const lines = data.lineas.map((l) => lineToStatus(l, 'LIVE'));
+    return { lines, source: 'LIVE' };
   }
-  const lines = data.lineas.map((l) => lineToStatus(l, 'LIVE'));
-  return { lines, source: 'LIVE' };
+  const fallbackIds = lineIds ?? UCOT_LINEAS_REALES;
+  const gps = await fetchFromGPS();
+  if (gps) {
+    const lines = fallbackIds.map((id) => gpsLine(id, gps.byLine.get(id) ?? 0));
+    return { lines, source: 'LIVE' };
+  }
+  const lines = fallbackIds.map(offlineLine);
+  return { lines, source: 'OFFLINE' };
 }
 
-export async function fetchAllAgentStatuses(): Promise<{
+export async function fetchAllAgentStatuses(agencyId = '70', lineIds?: string[]): Promise<{
   agents: AgentStatus[];
   source: DataSource;
 }> {
-  const data = await fetchFleetIntel();
-  if (!data) {
-    const agents = UCOT_LINEAS_REALES.map(offlineAgent);
-    return { agents, source: 'OFFLINE' };
+  const data = await fetchFleetIntel(agencyId, lineIds);
+  if (data) {
+    const agents = data.lineas.map((l) => lineToAgent(l, 'LIVE'));
+    return { agents, source: 'LIVE' };
   }
-  const agents = data.lineas.map((l) => lineToAgent(l, 'LIVE'));
-  return { agents, source: 'LIVE' };
+  const fallbackIds = lineIds ?? UCOT_LINEAS_REALES;
+  const gps = await fetchFromGPS();
+  if (gps) {
+    const agents = fallbackIds.map((id) => gpsAgent(id, gps.byLine.get(id) ?? 0));
+    return { agents, source: 'LIVE' };
+  }
+  const agents = fallbackIds.map(offlineAgent);
+  return { agents, source: 'OFFLINE' };
 }
 
-export async function fetchGlobalSummary(): Promise<GlobalFleetSummary> {
-  const data = await fetchFleetIntel();
+export async function fetchGlobalSummary(agencyId = '70', lineIds?: string[]): Promise<GlobalFleetSummary> {
+  const data = await fetchFleetIntel(agencyId, lineIds);
+  const fallbackLen = lineIds?.length ?? UCOT_LINEAS_REALES.length;
   if (!data) {
     return {
-      totalLineas: UCOT_LINEAS_REALES.length,
+      totalLineas: fallbackLen,
       totalBusesActivos: 0,
       lineasEnServicio: 0,
-      lineasSinServicio: UCOT_LINEAS_REALES.length,
+      lineasSinServicio: fallbackLen,
       lineasConAlertaAlta: 0,
       lineasConAlertaMedia: 0,
       lineasOk: 0,

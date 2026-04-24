@@ -80,14 +80,22 @@ export interface BriefingDiario {
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
-/** Líneas operadas por UCOT */
-const LINEAS_UCOT = ['300', '310', '320'];
+/** Líneas operadas por UCOT (fuente: UCOT_LINEAS_REALES) */
+const LINEAS_UCOT = ['17', '71', '79', '300', '306', '316', '328', '329', '330', '370', '396'];
 
-/** Líneas rivales conocidas que comparten corredores */
+/** Líneas rivales conocidas que comparten corredores con UCOT */
 const RIVALES_CONOCIDOS: { lineId: string; empresa: string }[] = [
-  { lineId: '103', empresa: 'RAINCOOP' },
+  { lineId: '103', empresa: 'CUTCSA' },
+  { lineId: '110', empresa: 'CUTCSA' },
+  { lineId: '125', empresa: 'CUTCSA' },
+  { lineId: '147', empresa: 'CUTCSA' },
+  { lineId: '148', empresa: 'CUTCSA' },
+  { lineId: '180', empresa: 'CUTCSA' },
+  { lineId: '185', empresa: 'CUTCSA' },
+  { lineId: '106', empresa: 'COME' },
+  { lineId: '175', empresa: 'COME' },
+  { lineId: 'D1',  empresa: 'DINATA' },
   { lineId: '109', empresa: 'RAINCOOP' },
-  { lineId: 'D1',  empresa: 'DINATRA' },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -103,53 +111,52 @@ function formatearHora(date: Date): string {
   return date.toTimeString().substring(0, 5);
 }
 
-function calcularFranjasCompetencia(foto: FotoDelDia): FranjaCompetencia[] {
+function calcularFranjasCompetencia(foto: FotoDelDia, lineasPropias: string[] = LINEAS_UCOT): FranjaCompetencia[] {
   const franjas: FranjaCompetencia[] = [];
-  
-  // Evaluar cada hora del día
+  if (lineasPropias.length === 0) return franjas;
+
   for (let hora = 5; hora <= 23; hora++) {
     const horaStr = `${hora.toString().padStart(2, '0')}:00`;
-    
-    let salidasUCOT = 0;
+
+    let salidasPropias = 0;
     let salidasRivales = 0;
-    const lineasUCOTActivas = new Set<string>();
+    const lineasPropiasActivas = new Set<string>();
     const lineasRivalesActivas = new Set<string>();
-    
-    LINEAS_UCOT.forEach((lineId) => {
+    const propiasSet = new Set(lineasPropias);
+
+    lineasPropias.forEach((lineId) => {
       const salidas = getSalidasEsperadasAhora(foto, lineId, 60);
       if (salidas.length > 0) {
-        salidasUCOT += salidas.length;
-        lineasUCOTActivas.add(lineId);
+        salidasPropias += salidas.length;
+        lineasPropiasActivas.add(lineId);
       }
     });
-    
+
     RIVALES_CONOCIDOS.forEach(({ lineId }) => {
+      if (propiasSet.has(lineId)) return; // no contar propias como rivales
       const salidas = getSalidasEsperadasAhora(foto, lineId, 60);
       if (salidas.length > 0) {
         salidasRivales += salidas.length;
         lineasRivalesActivas.add(lineId);
       }
     });
-    
-    if (salidasUCOT > 0 && salidasRivales > 0) {
-      const ratio = salidasRivales / Math.max(salidasUCOT, 1);
-      let nivelConflicto: FranjaCompetencia['nivelConflicto'];
-      
-      if (ratio > 1.5) nivelConflicto = 'ALTO';
-      else if (ratio > 0.8) nivelConflicto = 'MEDIO';
-      else nivelConflicto = 'BAJO';
-      
+
+    if (salidasPropias > 0 && salidasRivales > 0) {
+      const ratio = salidasRivales / Math.max(salidasPropias, 1);
+      const nivelConflicto: FranjaCompetencia['nivelConflicto'] =
+        ratio > 1.5 ? 'ALTO' : ratio > 0.8 ? 'MEDIO' : 'BAJO';
+
       franjas.push({
         horaInicio: horaStr,
         horaFin: `${(hora + 1).toString().padStart(2, '0')}:00`,
-        lineasUCOT: Array.from(lineasUCOTActivas),
+        lineasUCOT: Array.from(lineasPropiasActivas),
         lineasRivales: Array.from(lineasRivalesActivas),
         nivelConflicto,
-        descripcion: `UCOT: ${salidasUCOT} salidas | Rivales: ${salidasRivales} salidas`,
+        descripcion: `Propias: ${salidasPropias} salidas | Rivales: ${salidasRivales} salidas`,
       });
     }
   }
-  
+
   return franjas;
 }
 
@@ -225,26 +232,33 @@ function generarAlertas(
 // ─── API Pública ─────────────────────────────────────────────────────────────
 
 /** Genera el briefing completo del turno actual */
-export async function generarBriefingDiario(): Promise<BriefingDiario> {
+export async function generarBriefingDiario(agencyId = '70', ownLineIds?: string[]): Promise<BriefingDiario> {
   const ahora = new Date();
   const foto = cargarFotoDesdecache();
   const dossierStats = getEstadisticasDossier();
-  
+
+  // Líneas propias: usa las pasadas, o fallback a LINEAS_UCOT solo para UCOT
+  const lineasPropias = ownLineIds && ownLineIds.length > 0
+    ? ownLineIds
+    : agencyId === '70' ? LINEAS_UCOT : [];
+
+  const agencyLabel = { '70': 'UCOT', '50': 'CUTCSA', '20': 'COME', '10': 'COETC' }[agencyId] ?? agencyId;
+
   // Calcular infracciones de ayer
   const ayer = new Date(ahora);
   ayer.setDate(ayer.getDate() - 1);
   ayer.setHours(0, 0, 0, 0);
   const finAyer = new Date(ayer);
   finAyer.setHours(23, 59, 59, 999);
-  
+
   const registrosAyer = obtenerRegistros({ desde: ayer, hasta: finAyer });
-  
+
   // Resumen de servicio
   let totalSalidas = 0;
   const lineasActivas = new Set<string>();
-  
+
   if (foto) {
-    LINEAS_UCOT.forEach((lineId) => {
+    lineasPropias.forEach((lineId) => {
       const salidas = getSalidasEsperadasAhora(foto, lineId, 24 * 60);
       if (salidas.length > 0) {
         totalSalidas += salidas.length;
@@ -252,21 +266,21 @@ export async function generarBriefingDiario(): Promise<BriefingDiario> {
       }
     });
   }
-  
-  const franjasCompetencia = foto ? calcularFranjasCompetencia(foto) : [];
+
+  const franjasCompetencia = foto ? calcularFranjasCompetencia(foto, lineasPropias) : [];
   const alertas = generarAlertas(foto, dossierStats);
   const turno = getTurnoActual();
-  
+
   // Identificar franja de máxima competencia
   const franjaAlta = franjasCompetencia.filter((f) => f.nivelConflicto === 'ALTO');
   const horasPico = franjaAlta.map((f) => f.horaInicio).join(', ') || 'N/D';
-  
+
   const resumenEjecutivo = [
-    `📋 BRIEFING DE TURNO — ${turno} — ${ahora.toLocaleDateString('es-UY')}`,
+    `📋 BRIEFING DE TURNO — ${agencyLabel} — ${turno} — ${ahora.toLocaleDateString('es-UY')}`,
     ``,
     `SERVICIO:`,
     `  • Foto del Día: ${foto ? `✅ ${foto.source}` : '❌ No disponible'}`,
-    `  • Líneas UCOT activas: ${Array.from(lineasActivas).join(', ') || 'N/D'}`,
+    `  • Líneas ${agencyLabel} activas: ${Array.from(lineasActivas).join(', ') || (lineasPropias.length === 0 ? 'Sin líneas configuradas' : 'N/D')}`,
     `  • Total salidas programadas: ${totalSalidas}`,
     ``,
     `COMPETENCIA:`,

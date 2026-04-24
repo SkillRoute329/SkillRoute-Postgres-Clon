@@ -1,5 +1,5 @@
 /**
- * GTFS Exporter Service — TransformaFacil 2.0
+ * GTFS Exporter Service — SkillRoute 2.0
  * ============================================
  * Exporta las líneas UCOT en formato GTFS estándar.
  * Compatible con Google Maps, Moovit, API Montevideo IMM.

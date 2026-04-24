@@ -367,7 +367,7 @@ const AdminBalances = () => {
             })}
           </div>
           <div className="text-[10px] text-purple-300/60 mt-1">
-            Descuentos TransForma- (A Canje) Est.
+            Descuentos SkillRoute (A Canje) Est.
           </div>
         </div>
 

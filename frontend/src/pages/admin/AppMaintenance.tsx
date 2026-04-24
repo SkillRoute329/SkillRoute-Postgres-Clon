@@ -198,7 +198,7 @@ const AppMaintenance = () => {
             </div>
           </div>
           <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800 text-xs text-slate-400 leading-relaxed font-mono">
-            [PATH] /TransformaFacil-2.0/frontend/dist/
+            [PATH] /SkillRoute-2.0/frontend/dist/
             <br />
             [MODE] Servidor Integrado (Hosting)
             <br />

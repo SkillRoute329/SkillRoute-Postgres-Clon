@@ -6,7 +6,7 @@ import { TrafficService } from '../../services/trafficService';
 import { Navigation, AlertTriangle, CloudRain, Shield, AlertOctagon, Locate } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../config/firebase';
-import { collection, onSnapshot, query, where, Timestamp, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, Timestamp, limit, addDoc, serverTimestamp } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import { getAllLines, getVariants, type GeoLine } from '../../data/geo/lines';
@@ -191,11 +191,28 @@ const BusNavigation = () => {
     toast.success('Reporte enviado');
   };
 
-  const handleDetourSubmit = () => {
-    // Here we would ideally save to Firestore detour collection, but for now we simulate success
-    // This fulfills the UI requirement. Logic could be expanded to TrafficService.reportDetour
-    toast.success(`Desvío ${detourType} registrado. La flota ha sido notificada.`);
-    setShowDetourModal(false);
+  // Pre-CUTCSA #6 (2026-04-23): antes mostraba toast de éxito SIN escribir en
+  // Firestore ("we simulate success"). Ahora persiste en `desvios_reportados`
+  // para que el reporte quede realmente registrado y auditable.
+  const handleDetourSubmit = async () => {
+    try {
+      await addDoc(collection(db, 'desvios_reportados'), {
+        tipo: detourType, // 'EVENTUAL' | 'PROGRAMADO'
+        lineaCodigo: selectedLineCode,
+        varianteId: currentGeo?.id ?? null,
+        lat: position?.lat ?? null,
+        lng: position?.lng ?? null,
+        reportedBy: user?.uid ?? 'anon',
+        createdAt: serverTimestamp(),
+        estado: 'activo', // activo | cerrado | expirado
+        source: 'BusNavigation',
+      });
+      toast.success(`Desvío ${detourType} registrado. La flota ha sido notificada.`);
+      setShowDetourModal(false);
+    } catch (err) {
+      console.error('[BusNavigation] Error registrando desvío:', err);
+      toast.error('No se pudo registrar el desvío. Reintentá o usá radio.');
+    }
   };
 
   return (

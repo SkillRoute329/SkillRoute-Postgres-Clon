@@ -65,6 +65,14 @@ export interface Inspection {
   /** URL de foto adjunta (opcional), vinculada al servicioId */
   photoUrl?: string;
 
+  /**
+   * Mes+1 #7 (2026-04-23): coordenadas GPS del dispositivo del inspector al
+   * momento de la captura. Opcionales — pueden faltar si el navegador no
+   * tiene permiso o la geolocalización falla.
+   */
+  lat?: number;
+  lng?: number;
+
   /** Momento de creación del registro (opcional) */
   createdAt?: Timestamp;
 }

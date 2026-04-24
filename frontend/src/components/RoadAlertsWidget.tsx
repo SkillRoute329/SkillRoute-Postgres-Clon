@@ -4,7 +4,7 @@ import { AlertTriangle, Info, ShieldAlert, X } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../context/AuthContext';
 
-const RoadAlertsWidget = () => {
+const RoadAlertsWidget = ({ hideTitle = false }: { hideTitle?: boolean }) => {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const auth = useAuth();
@@ -73,20 +73,22 @@ const RoadAlertsWidget = () => {
   return (
     <div id="road-alerts-widget" className="mb-6 space-y-4">
       {/* Header / Title */}
-      <div className="flex justify-between items-center px-2">
-        <h3 className="text-white font-bold flex items-center gap-2">
-          <ShieldAlert className="w-5 h-5 text-yellow-500" />
-          <span>Alertas Viales</span>
-        </h3>
-        {canCreate && !showForm && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="hidden md:block text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
-          >
-            + Reportar Novedad
-          </button>
-        )}
-      </div>
+      {!hideTitle && (
+        <div className="flex justify-between items-center px-2">
+          <h3 className="text-white font-bold flex items-center gap-2">
+            <ShieldAlert className="w-5 h-5 text-yellow-500" />
+            <span>Alertas Viales</span>
+          </h3>
+          {canCreate && !showForm && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="hidden md:block text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
+            >
+              + Reportar Novedad
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Empty State */}
       {alerts.length === 0 && !showForm && (

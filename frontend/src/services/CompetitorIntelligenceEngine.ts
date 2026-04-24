@@ -10,6 +10,9 @@
  * Fuente: Red STM Montevideo — Cutcsa, COETC, COME, Copsa (verificado operativo 2025)
  */
 
+import { db } from '../config/firebase';
+import { collection, getDocs } from 'firebase/firestore';
+
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 
 export type EmpresaSTM =
@@ -1261,5 +1264,39 @@ export class CompetitorIntelligenceEngine {
       (inicioMin >= 360 && inicioMin < 540) ||
       (inicioMin >= 1020 && inicioMin < 1200);
     return esPico ? frecPicoDefault : Math.round(frecPicoDefault * 1.6);
+  }
+}
+
+// ─── Enriquecimiento con datos reales de Firestore ───────────────────────────
+
+let _enriquecidoTs = 0;
+
+/**
+ * Enriquece RED_STM_COMPETIDORES con datos reales de la colección `competidores`
+ * (buses activos por línea, según último snapshot GPS de la STM).
+ * Se llama una vez al iniciar el módulo y se cachea por 5 minutos.
+ */
+export async function enriquecerConDatosReales(): Promise<void> {
+  const ahora = Date.now();
+  if (ahora - _enriquecidoTs < 5 * 60 * 1000) return;
+  try {
+    const snap = await getDocs(collection(db, 'competidores'));
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      const lineas: Array<{ numeroLinea: number; busesActivosUltimoSnapshot?: number; activa?: boolean }> =
+        data.lineas ?? [];
+      for (const linea of lineas) {
+        const lineId = String(linea.numeroLinea);
+        const entrada = RED_STM_COMPETIDORES.find((r) => r.lineId === lineId);
+        if (entrada && linea.busesActivosUltimoSnapshot != null) {
+          (entrada as Record<string, unknown>).busesActivosUltimoSnapshot =
+            linea.busesActivosUltimoSnapshot;
+          (entrada as Record<string, unknown>).activa = linea.activa ?? true;
+        }
+      }
+    });
+    _enriquecidoTs = ahora;
+  } catch {
+    // Fallo silencioso — el engine funciona igual con los datos estáticos
   }
 }

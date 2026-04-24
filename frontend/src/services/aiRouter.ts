@@ -1,5 +1,5 @@
 /**
- * AIRouter — Enrutador Multi-Modelo TransformaFacil
+ * AIRouter — Enrutador Multi-Modelo SkillRoute
  *
  * Estrategia de costos:
  *   FAST   → gemma3:4b         (respuestas tácticas en tiempo real, <2s)

@@ -15,7 +15,7 @@ const RoadAlertsPage = () => {
         </p>
       </div>
       <ErrorBoundary>
-        <RoadAlertsWidget />
+        <RoadAlertsWidget hideTitle />
       </ErrorBoundary>
     </div>
   );

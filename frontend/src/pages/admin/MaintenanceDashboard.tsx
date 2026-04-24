@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   AlertTriangle,
   CheckCircle,
@@ -9,6 +9,10 @@ import {
   Briefcase,
   Trash2,
   Camera,
+  Cpu,
+  TrendingUp,
+  DollarSign,
+  ChevronRight,
 } from 'lucide-react';
 import {
   MaintenanceService,
@@ -18,6 +22,10 @@ import {
 } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
+import {
+  getAllVersiones, getValorActual, PARAMETRO_META as PM_META,
+  type VersionParametro, type ParametroId,
+} from '../../services/parametrosService';
 
 const STATUS_CONFIG: any = {
   ENVIADO: { label: 'Enviado', color: 'bg-yellow-500/20 text-yellow-400', icon: Clock },
@@ -34,6 +42,9 @@ const MaintenanceDashboard = () => {
   const [departments, setDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCheck, setFilterCheck] = useState('all'); // all, pending, process
+  const [predictorMode, setPredictorMode] = useState(false);
+  const [allReports, setAllReports] = useState<any[]>([]);
+  const [simParams, setSimParams] = useState<Record<ParametroId, VersionParametro[]> | null>(null);
 
   // Create Report Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -81,6 +92,14 @@ const MaintenanceDashboard = () => {
       }
     };
     init();
+  }, []);
+
+  // Cargar todos los reportes (sin filtro) para el predictor
+  useEffect(() => {
+    MaintenanceService.getAll({} as any)
+      .then((data: any[]) => setAllReports(data))
+      .catch(() => {});
+    getAllVersiones().then(setSimParams).catch(() => {});
   }, []);
 
   const fetchReports = async () => {
@@ -205,6 +224,107 @@ const MaintenanceDashboard = () => {
     }
   };
 
+  // ── Predictor de Quiebres ────────────────────────────────────────────────
+  const predictorRiesgos = useMemo(() => {
+    if (vehicles.length === 0 && allReports.length === 0) return [];
+
+    const costoFallaBajo = simParams
+      ? getValorActual(simParams.costo_falla_bajo, PM_META.costo_falla_bajo.defaultValor)
+      : PM_META.costo_falla_bajo.defaultValor;
+    const costoFallaAlto = simParams
+      ? getValorActual(simParams.costo_falla_alto, PM_META.costo_falla_alto.defaultValor)
+      : PM_META.costo_falla_alto.defaultValor;
+
+    const MTBF_DEFAULT_DIAS = 120; // si solo hay 1 falla registrada, asumimos 120 días entre fallas
+
+    // Agrupar reportes FINALIZADO por vehículo
+    const byVehicle: Record<string, { internalNumber: string; plate?: string; fallas: Date[]; titulo: string }> = {};
+
+    // Inicializar todos los vehículos
+    for (const v of vehicles) {
+      byVehicle[v.id] = { internalNumber: v.internalNumber, plate: v.plate, fallas: [], titulo: '' };
+    }
+
+    // Agregar fechas de falla
+    for (const r of allReports) {
+      if (r.status !== 'FINALIZADO') continue;
+      const vid = r.vehicleId;
+      if (!vid) continue;
+      if (!byVehicle[vid]) {
+        byVehicle[vid] = {
+          internalNumber: r.vehicle?.internalNumber ?? vid,
+          plate: r.vehicle?.plate,
+          fallas: [],
+          titulo: '',
+        };
+      }
+      byVehicle[vid].fallas.push(new Date(r.createdAt));
+      // Guardar el título de la última falla
+      const d = new Date(r.createdAt);
+      const last = byVehicle[vid].fallas.reduce((a, b) => (a > b ? a : b), new Date(0));
+      if (d >= last) byVehicle[vid].titulo = r.title ?? '';
+    }
+
+    const hoy = new Date();
+
+    return Object.entries(byVehicle).map(([vehicleId, info]) => {
+      const fallas = info.fallas.sort((a, b) => a.getTime() - b.getTime());
+      const fallaCount = fallas.length;
+
+      let mtbfDias: number | null = null;
+      let diasHastaProxima: number | null = null;
+      let ultimaFalla: Date | null = null;
+
+      if (fallaCount >= 2) {
+        let totalDiff = 0;
+        for (let i = 1; i < fallas.length; i++) {
+          totalDiff += (fallas[i].getTime() - fallas[i - 1].getTime()) / 86_400_000;
+        }
+        mtbfDias = Math.round(totalDiff / (fallas.length - 1));
+        ultimaFalla = fallas[fallas.length - 1];
+        diasHastaProxima = Math.round(
+          (ultimaFalla.getTime() + mtbfDias * 86_400_000 - hoy.getTime()) / 86_400_000,
+        );
+      } else if (fallaCount === 1) {
+        ultimaFalla = fallas[0];
+        mtbfDias = MTBF_DEFAULT_DIAS;
+        diasHastaProxima = Math.round(
+          (ultimaFalla.getTime() + MTBF_DEFAULT_DIAS * 86_400_000 - hoy.getTime()) / 86_400_000,
+        );
+      }
+
+      let semaforo: 'rojo' | 'amarillo' | 'verde' | 'desconocido';
+      if (diasHastaProxima === null) semaforo = 'desconocido';
+      else if (diasHastaProxima <= 30) semaforo = 'rojo';
+      else if (diasHastaProxima <= 90) semaforo = 'amarillo';
+      else semaforo = 'verde';
+
+      return {
+        vehicleId,
+        internalNumber: info.internalNumber,
+        plate: info.plate,
+        fallaCount,
+        ultimaFalla,
+        ultimaFallaTitulo: info.titulo,
+        mtbfDias,
+        diasHastaProxima,
+        semaforo,
+        costoFallaBajo,
+        costoFallaAlto,
+      };
+    }).sort((a, b) => {
+      const orden = { rojo: 0, amarillo: 1, verde: 2, desconocido: 3 };
+      if (orden[a.semaforo] !== orden[b.semaforo]) return orden[a.semaforo] - orden[b.semaforo];
+      return (a.diasHastaProxima ?? 999) - (b.diasHastaProxima ?? 999);
+    });
+  }, [vehicles, allReports, simParams]);
+
+  const rojosCount   = predictorRiesgos.filter(v => v.semaforo === 'rojo').length;
+  const riesgoTotal  = rojosCount * Math.round(
+    ((simParams ? getValorActual(simParams.costo_falla_bajo, PM_META.costo_falla_bajo.defaultValor) : PM_META.costo_falla_bajo.defaultValor) +
+     (simParams ? getValorActual(simParams.costo_falla_alto, PM_META.costo_falla_alto.defaultValor) : PM_META.costo_falla_alto.defaultValor)) / 2,
+  );
+
   return (
     <div className="space-y-6 animate-fade-in-up">
       {/* Header */}
@@ -226,13 +346,27 @@ const MaintenanceDashboard = () => {
 
       {/* Filters */}
       <div className="flex gap-2 overflow-x-auto pb-2">
+        <button
+          onClick={() => setPredictorMode(true)}
+          className={clsx(
+            'px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2',
+            predictorMode
+              ? 'bg-amber-600 text-white'
+              : 'bg-amber-900/30 border border-amber-600/30 text-amber-400 hover:bg-amber-800/40',
+          )}
+        >
+          <Cpu className="w-3.5 h-3.5" /> Predictor de Quiebres
+          {rojosCount > 0 && (
+            <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{rojosCount}</span>
+          )}
+        </button>
         {['all', 'ENVIADO', 'EN_PROCESO', 'FINALIZADO'].map((status) => (
           <button
             key={status}
-            onClick={() => setFilterCheck(status)}
+            onClick={() => { setFilterCheck(status); setPredictorMode(false); }}
             className={clsx(
               'px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap',
-              filterCheck === status
+              !predictorMode && filterCheck === status
                 ? 'bg-primary-600 text-white'
                 : 'bg-slate-800 text-slate-400 hover:text-white',
             )}
@@ -242,8 +376,98 @@ const MaintenanceDashboard = () => {
         ))}
       </div>
 
+      {/* ── Predictor de Quiebres ── */}
+      {predictorMode && (
+        <div className="space-y-4">
+          {/* Número grande: riesgo financiero */}
+          <div className="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-6 text-center">
+            <p className="text-[10px] text-amber-400/70 uppercase tracking-widest font-bold mb-2">
+              Riesgo financiero próximos 30 días
+            </p>
+            <p className="text-5xl font-black text-amber-400 tracking-tight">
+              ${riesgoTotal.toLocaleString('en-US')} USD
+            </p>
+            <p className="text-xs text-amber-400/50 mt-2">
+              {rojosCount} coche{rojosCount !== 1 ? 's' : ''} en zona roja ·
+              Costo estimado ${(simParams ? getValorActual(simParams.costo_falla_bajo, PM_META.costo_falla_bajo.defaultValor) : 5000).toLocaleString('en-US')}–$
+              {(simParams ? getValorActual(simParams.costo_falla_alto, PM_META.costo_falla_alto.defaultValor) : 15000).toLocaleString('en-US')} USD por falla
+              {!simParams && <span className="text-slate-500"> · parámetros por defecto</span>}
+            </p>
+          </div>
+
+          {/* Semáforo por coche */}
+          {predictorRiesgos.length === 0 ? (
+            <div className="text-center py-12 bg-slate-900 rounded-xl border border-slate-800">
+              <Search className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-400 text-sm">Sin datos de vehículos aún.</p>
+              <p className="text-slate-600 text-xs mt-1">Los tickets FINALIZADO se usarán para calcular el historial de fallas.</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {predictorRiesgos.map((v) => {
+                const colorMap = {
+                  rojo:        { bg: 'bg-red-950/40 border-red-500/40',     dot: 'bg-red-500',     text: 'text-red-400',    label: 'FALLA INMINENTE' },
+                  amarillo:    { bg: 'bg-amber-950/30 border-amber-500/30', dot: 'bg-amber-400',   text: 'text-amber-400',  label: 'RIESGO MEDIO'    },
+                  verde:       { bg: 'bg-emerald-950/20 border-emerald-700/30', dot: 'bg-emerald-500', text: 'text-emerald-400', label: 'ESTABLE'     },
+                  desconocido: { bg: 'bg-slate-900 border-slate-700/40',   dot: 'bg-slate-600',   text: 'text-slate-500',  label: 'SIN HISTORIAL'   },
+                };
+                const c = colorMap[v.semaforo];
+
+                return (
+                  <div key={v.vehicleId} className={`border rounded-xl p-4 ${c.bg}`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-3 h-3 rounded-full flex-none ${c.dot} ${v.semaforo === 'rojo' ? 'animate-pulse' : ''}`} />
+                        <span className="text-base font-black text-white">Coche #{v.internalNumber}</span>
+                        {v.plate && <span className="text-[10px] text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">{v.plate}</span>}
+                      </div>
+                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${c.bg} ${c.text}`}>{c.label}</span>
+                    </div>
+
+                    {v.semaforo !== 'desconocido' && v.diasHastaProxima !== null && (
+                      <div className="mb-3">
+                        <p className={`text-2xl font-black ${c.text}`}>
+                          {v.diasHastaProxima <= 0 ? 'HOY' : `${v.diasHastaProxima} días`}
+                        </p>
+                        <p className="text-[10px] text-slate-500">hasta próxima falla estimada</p>
+                      </div>
+                    )}
+
+                    <div className="space-y-1 text-[11px]">
+                      {v.semaforo === 'rojo' && (
+                        <div className="flex items-center gap-1.5 text-red-300 bg-red-500/10 rounded-lg px-2.5 py-1.5">
+                          <DollarSign className="w-3 h-3 flex-none" />
+                          <span className="font-bold">${v.costoFallaBajo.toLocaleString('en-US')}–${v.costoFallaAlto.toLocaleString('en-US')} USD estimado</span>
+                        </div>
+                      )}
+                      {v.ultimaFalla && (
+                        <div className="text-slate-500 flex items-center gap-1.5 px-1">
+                          <Clock className="w-3 h-3 flex-none" />
+                          Última falla: {v.ultimaFalla.toLocaleDateString('es-UY')}
+                          {v.ultimaFallaTitulo && ` — ${v.ultimaFallaTitulo}`}
+                        </div>
+                      )}
+                      {v.mtbfDias && (
+                        <div className="text-slate-600 flex items-center gap-1.5 px-1">
+                          <TrendingUp className="w-3 h-3 flex-none" />
+                          MTBF: {v.mtbfDias} días · {v.fallaCount} falla{v.fallaCount !== 1 ? 's' : ''} registrada{v.fallaCount !== 1 ? 's' : ''}
+                          {v.fallaCount === 1 && <span className="text-[9px] text-slate-700"> (estimado)</span>}
+                        </div>
+                      )}
+                      {v.semaforo === 'desconocido' && (
+                        <p className="text-slate-600 px-1">Sin tickets FINALIZADO — imposible predecir.</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Reports Grid */}
-      {loading ? (
+      {!predictorMode && (loading ? (
         <div className="text-center py-12 text-slate-400">Cargando reportes...</div>
       ) : reports.length === 0 ? (
         <div className="text-center py-12 bg-slate-900 rounded-xl border border-slate-800">
@@ -307,7 +531,7 @@ const MaintenanceDashboard = () => {
             </div>
           ))}
         </div>
-      )}
+      ))}
 
       {/* New Report Modal */}
       {isModalOpen && (

@@ -1,5 +1,5 @@
 /**
- * GPS Tracker Service — TransformaFacil UCOT
+ * GPS Tracker Service — SkillRoute UCOT
  * ============================================
  * Alimenta la colección `viajes_activos` en Firestore en tiempo real.
  * Funciona desde la app del conductor (web PWA o Android/Capacitor).

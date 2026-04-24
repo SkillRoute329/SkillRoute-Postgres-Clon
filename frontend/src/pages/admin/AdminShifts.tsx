@@ -61,7 +61,7 @@ const AdminShifts = () => {
     if (action === 'approve') {
       if (shift.transformaFacil) {
         const discount = prompt(
-          'Este turno es TransForma- (A Canje). Ingrese el monto del descuento para el administrador:',
+          'Este turno es SkillRoute (A Canje). Ingrese el monto del descuento para el administrador:',
           '200',
         );
         if (discount !== null) {

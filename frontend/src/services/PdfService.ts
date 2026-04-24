@@ -128,7 +128,7 @@ export const PdfService = {
         const pageCount = (doc.internal as any).getNumberOfPages();
         doc.setFontSize(8);
         doc.setTextColor(150);
-        const footerText = `Documento generado automáticamente por TransForma Platform - Página ${pageCount}`;
+        const footerText = `Documento generado automáticamente por SkillRoute Platform - Página ${pageCount}`;
         const pageSize = doc.internal.pageSize;
         const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
         doc.text(footerText, 14, pageHeight - 10);

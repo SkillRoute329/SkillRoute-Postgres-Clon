@@ -19,9 +19,18 @@ import {
   X,
   Target // New icon for styling
 } from 'lucide-react';
-const BRIDGE = import.meta.env.PROD 
-  ? '' 
+const BRIDGE_PRIMARY = import.meta.env.PROD
+  ? ''
   : (import.meta.env.VITE_BRIDGE_URL || 'http://localhost:3099');
+
+/**
+ * Fix #5 (2026-04-23): URL de fallback cuando el Bridge local no responde.
+ * Apunta a la Cloud Function intelligenceApi en Firebase (misma API contract).
+ * Si se setea VITE_BRIDGE_FALLBACK_URL en .env se puede sobreescribir.
+ */
+const BRIDGE_FALLBACK =
+  import.meta.env.VITE_BRIDGE_FALLBACK_URL ||
+  'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/intelligenceApi';
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────
 interface BusInfo {
@@ -200,6 +209,13 @@ function LineCard({
 // ─── Componente principal ──────────────────────────────────────────────────
 export default function CompetitorIntelligencePage() {
   const [bridgeOk, setBridgeOk] = useState<boolean | null>(null);
+  /**
+   * Fix #5 (2026-04-23): activeBridge es el base URL que está respondiendo.
+   * Arranca en BRIDGE_PRIMARY y, si falla health, intenta BRIDGE_FALLBACK.
+   * Solo si ambos fallan dejamos bridgeOk = false.
+   */
+  const [activeBridge, setActiveBridge] = useState<string>(BRIDGE_PRIMARY);
+  const [usingFallback, setUsingFallback] = useState<boolean>(false);
   const [lineas, setLineas] = useState<LineaData[]>([]);
   const [totalBuses, setTotalBuses] = useState(0);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
@@ -218,19 +234,39 @@ export default function CompetitorIntelligencePage() {
   const cargarLineas = useCallback(async () => {
     setLoadingLineas(true);
 
-    try {
-      // Test health primero
-      const health = await fetch(`${BRIDGE}/health`, { signal: AbortSignal.timeout(3000) });
-      if (!health.ok) throw new Error('Bridge no responde');
-      setBridgeOk(true);
-    } catch {
+    // Fix #5: intentar primario y, si falla, fallback Cloud Function
+    const tryHealth = async (base: string): Promise<boolean> => {
+      try {
+        const health = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(3000) });
+        if (health.ok) return true;
+        // Bridge local usa /health (sin prefix) — probamos compatibilidad
+        const healthLegacy = await fetch(`${base}/health`, { signal: AbortSignal.timeout(3000) });
+        return healthLegacy.ok;
+      } catch {
+        return false;
+      }
+    };
+
+    let base = BRIDGE_PRIMARY;
+    let ok = await tryHealth(BRIDGE_PRIMARY);
+    if (!ok && BRIDGE_FALLBACK) {
+      console.warn('[CompetitorIntelligence] Bridge primario caído, usando fallback Cloud Function');
+      ok = await tryHealth(BRIDGE_FALLBACK);
+      if (ok) {
+        base = BRIDGE_FALLBACK;
+        setUsingFallback(true);
+      }
+    }
+    if (!ok) {
       setBridgeOk(false);
       setLoadingLineas(false);
       return;
     }
+    setActiveBridge(base);
+    setBridgeOk(true);
 
     try {
-      const res = await fetch(`${BRIDGE}/api/lines/ucot`, {
+      const res = await fetch(`${base}/api/lines/ucot`, {
         signal: AbortSignal.timeout(15000),
       });
       const data: LineasData = await res.json();
@@ -255,7 +291,7 @@ export default function CompetitorIntelligencePage() {
         await Promise.allSettled(
           lote.map(async (l) => {
             try {
-              const r = await fetch(`${BRIDGE}/api/analysis/${l.linea}`, {
+              const r = await fetch(`${base}/api/analysis/${l.linea}`, {
                 signal: AbortSignal.timeout(15000),
               });
               const a: AnalysisData = await r.json();
@@ -286,7 +322,8 @@ export default function CompetitorIntelligencePage() {
     setDetailData(null);
 
     try {
-      const res = await fetch(`${BRIDGE}/api/analysis/${linea}`, {
+      // Fix #5: usar activeBridge (primario o fallback) en lugar del literal
+      const res = await fetch(`${activeBridge}/api/analysis/${linea}`, {
         signal: AbortSignal.timeout(15000),
       });
       const data: AnalysisData = await res.json();
@@ -297,7 +334,7 @@ export default function CompetitorIntelligencePage() {
     } finally {
       setLoadingDetail(false);
     }
-  }, []);
+  }, [activeBridge]);
 
   // ─── Estadísticas globales rápidas ──────────────────────────────────────
   const statsGlobales = (() => {

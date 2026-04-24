@@ -1092,9 +1092,9 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     tramosAlaDemanda: ['Centro (18 de Julio)', 'Av. Italia y Bvar. Batlle', 'Aeropuerto'],
   },
 
-  'L-12': {
-    lineId: 'L-12',
-    nombreComercial: 'Línea L-12 — Local 12 (Paso Carrasco)',
+  'L12': {
+    lineId: 'L12',
+    nombreComercial: 'Línea L12 — Local 12 (Paso Carrasco)',
     empresa: 'UCOT',
     terminalA: 'Ciudad Vieja (Aduana)',
     terminalB: 'Paso Carrasco',
@@ -1115,9 +1115,9 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     tramosAlaDemanda: ['Pocitos (Rambla)', 'Malvín (Av. Rivera)', 'Paso Carrasco'],
   },
 
-  'L-13': {
-    lineId: 'L-13',
-    nombreComercial: 'Línea L-13 — Local 13 (Punta de Rieles)',
+  'L13': {
+    lineId: 'L13',
+    nombreComercial: 'Línea L13 — Local 13 (Punta de Rieles)',
     empresa: 'UCOT',
     terminalA: 'Terminal Tres Cruces',
     terminalB: 'Punta de Rieles',
@@ -1138,9 +1138,9 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     tramosAlaDemanda: ['Tres Cruces', 'Goes (Av. Millán)', 'Punta de Rieles'],
   },
 
-  'L-31': {
-    lineId: 'L-31',
-    nombreComercial: 'Línea L-31 — Local 31 (Sayago)',
+  'L31': {
+    lineId: 'L31',
+    nombreComercial: 'Línea L31 — Local 31 (Sayago)',
     empresa: 'UCOT',
     terminalA: 'Terminal Paso del Molino',
     terminalB: 'Sayago (Av. Carlos María Ramírez)',
@@ -1161,9 +1161,9 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     tramosAlaDemanda: ['Paso del Molino', 'Belvedere (Av. Millán)', 'Sayago centro'],
   },
 
-  'L-32': {
-    lineId: 'L-32',
-    nombreComercial: 'Línea L-32 — Local 32 (Manga)',
+  'L32': {
+    lineId: 'L32',
+    nombreComercial: 'Línea L32 — Local 32 (Manga)',
     empresa: 'UCOT',
     terminalA: 'Terminal Hipódromo de Maroñas',
     terminalB: 'Manga',
@@ -1182,9 +1182,9 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     tramosAlaDemanda: ['Hipódromo (intercambiador)', 'Punta de Rieles', 'Manga'],
   },
 
-  'L-33': {
-    lineId: 'L-33',
-    nombreComercial: 'Línea L-33 — Local 33 (Cno. Carrasco)',
+  'L33': {
+    lineId: 'L33',
+    nombreComercial: 'Línea L33 — Local 33 (Cno. Carrasco)',
     empresa: 'UCOT',
     terminalA: 'Terminal Tres Cruces',
     terminalB: 'Cno. Carrasco (Colonia Nicolich)',
@@ -1205,6 +1205,186 @@ export const LINE_INSPECTOR_CONFIGS: Record<string, LineInspectorConfig> = {
     tramosAlaDemanda: ['Av. Italia y Cno. Carrasco', 'Colonia Nicolich'],
   },
 
+
+  '71': {
+    lineId: '71',
+    nombreComercial: 'Línea 71 — Mendoza / Pocitos',
+    empresa: 'UCOT',
+    terminalA: 'Mendoza (Goes/Garzón)',
+    terminalB: 'Pocitos (Bvar. España)',
+    zonasServidas: ['Goes', 'Garzón', 'Av. Millán', 'Pocitos', 'Bvar. España'],
+    kmRecorrido: 8.5,
+    capacidadVehiculo: 75,
+    frecuencias: [
+      { label: 'Pico', horaInicio: '06:00', horaFin: '20:00', frecuenciaMin: 12, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
+      { label: 'Finde', horaInicio: '07:00', horaFin: '22:00', frecuenciaMin: 25, diasAplica: ['SAB','DOM'] },
+    ],
+    rivalesVerificados: [
+      { lineId: '187', empresa: 'Cutcsa', solapamientoPct: 70, tramoCompartido: 'Av. Millán → Pocitos', frecuenciaRivalMin: 8 },
+    ],
+    corridorBbox: [-34.9, -56.17, -34.87, -56.08],
+    tramosAlaDemanda: ['Garzón y Millán', 'Pocitos (Bvar. España)'],
+  },
+
+  'PB': {
+    lineId: 'PB',
+    nombreComercial: 'Línea PB — Paso de los Baños',
+    empresa: 'UCOT',
+    terminalA: 'Terminal Casabó',
+    terminalB: 'Ciudad Vieja (Aduana)',
+    zonasServidas: ['Casabó', 'Paso de los Baños', 'Cno. Ramírez', 'Ciudad Vieja'],
+    kmRecorrido: 14.5,
+    capacidadVehiculo: 75,
+    frecuencias: [
+      { label: 'Pico', horaInicio: '06:00', horaFin: '20:00', frecuenciaMin: 20, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
+      { label: 'Finde', horaInicio: '07:00', horaFin: '21:00', frecuenciaMin: 35, diasAplica: ['SAB','DOM'] },
+    ],
+    rivalesVerificados: [
+      { lineId: '185', empresa: 'Cutcsa', solapamientoPct: 65, tramoCompartido: 'Cno. Ramírez → Ciudad Vieja', frecuenciaRivalMin: 12 },
+    ],
+    corridorBbox: [-34.93, -56.3, -34.9, -56.18],
+    tramosAlaDemanda: ['Cno. Ramírez y Millán', 'Ciudad Vieja (Aduana)'],
+  },
+
+  '11A': {
+    lineId: '11A',
+    nombreComercial: 'Línea 11A — Casabó / Punta Carretas (Expreso)',
+    empresa: 'UCOT',
+    terminalA: 'Terminal Casabó',
+    terminalB: 'Punta Carretas',
+    zonasServidas: ['Casabó', 'Cno. Ramírez', 'Ciudad Vieja', 'Punta Carretas'],
+    kmRecorrido: 17.5,
+    capacidadVehiculo: 80,
+    frecuencias: [
+      { label: 'Pico', horaInicio: '06:00', horaFin: '20:00', frecuenciaMin: 15, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
+      { label: 'Finde', horaInicio: '07:00', horaFin: '21:00', frecuenciaMin: 30, diasAplica: ['SAB','DOM'] },
+    ],
+    rivalesVerificados: [
+      { lineId: '185', empresa: 'Cutcsa', solapamientoPct: 75, tramoCompartido: 'Cno. Ramírez → Ciudad Vieja', frecuenciaRivalMin: 12 },
+    ],
+    corridorBbox: [-34.93, -56.3, -34.87, -56.15],
+    tramosAlaDemanda: ['Cno. Ramírez y Millán', 'Ciudad Vieja (Aduana)', 'Punta Carretas'],
+  },
+
+  '8SR': {
+    lineId: '8SR',
+    nombreComercial: 'Línea 8SR — Casabó / Centro (Rápido)',
+    empresa: 'UCOT',
+    terminalA: 'Terminal Casabó',
+    terminalB: 'Centro (18 de Julio)',
+    zonasServidas: ['Casabó', 'Cno. Ramírez', 'Ciudad Vieja', 'Centro'],
+    kmRecorrido: 16.0,
+    capacidadVehiculo: 80,
+    frecuencias: [
+      { label: 'Pico', horaInicio: '06:00', horaFin: '20:00', frecuenciaMin: 18, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
+      { label: 'Finde', horaInicio: '07:00', horaFin: '21:00', frecuenciaMin: 35, diasAplica: ['SAB','DOM'] },
+    ],
+    rivalesVerificados: [
+      { lineId: '185', empresa: 'Cutcsa', solapamientoPct: 70, tramoCompartido: 'Cno. Ramírez → Centro', frecuenciaRivalMin: 12 },
+    ],
+    corridorBbox: [-34.93, -56.3, -34.9, -56.17],
+    tramosAlaDemanda: ['Cno. Ramírez y Millán', 'Centro (18 de Julio)'],
+  },
+
+  'LM12': {
+    lineId: 'LM12',
+    nombreComercial: 'Línea LM12 — Metropolitana 12 (Ciudad de la Costa)',
+    empresa: 'UCOT',
+    terminalA: 'Terminal Tres Cruces',
+    terminalB: 'Ciudad de la Costa (Lomas de Solymar)',
+    zonasServidas: ['Tres Cruces', 'Av. Italia', 'Carrasco', 'Ciudad de la Costa'],
+    kmRecorrido: 28.0,
+    capacidadVehiculo: 85,
+    frecuencias: [
+      { label: 'Pico', horaInicio: '06:00', horaFin: '21:00', frecuenciaMin: 22, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
+      { label: 'Finde', horaInicio: '07:00', horaFin: '22:00', frecuenciaMin: 40, diasAplica: ['SAB','DOM'] },
+    ],
+    rivalesVerificados: [
+      { lineId: '721', empresa: 'Copsa', solapamientoPct: 60, tramoCompartido: 'Av. Italia → Ciudad de la Costa', frecuenciaRivalMin: 18 },
+    ],
+    corridorBbox: [-34.9, -56.18, -34.83, -55.92],
+    tramosAlaDemanda: ['Tres Cruces', 'Portones de Carrasco', 'Ciudad de la Costa'],
+  },
+
+  'LM13': {
+    lineId: 'LM13',
+    nombreComercial: 'Línea LM13 — Metropolitana 13 (Colonia Nicolich)',
+    empresa: 'UCOT',
+    terminalA: 'Terminal Tres Cruces',
+    terminalB: 'Colonia Nicolich',
+    zonasServidas: ['Tres Cruces', 'Cno. Carrasco', 'Ciudad de la Costa', 'Nicolich'],
+    kmRecorrido: 34.0,
+    capacidadVehiculo: 85,
+    frecuencias: [
+      { label: 'Pico', horaInicio: '06:00', horaFin: '21:00', frecuenciaMin: 28, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
+      { label: 'Finde', horaInicio: '07:00', horaFin: '21:00', frecuenciaMin: 50, diasAplica: ['SAB','DOM'] },
+    ],
+    rivalesVerificados: [
+      { lineId: '722', empresa: 'Copsa', solapamientoPct: 55, tramoCompartido: 'Ciudad de la Costa → Nicolich', frecuenciaRivalMin: 25 },
+    ],
+    corridorBbox: [-34.9, -56.18, -34.82, -55.85],
+    tramosAlaDemanda: ['Tres Cruces', 'Ciudad de la Costa', 'Colonia Nicolich'],
+  },
+
+  'U11C': {
+    lineId: 'U11C',
+    nombreComercial: 'Línea U11C — Casabó / Terminal Cerro',
+    empresa: 'UCOT',
+    terminalA: 'Terminal Casabó',
+    terminalB: 'Terminal Cerro',
+    zonasServidas: ['Casabó', 'Cno. Ramírez', 'Cerro', 'Villa del Cerro'],
+    kmRecorrido: 10.0,
+    capacidadVehiculo: 75,
+    frecuencias: [
+      { label: 'Pico', horaInicio: '06:00', horaFin: '21:00', frecuenciaMin: 18, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
+      { label: 'Finde', horaInicio: '07:00', horaFin: '21:00', frecuenciaMin: 35, diasAplica: ['SAB','DOM'] },
+    ],
+    rivalesVerificados: [
+      { lineId: '148', empresa: 'Cutcsa', solapamientoPct: 60, tramoCompartido: 'Cerro → Casabó', frecuenciaRivalMin: 8 },
+    ],
+    corridorBbox: [-34.93, -56.32, -34.9, -56.25],
+    tramosAlaDemanda: ['Terminal Casabó', 'Terminal Cerro'],
+  },
+
+  'U11S': {
+    lineId: 'U11S',
+    nombreComercial: 'Línea U11S — Casabó / Centro',
+    empresa: 'UCOT',
+    terminalA: 'Terminal Casabó',
+    terminalB: 'Centro (18 de Julio)',
+    zonasServidas: ['Casabó', 'Cerro', 'Ciudad Vieja', 'Centro'],
+    kmRecorrido: 17.0,
+    capacidadVehiculo: 80,
+    frecuencias: [
+      { label: 'Pico', horaInicio: '06:00', horaFin: '21:00', frecuenciaMin: 20, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
+      { label: 'Finde', horaInicio: '07:00', horaFin: '21:00', frecuenciaMin: 40, diasAplica: ['SAB','DOM'] },
+    ],
+    rivalesVerificados: [
+      { lineId: '148', empresa: 'Cutcsa', solapamientoPct: 65, tramoCompartido: 'Cerro → Ciudad Vieja → Centro', frecuenciaRivalMin: 8 },
+    ],
+    corridorBbox: [-34.93, -56.32, -34.9, -56.17],
+    tramosAlaDemanda: ['Terminal Casabó', 'Ciudad Vieja', 'Centro (18 de Julio)'],
+  },
+
+  'U11T': {
+    lineId: 'U11T',
+    nombreComercial: 'Línea U11T — Casabó / Terminal Tres Cruces',
+    empresa: 'UCOT',
+    terminalA: 'Terminal Casabó',
+    terminalB: 'Terminal Tres Cruces',
+    zonasServidas: ['Casabó', 'Cerro', 'Ciudad Vieja', 'Centro', 'Tres Cruces'],
+    kmRecorrido: 20.0,
+    capacidadVehiculo: 80,
+    frecuencias: [
+      { label: 'Pico', horaInicio: '06:00', horaFin: '21:00', frecuenciaMin: 22, diasAplica: ['LUN','MAR','MIE','JUE','VIE'] },
+      { label: 'Finde', horaInicio: '07:00', horaFin: '21:00', frecuenciaMin: 45, diasAplica: ['SAB','DOM'] },
+    ],
+    rivalesVerificados: [
+      { lineId: '148', empresa: 'Cutcsa', solapamientoPct: 55, tramoCompartido: 'Cerro → Centro', frecuenciaRivalMin: 8 },
+    ],
+    corridorBbox: [-34.93, -56.32, -34.9, -56.17],
+    tramosAlaDemanda: ['Terminal Casabó', 'Ciudad Vieja', 'Terminal Tres Cruces'],
+  },
 
   '221': {
     lineId: '221',
