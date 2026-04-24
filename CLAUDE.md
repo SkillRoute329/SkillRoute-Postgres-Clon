@@ -137,6 +137,81 @@ Sistema ERP + inteligencia de mercado para el **sistema metropolitano de transpo
 Nombre: **SkillRoute** (antes TransformaFacil 2.0) / **GestionUcot** (nombre heredado del repo, no del producto).
 Propósito: Análisis competitivo cross-operador, gestión de flota, KPIs, pronósticos de ingresos, agentes digitales.
 
+## 🏆 Filosofía de producto (DIRECTRIZ 2026-04-24)
+**No aceptar "MVP". Apuntar a producto 100% funcional, production-grade, desde el primer commit de cada feature.**
+
+El término "MVP" es útil como fase de desarrollo, no como excusa para entregar
+software parcial. SkillRoute no compite contra otros MVPs; compite contra
+Optibus, Swiftly, Remix/Via, CAD/AVL tradicionales y el statu quo de operadores
+sin herramienta — todos ellos con productos maduros. La única forma de ganar
+ese mercado es llegar a la mesa con algo que ya funciona mejor, no con una
+promesa.
+
+### Qué significa "production-grade" para cada feature nueva
+
+Antes de cerrar una feature, verificar que tiene:
+
+- **Manejo de errores reales**: auth faltante, data vacía, líneas nuevas sin
+  shape, cron que falló, colecciones vacías, STM caído (como hoy con UCOT en
+  paro). No asumir el happy path.
+- **UX para estado vacío y estado de carga**: el usuario debe entender qué
+  está viendo — y qué NO está viendo y por qué. Mensajes concretos, no
+  spinners mudos.
+- **Métricas visibles**: contadores, badges, tooltips que expliquen la
+  decisión detrás de cada número. Un stakeholder no técnico debe poder
+  interpretar la pantalla.
+- **Consumibilidad para no-técnicos**: directivos, operadores, pitchees
+  deben poder usarlo sin que un desarrollador les explique.
+- **Documentación operativa**: comentarios inline donde corresponda, README
+  o sección en CLAUDE.md cuando la feature tiene cron/endpoints.
+- **Verificación por el agente** (directriz 7): probado de punta a punta.
+- **Escalabilidad razonable**: código que no colapsa con 10x el volumen.
+- **Exportabilidad si es reporting**: Excel, PDF o share link cuando el
+  output va a circular fuera del sistema (directivos, reguladores).
+
+### Cuando haya disyuntiva
+
+Entre "entregar un brick rápido" vs "refinarlo a nivel producto", ir por
+refinamiento. El tiempo invertido en terminar bien se recupera x10 en la
+venta: una demo con grietas destruye credibilidad; una pulida la construye.
+
+### Nivel internacional por defecto (DIRECTRIZ 2026-04-24)
+
+**Cada feature de SkillRoute se construye apuntando al nivel de las mejores
+plataformas del mundo del rubro — y si podemos superar lo que ofrecen,
+mejor.** No es suficiente con "cumple con lo que pidieron"; la referencia
+mental es Optibus, Swiftly, Remix/Via, TfL iBus, RATP, NYC MTA BusTime.
+
+Antes de cerrar cualquier feature nueva, responder estas preguntas:
+
+1. ¿Cómo lo resuelve Optibus/Swiftly/Remix hoy? ¿Qué hacemos igual, qué
+   hacemos distinto, qué hacemos mejor?
+2. ¿Qué métricas canónicas de la industria (UITP, TCRP, MaaS) soporta
+   esta feature? Si la feature produce un número, ese número debe tener
+   nombre estándar (DRO, HRR, headway, seat-km, bunching index, etc.),
+   no inventarse uno casero.
+3. ¿Es exportable a formatos abiertos (GTFS, NeTEx, SIRI, GeoJSON)?
+4. ¿La UI respeta patrones accesibles (keyboard nav, contraste, i18n)?
+5. ¿Funciona si mañana se suma un 5to operador al sistema, sin tocar código?
+6. ¿Tiene la feature un "diferenciador medible" — algo concreto que
+   otras plataformas no hacen, o hacen peor? Cuando sí: documentarlo.
+
+Cuando detectemos un hueco en las plataformas grandes (por ejemplo:
+ninguna hace análisis cross-operador en tiempo real sobre datos GTFS-RT
+combinados — nuestro ShadowRadar DRO sí), marcarlo como ventaja competitiva
+en el pitch.
+
+### Anti-patrones a evitar
+
+- "Después lo arreglo" para features que el usuario va a ver.
+- "Esto es MVP, así queda" cuando falta algo que un competidor comercial
+  sí tiene.
+- Dejar estado vacío sin mensaje explicativo.
+- Features sin métricas ni indicadores de calidad de los datos.
+- Copy-paste de un prototipo directamente a producción sin pulir.
+
+---
+
 ## 🎯 Alcance del producto (DIRECTRIZ 2026-04-24)
 **SkillRoute NO es un producto para UCOT. Es un producto para TODO el sistema metropolitano de Uruguay.**
 

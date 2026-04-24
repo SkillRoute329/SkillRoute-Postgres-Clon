@@ -8,6 +8,7 @@ import {
   where,
   Timestamp,
   addDoc,
+  getDocs,
 } from 'firebase/firestore';
 import type { GeoPoint } from 'firebase/firestore';
 import { db } from '../../config/firebase';
@@ -141,6 +142,12 @@ const ShadowRadar: React.FC = () => {
   const [ucotFlotaIMM, setUcotFlotaIMM] = useState<VehiculoRadar[]>([]);
   const [competidores, setCompetidores] = useState<VehiculoRadar[]>([]);
   const [corridorOverlaps, setCorridorOverlaps] = useState<CorridorOverlapDoc[]>([]);
+  // Telemetría de producto: desglose por empresa que reporta el STM + cobertura shapes
+  const [stmBreakdown, setStmBreakdown] = useState<Record<number, number>>({});
+  const [shapeCoverage, setShapeCoverage] = useState<{ total: number; lastReconstructed: number | null }>({
+    total: 0,
+    lastReconstructed: null,
+  });
   const [isScanning, setIsScanning] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [empresaPropia, setEmpresaPropia] = useState<number>(70);
@@ -179,6 +186,14 @@ const ShadowRadar: React.FC = () => {
       const buses = await fetchSTMPosiciones({ empresa: -1 });
       const listRival: VehiculoRadar[] = [];
       const listUcotExt: VehiculoRadar[] = [];
+
+      // Desglose total por empresa (incluso buses sin línea — útil para diagnóstico).
+      const breakdown: Record<number, number> = {};
+      for (const b of buses) {
+        const emp = Number(b.codigoEmpresa) || 0;
+        breakdown[emp] = (breakdown[emp] || 0) + 1;
+      }
+      setStmBreakdown(breakdown);
 
       buses.forEach((b) => {
         // Regla: si el STM no reporta linea, el bus no es ni UCOT operativo ni rival competidor.
@@ -388,11 +403,49 @@ const ShadowRadar: React.FC = () => {
       (err) => console.warn('[ShadowRadar] corridor_overlap no disponible:', err),
     );
 
+    // 6. shapes_cross_operator — coverage + freshness. Query ligera: solo
+    // contamos docs y miramos el más reciente para mostrar "última
+    // reconstrucción".
+    const qShapes = query(
+      collection(db, 'shapes_cross_operator'),
+      orderBy('reconstructedAt', 'desc'),
+      limit(1),
+    );
+    const unsubShapes = onSnapshot(
+      qShapes,
+      (snapshot) => {
+        const first = snapshot.docs[0]?.data();
+        const ts = first?.reconstructedAt;
+        let lastMs: number | null = null;
+        if (ts && typeof ts.toMillis === 'function') {
+          lastMs = ts.toMillis();
+        } else if (ts && typeof ts.seconds === 'number') {
+          lastMs = ts.seconds * 1000;
+        }
+        setShapeCoverage({
+          total: snapshot.size,
+          lastReconstructed: lastMs,
+        });
+      },
+      (err) => console.warn('[ShadowRadar] shapes_cross_operator meta no disponible:', err),
+    );
+    // Conteo separado (get-once al montar) para el total real, ya que el query
+    // anterior está limitado a 1 doc.
+    (async () => {
+      try {
+        const full = await getDocs(query(collection(db, 'shapes_cross_operator'), limit(500)));
+        setShapeCoverage((prev) => ({ ...prev, total: full.size }));
+      } catch (err) {
+        console.warn('[ShadowRadar] shapes count no disponible:', err);
+      }
+    })();
+
     return () => {
       unsubAlertas();
       unsubViajes();
       unsubVehicleEvents();
       unsubOverlap();
+      unsubShapes();
       clearInterval(rivalInterval);
     };
   }, [isScanning, fetchCompetidores, empresaPropia]);
@@ -493,6 +546,23 @@ const ShadowRadar: React.FC = () => {
         tier: DroTier;
         pctAInB?: number;
         sharedKm?: number;
+        /** ETA en segundos hasta alcanzar/ser alcanzado por el rival, null si paralelo o indeterminado. */
+        etaSegundos: number | null;
+        /** Velocidad relativa de cierre en km/h (puede ser negativa si se alejan). */
+        closingKmh: number;
+      };
+
+      /** HRR helper: calcula ETA + velocidad relativa entre dos buses. */
+      const computeHRR = (distanciaM: number, vUcot: number | undefined, vRival: number | undefined) => {
+        const vU = typeof vUcot === 'number' ? vUcot : 0;
+        const vR = typeof vRival === 'number' ? vRival : 0;
+        // Como el filtro DRO ya garantiza mismo sentido, el cierre es |vR - vU|
+        // cuando el rival va por atrás (más rápido = se acerca) o cuando nosotros
+        // vamos adelante. Simplificación: tiempo a encontrarse = dist / max(diff, 1).
+        const diffKmh = Math.abs(vR - vU);
+        if (diffKmh < 2) return { etaSegundos: null as number | null, closingKmh: 0 };
+        const closingMs = (diffKmh * 1000) / 3600;
+        return { etaSegundos: Math.round(distanciaM / closingMs), closingKmh: Math.round(diffKmh) };
       };
 
       const droRivales: RivalConMetrica[] = [];
@@ -528,12 +598,15 @@ const ShadowRadar: React.FC = () => {
           continue;
         }
 
+        const hrr = computeHRR(dist, ucot.velocidad, r.velocidad);
         droRivales.push({
           ...r,
           distanciaMetros: dist,
           tier,
           pctAInB: overlap.pctAInB,
           sharedKm: overlap.sharedKm,
+          etaSegundos: hrr.etaSegundos,
+          closingKmh: hrr.closingKmh,
         });
       }
 
@@ -541,11 +614,17 @@ const ShadowRadar: React.FC = () => {
       //    sin entrada DRO. Preserva la lógica actual y evita perder cobertura
       //    cuando las shapes de esa línea aún no están reconstruidas.
       const heuristicRivales: RivalConMetrica[] = heuristicPool
-        .map(r => ({
-          ...r,
-          distanciaMetros: Math.round(haversineMetros(ucot.lat, ucot.lng, r.lat, r.lng)),
-          tier: 'T3' as DroTier,
-        }))
+        .map(r => {
+          const dist = Math.round(haversineMetros(ucot.lat, ucot.lng, r.lat, r.lng));
+          const hrr = computeHRR(dist, ucot.velocidad, r.velocidad);
+          return {
+            ...r,
+            distanciaMetros: dist,
+            tier: 'T3' as DroTier,
+            etaSegundos: hrr.etaSegundos,
+            closingKmh: hrr.closingKmh,
+          };
+        })
         .filter(r => {
           const ucotDest = (ucot.destino ?? '').trim();
           const rivalDest = (r.destino ?? '').trim();
@@ -655,6 +734,31 @@ const ShadowRadar: React.FC = () => {
   }, [emparejamientos]);
 
   const empresaLabel = EMPRESAS_OPCIONES.find(e => e.codigo === empresaPropia)?.label ?? 'Propia';
+
+  /**
+   * Métricas de calidad del radar — lo que hace que el producto se sienta
+   * "production-grade" para un directivo: sabe CUÁNTO es DRO confirmado y
+   * cuánto es heurística fallback, y qué tan fresca está la matriz.
+   */
+  const coverageStats = useMemo(() => {
+    let t1 = 0, t2 = 0, t3 = 0;
+    emparejamientos.forEach(e => {
+      e.rivales.forEach(r => {
+        if (r.tier === 'T1') t1++;
+        else if (r.tier === 'T2') t2++;
+        else t3++;
+      });
+    });
+    const total = t1 + t2 + t3;
+    const pctDro = total > 0 ? Math.round(((t1 + t2) / total) * 100) : 0;
+    return { t1, t2, t3, total, pctDro };
+  }, [emparejamientos]);
+
+  /** Edad de la última reconstrucción de shapes, en horas. */
+  const shapeAgeHours = useMemo(() => {
+    if (!shapeCoverage.lastReconstructed) return null;
+    return Math.round((Date.now() - shapeCoverage.lastReconstructed) / 3600_000);
+  }, [shapeCoverage.lastReconstructed]);
 
   // ─── Helpers UI ───────────────────────────────────────────────────────────
 
@@ -808,11 +912,16 @@ const ShadowRadar: React.FC = () => {
         </div>
       </div>
 
-      {/* Resumen en vivo */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      {/* Resumen en vivo — 5 KPIs production-grade */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <div className="text-xs text-slate-500 uppercase tracking-wider font-bold">{empresaLabel} en Calle</div>
           <div className="text-3xl font-bold text-blue-400 mt-1">{ucotFlota.length}</div>
+          {ucotFlota.length === 0 && competidores.length > 0 && (
+            <div className="text-[10px] text-amber-400 mt-1" title="El operador seleccionado no reporta GPS al STM ahora mismo">
+              sin reporte GPS
+            </div>
+          )}
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <div className="text-xs text-slate-500 uppercase tracking-wider font-bold">Rivales Detectados</div>
@@ -826,10 +935,49 @@ const ShadowRadar: React.FC = () => {
           </div>
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div className="text-xs text-slate-500 uppercase tracking-wider font-bold">Cobertura DRO</div>
+          <div className="text-3xl font-bold text-emerald-400 mt-1">{coverageStats.pctDro}%</div>
+          <div className="text-[10px] text-slate-600 mt-1" title={`T1 (corredor): ${coverageStats.t1} · T2 (posible): ${coverageStats.t2} · T3 (heurística): ${coverageStats.t3}`}>
+            {coverageStats.t1 + coverageStats.t2}/{coverageStats.total} clasificados por matriz
+          </div>
+          {shapeCoverage.total > 0 && (
+            <div className={`text-[10px] mt-0.5 ${shapeAgeHours !== null && shapeAgeHours > 168 ? 'text-amber-400' : 'text-slate-600'}`}>
+              {shapeCoverage.total} shapes{shapeAgeHours !== null ? ` · hace ${shapeAgeHours < 24 ? shapeAgeHours + 'h' : Math.round(shapeAgeHours / 24) + 'd'}` : ''}
+            </div>
+          )}
+        </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <div className="text-xs text-slate-500 uppercase tracking-wider font-bold">Alertas Hoy</div>
           <div className="text-3xl font-bold text-purple-400 mt-1">{alertas.length}</div>
         </div>
       </div>
+
+      {/* Banner diagnóstico cuando el operador propio no reporta al STM */}
+      {ucotFlota.length === 0 && Object.keys(stmBreakdown).length > 0 && (
+        <div className="mb-6 bg-amber-950/30 border border-amber-700/50 rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 text-sm">
+            <div className="font-bold text-amber-300">
+              {empresaLabel} no reporta GPS al STM en este momento
+            </div>
+            <div className="text-amber-400/80 mt-1">
+              El STM tiene {Object.values(stmBreakdown).reduce((a, b) => a + b, 0)} buses activos:{' '}
+              {EMPRESAS_OPCIONES.map(({ codigo, label }) => {
+                const n = stmBreakdown[codigo] ?? 0;
+                return (
+                  <span key={codigo} className={n > 0 ? 'text-white font-semibold' : 'text-amber-400/50'}>
+                    {label} {n}
+                    {codigo !== 10 ? ' · ' : ''}
+                  </span>
+                );
+              })}
+            </div>
+            <div className="text-amber-400/70 text-xs mt-2">
+              Probable causa: paro del operador, falla de telemetría o fin de horario operativo. Podés analizar la red de otro operador cambiando "Empresa Propia" arriba.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Selector de Empresa + Línea */}
       <div className="mb-6 bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
@@ -977,6 +1125,26 @@ const ShadowRadar: React.FC = () => {
                                   : tier === 'T2'
                                   ? `Solapamiento menor (${r.pctAInB?.toFixed(0)}% DRO)`
                                   : 'Sin matriz DRO para esta línea, detección por destino/heading';
+                              // HRR: formatear ETA como mm:ss, color según velocidad de cierre
+                              const etaSec = r.etaSegundos;
+                              const etaTxt =
+                                etaSec === null
+                                  ? 'paralelo'
+                                  : etaSec < 60
+                                  ? `${etaSec}s`
+                                  : `${Math.floor(etaSec / 60)}:${String(etaSec % 60).padStart(2, '0')}`;
+                              const hrrColor =
+                                etaSec === null
+                                  ? 'text-slate-500'
+                                  : etaSec < 120
+                                  ? 'text-red-400'
+                                  : etaSec < 300
+                                  ? 'text-orange-400'
+                                  : 'text-emerald-400';
+                              const hrrTitle =
+                                etaSec === null
+                                  ? 'Velocidades similares, rival mantiene distancia'
+                                  : `ETA ${etaTxt} a cierre · Δv ${r.closingKmh} km/h`;
                               return (
                                 <div key={i} className="flex items-center justify-between text-xs bg-slate-900/80 rounded px-2 py-1 border border-slate-800 gap-2">
                                   <span className="text-red-400 font-bold flex items-center gap-1 min-w-0">
@@ -989,6 +1157,9 @@ const ShadowRadar: React.FC = () => {
                                       title={tierTitle}
                                     >
                                       {tierLabel}
+                                    </span>
+                                    <span className={`font-mono text-[10px] ${hrrColor}`} title={hrrTitle}>
+                                      {etaTxt}
                                     </span>
                                     <span className={`font-mono font-bold ${
                                       r.distanciaMetros < 500 ? 'text-red-400' : 'text-orange-400'
