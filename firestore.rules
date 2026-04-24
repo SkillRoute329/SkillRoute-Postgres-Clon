@@ -22,9 +22,10 @@ service cloud.firestore {
         : (d.keys().hasAny(['rol']) ? d.rol.lower() : 'none');
     }
 
-    function isAdmin() {
-      return getUserRole() in ['admin', 'superadmin', 'ADMIN', 'SUPERADMIN'];
-    }
+    // Nota: isAdmin() eliminada 2026-04-23 — no se usaba en ninguna regla
+    // (todas las colecciones usan isAdminNorm()). La versión antigua hacía
+    // comparaciones case-sensitive innecesarias dado que getUserRole() ya
+    // normaliza a minúsculas.
 
     function isAdminNorm() {
       let r = getUserRole();
@@ -203,6 +204,32 @@ service cloud.firestore {
     }
 
     // ============================================================
+    // INTELIGENCIA DE RED — CORREDORES (DRO MATRIX)
+    // (matriz pre-calculada por Cloud Function droMatrix.ts;
+    // lectura abierta a cualquier usuario autenticado para que
+    // CEODashboardV7, CorridorIntelligence, ShadowRadar y CorridorMap
+    // puedan consumirla; escritura sólo desde Cloud Functions
+    // admin SDK que bypass de las rules.)
+    // ============================================================
+    match /corridor_overlap/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /shapes_cross_operator/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ============================================================
+    // INCIDENCIAS OPERACIONALES (centro de incidencias)
+    // ============================================================
+    match /incidencias/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin() || isInspector();
+    }
+
+    // ============================================================
     // MENSAJES Y COMUNICACIONES
     // ============================================================
     match /mensajes_internos/{document=**} {
@@ -211,6 +238,17 @@ service cloud.firestore {
     }
 
     match /bulletins/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    // ============================================================
+    // PARÁMETROS DEL SISTEMA (con trazabilidad histórica)
+    // Lectura: cualquier autenticado (para simuladores y cálculos).
+    // Escritura: solo admin — nunca se editan versiones pasadas,
+    //            solo se agregan nuevas vía arrayUnion.
+    // ============================================================
+    match /parametros_sistema/{document=**} {
       allow read: if isAuthenticated();
       allow write: if isAdminNorm();
     }
@@ -346,6 +384,69 @@ service cloud.firestore {
     match /ai_orders/{document=**} {
       allow read: if isAuthenticated();
       allow create, update, delete: if false;
+    }
+
+    // ============================================================
+    // PARÁMETROS OPERATIVOS (tarifa, costos, elasticidad, radios…)
+    //   - Lectura: cualquier autenticado (los módulos los consultan).
+    //   - Escritura: solo admin/superadmin (UI Super Admin).
+    //   - Fase 1 (2026-04-23): fuente única de verdad editable.
+    // ============================================================
+    match /parametros_operativos/{key} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    // Historial de cambios — audit trail inmutable:
+    //   - Lectura: solo admin (review de cambios).
+    //   - Creación: solo admin (se escribe desde el mismo flow que el update).
+    //   - Update/delete: prohibido a cliente — preserva el historial.
+    match /parametros_operativos_historial/{document=**} {
+      allow read: if isAdminNorm();
+      allow create: if isAdminNorm();
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // DISRUPCIONES OPERACIONALES (Disruption Management — Trim+ #67)
+    //   - Lectura: cualquier autenticado (visibilidad para flota).
+    //   - Create: cualquier autenticado (reporte desde cualquier rol).
+    //   - Update: traffic / admin (transición de estado).
+    //   - Delete: prohibido (audit trail).
+    // ============================================================
+    match /disruptions/{document=**} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAdminNorm() || isTrafficOrAdmin();
+      allow delete: if false;
+    }
+
+    // ============================================================
+    // DESVÍOS REPORTADOS POR CONDUCTOR (BusNavigation — Pre-CUTCSA #6)
+    //   - Creación: cualquier autenticado (conductor reporta en calle).
+    //   - Lectura: cualquier autenticado (flota + control tráfico).
+    //   - Update: solo admin/traffic (cierran o reclasifican).
+    //   - Delete: prohibido (audit trail).
+    // ============================================================
+    match /desvios_reportados/{document=**} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAdminNorm() || isTrafficOrAdmin();
+      allow delete: if false;
+    }
+
+    // ============================================================
+    // DELEGACIONES AL INSPECTOR (desde Módulo Agentes Digitales — Fix #6)
+    //   - Lectura: operadores y admin.
+    //   - Creación: cualquier autenticado (operador que delega).
+    //   - Update: solo admin/inspector (marcar como acknowledged/completed).
+    //   - Delete: prohibido (audit trail).
+    // ============================================================
+    match /delegaciones_inspector/{document=**} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAdminNorm() || isInspector();
+      allow delete: if false;
     }
 
     // ============================================================

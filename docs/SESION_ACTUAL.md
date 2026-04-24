@@ -4,32 +4,154 @@
 
 > **Para Jonathan**: este archivo se actualiza automáticamente al final de cada sesión productiva. No lo borres ni lo edites manualmente — Claude lo gestiona.
 
-**Última actualización:** 2026-04-24 (sesión bis 2 — V7 Network Command), Cowork
+**Última actualización:** 2026-04-24 (sesión bis 4 — deploy lado servidor), Claude Code Windows
 
 ---
 
 ## 🎯 EN CURSO
 
-Nada en curso. Sesión cerrada con **CEODashboardV7.tsx (Network Command)**
-construido desde cero, ruta `/dashboard/traffic/ceo-v7` agregada, entrada en
-sidebar con label "⭐ Network Command v7". El CEODashboard.tsx legacy queda
-intacto (zero regresión, directriz operativa).
+Nada en curso. Working tree limpio. Todos los commits pusheados.
 
-**Cambios sin commitear (working tree):**
-- `frontend/src/pages/traffic/CEODashboardV7.tsx` (nuevo, ~720 líneas)
-- `frontend/src/App.tsx` (+2 líneas: lazy import + route)
-- `frontend/src/components/Sidebar.tsx` (+5 líneas: nueva entrada V7 + label legacy)
-- `CLAUDE.md` (refuerzo de directriz 7: testing es responsabilidad del agente, nunca de Jonathan)
-- `docs/SESION_ACTUAL.md` (este archivo)
-- `docs/HISTORIAL_SESIONES.md` (entrada appendeada)
-- (de la sesión bis 1) `frontend/src/pages/traffic/CEODashboard.tsx` y
-  `frontend/src/components/CompetitorThreatWidget.tsx` (refactor cross-operador, ya documentado).
+**Lo que se hizo en esta sesión (lado servidor):**
+1. ✅ `firestore.rules` desplegado a producción — reglas para `corridor_overlap`,
+   `shapes_cross_operator`, `incidencias`, `disruptions`, `desvios_reportados`,
+   `delegaciones_inspector`, `parametros_operativos*` y eliminación de
+   `isAdmin()` case-sensitive (reemplazada por `isAdminNorm()`).
+   Los `permission-denied` del V7 quedan resueltos.
+2. ✅ `/api/positions` — Cloud Function ya estaba sirviendo datos en producción.
+   730 buses en vivo, campo `empresaId` numérico (coincide con lo que usa el V7).
+   No requirió cambios.
+3. ✅ `servicios_estado` — la colección se popula manualmente desde el módulo
+   listero cuando asignan servicios del día. Si está vacía es porque no hubo
+   asignaciones hoy (viernes noche). El V7 lo maneja correctamente mostrando
+   "—" con pesos dinámicos. No es un bug del V7.
 
 ---
 
-## 📋 PRÓXIMO PASO INMEDIATO — ORDEN PARA CLAUDE CODE
+## 📋 PRÓXIMO PASO INMEDIATO
+
+**Estado limpio.** Todos los pasos del lado servidor completados y commiteados. El V7 debería mostrar las Zonas Críticas y la Cuota de Mercado con datos reales en la próxima sesión de browser. Hacer hard refresh (Ctrl+Shift+R en incógnito) para limpiar cualquier cache de Firestore rules.
 
 Pegar este bloque tal cual en Claude Code (cwd = `C:\Users\jonat\Desktop\PROYECTOS\GestionUcot`):
+
+```
+Continuamos la sesión de Cowork. Leé CLAUDE.md y docs/SESION_ACTUAL.md primero.
+
+Tu trabajo:
+
+1) DEV SERVER LIMPIO:
+   - Matar Vite si está corriendo (Ctrl+C en terminal o Stop-Process si quedó zombie).
+   - cd frontend && npm run dev
+   - Esperá puerto activo.
+   - En browser: cerrar TODAS las pestañas de http://127.0.0.1:3005, abrir una nueva en incógnito (para limpiar cache de auth corrupto que dejaron los HMR de la sesión anterior).
+   - Login normal con tu usuario.
+
+2) VERIFICACIÓN DEL V7 BUGFIXED (con datos reales):
+   - Navegá a http://127.0.0.1:3005/dashboard/traffic/ceo-v7
+   - Confirmá:
+     a. Header: "Centro de Mando de Red v7" + chip "CROSS-OPERADOR" + "Sistema Metropolitano de Montevideo".
+     b. Salud de la Red gauge muestra un score (no rojo absoluto si hay datos parciales, debe redistribuir pesos).
+     c. Sub-componentes: si OTP / Aglom / Cober / Riesgo no tienen datos, muestran "—" en gris (no "0").
+     d. Si bunching está capped, muestra "⚠" junto al label "Aglom".
+     e. Aviso "Calculado sobre N de 4 componentes" aparece sólo cuando hay datos parciales.
+     f. KPIs cards: Puntualidad / Aglomeración / Cumplimiento / Riesgo Operativo.
+     g. **CRÍTICO** Zonas Críticas: AHORA debería listar top 5 corredores cross-operador. Si sigue en "Sin pares cruzados", abrir DevTools > Network y ver si la query a `corridor_overlap` devuelve docs. Si devuelve, es bug del filtro; si está vacía, es problema de Firestore rules (ver paso 3).
+     h. Cuota de Mercado: si /api/positions devuelve datos, mostrar tabla. Si no, estado vacío explicativo (paso 3).
+     i. Riesgos Activos: si hay incidencias críticas, listarlas. Si no, "Sin riesgos críticos".
+     j. Footer en español: "Radar de Sombra (en vivo)", "Analítica de Sombra", "Inteligencia de Corredores", "Mapa de Corredores", "Panel de Puntualidad (OTP)", "Cumplimiento Horario", "Proyecciones Económicas", "Agentes Digitales", "Centro de Incidencias".
+   - Probar selector de operador: cambiar a CUTCSA, COME, COETC. Las Zonas Críticas y Cuota de Mercado deben recalcularse en cada cambio.
+
+3) RESOLVER 3 PROBLEMAS DE SERVIDOR (los detecté en consola del browser, no son bugs del V7):
+
+   3.a) **firestore.rules — permission denied en `corridor_overlap` y `incidencias`**
+        En la sesión anterior la consola mostraba:
+          [CEODashboardV7] corridor_overlap query failed: permission-denied
+          [CEODashboardV7] incidencias query failed: permission-denied
+        Verificá `firestore.rules`:
+          - ¿Existe regla de read para `corridor_overlap`? (la usa también ShadowRadar y CorridorIntelligence)
+          - ¿Existe regla para `incidencias`?
+        Si faltan, agregar reglas allow read autorizadas para roles ADMIN/TRAFFIC. Igual a las otras colecciones del módulo.
+        Después: firebase deploy --only firestore:rules
+
+   3.b) **/api/positions devuelve nada / 404**
+        Vite proxy lo apunta a https://us-central1-ucot-gestor-cloud.cloudfunctions.net/intelligenceApi
+        Verificar:
+          curl -v http://127.0.0.1:3005/api/positions 2>&1 | head -30
+        Si responde 404 desde la Cloud Function, revisar `functions/src/intelligenceApi.ts` que la ruta /positions esté registrada y desplegada (npm run build && firebase deploy --only functions:intelligenceApi).
+        Si devuelve datos pero sin `codigoEmpresa` en properties, ajustar el handler para incluir ese campo.
+
+   3.c) **ServicioEstadoService.getByDate(today) devuelve 0**
+        La colección `servicios_estado` puede no tener docs para hoy (2026-04-24, viernes). Verificá:
+          - ¿El cron diario que popula `servicios_estado` está corriendo?
+          - ¿Hay docs para hoy? (Firebase console → servicios_estado → query date == '2026-04-24')
+        Si la colección está vacía para hoy: chequear `functions/src/scheduleComplianceEngine.ts` o el cron equivalente.
+
+4) CHEQUEO PRE-COMMIT:
+   - bash scripts/check_integrity.sh (exit 0 obligatorio)
+   - cd frontend && npx tsc --noEmit --tsBuildInfoFile /tmp/fresh.tsbuildinfo -p tsconfig.app.json | grep -E "CEODashboardV7|App\.tsx|Sidebar\.tsx" (no debe haber output)
+
+5) COMMIT (incluye los 6 bugfixes + traducciones del footer perdidas):
+
+   git add frontend/src/pages/traffic/CEODashboardV7.tsx CLAUDE.md docs/SESION_ACTUAL.md docs/HISTORIAL_SESIONES.md
+
+   # Si modificaste firestore.rules en paso 3.a, agregalas también:
+   # git add firestore.rules
+
+   git commit -m "fix(ceo-v7): bugs detectados en verificacion funcional + traduccion footer
+
+- agencyId numerico ('70'/'50'/'20'/'10') en lugar de 'UCOT'/'CUTCSA'.
+  Sincroniza con ShadowRadar.tsx EMPRESA_TO_AGENCY. Antes el filtro de
+  Zonas Criticas nunca matcheaba, ahora si.
+- Hot Zones usa campos denormalizados (agencyA/lineaA/sentidoA/...) del
+  doc corridor_overlap. Elimina JOIN innecesario con shapes_cross_operator.
+- Salud de la Red maneja N/A vs 0: si un componente no tiene datos, su
+  peso se redistribuye entre los componentes disponibles. Mostrar
+  warning 'Calculado sobre N de 4 componentes' cuando es parcial.
+  Antes el score era artificialmente bajo (35/100 cuando debia ser N/A).
+- Bunching cap a 5000 (antes 2000) + indicador visual cuando se llega
+  al cap. Threshold subido de 100 a 200 eventos.
+- Promise.all con catch independiente por query: una falla
+  permission-denied no rompe el resto del dashboard.
+- Footer traducido al espanol (perdido en sesion previa por reconstruccion
+  desde HEAD pre-traduccion).
+- Sub-componentes muestran '—' en gris cuando no hay dato (no 0).
+
+Verificacion funcional via Chrome MCP confirmo:
+- Selector cross-operador funciona perfectamente
+- Estados vacios explicativos en cada seccion
+- UI 100% en espanol
+- Layout production-grade comparable a Optibus/Swiftly
+
+Pendiente lado servidor (paso 3 de la orden):
+- firestore.rules para corridor_overlap e incidencias (permission-denied)
+- /api/positions endpoint puede estar caido
+- servicios_estado posiblemente sin datos para hoy
+
+Ref: directrices CLAUDE.md no regresion + nivel internacional + UI espanol."
+
+   git push
+
+6) Si todo OK: 'listo, V7 funcional verificado, lo unico que falta es el lado servidor (rules + endpoint)'. Si falla algo: '## NOTA DE JONATHAN' en SESION_ACTUAL.md.
+```
+
+---
+
+## 🐞 PROBLEMAS DETECTADOS EN VERIFICACIÓN VÍA BROWSER
+
+Resumen de lo encontrado al probar `/dashboard/traffic/ceo-v7` como usuario:
+
+| # | Problema | Causa | Estado |
+|---|---|---|---|
+| 1 | "Sin pares cruzados para UCOT/CUTCSA" pese a 1850 pares en matriz | `agencyId` filtraba por 'UCOT' pero la matriz usa '70' | ✅ Corregido en código |
+| 2 | Health Score = 35/100 con datos parciales | Componentes sin datos pesaban como 0% | ✅ Corregido — pesos dinámicos + warning |
+| 3 | Bunching = 2000 (capped silencioso) | Limit 2000 + threshold 100 | ✅ Subido a 5000 + threshold 200 + indicador cap |
+| 4 | Permission-denied rompía Promise.all | Sin catch individual | ✅ Cada query con su catch |
+| 5 | "0 de 0 servicios" en Puntualidad/Cumplimiento | ServicioEstadoService.getByDate vacío | ⚠ Pendiente investigar (paso 3.c orden) |
+| 6 | "Sin datos GPS en vivo" | /api/positions sin respuesta | ⚠ Pendiente investigar (paso 3.b orden) |
+| 7 | Footer en inglés | Reconstrucción desde HEAD perdió traducciones | ✅ Re-traducido |
+| 8 | Sub-componentes mostraban "0" sin contexto | Falta de N/A | ✅ Ahora muestra "—" |
+
+---
 
 ```
 Continuamos la sesión de Cowork. Leé CLAUDE.md y docs/SESION_ACTUAL.md primero.
@@ -41,13 +163,14 @@ Tu trabajo:
    - Si Vite quedó corriendo de antes, reiniciálo (Ctrl+C y npm run dev otra vez) — el lazy chunk del CEODashboard fue editado y el cache puede mentir.
    - Navegá a http://localhost:3005/dashboard/traffic/ceo-v7 (o el puerto que use tu Vite — chequeá la consola que tira al levantar).
    - Confirmá:
-     a. El header muestra "Network Command v7" + chip "CROSS-OPERADOR".
+     a. El header muestra "Centro de Mando de Red v7" + chip "CROSS-OPERADOR".
      b. El selector "Operador" arranca en UCOT y al cambiar a CUTCSA todas las métricas se recalculan.
-     c. El gauge "Network Health" muestra un score 0-100 y los 4 sub-componentes (OTP / Bunch / Cover / Risk).
-     d. La sección Hot Zones muestra top 5 corredores cross-operador o un mensaje de estado vacío explicativo.
-     e. La sección Market Share muestra una tabla con buses propios vs rivales por línea, o estado vacío.
-     f. La sección Riesgos muestra incidencias críticas / personal sin asignar / vehículos en taller (o "Sin riesgos críticos").
-     g. El sidebar muestra dos entradas: "Dashboard CEO (legacy)" y "⭐ Network Command v7".
+     c. El gauge "Salud de la Red" muestra un score 0-100 y los 4 sub-componentes (OTP / Aglom / Cober / Riesgo).
+     d. La sección "Zonas Críticas — Corredores en Disputa" muestra top 5 corredores entre operadores o un mensaje de estado vacío explicativo.
+     e. La sección "Cuota de Mercado — Buses en Vivo por Línea Compartida" muestra una tabla con buses propios vs competidores por línea, o estado vacío.
+     f. La sección "Riesgos Activos" muestra incidencias críticas / personal sin asignar / vehículos en taller (o "Sin riesgos críticos").
+     g. El sidebar muestra dos entradas: "Dashboard CEO (legacy)" y "⭐ Centro de Mando v7".
+     h. Todos los textos visibles están en español (los términos técnicos OTP, GPS, STM, IMM, UITP, BRT, KPI son siglas y se mantienen).
 
 2) VERIFICACIÓN DEL LEGACY (zero regresión):
    - Navegá a http://localhost:3005/dashboard/traffic/ceo (el viejo).
@@ -61,26 +184,30 @@ Tu trabajo:
 4) COMMIT (un solo commit grande con todo):
    git add frontend/src/pages/traffic/CEODashboardV7.tsx frontend/src/pages/traffic/CEODashboard.tsx frontend/src/components/CompetitorThreatWidget.tsx frontend/src/App.tsx frontend/src/components/Sidebar.tsx CLAUDE.md docs/SESION_ACTUAL.md docs/HISTORIAL_SESIONES.md
 
-   git commit -m "feat(ceo-dashboard): Network Command V7 + cross-operador refactor del legacy
+   git commit -m "feat(ceo-dashboard): Centro de Mando de Red v7 + refactor cross-operador del legacy
 
-- Crea /dashboard/traffic/ceo-v7 (Network Command V7) con Health Score 0-100,
-  KPIs UITP-style (Service Reliability, Bunching Index, Service Delivery,
-  Riesgo Operativo), Hot Zones desde corridor_overlap, Market Share live por
-  línea desde GPS STM, panel de Riesgos compacto. Cross-operador desde el
-  primer pixel (UCOT/CUTCSA/COME/COETC). Inspirado en Optibus Network Health,
-  Swiftly Service Reliability, TfL EWT, NYC MTA Bunching Index, RATP Régularité.
-- Cada KPI linkea a su módulo especializado (ShadowRadar, OTPDashboard,
-  CorridorIntelligence, etc.) — evita duplicación de cálculos.
+- Crea /dashboard/traffic/ceo-v7 (Centro de Mando de Red v7) con Salud de Red
+  0-100, KPIs en español con sigla técnica internacional: Puntualidad (OTP),
+  Indice de Aglomeracion (24h), Cumplimiento de Servicio, Riesgo Operativo.
+  Zonas Criticas desde corridor_overlap, Cuota de Mercado en vivo por linea
+  desde GPS STM, panel de Riesgos compacto. Entre operadores desde el primer
+  pixel (UCOT/CUTCSA/COME/COETC). Inspirado en Optibus Network Health, Swiftly
+  Service Reliability, TfL EWT, NYC MTA Bunching Index, RATP Regularite.
+- Toda la UI en espanol (directriz 2026-04-24): los operadores no manejan
+  ingles. Solo siglas tecnicas estandar (OTP, GPS, STM, IMM, UITP, BRT) y
+  nombres propios de productos extranjeros entre comillas como referencia.
+- Cada KPI linkea a su modulo especializado (Radar de Sombra, Panel OTP,
+  Inteligencia de Corredores, etc.) — evita duplicacion de calculos.
 - Mantiene CEODashboard.tsx legacy intacto en /dashboard/traffic/ceo.
-  Sidebar muestra ambos para comparación lado a lado.
+  Sidebar muestra ambos para comparacion lado a lado.
 - Refuerzo directriz 7 en CLAUDE.md: las pruebas son siempre responsabilidad
   del agente; si no puede ejecutar, redacta orden completa para Claude Code.
 
 Verificado: tsc fresco 0 errores en archivos tocados. Integrity script OK.
 Errores TS pre-existentes en otros componentes (~98) quedan como deuda.
 
-Ref: directrices Alcance del producto + Filosofía de producto + Nivel
-internacional por defecto en CLAUDE.md."
+Ref: directrices Alcance del producto + Filosofia de producto + Nivel
+internacional por defecto + Espanol para UI en CLAUDE.md."
 
    git push
 

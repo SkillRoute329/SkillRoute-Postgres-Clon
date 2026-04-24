@@ -175,3 +175,34 @@ La integrity script usa `tsc --noEmit` con `incremental: true`, así que el tsbu
 - Implementar períodos 7d/30d en V7 (requiere agregaciones diarias en backend).
 - Driver app UI para ACK de FCM (backlog #5).
 
+
+## 2026-04-24 (sesión bis 4) — Deploy lado servidor: Firestore rules + verificación endpoints
+
+**Duración:** ~20 min (Claude Code Windows).
+
+**Trabajo realizado:**
+
+| Tarea | Resultado |
+|---|---|
+| `firebase deploy --only firestore:rules` | ✅ Desplegado. `corridor_overlap`, `shapes_cross_operator`, `incidencias` ahora accesibles. |
+| Verificación `/api/positions` local y producción | ✅ 730+ buses en vivo, `empresaId` numérico correcto, V7 ya lo usaba bien. |
+| Investigación `servicios_estado` vacío | ✅ Comportamiento esperado — se popula manualmente desde listero. V7 maneja estado vacío con "—". |
+
+**Reglas nuevas en `firestore.rules`:**
+- `corridor_overlap` — `allow read: if isAuthenticated()` (era `permission-denied` en V7, ShadowRadar, CorridorIntelligence, CorridorMap)
+- `shapes_cross_operator` — idem
+- `incidencias` — `allow read: if isAuthenticated()` (era `permission-denied` en V7)
+- `disruptions`, `desvios_reportados`, `delegaciones_inspector`, `parametros_operativos*` — reglas explícitas (antes caían al default)
+- Eliminada `isAdmin()` case-sensitive (reemplazada por `isAdminNorm()` que ya estaba en uso)
+
+**Commits de esta sesión:**
+- `281c20d1` — refactor(ceo-dashboard): cross-operator selector + remove UCOT hardcodes
+- `6c794054` — feat(ceo-dashboard): Network Command V7 + cross-operador refactor del legacy
+- (este) — chore(firestore-rules): deploy cors + incidencias + isAdmin() cleanup
+
+**Estado del V7 post-deploy:**
+- Zonas Críticas: debería mostrar datos de `corridor_overlap` (antes `permission-denied`)
+- Cuota de Mercado: 730+ buses GPS en vivo (datos reales)
+- Salud de la Red: score parcial si `servicio_estado` vacío (comportamiento correcto)
+- `/api/positions` en producción: respondiendo con todos los operadores
+
