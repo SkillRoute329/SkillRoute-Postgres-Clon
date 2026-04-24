@@ -15,12 +15,13 @@
  *     polilínea ordenada, longitud, bus/trip origen, timestamp
  *
  * Algoritmo (sencillo y determinístico para MVP):
- *   1. Traer pings de las últimas 48h (agencia por agencia, índice ya existe).
+ *   1. Traer pings de las últimas 72h (agencia por agencia, índice ya existe).
  *   2. Agrupar por (agencia, línea, sentido, bus) → candidatos de viaje.
- *   3. Partir cada bus-línea-sentido donde haya un gap >5 min → "trips".
+ *   3. Partir cada bus-línea-sentido donde haya un gap >15 min → "trips".
+ *      (tolera paradas en terminal; la densidad real es ~3-4 pings/hora/bus.)
  *   4. Por cada (agencia, línea, sentido) quedarnos con el trip de más puntos.
  *   5. Simplificar con Douglas-Peucker (tol 15 m) para reducir ruido.
- *   6. Descartar resultados <30 puntos o <500 m (no son líneas reales).
+ *   6. Descartar resultados <6 puntos o <1.5 km (no son líneas reales).
  *   7. Escribir batch a Firestore.
  *
  * Cron: lunes 03:00 Montevideo. HTTP manual: reconstructShapesNow.
@@ -35,11 +36,11 @@ const db = admin.firestore();
 
 const COLLECTION = 'shapes_cross_operator';
 const SOURCE_COLLECTION = 'vehicle_events';
-const LOOKBACK_HOURS = 48;
-const MIN_POINTS_FOR_SHAPE = 30;
-const MIN_LENGTH_METERS = 500;
+const LOOKBACK_HOURS = 72;
+const MIN_POINTS_FOR_SHAPE = 6;
+const MIN_LENGTH_METERS = 1500;
 const DOUGLAS_PEUCKER_TOLERANCE_M = 15;
-const MAX_GAP_BETWEEN_PINGS_MS = 5 * 60 * 1000;
+const MAX_GAP_BETWEEN_PINGS_MS = 15 * 60 * 1000;
 const MAX_PINGS_PER_AGENCY = 25000;
 const BATCH_SIZE = 400;
 
@@ -270,7 +271,9 @@ async function persistShapes(best: Map<string, Trip>): Promise<{ written: number
   for (const [key, trip] of best.entries()) {
     const simplified = douglasPeucker(trip.points, DOUGLAS_PEUCKER_TOLERANCE_M);
     const lengthM = Math.round(polylineLengthMeters(simplified));
-    if (simplified.length < MIN_POINTS_FOR_SHAPE / 2 || lengthM < MIN_LENGTH_METERS) {
+    // Post-simplificación, exigimos que queden al menos MIN_POINTS_FOR_SHAPE puntos
+    // (Douglas-Peucker ya redujo ruido; si baja de ese umbral, el trip era muy corto).
+    if (simplified.length < MIN_POINTS_FOR_SHAPE || lengthM < MIN_LENGTH_METERS) {
       skipped++;
       continue;
     }
