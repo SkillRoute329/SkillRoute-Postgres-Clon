@@ -1,0 +1,265 @@
+/**
+ * /api/admin/seed-* y /api/admin/personal — carga inicial de datos UCOT + admin de personal
+ *
+ * Endpoints de administración para sembrar datos desde JSON bundled y
+ * actualizar registros de personal.
+ *
+ * Data JSON queda en functions/src/data/ (junto con el build).
+ *
+ * Extraído de `intelligenceApi.ts` el 2026-04-24 como parte de la división
+ * por dominio (ADR 003).
+ */
+import * as admin from 'firebase-admin';
+import type { Express } from 'express';
+
+const getDb = () => admin.firestore();
+
+// Data bundled — requires se resuelven contra functions/src/data/
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const UCOT_PERSONAL_RAW: Array<{
+  interno: string; fullName: string; nombre: string; apellido: string;
+  cargo: string; telefono: string; rol: string; role: string;
+}> = require('../data/ucot_personal.json');
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const UCOT_VEHICLES_RAW: Array<{
+  interno: string; coche: string; linea: string | null; servicioNum: string;
+  estado_operativo: string; tipo: string;
+}> = require('../data/ucot_vehicles.json');
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const UCOT_SERVICIOS_HABILES: Array<any> = require('../data/ucot_servicios_habiles.json');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const UCOT_SERVICIOS_SABADO: Array<any> = require('../data/ucot_servicios_sabado.json');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const UCOT_BOLETIN: Record<string, any> = require('../data/ucot_boletin.json');
+
+/**
+ * Registra rutas de administración: seeds y CRUD básico de personal.
+ */
+export function registerAdminSeedRoutes(app: Express) {
+  // POST /api/admin/seed-personal-ucot — 691 empleados reales, idempotente (merge:true)
+  app.post('/api/admin/seed-personal-ucot', async (_req, res) => {
+    try {
+      const db = getDb();
+      const BATCH_SIZE = 450;
+      let total = 0;
+
+      const chunks: typeof UCOT_PERSONAL_RAW[] = [];
+      for (let i = 0; i < UCOT_PERSONAL_RAW.length; i += BATCH_SIZE) {
+        chunks.push(UCOT_PERSONAL_RAW.slice(i, i + BATCH_SIZE));
+      }
+
+      for (const chunk of chunks) {
+        const batchPersonal = db.batch();
+        const batchUsers = db.batch();
+        for (const emp of chunk) {
+          const docId = `P${emp.interno.padStart(4, '0')}`;
+          const empleadoData = {
+            internalNumber: emp.interno,
+            legajo: emp.interno,
+            fullName: emp.fullName,
+            nombre: emp.nombre,
+            apellido: emp.apellido,
+            cargo: emp.cargo,
+            telefono: emp.telefono,
+            rol: emp.rol,
+            role: emp.role,
+            esConductorReserva: false,
+            estadoHoy: 'disponible',
+            activo: true,
+            fuenteDatos: 'excel_ucot_2019',
+            importadoEn: admin.firestore.FieldValue.serverTimestamp(),
+          };
+          batchPersonal.set(db.collection('personal').doc(docId), empleadoData, { merge: true });
+          batchUsers.set(db.collection('users').doc(docId), {
+            ...empleadoData,
+            fromExcel: true,
+          }, { merge: true });
+          total++;
+        }
+        await Promise.all([batchPersonal.commit(), batchUsers.commit()]);
+      }
+
+      res.json({ ok: true, message: `${total} empleados UCOT cargados en 'personal' y 'users'`, total });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // POST /api/admin/seed-vehicles-ucot
+  app.post('/api/admin/seed-vehicles-ucot', async (_req, res) => {
+    try {
+      const db = getDb();
+      const BATCH_SIZE = 450;
+      let total = 0;
+      for (let i = 0; i < UCOT_VEHICLES_RAW.length; i += BATCH_SIZE) {
+        const batchV = db.batch();
+        const batchVeh = db.batch();
+        for (const v of UCOT_VEHICLES_RAW.slice(i, i + BATCH_SIZE)) {
+          const vehicleData = {
+            interno: v.interno,
+            coche: v.coche,
+            internalNumber: v.interno,
+            linea: v.linea,
+            servicioNum: v.servicioNum,
+            estado_operativo: v.estado_operativo,
+            tipo: v.tipo,
+            activo: true,
+            fuenteDatos: 'cartones_ucot_2026',
+            importadoEn: admin.firestore.FieldValue.serverTimestamp(),
+          };
+          batchV.set(db.collection('vehicles').doc(v.interno), vehicleData, { merge: true });
+          batchVeh.set(db.collection('vehiculos').doc(v.interno), vehicleData, { merge: true });
+          total++;
+        }
+        await Promise.all([batchV.commit(), batchVeh.commit()]);
+      }
+      res.json({ ok: true, message: `${total} vehículos cargados en 'vehicles' y 'vehiculos'`, total });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // POST /api/admin/seed-horarios-ucot — servicios hábiles (cartones)
+  app.post('/api/admin/seed-horarios-ucot', async (_req, res) => {
+    try {
+      const db = getDb();
+      const BATCH_SIZE = 450;
+      let total = 0;
+      for (let i = 0; i < UCOT_SERVICIOS_HABILES.length; i += BATCH_SIZE) {
+        const batch = db.batch();
+        for (const s of UCOT_SERVICIOS_HABILES.slice(i, i + BATCH_SIZE)) {
+          batch.set(db.collection('servicios_ucot').doc(s.servicio), {
+            servicio: s.servicio,
+            linea: s.linea,
+            etapas: s.etapas,
+            instrucciones: s.instrucciones,
+            vueltas: s.vueltas,
+            tipoServicio: 'habil',
+            temporada: 'invierno_2026',
+            totalVueltas: s.vueltas.length,
+            primeraSalida: s.vueltas[0]?.paradas[0]?.hora ?? null,
+            ultimaLlegada: s.vueltas[s.vueltas.length - 1]?.paradas?.slice(-1)[0]?.hora ?? null,
+            importadoEn: admin.firestore.FieldValue.serverTimestamp(),
+          }, { merge: true });
+          total++;
+        }
+        await batch.commit();
+      }
+      res.json({ ok: true, message: `${total} servicios hábiles UCOT cargados en 'servicios_ucot'`, total });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // GET /api/admin/personal — lista paginada de empleados (ordenada por interno)
+  app.get('/api/admin/personal', async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(String(req.query.limit ?? '200')), 700);
+      const rol = req.query.rol ? String(req.query.rol) : null;
+      const db = getDb();
+
+      const col = db.collection('personal');
+      const docIdField = admin.firestore.FieldPath.documentId();
+
+      const snap = await col
+        .where(docIdField, '>=', 'P')
+        .where(docIdField, '<', 'Q')
+        .limit(700)
+        .get();
+
+      let docs = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+
+      if (rol) docs = docs.filter((d: any) => d.rol === rol || d.role === rol);
+
+      docs = docs
+        .sort((a: any, b: any) => {
+          const na = parseInt(a.internalNumber ?? a.interno ?? '9999');
+          const nb = parseInt(b.internalNumber ?? b.interno ?? '9999');
+          return na - nb;
+        })
+        .slice(0, limit);
+
+      res.json({ ok: true, total: docs.length, empleados: docs });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // PUT /api/admin/personal/:id — actualiza campos editables
+  app.put('/api/admin/personal/:id', async (req, res) => {
+    try {
+      const db = getDb();
+      const { id } = req.params;
+      const { cargo, rol, telefono, estado } = req.body as any;
+      const update: any = { actualizadoEn: admin.firestore.FieldValue.serverTimestamp() };
+      if (cargo !== undefined) update.cargo = cargo;
+      if (rol !== undefined) { update.rol = rol; update.role = rol; }
+      if (telefono !== undefined) update.telefono = telefono;
+      if (estado !== undefined) update.estado = estado;
+      await db.collection('personal').doc(id).update(update);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // POST /api/admin/seed-sabado-ucot — servicios de sábado (verano)
+  app.post('/api/admin/seed-sabado-ucot', async (_req, res) => {
+    try {
+      const db = getDb();
+      let total = 0;
+      for (let i = 0; i < UCOT_SERVICIOS_SABADO.length; i += 450) {
+        const batch = db.batch();
+        for (const s of UCOT_SERVICIOS_SABADO.slice(i, i + 450)) {
+          batch.set(db.collection('servicios_ucot').doc(`S${s.servicio}`), {
+            servicio: s.servicio,
+            linea: s.linea,
+            etapas: s.etapas,
+            instrucciones: s.instrucciones,
+            vueltas: s.vueltas,
+            tipoServicio: 'sabado_verano',
+            temporada: 'verano_2026',
+            totalVueltas: s.vueltas.length,
+            primeraSalida: s.vueltas[0]?.paradas[0]?.hora ?? null,
+            importadoEn: admin.firestore.FieldValue.serverTimestamp(),
+          }, { merge: true });
+          total++;
+        }
+        await batch.commit();
+      }
+      res.json({ ok: true, message: `${total} servicios sábado cargados en 'servicios_ucot'`, total });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // POST /api/admin/seed-boletin-ucot — boletín oficial
+  app.post('/api/admin/seed-boletin-ucot', async (_req, res) => {
+    try {
+      const db = getDb();
+      let total = 0;
+      const lineas = Object.keys(UCOT_BOLETIN);
+      for (let i = 0; i < lineas.length; i += 50) {
+        const batch = db.batch();
+        for (const linea of lineas.slice(i, i + 50)) {
+          const data = UCOT_BOLETIN[linea];
+          batch.set(db.collection('boletin_oficial').doc(linea), {
+            linea,
+            paradas: data.paradas,
+            servicios: data.servicios,
+            tipoServicio: 'habil',
+            temporada: 'invierno_2026',
+            importadoEn: admin.firestore.FieldValue.serverTimestamp(),
+          }, { merge: true });
+          total++;
+        }
+        await batch.commit();
+      }
+      res.json({ ok: true, message: `${total} líneas del boletín cargadas (${Object.values(UCOT_BOLETIN).reduce((a: number, l: any) => a + l.servicios.length, 0)} servicios)`, total });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+}

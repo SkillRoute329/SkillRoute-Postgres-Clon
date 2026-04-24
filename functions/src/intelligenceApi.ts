@@ -2,9 +2,23 @@ import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import express = require('express');
 import cors = require('cors');
+import * as zlib from 'zlib';
+import { promisify } from 'util';
+const gunzipAsync = promisify(zlib.gunzip);
+import { registerAutostatsRoutes } from './api/autostats';
+import { registerUcotPortalRoutes } from './api/ucotPortal';
+import { registerCartonesConsultaRoutes } from './api/cartonesConsulta';
+import { registerListeroRoutes } from './api/listero';
+import { registerAdminSeedRoutes } from './api/adminSeeds';
 
 const app = express();
 app.use(cors({ origin: true }));
+
+registerAutostatsRoutes(app);
+registerUcotPortalRoutes(app);
+registerCartonesConsultaRoutes(app);
+registerListeroRoutes(app);
+registerAdminSeedRoutes(app);
 
 // Acceso diferido a Firestore para evitar errores de inicialización top-level
 const getDb = () => admin.firestore();
@@ -61,6 +75,11 @@ const UCOT_LINEAS: Array<{ id: string; nombre: string; categoria: 'urbana' | 'lo
 
 export const UCOT_LINEAS_LIST = UCOT_LINEAS;
 
+// Mapeo agencyId (string) → codigoEmpresa (número en GPS STM)
+const EMPRESA_IDS: Record<string, number> = {
+  '10': 10, '20': 20, '50': 50, '70': 70,
+};
+
 const STM_URL = 'https://www.montevideo.gub.uy/buses/rest/stm-online';
 const STM_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/121.0.0.0 Safari/537.36',
@@ -74,8 +93,8 @@ const EMPRESAS: Record<number, string> = {
 };
 const EMPRESA_UCOT_ID = 70;
 const CACHE_TTL_MS = 45_000; // Aumentado a 45s para reducir latencia de fetch repetitivo (8MB)
-/** Radio considerado "competencia directa" en análisis por línea */
-const RADIO_COMPETENCIA_KM = 0.5;
+/** Radio de competencia directa — 300m es corredor compartido real, no mera proximidad urbana */
+const RADIO_COMPETENCIA_KM = 0.3;
 
 let _cache: any = null;
 let _cacheTs = 0;
@@ -174,7 +193,10 @@ app.get('/api/inteligencia/:lineaUcot', async (req, res) => {
       for (const rival of todos) {
         if (rival.empresaId === EMPRESA_UCOT_ID) continue;
         const dist = haversineKm(ucot.lat, ucot.lng, rival.lat, rival.lng);
-        if (dist <= 2.0 && rival.linea) {
+        // Fix #1 (2026-04-23): usar la constante RADIO_COMPETENCIA_KM (300 m)
+        // en lugar del literal 2.0 km que contradecía el comentario de línea 85.
+        // 300 m = corredor compartido real; 2 km generaba falsos positivos urbanos.
+        if (dist <= RADIO_COMPETENCIA_KM && rival.linea) {
           const key = `${rival.empresa}-${rival.linea}`;
           if (!competenciaMap.has(key)) {
             competenciaMap.set(key, { empresa: rival.empresa, linea: rival.linea, busesEnTramo: 0 });
@@ -447,74 +469,136 @@ function frecuenciaProgramadaDesdeDoc(
   };
 }
 
-app.get('/api/ucot/fleet-intel', async (_req, res) => {
+// ─── GET /api/agency-lines/:agencyId ─────────────────────────────────────────
+app.get('/api/agency-lines/:agencyId', async (req, res) => {
+  const agencyId = String(req.params.agencyId || '70').trim();
   try {
+    const snap = await getDb().collection('line_inspector_configs')
+      .where('agencyId', '==', agencyId).orderBy('lineId').get();
+    if (!snap.empty) {
+      return res.json({ ok: true, agencyId, source: 'firestore', lines: snap.docs.map((d) => d.data()) });
+    }
+    if (agencyId === '70') {
+      return res.json({
+        ok: true, agencyId, source: 'static',
+        lines: UCOT_LINEAS.map((l) => ({ lineId: l.id, nombre: l.nombre, categoria: l.categoria })),
+      });
+    }
+    const empresaId = EMPRESA_IDS[agencyId];
+    if (!empresaId) return res.json({ ok: true, agencyId, source: 'empty', lines: [] });
     const geojson: any = await fetchSTM();
     const todos = (geojson.features || []).map(parseBus).filter((b: any) => b.gpsValido);
-    const ucotAll = todos.filter((b: any) => b.empresaId === EMPRESA_UCOT_ID);
+    const companyBuses = todos.filter((b: any) => b.empresaId === empresaId);
+    const lineMap = new Map<string, number>();
+    companyBuses.forEach((b: any) => { if (b.linea) lineMap.set(b.linea, (lineMap.get(b.linea) ?? 0) + 1); });
+    const lines = Array.from(lineMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([lineId, count]) => ({ lineId, nombre: `Línea ${lineId}`, categoria: 'urbana', busesActivos: count }));
+    return res.json({ ok: true, agencyId, source: 'gps', lines });
+  } catch (err: any) {
+    res.status(502).json({ ok: false, error: err?.message || String(err) });
+  }
+});
 
-    // Cargar horarios_oficiales de todas las líneas UCOT en paralelo
+// ─── POST /api/admin/seed-line-configs ───────────────────────────────────────
+app.post('/api/admin/seed-line-configs', async (_req, res) => {
+  try {
+    const batch = getDb().batch();
+    UCOT_LINEAS.forEach((l) => {
+      const ref = getDb().collection('line_inspector_configs').doc(`70_${l.id}`);
+      batch.set(ref, { agencyId: '70', lineId: l.id, nombre: l.nombre, categoria: l.categoria, createdAt: new Date().toISOString() }, { merge: true });
+    });
+    await batch.commit();
+    res.json({ ok: true, seeded: UCOT_LINEAS.length });
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err?.message });
+  }
+});
+
+// ─── GET /api/ucot/fleet-intel ────────────────────────────────────────────────
+// Params: agencyId (default '70'), lineIds (comma-separated, opcional)
+app.get('/api/ucot/fleet-intel', async (req, res) => {
+  try {
+    const agencyId = String((req as any).query.agencyId ?? '70').trim();
+    const lineIdsParam = String((req as any).query.lineIds ?? '').trim();
+    const requestedLineIds = lineIdsParam ? lineIdsParam.split(',').map((s: string) => s.trim()).filter(Boolean) : null;
+    const empresaId = EMPRESA_IDS[agencyId] ?? EMPRESA_UCOT_ID;
+
+    const geojson: any = await fetchSTM();
+    const todos = (geojson.features || []).map(parseBus).filter((b: any) => b.gpsValido);
+    const agencyBuses = todos.filter((b: any) => b.empresaId === empresaId);
+
+    let lineasMeta: Array<{ id: string; nombre: string; categoria: string }>;
+    if (requestedLineIds && requestedLineIds.length > 0) {
+      lineasMeta = requestedLineIds.map((id: string) => {
+        const ucotMeta = UCOT_LINEAS.find((l) => l.id === id);
+        return { id, nombre: ucotMeta?.nombre ?? `Línea ${id}`, categoria: ucotMeta?.categoria ?? 'urbana' };
+      });
+    } else if (agencyId === '70') {
+      lineasMeta = UCOT_LINEAS;
+    } else {
+      const lineMap = new Map<string, number>();
+      agencyBuses.forEach((b: any) => { if (b.linea) lineMap.set(b.linea, (lineMap.get(b.linea) ?? 0) + 1); });
+      lineasMeta = Array.from(lineMap.keys()).slice(0, 60).map((id) => ({ id, nombre: `Línea ${id}`, categoria: 'urbana' }));
+    }
+
     const tipoDia = tipoDiaHoyMontevideo();
     const hhmm = hhmmAhoraMontevideo();
-    const horarioDocs = await getDb().getAll(
-      ...UCOT_LINEAS.map((l) => getDb().collection('horarios_oficiales').doc(l.id)),
-    );
     const horariosMap = new Map<string, admin.firestore.DocumentSnapshot>();
-    horarioDocs.forEach((d) => horariosMap.set(d.id, d));
+    if (lineasMeta.length > 0) {
+      const horarioDocs = await getDb().getAll(
+        ...lineasMeta.map((l) => getDb().collection('horarios_oficiales').doc(l.id)),
+      );
+      horarioDocs.forEach((d) => horariosMap.set(d.id, d));
+    }
 
-    const lineas = UCOT_LINEAS.map((meta) => {
-      const busesUcot = ucotAll.filter((b: any) => b.linea === meta.id);
-      const busesActivos = busesUcot.length;
+    const since30 = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const evSnap = await getDb().collection('vehicle_events')
+      .where('agencyId', '==', agencyId)
+      .where('timestampGPS', '>=', since30)
+      .orderBy('timestampGPS', 'desc')
+      .limit(1500)
+      .get();
+    const linesBuses: Record<string, Set<string>> = {};
+    evSnap.docs.forEach((d) => {
+      const e = d.data();
+      if (e.linea) {
+        if (!linesBuses[e.linea]) linesBuses[e.linea] = new Set();
+        linesBuses[e.linea].add(e.idBus);
+      }
+    });
+    const frecuenciaRealByLine: Record<string, number | null> = {};
+    for (const [linea, buses] of Object.entries(linesBuses)) {
+      const n = (buses as Set<string>).size;
+      frecuenciaRealByLine[linea] = n >= 2 ? Math.round(30 / n) : null;
+    }
 
-      // Bunching: pares de buses UCOT demasiado cerca (GPS real)
+    const lineas = lineasMeta.map((meta) => {
+      const busesLinea = agencyBuses.filter((b: any) => b.linea === meta.id);
+      const busesActivos = busesLinea.length;
+
       let bunchingPares = 0;
-      for (let i = 0; i < busesUcot.length; i++) {
-        for (let j = i + 1; j < busesUcot.length; j++) {
-          const d = haversineKm(busesUcot[i].lat, busesUcot[i].lng, busesUcot[j].lat, busesUcot[j].lng);
+      for (let i = 0; i < busesLinea.length; i++) {
+        for (let j = i + 1; j < busesLinea.length; j++) {
+          const d = haversineKm(busesLinea[i].lat, busesLinea[i].lng, busesLinea[j].lat, busesLinea[j].lng);
           if (d < 0.8) bunchingPares++;
         }
       }
 
-      // Rivales cercanos (<0.5km a cualquier bus UCOT de esta línea, GPS real)
       const empresasDetectadas = new Set<string>();
       let busesConCompetenciaDirecta = 0;
-      for (const ucot of busesUcot) {
+      for (const propio of busesLinea) {
         let tieneRivalCerca = false;
         for (const rival of todos) {
-          if (rival.empresaId === EMPRESA_UCOT_ID) continue;
-          const d = haversineKm(ucot.lat, ucot.lng, rival.lat, rival.lng);
-          if (d <= RADIO_COMPETENCIA_KM) {
-            tieneRivalCerca = true;
-            empresasDetectadas.add(rival.empresa);
-          }
+          if (rival.empresaId === empresaId) continue;
+          const d = haversineKm(propio.lat, propio.lng, rival.lat, rival.lng);
+          if (d <= RADIO_COMPETENCIA_KM) { tieneRivalCerca = true; empresasDetectadas.add(rival.empresa); }
         }
         if (tieneRivalCerca) busesConCompetenciaDirecta++;
       }
 
-      const pctFlotaEnDisputa = busesActivos > 0
-        ? Math.round((busesConCompetenciaDirecta / busesActivos) * 100)
-        : 0;
+      const pctFlotaEnDisputa = busesActivos > 0 ? Math.round((busesConCompetenciaDirecta / busesActivos) * 100) : 0;
 
-      // Alerta operativa deriva SOLO de datos GPS reales (bunching + disputa).
-      // No se compara contra frecuencia programada porque no tenemos frecuencia
-      // REAL (requiere tracking temporal GPS, no snapshot instantáneo).
-      let nivelAlerta: 'ALTA' | 'MEDIA' | 'BAJA' | 'SIN_SERVICIO' = 'BAJA';
-      if (busesActivos === 0) nivelAlerta = 'SIN_SERVICIO';
-      else if (pctFlotaEnDisputa >= 60 || bunchingPares >= 2) nivelAlerta = 'ALTA';
-      else if (pctFlotaEnDisputa >= 30 || bunchingPares >= 1) nivelAlerta = 'MEDIA';
-
-      let estadoOperativo: 'OPERATIVO' | 'SIN_SERVICIO' | 'ALERTA' = 'OPERATIVO';
-      if (busesActivos === 0) estadoOperativo = 'SIN_SERVICIO';
-      else if (nivelAlerta === 'ALTA') estadoOperativo = 'ALERTA';
-
-      // Posición competitiva: sólo marcadores honestos derivados de GPS real.
-      let posicionCompetitiva: 'SIN_RIVALES_VISIBLES' | 'CON_RIVALES' | 'DISPUTADA' | 'CRITICA' | 'SIN_SERVICIO' = 'CON_RIVALES';
-      if (busesActivos === 0) posicionCompetitiva = 'SIN_SERVICIO';
-      else if (empresasDetectadas.size === 0) posicionCompetitiva = 'SIN_RIVALES_VISIBLES';
-      else if (pctFlotaEnDisputa >= 60) posicionCompetitiva = 'CRITICA';
-      else if (pctFlotaEnDisputa >= 30) posicionCompetitiva = 'DISPUTADA';
-
-      // Horario oficial (sólo cuando fue scrapeado, sin inventar valores)
       let frecuenciaProgramadaMin: number | null = null;
       let horaInicioProgramada: string | null = null;
       let horaFinProgramada: string | null = null;
@@ -530,28 +614,58 @@ app.get('/api/ucot/fleet-intel', async (_req, res) => {
         totalSalidasProgramadas = prog.totalSalidas;
       }
 
+      const frecReal = frecuenciaRealByLine[meta.id] ?? null;
+      const brechaPct = frecReal !== null && frecuenciaProgramadaMin !== null && frecuenciaProgramadaMin > 0
+        ? Math.round(((frecReal - frecuenciaProgramadaMin) / frecuenciaProgramadaMin) * 100) : null;
+
+      // ── nivelAlerta: driver principal = brecha vs horario programado ──────────
+      // Un CEO de tránsito necesita alertas que signifiquen algo:
+      //   ALTA = problema operativo real (incumplimiento grave de horario o bunching severo)
+      //   MEDIA = atención necesaria (leve degradación o presión rival)
+      //   BAJA = operación normal dentro de tolerancia
+      let nivelAlerta: 'ALTA' | 'MEDIA' | 'BAJA' | 'SIN_SERVICIO' = 'BAJA';
+      if (busesActivos === 0) {
+        nivelAlerta = 'SIN_SERVICIO';
+      } else if ((brechaPct !== null && brechaPct > 50) || bunchingPares >= 3) {
+        nivelAlerta = 'ALTA'; // intervalo real >50% sobre programado, o agrupamiento severo
+      } else if ((brechaPct !== null && brechaPct > 20) || bunchingPares >= 1) {
+        nivelAlerta = 'MEDIA'; // degradación leve detectada
+      } else if (brechaPct === null && pctFlotaEnDisputa >= 80) {
+        nivelAlerta = 'MEDIA'; // sin datos de horario pero alta presión de rival
+      }
+
+      let estadoOperativo: 'OPERATIVO' | 'SIN_SERVICIO' | 'ALERTA' = 'OPERATIVO';
+      if (busesActivos === 0) estadoOperativo = 'SIN_SERVICIO';
+      else if (nivelAlerta === 'ALTA') estadoOperativo = 'ALERTA';
+
+      let posicionCompetitiva: 'SIN_RIVALES_VISIBLES' | 'CON_RIVALES' | 'DISPUTADA' | 'CRITICA' | 'SIN_SERVICIO' = 'CON_RIVALES';
+      if (busesActivos === 0) posicionCompetitiva = 'SIN_SERVICIO';
+      else if (empresasDetectadas.size === 0) posicionCompetitiva = 'SIN_RIVALES_VISIBLES';
+      else if (pctFlotaEnDisputa >= 70) posicionCompetitiva = 'CRITICA';
+      else if (pctFlotaEnDisputa >= 40) posicionCompetitiva = 'DISPUTADA';
+
+      // ── saludServicio 0-100: KPI ejecutivo compuesto ─────────────────────────
+      // Penaliza incumplimiento de frecuencia (40pts) + bunching (30pts) + sin servicio
+      let saludServicio = 100;
+      if (brechaPct !== null && brechaPct > 0) saludServicio -= Math.min(40, Math.round(brechaPct * 0.7));
+      if (bunchingPares > 0) saludServicio -= Math.min(30, bunchingPares * 12);
+      if (busesActivos === 0) saludServicio = 0;
+      saludServicio = Math.max(0, saludServicio);
+
+      // ── cicloMin estimado: N buses × headway programado (fórmula transit) ────
+      const cicloMin = busesActivos > 0 && frecuenciaProgramadaMin
+        ? busesActivos * frecuenciaProgramadaMin
+        : frecuenciaProgramadaMin
+          ? frecuenciaProgramadaMin * 2
+          : 0;
+
       return {
-        lineId: meta.id,
-        nombreComercial: meta.nombre,
-        categoria: meta.categoria,
-        busesActivos,
-        // Frecuencia real NO se calcula: requiere tracking temporal GPS que
-        // todavía no implementamos. Exponerla como null es honesto, no inventamos.
-        frecuenciaRealMin: null,
-        frecuenciaProgramadaMin,
-        brechaPct: null,
-        horaInicioProgramada,
-        horaFinProgramada,
-        totalSalidasProgramadas,
-        tieneHorariosOficiales,
-        bunchingPares,
-        pctFlotaEnDisputa,
-        busesConCompetenciaDirecta,
-        empresasDetectadas: Array.from(empresasDetectadas),
-        rivalCount: empresasDetectadas.size,
-        nivelAlerta,
-        estadoOperativo,
-        posicionCompetitiva,
+        lineId: meta.id, nombreComercial: meta.nombre, categoria: meta.categoria, busesActivos,
+        frecuenciaRealMin: frecReal, frecuenciaProgramadaMin, brechaPct,
+        horaInicioProgramada, horaFinProgramada, totalSalidasProgramadas, tieneHorariosOficiales,
+        cicloMin, bunchingPares, pctFlotaEnDisputa, busesConCompetenciaDirecta,
+        empresasDetectadas: Array.from(empresasDetectadas), rivalCount: empresasDetectadas.size,
+        nivelAlerta, estadoOperativo, posicionCompetitiva, saludServicio,
       };
     });
 
@@ -560,16 +674,9 @@ app.get('/api/ucot/fleet-intel', async (_req, res) => {
     const lineasConHorariosOficiales = lineas.filter((l) => l.tieneHorariosOficiales).length;
 
     res.json({
-      ok: true,
-      timestamp: new Date().toISOString(),
-      tipoDia,
-      horaMontevideo: hhmm,
-      totalLineas: lineas.length,
-      lineasEnServicio,
-      lineasSinServicio: lineas.length - lineasEnServicio,
-      lineasConHorariosOficiales,
-      totalBusesUcot: totalBuses,
-      lineas,
+      ok: true, agencyId, timestamp: new Date().toISOString(), tipoDia, horaMontevideo: hhmm,
+      totalLineas: lineas.length, lineasEnServicio, lineasSinServicio: lineas.length - lineasEnServicio,
+      lineasConHorariosOficiales, totalBusesUcot: totalBuses, lineas,
     });
   } catch (err: any) {
     res.status(502).json({ ok: false, error: err?.message || String(err) });
@@ -766,938 +873,8 @@ app.post('/api/ai/orders/:id/reject', async (req, res) => {
   }
 });
 
-// ─── LISTERO: Programación Diaria y Cascada Operativa ────────────────────────
+// ─── EXPORT CLOUD FUNCTION ───────────────────────────────────────────────────
+export const intelligenceApi = functions
+  .runWith({ timeoutSeconds: 120, memory: '512MB' })
+  .https.onRequest(app);
 
-const IMPORTANCIA_LINEA_MAP: Record<string, number> = {
-  '300': 5, '306': 5, '329': 4, '330': 4, '17': 4, '316': 4, '328': 3, '370': 3, '79': 3, '396': 2,
-};
-
-function fechaHoyMVD(): string {
-  const ahora = new Date();
-  const mvd = new Date(ahora.getTime() - 3 * 60 * 60 * 1000);
-  return mvd.toISOString().split('T')[0];
-}
-
-// GET /api/listero/turnos?fecha=&turno=
-app.get('/api/listero/turnos', async (req, res) => {
-  const fecha = String(req.query.fecha || fechaHoyMVD());
-  const turno = req.query.turno as string | undefined;
-  try {
-    let q: admin.firestore.Query = getDb().collection('turnos_dia').where('fecha', '==', fecha);
-    if (turno && turno !== 'todos') q = q.where('turnoNombre', '==', turno);
-    const snap = await q.get();
-    const turnos = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    res.json({ ok: true, turnos });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// POST /api/listero/turnos
-app.post('/api/listero/turnos', async (req, res) => {
-  try {
-    const data = { ...req.body, creadoEn: admin.firestore.FieldValue.serverTimestamp() };
-    data.fecha = data.fecha || fechaHoyMVD();
-    data.estado = data.estado || 'programado';
-    const ref = await getDb().collection('turnos_dia').add(data);
-    res.json({ ok: true, id: ref.id });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// PATCH /api/listero/turnos/:id
-app.patch('/api/listero/turnos/:id', async (req, res) => {
-  try {
-    await getDb().collection('turnos_dia').doc(req.params.id).update({
-      ...req.body,
-      actualizadoEn: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    res.json({ ok: true });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// GET /api/listero/conductores?fecha=
-app.get('/api/listero/conductores', async (_req, res) => {
-  try {
-    const snap = await getDb().collection('personal').get();
-    const conductores = snap.docs.map((d) => {
-      const data = d.data() as any;
-      return {
-        id: d.id,
-        internalNumber: data.internalNumber || d.id,
-        fullName: data.fullName || data.nombre || 'Sin nombre',
-        rol: data.rol || data.role || 'Driver',
-        estadoHoy: data.estadoHoy || 'disponible',
-        turnoAsignado: data.turnoAsignado ?? null,
-        lineaAsignada: data.lineaAsignada ?? null,
-        vehiculoAsignado: data.vehiculoAsignado ?? null,
-        esConductorReserva: data.esConductorReserva ?? (data.rol === 'reserva'),
-        telefono: data.telefono ?? null,
-      };
-    });
-    res.json({ ok: true, conductores });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// POST /api/listero/ausencia
-app.post('/api/listero/ausencia', async (req, res) => {
-  const { conductorId, conductorNombre, motivo, fecha } = req.body;
-  const fechaHoy: string = fecha || fechaHoyMVD();
-  try {
-    if (conductorId) {
-      await getDb().collection('personal').doc(conductorId).set(
-        { estadoHoy: 'ausente', motivoAusencia: motivo, fechaAusencia: fechaHoy },
-        { merge: true },
-      );
-    }
-
-    const turnosSnap = await getDb().collection('turnos_dia')
-      .where('conductorId', '==', conductorId)
-      .where('fecha', '==', fechaHoy)
-      .get();
-
-    const turnosAfectados: string[] = [];
-    let lineaId = 'desconocida';
-    let importanciaLinea = 3;
-
-    for (const doc of turnosSnap.docs) {
-      const td = doc.data() as any;
-      if (td.estado === 'programado' || td.estado === 'activo') {
-        await doc.ref.update({ estado: 'sin_conductor', actualizadoEn: admin.firestore.FieldValue.serverTimestamp() });
-        turnosAfectados.push(doc.id);
-        lineaId = td.lineaId || lineaId;
-        importanciaLinea = td.importanciaLinea || IMPORTANCIA_LINEA_MAP[td.lineaId] || 3;
-      }
-    }
-
-    const reservasSnap = await getDb().collection('personal')
-      .where('esConductorReserva', '==', true)
-      .where('estadoHoy', '==', 'disponible')
-      .get();
-    const reservasDisponibles = reservasSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-
-    let urgencia: string;
-    let tipo: string;
-    if (reservasDisponibles.length === 0 && importanciaLinea >= 4) {
-      urgencia = 'critica'; tipo = 'infraccion_imminente';
-    } else if (importanciaLinea >= 5) {
-      urgencia = 'critica'; tipo = 'ausencia_conductor';
-    } else if (importanciaLinea >= 4) {
-      urgencia = 'alta'; tipo = 'ausencia_conductor';
-    } else {
-      urgencia = 'media'; tipo = 'ausencia_conductor';
-    }
-
-    await getDb().collection('alertas_operativas').add({
-      tipo,
-      urgencia,
-      lineaId,
-      conductorId,
-      titulo: `Ausencia: ${conductorNombre || conductorId}`,
-      mensaje: `${conductorNombre || conductorId} registró ausencia (${motivo}). Línea ${lineaId} afectada. ${reservasDisponibles.length} reservas disponibles.`,
-      accionSugerida: reservasDisponibles.length > 0
-        ? `Asignar ${reservasDisponibles[0].fullName} como reserva`
-        : 'Contactar MTOP para permiso de frecuencia reducida',
-      turnosAfectados,
-      reservasDisponibles: reservasDisponibles.map((r) => ({ id: r.id, fullName: r.fullName })),
-      impactoIngresosUSD: turnosAfectados.length * importanciaLinea * 30,
-      atendida: false,
-      fecha: fechaHoy,
-      creadoEn: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    const allSnap = await getDb().collection('turnos_dia').where('fecha', '==', fechaHoy).get();
-    const total = allSnap.size;
-    const sinConductor = allSnap.docs.filter((d) => (d.data() as any).estado === 'sin_conductor').length;
-    if (total > 0 && sinConductor / total > 0.2) {
-      await getDb().collection('alertas_operativas').add({
-        tipo: 'cobertura_critica',
-        urgencia: 'critica',
-        lineaId: null,
-        titulo: 'Cobertura de flota crítica',
-        mensaje: `${sinConductor} de ${total} turnos sin conductor (${Math.round((sinConductor / total) * 100)}% sin cubrir).`,
-        accionSugerida: 'Activar protocolo de emergencia: llamar al retén completo',
-        atendida: false,
-        fecha: fechaHoy,
-        creadoEn: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    }
-
-    res.json({ ok: true, turnosAfectados, reservasDisponibles: reservasDisponibles.length, urgencia });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// POST /api/listero/reserva
-app.post('/api/listero/reserva', async (req, res) => {
-  const { turnoId, conductorReservaId, conductorReservaNombre } = req.body;
-  try {
-    await getDb().collection('turnos_dia').doc(turnoId).update({
-      estado: 'cubierto_reserva',
-      conductorReservaId,
-      conductorReservaNombre,
-      reservaActivada: true,
-      actualizadoEn: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    if (conductorReservaId) {
-      await getDb().collection('personal').doc(conductorReservaId).set({ estadoHoy: 'en_servicio' }, { merge: true });
-    }
-    res.json({ ok: true });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// GET /api/listero/vehiculos-reserva
-app.get('/api/listero/vehiculos-reserva', async (_req, res) => {
-  try {
-    const snap = await getDb().collection('vehicles').where('estadoHoy', '==', 'disponible').get();
-    const vehiculos = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    res.json({ ok: true, vehiculos });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// POST /api/listero/vehiculo-taller
-app.post('/api/listero/vehiculo-taller', async (req, res) => {
-  const { vehiculoId, vehiculoInterno, motivo, fecha } = req.body;
-  const fechaHoy: string = fecha || fechaHoyMVD();
-  try {
-    if (vehiculoId) {
-      await getDb().collection('vehicles').doc(vehiculoId).set(
-        { estadoHoy: 'en_taller', motivoTaller: motivo },
-        { merge: true },
-      );
-    }
-
-    const turnosSnap = await getDb().collection('turnos_dia')
-      .where('vehiculoId', '==', vehiculoId)
-      .where('fecha', '==', fechaHoy)
-      .get();
-
-    const turnosAfectados: string[] = [];
-    for (const doc of turnosSnap.docs) {
-      const td = doc.data() as any;
-      if (td.estado === 'programado' || td.estado === 'activo') {
-        await doc.ref.update({ estado: 'sin_conductor', vehiculoEnTaller: true, actualizadoEn: admin.firestore.FieldValue.serverTimestamp() });
-        turnosAfectados.push(doc.id);
-      }
-    }
-
-    await getDb().collection('alertas_operativas').add({
-      tipo: 'vehiculo_en_taller',
-      urgencia: 'alta',
-      lineaId: null,
-      titulo: `Coche ${vehiculoInterno || vehiculoId} en taller`,
-      mensaje: `Coche ${vehiculoInterno || vehiculoId} enviado a taller: ${motivo}. ${turnosAfectados.length} turnos afectados.`,
-      accionSugerida: 'Buscar vehículo de reemplazo en el parque disponible',
-      turnosAfectados,
-      atendida: false,
-      fecha: fechaHoy,
-      creadoEn: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    res.json({ ok: true, turnosAfectados });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// POST /api/listero/firma
-app.post('/api/listero/firma', async (req, res) => {
-  const { turnoId, horaFirma } = req.body;
-  try {
-    await getDb().collection('turnos_dia').doc(turnoId).update({
-      firmaConductor: true,
-      horaFirma: horaFirma || hhmmAhoraMontevideo(),
-      actualizadoEn: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    res.json({ ok: true });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// GET /api/listero/alertas?fecha=&historial=
-app.get('/api/listero/alertas', async (req, res) => {
-  const fecha = String(req.query.fecha || fechaHoyMVD());
-  const historial = req.query.historial === 'true';
-  try {
-    const snap = await getDb().collection('alertas_operativas').where('fecha', '==', fecha).get();
-    const alertas = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() as any }))
-      .filter((a) => historial || !a.atendida)
-      .sort((a, b) => ((b.creadoEn?.seconds || 0) - (a.creadoEn?.seconds || 0)))
-      .slice(0, 50);
-    res.json({ ok: true, alertas });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// PATCH /api/listero/alertas/:id/atender
-app.patch('/api/listero/alertas/:id/atender', async (req, res) => {
-  try {
-    await getDb().collection('alertas_operativas').doc(req.params.id).update({
-      atendida: true,
-      atendidaEn: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    res.json({ ok: true });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// GET /api/listero/resumen?fecha=
-app.get('/api/listero/resumen', async (req, res) => {
-  const fecha = String(req.query.fecha || fechaHoyMVD());
-  try {
-    const [turnosSnap, conductoresSnap, vehiculosSnap, alertasSnap] = await Promise.all([
-      getDb().collection('turnos_dia').where('fecha', '==', fecha).get(),
-      getDb().collection('personal').get(),
-      getDb().collection('vehicles').get(),
-      getDb().collection('alertas_operativas').where('fecha', '==', fecha).where('atendida', '==', false).get(),
-    ]);
-
-    const turnos = turnosSnap.docs.map((d) => d.data() as any);
-    const conductores = conductoresSnap.docs.map((d) => d.data() as any);
-    const vehiculos = vehiculosSnap.docs.map((d) => d.data() as any);
-
-    const turnosTotal = turnos.length;
-    const turnosCubiertos = turnos.filter((t) =>
-      ['activo', 'completado', 'programado', 'cubierto_reserva'].includes(t.estado),
-    ).length;
-    const turnosSinConductor = turnos.filter((t) => t.estado === 'sin_conductor').length;
-    const coberturaFlota = turnosTotal > 0 ? Math.round((turnosCubiertos / turnosTotal) * 100) : 100;
-
-    const lineasEnRiesgoIMM = [
-      ...new Set(
-        turnos
-          .filter((t) => t.estado === 'sin_conductor' && (t.importanciaLinea || 0) >= 4)
-          .map((t) => t.lineaId),
-      ),
-    ].filter(Boolean) as string[];
-
-    res.json({
-      ok: true,
-      resumen: {
-        fecha,
-        turnosTotal,
-        turnosCubiertos,
-        turnosSinConductor,
-        conductoresDisponibles: conductores.filter((c) => c.estadoHoy === 'disponible' || c.estadoHoy === 'reserva').length,
-        conductoresAusentes: conductores.filter((c) => c.estadoHoy === 'ausente').length,
-        conductoresReservaLibres: conductores.filter((c) => c.esConductorReserva && c.estadoHoy === 'disponible').length,
-        vehiculosEnTaller: vehiculos.filter((v) => v.estadoHoy === 'en_taller').length,
-        coberturaFlota,
-        alertasActivas: alertasSnap.size,
-        impactoIngresosRiesgoUSD: turnosSinConductor * 150,
-        lineasEnRiesgoIMM,
-      },
-    });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// POST /api/listero/generar-programacion
-// Auto-genera turnos del día desde personal + vehicles existentes en Firestore.
-// Si ya existen turnos para esa fecha, no hace nada.
-app.post('/api/listero/generar-programacion', async (req, res) => {
-  const fecha: string = String(req.body?.fecha || fechaHoyMVD());
-  try {
-    const existSnap = await getDb().collection('turnos_dia').where('fecha', '==', fecha).get();
-    if (!existSnap.empty) {
-      res.json({ ok: true, message: `Ya existen ${existSnap.size} turnos para ${fecha}`, created: 0 });
-      return;
-    }
-
-    // Leer conductores (intenta 'personal' primero, luego 'users' por naming inconsistency)
-    let conductoresSnap = await getDb().collection('personal').get();
-    if (conductoresSnap.empty) conductoresSnap = await getDb().collection('users').get();
-
-    // Leer vehículos (intenta 'vehicles' primero, luego 'vehiculos')
-    let vehiculosSnap = await getDb().collection('vehicles').get();
-    if (vehiculosSnap.empty) vehiculosSnap = await getDb().collection('vehiculos').get();
-
-    const conductores = conductoresSnap.docs
-      .map((d) => ({ id: d.id, ...(d.data() as any) }))
-      .filter((c) => c.internalNumber || c.legajo || c.fullName || c.nombre);
-
-    const vehiculos = vehiculosSnap.docs
-      .map((d) => ({ id: d.id, ...(d.data() as any) }))
-      .filter((v) => v.interno || v.coche || v.numero);
-
-    // Auto-seed si las colecciones están vacías
-    if (conductores.length === 0) {
-      const seedBatch = getDb().batch();
-      const nombres = ['Carlos Pérez', 'María González', 'Juan Rodríguez', 'Ana Martínez', 'Luis García', 'Rosa López', 'Miguel Fernández', 'Laura Díaz'];
-      nombres.forEach((nombre, i) => {
-        const ref = getDb().collection('personal').doc(`C${String(i + 1).padStart(3, '0')}`);
-        const [n, a] = nombre.split(' ');
-        seedBatch.set(ref, {
-          internalNumber: String(100 + i),
-          fullName: nombre,
-          firstName: n,
-          lastName: a,
-          rol: i === 7 ? 'reserva' : 'Driver',
-          estadoHoy: 'disponible',
-          esConductorReserva: i >= 6,
-          telefono: `09${String(10000000 + i * 7)}`,
-          generadoPorSistema: true,
-        }, { merge: true });
-      });
-      await seedBatch.commit();
-      const freshSnap = await getDb().collection('personal').get();
-      conductores.push(...freshSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
-    }
-
-    if (vehiculos.length === 0) {
-      const vBatch = getDb().batch();
-      for (let i = 0; i < 12; i++) {
-        const interno = String(115 + i * 7);
-        const ref = getDb().collection('vehicles').doc(`VEH${interno}`);
-        vBatch.set(ref, {
-          interno,
-          numero: interno,
-          tipo: i < 4 ? 'electrico' : i < 8 ? 'hibrido' : 'diesel',
-          estadoHoy: 'disponible',
-          capacidad: 80,
-          anio: 2018 + (i % 5),
-          generadoPorSistema: true,
-        }, { merge: true });
-      }
-      await vBatch.commit();
-      const freshSnap = await getDb().collection('vehicles').get();
-      vehiculos.push(...freshSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
-    }
-
-    const lineasOperativas = [
-      { id: '300', importancia: 5, terminal: 'Instrucciones - Plaza Zitarrosa' },
-      { id: '306', importancia: 5, terminal: 'Parque Roosevelt - Casabó' },
-      { id: '329', importancia: 4, terminal: 'Punta Carretas - Melilla' },
-      { id: '330', importancia: 4, terminal: 'Instrucciones - Ciudadela' },
-      { id: '17',  importancia: 4, terminal: 'Punta Carretas - Casabó' },
-      { id: '316', importancia: 4, terminal: 'Cno. Maldonado - Pocitos' },
-      { id: '328', importancia: 3, terminal: 'Mendoza - Punta Carretas' },
-      { id: '370', importancia: 3, terminal: 'Portones - Playa del Cerro' },
-      { id: '79',  importancia: 3, terminal: 'Pocitos - Paso de la Arena' },
-    ];
-
-    const bloquesTurno = [
-      { nombre: 'madrugada', horas: ['04:30', '05:00', '05:30'] },
-      { nombre: 'mañana',    horas: ['06:00', '06:30', '07:00', '07:30', '08:00'] },
-      { nombre: 'tarde',     horas: ['12:00', '12:30', '13:00', '13:30'] },
-      { nombre: 'noche',     horas: ['18:00', '18:30', '19:00', '19:30'] },
-    ];
-
-    const batch = getDb().batch();
-    let cIdx = 0;
-    let vIdx = 0;
-    let created = 0;
-
-    for (const linea of lineasOperativas) {
-      for (const bloque of bloquesTurno) {
-        for (const hora of bloque.horas) {
-          const c = conductores[cIdx % conductores.length];
-          const v = vehiculos[vIdx % vehiculos.length];
-          const [hh, mm] = hora.split(':').map(Number);
-          const llegadaMin = hh * 60 + mm + 90;
-          const horaLlegada = `${String(Math.floor(llegadaMin / 60) % 24).padStart(2, '0')}:${String(llegadaMin % 60).padStart(2, '0')}`;
-
-          const ref = getDb().collection('turnos_dia').doc();
-          batch.set(ref, {
-            fecha,
-            conductorId: c.id,
-            conductorNombre: c.fullName || c.nombre || `Cond ${c.internalNumber || c.legajo || cIdx}`,
-            conductorInterno: String(c.internalNumber || c.legajo || cIdx + 100),
-            vehiculoId: v.id,
-            vehiculoInterno: String(v.interno || v.coche || v.numero || vIdx + 100),
-            lineaId: linea.id,
-            turnoNombre: bloque.nombre,
-            turno: bloque.nombre,
-            horaSalida: hora,
-            horaLlegadaEstimada: horaLlegada,
-            terminal: linea.terminal,
-            estado: 'programado',
-            importanciaLinea: linea.importancia,
-            impactoIngresosEstimado: linea.importancia * 30,
-            firmaConductor: false,
-            horaFirma: null,
-            reservaActivada: false,
-            conductorReservaId: null,
-            conductorReservaNombre: null,
-            observaciones: null,
-            generadoAutomaticamente: true,
-            creadoEn: admin.firestore.FieldValue.serverTimestamp(),
-          });
-          cIdx++;
-          vIdx++;
-          created++;
-        }
-      }
-    }
-
-    await batch.commit();
-    res.json({ ok: true, message: `Programación generada: ${created} turnos para ${fecha}`, created });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// ─── SEED PERSONAL REAL UCOT ─────────────────────────────────────────────────
-// Carga los 691 empleados reales del listado oficial UCOT (Líneas Claro Activas)
-// Endpoint: POST /api/admin/seed-personal-ucot
-// Idempotente: usa merge:true para no sobrescribir datos enriquecidos.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const UCOT_PERSONAL_RAW: Array<{
-  interno: string; fullName: string; nombre: string; apellido: string;
-  cargo: string; telefono: string; rol: string; role: string;
-}> = require('./data/ucot_personal.json');
-
-app.post('/api/admin/seed-personal-ucot', async (req, res) => {
-  try {
-    const db = getDb();
-    const BATCH_SIZE = 450; // Firestore max 500 ops per batch
-    let total = 0;
-
-    const chunks: typeof UCOT_PERSONAL_RAW[] = [];
-    for (let i = 0; i < UCOT_PERSONAL_RAW.length; i += BATCH_SIZE) {
-      chunks.push(UCOT_PERSONAL_RAW.slice(i, i + BATCH_SIZE));
-    }
-
-    for (const chunk of chunks) {
-      const batchPersonal = db.batch();
-      const batchUsers = db.batch();
-      for (const emp of chunk) {
-        const docId = `P${emp.interno.padStart(4, '0')}`;
-        const empleadoData = {
-          internalNumber: emp.interno,
-          legajo: emp.interno,
-          fullName: emp.fullName,
-          nombre: emp.nombre,
-          apellido: emp.apellido,
-          cargo: emp.cargo,
-          telefono: emp.telefono,
-          rol: emp.rol,
-          role: emp.role,
-          esConductorReserva: false,
-          estadoHoy: 'disponible',
-          activo: true,
-          fuenteDatos: 'excel_ucot_2019',
-          importadoEn: admin.firestore.FieldValue.serverTimestamp(),
-        };
-        // Escribe en 'personal' (colección HR autoritativa)
-        batchPersonal.set(db.collection('personal').doc(docId), empleadoData, { merge: true });
-        // Escribe en 'users' (colección que lee el frontend — merge:true no borra cuentas Auth existentes)
-        batchUsers.set(db.collection('users').doc(docId), {
-          ...empleadoData,
-          fromExcel: true, // distingue de cuentas Auth reales
-        }, { merge: true });
-        total++;
-      }
-      await Promise.all([batchPersonal.commit(), batchUsers.commit()]);
-    }
-
-    res.json({ ok: true, message: `${total} empleados UCOT cargados en 'personal' y 'users'`, total });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// ─── SEED VEHÍCULOS REALES UCOT ──────────────────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const UCOT_VEHICLES_RAW: Array<{
-  interno: string; coche: string; linea: string | null; servicioNum: string; estado_operativo: string; tipo: string;
-}> = require('./data/ucot_vehicles.json');
-
-app.post('/api/admin/seed-vehicles-ucot', async (req, res) => {
-  try {
-    const db = getDb();
-    const BATCH_SIZE = 450;
-    let total = 0;
-    for (let i = 0; i < UCOT_VEHICLES_RAW.length; i += BATCH_SIZE) {
-      const batchV = db.batch();
-      const batchVeh = db.batch();
-      for (const v of UCOT_VEHICLES_RAW.slice(i, i + BATCH_SIZE)) {
-        const vehicleData = {
-          interno: v.interno,
-          coche: v.coche,
-          internalNumber: v.interno,
-          linea: v.linea,
-          servicioNum: v.servicioNum,
-          estado_operativo: v.estado_operativo,
-          tipo: v.tipo,
-          activo: true,
-          fuenteDatos: 'cartones_ucot_2026',
-          importadoEn: admin.firestore.FieldValue.serverTimestamp(),
-        };
-        // Escribe en 'vehicles' (colección nueva) y 'vehiculos' (colección que lee el frontend)
-        batchV.set(db.collection('vehicles').doc(v.interno), vehicleData, { merge: true });
-        batchVeh.set(db.collection('vehiculos').doc(v.interno), vehicleData, { merge: true });
-        total++;
-      }
-      await Promise.all([batchV.commit(), batchVeh.commit()]);
-    }
-    res.json({ ok: true, message: `${total} vehículos cargados en 'vehicles' y 'vehiculos'`, total });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// ─── SEED SERVICIOS HÁBILES UCOT (CARTONES) ──────────────────────────────────
-// Cada servicio = cartón de un conductor. Número de servicio ≠ coche físico.
-// Estructura: servicio, linea, etapas (paradas clave), vueltas con horarios.
-app.post('/api/admin/seed-horarios-ucot', async (req, res) => {
-  try {
-    const db = getDb();
-    const BATCH_SIZE = 450;
-    let total = 0;
-    for (let i = 0; i < UCOT_SERVICIOS_HABILES.length; i += BATCH_SIZE) {
-      const batch = db.batch();
-      for (const s of UCOT_SERVICIOS_HABILES.slice(i, i + BATCH_SIZE)) {
-        batch.set(db.collection('servicios_ucot').doc(s.servicio), {
-          servicio: s.servicio,
-          linea: s.linea,
-          etapas: s.etapas,
-          instrucciones: s.instrucciones,
-          vueltas: s.vueltas,
-          tipoServicio: 'habil',
-          temporada: 'invierno_2026',
-          totalVueltas: s.vueltas.length,
-          primeraSalida: s.vueltas[0]?.paradas[0]?.hora ?? null,
-          ultimaLlegada: s.vueltas[s.vueltas.length - 1]?.paradas?.slice(-1)[0]?.hora ?? null,
-          importadoEn: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-        total++;
-      }
-      await batch.commit();
-    }
-    res.json({ ok: true, message: `${total} servicios hábiles UCOT cargados en 'servicios_ucot'`, total });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// GET /api/admin/personal — lista paginada de empleados (ordenada por interno)
-app.get('/api/admin/personal', async (req, res) => {
-  try {
-    const limit = Math.min(parseInt(String(req.query.limit ?? '200')), 700);
-    const rol = req.query.rol ? String(req.query.rol) : null;
-    const db = getDb();
-
-    // Los datos reales del seed tienen IDs P0001-P0691 (startAt 'P')
-    const col = db.collection('personal');
-    const docIdField = admin.firestore.FieldPath.documentId();
-
-    let snap: FirebaseFirestore.QuerySnapshot;
-    if (rol) {
-      // Con filtro de rol: traer 700 registros reales y filtrar client-side
-      snap = await col
-        .where(docIdField, '>=', 'P')
-        .where(docIdField, '<', 'Q')
-        .limit(700)
-        .get();
-    } else {
-      snap = await col
-        .where(docIdField, '>=', 'P')
-        .where(docIdField, '<', 'Q')
-        .limit(700)
-        .get();
-    }
-
-    let docs = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-
-    // Aplicar filtro de rol si corresponde
-    if (rol) docs = docs.filter((d: any) => d.rol === rol || d.role === rol);
-
-    // Limitar y ordenar por interno
-    docs = docs
-      .sort((a: any, b: any) => {
-        const na = parseInt(a.internalNumber ?? a.interno ?? '9999');
-        const nb = parseInt(b.internalNumber ?? b.interno ?? '9999');
-        return na - nb;
-      })
-      .slice(0, limit);
-
-    res.json({ ok: true, total: docs.length, empleados: docs });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// PUT /api/admin/personal/:id — actualiza campos editables de un empleado
-app.put('/api/admin/personal/:id', async (req, res) => {
-  try {
-    const db = getDb();
-    const { id } = req.params;
-    const { cargo, rol, telefono, estado } = req.body as any;
-    const update: any = { actualizadoEn: admin.firestore.FieldValue.serverTimestamp() };
-    if (cargo !== undefined) update.cargo = cargo;
-    if (rol !== undefined) { update.rol = rol; update.role = rol; }
-    if (telefono !== undefined) update.telefono = telefono;
-    if (estado !== undefined) update.estado = estado;
-    await db.collection('personal').doc(id).update(update);
-    res.json({ ok: true });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// ─── SEED SERVICIOS REALES (CARTONES) ────────────────────────────────────────
-// Servicios = cartones de servicio. El número de hoja = número de servicio.
-// Los coches físicos (1-268) son distintos y se asignan por rotación diaria.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const UCOT_SERVICIOS_HABILES: Array<any> = require('./data/ucot_servicios_habiles.json');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const UCOT_SERVICIOS_SABADO: Array<any> = require('./data/ucot_servicios_sabado.json');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const UCOT_BOLETIN: Record<string, any> = require('./data/ucot_boletin.json');
-
-app.post('/api/admin/seed-sabado-ucot', async (req, res) => {
-  try {
-    const db = getDb();
-    let total = 0;
-    for (let i = 0; i < UCOT_SERVICIOS_SABADO.length; i += 450) {
-      const batch = db.batch();
-      for (const s of UCOT_SERVICIOS_SABADO.slice(i, i + 450)) {
-        batch.set(db.collection('servicios_ucot').doc(`S${s.servicio}`), {
-          servicio: s.servicio,
-          linea: s.linea,
-          etapas: s.etapas,
-          instrucciones: s.instrucciones,
-          vueltas: s.vueltas,
-          tipoServicio: 'sabado_verano',
-          temporada: 'verano_2026',
-          totalVueltas: s.vueltas.length,
-          primeraSalida: s.vueltas[0]?.paradas[0]?.hora ?? null,
-          importadoEn: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-        total++;
-      }
-      await batch.commit();
-    }
-    res.json({ ok: true, message: `${total} servicios sábado cargados en 'servicios_ucot'`, total });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-app.post('/api/admin/seed-boletin-ucot', async (req, res) => {
-  try {
-    const db = getDb();
-    let total = 0;
-    const lineas = Object.keys(UCOT_BOLETIN);
-    for (let i = 0; i < lineas.length; i += 50) {
-      const batch = db.batch();
-      for (const linea of lineas.slice(i, i + 50)) {
-        const data = UCOT_BOLETIN[linea];
-        batch.set(db.collection('boletin_oficial').doc(linea), {
-          linea,
-          paradas: data.paradas,
-          servicios: data.servicios,
-          tipoServicio: 'habil',
-          temporada: 'invierno_2026',
-          importadoEn: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-        total++;
-      }
-      await batch.commit();
-    }
-    res.json({ ok: true, message: `${total} líneas del boletín cargadas (${Object.values(UCOT_BOLETIN).reduce((a: number, l: any) => a + l.servicios.length, 0)} servicios)`, total });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// ─── ENDPOINTS DE CONSULTA OPERATIVA ─────────────────────────────────────────
-
-// GET /api/cartones/oficiales — lista de servicios desde servicios_ucot
-app.get('/api/cartones/oficiales', async (req, res) => {
-  try {
-    const db = getDb();
-    const linea = req.query.linea ? String(req.query.linea) : null;
-    const tipo = req.query.tipo ? String(req.query.tipo) : null;
-    const limit = Math.min(parseInt(String(req.query.limit ?? '300')), 500);
-
-    let query: FirebaseFirestore.Query = db.collection('servicios_ucot').limit(limit);
-    if (linea) query = query.where('linea', '==', linea);
-    if (tipo) query = query.where('tipoServicio', '==', tipo);
-
-    const snap = await query.get();
-    const cartones = snap.docs.map(d => {
-      const data = d.data();
-      return {
-        id: d.id,
-        servicio: data.servicio,
-        linea: data.linea,
-        tipoServicio: data.tipoServicio,
-        temporada: data.temporada,
-        totalVueltas: data.totalVueltas ?? (data.vueltas || []).length,
-        totalEtapas: (data.etapas || []).length,
-        primeraSalida: data.primeraSalida ?? null,
-        ultimaLlegada: data.ultimaLlegada ?? null,
-        instrucciones: (data.instrucciones || []).join(' | '),
-      };
-    });
-
-    res.json({ ok: true, total: cartones.length, cartones });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// GET /api/cartones/oficiales/:id — detalle completo de un cartón (con vueltas y etapas)
-app.get('/api/cartones/oficiales/:id', async (req, res) => {
-  try {
-    const db = getDb();
-    let doc = await db.collection('servicios_ucot').doc(req.params.id).get();
-    if (!doc.exists) {
-      // fallback por número de servicio
-      const snap = await db.collection('servicios_ucot').where('servicio', '==', req.params.id).limit(1).get();
-      if (snap.empty) return res.status(404).json({ ok: false, error: 'Cartón no encontrado' });
-      doc = snap.docs[0] as any;
-    }
-    res.json({ ok: true, carton: { id: doc.id, ...doc.data() } });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// GET /api/boletin/:linea — horarios del boletín para una línea/dirección (ej: "300a")
-app.get('/api/boletin/:linea', async (req, res) => {
-  try {
-    const doc = await getDb().collection('boletin_oficial').doc(req.params.linea).get();
-    if (!doc.exists) return res.status(404).json({ ok: false, error: 'Línea no encontrada en boletín' });
-    res.json({ ok: true, boletin: { id: doc.id, ...doc.data() } });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// GET /api/personal/:interno — datos de un empleado
-app.get('/api/personal/:interno', async (req, res) => {
-  try {
-    const db = getDb();
-    const docId = `P${req.params.interno.padStart(4, '0')}`;
-    let doc = await db.collection('personal').doc(docId).get();
-    if (!doc.exists) {
-      // fallback: buscar por internalNumber
-      const snap = await db.collection('personal').where('internalNumber', '==', req.params.interno).limit(1).get();
-      if (snap.empty) return res.status(404).json({ ok: false, error: 'Empleado no encontrado' });
-      doc = snap.docs[0] as any;
-    }
-    res.json({ ok: true, empleado: { id: doc.id, ...doc.data() } });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// ─── SEED: ROTACIÓN DIARIA ──────────────────────────────────────────────────
-// POST /api/admin/seed-rotacion-ucot
-// Carga la rotación coche→servicio del 21/01/2026 (miércoles hábil).
-// Colección: rotacion_diaria / sub-colección por fecha.
-app.post('/api/admin/seed-rotacion-ucot', async (req, res) => {
-  try {
-    const data: Record<string, any> = require('./data/ucot_rotacion.json');
-    const db = getDb();
-    const batch = db.batch();
-    let total = 0;
-
-    for (const [fecha, rotacion] of Object.entries(data) as [string, any][]) {
-      const docRef = db.collection('rotacion_diaria').doc(fecha);
-      batch.set(docRef, {
-        fecha,
-        archivo: rotacion.archivo,
-        totalCoches: rotacion.totalCoches,
-        actualizadoEn: admin.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
-
-      // Sub-colección: cada coche como documento
-      for (const coche of rotacion.coches as any[]) {
-        const cocheRef = docRef.collection('coches').doc(coche.coche);
-        batch.set(cocheRef, {
-          coche: coche.coche,
-          servicio: coche.servicio,
-          horaSalida: coche.horaSalida,
-          linea: coche.linea,
-        }, { merge: true });
-        total++;
-        if (total % 400 === 0) await batch.commit(); // Firestore batch limit
-      }
-    }
-
-    await batch.commit();
-    res.json({ ok: true, message: `Rotación cargada: ${total} asignaciones coche→servicio en ${Object.keys(data).length} fechas` });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// ─── SEED: BOLETÍN VERANO 2026 ──────────────────────────────────────────────
-// POST /api/admin/seed-boletin-verano-ucot
-// Carga la Matriz de Inspección verano 2026 (42 líneas-dirección, 1469 pases).
-// Colección: boletin_verano_2026
-app.post('/api/admin/seed-boletin-verano-ucot', async (req, res) => {
-  try {
-    const data: Record<string, any> = require('./data/ucot_boletin_verano.json');
-    const db = getDb();
-    let total = 0;
-
-    for (const [sheetName, boletin] of Object.entries(data) as [string, any][]) {
-      await db.collection('boletin_verano_2026').doc(sheetName).set({
-        linea: boletin.linea,
-        direccion: boletin.direccion,
-        paradas: boletin.paradas,
-        pases: boletin.pases,
-        totalPases: boletin.totalPases,
-        temporada: 'verano_2026',
-        actualizadoEn: admin.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
-      total += boletin.pases.length;
-    }
-
-    res.json({ ok: true, message: `Boletín verano 2026 cargado: ${Object.keys(data).length} líneas-dirección, ${total} pases totales` });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// GET /api/rotacion/:fecha — rotación coche→servicio de una fecha (YYYY-MM-DD)
-app.get('/api/rotacion/:fecha', async (req, res) => {
-  try {
-    const db = getDb();
-    const docRef = db.collection('rotacion_diaria').doc(req.params.fecha);
-    const doc = await docRef.get();
-    if (!doc.exists) return res.status(404).json({ ok: false, error: 'Fecha no encontrada' });
-    const coches = await docRef.collection('coches').get();
-    res.json({
-      ok: true,
-      fecha: req.params.fecha,
-      meta: doc.data(),
-      coches: coches.docs.map(d => d.data()),
-    });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// GET /api/boletin-verano/:lineaDir — boletín verano para una línea-dirección (ej: "300a")
-app.get('/api/boletin-verano/:lineaDir', async (req, res) => {
-  try {
-    const doc = await getDb().collection('boletin_verano_2026').doc(req.params.lineaDir).get();
-    if (!doc.exists) return res.status(404).json({ ok: false, error: 'Línea-dirección no encontrada' });
-    res.json({ ok: true, boletin: { id: doc.id, ...doc.data() } });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-export const intelligenceApi = functions.https.onRequest(app);
