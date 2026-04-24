@@ -154,6 +154,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           icon: Map,
         },
         {
+          path: '/dashboard/traffic/shadow-analytics',
+          label: 'Analytics Shadow (Histórico)',
+          icon: Activity,
+        },
+        {
           path: '/dashboard/traffic/contingency',
           label: 'Gestión de Contingencia',
           icon: ShieldAlert,

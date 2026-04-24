@@ -114,6 +114,7 @@ const LiveMapPage = lazy(() => import('./pages/traffic/LiveMapPage'));
 const ShadowRadar = lazy(() => import('./pages/traffic/ShadowRadar'));
 const CorridorIntelligence = lazy(() => import('./pages/traffic/CorridorIntelligence'));
 const CorridorMap = lazy(() => import('./pages/traffic/CorridorMap'));
+const ShadowAnalytics = lazy(() => import('./pages/traffic/ShadowAnalytics'));
 const StmScraperStatus = lazy(() => import('./pages/admin/StmScraperStatus'));
 
 
@@ -261,6 +262,7 @@ function App() {
                     <Route path="traffic/shadow-radar" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ShadowRadar /></PrivateRoute>} />
                     <Route path="traffic/corridor-intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorridorIntelligence /></PrivateRoute>} />
                     <Route path="traffic/corridor-map" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorridorMap /></PrivateRoute>} />
+                    <Route path="traffic/shadow-analytics" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ShadowAnalytics /></PrivateRoute>} />
                     <Route path="traffic/scraper-status" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><StmScraperStatus /></PrivateRoute>} />
                     <Route path="traffic/agents" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
                     <Route path="traffic/brt" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><BRTCorridorDashboard /></PrivateRoute>} />
