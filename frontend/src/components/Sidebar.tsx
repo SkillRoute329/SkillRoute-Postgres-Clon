@@ -116,33 +116,8 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       ],
     },
     {
-      title: 'Inteligencia Operativa',
+      title: 'Inteligencia de Red',
       items: [
-        {
-          path: '/dashboard/traffic/autostats',
-          label: 'Estadísticas Automáticas',
-          icon: BarChart3,
-        },
-        {
-          path: '/dashboard/traffic/statistics',
-          label: 'Estadísticas Inspectores',
-          icon: BarChart3,
-        },
-        {
-          path: '/dashboard/traffic/live-map',
-          label: '🔴 Mapa en Vivo STM',
-          icon: MapPin,
-        },
-        {
-          path: '/dashboard/traffic/intelligence',
-          label: 'Centro de Inteligencia',
-          icon: Bot,
-        },
-        {
-          path: '/dashboard/traffic/shadow-radar',
-          label: 'Radar Sombra (Táctico)',
-          icon: Radio,
-        },
         {
           path: '/dashboard/traffic/corridor-intelligence',
           label: 'Inteligencia de Corredores',
@@ -159,29 +134,39 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           icon: Activity,
         },
         {
-          path: '/dashboard/traffic/contingency',
-          label: 'Gestión de Contingencia',
-          icon: ShieldAlert,
-        },
-        {
-          path: '/dashboard/traffic/brt',
-          label: 'Corredores BRT 2027',
-          icon: Train,
-        },
-        {
-          path: '/dashboard/traffic/projections',
-          label: 'Proyecciones Económicas',
-          icon: DollarSign,
-        },
-        {
           path: '/dashboard/traffic/ceo',
           label: 'Dashboard CEO',
           icon: TrendingUp,
         },
+      ],
+    },
+    {
+      title: 'Operación Táctica',
+      items: [
         {
-          path: '/dashboard/traffic/scraper-status',
-          label: 'Monitor STM (Ingesta)',
-          icon: Activity,
+          path: '/dashboard/traffic/shadow-radar',
+          label: 'Radar Sombra (Táctico)',
+          icon: Radio,
+        },
+        {
+          path: '/dashboard/traffic/autostats',
+          label: 'Cumplimiento Horario',
+          icon: BarChart3,
+        },
+        {
+          path: '/dashboard/traffic/contingency',
+          label: 'Gestión de Contingencia',
+          icon: ShieldAlert,
+        },
+      ],
+    },
+    {
+      title: 'Análisis Financiero',
+      items: [
+        {
+          path: '/dashboard/traffic/projections',
+          label: 'Proyecciones Económicas',
+          icon: DollarSign,
         },
       ],
     },
@@ -197,6 +182,8 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           icon: ShieldCheck,
         },
         { path: '/dashboard/admin/compliance', label: 'Cumplimiento MTOP/IMM', icon: Shield },
+        { path: '/dashboard/traffic/brt', label: 'Referencia BRT 2027', icon: Train },
+        { path: '/dashboard/traffic/scraper-status', label: 'Monitor Ingesta STM', icon: Activity },
         { path: '/dashboard/admin/config', label: 'Configuración', icon: Settings },
       ],
     },
