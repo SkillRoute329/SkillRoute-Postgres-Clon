@@ -23,9 +23,8 @@ const PushNotificationInit = () => {
   return null;
 };
 
-// Native Plugins
-import { Network } from '@capacitor/network';
-import { Toast } from '@capacitor/toast';
+// Network status — browser APIs (Capacitor plugins solo disponibles en APK nativa)
+
 
 // Lazy Load Pages
 const DashboardHome = lazy(() => import('./pages/DashboardHome'));
@@ -144,27 +143,17 @@ function App() {
     SystemIntegrity.checkAndEnforce();
 
     // 1. Initial Status
-    Network.getStatus().then((status) => setIsOffline(!status.connected));
+    setIsOffline(!navigator.onLine);
 
     // 2. Listen for changes
-    const handler = Network.addListener('networkStatusChange', (status) => {
-      const offline = !status.connected;
-      setIsOffline(offline);
-      if (offline) {
-        Toast.show({
-          text: '⚠️ Conexión Perdida. Activando Modo Túnel.',
-          duration: 'long',
-        });
-      } else {
-        Toast.show({
-          text: '🟢 Conexión Restaurada. Sincronizando...',
-          duration: 'short',
-        });
-      }
-    });
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
 
     return () => {
-      handler.then((h) => h.remove());
+      window.removeEventListener('offline', goOffline);
+      window.removeEventListener('online', goOnline);
     };
   }, []);
 
