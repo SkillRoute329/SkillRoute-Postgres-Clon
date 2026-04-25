@@ -860,7 +860,12 @@ export {
 //   /gtfsRealtime/vehicle-positions.pb   — protobuf (producción)
 //   /gtfsRealtime/vehicle-positions.json — JSON (debug)
 //   /gtfsRealtime/feed-info              — metadata
-export { gtfsRealtime } from './gtfsRealtime';
+export { gtfsRealtime, refreshGtfsRtAlerts } from './gtfsRealtime';
+
+// ─── Compliance Reporting (Sprint 1, 2026-04-25) ─────────────────────────────
+// GET/POST /regulatorio/export — PDF estructurado cumplimiento OTP + KPIs UITP
+// Auth: ADMIN/SUPERADMIN
+export { regulatorio } from './api/regulatorio';
 
 
 // ─── GTFS-Static Publisher ───────────────────────────────────────────────────

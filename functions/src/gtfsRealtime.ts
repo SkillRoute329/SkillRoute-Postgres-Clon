@@ -583,6 +583,26 @@ app.get('/vehicle-positions.json', async (req, res) => {
 });
 
 
+
+// ─── CRON: refresh Service Alerts cache (Sprint 1, 2026-04-25) ──────────────
+// Ejecuta buildServiceAlertsFeed cada minuto para mantener el snapshot fresco
+// en memoria. El endpoint /service-alerts.pb sirve directamente desde este
+// snapshot sin tocar Firestore en cada request del consumidor MaaS.
+let _alertsFeedCache: { feed: any; FeedMessage: any; totalEntities: number; ts: number } | null = null;
+
+export const refreshGtfsRtAlerts = functions
+  .runWith({ timeoutSeconds: 60, memory: '128MB' })
+  .pubsub.schedule('every 1 minutes')
+  .onRun(async (_context) => {
+    try {
+      const result = await buildServiceAlertsFeed();
+      _alertsFeedCache = { ...result, ts: Date.now() };
+      console.log('[refreshGtfsRtAlerts] Feed actualizado:', result.totalEntities, 'entidades');
+    } catch (err) {
+      console.error('[refreshGtfsRtAlerts] Error:', err);
+    }
+  });
+
 // ─── EXPORT CLOUD FUNCTION ───────────────────────────────────────────────────
 
 export const gtfsRealtime = functions

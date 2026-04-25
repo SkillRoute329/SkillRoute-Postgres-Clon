@@ -119,6 +119,8 @@ const LiveMapPage = lazy(() => import('./pages/traffic/LiveMapPage'));
 const ShadowAnalytics = lazy(() => import('./pages/traffic/ShadowAnalytics'));
 const MarketPenetration = lazy(() => import('./pages/traffic/MarketPenetration'));
 const StmScraperStatus = lazy(() => import('./pages/admin/StmScraperStatus'));
+// Sprint 1 (2026-04-25): Pricing público — accesible sin auth
+const PricingPage = lazy(() => import('./pages/public/PricingPage'));
 
 
 // Loading Component
@@ -171,6 +173,7 @@ function App() {
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/login" element={<LoginScreen />} />
+                  <Route path="/pricing" element={<PricingPage />} />
 
                   {/* Test Route for Cloud Upload */}
                   <Route
