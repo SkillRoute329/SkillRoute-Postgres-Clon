@@ -9,6 +9,8 @@ import {
   Timestamp,
   addDoc,
   getDocs,
+  doc,
+  setDoc,
 } from 'firebase/firestore';
 import type { GeoPoint } from 'firebase/firestore';
 import { db } from '../../config/firebase';
@@ -30,6 +32,16 @@ interface AlertaRegulacion {
   mensaje_chofer: string;
   timestamp: Timestamp;
   leido: boolean;
+  // Campos ACK escritos por la Cloud Function acknowledgeAlerta cuando
+  // el chofer toca "RECIBIDO" en la push del FCM. Cierran el loop
+  // operacional Swiftly/Optibus-style.
+  ack_at?: Timestamp | null;
+  ack_response_time_sec?: number | null;
+  ack_by_coche_id?: string | null;
+  // Estado FCM (escrito por onAlertaCreated trigger del backend).
+  fcmSent?: boolean;
+  fcmSentAt?: Timestamp | null;
+  fcmError?: string | null;
 }
 
 interface VehiculoRadar {
@@ -705,20 +717,34 @@ const ShadowRadar: React.FC = () => {
         ? `⚠️ COCHE ${ucot.cocheId} línea ${ucot.codigoLinea}: ${rivalEmpresa} L${rivalLinea} a solo ${distText}. Regule marcha para no perder la parada.`
         : `👁 COCHE ${ucot.cocheId} línea ${ucot.codigoLinea}: ${rivalEmpresa} L${rivalLinea} a ${distText}. Mantenga frecuencia.`;
 
-      addDoc(collection(db, 'alertas_regulacion'), {
-        tipo,
-        coche_id: ucot.cocheId,
-        linea_id: ucot.codigoLinea,
-        empresa_id: empresaPropia,
-        rival_empresa: rivalEmpresa,
-        rival_linea: rivalLinea,
-        distancia_metros: rivalPrincipal?.distanciaMetros ?? 0,
-        instruccion,
-        mensaje_chofer: mensaje,
-        timestamp: Timestamp.now(),
-        leido: false,
-        fuente: 'auto_shadow_dispatcher',
-      }).catch((err) => console.warn('[ShadowDispatcher] No se pudo escribir alerta:', err));
+      // ID determinístico: dedupe la misma alerta dentro del bucket de 5 min.
+      // Formato: ${empresa}_${cocheUcot}_${rival}_${tipo}_${bucket5min}.
+      // Si el backend shadowDispatcher.ts genera la misma alerta en paralelo
+      // dentro del mismo bucket, setDoc con merge:true evita duplicados y
+      // el error firestore "Document already exists".
+      const rivalKey = String(rivalPrincipal?.cocheId ?? 'na');
+      const bucket5min = Math.floor(Date.now() / (5 * 60 * 1000));
+      const docId = `${empresaPropia}_${ucot.cocheId}_${rivalKey}_${tipo}_${bucket5min}`;
+      setDoc(
+        doc(db, 'alertas_regulacion', docId),
+        {
+          tipo,
+          coche_id: ucot.cocheId,
+          linea_id: ucot.codigoLinea,
+          empresa_id: empresaPropia,
+          rival_empresa: rivalEmpresa,
+          rival_linea: rivalLinea,
+          rival_coche_id: rivalKey,
+          distancia_metros: rivalPrincipal?.distanciaMetros ?? 0,
+          instruccion,
+          mensaje_chofer: mensaje,
+          timestamp: Timestamp.now(),
+          leido: false,
+          fuente: 'auto_shadow_dispatcher',
+          bucket5min,
+        },
+        { merge: true },
+      ).catch((err) => console.warn('[ShadowDispatcher] No se pudo escribir alerta:', err));
     });
   }, [emparejamientos, isScanning, empresaPropia]);
 
@@ -1195,30 +1221,76 @@ const ShadowRadar: React.FC = () => {
             {alertas.length === 0 ? (
               <p className="text-slate-500 text-sm text-center py-8">No hay alertas recientes.</p>
             ) : (
-              alertas.map((alerta) => (
-                <div
-                  key={alerta.id}
-                  className={`flex flex-col gap-2 p-3 rounded-xl border text-sm transition-all duration-300 ${getAlertColor(alerta.tipo, alerta.leido)}`}
-                >
-                  <div className="flex items-center gap-2">
-                    {getAlertIcon(alerta.tipo, alerta.leido)}
-                    <span className="font-bold truncate max-w-[200px]">{alerta.tipo.replace(/_/g, ' ')}</span>
-                  </div>
-                  <div className="pl-7">
-                    <p className="font-medium opacity-90 line-clamp-2">"{alerta.mensaje_chofer}"</p>
-                    <div className="flex items-center gap-2 mt-2 opacity-70 text-xs">
-                      <span>Coche: {alerta.coche_id}</span>
-                      {alerta.linea_id && <span>| L. {alerta.linea_id}</span>}
-                      {alerta.distancia_metros != null && alerta.distancia_metros > 0 && (
-                        <span>| {alerta.distancia_metros}m</span>
-                      )}
+              alertas.map((alerta) => {
+                // Estado del loop FCM:
+                //   ack_at presente → chofer reconoció (verde, con response_time)
+                //   fcmSent && !ack_at → push enviada, esperando ACK (azul tenue)
+                //   fcmError → push falló (rojo tenue)
+                //   sin fcm fields → alerta legacy (estado neutro)
+                const ackAt = alerta.ack_at ?? null;
+                const fcmSent = alerta.fcmSent === true;
+                const fcmError = alerta.fcmError;
+                const responseTimeSec = alerta.ack_response_time_sec ?? null;
+                const responseTimeTxt =
+                  responseTimeSec != null
+                    ? responseTimeSec < 60
+                      ? `${responseTimeSec}s`
+                      : `${Math.floor(responseTimeSec / 60)}:${String(responseTimeSec % 60).padStart(2, '0')}`
+                    : null;
+                return (
+                  <div
+                    key={alerta.id}
+                    className={`flex flex-col gap-2 p-3 rounded-xl border text-sm transition-all duration-300 ${getAlertColor(alerta.tipo, alerta.leido)}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {getAlertIcon(alerta.tipo, alerta.leido)}
+                      <span className="font-bold truncate max-w-[200px]">{alerta.tipo.replace(/_/g, ' ')}</span>
+                      {/* Badge de estado ACK / FCM */}
+                      {ackAt ? (
+                        <span
+                          className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold border bg-emerald-900/40 text-emerald-300 border-emerald-700/50"
+                          title={`Reconocido por chofer en ${responseTimeTxt ?? '—'} (Swiftly/Optibus-style ACK loop)`}
+                        >
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          ACK {responseTimeTxt}
+                        </span>
+                      ) : fcmError ? (
+                        <span
+                          className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold border bg-red-900/40 text-red-300 border-red-700/50"
+                          title={`Push fallida: ${fcmError}`}
+                        >
+                          <X className="w-2.5 h-2.5" />
+                          PUSH ERR
+                        </span>
+                      ) : fcmSent ? (
+                        <span
+                          className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold border bg-blue-900/40 text-blue-300 border-blue-700/50"
+                          title="Push enviada al chofer, esperando que toque RECIBIDO"
+                        >
+                          <Zap className="w-2.5 h-2.5" />
+                          ENVIADA
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="pl-7">
+                      <p className="font-medium opacity-90 line-clamp-2">"{alerta.mensaje_chofer}"</p>
+                      <div className="flex items-center gap-2 mt-2 opacity-70 text-xs">
+                        <span>Coche: {alerta.coche_id}</span>
+                        {alerta.linea_id && <span>| L. {alerta.linea_id}</span>}
+                        {alerta.distancia_metros != null && alerta.distancia_metros > 0 && (
+                          <span>| {alerta.distancia_metros}m</span>
+                        )}
+                        {ackAt && alerta.ack_by_coche_id && (
+                          <span className="text-emerald-400">| ACK por #{alerta.ack_by_coche_id}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="pl-7 text-[10px] text-right font-mono opacity-50 mt-1">
+                      {formatTimestamp(alerta.timestamp)}
                     </div>
                   </div>
-                  <div className="pl-7 text-[10px] text-right font-mono opacity-50 mt-1">
-                    {formatTimestamp(alerta.timestamp)}
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

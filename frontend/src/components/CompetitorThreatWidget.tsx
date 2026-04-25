@@ -10,7 +10,7 @@ import {
   Clock,
   ArrowUpDown,
 } from 'lucide-react';
-import { collection, onSnapshot, query, limit, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, limit, orderBy, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import {
   checkCorridorThreat,
@@ -103,6 +103,47 @@ export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
   const [scheduleInfo, setScheduleInfo] = useState<ScheduleInfo | null>(null);
   const [showStatsModal, setShowStatsModal] = useState(false);
 
+  /**
+   * Catálogo de líneas propias derivado dinámicamente de shapes_cross_operator
+   * filtrado por agencyId === empresaPropia. Si la query falla o no devuelve
+   * datos (operador sin shapes reconstruidas todavía), cae a LINEAS_UCOT_BASE
+   * como fallback para no dejar el widget vacío.
+   *
+   * Se refetcha cuando cambia empresaPropia.
+   */
+  const [lineasFromShapes, setLineasFromShapes] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDocs(
+          query(
+            collection(db, 'shapes_cross_operator'),
+            where('agencyId', '==', String(empresaPropia)),
+            limit(500),
+          ),
+        );
+        if (cancelled) return;
+        const lineas = new Set<string>();
+        for (const doc of snap.docs) {
+          const d = doc.data();
+          const linea = String(d.linea ?? '').trim();
+          if (linea && linea !== '—') lineas.add(linea);
+        }
+        const arr = [...lineas].sort();
+        setLineasFromShapes(arr.length > 0 ? arr : null);
+      } catch (err) {
+        if (cancelled) return;
+        console.warn('[ThreatWidget] No se pudo cargar shapes_cross_operator:', err);
+        setLineasFromShapes(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [empresaPropia]);
+
   // Unique line IDs from corridor map
   const uniqueLines = useMemo(() => {
     const lineSet = new Set(CORRIDOR_MAP.map((c) => c.lineId));
@@ -152,17 +193,21 @@ export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
 
   /**
    * Líneas propias del operador seleccionado.
-   * - Si es UCOT (70): usamos el catálogo verificado LINEAS_UCOT_BASE.
-   * - Otros operadores: por ahora también usamos LINEAS_UCOT_BASE como
-   *   referencia mínima (para que el widget tenga algo que escanear)
-   *   hasta que generalicemos el catálogo desde shapes_cross_operator.
-   * El cambio importante es que `empresaPropiaName` y los filtros
-   *   ya no asumen UCOT en las comparaciones de buses.
+   * Prioridad:
+   *   1) shapes_cross_operator filtrado por agencyId (datos reales del IMM).
+   *   2) Si UCOT y la query falla/vacía → LINEAS_UCOT_BASE (catálogo verificado).
+   *   3) Si otro operador y la query falla → LINEAS_UCOT_BASE como fallback
+   *      mínimo para que el widget tenga algo que escanear.
    *
-   * TODO próximo: derivar dinámicamente desde
-   *   `shapes_cross_operator` filtrado por agencyId === empresaPropia.
+   * Cap a 30 líneas para no saturar el threat-scan (cada línea hace 1 query
+   * STM y 1 detect-corridor por iteración del runTacticalScan).
    */
-  const lineasPropias = LINEAS_UCOT_BASE;
+  const lineasPropias = useMemo(() => {
+    if (lineasFromShapes && lineasFromShapes.length > 0) {
+      return lineasFromShapes.slice(0, 30);
+    }
+    return LINEAS_UCOT_BASE;
+  }, [lineasFromShapes]);
 
   const runTacticalScan = useCallback(async () => {
     if (loading) return;

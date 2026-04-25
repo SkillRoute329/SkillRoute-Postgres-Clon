@@ -255,8 +255,13 @@ function App() {
                     <Route path="traffic/distribucion" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><DistribucionDiaria /></PrivateRoute>} />
                     <Route path="traffic/boletin" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><BoletinInspeccion /></PrivateRoute>} />
                     <Route path="traffic/personal" element={<PrivateRoute roles={['ADMIN','TRAFFIC','RRHH']}><PersonalUcot /></PrivateRoute>} />
-                    <Route path="traffic/ceo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CEODashboard /></PrivateRoute>} />
-                    <Route path="traffic/ceo-v7" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CEODashboardV7 /></PrivateRoute>} />
+                    {/* Promovido 2026-04-25: V7 es ahora el dashboard ejecutivo default. */}
+                    <Route path="traffic/ceo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CEODashboardV7 /></PrivateRoute>} />
+                    {/* /ceo-v7 redirige a /ceo para preservar bookmarks. El legacy CEODashboard.tsx
+                        sigue importado por si hace falta comparar A/B; queda accesible sólo via URL
+                        directa /traffic/ceo-legacy (no en sidebar). */}
+                    <Route path="traffic/ceo-v7" element={<Navigate to="/dashboard/traffic/ceo" replace />} />
+                    <Route path="traffic/ceo-legacy" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CEODashboard /></PrivateRoute>} />
                     <Route path="traffic/rotation-matrix" element={<PrivateRoute roles={['ADMIN','TRAFFIC','RRHH']}><RotationMatrix /></PrivateRoute>} />
                     {/* Redirect legacy: Centro de Inteligencia → Inteligencia de Corredores (v3) */}
                     <Route path="traffic/intelligence" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />

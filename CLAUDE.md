@@ -144,6 +144,34 @@ debe ser pegable tal cual, no un esbozo. Si una tarea queda con
 verificación pendiente, el reporte al usuario lo dice explícito y le da
 la orden lista. **Nunca** decirle a Jonathan "probalo vos".
 
+**DIRECTRIZ DE IDIOMA — UI siempre en español (2026-04-24):**
+Toda la UI del programa va en español. Operadores y reguladores
+montevideanos no manejan inglés con fluidez. Las únicas excepciones
+permitidas son:
+- **Siglas técnicas estándar** que se usan internacionalmente y son
+  reconocidas en la industria local: OTP, GPS, STM, IMM, UITP, BRT,
+  KPI, GTFS, NeTEx, SIRI, JSON, API, SQL, NoSQL.
+- **Nombres propios** de productos o plataformas extranjeras citadas
+  como referencia o benchmark: Optibus, Swiftly, Remix, TfL, RATP,
+  NYC MTA, NetSuite, etc.
+- **Nombres propios de métricas inventadas por agencias específicas**
+  (cuando se cita la fuente): "Bunching Index" de NYC MTA, "Service
+  Delivery" de TfL/Swiftly, "Régularité" de RATP. Pueden aparecer entre
+  comillas como referencia académica, pero el label visible en pantalla
+  debe ser la traducción al español: "Índice de Aglomeración",
+  "Cumplimiento de Servicio", "Regularidad", etc.
+
+Comentarios internos del código (// y /* */) pueden estar en inglés o
+español indistintamente — no son visibles al usuario. Los nombres de
+variables/funciones también pueden ser en inglés (es la convención de
+JavaScript/TypeScript), pero los strings literales que se renderizan
+en la UI van en español.
+
+Si un código existente tiene strings en inglés visibles al usuario,
+traducirlas en la primera oportunidad que se toque ese archivo (scout
+rule). No es obligatorio refactorizar archivos sólo para traducir, pero
+sí es obligatorio NO agregar strings nuevas en inglés.
+
 ---
 
 ### 9. Workflow Cowork ↔ Claude Code (DIRECTRIZ 2026-04-24)

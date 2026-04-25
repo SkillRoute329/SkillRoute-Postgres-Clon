@@ -39,7 +39,7 @@ function setCors(res: functions.Response): void {
 
 interface DailyPoint {
   date: string; // YYYY-MM-DD (Mvd)
-  value: number;
+  value: number | null; // null = sin datos para ese día (chart no dibuja punto falso)
   meta?: Record<string, number>;
 }
 
@@ -101,11 +101,14 @@ async function fetchOtpHistoric(days: number, agencyId: string): Promise<DailyPo
     byDay.set(key, entry);
   }
 
-  // Construir serie con todos los días aún si no hay datos (value=null)
+  // Construir serie con todos los días aún si no hay datos. Para días sin
+  // muestras, value: null (no 0) — así el chart frontend con connectNulls=false
+  // muestra un hueco honesto en lugar de un drop a cero falso. Esto es
+  // crítico para no engañar al directivo: 'sin datos' ≠ '0% puntualidad'.
   return lastNDays(days).map((date) => {
     const e = byDay.get(date);
     if (!e || e.total === 0) {
-      return { date, value: 0, meta: { total: 0, enTiempo: 0 } } as DailyPoint;
+      return { date, value: null, meta: { total: 0, enTiempo: 0 } } as DailyPoint;
     }
     const pct = Math.round((e.enTiempo / e.total) * 1000) / 10;
     return {

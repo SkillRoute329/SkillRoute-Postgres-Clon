@@ -32,6 +32,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { useAuth } from '../../context/AuthContext';
 import * as XLSX from 'xlsx';
 import {
   LineChart,
@@ -127,9 +128,20 @@ export default function ShadowAnalyticsPage() {
     }
   }, [daysBack]);
 
+  // Auth guard — esperar a que el usuario esté autenticado antes de hacer
+  // queries a Firestore. Sin esto hay race condition en el primer render:
+  // el query corre antes de que AuthContext propague el user y Firestore
+  // rechaza con permission-denied.
+  const { user } = useAuth();
+
   useEffect(() => {
+    if (!user) return; // esperar auth
     load();
-  }, [load]);
+    // Refresh automatico cada 60s para que el dashboard no quede estatico
+    // mientras el usuario lo tiene abierto. Production-grade.
+    const interval = setInterval(load, 60_000);
+    return () => clearInterval(interval);
+  }, [load, user]);
 
   // ── Filtrado por empresa propia ────────────────────────────────────────
 
@@ -143,7 +155,13 @@ export default function ShadowAnalyticsPage() {
   const kpis = useMemo(() => {
     const total = filtered.length;
     const criticos = filtered.filter((a) => a.tipo === 'RIVAL_PISANDO_TURNO').length;
-    const lineasUnicas = new Set(filtered.map((a) => a.linea_id)).size;
+    // Filtrar lineas vacias/null para no contar undefined como 1.
+    const lineas = new Set<string>();
+    for (const a of filtered) {
+      if (a.linea_id && String(a.linea_id).trim() !== '') {
+        lineas.add(String(a.linea_id));
+      }
+    }
     const operadoresInvolucrados = new Set<string>();
     for (const a of filtered) {
       if (a.empresa_id) operadoresInvolucrados.add(String(a.empresa_id));
@@ -153,16 +171,58 @@ export default function ShadowAnalyticsPage() {
       total,
       criticos,
       pctCriticos: total > 0 ? Math.round((criticos / total) * 100) : 0,
-      lineasUnicas,
+      lineasUnicas: lineas.size,
       operadoresInvolucrados: operadoresInvolucrados.size,
     };
   }, [filtered]);
 
+  // Breakdown de eventos por empresa propia (sin filtrar) para que el
+  // usuario sepa cuantas alertas hay por cada operador antes de filtrar.
+  const breakdownEmpresaPropia = useMemo(() => {
+    const counts: Record<string, number> = { '70': 0, '50': 0, '20': 0, '10': 0, otros: 0 };
+    for (const a of alertas) {
+      const id = String(a.empresa_id ?? '');
+      if (id in counts) counts[id]++;
+      else counts.otros++;
+    }
+    return counts;
+  }, [alertas]);
+
   // ── Serie temporal por día (últimos N días) ────────────────────────────
 
+  // Cuando daysBack === 1 agrupamos por HORA (24 buckets) para ver
+  // exactamente CUANDO ocurrieron los eventos en el dia.
+  // Para 3/7/14/30 dias agrupamos por dia.
   const dailySeries = useMemo(() => {
+    if (daysBack === 1) {
+      const now = Date.now();
+      const byHour = new Map<
+        string,
+        { date: string; total: number; criticos: number; timestamp: number }
+      >();
+      for (let i = 23; i >= 0; i--) {
+        const d = new Date(now - i * 3600 * 1000);
+        d.setMinutes(0, 0, 0);
+        const key = `${String(d.getHours()).padStart(2, '0')}:00`;
+        byHour.set(key, { date: key, total: 0, criticos: 0, timestamp: d.getTime() });
+      }
+      for (const a of filtered) {
+        const ms = a.timestamp?.toMillis?.() ?? 0;
+        if (!ms) continue;
+        const eventDate = new Date(ms);
+        eventDate.setMinutes(0, 0, 0);
+        const key = `${String(eventDate.getHours()).padStart(2, '0')}:00`;
+        const entry = byHour.get(key);
+        if (!entry) continue;
+        if (Math.abs(eventDate.getTime() - entry.timestamp) > 30 * 60 * 1000) continue;
+        entry.total += 1;
+        if (a.tipo === 'RIVAL_PISANDO_TURNO') entry.criticos += 1;
+      }
+      return [...byHour.values()]
+        .sort((a, b) => a.timestamp - b.timestamp)
+        .map((d) => ({ ...d, dateShort: d.date }));
+    }
     const byDay = new Map<string, { date: string; total: number; criticos: number }>();
-    // Inicializar últimos N días con 0 para que el chart no tenga huecos
     for (let i = daysBack - 1; i >= 0; i--) {
       const d = new Date(Date.now() - i * 24 * 3600 * 1000);
       const key = d.toISOString().slice(0, 10);
@@ -388,6 +448,61 @@ export default function ShadowAnalyticsPage() {
         </div>
       </div>
 
+      {/* Distribucion de alertas por empresa propia. Siempre visible para
+          que el usuario sepa que hay en la base antes de filtrar. */}
+      <div className="mb-4 bg-slate-900/50 border border-slate-800 rounded-xl p-3 flex flex-wrap items-center gap-3 text-xs">
+        <span className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">
+          Alertas por operador propio:
+        </span>
+        {[
+          { id: '70', label: 'UCOT' },
+          { id: '50', label: 'CUTCSA' },
+          { id: '20', label: 'COME' },
+          { id: '10', label: 'COETC' },
+        ].map(({ id, label }) => {
+          const count = breakdownEmpresaPropia[id] ?? 0;
+          return (
+            <span
+              key={id}
+              className={`px-2 py-1 rounded-lg border ${count > 0 ? 'border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-300' : 'border-slate-700 bg-slate-800/40 text-slate-600'}`}
+            >
+              {label}:{' '}
+              <span className="font-mono font-black">
+                {count.toLocaleString('es-UY')}
+              </span>
+            </span>
+          );
+        })}
+      </div>
+
+      {/* Banner explicativo cuando el filtro deja todo en cero */}
+      {filterEmpresa && filtered.length === 0 && alertas.length > 0 && (
+        <div className="mb-4 bg-amber-950/30 border border-amber-500/30 rounded-xl p-4 text-sm">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-amber-300 font-bold">
+                No hay alertas con este operador como propio
+              </p>
+              <p className="text-slate-400 mt-1 text-xs leading-relaxed">
+                El backend de detección (Radar Sombra) hoy genera alertas
+                considerando UCOT como operador propio (
+                {breakdownEmpresaPropia['70'].toLocaleString('es-UY')} eventos)
+                y los demás operadores aparecen sólo como rivales en esos
+                eventos. Para análisis cross-operador real, ver el módulo{' '}
+                <a
+                  href="/dashboard/traffic/corridor-intelligence"
+                  className="text-fuchsia-400 hover:underline"
+                >
+                  Inteligencia de Corredores
+                </a>{' '}
+                (matriz DRO simétrica).
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
@@ -414,7 +529,9 @@ export default function ShadowAnalyticsPage() {
       <section className="mb-6 bg-slate-900 border border-slate-800 rounded-xl p-5">
         <h2 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-fuchsia-400" />
-          Evolución diaria — últimos {daysBack} día{daysBack > 1 ? 's' : ''}
+          {daysBack === 1
+            ? 'Evolución horaria — últimas 24 horas (cada barra = 1 hora real)'
+            : `Evolución diaria — últimos ${daysBack} días`}
         </h2>
         {filtered.length === 0 ? (
           <EmptySeries days={daysBack} />

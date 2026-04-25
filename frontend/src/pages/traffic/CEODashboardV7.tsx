@@ -474,7 +474,7 @@ export default function CEODashboardV7() {
   const [empresaPropia, setEmpresaPropia] = useState<number>(70);
   const [periodo, setPeriodo] = useState<Periodo>('today');
   /** Serie histórica diaria (sólo cuando periodo !== 'today'). */
-  const [otpHistoric, setOtpHistoric] = useState<Array<{ date: string; value: number; meta?: { total: number; enTiempo: number } }> | null>(null);
+  const [otpHistoric, setOtpHistoric] = useState<Array<{ date: string; value: number | null; meta?: { total: number; enTiempo: number } }> | null>(null);
   const [bunchingHistoric, setBunchingHistoric] = useState<Array<{ date: string; value: number; meta?: { criticos: number } }> | null>(null);
   const [historicLoading, setHistoricLoading] = useState(false);
   const [historicError, setHistoricError] = useState<string | null>(null);
@@ -698,6 +698,8 @@ export default function CEODashboardV7() {
     if (!otpHistoric || !bunchingHistoric) return [];
     const map = new Map<string, { date: string; otp: number | null; bunching: number | null }>();
     for (const p of otpHistoric) {
+      // p.value puede ser null (días sin muestras) — Recharts respeta null con
+      // connectNulls=false, no dibuja un dot falso en cero.
       map.set(p.date, { date: p.date, otp: p.value, bunching: null });
     }
     for (const p of bunchingHistoric) {

@@ -6,6 +6,7 @@ import Sidebar from '../components/Sidebar';
 import NotificationsDropdown from '../components/NotificationsDropdown';
 import RoadAlertsWidget from '../components/RoadAlertsWidget';
 import RouteErrorBoundary from '../components/RouteErrorBoundary';
+import DriverAlertOverlay from '../components/DriverAlertOverlay';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../config/firebase';
 import { getDoc, doc } from 'firebase/firestore';
@@ -204,6 +205,11 @@ const DashboardLayout = () => {
         {/* NETWORK DEBUGGER (Only Admins) */}
         {user?.role === 'ADMIN' && <ConnectivityDebugWidget />}
       </main>
+
+      {/* Overlay FCM de alertas tácticas — activo en todas las vistas
+          autenticadas (conductor, inspector, tráfico). Escucha onMessage
+          foreground y muestra modal con ACK. */}
+      <DriverAlertOverlay />
     </div>
   );
 };

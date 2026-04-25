@@ -206,3 +206,63 @@ La integrity script usa `tsc --noEmit` con `incremental: true`, así que el tsbu
 - Salud de la Red: score parcial si `servicio_estado` vacío (comportamiento correcto)
 - `/api/positions` en producción: respondiendo con todos los operadores
 
+
+---
+
+## 2026-04-25 — Cierre del loop operacional FCM + driver ACK UI
+
+**Duración:** ~40 min activos (Cowork chat, continuación de sesión anterior).
+
+**Contexto:** Completar la pieza faltante del flujo de alertas tácticas
+Swiftly/Optibus-style: el modal del conductor con botón RECIBIDO. El backend
+ya enviaba pushes FCM (`fcmAlertDispatcher.ts`) y el endpoint
+`acknowledgeAlerta` ya existía desde la sesión 2026-04-24. Lo que faltaba
+era la UI que reciba el push en foreground, muestre el modal pantalla completa
+y dispare el ACK.
+
+**Feature entregada:**
+
+| Feature | Archivo | Líneas | Estado |
+|---|---|---|---|
+| Modal de alerta táctica para conductor | `frontend/src/components/DriverAlertOverlay.tsx` | 234 | creado |
+| Montaje global en DashboardLayout | `frontend/src/layouts/DashboardLayout.tsx` | +8 | modificado |
+
+**Diseño del componente:**
+
+- Subscribe a Firebase Messaging `onMessage` (foreground only).
+- Filtra por `TIPOS_REGULACION = {RIVAL_PISANDO_TURNO, PELIGRO_BUNCHING, DISPARO_MANUAL}`.
+- Modal fixed z-[9999] con gradiente rojo (crítico) o ámbar (otros).
+- Tipografía grande (text-2xl body, text-xl accent, uppercase tracking-widest).
+- Botón único RECIBIDO full-width con icono — nada de "REPORTAR FALSO", "IGNORAR", etc. Principio: el conductor manejando no decide nada complejo.
+- Haptic vibration `[200,100,200,100,400]` al abrir — patrón asimétrico deliberado vs pulse simple de notifs normales.
+- Auto-dismiss 30s con countdown visible.
+- POST `/acknowledgeAlerta` con `alertaId` + `cocheId` — idempotente por diseño.
+
+**Decisión clave:** `DriverAlertOverlay` va en `DashboardLayout` (no en una ruta
+específica) para estar activo independientemente de dónde navegue el usuario.
+El filtro `TIPOS_REGULACION` garantiza que no aparece por alertas info. Vale
+también para inspectores y tráfico si el rol tiene `fcm_token` suscrito —
+mismo componente, distintos roles.
+
+**Verificación realizada en sandbox:**
+- ✅ `npx tsc --noEmit` frontend: 0 errores.
+- ✅ `bash scripts/check_integrity.sh`: exit 0 (sin bytes null, exports ok, 0 errores TS frontend y functions).
+- ⚠️ **Verificación end-to-end (push → modal → ACK) queda para Claude Code** — requiere dos sesiones simultáneas (emisor + receptor) y VAPID real configurada. La orden completa está en SESION_ACTUAL.md.
+
+**Pendientes post-deploy:**
+- Configurar VAPID real (`VITE_FCM_VAPID_KEY`) — sin esto, `onMessage` nunca dispara porque `getToken` falla silencioso con placeholder.
+- Empaquetar como app nativa (Capacitor) para que corra con pantalla encendida + ring tone en dispositivo del chofer.
+- Tab "ACK Performance" en ShadowAnalytics con `ack_rate` y `avg_response_time_sec` por línea/conductor (datos ya se guardan, falta viz).
+
+**Anti-patrones evitados:**
+- No se puso múltiples CTAs ("ver detalle", "reportar falso") — principio "un conductor maneja, no decide".
+- No se hardcodeó color por empresa — se usa `tipo` para decidir rojo (crítico) vs ámbar.
+- No se pidió permisos de notificación ni se registró SW desde el componente — eso lo hace `usePushNotifications` en otro lugar. Aquí solo se consume.
+
+**Estado final del proyecto al cierre:**
+- Loop operacional FCM cross-operador cerrado end-to-end en código.
+- ShadowRadar muestra badges ACK/PUSH en tiempo real.
+- DRO matrix con 1850 corredores detectados (cross-operador + intra-empresa).
+- CEO Dashboard V7 con históricos 7D/30D reales.
+- Sidebar con 3 bloques de identidad clara (Inteligencia de Red / Op Táctica / Análisis Financiero).
+
