@@ -63,21 +63,36 @@ interface ScheduleInfo {
 }
 
 /**
- * Props del widget — prop empresaPropia agregada en refactor cross-operador
- * (DIRECTRIZ 2026-04-24). Default UCOT (70). Por ahora el algoritmo de
- * threat-scan sigue usando LINEAS_UCOT_BASE / COMPETITOR_MAP (UCOT-only),
- * pero el prop ya viaja para que cuando se generalice no haya que tocar
- * el contrato del componente. El parent puede esconder el widget cuando
- * empresaPropia ≠ 70 si quiere; aquí simplemente mostramos un banner
- * indicando que los datos competitivos cargados son los de UCOT.
+ * Props del widget — prop empresaPropia (DIRECTRIZ 2026-04-24).
+ * El algoritmo de threat-scan ahora identifica buses propios y rivales
+ * dinámicamente según `empresaPropia` en lugar de hardcodear UCOT.
+ * Default 70 (UCOT). El catálogo de líneas propias sigue siendo
+ * LINEAS_UCOT_BASE como referencia mínima — pendiente generalizar a
+ * shapes_cross_operator. Para CUTCSA/COME/COETC, el escaneo se hace
+ * sobre las mismas líneas pero el filtro propio/rival respeta el
+ * operador seleccionado.
  */
 interface CompetitorThreatWidgetProps {
   empresaPropia?: number;
 }
 
+/**
+ * Mapeo agency code ↔ nombre canónico STM (mismo que usa el endpoint
+ * /api/positions). Usado por el threat-scan para identificar buses
+ * propios vs rivales sin hardcodear "UCOT".
+ */
+const AGENCY_NAME_BY_ID: Record<number, string> = {
+  10: 'COETC',
+  20: 'COME',
+  50: 'CUTCSA',
+  70: 'UCOT',
+};
+
 export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
   empresaPropia = 70,
 }) => {
+  /** Nombre del operador propio para comparaciones contra el campo empresa de los buses. */
+  const empresaPropiaName = AGENCY_NAME_BY_ID[empresaPropia] ?? 'UCOT';
   const [activeThreats, setActiveThreats] = useState<ThreatResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
@@ -135,6 +150,20 @@ export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
     };
   }, []);
 
+  /**
+   * Líneas propias del operador seleccionado.
+   * - Si es UCOT (70): usamos el catálogo verificado LINEAS_UCOT_BASE.
+   * - Otros operadores: por ahora también usamos LINEAS_UCOT_BASE como
+   *   referencia mínima (para que el widget tenga algo que escanear)
+   *   hasta que generalicemos el catálogo desde shapes_cross_operator.
+   * El cambio importante es que `empresaPropiaName` y los filtros
+   *   ya no asumen UCOT en las comparaciones de buses.
+   *
+   * TODO próximo: derivar dinámicamente desde
+   *   `shapes_cross_operator` filtrado por agencyId === empresaPropia.
+   */
+  const lineasPropias = LINEAS_UCOT_BASE;
+
   const runTacticalScan = useCallback(async () => {
     if (loading) return;
     setLoading(true);
@@ -142,7 +171,7 @@ export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
     try {
       // 1. Obtener posiciones de rivales externos (STM)
       const allRivalLines = Array.from(
-        new Set(LINEAS_UCOT_BASE.flatMap((l) => COMPETITOR_MAP[l] || [])),
+        new Set(lineasPropias.flatMap((l) => COMPETITOR_MAP[l] || [])),
       );
       const stmPositions = await TrafficService.fetchCompetitorPositions(allRivalLines);
 
@@ -156,10 +185,11 @@ export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
       }));
       setExternalRivals(stmFormatted);
 
-      // 2. Mezclar STM con Rivales de Firestore
+      // 2. Mezclar STM con Rivales de Firestore.
+      // Cualquier bus cuyo `empresa` no sea el operador propio se considera rival.
       const mergedRivalData: Record<string, unknown>[] = [...stmPositions];
       livePositions.forEach((p) => {
-        const isRival = p.empresa !== 'UCOT' && p.empresa !== 2;
+        const isRival = p.empresa !== empresaPropiaName && p.empresa !== empresaPropia;
         if (isRival && p.posicion) {
           const pos = p.posicion as Record<string, unknown>;
           mergedRivalData.push({
@@ -174,22 +204,26 @@ export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
       // 3. ESCANEO POR CORREDOR (no por línea genérica)
       const results: ThreatResult[] = [];
 
-      for (const lineId of LINEAS_UCOT_BASE) {
+      for (const lineId of lineasPropias) {
         const cleanId = lineId.toString().replace(/[ab]$/i, '');
 
-        // Encontrar bus UCOT de esta línea
-        const ucotBus = livePositions.find((p) => {
+        // Encontrar bus PROPIO de esta línea (cross-operador):
+        // matchea por nombre del operador (UCOT/CUTCSA/COME/COETC) o
+        // por el id numérico (legacy '2' UCOT).
+        const propBus = livePositions.find((p) => {
           const pLine = (p.codigoLinea as string)?.toString().replace(/[ab]$/i, '');
-          const isUCOT =
-            p.empresa === 'UCOT' || p.empresa === 2 || (p.id as string)?.includes('sim-ucot');
-          return pLine === cleanId && isUCOT;
+          const isOwn =
+            p.empresa === empresaPropiaName ||
+            p.empresa === empresaPropia ||
+            (empresaPropia === 70 && (p.empresa === 2 || (p.id as string)?.includes('sim-ucot')));
+          return pLine === cleanId && isOwn;
         });
 
-        if (ucotBus?.posicion) {
-          const pos = ucotBus.posicion as Record<string, unknown>;
+        if (propBus?.posicion) {
+          const pos = propBus.posicion as Record<string, unknown>;
           const lat = Number(pos.latitude || pos.lat);
           const lng = Number(pos.longitude || pos.lng);
-          const heading = Number(ucotBus.heading || 0);
+          const heading = Number(propBus.heading || 0);
 
           // AUTO-DETECTAR CORREDOR por heading
           const corridor = detectCorridor(lineId, heading);
@@ -214,7 +248,9 @@ export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
             corridor: corridor?.label || lineId,
             destino: corridor?.destino || 'DESCONOCIDO',
             variantCode: corridor?.variantCode,
-            ucotBusId: String(ucotBus.id || ucotBus.codigoBus || ''),
+            // ucotBusId es el nombre legacy del campo en AIIntelligenceService;
+            // ahora lleva el id del bus propio (cross-operador).
+            ucotBusId: String(propBus.id || propBus.codigoBus || ''),
             rivals: corridor?.rivals,
           });
         } else {
