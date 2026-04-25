@@ -6,156 +6,150 @@
 
 ---
 
-**Última actualización:** 2026-04-25 (segunda iteración del día)
+**Última actualización:** 2026-04-25 (Sprint 1 RE-ABIERTO bajo §12)
 
-## EN CURSO — bug crítico de bundle
+## 🆕 NUEVA REGLA §12 — Verificación en Producción Excluyente
 
-App en producción muestra pantalla "Problemas de Carga / Reparar y Recargar"
-en lugar de los módulos. Causa raíz **distinta** del bug de NULs que Code
-arregló esta mañana — esto es un problema de bundling Vite.
+Jonathan instaló directiva permanente:
+*"verifica en producción excluyente, no avanzaremos hasta dar por 100%
+ok el funcionamiento. quien recibe el producto no le importan las pruebas
+de codigo o local"*
 
-## CAUSA RAÍZ DEL BUG ACTUAL
+Guardada en `CLAUDE.md` §12. Aplicable a TODOS los sprints en adelante.
+Tests locales + tsc verde + build OK NO son suficiente. La única
+verificación válida es: ¿un usuario final que recibe el producto puede
+usarlo en producción sin que se rompa nada?
 
-`vite.config.ts` tenía estos paquetes en `build.rollupOptions.external`:
+## ⚠️ SPRINT 1 RE-ABIERTO BAJO §12
 
-```js
-external: [
-  '@capacitor/core',
-  '@capacitor/haptics',
-  '@capacitor/status-bar',
-  '@capacitor/local-notifications',
-  '@capacitor-community/keep-awake',
-],
+Al aplicar §12 retroactivamente a Sprint 1, detecté **3 gaps** que mi
+verificación inicial no captó (era puramente HTTP 200 status check):
+
+| Gap | Severidad | Estado |
+|---|---|---|
+| 1. Bug CTA PricingPage — `{tier.name}` literal en mailto | 🔴 Crítico | ✅ Fix aplicado en código local |
+| 2. Onboarding doc no accesible público sin login | 🔴 Crítico | ✅ Creada OnboardingPage.tsx pública |
+| 3. Endpoints regulatorio /export sin verificación humana con token | 🟠 Excepción §12 | ⏸️ Pendiente Jonathan |
+
+## 📋 ENTREGABLES ACTUALIZADOS POR COWORK (esta sesión)
+
+| # | Archivo | Estado |
+|---|---|---|
+| 1.1 fix | `frontend/src/pages/public/PricingPage.tsx` (Edit puntual: mailto template + link a onboarding) | ✅ Listo |
+| 1.2 fix | `frontend/src/pages/public/OnboardingPage.tsx` (componente nuevo, página pública con timeline + comparativa + caso UCOT + compromisos) | ✅ Listo |
+| Regla §12 | `CLAUDE.md` agregado §12 con 7 criterios + responsabilidades | ✅ Listo |
+| Plan actualizado | `docs/SPRINT_01_PLAN.md` con orden post-§12 para Code | ✅ Listo |
+
+## 📋 PRÓXIMO PASO INMEDIATO
+
+**Para Jonathan / Claude Code:**
+
+Pegar a Claude Code este prompt para cerrar Sprint 1 bajo §12:
+
+```
+Continuamos Sprint 1 bajo Regla §12. Leé CLAUDE.md (especial §12) y
+docs/SPRINT_01_PLAN.md sección "ORDEN ACTUALIZADA POST-§12".
+
+Cowork resolvió 2 gaps en código:
+1. Fix bug CTA mailto en frontend/src/pages/public/PricingPage.tsx
+2. Creada frontend/src/pages/public/OnboardingPage.tsx pública
+
+Tu trabajo:
+1. Edit puntual App.tsx para registrar /pricing/onboarding
+2. npm run build + firebase deploy --only hosting
+3. Verificación §12 en producción (7 criterios listados en SPRINT_01_PLAN)
+4. Si todo OK, commit con mensaje preparado y push
+
+Si algo falla, escribir "## NOTA DE JONATHAN" en SESION_ACTUAL.md
+describiendo qué falló.
 ```
 
-Eso le decía a Rollup *"no bundlees estos paquetes"*. En el bundle web, Rollup
-dejaba `import "@capacitor/core"` literal. El browser no resuelve bare
-specifiers ESM → `TypeError: Failed to resolve module specifier
-"@capacitor/core"` → `React failed to mount` → Service Worker fallback muestra
-"Problemas de Carga".
+**Después** de que Code complete eso, **Jonathan ejecuta la verificación
+humana de §12** (excepción permitida):
 
-`DashboardLayout.tsx` línea 9 importa **eager** `DriverAlertOverlay`, que
-importa `useNativeDriverAlerts`, que importa `@capacitor/core`. Como
-DashboardLayout envuelve todas las rutas /dashboard/*, el módulo se evalúa
-inmediatamente al cargar cualquier vista del sistema.
+- Probar `/regulatorio/export?empresa=70&desde=2026-04-01&hasta=2026-04-25`
+  con su token ADMIN (desde DevTools → Network del dashboard logueado).
+- Verificar que el JSON output es consumible por humanos.
+- Reportar OK o gaps al feedback.
 
-El externalize tenía sentido conceptual para una APK Capacitor (los plugins
-nativos los provee Java/Swift), pero **`@capacitor/core` es JS puro** que
-detecta el entorno (`Capacitor.isNativePlatform()`) y hace fallback gracioso
-en web. Siempre tiene que ir bundleado. El externalize aplica solo a plugins
-nativos, no al core JS.
+**Solo cuando los 3 gaps cierren al 100% en producción**, Sprint 1 pasa
+a `completed`. Recién ahí arrancamos Sprint 2 (HeadwayInsights + GPS
+Playback).
 
-## CAMBIO YA APLICADO POR COWORK
+## ✅ ENTREGABLES SPRINT 1 — ESTADO
 
-Editado `frontend/vite.config.ts` líneas 214-221: removidas las 5 entradas
-del array `external`, reemplazadas por un comentario explicando el bug.
+| Entregable | §11 (build/deploy) | §12 (producción real) |
+|---|---|---|
+| 1.1 Pricing público | ✅ deployado | 🟡 Bug CTA detectado y arreglado · pendiente redeploy |
+| 1.2 Onboarding doc | ✅ MD escrito | 🟡 Página pública creada · pendiente registrar ruta + deploy |
+| 1.3 GTFS-RT Service Alerts | ✅ deployado | ✅ Verificado V2 + 100 entidades + cron 1min |
+| 1.4 Compliance reporting | ✅ deployado | 🟠 /health OK · /export pendiente verificación humana con token |
 
-Verificado:
-- Archivo `vite.config.ts` sin NULs (chequeado desde el sandbox).
-- Cambio en zona segura para Cowork (archivo de 255 líneas, edit de <10
-  líneas — dentro de la regla §10 de CLAUDE.md).
+## 📚 DOCUMENTOS GENERADOS HOY
 
-## PRÓXIMO PASO INMEDIATO (Claude Code)
+Estratégicos (Fases 1-3 del roadmap international-grade):
 
-```powershell
-# 1. Verificar que el cambio quedó OK
-cd C:\Users\jonat\Desktop\PROYECTOS\GestionUcot
-git diff frontend/vite.config.ts
-# Debe mostrar: -external: [ '@capacitor/core', ... ]
-#               +// No externalizamos los paquetes Capacitor...
+| Documento | Tipo |
+|---|---|
+| `docs/ESTRATEGIA_INTERNATIONAL_GRADE.md` | Norte vinculante |
+| `docs/COMPETIDORES/optibus.md` | Dossier líder global |
+| `docs/COMPETIDORES/swiftly.md` | Dossier líder global |
+| `docs/COMPETIDORES/remix.md` | Dossier líder global |
+| `docs/COMPETIDORES/trapeze.md` | Dossier enterprise |
+| `docs/COMPETIDORES/cittati.md` | Único competidor regional urgente |
+| `docs/COMPETIDORES/MATRIZ_MAESTRA.xlsx` | 6 hojas, 95 fórmulas |
+| `docs/COMPETIDORES/HALLAZGOS_CONSOLIDADOS.md` | Síntesis ejecutiva |
+| `docs/ROADMAP_CIERRE_GAPS.md` | 12 sprints, 6 meses |
+| `docs/DECISION_M_A.md` | 3 opciones M&A |
 
-# 2. Verificar NULs (este chequeo SÍ es válido desde Code/Windows)
-cd frontend\src
-python -c "
-import os
-total = 0
-for root, dirs, files in os.walk('.'):
-    if 'node_modules' in root: continue
-    for f in files:
-        if f.endswith(('.ts', '.tsx')):
-            p = os.path.join(root, f)
-            n = open(p, 'rb').read().count(b'\x00')
-            if n: print(p, n); total += n
-print('Total NULs:', total)
-"
-# Debe imprimir 'Total NULs: 0'. Si imprime mas, restaurar afectados
-# desde HEAD antes de seguir.
+Sprint 1 (entregables tácticos):
 
-# 3. Typecheck limpio
-cd ..
-npx tsc --noEmit --skipLibCheck
+| Documento | Tipo |
+|---|---|
+| `docs/SPRINT_01_PLAN.md` | Plan + orden post-§12 |
+| `docs/PRICING_PUBLICO.md` | Justificación tiers |
+| `docs/ONBOARDING_PROCESO.md` | Texto base onboarding |
+| `frontend/src/pages/public/PricingPage.tsx` | Componente con fix CTA |
+| `frontend/src/pages/public/OnboardingPage.tsx` | Componente nuevo |
+| `functions/src/api/regulatorio.ts` | Endpoint compliance |
 
-# 4. Build limpio
-npm run build
+## 🟡 PENDIENTES DE FONDO
 
-# 5. Deploy
-cd ..
-firebase deploy --only hosting
-
-# 6. Verificación visual
-# Abrir https://ucot-gestor-cloud.web.app/dashboard en incognito
-# - El sidebar carga normal
-# - Click en cualquier modulo del sidebar
-# - El modulo renderiza datos reales (no "Error en Modulo", no "Problemas de Carga")
-# Probar al menos: CEO Dashboard V7, Cartones, Personal, ShadowRadar.
-
-# 7. Commit
-git add frontend/vite.config.ts CLAUDE.md docs/SESION_ACTUAL.md docs/DIAGNOSTICO_NUL_2026_04_25.md
-git commit -m "fix(build): bundle capacitor packages in web build instead of externalizing
-
-Root cause of 'Problemas de Carga' affecting all routes: vite.config.ts had
-@capacitor/core (and 4 other capacitor packages) in rollupOptions.external,
-which left bare specifier 'import @capacitor/core' in the web bundle.
-Browser cannot resolve bare specifiers in ESM, threw TypeError, React failed
-to mount, Service Worker showed offline fallback.
-
-DashboardLayout eagerly imports DriverAlertOverlay -> useNativeDriverAlerts
--> @capacitor/core, so every /dashboard/* route triggered the failure.
-
-@capacitor/core is JS-only and detects environment at runtime; always
-bundle in web builds. Externalize only applies to native Java/Swift plugins
-inside an actual APK, not to the JS layer.
-
-Also documents in CLAUDE.md section 10 that NUL-byte profilactic check
-produces false positives when run from Cowork sandbox (mount layer
-corruption); must be run from Claude Code/Windows native only."
-
-git push
-
-# 8. Confirmar en produccion
-# Esperar 1-2 min al cache-bust y refrescar incognito.
-# Reportar a Jonathan si todo OK o que fallo.
-```
-
-## SI ALGO FALLA
-
-- Si `tsc --noEmit` tira errores, NO commitear, escribir "## NOTA DE
-  JONATHAN" arriba de SESION_ACTUAL.md describiendo el error.
-- Si el build falla, mismo protocolo.
-- Si después del deploy la app sigue mostrando "Problemas de Carga", limpiar
-  caché del browser (Ctrl+Shift+R en incógnito) y verificar que el bundle
-  servido tenga timestamp nuevo (`document.scripts[0].src` debe traer un
-  número distinto al `1777096526852` actual).
-
-## DECISIÓN OPERATIVA TOMADA EN ESTA ITERACIÓN
-
-CLAUDE.md §10 actualizado: el chequeo de NULs se corre **exclusivamente
-desde Claude Code (Windows nativo)**, no desde Cowork. La capa de mount entre
-sandbox y Windows inyecta NULs al leer archivos grandes, generando falsos
-positivos sistemáticos. Confirmado contrastando: Code reporta "0 NULs en src"
-después de deploy exitoso; Cowork sobre los mismos archivos reporta >6000
-NULs minutos después. Los archivos en Windows real están sanos.
-
-## BACKLOG
-
-- **Auditoría funcional para pitch CUTCSA** (PDF + Excel + carpeta
-  evidencias). Bloqueada hasta que la app vuelva a renderizar módulos.
-  Plan armado en las tasks #62-73 del TodoList.
-- #24 Rotar service account key comprometida (acción humana en GCP Console)
+- #24 Rotar service account key comprometida (acción humana GCP)
 - #26 Borrar archivos zombie + limpieza sidebar
+- #87 **DECISIÓN M&A** — Jonathan decide A/B/C en próximas 1-2 semanas
 
-## NOTA PARA JONATHAN
+## 📌 DECISIONES OPERATIVAS
 
-Cuando Code termine los 8 pasos y la app vuelva a andar, retomamos
-inmediatamente con la auditoría funcional para CUTCSA. El plan completo
-está en TodoList.
+1. Producto NO se vende como MVP. International-grade desde día uno.
+2. Auditoría INTERNA primero. Pitch a CUTCSA recién post-Fase 4.
+3. **§10 CLAUDE.md:** Cowork no edita archivos grandes/críticos.
+4. **§11 CLAUDE.md:** No-Regresión obligatoria. 7 criterios pre-commit.
+5. **§12 CLAUDE.md (NUEVA):** Verificación en producción excluyente.
+   No avanzar sin 100% OK funcional desde perspectiva de usuario final.
+6. División Cowork/Code: Cowork hace archivos NUEVOS + diseño + docs;
+   Code hace edits en críticos + build + deploy + verificación.
+
+## 🔴 RIESGOS ESTRATÉGICOS ACTIVOS
+
+1. **Cittati llega a CUTCSA antes que nosotros** (alta probabilidad,
+   alto impacto). Mitigación: velocidad estratégica + relación CUTCSA.
+2. **Optibus lanza versión Latam-friendly** (media probabilidad,
+   alto impacto). Mitigación: moat cross-op profundizado + patentes.
+3. **Falla de seguridad pública** (baja-media, crítico). Mitigación:
+   ISO 27001 compliance statement Sprint 4.
+
+## 📝 NOTA PARA JONATHAN
+
+Lo que aprendimos hoy aplicando §12: aunque Code reportó "Sprint 1
+cerrado con 7/7 criterios §11 OK", al verificar con criterio de usuario
+final detectamos un bug crítico (CTA mailto roto) y un gap funcional
+(onboarding no accesible al público).
+
+**Sin §12, ese pricing iba al pitch a CUTCSA con un bug embarazoso.**
+La regla es ahora vinculante para los próximos 11 sprints.
+
+Cuando Code complete el redeploy y la verificación §12 en producción,
+y vos pruebes los endpoints regulatorio con tu token, **recién ahí
+Sprint 1 cierra**. Después arrancamos Sprint 2 (HeadwayInsights + GPS
+Playback) — pero esta vez con §12 desde el día uno.

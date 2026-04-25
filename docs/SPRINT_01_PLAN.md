@@ -31,27 +31,155 @@ NO toca archivos críticos compartidos (ver §10 de CLAUDE.md).
 
 ---
 
-## 🔴 GAPS DETECTADOS POST-§12 (2026-04-25 — re-apertura del sprint)
+## 🔴 GAPS DETECTADOS POST-§12 (2026-04-25 — sprint re-abierto, segunda iteración)
 
-Bajo Regla §12 (verificación en producción excluyente), Sprint 1 quedó re-abierto.
-Tres gaps detectados:
+Bajo Regla §12 (verificación en producción excluyente), Sprint 1 sigue
+abierto. Los gaps documentados en orden de detección:
 
-1. **Bug en CTAs PricingPage** — el `mailto` tenía `{tier.name}` literal en
-   vez de interpolado (subject del email rompe). **Fix aplicado en
-   `frontend/src/pages/public/PricingPage.tsx`** — pendiente deploy por Code.
-
+### Iteración 1 — gaps detectados por Cowork
+1. **Bug CTAs PricingPage** — `{tier.name}` literal en mailto. ✅ Fix
+   aplicado en `frontend/src/pages/public/PricingPage.tsx` (template
+   string con backticks + encodeURIComponent).
 2. **Onboarding documentado pero NO público** — `docs/ONBOARDING_PROCESO.md`
-   existe pero no es accesible vía web a un prospect sin login. Bajo §12,
-   eso no está terminado. **Resuelto: creado
-   `frontend/src/pages/public/OnboardingPage.tsx` (componente nuevo)** +
-   link agregado desde PricingPage.
+   no era accesible web. ✅ Creado `OnboardingPage.tsx` pública + link
+   desde Pricing.
 
-3. **Endpoints regulatorio sin verificación con auth real** — `/health`
-   responde OK pero `/export` y `/export-cross-op` requieren token ADMIN.
-   Bajo §12 cae en excepción humana — Jonathan o Code con cuenta admin
-   debe ejecutar el test final.
+### Iteración 2 — gaps detectados por Code en verificación humana §12
+3. **OTP devuelve 0% engañoso** — los 5000 eventos del rango tienen
+   `desviacionMin === null` porque el ingestor IMM no calcula desviación
+   (gap conocido del scraper STM por parada). El reporte mostraba 0%
+   puntualidad cuando la verdad es "no medible por falta de datos".
+   ✅ **Fix aplicado en `functions/src/api/regulatorio.ts`**: refactor de
+   `calcularOTP()` que distingue 3 casos (desviación calculada / línea
+   tiene horarios_stm pero falta cálculo cron / línea no tiene horarios_stm).
+   Output incluye nuevo bloque `calidadDeDatos` transparente con conteos,
+   cobertura % y advertencias para regulador.
+4. **Índice Firestore faltante** — query `agencyId AND createdAt BETWEEN`
+   necesita índice `(agencyId ASC, createdAt ASC)` pero solo existe DESC.
+   Endpoint individual por operador caería con 500. ⏸️ **Pendiente Code:
+   agregar línea en `firestore.indexes.json`**.
 
-## ORDEN ACTUALIZADA PARA CLAUDE CODE (post-§12)
+## ORDEN ACTUALIZADA PARA CLAUDE CODE (post-§12, iteración 2)
+
+> Pegar este bloque a Code para cerrar Sprint 1 al 100%.
+
+```
+Continuamos Sprint 1 bajo Regla §12. Leé CLAUDE.md (especial §12) y
+docs/SPRINT_01_PLAN.md (sección "GAPS DETECTADOS POST-§12").
+
+Cowork resolvió en código:
+1. PricingPage.tsx — fix bug CTA mailto (template string + encodeURIComponent)
+2. OnboardingPage.tsx — componente nuevo, página pública con timeline + caso UCOT
+3. regulatorio.ts — refactor calcularOTP para distinguir medibles vs no medibles
+   + bloque calidadDeDatos transparente al regulador (cobertura %, advertencias)
+
+Tu trabajo:
+
+PASO 1 — INTEGRAR OnboardingPage (frontend/src/App.tsx):
+   const OnboardingPage = lazy(() => import('./pages/public/OnboardingPage'));
+   <Route path="/pricing/onboarding" element={<OnboardingPage />} />
+
+PASO 2 — AGREGAR ÍNDICE FIRESTORE (firestore.indexes.json):
+   Agregar al array "indexes":
+   {
+     "collectionGroup": "vehicle_events",
+     "queryScope": "COLLECTION",
+     "fields": [
+       { "fieldPath": "empresa", "order": "ASCENDING" },
+       { "fieldPath": "tipo", "order": "ASCENDING" },
+       { "fieldPath": "timestamp", "order": "ASCENDING" }
+     ]
+   }
+   (Nota: el query es "empresa = X AND tipo = arrival_at_stop AND
+   timestamp BETWEEN A AND B". Si Firestore Console pide otro shape
+   exacto, copiar el link de error que da el endpoint y crear el índice
+   sugerido en Console — equivalente.)
+
+PASO 3 — REBUILD + REDEPLOY:
+   cd frontend && npm run build && cd ..
+   cd functions && npm run build && cd ..
+   firebase deploy --only hosting,functions,firestore:indexes
+
+PASO 4 — VERIFICACIÓN §12 EN PRODUCCIÓN (criterio usuario final, 6 puntos):
+
+   a) https://ucot-gestor-cloud.web.app/pricing en incógnito limpio:
+      - Click "Reservar reunión" tier Profesional → subject del mailto
+        debe ser "SkillRoute - Tier Profesional - Reunión de descubrimiento"
+        (NO debe contener "{tier.name}" literal).
+      - Click link "Ver proceso de onboarding" en hero → navega a
+        /pricing/onboarding.
+
+   b) https://ucot-gestor-cloud.web.app/pricing/onboarding en incógnito:
+      - Carga sin auth.
+      - Muestra timeline 4 semanas (Setup, Datos, Capacitación, Go-live).
+      - Comparativa con líderes mundiales visible.
+      - Caso UCOT visible con tabla de hitos.
+      - 0 errores en console.
+      - Mobile-responsive a viewport 390px (DevTools emulator).
+
+   c) Endpoints regulatorio con tu token ADMIN:
+      Test 1 — cross-op (debería tener data real):
+        curl -H "Authorization: Bearer <TOKEN>" \
+          "https://us-central1-ucot-gestor-cloud.cloudfunctions.net/regulatorio/export-cross-op?desde=2026-04-01&hasta=2026-04-25" \
+          | python -m json.tool > /tmp/cross-op.json
+
+        Verificar en /tmp/cross-op.json:
+        - otpRed.pctOTP es null O número (no 0% engañoso).
+        - calidadDeDatos.red.advertencias[] explica el "no medible"
+          si pctOTP es null.
+        - cobertura[] tiene 4 operadores con buses y lineasActivas reales.
+        - calidadPorOperador tiene desglose por operador (10/20/50/70).
+
+      Test 2 — operador individual (post-índice):
+        curl -H "Authorization: Bearer <TOKEN>" \
+          "https://us-central1-ucot-gestor-cloud.cloudfunctions.net/regulatorio/export?empresa=70&desde=2026-04-01&hasta=2026-04-25" \
+          | python -m json.tool > /tmp/ucot.json
+
+        Debe responder 200 (no 500). El JSON debe ser estructuralmente
+        igual al cross-op pero con un solo operador.
+
+   d) GTFS-RT sigue OK (regresión):
+      curl https://us-central1-ucot-gestor-cloud.cloudfunctions.net/gtfsRealtime/service-alerts.json \
+        | python -c "import json,sys; d=json.load(sys.stdin); print(d['meta'])"
+      Debe imprimir totalEntities > 0.
+
+   e) Regresión sidebar: cargar /dashboard/traffic/ceo, /traffic/cartones,
+      /traffic/shadow-radar — los 3 deben renderizar sin errores nuevos.
+
+   f) Reportar a Jonathan los 6 puntos con resultado.
+
+PASO 5 — SI TODO PASA → COMMIT:
+   git add -A
+   git commit -m "fix(sprint-1-§12): cierre completo bajo regla 12
+
+   Aplicación de Regla §12 (Verificación en Producción Excluyente)
+   resolvió 4 gaps en Sprint 1:
+
+   1. PricingPage CTA mailto: {tier.name} literal → template string.
+   2. OnboardingPage.tsx pública en /pricing/onboarding.
+   3. regulatorio.calcularOTP: refactor para distinguir medibles vs
+      no medibles. Output incluye calidadDeDatos transparente con
+      cobertura % y advertencias para regulador. OTP devuelve null
+      en lugar de 0% engañoso cuando no hay datos suficientes.
+   4. Índice Firestore (empresa, tipo, timestamp ASC) para queries
+      de export por operador.
+
+   Verificación §12 ejecutada en producción:
+   - /pricing CTA correcto.
+   - /pricing/onboarding carga, mobile-responsive, 0 errores console.
+   - /regulatorio/export-cross-op devuelve OTP=null transparente
+     con advertencias.
+   - /regulatorio/export?empresa=X devuelve 200 (post-índice).
+   - GTFS-RT feed sin regresión.
+   - 3 módulos sidebar sin regresión."
+   git push
+
+PASO 6 — SI ALGO FALLA en pasos 4-5:
+   Escribir "## NOTA DE JONATHAN" arriba de SESION_ACTUAL.md
+   describiendo qué falló. NO commitear.
+```
+
+## ORDEN ANTERIOR (iteración 1, ya superada)
 
 > Pegar este bloque en Claude Code para cerrar Sprint 1 bajo §12.
 

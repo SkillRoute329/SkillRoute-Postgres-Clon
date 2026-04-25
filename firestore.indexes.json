@@ -195,6 +195,23 @@
       ]
     },
     {
+      "collectionGroup": "vehicle_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "empresa", "order": "ASCENDING" },
+        { "fieldPath": "tipo", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "vehicle_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tipo", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "alertas_regulacion",
       "queryScope": "COLLECTION",
       "fields": [

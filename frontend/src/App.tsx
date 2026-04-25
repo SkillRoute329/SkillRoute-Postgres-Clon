@@ -120,7 +120,8 @@ const ShadowAnalytics = lazy(() => import('./pages/traffic/ShadowAnalytics'));
 const MarketPenetration = lazy(() => import('./pages/traffic/MarketPenetration'));
 const StmScraperStatus = lazy(() => import('./pages/admin/StmScraperStatus'));
 // Sprint 1 (2026-04-25): Pricing público — accesible sin auth
-const PricingPage = lazy(() => import('./pages/public/PricingPage'));
+const PricingPage = lazy(() => import('./pages/public/PricingPage'));
+const OnboardingPage = lazy(() => import('./pages/public/OnboardingPage'));
 
 
 // Loading Component

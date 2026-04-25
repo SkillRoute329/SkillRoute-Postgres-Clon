@@ -350,6 +350,127 @@ y reaplicar los cambios pendientes.
 
 ---
 
+### 11. Regla de No-Regresión (DIRECTRIZ 2026-04-25)
+
+**Todo cambio de aquí en adelante se ejecuta bajo orden estricta de
+no-regresión. Ningún feature nuevo, refactor, optimización o fix puede
+romper funcionalidad existente.**
+
+**Criterios obligatorios antes de cada commit:**
+
+1. **Tests pasan.** `npm test` (Vitest) + `npm run lint` con exit 0.
+2. **TypeScript limpio.** `npx tsc --noEmit --skipLibCheck` con 0 errores
+   nuevos. Si había errores pre-existentes, no se agregan más.
+3. **Integrity script.** `bash scripts/check_integrity.sh` con exit 0
+   (NUL bytes = 0, exports críticos presentes, build limpio).
+4. **Build limpio.** `npm run build` sin warnings ni errores.
+5. **Verificación funcional de la feature nueva.** Se prueba que la
+   feature agregada funciona (Chrome MCP cuando esté disponible, o
+   smoke test mínimo).
+6. **Verificación de regresión.** Se prueba que **al menos 3 módulos
+   pre-existentes** (los más usados: ShadowRadar, CartonManager,
+   FleetMonitor, OTPDashboard) siguen renderizando sin errores
+   después del cambio. Captura mínima.
+7. **Deploy reversible.** Si después de deploy aparece regresión no
+   detectada en pasos 5-6, se revierte el commit completo (`git revert`),
+   no se parchea encima.
+
+**Filosofía:**
+
+- **Agregar, no reemplazar.** Una feature nueva se monta al lado de
+  la existente, no la sustituye. Si algo viejo debe morir, se documenta
+  el deprecation y se mantiene N versiones antes de eliminar.
+- **Datos viejos siguen siendo válidos.** Schemas Firestore agregan
+  campos opcionales, no rompen documentos existentes. Migraciones
+  retrocompatibles.
+- **APIs viejas siguen respondiendo.** Endpoints existentes mantienen
+  contrato. Nuevos endpoints en rutas nuevas (`/v2/`).
+- **UI vieja sigue accesible.** Si renombramos un módulo, la URL
+  vieja redirige a la nueva, no muere con 404.
+
+**Excepciones permitidas (raras):**
+
+- Refactor con plan documentado y rollback testeado (ej. cuando hay
+  bug crítico de seguridad que solo se resuelve rompiendo).
+- Aprobación explícita de Jonathan en SESION_ACTUAL.md.
+
+**Si una sesión no puede cumplir estos criterios** (ej. test runner
+caído, build sandbox-only, etc.), no commitear hasta que se cumplan.
+Documentar en SESION_ACTUAL.md qué pasos faltan para que la próxima
+sesión los cierre.
+
+**Aplicación práctica al workflow Cowork ↔ Code:**
+
+- Cowork edita archivos chicos/nuevos + diseña features → entrega a
+  Code el changeset listo.
+- Code aplica tests/build/integrity en Windows nativo.
+- Code commitea solo si los 7 criterios pasan.
+- Si fallan, Code escribe "## NOTA DE JONATHAN" en SESION_ACTUAL.md
+  describiendo qué falló y qué pasos quedan, y avisa antes de
+  continuar.
+
+---
+
+### 12. Verificación en Producción Excluyente (DIRECTRIZ 2026-04-25)
+
+**A partir de esta directriz, la verificación en producción es la
+única válida y excluyente. Tests locales, typecheck verde, build
+limpio e integrity script OK son condiciones necesarias pero NO
+suficientes.**
+
+**Razón:** quien recibe el producto (operador, regulador, directivo,
+auditor externo, prospect comercial) **no le importan las pruebas de
+código ni locales**. Le importa que cuando abre la URL, todo funcione
+exactamente como espera, sin errores, sin friccciones, sin "todavía
+no está pulido".
+
+**Criterios obligatorios complementarios a §11 No-Regresión:**
+
+1. **URL pública del feature accede sin errores** desde un browser
+   limpio (sin cache, sin auth previa).
+2. **Mobile-responsive verificado** en viewport <480px y <768px.
+   Cero overflow horizontal, cero texto cortado, cero CTAs invisibles.
+3. **Errores de console = 0** en el browser cuando un usuario
+   navega el feature. Warnings tolerables si están justificados.
+4. **CTAs probados end-to-end.** Si hay un botón "Reservar reunión"
+   que abre mailto, se prueba que abre. Si hay un endpoint API que
+   un usuario real va a usar, se prueba con datos reales y un token
+   real (no solo `/health`).
+5. **Output útil para humanos.** Si el feature genera un PDF, JSON,
+   reporte — abrirlo y leerlo. Si está vacío, mal formateado, o
+   contiene solo placeholders, NO está terminado.
+6. **Caso de regresión cross-feature.** Si el feature toca rutas
+   o navegación, verificar que rutas pre-existentes siguen
+   funcionando. Probar al menos 3 módulos del sidebar después de
+   deploy.
+7. **Documentación pública del feature.** Si el feature es
+   diferenciador comercial, debe tener una URL o documento público
+   que un prospect pueda leer sin login.
+
+**No se avanza al siguiente Sprint hasta que el actual cumpla todos
+estos criterios.** Si Cowork o Code reportan "Sprint X cerrado" sin
+verificación funcional excluyente, el reporte es inválido y se debe
+re-abrir el sprint.
+
+**Excepción permitida:** features que requieren auth ADMIN o
+SUPERADMIN para evaluación (ej. endpoints regulatorios). En esos
+casos, la verificación funcional la hace Jonathan o el equipo
+autorizado, y el agente reporta los pasos exactos para que se
+ejecute. El sprint sigue abierto hasta que la verificación humana
+confirma OK.
+
+**Responsabilidad del agente:**
+
+- Cowork no dice "Sprint cerrado" — dice "Sprint listo para
+  verificación final".
+- Cowork enumera **qué exactamente** debe verificar Jonathan o
+  Code en producción, con URLs y pasos numerados.
+- Cuando la verificación 100% se confirma, el agente actualiza
+  SESION_ACTUAL.md y mueve la task a `completed`.
+- Hasta entonces, la task queda `in_progress`.
+
+---
+
 ## 📘 Documentos que debe leer el agente antes de tocar código
 
 Si la tarea implica crear, mover, renombrar o reorganizar archivos, **leer primero**:
