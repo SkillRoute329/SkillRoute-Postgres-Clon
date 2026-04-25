@@ -455,7 +455,7 @@ service cloud.firestore {
     //   - Delete: prohibido (audit trail).
     // ============================================================
     match /desvios_guardados/{document=**} {
-      allow read: if isAuthenticated();
+      allow get, list: if isAuthenticated();
       allow create: if isTrafficOrAdmin();
       allow update: if isTrafficOrAdmin();
       allow delete: if false;
