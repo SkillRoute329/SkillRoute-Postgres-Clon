@@ -139,6 +139,14 @@
       ]
     },
     {
+      "collectionGroup": "alertas_regulacion",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "empresa_id", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "vehicle_events",
       "queryScope": "COLLECTION",
       "fields": [
@@ -176,6 +184,88 @@
       "fields": [
         { "fieldPath": "expiresAt", "order": "ASCENDING" },
         { "fieldPath": "timestampGPS", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "vehicle_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "timestampGPS", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "alertas_regulacion",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "empresa_id", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "parametros_operativos_historial",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "key", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "delegaciones_inspector",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "mensajes_internos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "toUserId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "desvios_reportados",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "desvios_reportados",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lineaCodigo", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "disruptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "operadorId", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "disruptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "disruptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "operadorId", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "resolvedAt", "order": "DESCENDING" }
       ]
     }
   ],
