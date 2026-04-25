@@ -22,7 +22,7 @@ import {
   Route,
   Building2,
 } from 'lucide-react';
-import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
+import { useEmpresaPropia, EMPRESAS_OPCIONES } from '../../hooks/useEmpresaPropia';
 import { collection, doc, setDoc, updateDoc, serverTimestamp, GeoPoint } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
@@ -269,6 +269,7 @@ export default function NavigationModule() {
   useEffect(() => {
     setListCompleta([]);
     setSelectedCodigo('');
+    setFilterLinea(TODAS);
     setLoading(true);
     getLineasByAgency(empresaPropia)
       .then((list) => {
@@ -611,10 +612,87 @@ export default function NavigationModule() {
         <p className="text-slate-400 text-sm mt-1">Recorrido, paradas y desvíos por línea</p>
 
         {!isNavigating && (
-          <div className="mt-4 flex flex-wrap gap-3 items-center touch-manipulation select-none">
+          <div className="mt-4 flex flex-wrap gap-3 items-end touch-manipulation select-none">
+
+            {/* ── Paso 1: Empresa ──────────────────────────────────────── */}
+            <div className="flex flex-col gap-1 min-w-[130px]">
+              <label className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Empresa</label>
+              <select
+                value={empresaPropia}
+                onChange={(e) => setEmpresaPropia(Number(e.target.value))}
+                className="min-h-[44px] px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm hover:bg-slate-700 focus:ring-2 focus:ring-primary-500 focus:outline-none touch-manipulation cursor-pointer"
+                aria-label="Seleccionar empresa"
+              >
+                {EMPRESAS_OPCIONES.map((emp) => (
+                  <option key={emp.codigo} value={emp.codigo}>{emp.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* ── Paso 2: Línea ─────────────────────────────────────────── */}
+            <div className="flex flex-col gap-1 min-w-[120px]">
+              <label className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Línea</label>
+              <select
+                value={filterLinea}
+                onChange={(e) => setFilterLinea(e.target.value)}
+                disabled={loading || lineasUnicas.length === 0}
+                className="min-h-[44px] px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm hover:bg-slate-700 focus:ring-2 focus:ring-primary-500 focus:outline-none disabled:opacity-50 touch-manipulation cursor-pointer"
+                aria-label="Seleccionar línea"
+              >
+                <option value={TODAS}>{loading ? 'Cargando…' : '— Todas —'}</option>
+                {lineasUnicas.map((cod) => (
+                  <option key={cod} value={cod}>{cod}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* ── Paso 3: Sentido / Destino ─────────────────────────────── */}
+            <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+              <label className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Sentido / Destino</label>
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedCodigo}
+                  onChange={(e) => setSelectedCodigo(e.target.value)}
+                  disabled={opcionesRecorrido.length === 0}
+                  className="min-h-[44px] px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm flex-1 min-w-0 hover:bg-slate-700 focus:ring-2 focus:ring-primary-500 focus:outline-none disabled:opacity-50 touch-manipulation cursor-pointer"
+                  aria-label="Seleccionar sentido y destino"
+                >
+                  {opcionesRecorrido.length === 0 && (
+                    <option value="">Seleccioná una línea primero</option>
+                  )}
+                  {opcionesRecorrido.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {formatNombreRecorrido(item)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleSwapOrigenDestino}
+                  disabled={!selectedCodigo}
+                  className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-amber-400 disabled:opacity-50 touch-manipulation"
+                  title="Invertir sentido"
+                  aria-label="Invertir sentido"
+                >
+                  <ArrowUpDown className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={openLineEditor}
+                  disabled={!selectedCodigo}
+                  className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-blue-400 disabled:opacity-50 touch-manipulation"
+                  title="Editar nombre / origen / destino"
+                  aria-label="Editar datos de la línea"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* ── Sin resultados ────────────────────────────────────────── */}
             {!loading && listCompleta.length === 0 && (
               <div className="basis-full flex flex-wrap items-center gap-2 p-3 rounded-xl bg-amber-900/30 border border-amber-600/50">
-                <span className="text-amber-200 text-sm">No hay líneas cargadas.</span>
+                <span className="text-amber-200 text-sm">No hay líneas cargadas para {empresaCfg.label}.</span>
                 <button
                   type="button"
                   onClick={() => {
@@ -632,89 +710,6 @@ export default function NavigationModule() {
                 </button>
               </div>
             )}
-            <div className="flex items-center gap-2 min-w-0 flex-1 basis-full md:basis-auto">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar línea (ej. 300, cc1)..."
-                className="min-h-[44px] w-full max-w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm placeholder-slate-500 focus:ring-2 focus:ring-primary-500 focus:outline-none touch-manipulation"
-                aria-label="Buscar línea por código o nombre"
-              />
-            </div>
-            {/* Ocultamos temporalmente el selector de Empresa a pedido del usuario si solo es UCOT */}
-            {/*
-            <div className="flex items-center gap-2">
-              <label className="text-slate-400 text-sm font-medium shrink-0">Compañía</label>
-              <select
-                value={filterCompania}
-                onChange={(e) => setFilterCompania(e.target.value)}
-                className="min-h-[44px] px-3 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm min-w-0 w-full max-w-[200px] hover:bg-slate-700 active:bg-slate-600 focus:ring-2 focus:ring-primary-500 focus:outline-none disabled:opacity-50 touch-manipulation cursor-pointer select-none"
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                aria-label="Filtrar por compañía"
-              >
-                <option value={TODAS}>Todas</option>
-                {companiasUnicas.map((emp) => (
-                  <option key={emp} value={emp}>
-                    {emp}
-                  </option>
-                ))}
-              </select>
-            </div>
-            */}
-            <div className="flex items-center gap-2">
-              <label className="text-slate-400 text-sm font-medium shrink-0">Línea {empresaCfg.label}</label>
-              <select
-                value={filterLinea}
-                onChange={(e) => setFilterLinea(e.target.value)}
-                className="min-h-[44px] px-3 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm min-w-0 w-full max-w-[180px] hover:bg-slate-700 active:bg-slate-600 focus:ring-2 focus:ring-primary-500 focus:outline-none disabled:opacity-50 touch-manipulation cursor-pointer select-none"
-                aria-label="Filtrar por línea"
-              >
-                <option value={TODAS}>Todas</option>
-                {lineasUnicas.map((cod) => (
-                  <option key={cod} value={cod}>
-                    {cod}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 flex-1 min-w-0 basis-full">
-              <label className="text-slate-400 text-sm font-medium shrink-0">Recorrido</label>
-              <select
-                value={selectedCodigo}
-                onChange={(e) => setSelectedCodigo(e.target.value)}
-                className="min-h-[44px] px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white w-full max-w-full min-w-0 flex-1 hover:bg-slate-700 active:bg-slate-600 focus:ring-2 focus:ring-primary-500 focus:outline-none disabled:opacity-50 touch-manipulation cursor-pointer select-none"
-                aria-label="Seleccionar recorrido"
-              >
-                {opcionesRecorrido.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {formatNombreRecorrido(item)}
-                  </option>
-                ))}
-              </select>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleSwapOrigenDestino}
-                  disabled={!selectedCodigo}
-                  className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-amber-400 disabled:opacity-50 touch-manipulation"
-                  title="Intercambiar origen / destino"
-                  aria-label="Intercambiar origen y destino"
-                >
-                  <ArrowUpDown className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={openLineEditor}
-                  disabled={!selectedCodigo}
-                  className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-blue-400 disabled:opacity-50 touch-manipulation"
-                  title="Editar nombre / origen / destino"
-                  aria-label="Editar datos de la línea"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
 
             {/* ── Banner de desvíos: visible cuando la línea tiene desvíos configurados ── */}
             {selectedCodigo && desviosCount.total > 0 && (
