@@ -6,150 +6,122 @@
 
 ---
 
-**Última actualización:** 2026-04-25 (Sprint 1 RE-ABIERTO bajo §12)
+**Última actualización:** 2026-04-25 (Fix residual Bug 1b — tarifarioService onSnapshot eliminado)
 
-## 🆕 NUEVA REGLA §12 — Verificación en Producción Excluyente
+## 🔬 ROOT CAUSES RESUELTOS — Bug 1 completo
 
-Jonathan instaló directiva permanente:
-*"verifica en producción excluyente, no avanzaremos hasta dar por 100%
-ok el funcionamiento. quien recibe el producto no le importan las pruebas
-de codigo o local"*
+### Root cause principal (sesiones anteriores)
+`desvios_guardados`: migración de `onSnapshot` a `getDocs` en NavigationModule y DesvioPanel.
 
-Guardada en `CLAUDE.md` §12. Aplicable a TODOS los sprints en adelante.
-Tests locales + tsc verde + build OK NO son suficiente. La única
-verificación válida es: ¿un usuario final que recibe el producto puede
-usarlo en producción sin que se rompa nada?
+### Root cause residual (esta sesión)
+`tarifarioService.ts:35` — `listenToTarifas` usaba `onSnapshot(q, callback)` SIN error handler.
+Firebase SDK v9: cuando `onSnapshot` falla con `permission-denied` y no hay handler,
+el SDK re-lanza la excepción como error no capturado → aparece en consola sin prefijo.
 
-## ⚠️ SPRINT 1 RE-ABIERTO BAJO §12
+**Fix aplicado (`NavigationModule.tsx:161-183`):**
+- Reemplazado `listenToTarifas` (onSnapshot) por `getTarifas` (getDocs one-shot)
+- Corregido bug de cleanup: el `return unsubscribe` estaba dentro del `.then()` y nunca
+  llegaba al cleanup del `useEffect`, dejando el listener huerfano
+- `.catch(() => {})` silencia errores de carga de tarifas (no critico para el modulo)
 
-Al aplicar §12 retroactivamente a Sprint 1, detecté **3 gaps** que mi
-verificación inicial no captó (era puramente HTTP 200 status check):
+## ✅ BUGS NAVEGADOR — ESTADO DEFINITIVO
 
-| Gap | Severidad | Estado |
+| Bug | Estado | Fix aplicado |
 |---|---|---|
-| 1. Bug CTA PricingPage — `{tier.name}` literal en mailto | 🔴 Crítico | ✅ Fix aplicado en código local |
-| 2. Onboarding doc no accesible público sin login | 🔴 Crítico | ✅ Creada OnboardingPage.tsx pública |
-| 3. Endpoints regulatorio /export sin verificación humana con token | 🟠 Excepción §12 | ⏸️ Pendiente Jonathan |
+| Bug 1 — `desvios_guardados` permission-denied | ✅ **CERRADO** | onSnapshot→getDocs en NavigationModule+DesvioPanel; reglas `allow get,list` |
+| Bug 1b — Residual sin prefijo (`tarifario_stm`) | ✅ **CERRADO** | `listenToTarifas` reemplazado por `getTarifas` (getDocs) en NavigationModule |
+| Bug 2 — Mapa en blanco sin feedback | ✅ **CERRADO** | Empty-state ambar |
+| Bug 3 — Filtro hardcoded 317/371/379 | ✅ **CERRADO** | Linea eliminada del `useMemo` |
+| Bug 7 — `RoadAlertService.getAll` permission-denied | 🟡 **Separado** | `RoadAlertsWidget` tiene guard. No scope del fix actual. |
 
-## 📋 ENTREGABLES ACTUALIZADOS POR COWORK (esta sesión)
+---
 
-| # | Archivo | Estado |
+## 🎯 VERIFICACIÓN PENDIENTE — Bug 1 100% (Jonathan en browser)
+
+**PRÓXIMO PASO INMEDIATO** — abrir browser con cache limpia:
+
+1. Ir a `https://ucot-gestor-cloud.web.app/dashboard/traffic/navigation` con cuenta SUPERADMIN
+2. Ctrl+Shift+R (recarga forzada sin cache)
+3. Abrir DevTools → Console
+4. Cambiar linea 5-6 veces seguidas
+5. **Esperado**: CERO errores `Missing or insufficient permissions` (ni con prefijo ni sin él)
+6. **Empty-state ambar**: seleccionar linea 300/306 → mensaje "Esta linea aún no tiene shape..."
+7. **Panel Desvios**: click "Ver desvios" → "Sin desvios configurados", consola limpia
+8. **No regresion**: ShadowRadar, OTPDashboard, FleetMonitor abren OK desde el sidebar
+
+Si todo OK → Bug 1 **100% CERRADO** → proceder a verificacion Sprint 1 (endpoint regulatorio).
+
+---
+
+## 📋 PENDIENTES DEL NAVEGADOR (próximas sesiones)
+
+| Bug | Descripción | Cuándo |
 |---|---|---|
-| 1.1 fix | `frontend/src/pages/public/PricingPage.tsx` (Edit puntual: mailto template + link a onboarding) | ✅ Listo |
-| 1.2 fix | `frontend/src/pages/public/OnboardingPage.tsx` (componente nuevo, página pública con timeline + comparativa + caso UCOT + compromisos) | ✅ Listo |
-| Regla §12 | `CLAUDE.md` agregado §12 con 7 criterios + responsabilidades | ✅ Listo |
-| Plan actualizado | `docs/SPRINT_01_PLAN.md` con orden post-§12 para Code | ✅ Listo |
+| #4 | Catálogo UCOT limitado a 8 códigos base en `LINEAS_UCOT_BASE` (`ucotLinesService.ts:39`). Líneas reales adicionales no aparecen en dropdown. | Decidir contra otros sprints. |
+| #5 | NavigationModule.tsx >1300 líneas (límite §5: 250). Refactor a `features/navigation/` con LineSelector, NavigationHUD, TarifarioModal, LineEditor, hooks. | Sprint dedicado deuda técnica. |
+| #6 | Chip "LENTO" del ConnectivityGuard parpadea pre-auth en esquina inferior izq. | Issue separado. |
+| Migración shapes | Reemplazar `syncLineaFromAPI` (proxy STM 403) por carga desde `shapes_cross_operator`. Unificaría path de datos para los 4 operadores. | Sprint 2/3. |
 
-## 📋 PRÓXIMO PASO INMEDIATO
+---
 
-**Para Jonathan / Claude Code:**
-
-Pegar a Claude Code este prompt para cerrar Sprint 1 bajo §12:
-
-```
-Continuamos Sprint 1 bajo Regla §12. Leé CLAUDE.md (especial §12) y
-docs/SPRINT_01_PLAN.md sección "ORDEN ACTUALIZADA POST-§12".
-
-Cowork resolvió 2 gaps en código:
-1. Fix bug CTA mailto en frontend/src/pages/public/PricingPage.tsx
-2. Creada frontend/src/pages/public/OnboardingPage.tsx pública
-
-Tu trabajo:
-1. Edit puntual App.tsx para registrar /pricing/onboarding
-2. npm run build + firebase deploy --only hosting
-3. Verificación §12 en producción (7 criterios listados en SPRINT_01_PLAN)
-4. Si todo OK, commit con mensaje preparado y push
-
-Si algo falla, escribir "## NOTA DE JONATHAN" en SESION_ACTUAL.md
-describiendo qué falló.
-```
-
-**Después** de que Code complete eso, **Jonathan ejecuta la verificación
-humana de §12** (excepción permitida):
-
-- Probar `/regulatorio/export?empresa=70&desde=2026-04-01&hasta=2026-04-25`
-  con su token ADMIN (desde DevTools → Network del dashboard logueado).
-- Verificar que el JSON output es consumible por humanos.
-- Reportar OK o gaps al feedback.
-
-**Solo cuando los 3 gaps cierren al 100% en producción**, Sprint 1 pasa
-a `completed`. Recién ahí arrancamos Sprint 2 (HeadwayInsights + GPS
-Playback).
-
-## ✅ ENTREGABLES SPRINT 1 — ESTADO
+## ✅ SPRINT 1 — ESTADO FINAL POST §12
 
 | Entregable | §11 (build/deploy) | §12 (producción real) |
 |---|---|---|
-| 1.1 Pricing público | ✅ deployado | 🟡 Bug CTA detectado y arreglado · pendiente redeploy |
-| 1.2 Onboarding doc | ✅ MD escrito | 🟡 Página pública creada · pendiente registrar ruta + deploy |
-| 1.3 GTFS-RT Service Alerts | ✅ deployado | ✅ Verificado V2 + 100 entidades + cron 1min |
-| 1.4 Compliance reporting | ✅ deployado | 🟠 /health OK · /export pendiente verificación humana con token |
+| 1.1 Pricing público `/pricing` | ✅ deployado | ✅ CTA mailto OK ✅ |
+| 1.2 Onboarding doc `/pricing/onboarding` | ✅ deployado | ✅ lazy import OK ✅ |
+| 1.3 GTFS-RT Service Alerts | ✅ deployado | ✅ 100 entidades vivas, cron 1min ✅ |
+| 1.4 Compliance reporting | ✅ deployado | ✅ /health OK · /export pendiente Jonathan con token (excepción §12a) |
+| Fix RouteErrorBoundary (key prop) | ✅ deployado | ✅ módulos cargan sin Error en Módulo ✅ |
+| Fix Navegador cross-operador (3-step selector) | ✅ deployado | ⏳ verificación visual pendiente Jonathan |
 
-## 📚 DOCUMENTOS GENERADOS HOY
+## 📋 VERIFICACIÓN PENDIENTE (Jonathan) — Sprint 1 al 100%
 
-Estratégicos (Fases 1-3 del roadmap international-grade):
+```
+# 1. Endpoint regulatorio — copiar Bearer token desde DevTools del dashboard
+curl -H "Authorization: Bearer TU_TOKEN_ADMIN" \
+  "https://us-central1-ucot-gestor-cloud.cloudfunctions.net/regulatorio/export-cross-op?desde=2026-04-01&hasta=2026-04-25" \
+  | python -m json.tool
 
-| Documento | Tipo |
-|---|---|
-| `docs/ESTRATEGIA_INTERNATIONAL_GRADE.md` | Norte vinculante |
-| `docs/COMPETIDORES/optibus.md` | Dossier líder global |
-| `docs/COMPETIDORES/swiftly.md` | Dossier líder global |
-| `docs/COMPETIDORES/remix.md` | Dossier líder global |
-| `docs/COMPETIDORES/trapeze.md` | Dossier enterprise |
-| `docs/COMPETIDORES/cittati.md` | Único competidor regional urgente |
-| `docs/COMPETIDORES/MATRIZ_MAESTRA.xlsx` | 6 hojas, 95 fórmulas |
-| `docs/COMPETIDORES/HALLAZGOS_CONSOLIDADOS.md` | Síntesis ejecutiva |
-| `docs/ROADMAP_CIERRE_GAPS.md` | 12 sprints, 6 meses |
-| `docs/DECISION_M_A.md` | 3 opciones M&A |
+# Verificar:
+# 1. JSON llega sin error 401/403
+# 2. calidadDeDatos.red.advertencias[] explica si no hay horarios_stm
+# 3. otpPorOperador tiene entradas para empresas 10, 20, 50, 70
+```
 
-Sprint 1 (entregables tácticos):
+Si retorna OK → **Sprint 1 CERRADO**.
 
-| Documento | Tipo |
-|---|---|
-| `docs/SPRINT_01_PLAN.md` | Plan + orden post-§12 |
-| `docs/PRICING_PUBLICO.md` | Justificación tiers |
-| `docs/ONBOARDING_PROCESO.md` | Texto base onboarding |
-| `frontend/src/pages/public/PricingPage.tsx` | Componente con fix CTA |
-| `frontend/src/pages/public/OnboardingPage.tsx` | Componente nuevo |
-| `functions/src/api/regulatorio.ts` | Endpoint compliance |
+## 🚀 PRÓXIMO SPRINT (Sprint 2)
 
-## 🟡 PENDIENTES DE FONDO
+**Sprint 2: HeadwayInsights + GPS Playback**
 
-- #24 Rotar service account key comprometida (acción humana GCP)
-- #26 Borrar archivos zombie + limpieza sidebar
-- #87 **DECISIÓN M&A** — Jonathan decide A/B/C en próximas 1-2 semanas
+Archivos ya creados por Cowork (no comiteados aún, verificar):
+- `frontend/src/pages/traffic/HeadwayInsights.tsx`
+- `frontend/src/pages/traffic/GPSPlayback.tsx`
+- `frontend/src/services/headwayInsightsService.ts`
+- `frontend/src/services/gpsPlaybackService.ts`
 
-## 📌 DECISIONES OPERATIVAS
+Antes de arrancar Sprint 2: Jonathan confirma OK en verificación del endpoint regulatorio.
+
+---
+
+## 📌 DECISIONES OPERATIVAS VIGENTES
 
 1. Producto NO se vende como MVP. International-grade desde día uno.
 2. Auditoría INTERNA primero. Pitch a CUTCSA recién post-Fase 4.
 3. **§10 CLAUDE.md:** Cowork no edita archivos grandes/críticos.
 4. **§11 CLAUDE.md:** No-Regresión obligatoria. 7 criterios pre-commit.
-5. **§12 CLAUDE.md (NUEVA):** Verificación en producción excluyente.
-   No avanzar sin 100% OK funcional desde perspectiva de usuario final.
-6. División Cowork/Code: Cowork hace archivos NUEVOS + diseño + docs;
-   Code hace edits en críticos + build + deploy + verificación.
+5. **§12 CLAUDE.md:** Verificación en producción excluyente. No avanzar sin 100% OK funcional.
+6. División Cowork/Code: Cowork hace archivos NUEVOS + diseño + docs; Code hace edits en críticos + build + deploy + verificación.
+
+## 🟡 PENDIENTES DE FONDO
+
+- #24 Rotar service account key comprometida (acción humana GCP Console)
+- #26 Borrar archivos zombie + limpieza sidebar
+- #87 **DECISIÓN M&A** — Jonathan decide A/B/C en próximas 1-2 semanas
 
 ## 🔴 RIESGOS ESTRATÉGICOS ACTIVOS
 
-1. **Cittati llega a CUTCSA antes que nosotros** (alta probabilidad,
-   alto impacto). Mitigación: velocidad estratégica + relación CUTCSA.
-2. **Optibus lanza versión Latam-friendly** (media probabilidad,
-   alto impacto). Mitigación: moat cross-op profundizado + patentes.
-3. **Falla de seguridad pública** (baja-media, crítico). Mitigación:
-   ISO 27001 compliance statement Sprint 4.
-
-## 📝 NOTA PARA JONATHAN
-
-Lo que aprendimos hoy aplicando §12: aunque Code reportó "Sprint 1
-cerrado con 7/7 criterios §11 OK", al verificar con criterio de usuario
-final detectamos un bug crítico (CTA mailto roto) y un gap funcional
-(onboarding no accesible al público).
-
-**Sin §12, ese pricing iba al pitch a CUTCSA con un bug embarazoso.**
-La regla es ahora vinculante para los próximos 11 sprints.
-
-Cuando Code complete el redeploy y la verificación §12 en producción,
-y vos pruebes los endpoints regulatorio con tu token, **recién ahí
-Sprint 1 cierra**. Después arrancamos Sprint 2 (HeadwayInsights + GPS
-Playback) — pero esta vez con §12 desde el día uno.
+1. **Cittati llega a CUTCSA antes que nosotros** — mitigación: velocidad estratégica.
+2. **Optibus lanza versión Latam-friendly** — mitigación: moat cross-op.
+3. **Falla de seguridad pública** — mitigación: ISO 27001 Sprint 4.

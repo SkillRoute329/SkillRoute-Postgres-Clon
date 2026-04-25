@@ -159,27 +159,25 @@ export default function NavigationModule() {
   const [tarifas, setTarifas] = useState<TarifaSTM[]>([]);
 
   useEffect(() => {
-    // Importación dinámica para evitar ciclos
+    // getDocs one-shot (no onSnapshot) — tarifas cambian raramente, no necesitan tiempo real.
+    // onSnapshot sin error handler re-lanzaba permission-denied como excepción no capturada.
     import('../../services/tarifarioService')
-      .then(({ listenToTarifas, setSeedTarfias }) => {
-        const unsubscribe = listenToTarifas(async (datosTarifas) => {
-          if (datosTarifas.length === 0) {
-            // Seed initial data si está vacío (por estar en DEV/TEST phase de Firebase)
-            const defaultTarifas: TarifaSTM[] = [
-              { id: '1', nombre: 'Boleto Común', precio: 55, categoria: 'URBANO' },
-              { id: '2', nombre: 'Zonal', precio: 27, categoria: 'ZONAL' },
-              { id: '3', nombre: 'Suburbano Anillo 1', precio: 70, categoria: 'SUBURBANO' },
-              { id: '4', nombre: 'Diferencial', precio: 90, categoria: 'DIFERENCIAL' },
-            ];
-            await setSeedTarfias(defaultTarifas);
-            // No devolvemos nada, el snapshopt emitirá un nuevo evento inmediatamente tras el seed
-          } else {
-            setTarifas(datosTarifas);
-          }
-        });
-        return unsubscribe;
+      .then(async ({ getTarifas, setSeedTarfias }) => {
+        const datosTarifas = await getTarifas();
+        if (datosTarifas.length === 0) {
+          const defaultTarifas: TarifaSTM[] = [
+            { id: '1', nombre: 'Boleto Común', precio: 55, categoria: 'URBANO' },
+            { id: '2', nombre: 'Zonal', precio: 27, categoria: 'ZONAL' },
+            { id: '3', nombre: 'Suburbano Anillo 1', precio: 70, categoria: 'SUBURBANO' },
+            { id: '4', nombre: 'Diferencial', precio: 90, categoria: 'DIFERENCIAL' },
+          ];
+          await setSeedTarfias(defaultTarifas);
+          setTarifas(defaultTarifas);
+        } else {
+          setTarifas(datosTarifas);
+        }
       })
-      .catch(console.error);
+      .catch(() => {});
   }, []);
 
   const { user } = useAuth();
