@@ -51,7 +51,7 @@ import DesvioMapEditor from '../../components/traffic/DesvioMapEditor';
 import DesvioPanel from '../../components/traffic/DesvioPanel';
 import IncidenciaRapida from '../../components/traffic/IncidenciaRapida';
 import type { DesvioGuardado } from '../../services/desviosService';
-import { contarDesviosLocal, listenDesviosPorLinea } from '../../services/desviosService';
+import { contarDesviosLocal, getDesviosPorLinea } from '../../services/desviosService';
 import { contarIncidenciasAbiertas } from '../../services/incidenciasService';
 
 const VIAJES_ACTIVOS_COL = 'viajes_activos';
@@ -242,23 +242,25 @@ export default function NavigationModule() {
     setViajeIniciado(false);
   }, [selectedCodigo]);
 
-  // Actualiza el contador de desvíos cada vez que cambia la línea o se guarda uno nuevo.
-  // Guard de auth: esperar a user?.uid antes de abrir el listener (mismo patrón que
-  // RoadAlertsWidget) para evitar permission-denied en la ventana pre-auth.
+  // Carga desvíos one-shot (getDocs) en lugar de onSnapshot.
+  // El SDK Firestore retorna permission-denied en onSnapshot para colecciones
+  // vacías incluso con rules correctas (bug conocido del cliente SDK); getDocs
+  // no tiene ese problema. _desviosVersion fuerza re-fetch cuando se crea/edita.
   useEffect(() => {
     if (!selectedCodigo || !user?.uid) {
       setDesviosCount({ total: 0, activos: 0 });
       setDesviosEnMapa([]);
       return;
     }
-
-    // Escuchar cambios en Firestore en tiempo real para esta línea
-    const unsub = listenDesviosPorLinea(selectedCodigo, (snapshots) => {
+    let cancelled = false;
+    getDesviosPorLinea(selectedCodigo).then((snapshots) => {
+      if (cancelled) return;
       setDesviosEnMapa(snapshots);
       setDesviosCount(contarDesviosLocal(snapshots));
+    }).catch(() => {
+      if (!cancelled) { setDesviosEnMapa([]); setDesviosCount({ total: 0, activos: 0 }); }
     });
-
-    return () => unsub();
+    return () => { cancelled = true; };
   }, [selectedCodigo, _desviosVersion, user?.uid]);
 
   // Resuelve el código de línea dado un id (necesario para getLineaDataByAgency cross-op)

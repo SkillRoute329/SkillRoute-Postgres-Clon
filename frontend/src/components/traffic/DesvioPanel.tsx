@@ -27,7 +27,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import {
-  listenDesviosPorLinea,
+  getDesviosPorLinea,
   eliminarDesvio,
   toggleDesvio,
   formatSchedule,
@@ -99,15 +99,18 @@ export default function DesvioPanel({
   const [desvios, setDesvios] = useState<DesvioGuardado[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  // Escuchar desvíos en tiempo real. Guard de auth igual que RoadAlertsWidget.
+  // Carga desvíos one-shot (getDocs). onSnapshot falla con permission-denied
+  // en el SDK Firestore para colecciones vacías aun con rules correctas.
   useEffect(() => {
     if (!lineaCodigo || !user?.uid) return;
-    const unsub = listenDesviosPorLinea(lineaCodigo, (nuevos) => {
+    let cancelled = false;
+    getDesviosPorLinea(lineaCodigo).then((nuevos) => {
+      if (cancelled) return;
       setDesvios(nuevos);
       onDesviosChange?.();
-    });
-    return () => unsub();
-  }, [lineaCodigo, onDesviosChange, user?.uid]);
+    }).catch(() => { if (!cancelled) setDesvios([]); });
+    return () => { cancelled = true; };
+  }, [lineaCodigo, user?.uid]);
 
   // Tick cada 60s para re-evaluar "vigente ahora" sin recarga de datos
   // Simplemente forzamos un re-render cambiando un estado contador (o recreando array)
