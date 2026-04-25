@@ -788,6 +788,15 @@ export {
 } from './droMatrix';
 
 // ─── FCM Alert Dispatcher — push al conductor + ACK loop ──────────────────────
+
+// ─── Histórico de KPIs (CEO V7 fase 2) ────────────────────────────────────────
+// Series diarias para los botones 7D/30D del Centro de Mando.
+// /historicOtp?days=N&agencyId=X → puntualidad por día
+// /historicBunching?days=N&agencyId=X → aglomeración por día
+export {
+  historicOtp,
+  historicBunching,
+} from './historicMetrics';
 // DIRECTRIZ 2026-04-24: cierra el loop operacional (Swiftly/Optibus-style).
 // onAlertaCreated: dispara FCM cada vez que se crea un doc en alertas_regulacion.
 // acknowledgeAlerta: HTTP endpoint que marca ack_at + response_time_sec cuando

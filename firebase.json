@@ -20,6 +20,14 @@
         "function": "stmHorariosProxy"
       },
       {
+        "source": "/historicOtp",
+        "function": "historicOtp"
+      },
+      {
+        "source": "/historicBunching",
+        "function": "historicBunching"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
@@ -87,6 +95,6 @@
   },
   "functions": {
     "source": "functions",
-    "runtime": "nodejs20"
+    "runtime": "nodejs22"
   }
 }

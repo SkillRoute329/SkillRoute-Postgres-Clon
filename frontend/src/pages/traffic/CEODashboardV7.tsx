@@ -52,6 +52,16 @@ import {
 import { db } from '../../config/firebase';
 import { FleetService, ServicioEstadoService } from '../../services/firestore';
 import { formatHoraSegundosMvd } from '../../utils/formatTimestamp';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as ReTooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
 
 /* ═══════════════════════════════════════════════════════════
    CONFIG
@@ -63,11 +73,13 @@ interface OperadorConfig {
   agencyId: string; // valor en shapes_cross_operator.agencyId
 }
 
+// agencyId = string del codigoEmpresa (formato shapes_cross_operator/corridor_overlap).
+// Mantener sincronizado con ShadowRadar.tsx EMPRESA_TO_AGENCY.
 const EMPRESAS_OPCIONES: ReadonlyArray<OperadorConfig> = [
-  { codigo: 70, label: 'UCOT', agencyId: 'UCOT' },
-  { codigo: 50, label: 'CUTCSA', agencyId: 'CUTCSA' },
-  { codigo: 20, label: 'COME', agencyId: 'COME' },
-  { codigo: 10, label: 'COETC', agencyId: 'COETC' },
+  { codigo: 70, label: 'UCOT', agencyId: '70' },
+  { codigo: 50, label: 'CUTCSA', agencyId: '50' },
+  { codigo: 20, label: 'COME', agencyId: '20' },
+  { codigo: 10, label: 'COETC', agencyId: '10' },
 ];
 
 const PERIODOS = [
@@ -83,26 +95,38 @@ type Periodo = (typeof PERIODOS)[number]['id'];
    ═══════════════════════════════════════════════════════════ */
 
 interface NetworkHealth {
-  score: number; // 0-100
+  score: number; // 0-100 (calculado sólo sobre componentes disponibles)
   components: {
-    otp: number; // 0-100
-    bunching: number; // 0-100 (mayor = mejor)
+    otp: number; // 0-100 (0 si null)
+    bunching: number; // 0-100
     coverage: number; // 0-100
-    risk: number; // 0-100 (mayor = mejor, menos incidencias)
+    risk: number; // 0-100
   };
+  componentsAvailable: number; // de 4 — <4 indica score parcial
+  bunchingCapped: boolean; // true si el query subestima el conteo
   meta: {
     serviciosTotales: number;
     serviciosPuntuales: number;
-    bunchingEvents24h: number;
+    bunchingEvents24h: number | null;
     flotaActiva: number;
     flotaTotal: number;
-    incidenciasAbiertas: number;
+    incidenciasAbiertas: number | null;
+    otpAvailable: boolean;
+    coverageAvailable: boolean;
   };
 }
 
 interface OverlapDoc {
   shapeAKey: string;
   shapeBKey: string;
+  agencyA: string;
+  empresaA: string;
+  lineaA: string;
+  sentidoA: 'IDA' | 'VUELTA';
+  agencyB: string;
+  empresaB: string;
+  lineaB: string;
+  sentidoB: 'IDA' | 'VUELTA';
   pctAInB: number;
   sharedKm: number;
   sameEmpresa: boolean;
@@ -147,21 +171,30 @@ interface RiskItem {
   icon: typeof AlertTriangle;
 }
 
-interface PositionFeature {
-  type: 'Feature';
-  geometry: { type: 'Point'; coordinates: [number, number] };
-  properties: {
-    codigoEmpresa?: number;
-    linea?: string;
-    sublinea?: string;
-    variante?: string;
-    destinoDesc?: string;
-  };
+/**
+ * Shape devuelto por GET /api/positions
+ * (functions/src/intelligenceApi.ts → posicionesHandler).
+ * Cada bus es un objeto plano, NO un GeoJSON Feature.
+ */
+interface PositionBus {
+  idBus: string;
+  codigoBus: string;
+  linea: string;
+  sublinea?: string;
+  destino?: string;
+  empresa: string;
+  empresaId: number; // 70 / 50 / 20 / 10
+  lat: number;
+  lng: number;
+  timestamp: string;
 }
 
 interface PositionsResponse {
-  type: 'FeatureCollection';
-  features: PositionFeature[];
+  ok: boolean;
+  total?: number;
+  buses: PositionBus[];
+  timestamp?: string;
+  fuente?: string;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -191,40 +224,76 @@ function ringColorFromScore(score: number): string {
 }
 
 /**
- * Network Health Score 0-100 — combinación ponderada UITP-style.
- * Pesos: 40% OTP / 25% Bunching / 20% Coverage / 15% Risk.
+ * Salud de la Red 0-100 — combinación ponderada UITP-style.
+ * Pesos base: 40% OTP / 25% Aglomeración / 20% Cobertura / 15% Riesgo.
+ *
+ * Si un componente NO TIENE DATOS, su peso se redistribuye entre los demás
+ * (no se trata como "0% performance"). Esto evita scores artificialmente
+ * bajos cuando faltan ingestas. El campo `componentsAvailable` indica cuántos
+ * componentes pesaron en el cálculo; si <2 el score se considera no
+ * representativo y la UI debe avisarlo.
  */
 function computeNetworkHealthScore(input: {
-  otpPct: number | null;
-  bunchingEvents24h: number;
+  otpPct: number | null; // null = sin datos hoy
+  bunchingEvents24h: number | null; // null = sin acceso a Firestore
+  bunchingCapped: boolean; // true si el query devolvió el límite (subestima)
   flotaActivaPct: number | null;
-  incidenciasAbiertasAlta: number;
+  incidenciasAbiertasAlta: number | null;
   bunchingThreshold?: number;
   incidentThreshold?: number;
-}): { score: number; components: NetworkHealth['components'] } {
-  const otp = input.otpPct ?? 0;
-  const bunchingThreshold = input.bunchingThreshold ?? 100;
+}): {
+  score: number;
+  components: NetworkHealth['components'];
+  componentsAvailable: number;
+  bunchingCapped: boolean;
+} {
+  const bunchingThreshold = input.bunchingThreshold ?? 200;
   const incidentThreshold = input.incidentThreshold ?? 10;
 
-  const bunchingScore = Math.max(
-    0,
-    100 - (input.bunchingEvents24h / bunchingThreshold) * 100,
-  );
-  const coverage = input.flotaActivaPct ?? 0;
-  const riskScore = Math.max(
-    0,
-    100 - (input.incidenciasAbiertasAlta / incidentThreshold) * 100,
-  );
+  const otp = input.otpPct;
+  const bunching =
+    input.bunchingEvents24h == null
+      ? null
+      : Math.max(0, 100 - (input.bunchingEvents24h / bunchingThreshold) * 100);
+  const coverage = input.flotaActivaPct;
+  const risk =
+    input.incidenciasAbiertasAlta == null
+      ? null
+      : Math.max(0, 100 - (input.incidenciasAbiertasAlta / incidentThreshold) * 100);
 
-  const total = otp * 0.4 + bunchingScore * 0.25 + coverage * 0.2 + riskScore * 0.15;
+  // Pesos base
+  const baseWeights = { otp: 0.4, bunching: 0.25, coverage: 0.2, risk: 0.15 };
+  const available: Array<keyof typeof baseWeights> = [];
+  if (otp != null) available.push('otp');
+  if (bunching != null) available.push('bunching');
+  if (coverage != null) available.push('coverage');
+  if (risk != null) available.push('risk');
+
+  const totalWeight = available.reduce((sum, k) => sum + baseWeights[k], 0);
+  const values: Record<keyof typeof baseWeights, number | null> = {
+    otp,
+    bunching,
+    coverage,
+    risk,
+  };
+
+  let total = 0;
+  if (totalWeight > 0) {
+    for (const k of available) {
+      total += (values[k]! * baseWeights[k]) / totalWeight;
+    }
+  }
+
   return {
     score: Math.round(total * 10) / 10,
     components: {
-      otp: Math.round(otp * 10) / 10,
-      bunching: Math.round(bunchingScore * 10) / 10,
-      coverage: Math.round(coverage * 10) / 10,
-      risk: Math.round(riskScore * 10) / 10,
+      otp: otp == null ? 0 : Math.round(otp * 10) / 10,
+      bunching: bunching == null ? 0 : Math.round(bunching * 10) / 10,
+      coverage: coverage == null ? 0 : Math.round(coverage * 10) / 10,
+      risk: risk == null ? 0 : Math.round(risk * 10) / 10,
     },
+    componentsAvailable: available.length,
+    bunchingCapped: input.bunchingCapped,
   };
 }
 
@@ -404,12 +473,19 @@ export default function CEODashboardV7() {
   // ── State ────────────────────────────────────────────────
   const [empresaPropia, setEmpresaPropia] = useState<number>(70);
   const [periodo, setPeriodo] = useState<Periodo>('today');
+  /** Serie histórica diaria (sólo cuando periodo !== 'today'). */
+  const [otpHistoric, setOtpHistoric] = useState<Array<{ date: string; value: number; meta?: { total: number; enTiempo: number } }> | null>(null);
+  const [bunchingHistoric, setBunchingHistoric] = useState<Array<{ date: string; value: number; meta?: { criticos: number } }> | null>(null);
+  const [historicLoading, setHistoricLoading] = useState(false);
+  const [historicError, setHistoricError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(formatHoraSegundosMvd(new Date()));
 
   const [overlaps, setOverlaps] = useState<OverlapDoc[]>([]);
   const [shapes, setShapes] = useState<ShapeMeta[]>([]);
   const [bunching24h, setBunching24h] = useState(0);
+  const [bunching24hLoaded, setBunching24hLoaded] = useState(false);
+  const [incidenciasLoaded, setIncidenciasLoaded] = useState(false);
   const [estadoServicios, setEstadoServicios] = useState<{
     total: number;
     activos: number;
@@ -419,7 +495,7 @@ export default function CEODashboardV7() {
   const [flotaTotal, setFlotaTotal] = useState(0);
   const [flotaTaller, setFlotaTaller] = useState(0);
   const [flotaLiveProp, setFlotaLiveProp] = useState(0);
-  const [positions, setPositions] = useState<PositionFeature[]>([]);
+  const [positions, setPositions] = useState<PositionBus[]>([]);
   const [incidenciasAlta, setIncidenciasAlta] = useState(0);
   const [personalSinAsignar, setPersonalSinAsignar] = useState(0);
 
@@ -440,16 +516,29 @@ export default function CEODashboardV7() {
 
       const [overlapsSnap, shapesSnap, alertsSnap, estados, posRes, vehicles, incidenciasSnap] =
         await Promise.all([
-          getDocs(query(collection(db, 'corridor_overlap'), limit(5000))),
-          getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
+          // Cada query con .catch independiente: una falla no rompe las demás.
+          getDocs(query(collection(db, 'corridor_overlap'), limit(5000))).catch((err) => {
+            console.warn('[CEODashboardV7] corridor_overlap query failed:', err?.code ?? err);
+            return null;
+          }),
+          getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))).catch((err) => {
+            console.warn('[CEODashboardV7] shapes_cross_operator query failed:', err?.code ?? err);
+            return null;
+          }),
           getDocs(
             query(
               collection(db, 'alertas_regulacion'),
               where('timestamp', '>=', sinceTs),
-              limit(2000),
+              limit(5000),
             ),
-          ),
-          ServicioEstadoService.getByDate(today),
+          ).catch((err) => {
+            console.warn('[CEODashboardV7] alertas_regulacion query failed:', err?.code ?? err);
+            return null;
+          }),
+          ServicioEstadoService.getByDate(today).catch((err) => {
+            console.warn('[CEODashboardV7] ServicioEstadoService failed:', err);
+            return [] as Awaited<ReturnType<typeof ServicioEstadoService.getByDate>>;
+          }),
           fetch('/api/positions')
             .then((r) => (r.ok ? (r.json() as Promise<PositionsResponse>) : null))
             .catch(() => null),
@@ -460,27 +549,40 @@ export default function CEODashboardV7() {
               where('status', 'in', ['abierta', 'en_proceso']),
               limit(500),
             ),
-          ).catch(() => null),
+          ).catch((err) => {
+            console.warn('[CEODashboardV7] incidencias query failed:', err?.code ?? err);
+            return null;
+          }),
         ]);
 
       // ── Overlaps + Shapes ──
-      const ovs: OverlapDoc[] = overlapsSnap.docs.map((d) => d.data() as OverlapDoc);
-      const shps: ShapeMeta[] = shapesSnap.docs.map((d) => {
-        const x = d.data() as Record<string, unknown>;
-        return {
-          key: String(x.key ?? ''),
-          agencyId: String(x.agencyId ?? ''),
-          empresa: String(x.empresa ?? ''),
-          linea: String(x.linea ?? ''),
-          sentido: (x.sentido as 'IDA' | 'VUELTA') ?? 'IDA',
-          lengthMeters: Number(x.lengthMeters ?? 0),
-        };
-      });
+      const ovs: OverlapDoc[] = overlapsSnap
+        ? overlapsSnap.docs.map((d) => d.data() as OverlapDoc)
+        : [];
+      const shps: ShapeMeta[] = shapesSnap
+        ? shapesSnap.docs.map((d) => {
+            const x = d.data() as Record<string, unknown>;
+            return {
+              key: String(x.key ?? ''),
+              agencyId: String(x.agencyId ?? ''),
+              empresa: String(x.empresa ?? ''),
+              linea: String(x.linea ?? ''),
+              sentido: (x.sentido as 'IDA' | 'VUELTA') ?? 'IDA',
+              lengthMeters: Number(x.lengthMeters ?? 0),
+            };
+          })
+        : [];
       setOverlaps(ovs);
       setShapes(shps);
 
       // ── Bunching 24h ──
-      setBunching24h(alertsSnap.size);
+      if (alertsSnap) {
+        setBunching24h(alertsSnap.size);
+        setBunching24hLoaded(true);
+      } else {
+        setBunching24h(0);
+        setBunching24hLoaded(false);
+      }
 
       // ── Estado servicios ──
       const total = estados.length;
@@ -505,11 +607,10 @@ export default function CEODashboardV7() {
       setPersonalSinAsignar(sinChofer);
 
       // ── GPS positions ──
-      const features = posRes?.features ?? [];
-      setPositions(features);
-      const livePropia = features.filter(
-        (f) => f.properties?.codigoEmpresa === empresaPropia,
-      ).length;
+      // Shape: { ok: true, buses: [{ empresaId, linea, lat, lng, ... }] }
+      const buses = posRes?.buses ?? [];
+      setPositions(buses);
+      const livePropia = buses.filter((b) => b.empresaId === empresaPropia).length;
       setFlotaLiveProp(livePropia);
 
       // ── Flota ──
@@ -527,6 +628,10 @@ export default function CEODashboardV7() {
           return p === 'ALTA' || p === 'HIGH' || p === 'CRITICA' || p === 'CRITICAL';
         }).length;
         setIncidenciasAlta(alta);
+        setIncidenciasLoaded(true);
+      } else {
+        setIncidenciasAlta(0);
+        setIncidenciasLoaded(false);
       }
     } catch (err) {
       console.error('[CEODashboardV7] Error loading data:', err);
@@ -542,76 +647,169 @@ export default function CEODashboardV7() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  // ── Derived: Network Health ──────────────────────────────
+  // ── Carga de histórico (solo cuando periodo != 'today') ────────────────
+  // Llama a las Cloud Functions historicOtp/historicBunching que agregan
+  // por día. Se rehace cuando cambia el operador o la ventana temporal.
+  useEffect(() => {
+    if (periodo === 'today') {
+      setOtpHistoric(null);
+      setBunchingHistoric(null);
+      setHistoricError(null);
+      return;
+    }
+    const days = periodo === '7d' ? 7 : 30;
+    const agencyId = String(empresaPropia);
+    let cancelled = false;
+    setHistoricLoading(true);
+    setHistoricError(null);
+
+    Promise.all([
+      fetch(`/historicOtp?days=${days}&agencyId=${agencyId}`).then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      ),
+      fetch(`/historicBunching?days=${days}&agencyId=${agencyId}`).then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      ),
+    ])
+      .then(([otpResp, bunchResp]) => {
+        if (cancelled) return;
+        setOtpHistoric(Array.isArray(otpResp?.series) ? otpResp.series : []);
+        setBunchingHistoric(Array.isArray(bunchResp?.series) ? bunchResp.series : []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn('[CEODashboardV7] histórico falló:', msg);
+        setHistoricError(msg);
+        setOtpHistoric([]);
+        setBunchingHistoric([]);
+      })
+      .finally(() => {
+        if (!cancelled) setHistoricLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [periodo, empresaPropia]);
+
+  /** Combina las dos series para el LineChart de Recharts. */
+  const historicChartData = useMemo(() => {
+    if (!otpHistoric || !bunchingHistoric) return [];
+    const map = new Map<string, { date: string; otp: number | null; bunching: number | null }>();
+    for (const p of otpHistoric) {
+      map.set(p.date, { date: p.date, otp: p.value, bunching: null });
+    }
+    for (const p of bunchingHistoric) {
+      const e = map.get(p.date) ?? { date: p.date, otp: null, bunching: null };
+      e.bunching = p.value;
+      map.set(p.date, e);
+    }
+    return [...map.values()]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((d) => ({ ...d, dateShort: d.date.slice(5) }));
+  }, [otpHistoric, bunchingHistoric]);
+
+  // ── Derived: Salud de la Red ─────────────────────────────
+  // Cada componente puede ser null = "sin datos" → no se penaliza el score.
   const networkHealth: NetworkHealth = useMemo(() => {
     const otpPct =
       estadoServicios.conAtraso > 0
         ? (estadoServicios.puntuales / estadoServicios.conAtraso) * 100
         : null;
+
+    // Cobertura: sólo si tenemos GPS live o flota Firestore
     const flotaTotalEstimada = flotaLiveProp > 0 ? flotaLiveProp : Math.max(flotaTotal, 0);
     const flotaActiva = flotaLiveProp > 0 ? flotaLiveProp : flotaTotal - flotaTaller;
     const flotaActivaPct =
       flotaTotalEstimada > 0 ? (flotaActiva / flotaTotalEstimada) * 100 : null;
 
-    const { score, components } = computeNetworkHealthScore({
-      otpPct,
-      bunchingEvents24h: bunching24h,
-      flotaActivaPct,
-      incidenciasAbiertasAlta: incidenciasAlta,
-    });
+    // Bunching: si bunching24hLoaded === false significa que el query falló.
+    // Si bunching24h llegó al límite del query (2000), el conteo subestima.
+    const bunchingValue = bunching24hLoaded ? bunching24h : null;
+    const bunchingIsCapped = bunching24h >= 2000 && bunching24hLoaded;
+
+    // Incidencias: null si no se pudo leer
+    const incidenciasValue = incidenciasLoaded ? incidenciasAlta : null;
+
+    const { score, components, componentsAvailable, bunchingCapped } =
+      computeNetworkHealthScore({
+        otpPct,
+        bunchingEvents24h: bunchingValue,
+        bunchingCapped: bunchingIsCapped,
+        flotaActivaPct,
+        incidenciasAbiertasAlta: incidenciasValue,
+      });
 
     return {
       score,
       components,
+      componentsAvailable,
+      bunchingCapped,
       meta: {
         serviciosTotales: estadoServicios.total,
         serviciosPuntuales: estadoServicios.puntuales,
-        bunchingEvents24h: bunching24h,
+        bunchingEvents24h: bunchingValue,
         flotaActiva,
         flotaTotal: flotaTotalEstimada,
-        incidenciasAbiertas: incidenciasAlta,
+        incidenciasAbiertas: incidenciasValue,
+        otpAvailable: otpPct != null,
+        coverageAvailable: flotaActivaPct != null,
       },
     };
-  }, [estadoServicios, bunching24h, flotaLiveProp, flotaTotal, flotaTaller, incidenciasAlta]);
+  }, [
+    estadoServicios,
+    bunching24h,
+    bunching24hLoaded,
+    flotaLiveProp,
+    flotaTotal,
+    flotaTaller,
+    incidenciasAlta,
+    incidenciasLoaded,
+  ]);
 
   // ── Derived: Hot Zones ───────────────────────────────────
+  // Usa campos denormalizados de corridor_overlap (agencyA/lineaA/sentidoA/...).
+  // No requiere JOIN con shapes_cross_operator. El operador propio puede
+  // aparecer como A o B en el doc; tomamos el lado correcto.
   const hotZones: HotZone[] = useMemo(() => {
-    const propiaShapes = shapes.filter((s) => s.agencyId === empresaCfg.agencyId);
-    if (propiaShapes.length === 0 || overlaps.length === 0) return [];
+    if (overlaps.length === 0) return [];
+    const myAgency = empresaCfg.agencyId;
+    const candidates: HotZone[] = [];
 
-    const propiaKeys = new Set(propiaShapes.map((s) => s.key));
-    const shapesByKey = new Map(shapes.map((s) => [s.key, s]));
+    for (const o of overlaps) {
+      if (o.sameEmpresa) continue;
+      let mine: 'A' | 'B' | null = null;
+      if (o.agencyA === myAgency) mine = 'A';
+      else if (o.agencyB === myAgency) mine = 'B';
+      if (!mine) continue;
 
-    const candidates = overlaps.filter(
-      (o) =>
-        !o.sameEmpresa &&
-        propiaKeys.has(o.shapeAKey) &&
-        shapesByKey.has(o.shapeBKey),
-    );
+      const ownLinea = mine === 'A' ? o.lineaA : o.lineaB;
+      const ownSentido = mine === 'A' ? o.sentidoA : o.sentidoB;
+      const ownAgency = mine === 'A' ? o.agencyA : o.agencyB;
+      const rivalLinea = mine === 'A' ? o.lineaB : o.lineaA;
+      const rivalSentido = mine === 'A' ? o.sentidoB : o.sentidoA;
+      const rivalAgency = mine === 'A' ? o.empresaB : o.empresaA;
+      const pct = o.pctAInB;
+      const severity = severityFromScore(100 - pct);
 
-    const ranked = candidates
-      .map((o) => {
-        const a = shapesByKey.get(o.shapeAKey)!;
-        const b = shapesByKey.get(o.shapeBKey)!;
-        const severityScore = 100 - o.pctAInB; // mayor pct = menor score
-        const severity = severityFromScore(severityScore);
-        return {
-          ownLine: a.linea,
-          ownSentido: a.sentido,
-          ownAgency: a.agencyId,
-          rivalAgency: b.agencyId,
-          rivalLine: b.linea,
-          rivalSentido: b.sentido,
-          pctOverlap: o.pctAInB,
-          sharedKm: o.sharedKm,
-          severity,
-        } satisfies HotZone;
-      })
-      .sort((x, y) => y.pctOverlap * y.sharedKm - x.pctOverlap * x.sharedKm) // peso = % * km
+      candidates.push({
+        ownLine: ownLinea,
+        ownSentido,
+        ownAgency,
+        rivalAgency,
+        rivalLine: rivalLinea,
+        rivalSentido,
+        pctOverlap: pct,
+        sharedKm: o.sharedKm,
+        severity,
+      });
+    }
+
+    return candidates
+      .sort((x, y) => y.pctOverlap * y.sharedKm - x.pctOverlap * x.sharedKm)
       .slice(0, 5);
-
-    return ranked;
-  }, [overlaps, shapes, empresaCfg.agencyId]);
+  }, [overlaps, empresaCfg.agencyId]);
 
   // ── Derived: Market Share por línea ─────────────────────
   const marketShare: MarketShareRow[] = useMemo(() => {
@@ -622,10 +820,10 @@ export default function CEODashboardV7() {
       { propia: number; rivales: Record<string, number> }
     > = new Map();
 
-    for (const f of positions) {
-      const linea = (f.properties?.linea ?? f.properties?.sublinea ?? '').toString().trim();
+    for (const b of positions) {
+      const linea = (b.linea ?? b.sublinea ?? '').toString().trim();
       if (!linea) continue;
-      const ce = f.properties?.codigoEmpresa;
+      const ce = b.empresaId;
       if (ce == null) continue;
       const cleanLinea = linea.replace(/[ab]$/i, '');
 
@@ -723,7 +921,7 @@ export default function CEODashboardV7() {
           </div>
           <div>
             <h1 className="text-lg md:text-xl font-black text-white tracking-tight flex items-center gap-2">
-              Network Command
+              Centro de Mando de Red
               <span className="text-slate-500 font-medium">v7</span>
               <span className="text-[9px] font-black text-blue-400 bg-blue-500/15 px-1.5 py-0.5 rounded border border-blue-500/30">
                 CROSS-OPERADOR
@@ -773,8 +971,13 @@ export default function CEODashboardV7() {
                     ? 'bg-blue-500/15 text-blue-300 border border-blue-500/30'
                     : 'text-slate-500 hover:text-slate-300'
                 }`}
-                title={p.id !== 'today' ? 'Próximamente — backend de históricos en construcción' : ''}
-                disabled={p.id !== 'today'}
+                title={
+                  p.id === 'today'
+                    ? 'Snapshot del día actual'
+                    : p.id === '7d'
+                    ? 'Tendencia de los últimos 7 días — datos agregados de vehicle_events + alertas_regulacion'
+                    : 'Tendencia de los últimos 30 días — datos agregados de vehicle_events + alertas_regulacion'
+                }
               >
                 {p.label}
               </button>
@@ -810,76 +1013,110 @@ export default function CEODashboardV7() {
             <div className="lg:col-span-1 rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-950/30 via-slate-900/80 to-slate-900/40 p-5 shadow-xl flex flex-col items-center justify-between">
               <div className="text-center">
                 <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-0.5">
-                  Network Health
+                  Salud de la Red
                 </p>
                 <p className="text-[10px] text-slate-500 mb-3">{empresaCfg.label}</p>
               </div>
               <HealthGauge score={networkHealth.score} />
+              {networkHealth.componentsAvailable < 4 && (
+                <p className="mt-2 text-[9px] font-bold text-amber-400 text-center bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
+                  Calculado sobre {networkHealth.componentsAvailable} de 4
+                  componentes (datos parciales)
+                </p>
+              )}
               <div className="mt-3 grid grid-cols-2 gap-2 w-full text-[9px]">
                 <div className="bg-slate-800/40 rounded-lg p-1.5 border border-white/5">
                   <span className="text-slate-500 block">OTP</span>
-                  <span className={`font-black ${colorFromSeverity(otpSeverity)}`}>
-                    {networkHealth.components.otp.toFixed(0)}
+                  <span
+                    className={`font-black ${networkHealth.meta.otpAvailable ? colorFromSeverity(otpSeverity) : 'text-slate-600'}`}
+                  >
+                    {networkHealth.meta.otpAvailable
+                      ? networkHealth.components.otp.toFixed(0)
+                      : '—'}
                   </span>
                 </div>
                 <div className="bg-slate-800/40 rounded-lg p-1.5 border border-white/5">
-                  <span className="text-slate-500 block">Bunch</span>
-                  <span className={`font-black ${colorFromSeverity(bunchingSeverity)}`}>
-                    {networkHealth.components.bunching.toFixed(0)}
+                  <span className="text-slate-500 block">
+                    Aglom
+                    {networkHealth.bunchingCapped && (
+                      <span title="Conteo limitado a 5000; valor real puede ser mayor">
+                        {' '}
+                        ⚠
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className={`font-black ${networkHealth.meta.bunchingEvents24h != null ? colorFromSeverity(bunchingSeverity) : 'text-slate-600'}`}
+                  >
+                    {networkHealth.meta.bunchingEvents24h != null
+                      ? networkHealth.components.bunching.toFixed(0)
+                      : '—'}
                   </span>
                 </div>
                 <div className="bg-slate-800/40 rounded-lg p-1.5 border border-white/5">
-                  <span className="text-slate-500 block">Cover</span>
-                  <span className={`font-black ${colorFromSeverity(coverageSeverity)}`}>
-                    {networkHealth.components.coverage.toFixed(0)}
+                  <span className="text-slate-500 block">Cober</span>
+                  <span
+                    className={`font-black ${networkHealth.meta.coverageAvailable ? colorFromSeverity(coverageSeverity) : 'text-slate-600'}`}
+                  >
+                    {networkHealth.meta.coverageAvailable
+                      ? networkHealth.components.coverage.toFixed(0)
+                      : '—'}
                   </span>
                 </div>
                 <div className="bg-slate-800/40 rounded-lg p-1.5 border border-white/5">
-                  <span className="text-slate-500 block">Risk</span>
-                  <span className={`font-black ${colorFromSeverity(riskSeverity)}`}>
-                    {networkHealth.components.risk.toFixed(0)}
+                  <span className="text-slate-500 block">Riesgo</span>
+                  <span
+                    className={`font-black ${networkHealth.meta.incidenciasAbiertas != null ? colorFromSeverity(riskSeverity) : 'text-slate-600'}`}
+                  >
+                    {networkHealth.meta.incidenciasAbiertas != null
+                      ? networkHealth.components.risk.toFixed(0)
+                      : '—'}
                   </span>
                 </div>
               </div>
               <p className="mt-2 text-[8px] text-slate-600 text-center leading-tight">
-                40% OTP · 25% Bunching · 20% Cobertura · 15% Riesgo
+                40% OTP · 25% Aglomeración · 20% Cobertura · 15% Riesgo
+                <br />
+                <span className="text-slate-700">
+                  Si un componente no tiene datos, su peso se redistribuye.
+                </span>
               </p>
             </div>
 
             {/* 4 KPIs lg:col-span-4 (split en 2x2) */}
             <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <KPICard
-                label="Service Reliability (OTP)"
+                label="Puntualidad (OTP)"
                 value={
                   estadoServicios.conAtraso > 0
                     ? networkHealth.components.otp.toFixed(1)
                     : null
                 }
                 suffix="%"
-                description={`${estadoServicios.puntuales} de ${estadoServicios.conAtraso} servicios con desvío ≤3 min hoy. Estándar UITP.`}
+                description={`${estadoServicios.puntuales} de ${estadoServicios.conAtraso} servicios con desvío ≤3 min hoy. Métrica estándar UITP.`}
                 link="/dashboard/traffic/otp"
-                linkLabel="Ver OTP detallado"
+                linkLabel="Ver detalle de puntualidad"
                 severity={otpSeverity}
                 icon={Gauge}
               />
               <KPICard
-                label="Bunching Index (24h)"
+                label="Índice de Aglomeración (24h)"
                 value={bunching24h}
-                description={`Eventos shadow registrados en 24h cross-operador. Inspirado en NYC MTA Bunching Index.`}
+                description={`Eventos de aglomeración registrados en 24h entre operadores. Inspirado en “Bunching Index” de NYC MTA.`}
                 link="/dashboard/traffic/shadow-analytics"
-                linkLabel="Ver Shadow Analytics"
+                linkLabel="Ver Analítica de Sombra"
                 severity={bunchingSeverity}
                 icon={Activity}
               />
               <KPICard
-                label="Service Delivery"
+                label="Cumplimiento de Servicio"
                 value={
                   estadoServicios.total > 0
                     ? Math.round((estadoServicios.activos / estadoServicios.total) * 100)
                     : null
                 }
                 suffix="%"
-                description={`${estadoServicios.activos} de ${estadoServicios.total} servicios planificados ejecutándose. Métrica TfL/Swiftly.`}
+                description={`${estadoServicios.activos} de ${estadoServicios.total} servicios planificados ejecutándose. Equivalente a “Service Delivery” en TfL/Swiftly.`}
                 link="/dashboard/traffic/auto-stats"
                 linkLabel="Ver Cumplimiento"
                 severity={coverageSeverity}
@@ -890,12 +1127,99 @@ export default function CEODashboardV7() {
                 value={incidenciasAlta + personalSinAsignar}
                 description={`${incidenciasAlta} incidencias críticas + ${personalSinAsignar} servicios sin chofer próx. 60 min.`}
                 link="/dashboard/traffic/incident-command"
-                linkLabel="Ver Incident Center"
+                linkLabel="Ver Centro de Incidencias"
                 severity={riskSeverity}
                 icon={Zap}
               />
             </div>
           </section>
+
+          {/* ─────────────── TENDENCIAS HISTÓRICAS (7D / 30D) ─────────────── */}
+          {periodo !== 'today' && (
+            <section className="rounded-2xl border border-white/5 bg-gradient-to-br from-slate-900/80 to-slate-900/30 p-5 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-black text-white tracking-tight flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-cyan-400" />
+                    Tendencias — últimos {periodo === '7d' ? '7' : '30'} días
+                  </h3>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Puntualidad (OTP) y Aglomeración por día. Datos agregados de{' '}
+                    <code className="text-slate-400">vehicle_events</code> y{' '}
+                    <code className="text-slate-400">alertas_regulacion</code>. Cache 10 min.
+                  </p>
+                </div>
+                {historicLoading && (
+                  <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando histórico…
+                  </div>
+                )}
+              </div>
+
+              {historicError ? (
+                <div className="rounded-xl border border-red-500/20 bg-red-950/20 p-4 text-xs text-red-300">
+                  No se pudo cargar el histórico: {historicError}. Reintentá con "Actualizar".
+                </div>
+              ) : historicChartData.length === 0 && !historicLoading ? (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-950/10 p-4 text-xs text-amber-300">
+                  Sin datos en la ventana solicitada. Probá ampliar el rango o cambiar de operador.
+                </div>
+              ) : (
+                <div style={{ width: '100%', height: 260 }}>
+                  <ResponsiveContainer>
+                    <LineChart data={historicChartData} margin={{ top: 5, right: 12, bottom: 0, left: -10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <XAxis
+                        dataKey="dateShort"
+                        stroke="#64748b"
+                        fontSize={11}
+                        interval={periodo === '30d' ? 4 : 0}
+                      />
+                      <YAxis
+                        yAxisId="left"
+                        stroke="#22d3ee"
+                        fontSize={10}
+                        domain={[0, 100]}
+                        label={{ value: 'OTP %', angle: -90, position: 'insideLeft', fill: '#22d3ee', fontSize: 10 }}
+                      />
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        stroke="#f59e0b"
+                        fontSize={10}
+                        label={{ value: 'Aglom. eventos', angle: 90, position: 'insideRight', fill: '#f59e0b', fontSize: 10 }}
+                      />
+                      <ReTooltip
+                        contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 6, fontSize: 11 }}
+                        labelStyle={{ color: '#e2e8f0' }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Line
+                        yAxisId="left"
+                        type="monotone"
+                        dataKey="otp"
+                        name="Puntualidad (OTP %)"
+                        stroke="#22d3ee"
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: '#22d3ee' }}
+                        connectNulls={false}
+                      />
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="bunching"
+                        name="Aglomeración (eventos)"
+                        stroke="#f59e0b"
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: '#f59e0b' }}
+                        connectNulls={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </section>
+          )}
 
           {/* ─────────────── HOT ZONES + RIESGOS ─────────────── */}
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -905,17 +1229,17 @@ export default function CEODashboardV7() {
                 <div>
                   <h3 className="text-sm font-black text-white tracking-tight flex items-center gap-2">
                     <BarChart3 className="w-4 h-4 text-red-400" />
-                    Hot Zones — Corredores en Disputa
+                    Zonas Críticas — Corredores en Disputa
                   </h3>
                   <p className="text-[10px] text-slate-500 mt-0.5">
-                    Top 5 corredores donde {empresaCfg.label} comparte recorrido con rivales (matriz DRO).
+                    Top 5 corredores donde {empresaCfg.label} comparte recorrido con competidores (matriz DRO).
                   </p>
                 </div>
                 <Link
                   to="/dashboard/traffic/corridor-intelligence"
                   className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white flex items-center gap-1"
                 >
-                  Ver matriz
+                  Ver matriz completa
                   <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
@@ -930,16 +1254,16 @@ export default function CEODashboardV7() {
                 <div className="rounded-xl border border-dashed border-white/10 bg-slate-900/30 p-6 text-center">
                   <BarChart3 className="w-10 h-10 text-slate-600 mx-auto mb-2 opacity-30" />
                   <p className="text-sm font-bold text-slate-400">
-                    Sin pares cross-operador para {empresaCfg.label}
+                    Sin pares cruzados para {empresaCfg.label}
                   </p>
                   <p className="text-[11px] text-slate-600 mt-1">
                     Esto puede significar: (a) la matriz DRO aún no se generó para este operador, (b)
-                    no hay solapamiento medible con rivales. Verificá{' '}
+                    no hay solapamiento medible con competidores. Verificá{' '}
                     <Link
                       to="/dashboard/traffic/corridor-intelligence"
                       className="text-blue-400 hover:underline"
                     >
-                      Corridor Intelligence
+                      Inteligencia de Corredores
                     </Link>
                     .
                   </p>
@@ -1009,11 +1333,11 @@ export default function CEODashboardV7() {
               <div>
                 <h3 className="text-sm font-black text-white tracking-tight flex items-center gap-2">
                   <Globe className="w-4 h-4 text-cyan-400" />
-                  Market Share — Buses Live por Línea Compartida
+                  Cuota de Mercado — Buses en Vivo por Línea Compartida
                 </h3>
                 <p className="text-[10px] text-slate-500 mt-0.5">
                   Participación de {empresaCfg.label} medida en buses GPS activos por línea (sólo
-                  líneas con presencia rival).
+                  líneas con presencia de competidores).
                 </p>
               </div>
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
@@ -1028,8 +1352,8 @@ export default function CEODashboardV7() {
                     <tr>
                       <th className="px-4 py-3">Línea</th>
                       <th className="px-4 py-3">{empresaCfg.label} (propios)</th>
-                      <th className="px-4 py-3">Rivales (live)</th>
-                      <th className="px-4 py-3">Share %</th>
+                      <th className="px-4 py-3">Competidores (en vivo)</th>
+                      <th className="px-4 py-3">Cuota %</th>
                       <th className="px-4 py-3">Detalle</th>
                     </tr>
                   </thead>
@@ -1111,15 +1435,15 @@ export default function CEODashboardV7() {
             </p>
             <div className="flex flex-wrap gap-2">
               {[
-                { to: '/dashboard/traffic/shadow-radar', label: 'Shadow Radar (live)' },
-                { to: '/dashboard/traffic/shadow-analytics', label: 'Shadow Analytics' },
-                { to: '/dashboard/traffic/corridor-intelligence', label: 'Corridor Intelligence' },
-                { to: '/dashboard/traffic/corridor-map', label: 'Corridor Map' },
-                { to: '/dashboard/traffic/otp', label: 'OTP Dashboard' },
+                { to: '/dashboard/traffic/shadow-radar', label: 'Radar de Sombra (en vivo)' },
+                { to: '/dashboard/traffic/shadow-analytics', label: 'Analítica de Sombra' },
+                { to: '/dashboard/traffic/corridor-intelligence', label: 'Inteligencia de Corredores' },
+                { to: '/dashboard/traffic/corridor-map', label: 'Mapa de Corredores' },
+                { to: '/dashboard/traffic/otp', label: 'Panel de Puntualidad (OTP)' },
                 { to: '/dashboard/traffic/auto-stats', label: 'Cumplimiento Horario' },
                 { to: '/dashboard/traffic/economic-projections', label: 'Proyecciones Económicas' },
                 { to: '/dashboard/traffic/digital-agents', label: 'Agentes Digitales' },
-                { to: '/dashboard/traffic/incident-command', label: 'Incident Center' },
+                { to: '/dashboard/traffic/incident-command', label: 'Centro de Incidencias' },
               ].map((l) => (
                 <Link
                   key={l.to}

@@ -128,6 +128,16 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/historicOtp': {
+        target: 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/historicBunching': {
+        target: 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net',
+        changeOrigin: true,
+        secure: true,
+      },
       '/proxy-horarios': {
         target: 'https://www.montevideo.gub.uy',
         changeOrigin: true,
