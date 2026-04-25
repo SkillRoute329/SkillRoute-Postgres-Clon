@@ -24,7 +24,9 @@ import {
   BarChart3,
   Award,
   Zap,
+  Building2,
 } from 'lucide-react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 
 /* ─── Types ───────────────────────────────────────────── */
 

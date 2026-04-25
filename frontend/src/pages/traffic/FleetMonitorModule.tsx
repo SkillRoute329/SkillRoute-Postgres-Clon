@@ -4,6 +4,7 @@
  * Fuente de datos: /api/positions (Cloud Function → STM GPS)
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -35,7 +36,7 @@ interface AlertaBunching {
 }
 
 interface KPIs {
-  totalUCOT: number;
+  totalPropios: number;
   totalRivales: number;
   lineasActivas: number;
   bunchingPares: number;
@@ -96,6 +97,7 @@ async function fetchBuses(): Promise<BusLive[]> {
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function FleetMonitorModule() {
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const [buses, setBuses] = useState<BusLive[]>([]);
   const [kpis, setKpis] = useState<KPIs | null>(null);
   const [alertas, setAlertas] = useState<AlertaBunching[]>([]);
@@ -108,11 +110,11 @@ export default function FleetMonitorModule() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const procesar = useCallback((raw: BusLive[]) => {
-    const ucotBuses = raw.filter((b) => b.empresaId === 70);
-    const rivales   = raw.filter((b) => b.empresaId !== 70);
+    const propiosBuses = raw.filter((b) => b.empresaId === empresaPropia);
+    const rivales   = raw.filter((b) => b.empresaId !== empresaPropia);
 
     // KPIs
-    const lineasActivas = new Set(ucotBuses.map((b) => b.linea).filter(Boolean)).size;
+    const lineasActivas = new Set(propiosBuses.map((b) => b.linea).filter(Boolean)).size;
     const empresas: Record<string, number> = {};
     for (const b of raw) {
       if (!b.empresa) continue;
@@ -121,15 +123,15 @@ export default function FleetMonitorModule() {
 
     // Bunching UCOT (pares < 800m)
     const bunchingAlertas: AlertaBunching[] = [];
-    for (let i = 0; i < ucotBuses.length; i++) {
-      for (let j = i + 1; j < ucotBuses.length; j++) {
-        if (ucotBuses[i].linea !== ucotBuses[j].linea) continue;
-        const dist = haversineKm(ucotBuses[i].lat, ucotBuses[i].lng, ucotBuses[j].lat, ucotBuses[j].lng);
+    for (let i = 0; i < propiosBuses.length; i++) {
+      for (let j = i + 1; j < propiosBuses.length; j++) {
+        if (propiosBuses[i].linea !== propiosBuses[j].linea) continue;
+        const dist = haversineKm(propiosBuses[i].lat, propiosBuses[i].lng, propiosBuses[j].lat, propiosBuses[j].lng);
         if (dist < 0.8) {
           bunchingAlertas.push({
-            linea: ucotBuses[i].linea,
-            bus1: ucotBuses[i].codigoBus,
-            bus2: ucotBuses[j].codigoBus,
+            linea: propiosBuses[i].linea,
+            bus1: propiosBuses[i].codigoBus,
+            bus2: propiosBuses[j].codigoBus,
             distanciaKm: Math.round(dist * 1000) / 1000,
           });
         }
@@ -137,7 +139,7 @@ export default function FleetMonitorModule() {
     }
 
     setKpis({
-      totalUCOT: ucotBuses.length,
+      totalPropios: propiosBuses.length,
       totalRivales: rivales.length,
       lineasActivas,
       bunchingPares: bunchingAlertas.length,
@@ -167,18 +169,18 @@ export default function FleetMonitorModule() {
   }, [cargar]);
 
   // Buses a mostrar en mapa/lista
-  const ucotBuses = buses.filter((b) => b.empresaId === 70);
-  const rivales   = buses.filter((b) => b.empresaId !== 70);
+  const propiosBuses = buses.filter((b) => b.empresaId === empresaPropia);
+  const rivales   = buses.filter((b) => b.empresaId !== empresaPropia);
 
-  const lineasUCOT = [...new Set(ucotBuses.map((b) => b.linea).filter(Boolean))].sort();
+  const lineasPropias = [...new Set(propiosBuses.map((b) => b.linea).filter(Boolean))].sort();
 
-  const ucotFiltrados = lineaFiltro === 'todas'
-    ? ucotBuses
-    : ucotBuses.filter((b) => b.linea === lineaFiltro);
+  const propiosFiltrados = lineaFiltro === 'todas'
+    ? propiosBuses
+    : propiosBuses.filter((b) => b.linea === lineaFiltro);
 
   const todosEnMapa = mostrarRivales
-    ? [...ucotFiltrados, ...rivales]
-    : ucotFiltrados;
+    ? [...propiosFiltrados, ...rivales]
+    : propiosFiltrados;
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] bg-slate-950 overflow-hidden">
@@ -191,7 +193,8 @@ export default function FleetMonitorModule() {
               <Radio className="w-4.5 h-4.5 text-emerald-400" />
             </div>
             <div>
-              <h1 className="text-base font-black text-white">Radar de Flota en Vivo</h1>
+              <h1 className="text-base font-black text-white">Radar de Flota en Vivo — {empresaCfg.label}</h1>
+            <div className="flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5 text-slate-400" /><select value={empresaPropia} onChange={(e) => setEmpresaPropia(Number(e.target.value))} className="bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-1 text-[11px] text-white"><option value={70}>UCOT</option><option value={50}>CUTCSA</option><option value={20}>COME</option><option value={10}>COETC</option></select></div>
               <p className="text-[10px] text-slate-500">
                 {lastUpdate
                   ? `Actualizado ${lastUpdate.toLocaleTimeString('es-UY')}`
@@ -210,7 +213,7 @@ export default function FleetMonitorModule() {
                 className="bg-transparent text-[11px] text-white outline-none"
               >
                 <option value="todas">Todas las líneas</option>
-                {lineasUCOT.map((l) => (
+                {lineasPropias.map((l) => (
                   <option key={l} value={l}>Línea {l}</option>
                 ))}
               </select>
@@ -258,10 +261,10 @@ export default function FleetMonitorModule() {
         {kpis && (
           <div className="mt-2.5 grid grid-cols-5 gap-2">
             {[
-              { label: 'UCOT activos', value: kpis.totalUCOT, color: 'text-amber-400', icon: Bus },
+              { label: empresaCfg.label + ' activos', value: kpis.totalPropios, color: 'text-amber-400', icon: Bus },
               { label: 'Rivales en vía', value: kpis.totalRivales, color: 'text-blue-400', icon: Activity },
               { label: 'Líneas operando', value: kpis.lineasActivas, color: 'text-emerald-400', icon: TrendingUp },
-              { label: 'Bunching UCOT', value: kpis.bunchingPares, color: kpis.bunchingPares > 0 ? 'text-red-400' : 'text-slate-500', icon: AlertTriangle },
+              { label: 'Bunching ' + empresaCfg.label + ' ', value: kpis.bunchingPares, color: kpis.bunchingPares > 0 ? 'text-red-400' : 'text-slate-500', icon: AlertTriangle },
               { label: 'Total en ruta', value: kpis.totalUCOT + kpis.totalRivales, color: 'text-white', icon: Radio },
             ].map(({ label, value, color, icon: Icon }) => (
               <div key={label} className="bg-slate-800/40 rounded-lg px-3 py-1.5 flex items-center gap-2">
@@ -331,7 +334,7 @@ export default function FleetMonitorModule() {
                   >
                     <Popup>
                       <div className="text-xs min-w-[160px]">
-                        <div className="font-bold text-amber-600">UCOT — L{b.linea}</div>
+                        <div className="font-bold text-amber-600">{empresaCfg.label} — L{b.linea}</div>
                         <div>INT {b.codigoBus}</div>
                         <div className="text-slate-500 text-[10px]">{b.destino}</div>
                       </div>
@@ -380,7 +383,7 @@ export default function FleetMonitorModule() {
               )}
 
               {todosEnMapa.map((b) => {
-                const esUCOT = b.empresaId === 70;
+                const esUCOT = b.empresaId === empresaPropia;
                 const color = EMPRESA_COLORES[b.empresa] ?? '#94a3b8';
                 return (
                   <div

@@ -4,12 +4,14 @@ import { Timestamp } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import { BulletinService, CartonService, InspectionService } from '../../services/api';
 import { ActiveAssignmentsService } from '../../services/firestore';
-import { Search, Users, BarChart3, Check, Car } from 'lucide-react';
+import { Search, Users, BarChart3, Check, Car, Building2 } from 'lucide-react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { ShadowDispatcherService, type AlertaRegulacion } from '../../services/ShadowDispatcherService';
 
 // Types
 
 const InspectorDashboard = () => {
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [availableLines, setAvailableLines] = useState<string[]>([]);

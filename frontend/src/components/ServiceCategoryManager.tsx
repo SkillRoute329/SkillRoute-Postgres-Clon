@@ -27,6 +27,7 @@ import {
   LayoutGrid,
   List,
 } from 'lucide-react';
+import { useEmpresaPropia } from '../hooks/useEmpresaPropia';
 import { VehicleCategoryService } from '../services/firestore';
 import {
   ServiceCategoryAssignmentService,
@@ -56,6 +57,7 @@ const TIPOS_DIA: { value: TipoDia; label: string }[] = [
 ];
 
 const ServiceCategoryManager = () => {
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const [temporada, setTemporada] = useState<Temporada>('VERANO_2026');
   const [tipoDia, setTipoDia] = useState<TipoDia>('HABIL');
   const [categories, setCategories] = useState<VehicleCategory[]>([]);

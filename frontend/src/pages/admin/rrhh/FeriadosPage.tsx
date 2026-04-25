@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Plus, Trash2, Save, Loader2 } from 'lucide-react';
+import { useEmpresaPropia } from '../../../hooks/useEmpresaPropia';
+import { Calendar, Plus, Trash2, Save, Loader2, Building2 } from 'lucide-react';
 import { FeriadosService, type Feriado } from '../../../services/feriadosService';
 
 export default function FeriadosPage() {
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const [feriados, setFeriados] = useState<Feriado[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -55,8 +57,12 @@ export default function FeriadosPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Calendar className="w-6 h-6 text-primary-500" />
-          Calendario de Feriados
+          Calendario de Feriados — {empresaCfg.label}
         </h1>
+        <div className="flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-slate-400" />
+          <select value={empresaPropia} onChange={(e) => setEmpresaPropia(Number(e.target.value))} className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" title="Operador propio"><option value={70}>UCOT</option><option value={50}>CUTCSA</option><option value={20}>COME</option><option value={10}>COETC</option></select>
+        </div>
         <button
           onClick={() => setIsAdding(true)}
           className="bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium"

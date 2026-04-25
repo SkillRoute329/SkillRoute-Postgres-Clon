@@ -1,5 +1,5 @@
 /**
- * Navegador UCOT — guía visual de líneas (estilo Waze para conductores).
+ * Navegador — {empresaCfg.label} — guía visual de líneas (estilo Waze para conductores).
  * Ruta: /dashboard/traffic/navigation
  */
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
@@ -20,7 +20,9 @@ import {
   ArrowUpDown,
   Check,
   Route,
+  Building2,
 } from 'lucide-react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { collection, doc, setDoc, updateDoc, serverTimestamp, GeoPoint } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
@@ -96,7 +98,8 @@ const isConductorMode = () => {
 const TODAS = '';
 
 export default function NavigationModule() {
-  const [searchParams] = useSearchParams();
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
+    const [searchParams] = useSearchParams();
   const lineaParam = searchParams.get('linea') ?? '';
   const [listCompleta, setListCompleta] = useState<LineaUCOTResumen[]>([]);
   const [selectedCodigo, setSelectedCodigo] = useState<string>('');
@@ -604,7 +607,7 @@ export default function NavigationModule() {
       <header className="relative z-10 shrink-0 p-4 border-b border-slate-800 bg-slate-900/95 w-full max-w-full">
         <h1 className="text-xl font-bold flex items-center gap-2 text-white">
           <Map className="w-6 h-6 text-primary-500" />
-          Navegador UCOT
+          Navegador — {empresaCfg.label}
         </h1>
         <p className="text-slate-400 text-sm mt-1">Recorrido, paradas y desvíos por línea</p>
 

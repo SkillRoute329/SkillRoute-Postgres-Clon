@@ -26,7 +26,9 @@ import {
   Target,
   Zap,
   Download,
+  Building2,
 } from 'lucide-react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -153,6 +155,7 @@ function calcularLinea(
 /* ─── Component ───────────────────────────────────────── */
 
 export default function EconomicProjectionsPage() {
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const [lineas, setLineas] = useState<LineaEconomica[]>([]);
   const [loading, setLoading] = useState(true);
   const [combustibleDelta, setCombustibleDelta] = useState(0); // % ajuste escenario

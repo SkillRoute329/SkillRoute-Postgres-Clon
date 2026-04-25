@@ -1,5 +1,5 @@
 /**
- * Terminal Listero — Panel Operativo Unificado UCOT
+ * Terminal Listero — {empresaCfg.label}
  *
  * 4 vistas:
  *  1. Lista      — Pool de conductores libres + grilla D&D operativa diaria
@@ -33,6 +33,7 @@ import {
   History,
   Filter,
 } from 'lucide-react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import {
   UserService,
   FleetService,
@@ -1675,7 +1676,8 @@ function TabHistorial({ users }: { users: User[] }) {
 
 export default function TerminalListero() {
   const { user: authUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabId>('lista');
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
+    const [activeTab, setActiveTab] = useState<TabId>('lista');
 
   // ── Shared ──
   const [selectedDate, setSelectedDate] = useState(todayISO());
@@ -1875,7 +1877,7 @@ export default function TerminalListero() {
       <div className="shrink-0 px-4 pt-4 pb-0">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h1 className="text-lg font-black text-white">Terminal Listero</h1>
+            <h1 className="text-lg font-black text-white">{empresaCfg.label} — Terminal Listero</h1>
             <p className="text-xs text-slate-500 mt-0.5">
               {selectedDate} · {users.length} conductores · {vehicles.length} coches
               {loadingBase && ' · cargando…'}

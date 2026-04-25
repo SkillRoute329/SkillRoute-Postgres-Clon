@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { API_URL } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { UserPlus, Users, Save, X, FileUp, FileDown, Download } from 'lucide-react';
+import { UserPlus, Users, Save, X, FileUp, FileDown, Download, Building2 } from 'lucide-react';
 import { DataImportService } from '../../services/api';
 
 const Employees = () => {
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const { token } = useAuth();
   const [employees, setEmployees] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);

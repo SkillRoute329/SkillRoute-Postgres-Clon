@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Bus, Plus, Search, Edit2, Wrench, Users, Calendar, History } from 'lucide-react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
+import { Bus, Plus, Search, Edit2, Wrench, Users, Calendar, History, Building2 } from 'lucide-react';
 import { FleetService, UserService } from '../../services/api';
 import clsx from 'clsx';
 import VehicleHistoryModal from '../../components/fleet/VehicleHistoryModal';
@@ -52,7 +53,8 @@ const renderDateOrAlert = (label: string, rawValue: any, vehicleId: string) => {
 };
 
 const VehicleList = () => {
-  const [vehicles, setVehicles] = useState<any[]>([]);
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
+    const [vehicles, setVehicles] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
 
   // Form State

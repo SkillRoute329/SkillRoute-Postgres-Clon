@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { ShiftService, type Shift } from '../../services/api';
 import { PDFService } from '../../services/pdf';
 import ShiftCard from '../../components/ShiftCard';
 import EditShiftModal from '../../components/EditShiftModal';
 import AssignShiftModal from '../../components/AssignShiftModal';
-import { Search, Filter, FileText, Loader2, AlertCircle } from 'lucide-react';
+import { Search, Filter, FileText, Loader2, AlertCircle, Building2 } from 'lucide-react';
 import clsx from 'clsx';
 
 const AdminShifts = () => {
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const [activeTab, setActiveTab] = useState<'Created' | 'Public' | 'Assigned'>('Created');
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [shifts, setShifts] = useState<Shift[]>([]);

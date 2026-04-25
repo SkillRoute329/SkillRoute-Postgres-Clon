@@ -20,7 +20,8 @@ import {
   type BusSTM,
 } from '../../services/stmLiveService';
 import 'leaflet.heat';
-import { Bus, RefreshCw, AlertTriangle, WifiOff, Layers, Filter, X, Flame } from 'lucide-react';
+import { Bus, RefreshCw, AlertTriangle, WifiOff, Layers, Filter, X, Flame, Building2 } from 'lucide-react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 
 // ─── Fix Leaflet default icons broken by Vite ────────────────────────────────
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -34,7 +35,7 @@ L.Icon.Default.mergeOptions({
 
 function crearIconoBus(codigoEmpresa: number, linea: string): L.DivIcon {
   const color = EMPRESA_COLORES[codigoEmpresa] ?? '#94a3b8';
-  const es_ucot = codigoEmpresa === 70;
+  const es_ucot = codigoEmpresa === 70;  // styling only
   const size = es_ucot ? 42 : 28;
 
   // SVG de Wifi
@@ -79,7 +80,7 @@ function AutoCenter({ buses }: { buses: BusSTM[] }) {
 
   useEffect(() => {
     if (!centered.current && buses.length > 0) {
-      const ucot = buses.filter((b) => b.codigoEmpresa === 70);
+      const ucot = buses.filter((b) => b.codigoEmpresa === 70);  // centering default UCOT
       if (ucot.length > 0) {
         const lat = ucot.reduce((s, b) => s + b.lat, 0) / ucot.length;
         const lng = ucot.reduce((s, b) => s + b.lng, 0) / ucot.length;
@@ -172,6 +173,7 @@ const STYLE_INACTIVO = {
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function LiveMapPage() {
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const [buses, setBuses] = useState<BusSTM[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -233,8 +235,8 @@ export default function LiveMapPage() {
   ) as [number, number, number][];
 
   // ── Filtrado ────────────────────────────────────────────────────────────────
-  const busesUCOT = buses.filter((b) => b.codigoEmpresa === 70);
-  const busesUCOTFiltrados = busesUCOT.filter((b) => {
+  const busesPropios = buses.filter((b) => b.codigoEmpresa === empresaPropia);
+  const busesUCOTFiltrados = busesPropios.filter((b) => {
     if (lineaFiltro)
       return String(b.linea || '')
         .toUpperCase()
@@ -243,7 +245,7 @@ export default function LiveMapPage() {
   });
 
   const busesRivalesActivos = buses.filter((b) => {
-    return b.codigoEmpresa !== 70 && empresasActivas.has(b.codigoEmpresa as CodigoEmpresa);
+    return b.codigoEmpresa !== empresaPropia && empresasActivas.has(b.codigoEmpresa as CodigoEmpresa);
   });
 
   // Calcular siempre para mostrar el badge en el botón
@@ -291,7 +293,7 @@ export default function LiveMapPage() {
             className={`w-2.5 h-2.5 rounded-full shadow-[0_0_8px] ${cargando ? 'bg-amber-500 shadow-amber-500 animate-pulse' : error ? 'bg-red-500 shadow-red-500' : 'bg-green-500 shadow-green-500'}`}
           />
           <Bus size={18} className="text-yellow-500" />
-          <span className="text-slate-100 font-bold text-[15px]">Mapa STM en Vivo</span>
+          <span className="text-slate-100 font-bold text-[15px]">Mapa STM en Vivo — {empresaCfg.label}</span>
           {ultimaActualizacion && (
             <span className="text-slate-500 text-[11px]">
               · {ultimaActualizacion.toLocaleTimeString('es-UY')}
@@ -317,6 +319,7 @@ export default function LiveMapPage() {
       <div className="px-4 py-2 bg-slate-800 border-b border-[#1e3a5f] flex items-center gap-2.5 flex-wrap shrink-0">
         <Layers size={14} className="text-slate-500" />
         <span className="text-slate-400 text-xs font-semibold">Empresas:</span>
+        <div className="flex items-center gap-1.5"><Building2 size={13} className="text-slate-400" /><select value={empresaPropia} onChange={(e) => setEmpresaPropia(Number(e.target.value))} className="bg-slate-900 border border-slate-700 rounded-md px-1.5 py-0.5 text-[11px] text-white" title="Empresa propia"><option value={70}>UCOT</option><option value={50}>CUTCSA</option><option value={20}>COME</option><option value={10}>COETC</option></select></div>
 
         {EMPRESAS_VISIBLES.map((cod) => {
           const activa = empresasActivas.has(cod);

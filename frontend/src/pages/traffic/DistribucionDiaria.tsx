@@ -4,7 +4,8 @@
  * Incluye indicador GPS en vivo desde STM (UCOT empresa 70).
  */
 import { useState, useEffect, useCallback } from 'react';
-import { Bus, Search, RefreshCw, Calendar, ArrowRight, Clock, Route, Wifi, WifiOff } from 'lucide-react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
+import { Bus, Search, RefreshCw, Calendar, ArrowRight, Clock, Route, Wifi, WifiOff, Building2 } from 'lucide-react';
 
 interface CocheServicio {
   coche: string;
@@ -61,6 +62,7 @@ function lineaColor(linea: string): string {
 }
 
 export default function DistribucionDiaria() {
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const [rotacion, setRotacion] = useState<RotacionDia | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -79,7 +81,7 @@ export default function DistribucionDiaria() {
       if (!res.ok) return;
       const data = await res.json();
       if (!data.ok) return;
-      const ucot: BusGPS[] = (data.buses ?? []).filter((b: any) => b.empresaId === 70);
+      const ucot: BusGPS[] = (data.buses ?? []).filter((b: any) => b.empresaId === empresaPropia);
       const map: Record<string, BusGPS> = {};
       for (const b of ucot) map[b.codigoBus] = b;
       setGpsMap(map);
@@ -157,13 +159,17 @@ export default function DistribucionDiaria() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-3">
             <Route className="w-7 h-7 text-primary-400" />
-            Distribución Diaria
+            Distribución Diaria — {empresaCfg.label}
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Rotación coche físico → servicio por fecha. Fuente: planilla oficial UCOT.
+            Rotación coche físico → servicio por fecha. Fuente: planilla oficial {empresaCfg.label}.
           </p>
         </div>
 
+        <div className="flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-slate-400" />
+          <select value={empresaPropia} onChange={(e) => setEmpresaPropia(Number(e.target.value))} className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" title="Operador propio"><option value={70}>UCOT</option><option value={50}>CUTCSA</option><option value={20}>COME</option><option value={10}>COETC</option></select>
+        </div>
         {/* Selector de fecha */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-slate-800 rounded-xl px-3 py-2 border border-slate-700">
@@ -212,7 +218,7 @@ export default function DistribucionDiaria() {
           <div className={`rounded-xl p-4 border ${gpsActivos > 0 ? 'border-emerald-700/50 bg-emerald-950/20' : 'border-slate-800 bg-slate-900'}`}>
             <p className="text-slate-400 text-xs flex items-center gap-1">
               {gpsActivos > 0 ? <Wifi className="w-3 h-3 text-emerald-400" /> : <WifiOff className="w-3 h-3" />}
-              GPS en vivo (UCOT)
+              GPS en vivo ({empresaCfg.label})
             </p>
             <p className="text-2xl font-bold text-emerald-400 mt-1">{gpsActivos}</p>
             {gpsTs && <p className="text-[10px] text-slate-500 mt-0.5">act. {gpsTs}</p>}

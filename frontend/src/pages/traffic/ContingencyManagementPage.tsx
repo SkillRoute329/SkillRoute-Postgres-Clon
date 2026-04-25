@@ -30,12 +30,14 @@ import {
   Download,
   Clock,
 } from 'lucide-react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 /* ─── Component ───────────────────────────────────────── */
 
 export default function ContingencyManagementPage() {
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<User[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');

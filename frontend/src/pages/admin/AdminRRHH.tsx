@@ -17,11 +17,13 @@ import {
   RefreshCw,
   Save,
 } from 'lucide-react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { DepartmentService, DiscountService, DataImportService } from '../../services/api';
 import clsx from 'clsx';
 
 const AdminRRHH = () => {
-  const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'discounts'>('users');
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
+    const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'discounts'>('users');
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto animate-fade-in-up pb-24">

@@ -4,7 +4,8 @@
  * Usado por inspectores en calle para verificar puntualidad.
  */
 import { useState, useEffect, useRef } from 'react';
-import { FileText, RefreshCw, ChevronDown, Sun, Sunrise, Sunset, Moon, Search, ArrowLeftRight } from 'lucide-react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
+import { FileText, RefreshCw, ChevronDown, Sun, Sunrise, Sunset, Moon, Search, ArrowLeftRight, Building2 } from 'lucide-react';
 
 interface PaseServicio {
   servicio: string;
@@ -66,6 +67,7 @@ const FRANJA_ICON: Record<string, React.ReactNode> = {
 };
 
 export default function BoletinInspeccion() {
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const [linea, setLinea] = useState('300');
   const [direccion, setDireccion] = useState<'a' | 'b'>('a');
   const [temporada, setTemporada] = useState<Temporada>('invierno');
@@ -120,11 +122,12 @@ export default function BoletinInspeccion() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-3">
           <FileText className="w-7 h-7 text-emerald-400" />
-          Boletín de Inspección
+          Boletín de Inspección — {empresaCfg.label}
         </h1>
         <p className="text-slate-400 text-sm mt-1">
-          Matriz de horarios oficial UCOT por parada de control. Para uso de inspectores en calle.
+          Matriz de horarios oficial {empresaCfg.label} por parada de control. Para uso de inspectores en calle.
         </p>
+      <div className="flex items-center gap-2"><Building2 className="w-4 h-4 text-slate-400" /><select value={empresaPropia} onChange={(e) => setEmpresaPropia(Number(e.target.value))} className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" title="Operador propio"><option value={70}>UCOT</option><option value={50}>CUTCSA</option><option value={20}>COME</option><option value={10}>COETC</option></select></div>
       </div>
 
       {/* Controles */}

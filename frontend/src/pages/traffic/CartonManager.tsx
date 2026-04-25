@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { useNavigate } from 'react-router-dom';
 import { CartonService } from '../../services/api';
-import { FileText, Search, Eye, Pencil, Loader2, Clock, Bus } from 'lucide-react';
+import { FileText, Search, Eye, Pencil, Loader2, Clock, Bus, Building2 } from 'lucide-react';
 
 type CartonItem = { id: string; linea: string; coche?: string; tipoServicio?: string; primeraSalida?: string; ultimaLlegada?: string; totalParadas?: number; [key: string]: unknown };
 
 export default function CartonManager() {
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const navigate = useNavigate();
   const [list, setList] = useState<CartonItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,17 +88,18 @@ export default function CartonManager() {
       <header className="p-4 border-b border-slate-800 bg-slate-900/50 shrink-0">
         <h1 className="text-xl font-bold flex items-center gap-2">
           <FileText className="w-6 h-6 text-primary-500" />
-          Gestor de Cartones
+          Gestor de Cartones — {empresaCfg.label}
         </h1>
         <p className="text-slate-400 text-sm mt-1">
           Cartones de servicio por línea. Ver detalle o editar.
           {list.length > 0 && (
             <span className="ml-2 text-slate-500">
-              ({list.filter(i => (i as any).source === 'oficial').length} oficiales UCOT
+              ({list.filter(i => (i as any).source === 'oficial').length} oficiales {empresaCfg.label}
               + {list.filter(i => (i as any).source !== 'oficial').length} maestro/físico)
             </span>
           )}
         </p>
+        <div className="flex items-center gap-2"><Building2 className="w-4 h-4 text-slate-400" /><select value={empresaPropia} onChange={(e) => setEmpresaPropia(Number(e.target.value))} className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" title="Operador propio"><option value={70}>UCOT</option><option value={50}>CUTCSA</option><option value={20}>COME</option><option value={10}>COETC</option></select></div>
         <div className="mt-4 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
           <input
@@ -138,7 +141,7 @@ export default function CartonManager() {
                       <span className="text-xs px-2 py-0.5 rounded bg-emerald-900/50 text-emerald-300">Físico</span>
                     )}
                     {(item as CartonItem & { source?: string }).source === 'oficial' && (
-                      <span className="text-xs px-2 py-0.5 rounded bg-blue-900/50 text-blue-300">Oficial UCOT</span>
+                      <span className="text-xs px-2 py-0.5 rounded bg-blue-900/50 text-blue-300">Oficial {empresaCfg.label}</span>
                     )}
                     {item.tipoServicio === 'sabado_verano' && (
                       <span className="text-xs px-2 py-0.5 rounded bg-amber-900/50 text-amber-300">Sábado</span>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Clock, Bus, ChevronDown, ChevronRight } from 'lucide-react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
+import { Clock, Bus, ChevronDown, ChevronRight, Building2 } from 'lucide-react';
 import clsx from 'clsx';
 import { CartonService, FleetService } from '../../services/api';
 import type { ServiceItem, Vehicle } from '../../services/firestore/types';
@@ -8,6 +9,7 @@ import UniversalResourceManager from '../../components/UniversalResourceManager'
 // Reusing ServiceItem from types
 
 const RotationMatrix = () => {
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [allVehicles, setAllVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(false);

@@ -6,11 +6,13 @@ import { Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../config/firebase';
 import type { PassengerLoadCategory, Inspection } from '../../types/inspections';
-import { Clock, CheckCircle, Users, Loader2, Camera, Upload, X } from 'lucide-react';
+import { Clock, CheckCircle, Users, Loader2, Camera, Upload, X, Building2 } from 'lucide-react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 
 type ControlPointOption = { id: string; name: string; scheduledTime: string };
 
 const InspectorCapture = () => {
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const { user } = useAuth();
   const [lines, setLines] = useState<string[]>([]);
   const [services, setServices] = useState<

@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Upload, FileSpreadsheet, Loader2, History, Trash2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, Loader2, History, Trash2, Building2 } from 'lucide-react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import * as XLSX from 'xlsx';
 import { toast } from 'react-hot-toast';
 import { ServiceMatrixService } from '../../services/firestore/serviceMatrix';
 import { useAuth } from '../../context/AuthContext';
 
 export default function ServiceMatrix() {
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'SuperAdmin' || user?.rol === 'SuperAdmin';
   const canUpload = isSuperAdmin;
@@ -173,6 +175,7 @@ export default function ServiceMatrix() {
             <History className="w-4 h-4" />
             Historial Cloud
           </h2>
+          <div className="flex items-center gap-1.5 mt-2"><Building2 className="w-3.5 h-3.5 text-slate-500" /><select value={empresaPropia} onChange={(e) => setEmpresaPropia(Number(e.target.value))} className="bg-slate-800 border border-slate-700 rounded-md px-1.5 py-1 text-[10px] text-white w-full" title="Operador propio"><option value={70}>UCOT</option><option value={50}>CUTCSA</option><option value={20}>COME</option><option value={10}>COETC</option></select></div>
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2">

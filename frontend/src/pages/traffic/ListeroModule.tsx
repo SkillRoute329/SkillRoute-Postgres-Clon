@@ -1,5 +1,5 @@
 /**
- * ListeroModule — Terminal Digital del Listero UCOT
+ * ListeroModule — Terminal Digital del Listero — {empresaCfg.label}
  *
  * Reemplaza el proceso manual de papel/WhatsApp con:
  * - Grilla diaria: conductor + vehículo + línea + turno + hora salida
@@ -15,6 +15,7 @@ import {
   UserCheck, Wrench, RefreshCw,
   ShieldAlert, TrendingDown, Bell, UserX, ArrowRight, CalendarPlus,
 } from 'lucide-react';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import toast from 'react-hot-toast';
 
 // ─── Tipos (espejo del backend) ───────────────────────────────────────────────
@@ -147,7 +148,8 @@ async function apiFetch(path: string, opts?: RequestInit) {
 
 export default function ListeroModule() {
   const { fecha, setFecha } = useFecha();
-  const [turnos, setTurnos] = useState<TurnoDia[]>([]);
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
+    const [turnos, setTurnos] = useState<TurnoDia[]>([]);
   const [conductores, setConductores] = useState<ConductorDia[]>([]);
   const [alertas, setAlertas] = useState<AlertaOperativa[]>([]);
   const [resumen, setResumen] = useState<ResumenDiario | null>(null);
