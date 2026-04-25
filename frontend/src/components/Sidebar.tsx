@@ -140,7 +140,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         },
         {
           path: '/dashboard/traffic/ceo-v7',
-          label: '⭐ Network Command v7',
+          label: '⭐ Centro de Mando v7',
           icon: TrendingUp,
         },
       ],
@@ -152,6 +152,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           path: '/dashboard/traffic/shadow-radar',
           label: 'Radar Sombra (Táctico)',
           icon: Radio,
+        },
+        {
+          path: '/dashboard/traffic/live-map',
+          label: '🔴 Mapa en Vivo STM',
+          icon: MapPin,
         },
         {
           path: '/dashboard/traffic/autostats',

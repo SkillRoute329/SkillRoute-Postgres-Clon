@@ -112,6 +112,7 @@ const ContingencyManagementPage = lazy(() => import('./pages/traffic/Contingency
 const ShadowRadar = lazy(() => import('./pages/traffic/ShadowRadar'));
 const CorridorIntelligence = lazy(() => import('./pages/traffic/CorridorIntelligence'));
 const CorridorMap = lazy(() => import('./pages/traffic/CorridorMap'));
+const LiveMapPage = lazy(() => import('./pages/traffic/LiveMapPage'));
 const ShadowAnalytics = lazy(() => import('./pages/traffic/ShadowAnalytics'));
 const StmScraperStatus = lazy(() => import('./pages/admin/StmScraperStatus'));
 
@@ -260,7 +261,8 @@ function App() {
                     {/* Redirect legacy: Centro de Inteligencia → Inteligencia de Corredores (v3) */}
                     <Route path="traffic/intelligence" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />
                     {/* Redirect legacy: Mapa en Vivo STM → Mapa de Corredores (v4, más capas + DRO) */}
-                    <Route path="traffic/live-map" element={<Navigate to="/dashboard/traffic/corridor-map" replace />} />
+                    {/* Restaurado 2026-04-25: LiveMapPage tiene heatmap de demanda que CorridorMap no cubre. Ambos conviven con roles distintos. */}
+                    <Route path="traffic/live-map" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><LiveMapPage /></PrivateRoute>} />
                     <Route path="traffic/shadow-radar" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ShadowRadar /></PrivateRoute>} />
                     <Route path="traffic/corridor-intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorridorIntelligence /></PrivateRoute>} />
                     <Route path="traffic/corridor-map" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorridorMap /></PrivateRoute>} />
