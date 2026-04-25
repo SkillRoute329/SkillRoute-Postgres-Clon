@@ -31,7 +31,98 @@ NO toca archivos críticos compartidos (ver §10 de CLAUDE.md).
 
 ---
 
-## ORDEN COMPLETA PARA CLAUDE CODE
+## 🔴 GAPS DETECTADOS POST-§12 (2026-04-25 — re-apertura del sprint)
+
+Bajo Regla §12 (verificación en producción excluyente), Sprint 1 quedó re-abierto.
+Tres gaps detectados:
+
+1. **Bug en CTAs PricingPage** — el `mailto` tenía `{tier.name}` literal en
+   vez de interpolado (subject del email rompe). **Fix aplicado en
+   `frontend/src/pages/public/PricingPage.tsx`** — pendiente deploy por Code.
+
+2. **Onboarding documentado pero NO público** — `docs/ONBOARDING_PROCESO.md`
+   existe pero no es accesible vía web a un prospect sin login. Bajo §12,
+   eso no está terminado. **Resuelto: creado
+   `frontend/src/pages/public/OnboardingPage.tsx` (componente nuevo)** +
+   link agregado desde PricingPage.
+
+3. **Endpoints regulatorio sin verificación con auth real** — `/health`
+   responde OK pero `/export` y `/export-cross-op` requieren token ADMIN.
+   Bajo §12 cae en excepción humana — Jonathan o Code con cuenta admin
+   debe ejecutar el test final.
+
+## ORDEN ACTUALIZADA PARA CLAUDE CODE (post-§12)
+
+> Pegar este bloque en Claude Code para cerrar Sprint 1 bajo §12.
+
+```
+Continuamos Sprint 1 bajo regla §12 (Verificación en Producción Excluyente).
+Leé CLAUDE.md (especial §12) y docs/SPRINT_01_PLAN.md.
+
+Cowork detectó 2 gaps técnicos y los resolvió en código local. Tu trabajo:
+
+1. INTEGRAR OnboardingPage — Edit puntual en frontend/src/App.tsx:
+   const OnboardingPage = lazy(() => import('./pages/public/OnboardingPage'));
+   <Route path="/pricing/onboarding" element={<OnboardingPage />} />
+
+2. REBUILD + REDEPLOY frontend (incluye fix CTA PricingPage + nueva
+   OnboardingPage):
+   cd frontend
+   npm run build
+   cd ..
+   firebase deploy --only hosting
+
+3. VERIFICACIÓN EN PRODUCCIÓN EXCLUYENTE (§12, 7 criterios):
+   a) Abrir https://ucot-gestor-cloud.web.app/pricing en incógnito limpio.
+      - Click en CTA "Reservar reunión" del Tier Profesional.
+      - Verificar que el subject del mailto es exactamente:
+        "SkillRoute - Tier Profesional - Reunión de descubrimiento"
+        (no "{tier.name}" literal).
+   b) Abrir https://ucot-gestor-cloud.web.app/pricing/onboarding en incógnito.
+      - Verificar que carga sin auth.
+      - Verificar que muestra timeline 4 semanas, comparativa con líderes,
+        caso UCOT, compromisos mutuos, CTA mailto al final.
+      - Verificar 0 errores en console.
+   c) Mobile-responsive: emular viewport 390x844 (iPhone) en DevTools.
+      Verificar que /pricing y /pricing/onboarding no tienen overflow
+      horizontal y todos los elementos son visibles.
+   d) Regresión: cargar /dashboard/traffic/ceo, /dashboard/traffic/cartones,
+      /dashboard/traffic/shadow-radar — los 3 deben renderizar normal.
+   e) Feed GTFS-RT: confirmar que sigue devolviendo entidades
+      (curl https://us-central1-ucot-gestor-cloud.cloudfunctions.net/gtfsRealtime/service-alerts.json
+      | head -200).
+
+4. SI TODO PASA → COMMIT:
+   git add -A
+   git commit -m "fix(sprint-1-§12): bug CTA mailto + OnboardingPage pública
+
+   Aplicación de regla §12 (Verificación en Producción Excluyente) a
+   Sprint 1. Dos gaps detectados y resueltos:
+
+   1. PricingPage tenía mailto con {tier.name} literal en lugar de
+      interpolado. Subject del email roto al click. Fix con template
+      string + encodeURIComponent.
+
+   2. ONBOARDING_PROCESO.md documentado pero no accesible al público.
+      Creada OnboardingPage.tsx pública en /pricing/onboarding con
+      timeline 4 semanas, comparativa líderes, caso UCOT, compromisos
+      mutuos. Link agregado desde /pricing.
+
+   Verificación §12:
+   - /pricing CTA mailto → subject correcto (no {tier.name})
+   - /pricing/onboarding accesible sin auth
+   - Mobile-responsive verificado a 390px
+   - 0 errores console
+   - 3 módulos pre-existentes sin regresión
+   - Feed GTFS-RT sigue OK"
+   git push
+
+5. PENDIENTE para Jonathan (excepción §12 humana):
+   Probar /regulatorio/export y /export-cross-op con tu token ADMIN
+   y reportar si el JSON de salida es consumible.
+```
+
+## ORDEN COMPLETA INICIAL PARA CLAUDE CODE (sprint original — ya ejecutada)
 
 > Pegar este bloque en Claude Code cuando Cowork termine los entregables 1.1, 1.2, 1.4.
 

@@ -181,7 +181,7 @@ function TierCard({ tier }: { tier: Tier }) {
       </ul>
 
       <a
-        href="mailto:jonathanlaluz@gmail.com?subject=SkillRoute%20-%20Tier%20%5B%20{tier.name}%20%5D%20-%20Reuni%C3%B3n%20de%20descubrimiento"
+        href={`mailto:jonathanlaluz@gmail.com?subject=${encodeURIComponent(`SkillRoute - Tier ${tier.name} - Reunión de descubrimiento`)}`}
         className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-bold transition ${
           tier.highlighted
             ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
@@ -236,6 +236,15 @@ export default function PricingPage() {
           pricing es opaco y excluye a operadores chicos y medianos. SkillRoute
           publica precios reales, en USD, con tiers claros por cantidad de buses.
         </p>
+        <div className="mt-8 flex items-center justify-center gap-3 text-sm">
+          <Link
+            to="/pricing/onboarding"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/40 hover:bg-slate-800/40 px-4 py-2 text-slate-300 hover:text-white transition"
+          >
+            Ver proceso de onboarding (2-4 semanas)
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
       </section>
 
       {/* Tiers */}
