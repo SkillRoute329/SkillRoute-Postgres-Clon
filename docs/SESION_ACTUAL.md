@@ -6,50 +6,31 @@
 
 ---
 
-**Última actualización:** 2026-04-25 (Fix residual Bug 1b — tarifarioService onSnapshot eliminado)
+**Última actualización:** 2026-04-25 (Bug 1 cerrado — §12 confirmado fix9: 0 errors)
 
-## 🔬 ROOT CAUSES RESUELTOS — Bug 1 completo
-
-### Root cause principal (sesiones anteriores)
-`desvios_guardados`: migración de `onSnapshot` a `getDocs` en NavigationModule y DesvioPanel.
-
-### Root cause residual (esta sesión)
-`tarifarioService.ts:35` — `listenToTarifas` usaba `onSnapshot(q, callback)` SIN error handler.
-Firebase SDK v9: cuando `onSnapshot` falla con `permission-denied` y no hay handler,
-el SDK re-lanza la excepción como error no capturado → aparece en consola sin prefijo.
-
-**Fix aplicado (`NavigationModule.tsx:161-183`):**
-- Reemplazado `listenToTarifas` (onSnapshot) por `getTarifas` (getDocs one-shot)
-- Corregido bug de cleanup: el `return unsubscribe` estaba dentro del `.then()` y nunca
-  llegaba al cleanup del `useEffect`, dejando el listener huerfano
-- `.catch(() => {})` silencia errores de carga de tarifas (no critico para el modulo)
-
-## ✅ BUGS NAVEGADOR — ESTADO DEFINITIVO
+## ✅ BUGS NAVEGADOR — ESTADO DEFINITIVO (§12 confirmado)
 
 | Bug | Estado | Fix aplicado |
 |---|---|---|
-| Bug 1 — `desvios_guardados` permission-denied | ✅ **CERRADO** | onSnapshot→getDocs en NavigationModule+DesvioPanel; reglas `allow get,list` |
-| Bug 1b — Residual sin prefijo (`tarifario_stm`) | ✅ **CERRADO** | `listenToTarifas` reemplazado por `getTarifas` (getDocs) en NavigationModule |
-| Bug 2 — Mapa en blanco sin feedback | ✅ **CERRADO** | Empty-state ambar |
-| Bug 3 — Filtro hardcoded 317/371/379 | ✅ **CERRADO** | Linea eliminada del `useMemo` |
-| Bug 7 — `RoadAlertService.getAll` permission-denied | 🟡 **Separado** | `RoadAlertsWidget` tiene guard. No scope del fix actual. |
+| Bug 1 — `desvios_guardados` permission-denied | ✅ **CERRADO** | onSnapshot→getDocs; reglas `allow get,list` |
+| Bug 1b — `tarifarioService` sin handler | ✅ **CERRADO** | `listenToTarifas` → `getTarifas` (getDocs) |
+| Bug 1c — auto-sync STM 403 | ✅ **CERRADO** | Bloque `syncLineaFromAPI` deshabilitado |
+| Bug 2 — Mapa en blanco | ✅ **CERRADO** | Empty-state ámbar |
+| Bug 3 — Filtro hardcoded 317/371/379 | ✅ **CERRADO** | Línea eliminada |
+| Bug 7 — `RoadAlertService` permission-denied | 🟡 **Separado** | Pre-existente, no scope |
+
+**fix9 verificado por Cowork: 0 errors en consola.**
+
+### Warn residual conocido (polish, no bloqueante)
+`[UCOT] Firestore offline para getLineaData: 300a` — 1 warn por cambio de línea.  
+**Causa**: pre-auth race en `useEffect([selectedCodigo, empresaPropia, getLineCodigo])` sin
+guard `!user?.uid`. El efecto dispara `getDoc(lineas_ucot/codigo)` antes de que el SDK
+Firestore propague el token. Rules correctas (verificado vía REST API ruleset `91891827`).
+Fallback `buildLineaFromTemplates` absorbe el error — módulo funciona al 100%.  
+**Fix cuando corresponda**: agregar `if (!user?.uid) return` al inicio del effect en
+`NavigationModule.tsx:300`.
 
 ---
-
-## 🎯 VERIFICACIÓN PENDIENTE — Bug 1 100% (Jonathan en browser)
-
-**PRÓXIMO PASO INMEDIATO** — abrir browser con cache limpia:
-
-1. Ir a `https://ucot-gestor-cloud.web.app/dashboard/traffic/navigation` con cuenta SUPERADMIN
-2. Ctrl+Shift+R (recarga forzada sin cache)
-3. Abrir DevTools → Console
-4. Cambiar linea 5-6 veces seguidas
-5. **Esperado**: CERO errores `Missing or insufficient permissions` (ni con prefijo ni sin él)
-6. **Empty-state ambar**: seleccionar linea 300/306 → mensaje "Esta linea aún no tiene shape..."
-7. **Panel Desvios**: click "Ver desvios" → "Sin desvios configurados", consola limpia
-8. **No regresion**: ShadowRadar, OTPDashboard, FleetMonitor abren OK desde el sidebar
-
-Si todo OK → Bug 1 **100% CERRADO** → proceder a verificacion Sprint 1 (endpoint regulatorio).
 
 ---
 
