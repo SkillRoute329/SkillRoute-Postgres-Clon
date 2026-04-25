@@ -27,11 +27,10 @@ import { collection, doc, setDoc, updateDoc, serverTimestamp, GeoPoint } from 'f
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import {
-  getLineasUCOT,
-  getLineaData,
   syncLineaFromAPI,
   type LineaUCOTResumen,
 } from '../../services/ucotLinesService';
+import { getLineasByAgency, getLineaDataByAgency } from '../../services/linesService';
 import {
   getOverride,
   setOverride,
@@ -205,8 +204,7 @@ export default function NavigationModule() {
         if (!item.codigo || String(item.codigo).startsWith('linea-')) return false;
         if (String(item.nombre).startsWith('Competencia:')) return false;
         if (/^(317|371|379)[a-z]?$/i.test(String(item.codigo))) return false;
-        const empresaOk = item.empresa != null && String(item.empresa).toUpperCase() === 'UCOT';
-        if (!empresaOk) return false;
+        // getLineasByAgency ya filtra por operador propio
         if (filterLinea !== TODAS && item.codigo.replace(/[ab]$/i, '') !== filterLinea)
           return false;
         return true;
@@ -262,8 +260,17 @@ export default function NavigationModule() {
     return () => unsub();
   }, [selectedCodigo, _desviosVersion]);
 
+  // Resuelve el código de línea dado un id (necesario para getLineaDataByAgency cross-op)
+  const getLineCodigo = useCallback(
+    (id: string) => listCompleta.find((l) => l.id === id)?.codigo ?? id,
+    [listCompleta],
+  );
+
   useEffect(() => {
-    getLineasUCOT()
+    setListCompleta([]);
+    setSelectedCodigo('');
+    setLoading(true);
+    getLineasByAgency(empresaPropia)
       .then((list) => {
         setListCompleta(list);
         if (list.length > 0) {
@@ -276,7 +283,7 @@ export default function NavigationModule() {
         }
       })
       .finally(() => setLoading(false));
-  }, [lineaParam]);
+  }, [lineaParam, empresaPropia]);
 
   useEffect(() => {
     if (
@@ -294,30 +301,24 @@ export default function NavigationModule() {
       return;
     }
     setLoading(true);
-    getLineaData(selectedCodigo)
+    const lineCodigo = getLineCodigo(selectedCodigo);
+    getLineaDataByAgency(empresaPropia, lineCodigo)
       .then((data) => {
         setLinea(data);
         setSelectedStopId(null);
-        // Autocompletar Trazado Real si está vacío (Hitos Teóricos = {lat:0, lng:0})
-        if (data && (!data.recorrido || data.recorrido.length === 0)) {
-          console.log(
-            '⚡ Línea seleccionada sin polígono de trazado GPS. Habilitando Auto-Sincronización...',
-          );
-          const numeroAPI = data?.codigo ?? selectedCodigo;
-          const baseNumero = String(numeroAPI).replace(/[ab]$/i, '') || numeroAPI;
-
+        // Auto-sync recorrido desde GeoServer solo para UCOT (tiene API pública)
+        if (empresaPropia === 70 && data && (!data.recorrido || data.recorrido.length === 0)) {
+          const baseNumero = String(data.codigo ?? lineCodigo).replace(/[ab]$/i, '') || lineCodigo;
           setSyncing(true);
           syncLineaFromAPI(selectedCodigo, baseNumero)
-            .then(() => getLineaData(selectedCodigo))
-            .then((newData) => {
-              if (newData) setLinea(newData);
-            })
+            .then(() => getLineaDataByAgency(70, lineCodigo))
+            .then((newData) => { if (newData) setLinea(newData); })
             .catch(console.error)
             .finally(() => setSyncing(false));
         }
       })
       .finally(() => setLoading(false));
-  }, [selectedCodigo]);
+  }, [selectedCodigo, empresaPropia, getLineCodigo]);
 
   useEffect(() => {
     if (!conductorMode) return;
@@ -425,11 +426,10 @@ export default function NavigationModule() {
     clearRouteOverride(selectedCodigo);
     setRouteHasOverride(false);
     setShowRouteEditor(false);
-    // Recargar la línea desde el servicio (sin override)
-    getLineaData(selectedCodigo)
+    getLineaDataByAgency(empresaPropia, getLineCodigo(selectedCodigo))
       .then(setLinea)
       .catch(() => {});
-  }, [selectedCodigo]);
+  }, [selectedCodigo, empresaPropia, getLineCodigo]);
 
   useEffect(() => {
     if (!navigationActive || !selectedCodigo || !linea) {
@@ -520,13 +520,12 @@ export default function NavigationModule() {
     if (!selectedCodigo) return;
     setSyncing(true);
     try {
-      const numeroAPI =
-        linea?.codigo ??
-        lineasDisponibles.find((l) => l.id === selectedCodigo)?.codigo ??
-        selectedCodigo;
-      const baseNumero = String(numeroAPI).replace(/[ab]$/i, '') || numeroAPI;
-      await syncLineaFromAPI(selectedCodigo, baseNumero);
-      const data = await getLineaData(selectedCodigo);
+      const lineCodigo = getLineCodigo(selectedCodigo);
+      if (empresaPropia === 70) {
+        const baseNumero = String(lineCodigo).replace(/[ab]$/i, '') || lineCodigo;
+        await syncLineaFromAPI(selectedCodigo, baseNumero);
+      }
+      const data = await getLineaDataByAgency(empresaPropia, lineCodigo);
       setLinea(data);
     } catch (e) {
       console.error(e);
@@ -620,7 +619,7 @@ export default function NavigationModule() {
                   type="button"
                   onClick={() => {
                     setLoading(true);
-                    getLineasUCOT()
+                    getLineasByAgency(empresaPropia)
                       .then((list) => {
                         setListCompleta(list);
                         if (list.length > 0 && !selectedCodigo) setSelectedCodigo(list[0].id);
@@ -664,7 +663,7 @@ export default function NavigationModule() {
             </div>
             */}
             <div className="flex items-center gap-2">
-              <label className="text-slate-400 text-sm font-medium shrink-0">Línea UCOT</label>
+              <label className="text-slate-400 text-sm font-medium shrink-0">Línea {empresaCfg.label}</label>
               <select
                 value={filterLinea}
                 onChange={(e) => setFilterLinea(e.target.value)}
