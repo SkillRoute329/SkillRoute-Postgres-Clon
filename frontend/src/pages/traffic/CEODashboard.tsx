@@ -276,9 +276,21 @@ export default function CEODashboard() {
 
       // Fleet KPIs — usa GPS en vivo si hay datos, si no usa Firestore.
       // Filtro por empresaPropia (cross-operador, DIRECTRIZ 2026-04-24).
-      const propiaEnVivoGPS: number = posRes?.features
-        ? posRes.features.filter((f: any) => f.properties?.codigoEmpresa === empresaPropia).length
-        : 0;
+      // El backend evolucionó el formato: ahora devuelve { buses: [{ empresaId, ... }] }
+      // (formato plano nuevo). Mantenemos compat con el viejo GeoJSON
+      // { features: [{ properties: { codigoEmpresa, ... } }] }.
+      let propiaEnVivoGPS = 0;
+      if (Array.isArray(posRes?.buses)) {
+        // Formato nuevo (response v2 de /api/positions)
+        propiaEnVivoGPS = (posRes.buses as Array<{ empresaId?: number }>).filter(
+          (b) => b.empresaId === empresaPropia,
+        ).length;
+      } else if (Array.isArray(posRes?.features)) {
+        // Formato viejo GeoJSON
+        propiaEnVivoGPS = (posRes.features as Array<{ properties?: { codigoEmpresa?: number } }>).filter(
+          (f) => f.properties?.codigoEmpresa === empresaPropia,
+        ).length;
+      }
       const taller = vehicles.filter((v) =>
         /mantenimiento|taller|paralizado|baja/i.test(String(v.status ?? '')),
       ).length;
