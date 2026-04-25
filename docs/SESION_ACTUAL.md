@@ -4,19 +4,27 @@
 
 > **Para Jonathan**: este archivo se actualiza automáticamente al final de cada sesión productiva. No lo borres ni lo edites manualmente — Claude lo gestiona.
 
-**Última actualización:** 2026-04-25 (sesión Cowork — cierre loop FCM driver ACK)
+**Última actualización:** 2026-04-25 (post-deploy — loop FCM verificado en producción)
 
 ---
 
 ## 🎯 EN CURSO
 
-Nada en curso. Todo el loop operacional de alertas tácticas está cerrado:
-backend → cron/radar escribe `alertas_regulacion` → Cloud Function
-`onAlertaCreated` manda push FCM → frontend `DriverAlertOverlay` muestra modal
-pantalla completa con botón RECIBIDO → `acknowledgeAlerta` marca `ack_at` +
-`ack_response_time_sec` en Firestore → ShadowRadar UI muestra badges ACK/PUSH.
+Todo deployado y verificado en producción (Claude Code 2026-04-25):
 
-**Working tree con cambios sin commitear** — quedan listos para Claude Code.
+- ✅ 8 Cloud Functions desplegadas en `ucot-gestor-cloud` (shapeReconstruction×2, droMatrix×2, onAlertaCreated, acknowledgeAlerta, historicOtp, historicBunching).
+- ✅ `historicOtp` responde con datos reales: OTP 93.5% / 98.1% / 99.8% últimos 3 días.
+- ✅ `historicBunching` responde con datos reales: 71 eventos el 24/04, 22 críticos.
+- ✅ `acknowledgeAlerta` endpoint: 200 OK con body válido.
+- ✅ Frontend hosting: 200 OK, bundle nuevo servido.
+- ✅ TypeScript: 0 errores (frontend + functions).
+- ✅ Commit + push realizados.
+
+**Único test pendiente: verificación E2E del overlay del conductor.**
+Requiere dos sesiones simultáneas (emisor disparo manual + receptor conductor
+con fcm_token). Es la única excepción legítima a la directriz 7 (requiere
+autenticación humana con dos cuentas distintas en dos dispositivos). Protocolo
+de prueba en la sección "VERIFICACIÓN E2E PENDIENTE" más abajo.
 
 ---
 
@@ -84,7 +92,98 @@ críticos presentes en `functions/src/index.ts`.
 
 ---
 
+## 🧪 VERIFICACIÓN E2E PENDIENTE (requiere intervención humana)
+
+**Para Jonathan — prueba end-to-end del overlay del conductor:**
+
+Dos dispositivos/browsers necesarios. Si no tenés dos dispositivos a mano,
+usá un browser normal + una ventana de incógnito (son sesiones separadas
+para Firebase Auth).
+
+1. **Pestaña A — Emisor (tráfico/supervisor):**
+   - URL: `https://ucot-gestor-cloud.web.app/dashboard/traffic/shadow-radar`
+   - Login con tu usuario habitual (interno 329 u otro con rol TRAFFIC/ADMIN).
+   - Esperar a que cargue la lista de buses activos con sus rivales.
+   - Identificar un coche propio (ej. UCOT coche 100, línea X) que tenga un
+     rival cerca. Anotar el `coche_id` — lo vas a necesitar.
+
+2. **Pestaña B — Receptor (conductor):**
+   - URL: `https://ucot-gestor-cloud.web.app/dashboard`
+   - Login con un usuario conductor que tenga asignado ese `coche_id` en
+     `empleados/{uid}.coche_id` (si no existe uno de prueba, creá o usá uno
+     conocido — en Firestore `empleados` con `coche_id` seteado).
+   - **IMPORTANTE**: dar permiso a notificaciones cuando el browser lo
+     pida. Sin eso, FCM no entrega foreground.
+   - Dejar la pestaña visible y activa (foreground). No cambiar de tab.
+
+3. **En Pestaña A**, disparar alerta manual:
+   - Click en el botón "DISPARO" del bus identificado. Se escribe en
+     `alertas_regulacion` con `tipo: DISPARO_MANUAL`.
+
+4. **Dentro de 2-5 segundos, en Pestaña B deberías ver:**
+   - Overlay pantalla completa con fondo ámbar (DISPARO_MANUAL no es
+     crítico).
+   - Título "DISPARO TÁCTICO".
+   - Cuerpo con el mensaje.
+   - Botón gigante blanco "RECIBIDO".
+   - Countdown "Se cierra automáticamente en Xs".
+   - Vibración si el dispositivo soporta `navigator.vibrate`.
+
+5. **Click RECIBIDO**. El modal desaparece.
+
+6. **Volver a Pestaña A** y verificar:
+   - La alerta ahora muestra badge verde ✓ con el response time en
+     segundos (ej. "✓ 4s").
+   - En Firestore Console `alertas_regulacion/{id}` el doc tiene
+     `ack_at: <timestamp>`, `ack_by_coche_id: <cocheId>`,
+     `ack_response_time_sec: <número>`.
+
+**Si falla algo**, anotar qué paso y escribir en SESION_ACTUAL.md arriba
+del todo:
+
+```
+## NOTA DE JONATHAN (YYYY-MM-DD)
+
+E2E falló en paso N. Detalle: <qué pasó>.
+Consola Pestaña B: <copiar errores si hay>.
+```
+
+Y avisame en la próxima sesión. Casos típicos esperados si falla:
+- **No llega la push**: VAPID key probablemente está con placeholder.
+  Configurar `VITE_FCM_VAPID_KEY` en `frontend/.env.local` desde Firebase
+  Console > Cloud Messaging > Web Push certificates y rebuild.
+- **Push llega pero overlay no aparece**: revisar en consola `[DriverAlertOverlay]`
+  — puede ser que `tipo` no esté en `TIPOS_REGULACION` o que `onMessage`
+  no se haya suscrito porque `getAppMessaging()` devolvió null.
+- **Click RECIBIDO responde pero alerta no se marca**: revisar en Network
+  tab que `POST /acknowledgeAlerta` responde 200 y que el body tiene
+  `alertaId` correcto.
+
+---
+
 ## 📋 PRÓXIMO PASO INMEDIATO
+
+**Estado al 2026-04-25 (fin de sesión VAPID):**
+El código FCM + DriverAlertOverlay está 100% desplegado. Lo único bloqueante
+es la VAPID key real. Sin ella el `getToken()` falla silenciosamente y no
+se registra `fcm_token` en Firestore → pushes nunca llegan.
+
+**Acción manual requerida por Jonathan (5 min):**
+1. Abrir en Chrome/Edge con sesión Google activa:
+   `https://console.firebase.google.com/project/ucot-gestor-cloud/settings/cloudmessaging`
+2. Ir a **Web configuration** → **Web Push certificates**
+3. Si no hay certificado, click **"Add certificate"** para generar uno
+4. Copiar el campo **"Key pair"** (empieza con `B...`, es larga, base64)
+5. Pegar esa key en `frontend/.env.production` reemplazando `REEMPLAZAR_CON_VAPID_KEY_REAL`:
+   ```
+   VITE_FCM_VAPID_KEY=<key copiada>
+   ```
+6. Luego pasarle a Claude Code:
+   ```
+   cd frontend && npm run build && cd ..
+   firebase deploy --only hosting --project ucot-gestor-cloud
+   ```
+7. Claude Code verifica E2E (se describe en sección "VERIFICACIÓN E2E PENDIENTE")
 
 **Para Claude Code (pegar el siguiente prompt):**
 
@@ -97,11 +196,8 @@ Ejecutá esto en orden:
    bash scripts/check_integrity.sh
    (debe dar exit 0)
 
-2. Deploy de Cloud Functions nuevas:
-   cd functions && npm run build && cd ..
-   firebase deploy --only functions:shapeReconstructionCron,functions:shapeReconstructionManual,functions:droMatrixCron,functions:droMatrixManual,functions:onAlertaCreated,functions:acknowledgeAlerta --project ucot-gestor-cloud
-
-3. Build + deploy de frontend:
+2. Build + deploy de frontend (asumiendo que Jonathan ya puso la VAPID key
+   en frontend/.env.production):
    cd frontend && npm run build && cd ..
    firebase deploy --only hosting --project ucot-gestor-cloud
 
