@@ -476,6 +476,17 @@ service cloud.firestore {
     }
 
     // ============================================================
+    // LÍNEAS UCOT — recorridos, paradas y shapes de líneas UCOT
+    //   (Navegador: NavigationModule → getLineaData / syncLineaFromAPI).
+    //   - Lectura: cualquier autenticado (conductores, tráfico, admin).
+    //   - Escritura: admin/superadmin (sync desde API GeoServer).
+    // ============================================================
+    match /lineas_ucot/{document=**} {
+      allow get, list: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    // ============================================================
     // REGLA DEFAULT — Lectura permitida para autenticados, escritura protegida
     // ============================================================
     match /{document=**} {
