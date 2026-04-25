@@ -41,6 +41,7 @@ import {
   getUcotCartonUrl,
 } from '../../services/autoStatsService';
 import type { VehicleSummary, UcotServicioAsignado } from '../../services/autoStatsService';
+import { clasificarTurnoPersonal } from '../../utils/franjasHorarias';
 
 /* ─── Helpers ──────────────────────────────────────────── */
 const todayStr = () => new Date().toISOString().split('T')[0];
@@ -447,20 +448,29 @@ export default function CEODashboard() {
   }, [cocheRotacionId]);
 
   /* ─── Derived Values ─────────────────────────────────── */
-  const horaActual = new Date().getHours();
-  const turnoLabel =
-    horaActual >= 5 && horaActual < 13
-      ? 'MATUTINO'
-      : horaActual >= 13 && horaActual < 21
-        ? 'VESPERTINO'
-        : 'NOCTURNO';
+  /*
+   * Turno personal del operador según la hora actual. Usa la fuente única
+   * franjasHorarias.ts (DIRECTRIZ 2026-04-24: datos reales del dominio,
+   * no etiquetas inventadas). El esquema de turnos depende del operador
+   * seleccionado; por defecto carga los de parametros_operativos si existen,
+   * o los defaults del helper. Cuando Admin > Parametros Operativos expose
+   * los turnos configurables por operador, aceptar el override acá.
+   */
+  const ahora = new Date();
+  const horaStr = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
+  const turnoActual = clasificarTurnoPersonal(horaStr, empresaPropia);
+  const turnoLabel = turnoActual?.label?.toUpperCase() ?? '—';
 
   const turnoColor =
-    turnoLabel === 'MATUTINO'
+    turnoActual?.id === 'primer'
       ? 'text-amber-400'
-      : turnoLabel === 'VESPERTINO'
+      : turnoActual?.id === 'segundo'
         ? 'text-orange-400'
-        : 'text-indigo-400';
+        : turnoActual?.id === 'tarde'
+          ? 'text-orange-300'
+          : turnoActual?.id === 'noche'
+            ? 'text-indigo-400'
+            : 'text-slate-400';
 
   /* ═══════════════════════════════════════════════════════
      RENDER
