@@ -52,6 +52,7 @@ import {
 import { db } from '../../config/firebase';
 import { FleetService, ServicioEstadoService } from '../../services/firestore';
 import { formatHoraSegundosMvd } from '../../utils/formatTimestamp';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import {
   LineChart,
   Line,
@@ -471,7 +472,7 @@ function HotZoneRow({ zone, idx }: { zone: HotZone; idx: number }) {
 
 export default function CEODashboardV7() {
   // ── State ────────────────────────────────────────────────
-  const [empresaPropia, setEmpresaPropia] = useState<number>(70);
+  const { empresaPropia, setEmpresaPropia } = useEmpresaPropia();
   const [periodo, setPeriodo] = useState<Periodo>('today');
   /** Serie histórica diaria (sólo cuando periodo !== 'today'). */
   const [otpHistoric, setOtpHistoric] = useState<Array<{ date: string; value: number | null; meta?: { total: number; enTiempo: number } }> | null>(null);
@@ -814,8 +815,14 @@ export default function CEODashboardV7() {
   }, [overlaps, empresaCfg.agencyId]);
 
   // ── Derived: Market Share por línea ─────────────────────
-  const marketShare: MarketShareRow[] = useMemo(() => {
-    if (positions.length === 0) return [];
+  // Devuelve dos arrays separados:
+  //   conPresencia: líneas donde el operador propio TIENE buses operando.
+  //                 Métrica relevante: cuota de mercado en duelo activo.
+  //   sinPresencia: líneas donde el operador propio NO opera pero rivales sí.
+  //                 Métrica relevante: oportunidad de entrar a una línea
+  //                 que está siendo capturada al 100% por la competencia.
+  const marketShare: { conPresencia: MarketShareRow[]; sinPresencia: MarketShareRow[] } = useMemo(() => {
+    if (positions.length === 0) return { conPresencia: [], sinPresencia: [] };
 
     const byLine: Map<
       string,
@@ -842,26 +849,29 @@ export default function CEODashboardV7() {
       }
     }
 
-    const rows: MarketShareRow[] = [];
+    const conPresencia: MarketShareRow[] = [];
+    const sinPresencia: MarketShareRow[] = [];
     for (const [linea, agg] of byLine) {
       const rivalesTotal = Object.values(agg.rivales).reduce((a, b) => a + b, 0);
       const totalBuses = agg.propia + rivalesTotal;
       if (totalBuses === 0) continue;
-      // Sólo mostrar líneas donde hay competencia REAL (al menos 1 rival)
-      if (rivalesTotal === 0) continue;
-      rows.push({
+      if (rivalesTotal === 0) continue; // sin competencia, no es interesante
+      const row: MarketShareRow = {
         linea,
         busesPropia: agg.propia,
         busesRivales: rivalesTotal,
         totalBuses,
         sharePct: (agg.propia / totalBuses) * 100,
         rivales: agg.rivales,
-      });
+      };
+      if (agg.propia > 0) conPresencia.push(row);
+      else sinPresencia.push(row);
     }
 
-    return rows
-      .sort((a, b) => b.totalBuses - a.totalBuses)
-      .slice(0, 8);
+    return {
+      conPresencia: conPresencia.sort((a, b) => b.totalBuses - a.totalBuses).slice(0, 8),
+      sinPresencia: sinPresencia.sort((a, b) => b.busesRivales - a.busesRivales).slice(0, 5),
+    };
   }, [positions, empresaPropia]);
 
   // ── Derived: Riesgos ─────────────────────────────────────
@@ -1343,12 +1353,20 @@ export default function CEODashboardV7() {
                 </p>
               </div>
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                {marketShare.length} líneas en disputa
+                {marketShare.conPresencia.length + marketShare.sinPresencia.length} líneas en disputa
               </span>
             </div>
 
-            {marketShare.length > 0 ? (
-              <div className="overflow-hidden rounded-xl border border-slate-700/40">
+            {marketShare.conPresencia.length + marketShare.sinPresencia.length > 0 ? (
+              <div className="space-y-4">
+                {/* TABLA 1: Líneas donde el operador propio compite (con presencia) */}
+                {marketShare.conPresencia.length > 0 && (
+                  <div>
+                    <div className="text-[10px] font-black text-cyan-400/80 uppercase tracking-widest mb-2 flex items-center gap-2">
+                      <span>● Líneas con presencia propia</span>
+                      <span className="text-slate-600">({marketShare.conPresencia.length})</span>
+                    </div>
+                    <div className="overflow-hidden rounded-xl border border-slate-700/40">
                 <table className="w-full text-left text-[11px]">
                   <thead className="bg-slate-800/60 text-slate-400 uppercase font-black tracking-wider">
                     <tr>
@@ -1360,7 +1378,7 @@ export default function CEODashboardV7() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700/30">
-                    {marketShare.map((row) => {
+                    {marketShare.conPresencia.map((row) => {
                       const sharePct = Math.round(row.sharePct);
                       const dominante = sharePct >= 60;
                       const empate = sharePct >= 40 && sharePct < 60;
@@ -1413,6 +1431,48 @@ export default function CEODashboardV7() {
                     })}
                   </tbody>
                 </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* TABLA 2: Líneas SIN presencia propia capturadas por rivales — oportunidad de entrar */}
+                {marketShare.sinPresencia.length > 0 && (
+                  <div>
+                    <div className="text-[10px] font-black text-amber-400/80 uppercase tracking-widest mb-2 flex items-center gap-2">
+                      <span>● Líneas ajenas dominadas por competencia (oportunidad)</span>
+                      <span className="text-slate-600">({marketShare.sinPresencia.length})</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mb-2 leading-relaxed">
+                      Líneas donde {empresaCfg.label} no tiene buses operando ahora pero los
+                      competidores sí. Información accionable: o bien {empresaCfg.label} cedió
+                      esta línea, o no cuenta con permiso, o tiene oportunidad de entrar.
+                    </p>
+                    <div className="overflow-hidden rounded-xl border border-amber-700/30">
+                      <table className="w-full text-left text-[11px]">
+                        <thead className="bg-amber-900/20 text-amber-400 uppercase font-black tracking-wider">
+                          <tr>
+                            <th className="px-4 py-3">Línea</th>
+                            <th className="px-4 py-3">Competidores activos</th>
+                            <th className="px-4 py-3">Empresas operando</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-amber-700/20">
+                          {marketShare.sinPresencia.map((row) => (
+                            <tr key={row.linea} className="hover:bg-amber-900/10 transition-colors">
+                              <td className="px-4 py-3 font-bold text-amber-300">L{row.linea}</td>
+                              <td className="px-4 py-3 font-mono text-amber-200">{row.busesRivales}</td>
+                              <td className="px-4 py-3 text-[10px] text-slate-400">
+                                {Object.entries(row.rivales)
+                                  .map(([k, v]) => `${k}:${v}`)
+                                  .join(' · ')}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-white/10 bg-slate-900/30 p-6 text-center">
@@ -1433,26 +1493,28 @@ export default function CEODashboardV7() {
           {/* ─────────────── FOOTER — LINKS A MÓDULOS ─────────────── */}
           <section className="rounded-2xl border border-white/5 bg-slate-900/40 p-4 shadow-xl">
             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">
-              Módulos Especializados
+              Acceso directo a módulos especializados
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
               {[
-                { to: '/dashboard/traffic/shadow-radar', label: 'Radar de Sombra (en vivo)' },
-                { to: '/dashboard/traffic/shadow-analytics', label: 'Analítica de Sombra' },
-                { to: '/dashboard/traffic/corridor-intelligence', label: 'Inteligencia de Corredores' },
-                { to: '/dashboard/traffic/corridor-map', label: 'Mapa de Corredores' },
-                { to: '/dashboard/traffic/otp', label: 'Panel de Puntualidad (OTP)' },
-                { to: '/dashboard/traffic/auto-stats', label: 'Cumplimiento Horario' },
-                { to: '/dashboard/traffic/economic-projections', label: 'Proyecciones Económicas' },
-                { to: '/dashboard/traffic/digital-agents', label: 'Agentes Digitales' },
-                { to: '/dashboard/traffic/incident-command', label: 'Centro de Incidencias' },
-              ].map((l) => (
+                { to: '/dashboard/traffic/shadow-radar', label: 'Radar Sombra', icon: Radio },
+                { to: '/dashboard/traffic/shadow-analytics', label: 'Shadow Analytics', icon: BarChart3 },
+                { to: '/dashboard/traffic/corridor-intelligence', label: 'Corredores', icon: Network },
+                { to: '/dashboard/traffic/corridor-map', label: 'Mapa Corredores', icon: Map },
+                { to: '/dashboard/traffic/otp', label: 'OTP', icon: Activity },
+                { to: '/dashboard/traffic/autostats', label: 'Cumplimiento', icon: BarChart3 },
+                { to: '/dashboard/traffic/projections', label: 'Proyecciones', icon: TrendingUp },
+                { to: '/dashboard/traffic/incidents', label: 'Incidencias', icon: AlertTriangle },
+              ].map((link) => (
                 <Link
-                  key={l.to}
-                  to={l.to}
-                  className="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800/60 text-slate-300 hover:bg-slate-700 hover:text-white border border-white/5 transition-all"
+                  key={link.to}
+                  to={link.to}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/40 hover:bg-slate-800 border border-slate-700/30 hover:border-cyan-500/40 transition-all group"
                 >
-                  {l.label}
+                  <link.icon className="w-3.5 h-3.5 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+                  <span className="text-[11px] font-bold text-slate-400 group-hover:text-white transition-colors">
+                    {link.label}
+                  </span>
                 </Link>
               ))}
             </div>

@@ -17,6 +17,7 @@ import { db } from '../../config/firebase';
 import { fetchSTMPosiciones } from '../../services/stmLiveService';
 import { Radar, ShieldAlert, Bus, AlertTriangle, Zap, CheckCircle2, Target, X, Crosshair, Flag, Eye, Users, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -162,7 +163,7 @@ const ShadowRadar: React.FC = () => {
   });
   const [isScanning, setIsScanning] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  const [empresaPropia, setEmpresaPropia] = useState<number>(70);
+  const { empresaPropia, setEmpresaPropia } = useEmpresaPropia();
 
   // Buffer para tracking direccional
   const prevPositionsRef = useRef<Record<string, { lat: number; lng: number; heading?: number }>>({});

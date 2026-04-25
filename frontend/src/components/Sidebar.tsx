@@ -65,7 +65,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         { path: '/dashboard/traffic/listero-cascada', label: 'Listero Cascada (Ops)', icon: Users },
         { path: '/dashboard/traffic/distribucion', label: 'Distribución Diaria', icon: Route },
         { path: '/dashboard/traffic/boletin', label: 'Boletín de Inspección', icon: FileText },
-        { path: '/dashboard/traffic/navigation', label: 'Navegador UCOT', icon: Map },
+        { path: '/dashboard/traffic/navigation', label: 'Navegador', icon: Map },
 
       ],
     },
@@ -134,6 +134,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           icon: Activity,
         },
         {
+          path: '/dashboard/traffic/penetration',
+          label: 'Análisis de Penetración',
+          icon: TrendingUp,
+        },
+        {
           path: '/dashboard/traffic/ceo',
           label: 'Centro de Mando',
           icon: TrendingUp,
@@ -190,6 +195,9 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         { path: '/dashboard/traffic/brt', label: 'Referencia BRT 2027', icon: Train },
         { path: '/dashboard/traffic/scraper-status', label: 'Monitor Ingesta STM', icon: Activity },
         { path: '/dashboard/admin/config', label: 'Configuración', icon: Settings },
+        { path: '/dashboard/admin/turnos-operativos', label: 'Turnos & Umbrales OTP', icon: Calendar },
+        { path: '/dashboard/admin/audit-log', label: 'Audit Log', icon: ClipboardList },
+        { path: '/dashboard/admin/cross-op-coverage', label: 'Cobertura Cross-Op', icon: Network },
       ],
     },
     {

@@ -408,6 +408,18 @@ service cloud.firestore {
     }
 
     // ============================================================
+    // AUDIT LOG general (Cloud Function trigger onWrite — 2026-04-25)
+    //   - Read: sólo admin (revisión de cambios).
+    //   - Write: prohibido al cliente. Sólo Cloud Functions vía service
+    //     account pueden escribir (los triggers usan creds de admin).
+    //   - Update/delete: prohibido (audit trail inmutable).
+    // ============================================================
+    match /audit_log/{document=**} {
+      allow read: if isAdminNorm();
+      allow write: if false;
+    }
+
+    // ============================================================
     // DISRUPCIONES OPERACIONALES (Disruption Management — Trim+ #67)
     //   - Lectura: cualquier autenticado (visibilidad para flota).
     //   - Create: cualquier autenticado (reporte desde cualquier rol).

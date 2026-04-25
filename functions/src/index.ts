@@ -770,6 +770,43 @@ export {
   computeAdherenceCron,
 } from './scheduleAdherence';
 
+// ─── Market Penetration — snapshot diario de cuota cross-operador ─────────────
+// Cron 23:45 Mvd toma snapshot de buses observados por (línea × agencyId)
+// y persiste en penetracion_diaria/{ymd}_{linea}. Permite reconstruir
+// histórico de penetración sin mantener cartones detallados.
+// HTTP /penetrationHistoric?agencyId=X&days=N&topLineas=M para el dashboard.
+export {
+  computePenetrationNow,
+  computePenetrationCron,
+  penetrationHistoric,
+} from './marketPenetration';
+
+// ─── Service Delivery Engine — KPI canónico UITP cartones plan/ejec ───────────
+// Cruza cartones planificados vs cartones_completados y produce
+// service_delivery_diaria/{ymd}_{agencyId} con SD = ejec/plan.
+// Cron 23:30 Mvd procesa el día. HTTP manual permite recalcular días específicos.
+export {
+  computeServiceDeliveryNow,
+  computeServiceDeliveryCron,
+} from './serviceDeliveryEngine';
+
+// ─── Audit Log — trazabilidad de cambios sobre colecciones críticas ───────────
+// Trigger onWrite registra cada cambio (create/update/delete) en audit_log/
+// con before/after/diff/uid/email para compliance y debugging.
+export {
+  auditLogParametrosOperativos,
+  auditLogParametrosOperativosHistorial,
+  auditLogLineasUcot,
+  auditLogLineas,
+  auditLogVehicles,
+  auditLogVehiculos,
+  auditLogUsers,
+  auditLogReglasRotacion,
+  auditLogServiceDefinitions,
+  auditLogServiceMatrices,
+  auditLogQuery,
+} from './auditLog';
+
 // ─── Archive Vehicle Events — Rotativo semanal a Storage ─────────────────────
 // Exporta vehicle_events a Firebase Storage y purga Firestore.
 // Mantiene Firestore pequeño (7 días) y el historial en Storage (ilimitado, barato).
@@ -850,4 +887,3 @@ export { systemHealth } from './systemHealth';
 // ─── NeTEx Framework Discovery (EU/Interop stds) ─────────────────────────────
 // GET /netexEndpoint/discovery.{xml,json} para agregadores MaaS europeos.
 export { netexEndpoint } from './netexEndpoint';
-

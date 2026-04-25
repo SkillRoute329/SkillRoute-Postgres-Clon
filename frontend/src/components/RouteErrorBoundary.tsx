@@ -34,6 +34,24 @@ export default class RouteErrorBoundary extends Component<Props, State> {
     if (import.meta.env.DEV) {
       console.error(`[RouteErrorBoundary] ${this.props.module || 'Módulo'}:`, error, info);
     }
+    // Monitoring (Sentry si está configurado, sino fallback a console.error
+    // dentro del wrapper). No bloqueante — si monitoring falla, el boundary
+    // sigue mostrando la UI de fallback igualmente.
+    try {
+      // Import asíncrono para no acoplar el boundary al servicio
+      import('../services/monitoring').then(({ captureException }) => {
+        captureException(error, {
+          tag: `route_boundary.${this.props.module ?? 'unknown'}`,
+          level: 'error',
+          extra: {
+            componentStack: info.componentStack,
+            module: this.props.module ?? null,
+          },
+        });
+      }).catch(() => { /* noop */ });
+    } catch {
+      /* noop — el reporte de error nunca debe romper el boundary */
+    }
   }
 
   handleReset = () => {

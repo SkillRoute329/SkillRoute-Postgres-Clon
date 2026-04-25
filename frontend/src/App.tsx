@@ -92,6 +92,10 @@ const AdminConfig = lazy(() => import('./pages/admin/AdminConfig'));
 const AdminParametros = lazy(() => import('./pages/admin/AdminParametros'));
 // Fase 1 (2026-04-23): UI Super Admin para parámetros operativos (tarifa, costos, elasticidad, radio competencia…)
 const AdminParametrosOperativos = lazy(() => import('./pages/admin/AdminParametrosOperativos'));
+// 2026-04-25: UI por operador para turnos personales + umbrales OTP + ventanas pico
+const AdminTurnosOperativos = lazy(() => import('./pages/admin/ParametrosOperativos'));
+// 2026-04-25: Admin Audit Log — trazabilidad de cambios
+const AdminAuditLog = lazy(() => import('./pages/admin/AdminAuditLog'));
 // Trim+ #69 (2026-04-23): gestión de disrupciones operacionales
 // Migrado a feature-first 2026-04-24 (ADR 002)
 const AdminDisruptionsPage = lazy(() => import('./features/disruptions').then(m => ({ default: m.AdminDisruptionsPage })));
@@ -114,6 +118,7 @@ const CorridorIntelligence = lazy(() => import('./pages/traffic/CorridorIntellig
 const CorridorMap = lazy(() => import('./pages/traffic/CorridorMap'));
 const LiveMapPage = lazy(() => import('./pages/traffic/LiveMapPage'));
 const ShadowAnalytics = lazy(() => import('./pages/traffic/ShadowAnalytics'));
+const MarketPenetration = lazy(() => import('./pages/traffic/MarketPenetration'));
 const StmScraperStatus = lazy(() => import('./pages/admin/StmScraperStatus'));
 
 
@@ -214,6 +219,8 @@ function App() {
                     <Route path="admin/config" element={<PrivateRoute roles={['ADMIN']}><AdminConfig /></PrivateRoute>} />
                     <Route path="admin/parametros" element={<PrivateRoute roles={['ADMIN']}><AdminParametros /></PrivateRoute>} />
                     <Route path="admin/parametros-operativos" element={<PrivateRoute roles={['ADMIN','SUPERADMIN']}><AdminParametrosOperativos /></PrivateRoute>} />
+                    <Route path="admin/turnos-operativos" element={<PrivateRoute roles={['ADMIN','SUPERADMIN']}><AdminTurnosOperativos /></PrivateRoute>} />
+                    <Route path="admin/audit-log" element={<PrivateRoute roles={['ADMIN','SUPERADMIN']}><AdminAuditLog /></PrivateRoute>} />
                     <Route path="admin/disruptions" element={<PrivateRoute roles={['ADMIN','SUPERADMIN','TRAFFIC']}><AdminDisruptionsPage /></PrivateRoute>} />
                     <Route path="admin/organization" element={<PrivateRoute roles={['ADMIN']}><AdminOrganization /></PrivateRoute>} />
                     <Route path="admin/setup" element={<PrivateRoute roles={['ADMIN']}><AdminSetup /></PrivateRoute>} />
@@ -272,6 +279,7 @@ function App() {
                     <Route path="traffic/corridor-intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorridorIntelligence /></PrivateRoute>} />
                     <Route path="traffic/corridor-map" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorridorMap /></PrivateRoute>} />
                     <Route path="traffic/shadow-analytics" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ShadowAnalytics /></PrivateRoute>} />
+                    <Route path="traffic/penetration" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><MarketPenetration /></PrivateRoute>} />
                     <Route path="traffic/scraper-status" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><StmScraperStatus /></PrivateRoute>} />
                     <Route path="traffic/agents" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
                     <Route path="traffic/brt" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><BRTCorridorDashboard /></PrivateRoute>} />

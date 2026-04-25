@@ -144,6 +144,69 @@ export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
     };
   }, [empresaPropia]);
 
+  /**
+   * Mapa dinámico de rivales por línea propia, derivado de la matriz DRO
+   * cross-operador (`corridor_overlap`). Reemplaza el COMPETITOR_MAP
+   * hardcoded UCOT por datos reales: cada línea del operador propio se
+   * mapea a las líneas rivales que pisan su corredor (otros operadores).
+   *
+   * Filtro: agencyA == empresaPropia AND sameEmpresa == false AND
+   * pctAInB >= 5% (descarta solapamientos marginales).
+   * Re-fetch al cambiar empresaPropia.
+   */
+  const [corridorRivalsMap, setCorridorRivalsMap] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDocs(
+          query(
+            collection(db, 'corridor_overlap'),
+            where('agencyA', '==', String(empresaPropia)),
+            where('sameEmpresa', '==', false),
+            limit(2000),
+          ),
+        );
+        if (cancelled) return;
+        const map: Record<string, Set<string>> = {};
+        for (const doc of snap.docs) {
+          const d = doc.data();
+          const lineaPropia = String(d.lineaA ?? '').trim();
+          const lineaRival = String(d.lineaB ?? '').trim();
+          const pct = Number(d.pctAInB ?? 0);
+          if (!lineaPropia || !lineaRival || pct < 5) continue;
+          if (!map[lineaPropia]) map[lineaPropia] = new Set();
+          map[lineaPropia].add(lineaRival);
+        }
+        const result: Record<string, string[]> = {};
+        Object.keys(map).forEach((k) => { result[k] = [...map[k]!].sort(); });
+        setCorridorRivalsMap(result);
+      } catch (err) {
+        if (cancelled) return;
+        console.warn('[ThreatWidget] No se pudo cargar corridor_overlap:', err);
+        setCorridorRivalsMap({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [empresaPropia]);
+
+  /**
+   * Resuelve los rivales para una línea propia.
+   * Prioridad:
+   *   1. corridor_overlap (datos reales DRO cross-operador)
+   *   2. COMPETITOR_MAP legacy (sólo UCOT, hardcoded — fallback compat)
+   *   3. [] (operador sin matriz DRO todavía)
+   */
+  const getRivalsForLine = useCallback((lineId: string): string[] => {
+    const fromDro = corridorRivalsMap[lineId];
+    if (fromDro && fromDro.length > 0) return fromDro;
+    if (empresaPropia === 70) return COMPETITOR_MAP[lineId] || [];
+    return [];
+  }, [corridorRivalsMap, empresaPropia]);
+
   // Unique line IDs from corridor map
   const uniqueLines = useMemo(() => {
     const lineSet = new Set(CORRIDOR_MAP.map((c) => c.lineId));
@@ -206,8 +269,12 @@ export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
     if (lineasFromShapes && lineasFromShapes.length > 0) {
       return lineasFromShapes.slice(0, 30);
     }
-    return LINEAS_UCOT_BASE;
-  }, [lineasFromShapes]);
+    // Fallback sólo aplica para UCOT (donde LINEAS_UCOT_BASE existe como
+    // catálogo verificado). Para otros operadores, devolver [] hasta que
+    // shapes_cross_operator esté poblado — el UI muestra mensaje explícito.
+    if (empresaPropia === 70) return LINEAS_UCOT_BASE;
+    return [];
+  }, [lineasFromShapes, empresaPropia]);
 
   const runTacticalScan = useCallback(async () => {
     if (loading) return;
@@ -216,7 +283,7 @@ export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
     try {
       // 1. Obtener posiciones de rivales externos (STM)
       const allRivalLines = Array.from(
-        new Set(lineasPropias.flatMap((l) => COMPETITOR_MAP[l] || [])),
+        new Set(lineasPropias.flatMap((l) => getRivalsForLine(l))),
       );
       const stmPositions = await TrafficService.fetchCompetitorPositions(allRivalLines);
 
@@ -898,7 +965,7 @@ export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
                     if (isUCOT && p.codigoLinea === selectedLineId) return true;
 
                     const cRivals =
-                      selectedCorridor?.rivals || COMPETITOR_MAP[selectedLineId] || [];
+                      selectedCorridor?.rivals || getRivalsForLine(selectedLineId);
                     const pLine = (p.codigoLinea as string)?.toString().replace(/[ab]$/i, '');
                     return cRivals.includes(pLine);
                   })
@@ -917,7 +984,7 @@ export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
                   .filter((p) => {
                     if (!selectedLineId) return false; // NUNCA mostrar miles de rivales en vista global (crasha la app)
                     const cRivals =
-                      selectedCorridor?.rivals || COMPETITOR_MAP[selectedLineId] || [];
+                      selectedCorridor?.rivals || getRivalsForLine(selectedLineId);
                     const pLine = (p.codigoLinea as string)?.toString().replace(/[ab]$/i, '');
                     return cRivals.includes(pLine);
                   })
@@ -961,7 +1028,7 @@ export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
                     if (isUCOT && p.codigoLinea === selectedLineId) return true;
 
                     const cRivals =
-                      selectedCorridor?.rivals || COMPETITOR_MAP[selectedLineId] || [];
+                      selectedCorridor?.rivals || getRivalsForLine(selectedLineId);
                     const pLine = (p.codigoLinea as string)?.toString().replace(/[ab]$/i, '');
                     return cRivals.includes(pLine);
                   })
@@ -980,7 +1047,7 @@ export const CompetitorThreatWidget: React.FC<CompetitorThreatWidgetProps> = ({
                   .filter((p) => {
                     if (!selectedLineId) return false;
                     const cRivals =
-                      selectedCorridor?.rivals || COMPETITOR_MAP[selectedLineId] || [];
+                      selectedCorridor?.rivals || getRivalsForLine(selectedLineId);
                     const pLine = (p.codigoLinea as string)?.toString().replace(/[ab]$/i, '');
                     return cRivals.includes(pLine);
                   })

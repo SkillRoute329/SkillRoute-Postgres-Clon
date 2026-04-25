@@ -23,6 +23,7 @@ import { onMessage, type MessagePayload } from 'firebase/messaging';
 import { getAppMessaging } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { ShieldAlert, CheckCircle2, X, Vibrate } from 'lucide-react';
+import { useNativeDriverAlerts } from '../hooks/useNativeDriverAlerts';
 
 interface PendingAlert {
   alertaId: string;
@@ -46,6 +47,10 @@ export const DriverAlertOverlay = () => {
   const [acking, setAcking] = useState(false);
   const [autoDismissIn, setAutoDismissIn] = useState<number>(AUTO_DISMISS_MS / 1000);
   const dismissTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Bridge a plugins nativos (Haptics, KeepAwake, StatusBar, LocalNotif)
+  // — sólo se activan si la app corre como Capacitor APK; en web es no-op.
+  useNativeDriverAlerts(active);
 
   // ── Suscripción al canal FCM foreground ────────────────────────────────────
   useEffect(() => {

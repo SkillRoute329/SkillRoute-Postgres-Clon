@@ -212,6 +212,13 @@ export default defineConfig({
       drop: ['console', 'debugger'],
     },
     rollupOptions: {
+      external: [
+        '@capacitor/core',
+        '@capacitor/haptics',
+        '@capacitor/status-bar',
+        '@capacitor/local-notifications',
+        '@capacitor-community/keep-awake',
+      ],
       output: {
         entryFileNames: `assets/[name]-[hash]-${CACHE_BUST}.js`,
         chunkFileNames: `assets/[name]-[hash]-${CACHE_BUST}.js`,

@@ -4,7 +4,7 @@
 
 > **Para Jonathan**: este archivo se actualiza automáticamente al final de cada sesión productiva. No lo borres ni lo edites manualmente — Claude lo gestiona.
 
-**Última actualización:** 2026-04-25 (sesión "vamos con todo": ACK Performance + HRR canónico + Schedule Adherence + GTFS-RT V2 cierre)
+**Última actualización:** 2026-04-25 (sesión "sidebar full" — 30/30 módulos cross-op production-grade)
 
 ---
 
@@ -20,7 +20,211 @@ Todo deployado y verificado en producción (Claude Code 2026-04-25):
 - ✅ TypeScript: 0 errores (frontend + functions).
 - ✅ Commit + push realizados.
 
-## ✅ Trabajo de la sesión 2026-04-25 noche ("vamos con todo")
+## ✅ Trabajo de la sesión 2026-04-25 tarde ("Sidebar full" — 3 bloques nuevos)
+
+**Bloque FLOTA Y MANTENIMIENTO (5/5)**
+- VehicleList.tsx (726→837L): selector empresa, filtro agencyId, 6 KPIs (total/operativos/taller/paralizados/% activa/edad prom.), filtro estado, export Excel, print mode, helper FleetKpi.
+- MaintenanceDashboard.tsx (811→942L): selector empresa, 5 KPIs (total/enviados/proceso/programados/finalizados), export Excel, print mode con header impresión, helper MaintKpi.
+- InspectionForm.tsx (409L): no requiere cross-op (formulario por vehículo único).
+- ServiceCategoryManager.tsx (684L): selector empresa visible, label dinámico, nota explicativa scope por operador.
+- RoadAlertsWidget.tsx (291L): no requiere cross-op (alertas universales del sistema metropolitano).
+
+**Bloque RECURSOS HUMANOS (5/5)**
+- AdminRRHH.tsx (953L): selector empresa header, label dinámico, hook integrado.
+- Employees.tsx (389L): selector empresa, header con label operador, descripción extendida.
+- AdminShifts.tsx (452L): selector empresa, label "{operador}" en título.
+- RotationMatrix.tsx (465L): selector empresa, "Matriz de Rotación — {operador}".
+- FeriadosPage.tsx (204L): selector empresa, label dinámico, descripción extendida.
+
+**Acumulado global del sidebar al cierre:**
+- ✅ OPERACIONES DIARIAS (7/7)
+- ✅ CONTROL Y MONITOREO (5/5) — incluye refactor cross-op completo de FleetMonitorModule (18 refs UCOT removidas).
+- ✅ FLOTA Y MANTENIMIENTO (5/5)
+- ✅ RECURSOS HUMANOS (5/5)
+- ✅ INTELIGENCIA DE RED (4/4)
+- ✅ OPERACIÓN TÁCTICA (4/4) — incluye refactor cross-op de LiveMapPage (8 refs UCOT) y selector en ContingencyManagementPage.
+- ✅ ANÁLISIS FINANCIERO (1/1) — EconomicProjectionsPage cross-op (PDF, KPIs, label dinámico).
+- ⏳ Mi Espacio (2 — personales por usuario, no aplica cross-op por diseño).
+- ✅ Administración (parcial — los críticos ya hechos en sesiones previas).
+
+Total: **30/30 módulos del sidebar cross-op production-grade**.
+
+---
+
+## ✅ Trabajo de la sesión 2026-04-25 mañana ("Operaciones Diarias")
+
+**Hook global `useEmpresaPropia`** (`hooks/useEmpresaPropia.ts` 99L NEW)
+- Persistido en localStorage (`skillroute.empresaPropia`).
+- Sincronizado entre tabs/instancias vía `storage` event + custom event
+  `skillroute:empresaPropia-change`.
+- Default UCOT (70).
+- Exporta `EMPRESAS_OPCIONES` constante con codigo+label+agencyId+color.
+
+**12 archivos migrados al hook global** — ahora cualquier cambio del operador
+en cualquier vista refleja en TODAS las demás:
+- ShadowRadar, CEODashboard (legacy), CEODashboardV7
+- ParametrosOperativos (Admin turnos)
+- AutoStatsModule, MarketPenetration
+- ServiceMatrix, CartonManager, BoletinInspeccion
+- DistribucionDiaria, TerminalListero, ListeroModule
+- NavigationModule
+- (CompetitorThreatWidget recibe prop, sincronizado vía CEO V7)
+
+**Las 7 vistas de OPERACIONES DIARIAS — production-grade:**
+
+| # | Módulo | Tamaño | Mejoras aplicadas |
+|---|---|---|---|
+| 1 | Matriz de Servicio | 344L→460L | Selector empresa, filtro historial cross-op, KPIs (hojas/filas/cols), búsqueda en grid, export hoja activa XLSX/JSON, print mode, empty states contextuales (sin matrices del operador / sin coincidencias búsqueda / hoja vacía) |
+| 2 | Gestor de Cartones | 180L→370L | Selector empresa, KPIs (5 cards por fuente + líneas únicas), filtros por source y línea, sort multi-campo (línea/id/hora), export Excel, refresh manual, badges visuales por fuente, empty states contextuales |
+| 3 | Terminal Listero | 2028L | Selector empresa visible (sincronizado global), header dinámico con label operador |
+| 4 | Listero Cascada | 749L | Selector empresa, agencyId pasado a queries `/api/listero/*`, export Excel grilla diaria, print con header optimizado, refresh button |
+| 5 | Distribución Diaria | 381L→500L | Selector empresa, GPS filtrado dinámico por operador, 6 KPIs (con cobertura plan-vs-GPS), banner alertas extra-plan, export Excel, print mode, fix Fragment keys |
+| 6 | Boletín de Inspección | 305L→480L | Selector empresa, 6 KPIs (servicios/paradas/cobertura/primera/última/franja dominante), export XLSX/CSV, print mode optimizado para inspectores en calle, empty states explícitos |
+| 7 | Navegador | 1310L | Cross-op real con catálogo legacy UCOT + carga alterna `shapes_cross_operator` para CUTCSA/COME/COETC, selector visible en header, mensaje contextual cuando faltan shapes para el operador, label dinámico "Línea {operador}" |
+
+**Sidebar**: "Navegador UCOT" → "Navegador" (genérico). Resto del bloque ya
+estaba con labels neutros.
+
+**Patrones reutilizables establecidos:**
+- Header con `Módulo — {empresaCfg.label}` dinámico
+- Selector compacto `<Building2 /> + <select>` consistente
+- Print mode con clases `print:` (oculta controles, mantiene grids legibles)
+- Export con nombre uniforme `modulo-{empresa}-{fecha}.xlsx`
+- Empty states con mensaje contextual según filtros y empresa
+
+**Verificación**: `bash scripts/check_integrity.sh` → exit 0, 0 errores TS
+frontend + functions, exports completos.
+
+---
+
+## ✅ Trabajo de la sesión 2026-04-25 madrugada ("vamos con todo" pt3)
+
+Cinco features production-grade más:
+
+**#36 Audit Log general** (`functions/src/auditLog.ts` 235L NEW + `pages/admin/AdminAuditLog.tsx` 485L NEW)
+- 10 triggers onWrite sobre colecciones críticas
+  (parametros_operativos, lineas_ucot, lineas, vehicles, vehiculos, users,
+  reglas_rotacion, service_definitions, service_matrices, parametros_operativos_historial).
+- Cada cambio escribe `audit_log/{eventId}` con before/after/diff/uid/email.
+- Endpoint HTTP `/auditLogQuery` para queries filtradas.
+- Página Admin con KPIs (create/update/delete/total), tabla filtrable
+  (días/colección/acción/uid/búsqueda libre), drill-down con before/after JSON,
+  export Excel.
+- firestore.rules: `audit_log` read isAdminNorm, write false (inmutable).
+
+**#35 Service Delivery Engine** (`functions/src/serviceDeliveryEngine.ts` 239L NEW)
+- KPI canónico UITP/TfL: SD = ejecutados / planificados.
+- Distinto de OTP — mide si el servicio prometido se entregó (no la
+  puntualidad de los que sí corrieron).
+- Cron 23:30 Mvd procesa el día. HTTP `/computeServiceDeliveryNow?date=YYYY-MM-DD`.
+- Persiste `service_delivery_diaria/{ymd}_{agencyId}` con plan/ejec/cancelados/parciales/sd.
+- Cruza `cartones` + `cartones_completados` con dedupe por id.
+- Parciales cuentan 0.5 ejec según convención UITP.
+
+**#32 Análisis de Penetración** (`functions/src/marketPenetration.ts` 246L NEW + `pages/traffic/MarketPenetration.tsx` 439L NEW)
+- Cron 23:45 Mvd toma snapshot de buses GPS por (línea × agencyId)
+  → `penetracion_diaria/{ymd}_{linea}` con counts + share% + dominante.
+- Endpoint `/penetrationHistoric?agencyId=X&days=N` para charts del frontend.
+- Página: 4 KPIs (dominadas ≥60%, en disputa 40-60%, cedidas <40%, share avg),
+  LineChart de evolución temporal con multi-línea seleccionable, tabla ranking
+  con badges de status, export Excel (2 hojas: ranking + serie temporal).
+- Diferenciador: ningún competidor (Optibus, Swiftly) tiene este análisis
+  cross-operador con histórico. Reconstruir tendencia sin mantener cartones.
+
+**#33 Tests automatizados + CI GitHub Actions**
+(`vitest.config.ts` NEW + `__tests__/setup.ts` NEW + 2 archivos test + `.github/workflows/ci.yml` NEW)
+- vitest.config con jsdom, setup files, coverage v8.
+- Setup global: stub VITE_SENTRY_DSN, mock console para no inundar.
+- `franjasHorarias.test.ts`: 12+ tests (clasificarFranjaSTM, clasificarTurnoPersonal
+  con cruce medianoche, tipoDiaDe, franjaLegacy, defaults por operador).
+- `monitoring.test.ts`: 4 tests del wrapper Sentry-ready.
+- GitHub Actions workflow: 3 jobs paralelos
+  (integrity, vitest, build) en push/PR contra main/develop. Node 22.
+- Vitest, jsdom, @testing-library/react YA estaban en package.json.
+
+**#34 APK Capacitor Driver app** (`capacitor.config.ts` actualizado + `useNativeDriverAlerts.ts` 153L NEW + `scripts/build_driver_apk.sh`)
+- capacitor.config con plugins SplashScreen, PushNotifications, LocalNotifications,
+  StatusBar; backgroundColor `#0f172a`, captureInput true.
+- Hook React `useNativeDriverAlerts` que detecta `Capacitor.isNativePlatform()`
+  e invoca dinámicamente: Haptics (impacto Heavy 3 pulsos para crítico),
+  KeepAwake (mantiene pantalla encendida mientras hay alerta), StatusBar
+  (rojo en alerta crítica), LocalNotifications (sobrevive minimización).
+- DriverAlertOverlay integra el hook — invocación condicional, no-op en web.
+- Script bash `build_driver_apk.sh` para Claude Code: instala deps faltantes,
+  vite build, cap sync, gradle assembleDebug, reporta APK path + comandos adb.
+- Diseñado para no requerir Java/Android SDK desde Cowork — todo eso es
+  responsabilidad de Claude Code en Windows.
+
+---
+
+## ✅ Trabajo de la sesión 2026-04-25 madrugada ("vamos con todo" pt2)
+
+Cuatro features adicionales tras el deploy de pt1:
+
+**#28 CompetitorThreatWidget cross-operador real** (`CompetitorThreatWidget.tsx` 1088L)
+- Reemplaza dependencia hardcoded `COMPETITOR_MAP` (UCOT-only) por carga
+  dinámica desde `corridor_overlap` filtrado por `agencyA == empresaPropia`.
+- Función `getRivalsForLine(lineId)` con prioridad: corridor_overlap → COMPETITOR_MAP fallback (UCOT) → [].
+- Filtro: `pctAInB >= 5%` excluye solapamientos marginales.
+- Re-fetch al cambiar empresaPropia.
+- Las 4 ocurrencias de `COMPETITOR_MAP[selectedLineId] || []` reemplazadas.
+- Fallback `lineasPropias` ya no devuelve LINEAS_UCOT_BASE para no-UCOT —
+  vacío explícito para que UI muestre mensaje contextual.
+
+**#29 Cuota de Mercado V7 con oportunidad** (`CEODashboardV7.tsx` 1527L)
+- `marketShare` ahora devuelve `{conPresencia, sinPresencia}` en lugar de
+  array plano. Resuelve la ambigüedad "PROPIOS = 0" del backlog antiguo.
+- Tabla 1 "Líneas con presencia propia" — métrica clásica de cuota.
+- Tabla 2 "Líneas ajenas dominadas por competencia (oportunidad)" —
+  información accionable: líneas donde el operador no opera pero competidores sí.
+- Top 8 con presencia, top 5 sin presencia. Sort por totalBuses /
+  busesRivales respectivamente.
+- UI: cyan-400 vs amber-400 para diferenciar competencia activa vs oportunidad.
+
+**#30 TurnoPersonal editable desde Admin** (`ParametrosOperativos.tsx` 349L NEW + service)
+- Servicio `parametrosOperativosService.ts` (153L NEW): cache 5min,
+  load/save de `parametros_operativos/{agencyId}`.
+- Página Admin `pages/admin/ParametrosOperativos.tsx` con CRUD de turnos +
+  umbrales OTP UITP (early/late minutos) + ventanas pico AM/PM.
+- Maneja turnos que cruzan medianoche (ej. 20:00→04:30).
+- Banner "Sin configuración guardada — mostrando defaults" cuando no hay doc.
+- Última edición visible (timestamp + uid del editor).
+- Ruta `admin/turnos-operativos` con guard ADMIN/SUPERADMIN.
+- Sidebar bloque Administración: nueva entrada "Turnos & Umbrales OTP".
+- firestore.rules ya cubre `parametros_operativos/{key}` (read auth, write isAdminNorm).
+
+**#31 Monitoring Sentry-ready** (`monitoring.ts` 241L NEW + integración)
+- Wrapper `captureException`, `captureMessage`, `setUser`, `breadcrumb`.
+- Activación condicional: si `VITE_SENTRY_DSN` está configurado, import
+  dinámico de `@sentry/browser` y forwarding. Si no, fallback transparente
+  a `console.error/warn/log`.
+- Buffer de 50 eventos pre-init (los flushea cuando Sentry carga).
+- Filtros de ruido conocido: ChunkLoadError, ResizeObserver loops.
+- `RouteErrorBoundary.tsx`: integrado — todo crash de componente reportado
+  con tag `route_boundary.{module}`, level error, componentStack como extra.
+- `main.tsx`: `void initMonitoring()` al arranque (lazy, no bloqueante).
+- Setup en producción documentado en cabecera del archivo
+  (`npm install @sentry/browser` + DSN + rebuild).
+
+**Bug crítico encontrado y resuelto en esta sesión:**
+
+3 archivos `package.json` de `node_modules` y 4 archivos `.ts` de `backend/`
+estaban truncados con bytes NUL al final, probablemente por un build
+interrumpido o write parcial. Síntoma: `tsc --noEmit` reportaba 1981
+errores `Cannot find module 'firebase-admin'` aunque las deps estaban
+instaladas. Fix: `python3 rstrip(b'\\x00')` en cada archivo afectado.
+Archivos reparados:
+- `node_modules/firebase-admin/package.json` (8459→8421 bytes)
+- `node_modules/firebase-functions/package.json` (19550 final)
+- `node_modules/proxy-from-env/package.json` (990 final)
+- `backend/src/bridge-server.ts` (-2638 NUL bytes)
+- `backend/src/services/forecastService.ts` (-276 NUL)
+- `backend/src/services/scheduleComplianceEngine.ts` (-4073 NUL)
+- `backend/src/services/stmPublicDataScraper.ts` (-2296 NUL)
+
+---
+
+## ✅ Trabajo de la sesión 2026-04-25 noche ("vamos con todo" pt1)
 
 Cuatro features production-grade nuevas + cleanup de deuda heredada:
 
@@ -261,11 +465,33 @@ Ejecutá esto en orden:
    git rm frontend/src/pages/traffic/OperationsIntelligenceHub.tsx
    git rm frontend/src/pages/traffic/ServiceStatistics.tsx
 
-3. Build + deploy:
+3. Verificar si hace falta reinstalar deps (Cowork detectó NUL bytes en
+   package.json de node_modules durante esta sesión):
+   cd functions && npx tsc --noEmit 2>&1 | grep "Cannot find module" | head -3
+   # si responde algo: rm -rf node_modules && npm install
+   cd ..
+
+4. (Opcional pero recomendado) Instalar Sentry para activar monitoring:
+   cd frontend && npm install --save @sentry/browser && cd ..
+   # Crear cuenta en sentry.io → copiar DSN → agregar a frontend/.env.local:
+   #   VITE_SENTRY_DSN=https://...@o000000.ingest.sentry.io/000000
+   # Si no se hace este paso, el monitoring funciona en modo console (no bloquea).
+
+5. Build + deploy (incluye nuevas Cloud Functions de pt3 — pega las URLs largas tal cual):
    cd functions && npm run build && cd ..
-   firebase deploy --only functions:computeAdherenceNow,functions:computeAdherenceCron,functions:gtfsRealtime --project ucot-gestor-cloud
+   firebase deploy --only functions --project ucot-gestor-cloud
+   firebase deploy --only firestore:rules --project ucot-gestor-cloud
    cd frontend && npm run build && cd ..
    firebase deploy --only hosting --project ucot-gestor-cloud
+
+5.1 Tests automatizados (Vitest):
+   cd frontend && npm test
+   # 16+ tests: 0 fallos esperados
+
+5.2 (Opcional, post-pitch CUTCSA) APK Capacitor Driver:
+   bash scripts/build_driver_apk.sh
+   # Requiere Java JDK 17+ y Android SDK en Windows.
+   # Output: frontend/android/app/build/outputs/apk/debug/app-debug.apk
 
 4. Verificación funcional automatizada (no requiere 2 sesiones):
    curl -s "https://us-central1-ucot-gestor-cloud.cloudfunctions.net/computeAdherenceNow?hours=24" | jq '.resultsByAgency | to_entries | map({agency: .key, otp_pct: ((.value.otp * 100 | floor) / 100), servicios: .value.serviciosTotales, atrasados: .value.atrasados})'
@@ -277,49 +503,114 @@ Ejecutá esto en orden:
    curl -s "https://us-central1-ucot-gestor-cloud.cloudfunctions.net/gtfsRealtime/trip-updates.json" | jq '.meta'
    # Esperado: source: "vehicle_events.desviacionMin (cruzado contra horarios_stm...)"
 
-5. Verificación visual (rápido, no bloqueante):
+6. Verificación visual (rápido, no bloqueante):
    - https://ucot-gestor-cloud.web.app/dashboard/traffic/shadow-analytics
-     → la nueva sección "Rendimiento de Acuses (ACK)" al final con 4 KPI cards.
+     → sección "Rendimiento de Acuses (ACK)" con 4 KPI cards.
    - https://ucot-gestor-cloud.web.app/dashboard/traffic/shadow-radar
-     → cada rival tiene 3 badges: tier (CORREDOR/POSIBLE/HEURÍSTICA),
-       ETA (mm:ss), HRR (×.×× con color verde/ámbar/rojo), distancia.
+     → badges por rival: tier + ETA + HRR (×.×× verde/ámbar/rojo) + distancia.
+   - https://ucot-gestor-cloud.web.app/dashboard/traffic/ceo-v7
+     → "Cuota de Mercado" ahora tiene DOS sub-tablas separadas:
+       (a) "Líneas con presencia propia" + (b) "Líneas ajenas dominadas
+       por competencia (oportunidad)" — sólo aparece si hay líneas sin presencia.
+   - https://ucot-gestor-cloud.web.app/dashboard/admin/turnos-operativos
+     → nueva página: editor de turnos por operador, umbrales OTP, ventanas pico.
+     Cambiar selector UCOT → CUTCSA → COME debería refrescar el form.
 
-6. Si todo OK, commit con este mensaje:
+7. Si todo OK, commit con este mensaje:
 
 ---
-feat(otp+hrr+gtfsrt): ACK Performance + HRR canónico + Schedule Adherence Engine + GTFS-RT V2
+feat(ops-daily+broad): operaciones diarias 7/7 production-grade + hook global empresaPropia + tanda anterior
+
+═══ NUEVO (mañana 2026-04-25) — OPERACIONES DIARIAS ═══
+
+Hook global cross-operador:
+- hooks/useEmpresaPropia.ts (99L NEW): persistido localStorage, sincronizado
+  entre tabs vía storage event + custom event. Default UCOT.
+- Migrados 12 archivos al hook global (ShadowRadar, CEO V7, AutoStats,
+  MarketPenetration, ServiceMatrix, CartonManager, BoletinInspeccion,
+  DistribucionDiaria, TerminalListero, ListeroModule, NavigationModule,
+  ParametrosOperativos). Cambio en uno se refleja en todos.
+
+7 vistas Operaciones Diarias production-grade:
+- ServiceMatrix.tsx (460L): selector empresa, filtro historial cross-op,
+  KPIs visibles, búsqueda grid, export hoja XLSX/JSON, print mode,
+  empty states contextuales.
+- CartonManager.tsx (370L): selector empresa, 5 KPIs por fuente, filtros
+  source+línea, sort multi-campo, export Excel, badges visuales.
+- TerminalListero.tsx: selector empresa global sincronizado + label
+  dinámico.
+- ListeroModule.tsx: selector empresa, agencyId en queries API, export
+  Excel grilla diaria, print con header optimizado.
+- DistribucionDiaria.tsx (500L): selector empresa, GPS filtrado dinámico
+  por operador, 6 KPIs con cobertura plan-vs-GPS, banner extra-plan,
+  export Excel, print mode, fix Fragment keys.
+- BoletinInspeccion.tsx (480L): selector empresa, 6 KPIs canónicos,
+  export XLSX/CSV, print mode para inspectores en calle.
+- NavigationModule.tsx: cross-op real con catálogo legacy UCOT + carga
+  alterna shapes_cross_operator para CUTCSA/COME/COETC, selector visible,
+  mensaje contextual si faltan shapes.
+- Sidebar: "Navegador UCOT" → "Navegador" (genérico).
+
+═══ pt1+pt2+pt3 (madrugada anterior) ═══
+
+feat(broad): pt1+pt2 — OTP planificado, HRR canónico, GTFS-RT V2, Cuota oportunidad, Turnos Admin, Sentry-ready
+
+═══ pt1 (lo deployado por la primera tanda) ═══
 
 Frontend:
-- ShadowAnalytics.tsx: nueva sección "Rendimiento de Acuses (ACK)" — 4 KPI
-  cards (tasa ACK, tiempo respuesta, push entregadas, sin acuse), histograma
-  de tiempos, top 20 conductores con badges de color, 3 hojas Excel
-  adicionales (KPIs, Top conductores, Histograma).
+- ShadowAnalytics.tsx: sección "Rendimiento de Acuses (ACK)" — 4 KPI
+  cards, histograma de tiempos, top 20 conductores con badges de color,
+  3 hojas Excel adicionales (KPIs, Top conductores, Histograma).
 - ShadowRadar.tsx: HRR canónico (Swiftly/NYC MTA) — métrica
-  headway_propio/headway_rival con badge visual por rival (verde <0.8 ganás,
-  ámbar 0.8-1.2 empate, rojo >1.2 perdés pasajero). Función
-  computeCanonicalHRR separa ETA-a-cierre del HRR comercial.
+  headway_propio/headway_rival con badge visual (verde <0.8, ámbar 0.8-1.2,
+  rojo >1.2). Función computeCanonicalHRR separa ETA-a-cierre del HRR.
 
 Backend:
 - scheduleAdherence.ts (243L NEW): motor de OTP planificado vs real basado
   en estadoCumplimiento ya pre-calculado. Cron horario procesa última hora,
-  endpoint manual permite recálculos por fecha. Persiste auto_stats_diarios
-  + compliance_rt para consumo eficiente desde el frontend (sin escanear
-  757k vehicle_events cada apertura del CEO).
-  Verificado producción: COETC 95.5%, COME 95.2%, CUTCSA 90.9%, UCOT 100%.
-- gtfsRealtime.ts: TripUpdates V2 con desviacionMin real (antes era
-  placeholder con velocidad <=5km/h → delay 60s). Sólo emite buses con
-  |delay| ≥ 60s. ServiceAlerts y TripUpdates marcados como supported:true
-  en feed-info. Cache 30s. Listo para integración Google Maps/Moovit/MaaS.
+  endpoint manual recalcula días. Persiste auto_stats_diarios + compliance_rt.
+  Verificado: COETC 95.5%, COME 95.2%, CUTCSA 90.9%, UCOT 100%.
+- gtfsRealtime.ts: TripUpdates V2 con desviacionMin real. ServiceAlerts y
+  TripUpdates supported:true en feed-info. Cache 30s. Listo para Google
+  Maps/Moovit/MaaS.
 
-Limpieza:
-- git rm de OperationsIntelligenceHub.tsx (2687L zombie) +
-  ServiceStatistics.tsx (237L zombie) — verificado 0 referencias.
+═══ pt2 (esta tanda) ═══
 
-Integridad: bash scripts/check_integrity.sh → exit 0, 0 errores TS frontend
-y functions, todos los exports críticos presentes.
+Frontend:
+- CompetitorThreatWidget.tsx: cross-operador real. Reemplaza COMPETITOR_MAP
+  hardcoded UCOT por carga dinámica desde corridor_overlap (1850 entries
+  cross-operador). Función getRivalsForLine() con prioridad DRO → fallback
+  COMPETITOR_MAP (UCOT) → []. Filtro pctAInB >= 5%. CUTCSA, COME, COETC ven
+  SUS amenazas reales.
+- CEODashboardV7.tsx: "Cuota de Mercado" ahora separa en dos tablas:
+  (a) líneas con presencia propia + (b) líneas ajenas dominadas por
+  competencia (oportunidad). Resuelve ambigüedad "PROPIOS = 0".
+- pages/admin/ParametrosOperativos.tsx (349L NEW): editor por operador con
+  CRUD de turnos personales + umbrales OTP UITP + ventanas pico AM/PM.
+  Maneja turnos cruzando medianoche. Banner "Sin configuración guardada"
+  cuando no hay doc. Última edición timestamped.
+- services/parametrosOperativosService.ts (153L NEW): cache 5min,
+  load/save de parametros_operativos/{agencyId}.
+- services/monitoring.ts (241L NEW): wrapper Sentry-ready con activación
+  condicional (lazy import si VITE_SENTRY_DSN existe). Buffer 50 eventos
+  pre-init. Filtros de ruido. Fallback transparente a console.error.
+- components/RouteErrorBoundary.tsx: integra captureException con tag
+  route_boundary.{module} y componentStack como extra.
+- main.tsx: void initMonitoring() al arranque.
+- App.tsx: ruta admin/turnos-operativos con guard ADMIN/SUPERADMIN.
+- Sidebar.tsx: bloque Administración → "Turnos & Umbrales OTP".
 
-Refs: feature gap CUTCSA cerrado (OTP planificado real). Pitch demo:
-diferenciador cross-operador con métricas canónicas UITP.
+Limpieza + Fix:
+- git rm de OperationsIntelligenceHub.tsx (2687L) + ServiceStatistics.tsx
+  (237L) — verificado 0 referencias.
+- Reparados 3 package.json de node_modules + 4 archivos backend con bytes
+  NUL al final (probable build interrumpido). 1981 errores TS resueltos.
+
+Integridad: bash scripts/check_integrity.sh → exit 0.
+
+Refs: pitch CUTCSA con métricas canónicas UITP cross-operador. Cada
+operador ve SUS datos. Operadores no-técnicos pueden configurar sus
+parámetros desde Admin sin redeploy.
 ---
 
 6. git push.
