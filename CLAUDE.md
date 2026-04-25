@@ -238,6 +238,118 @@ llamadas bash). Cowork debe:
 
 ---
 
+### 10. Cowork no edita archivos grandes ni archivos críticos compartidos (DIRECTRIZ 2026-04-25)
+
+**Causa documentada:** El 2026-04-25 el sandbox de Cowork corrompió 11 archivos
+con bytes NUL (`\x00`) al escribir sobre el mount de Windows. Vite los bundleó
+con el contenido roto, los lazy-imports tiraron `SyntaxError` en runtime y
+RouteErrorBoundary capturó el error en cada módulo que el usuario abría —
+toda la app inutilizable hasta que Claude Code restauró desde
+`git checkout HEAD --`. Los archivos en git nunca recibieron la basura;
+el daño quedó solo en el filesystem del mount.
+
+Este patrón ya había aparecido antes en otros archivos
+(intelligenceApi.ts, index.ts, gtfsRealtime.ts, ShadowRadar.tsx,
+scheduleComplianceEngine.ts, etc.). Es un bug no determinístico de las
+escrituras concurrentes Cowork-sandbox ↔ Windows-mount sobre archivos grandes.
+
+**Regla operativa vinculante:**
+
+| Tipo de archivo | Cowork puede editar | Claude Code edita |
+|---|---|---|
+| Archivos NUEVOS (cualquier tamaño) | ✅ Sí | — |
+| Archivos < 200 líneas | ✅ Sí | También |
+| Archivos 200–500 líneas | ⚠️ Solo Edit puntuales (1–20 líneas), nunca rewrite completo | Preferido para cambios grandes |
+| Archivos > 500 líneas | ❌ NO editar — delegar a Claude Code | ✅ Exclusivo |
+| Archivos críticos compartidos (ver lista) | ❌ NO editar — delegar | ✅ Exclusivo |
+
+**Lista de archivos críticos compartidos** (los importan ≥10 módulos, romperlos
+rompe toda la app):
+
+- `frontend/src/hooks/useEmpresaPropia.ts`
+- `frontend/src/services/linesService.ts`
+- `frontend/src/services/schedulesService.ts`
+- `frontend/src/services/api.ts`
+- `frontend/src/services/firestore/index.ts`
+- `frontend/src/App.tsx`
+- `frontend/src/main.tsx`
+- `frontend/src/layouts/DashboardLayout.tsx`
+- `frontend/src/components/Sidebar.tsx`
+- `frontend/src/components/RouteErrorBoundary.tsx`
+- `frontend/src/context/AuthContext.tsx`
+- `functions/src/index.ts`
+- `functions/src/intelligenceApi.ts`
+- `firestore.rules`
+
+**Qué SÍ puede hacer Cowork sobre archivos grandes / críticos:**
+
+1. **Leer** (Read con offset+limit para no consumir contexto innecesario).
+2. **Investigar** (grep, find, análisis estático).
+3. **Generar reportes** y documentación en `docs/` (archivos nuevos).
+4. **Diagnosticar bugs** y dejar el plan de fix listo en
+   `docs/SESION_ACTUAL.md` o un dossier específico (ver
+   `docs/DIAGNOSTICO_NUL_2026_04_25.md` como ejemplo).
+5. **Escribir el commit message completo** para que Code lo pegue.
+
+**Qué NO puede hacer Cowork sobre estos archivos:**
+
+1. Edit con strings largos (>50 líneas).
+2. Rewrite completo con Write.
+3. Heredocs `>> archivo.ts` desde bash.
+4. Operaciones que requieren múltiples Edit consecutivos sobre el mismo archivo.
+
+**Si Cowork detecta que un cambio requerido cae en zona prohibida**, debe:
+
+1. NO intentar el cambio.
+2. Documentar exactamente qué hay que cambiar (archivo, líneas, código nuevo,
+   código viejo) en `docs/SESION_ACTUAL.md` bajo "PRÓXIMO PASO INMEDIATO".
+3. Avisarle a Jonathan que el fix lo aplica Claude Code.
+
+**Verificación profiláctica de NULs — válida SOLO desde Claude Code, NO desde Cowork**
+
+⚠️ **Hallazgo 2026-04-25:** El mount del sandbox de Cowork hacia Windows
+**inyecta bytes NUL al leer archivos grandes**. Eso significa que el chequeo
+de NULs corrido desde Cowork produce **falsos positivos sistemáticos**:
+reporta archivos corruptos que en el filesystem real de Windows están sanos.
+Confirmado contrastando contra Claude Code (que ve Windows nativo) — Code
+dijo "0 NULs en src" después de un `git checkout HEAD --` y deploy exitoso;
+Cowork sobre los mismos archivos reportó >6000 NULs minutos después. Los
+archivos en disco real estaban limpios; lo que Cowork lee del mount es
+basura.
+
+**Conclusión operativa:**
+
+- El chequeo de NULs **se corre exclusivamente desde Claude Code** (PowerShell
+  o terminal nativa de Windows), nunca desde Cowork.
+- Si Cowork necesita verificar integridad de archivos grandes, **debe
+  delegarlo a Code**, no inferir desde su propia lectura.
+- `scripts/check_integrity.sh` también está afectado por este bug si se
+  ejecuta desde Cowork. Correrlo solo desde Code.
+
+**Comando válido (Claude Code, Windows nativo):**
+
+```powershell
+cd C:\Users\jonat\Desktop\PROYECTOS\GestionUcot\frontend\src
+python -c "
+import os
+total = 0
+for root, dirs, files in os.walk('.'):
+    if 'node_modules' in root: continue
+    for f in files:
+        if f.endswith(('.ts', '.tsx')):
+            p = os.path.join(root, f)
+            n = open(p, 'rb').read().count(b'\x00')
+            if n: print(p, n); total += n
+print('Total NULs:', total)
+"
+```
+
+Si Code corre esto y el total > 0, **entonces sí** los archivos están
+realmente corruptos en disco. Restaurar con `git checkout HEAD -- <archivo>`
+y reaplicar los cambios pendientes.
+
+---
+
 ## 📘 Documentos que debe leer el agente antes de tocar código
 
 Si la tarea implica crear, mover, renombrar o reorganizar archivos, **leer primero**:

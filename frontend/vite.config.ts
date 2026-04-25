@@ -212,13 +212,13 @@ export default defineConfig({
       drop: ['console', 'debugger'],
     },
     rollupOptions: {
-      external: [
-        '@capacitor/core',
-        '@capacitor/haptics',
-        '@capacitor/status-bar',
-        '@capacitor/local-notifications',
-        '@capacitor-community/keep-awake',
-      ],
+      // No externalizamos los paquetes Capacitor: son JS puro que detectan
+      // el entorno (web vs nativo) y hacen fallback gracioso. Si los marcamos
+      // como external, Rollup deja `import "@capacitor/core"` literal en el
+      // bundle web y el browser no resuelve bare specifiers — React no monta
+      // y la app entera muere. El externalize solo aplica a plugins
+      // Java/Swift en una APK Capacitor; el JS siempre va dentro del bundle.
+      // (Bug detectado 2026-04-25 — toda la app caía con "Problemas de Carga".)
       output: {
         entryFileNames: `assets/[name]-[hash]-${CACHE_BUST}.js`,
         chunkFileNames: `assets/[name]-[hash]-${CACHE_BUST}.js`,
