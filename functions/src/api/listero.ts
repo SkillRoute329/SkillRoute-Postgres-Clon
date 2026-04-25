@@ -27,13 +27,17 @@ const IMPORTANCIA_LINEA_MAP: Record<string, number> = {
  * Registra todas las rutas /api/listero/* en la app Express provista.
  */
 export function registerListeroRoutes(app: Express) {
-  // GET /api/listero/turnos?fecha=&turno=
+  // GET /api/listero/turnos?fecha=&turno=&agencyId=
+  // agencyId opcional — si presente filtra por operador. Si ausente, devuelve
+  // todos (compat con clientes legacy que no envían agencyId).
   app.get('/api/listero/turnos', async (req, res) => {
     const fecha = String(req.query.fecha || fechaHoyMVD());
     const turno = req.query.turno as string | undefined;
+    const agencyId = req.query.agencyId as string | undefined;
     try {
       let q: admin.firestore.Query = getDb().collection('turnos_dia').where('fecha', '==', fecha);
       if (turno && turno !== 'todos') q = q.where('turnoNombre', '==', turno);
+      if (agencyId) q = q.where('agencyId', '==', String(agencyId));
       const snap = await q.get();
       const turnos = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       res.json({ ok: true, turnos });
@@ -68,10 +72,13 @@ export function registerListeroRoutes(app: Express) {
     }
   });
 
-  // GET /api/listero/conductores
-  app.get('/api/listero/conductores', async (_req, res) => {
+  // GET /api/listero/conductores?agencyId=
+  app.get('/api/listero/conductores', async (req, res) => {
+    const agencyId = req.query.agencyId as string | undefined;
     try {
-      const snap = await getDb().collection('personal').get();
+      let q: admin.firestore.Query = getDb().collection('personal');
+      if (agencyId) q = q.where('agencyId', '==', String(agencyId));
+      const snap = await q.get();
       const conductores = snap.docs.map((d) => {
         const data = d.data() as any;
         return {
@@ -262,12 +269,15 @@ export function registerListeroRoutes(app: Express) {
     }
   });
 
-  // GET /api/listero/alertas
+  // GET /api/listero/alertas?fecha=&agencyId=
   app.get('/api/listero/alertas', async (req, res) => {
     const fecha = String(req.query.fecha || fechaHoyMVD());
     const historial = req.query.historial === 'true';
+    const agencyId = req.query.agencyId as string | undefined;
     try {
-      const snap = await getDb().collection('alertas_operativas').where('fecha', '==', fecha).get();
+      let q: admin.firestore.Query = getDb().collection('alertas_operativas').where('fecha', '==', fecha);
+      if (agencyId) q = q.where('agencyId', '==', String(agencyId));
+      const snap = await q.get();
       const alertas = snap.docs
         .map((d) => ({ id: d.id, ...d.data() as any }))
         .filter((a) => historial || !a.atendida)
@@ -292,15 +302,18 @@ export function registerListeroRoutes(app: Express) {
     }
   });
 
-  // GET /api/listero/resumen
+  // GET /api/listero/resumen?fecha=&agencyId=
   app.get('/api/listero/resumen', async (req, res) => {
     const fecha = String(req.query.fecha || fechaHoyMVD());
+    const agencyId = req.query.agencyId as string | undefined;
+    const withAgency = (q: admin.firestore.Query): admin.firestore.Query =>
+      agencyId ? q.where('agencyId', '==', String(agencyId)) : q;
     try {
       const [turnosSnap, conductoresSnap, vehiculosSnap, alertasSnap] = await Promise.all([
-        getDb().collection('turnos_dia').where('fecha', '==', fecha).get(),
-        getDb().collection('personal').get(),
-        getDb().collection('vehicles').get(),
-        getDb().collection('alertas_operativas').where('fecha', '==', fecha).where('atendida', '==', false).get(),
+        withAgency(getDb().collection('turnos_dia').where('fecha', '==', fecha)).get(),
+        withAgency(getDb().collection('personal')).get(),
+        withAgency(getDb().collection('vehicles')).get(),
+        withAgency(getDb().collection('alertas_operativas').where('fecha', '==', fecha).where('atendida', '==', false)).get(),
       ]);
 
       const turnos = turnosSnap.docs.map((d) => d.data() as any);

@@ -8,6 +8,56 @@
 
 ---
 
+## NOTA DE JONATHAN (2026-04-25 — Claude Code)
+
+**PROBLEMA DETECTADO: Cowork escribió pero el filesystem de Windows no lo recibió.**
+
+Las escrituras de Cowork a los archivos frontend NO persistieron al sistema de
+archivos de Windows (problema conocido del mount). Los archivos están en su
+estado original en disco:
+
+| Archivo | En disco | Cowork decía |
+|---|---|---|
+| ServiceMatrix.tsx | 344L | 460L |
+| CartonManager.tsx | 180L | 370L |
+| VehicleList.tsx | 726L | 837L |
+| DistribucionDiaria.tsx | 381L | 500L |
+| AdminRRHH.tsx | 953L | probablemente igual (solo selector) |
+
+Ninguno tiene `useEmpresaPropia` ni el selector de empresa.
+
+**Lo que SÍ persistió (cambios reales en disco):**
+- `functions/src/api/cartonesConsulta.ts` — modificado por Cowork ✅
+- `functions/src/api/listero.ts` — modificado por Cowork ✅
+- `frontend/src/pages/admin/CrossOpCoverage.tsx` — archivo NUEVO de Cowork ✅
+
+**Qué hice:**
+1. Build + hosting deploy completados exitosamente (el bundle en producción
+   usa los archivos SIN las modificaciones cross-op — el código deployado es
+   el estado anterior a Cowork).
+2. Commit NO realizado con el mensaje de 30/30 módulos, porque esos cambios
+   no existen en disco.
+
+**PRÓXIMOS PASOS:**
+
+**Opción A (recomendada): Claude Code implementa los cambios ahora.**
+Los archivos que necesitan cross-op son bien definidos. Puedo implementar
+todos en esta sesión usando el patrón estándar establecido por Cowork:
+- `useEmpresaPropia()` en header + selector `<Building2 />` + label dinámico
+- agencyId pasado a queries
+- print/export con nombre de empresa
+
+Decime "adelante" y los hago todos (estimado: ~15-20 archivos × 10-30 min c/u).
+
+**Opción B: Relanzar Cowork.**
+Cowork puede re-ejecutar la tanda. Riesgo: podría volver a fallar el write.
+Si usás esta opción, verificá ANTES de cerrar Cowork que los archivos tengan
+el tamaño correcto con `wc -l` desde la misma sesión Cowork.
+
+---
+
+---
+
 ## 🎯 EN CURSO
 
 Todo deployado y verificado en producción (Claude Code 2026-04-25):

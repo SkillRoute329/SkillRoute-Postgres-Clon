@@ -20,17 +20,28 @@ const getDb = () => admin.firestore();
  * y los seeds relacionados.
  */
 export function registerCartonesConsultaRoutes(app: Express) {
-  // GET /api/cartones/oficiales — lista de servicios desde servicios_ucot
+  // GET /api/cartones/oficiales?linea=&tipo=&limit=&agencyId=
+  // agencyId opcional — filtra por operador propio. Si ausente, devuelve
+  // todos (compat con clientes legacy). Para operadores no-UCOT usa la
+  // colección genérica `cartones` filtrada por agencyId, ya que
+  // `servicios_ucot` es legacy UCOT-only.
   app.get('/api/cartones/oficiales', async (req, res) => {
     try {
       const db = getDb();
       const linea = req.query.linea ? String(req.query.linea) : null;
       const tipo = req.query.tipo ? String(req.query.tipo) : null;
       const limit = Math.min(parseInt(String(req.query.limit ?? '300')), 500);
+      const agencyId = req.query.agencyId ? String(req.query.agencyId) : null;
 
-      let query: FirebaseFirestore.Query = db.collection('servicios_ucot').limit(limit);
+      // UCOT (default) usa la colección legacy `servicios_ucot`. Otros
+      // operadores usan `cartones` (genérica) filtrada por agencyId.
+      const useLegacy = !agencyId || agencyId === '70';
+      const collectionName = useLegacy ? 'servicios_ucot' : 'cartones';
+
+      let query: FirebaseFirestore.Query = db.collection(collectionName).limit(limit);
       if (linea) query = query.where('linea', '==', linea);
       if (tipo) query = query.where('tipoServicio', '==', tipo);
+      if (!useLegacy && agencyId) query = query.where('agencyId', '==', agencyId);
 
       const snap = await query.get();
       const cartones = snap.docs.map(d => {
@@ -192,4 +203,6 @@ export function registerCartonesConsultaRoutes(app: Express) {
       res.status(500).json({ ok: false, error: err.message });
     }
   });
+
+  // GET /api/personal/:interno — datos de un empleado por número interno
 }
