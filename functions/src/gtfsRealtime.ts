@@ -235,8 +235,8 @@ app.get('/feed-info', (_req, res) => {
     agencies: Object.values(AGENCIES),
     feedContents: {
       vehiclePositions: { supported: true, cadenceSeconds: 15 },
-      tripUpdates: { supported: false, reason: 'Pendiente GTFS-static + schedule por trip_id' },
-      serviceAlerts: { supported: false, reason: 'Pendiente integración con alertas_regulacion' },
+      tripUpdates: { supported: true, cadenceSeconds: 30, source: 'vehicle_events.desviacionMin (UITP/TfL >=5min thresholds)' },
+      serviceAlerts: { supported: true, cadenceSeconds: 60, source: 'alertas_regulacion (severidad CRITICA + RIVAL_PISANDO_TURNO)' },
     },
     documentation: 'https://ucot-gestor-cloud.web.app/docs/gtfs-rt',
   });
@@ -269,29 +269,76 @@ app.get('/vehicle-positions.pb', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TRIP UPDATES (Trim+ #2, 2026-04-23)
+// TRIP UPDATES (V2 — 2026-04-25, datos reales)
 // ═══════════════════════════════════════════════════════════════════════════
-// Emite delays estimados por vehículo. V1: usamos `velocidad` como proxy —
-// bus detenido (<= 5 km/h) en zona no-parada → probable retraso.
-// V2 (pendiente): cruzar con scheduleComplianceEngine.desviacionMin real.
+// Emite delay (segundos) por vehículo basado en `desviacionMin` ya calculado
+// upstream por el ingestor IMM contra horarios_stm. Convención GTFS-RT:
+//   delay > 0  → atrasado
+//   delay < 0  → adelantado
+//   delay = 0  → puntual
+// Sólo se publican buses con |delay| >= 60s (puntuales se asumen on-time).
+
+const FIRESTORE_DESV_LOOKBACK_MS = 5 * 60 * 1000;
+
+interface BusComplianceLatest {
+  delaySec: number;
+  estado: string;
+  tsObservado: number;
+}
+
+let _busComplianceCache: { ts: number; data: Map<string, BusComplianceLatest> } | null = null;
+
+async function loadLatestComplianceByBus(): Promise<Map<string, BusComplianceLatest>> {
+  if (_busComplianceCache && Date.now() - _busComplianceCache.ts < 30 * 1000) {
+    return _busComplianceCache.data;
+  }
+  const admin = await import('firebase-admin');
+  if (!admin.default.apps.length) admin.default.initializeApp();
+  const db = admin.default.firestore();
+
+  const sinceTs = admin.default.firestore.Timestamp.fromMillis(Date.now() - FIRESTORE_DESV_LOOKBACK_MS);
+  const snap = await db
+    .collection('vehicle_events')
+    .where('createdAt', '>=', sinceTs)
+    .orderBy('createdAt', 'desc')
+    .limit(8000)
+    .get();
+
+  const map = new Map<string, BusComplianceLatest>();
+  snap.forEach((doc) => {
+    const ev = doc.data();
+    const idBus = String(ev.idBus ?? '').trim();
+    const agencyId = String(ev.agencyId ?? '').trim();
+    if (!idBus || !agencyId) return;
+    const key = `${agencyId}-${idBus}`;
+    if (map.has(key)) return;
+    const desviacionMin = typeof ev.desviacionMin === 'number' ? ev.desviacionMin : null;
+    if (desviacionMin === null) return;
+    const tsObs = ev.createdAt?.toDate?.()?.getTime?.() ?? Date.now();
+    map.set(key, {
+      delaySec: Math.round(desviacionMin * 60),
+      estado: String(ev.estadoCumplimiento ?? ''),
+      tsObservado: Math.floor(tsObs / 1000),
+    });
+  });
+  _busComplianceCache = { ts: Date.now(), data: map };
+  return map;
+}
 
 async function buildTripUpdatesFeed() {
   const gtfsRt = require('gtfs-realtime-bindings');
   const { FeedMessage, FeedEntity, FeedHeader, TripUpdate, TripDescriptor } = gtfsRt.transit_realtime;
 
   const buses = await fetchAllBuses();
+  const compliance = await loadLatestComplianceByBus();
   const tsUnix = Math.floor(Date.now() / 1000);
 
-  // V1: solo emitimos TripUpdate para buses con velocidad muy baja (potencial retraso)
-  // para no saturar el feed con 0-delay de todos los 300+ buses.
   const entities = buses
-    .filter((b) => b.velocidadKmh >= 0 && b.velocidadKmh <= 5)
-    .slice(0, 500)
     .map((b) => {
+      const key = `${b.empresaId}-${b.codigoBus}`;
+      const c = compliance.get(key);
+      if (!c || Math.abs(c.delaySec) < 60) return null;
       const tripIdAprox = [b.linea, b.sublinea ?? '', b.variante ?? ''].join('|');
-      // Proxy de delay: bus detenido ≈ 60s+ de retraso acumulado.
-      // Pendiente v2: delay real desde scheduleComplianceEngine.
-      const delaySec = 60;
       return FeedEntity.create({
         id: `tu-${b.empresaId}-${b.codigoBus}`,
         tripUpdate: TripUpdate.create({
@@ -304,11 +351,12 @@ async function buildTripUpdatesFeed() {
             id: `${b.empresaId}-${b.codigoBus}`,
             label: `${b.empresaNombre} ${b.codigoBus}`,
           },
-          delay: delaySec,
-          timestamp: b.timestampObservado,
+          delay: c.delaySec,
+          timestamp: c.tsObservado,
         }),
       });
-    });
+    })
+    .filter((e): e is NonNullable<typeof e> => e !== null);
 
   const feed = FeedMessage.create({
     header: FeedHeader.create({
@@ -344,8 +392,8 @@ app.get('/trip-updates.json', async (_req, res) => {
     res.json({
       meta: {
         totalEntities,
-        notice:
-          'V1 placeholder. Pendiente cruce con scheduleComplianceEngine para delays precisos.',
+        source: 'vehicle_events.desviacionMin (cruzado contra horarios_stm en cada ingesta IMM)',
+        threshold: '|delay| >= 60s — buses puntuales se asumen on-time por convención GTFS-RT',
       },
       feed: obj,
     });

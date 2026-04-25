@@ -562,19 +562,67 @@ const ShadowRadar: React.FC = () => {
         etaSegundos: number | null;
         /** Velocidad relativa de cierre en km/h (puede ser negativa si se alejan). */
         closingKmh: number;
+        /** HRR canónico (Swiftly/NYC MTA): headway propio / headway al rival.
+         *  HRR < 0.8 → tu próximo bus está más cerca que el rival (ganás).
+         *  HRR ≈ 1   → empatados.
+         *  HRR > 1.2 → rival pisa antes que tu próximo bus (perdés pasajeros). */
+        hrrRatio: number | null;
+        /** Distancia hasta el siguiente bus de tu misma empresa+línea, en metros. */
+        distanciaMismaLineaPropiaM: number | null;
       };
 
-      /** HRR helper: calcula ETA + velocidad relativa entre dos buses. */
-      const computeHRR = (distanciaM: number, vUcot: number | undefined, vRival: number | undefined) => {
+      /** Velocidad de fallback en km/h cuando un bus reporta 0/undefined.
+       *  Promedio operativo urbano Montevideo ≈ 18-22 km/h según TCRP 100. */
+      const SPEED_FALLBACK_KMH = 20;
+
+      /** Closing time helper: ETA + velocidad relativa entre dos buses.
+       *  No es HRR canónico — es el tiempo hasta colisión asumiendo cierre lineal.
+       *  Útil como complemento (cuándo se encuentran) pero no es el indicador
+       *  de competencia comercial (eso es hrrRatio). */
+      const computeClosingTime = (distanciaM: number, vUcot: number | undefined, vRival: number | undefined) => {
         const vU = typeof vUcot === 'number' ? vUcot : 0;
         const vR = typeof vRival === 'number' ? vRival : 0;
-        // Como el filtro DRO ya garantiza mismo sentido, el cierre es |vR - vU|
-        // cuando el rival va por atrás (más rápido = se acerca) o cuando nosotros
-        // vamos adelante. Simplificación: tiempo a encontrarse = dist / max(diff, 1).
         const diffKmh = Math.abs(vR - vU);
         if (diffKmh < 2) return { etaSegundos: null as number | null, closingKmh: 0 };
         const closingMs = (diffKmh * 1000) / 3600;
         return { etaSegundos: Math.round(distanciaM / closingMs), closingKmh: Math.round(diffKmh) };
+      };
+
+      /** HRR canónico: headway propio / headway al rival.
+       *  - Headway propio = tiempo (s) hasta el siguiente bus de la misma
+       *    empresa+línea, basado en distancia geográfica al bus propio
+       *    más cercano y velocidad operativa.
+       *  - Headway rival = tiempo (s) hasta el rival (distancia / velocidad).
+       *
+       *  Devuelve hrrRatio + distancia al siguiente bus propio (para tooltip).
+       *  Null si no hay otro bus propio cerca (flota de 1 → sin competencia
+       *  interna, no aplica métrica). */
+      const computeCanonicalHRR = (
+        thisBus: { lat: number; lng: number; cocheId: string; codigoLinea: string; destino?: string; velocidad?: number },
+        flotaPropiaMismaLinea: VehiculoRadar[],
+        distanciaRivalM: number,
+        velocidadRival: number | undefined,
+      ): { hrrRatio: number | null; distanciaMismaLineaPropiaM: number | null } => {
+        let minDistPropioM = Infinity;
+        for (const otro of flotaPropiaMismaLinea) {
+          if (otro.cocheId === thisBus.cocheId) continue;
+          if (!otro.lat || !otro.lng) continue;
+          if (thisBus.destino && otro.destino && thisBus.destino !== otro.destino) continue;
+          const d = haversineMetros(thisBus.lat, thisBus.lng, otro.lat, otro.lng);
+          if (d < minDistPropioM) minDistPropioM = d;
+        }
+        if (!Number.isFinite(minDistPropioM)) {
+          return { hrrRatio: null, distanciaMismaLineaPropiaM: null };
+        }
+        const vPropio = (thisBus.velocidad && thisBus.velocidad > 5) ? thisBus.velocidad : SPEED_FALLBACK_KMH;
+        const vRival = (velocidadRival && velocidadRival > 5) ? velocidadRival : SPEED_FALLBACK_KMH;
+        const headwayPropioSec = (minDistPropioM / 1000) / vPropio * 3600;
+        const headwayRivalSec = (distanciaRivalM / 1000) / vRival * 3600;
+        if (headwayRivalSec < 1) return { hrrRatio: null, distanciaMismaLineaPropiaM: Math.round(minDistPropioM) };
+        return {
+          hrrRatio: headwayPropioSec / headwayRivalSec,
+          distanciaMismaLineaPropiaM: Math.round(minDistPropioM),
+        };
       };
 
       const droRivales: RivalConMetrica[] = [];
@@ -610,15 +658,23 @@ const ShadowRadar: React.FC = () => {
           continue;
         }
 
-        const hrr = computeHRR(dist, ucot.velocidad, r.velocidad);
+        const closing = computeClosingTime(dist, ucot.velocidad, r.velocidad);
+        const hrrCanonical = computeCanonicalHRR(
+          { lat: ucot.lat, lng: ucot.lng, cocheId: ucot.cocheId, codigoLinea: ucot.codigoLinea, destino: ucot.destino, velocidad: ucot.velocidad },
+          ucotFlota.filter(v => v.codigoLinea === ucot.codigoLinea),
+          dist,
+          r.velocidad,
+        );
         droRivales.push({
           ...r,
           distanciaMetros: dist,
           tier,
           pctAInB: overlap.pctAInB,
           sharedKm: overlap.sharedKm,
-          etaSegundos: hrr.etaSegundos,
-          closingKmh: hrr.closingKmh,
+          etaSegundos: closing.etaSegundos,
+          closingKmh: closing.closingKmh,
+          hrrRatio: hrrCanonical.hrrRatio,
+          distanciaMismaLineaPropiaM: hrrCanonical.distanciaMismaLineaPropiaM,
         });
       }
 
@@ -628,13 +684,21 @@ const ShadowRadar: React.FC = () => {
       const heuristicRivales: RivalConMetrica[] = heuristicPool
         .map(r => {
           const dist = Math.round(haversineMetros(ucot.lat, ucot.lng, r.lat, r.lng));
-          const hrr = computeHRR(dist, ucot.velocidad, r.velocidad);
+          const closing = computeClosingTime(dist, ucot.velocidad, r.velocidad);
+          const hrrCanonical = computeCanonicalHRR(
+            { lat: ucot.lat, lng: ucot.lng, cocheId: ucot.cocheId, codigoLinea: ucot.codigoLinea, destino: ucot.destino, velocidad: ucot.velocidad },
+            ucotFlota.filter(v => v.codigoLinea === ucot.codigoLinea),
+            dist,
+            r.velocidad,
+          );
           return {
             ...r,
             distanciaMetros: dist,
             tier: 'T3' as DroTier,
-            etaSegundos: hrr.etaSegundos,
-            closingKmh: hrr.closingKmh,
+            etaSegundos: closing.etaSegundos,
+            closingKmh: closing.closingKmh,
+            hrrRatio: hrrCanonical.hrrRatio,
+            distanciaMismaLineaPropiaM: hrrCanonical.distanciaMismaLineaPropiaM,
           };
         })
         .filter(r => {
@@ -1151,7 +1215,7 @@ const ShadowRadar: React.FC = () => {
                                   : tier === 'T2'
                                   ? `Solapamiento menor (${r.pctAInB?.toFixed(0)}% DRO)`
                                   : 'Sin matriz DRO para esta línea, detección por destino/heading';
-                              // HRR: formatear ETA como mm:ss, color según velocidad de cierre
+                              // ETA hasta colisión (sólo si las velocidades difieren)
                               const etaSec = r.etaSegundos;
                               const etaTxt =
                                 etaSec === null
@@ -1159,7 +1223,7 @@ const ShadowRadar: React.FC = () => {
                                   : etaSec < 60
                                   ? `${etaSec}s`
                                   : `${Math.floor(etaSec / 60)}:${String(etaSec % 60).padStart(2, '0')}`;
-                              const hrrColor =
+                              const etaColor =
                                 etaSec === null
                                   ? 'text-slate-500'
                                   : etaSec < 120
@@ -1167,10 +1231,31 @@ const ShadowRadar: React.FC = () => {
                                   : etaSec < 300
                                   ? 'text-orange-400'
                                   : 'text-emerald-400';
-                              const hrrTitle =
+                              const etaTitle =
                                 etaSec === null
                                   ? 'Velocidades similares, rival mantiene distancia'
                                   : `ETA ${etaTxt} a cierre · Δv ${r.closingKmh} km/h`;
+                              // HRR canónico (Swiftly/NYC MTA): headway propio / headway al rival.
+                              const hrr = r.hrrRatio;
+                              const hrrColor =
+                                hrr === null
+                                  ? 'text-slate-500'
+                                  : hrr < 0.8
+                                  ? 'text-emerald-400'
+                                  : hrr <= 1.2
+                                  ? 'text-amber-400'
+                                  : 'text-red-400';
+                              const hrrTxt = hrr === null ? '—' : `${hrr.toFixed(1)}×`;
+                              const hrrTitle =
+                                hrr === null
+                                  ? 'Sin HRR: flota propia de 1 coche en este sentido'
+                                  : `HRR ${hrr.toFixed(2)}× — ` +
+                                    (hrr < 0.8
+                                      ? 'tu próximo bus llega antes que el rival (ganás pasajero)'
+                                      : hrr <= 1.2
+                                      ? 'tu próximo bus y el rival llegan parejo (empate)'
+                                      : 'rival llega antes que tu próximo bus (perdés pasajero)') +
+                                    ` · próximo propio a ${r.distanciaMismaLineaPropiaM ?? '?'}m`;
                               return (
                                 <div key={i} className="flex items-center justify-between text-xs bg-slate-900/80 rounded px-2 py-1 border border-slate-800 gap-2">
                                   <span className="text-red-400 font-bold flex items-center gap-1 min-w-0">
@@ -1184,8 +1269,14 @@ const ShadowRadar: React.FC = () => {
                                     >
                                       {tierLabel}
                                     </span>
-                                    <span className={`font-mono text-[10px] ${hrrColor}`} title={hrrTitle}>
+                                    <span className={`font-mono text-[10px] ${etaColor}`} title={etaTitle}>
                                       {etaTxt}
+                                    </span>
+                                    <span
+                                      className={`font-mono text-[10px] font-black px-1 rounded ${hrrColor} ${hrr === null ? 'bg-transparent' : 'bg-slate-800/80'}`}
+                                      title={hrrTitle}
+                                    >
+                                      HRR {hrrTxt}
                                     </span>
                                     <span className={`font-mono font-bold ${
                                       r.distanciaMetros < 500 ? 'text-red-400' : 'text-orange-400'

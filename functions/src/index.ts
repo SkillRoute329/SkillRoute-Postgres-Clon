@@ -760,6 +760,16 @@ export {
   refreshAllStmHorariosTick,
 } from './refreshAllStmHorarios';
 
+// ─── Schedule Adherence Engine — OTP planificado vs real ──────────────────────
+// Cruza vehicle_events (GPS real) contra horarios_stm (programación oficial)
+// y produce auto_stats_diarios/{YYYY-MM-DD}_{agencyId} con OTP real UITP.
+// Métrica canónica: |desviación| ≤ 5 min = A_TIEMPO.
+// Cron horario procesa la hora previa; endpoint manual permite recalcular días.
+export {
+  computeAdherenceNow,
+  computeAdherenceCron,
+} from './scheduleAdherence';
+
 // ─── Archive Vehicle Events — Rotativo semanal a Storage ─────────────────────
 // Exporta vehicle_events a Firebase Storage y purga Firestore.
 // Mantiene Firestore pequeño (7 días) y el historial en Storage (ilimitado, barato).

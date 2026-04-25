@@ -56,6 +56,10 @@ import {
   Clock,
   Swords,
   Gauge,
+  CheckCircle2,
+  BellRing,
+  Timer,
+  UserCheck,
 } from 'lucide-react';
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────
@@ -72,7 +76,24 @@ interface AlertaDoc {
   timestamp: Timestamp;
   instruccion?: string;
   fuente?: string;
+  // ─── Campos ACK (agregados cuando el conductor acusa recibo) ──────────
+  ack_at?: Timestamp | null;
+  ack_by_coche_id?: string;
+  ack_response_time_sec?: number;
+  // ─── Campos FCM (agregados por onAlertaCreated dispatcher) ────────────
+  fcmSent?: boolean;
+  fcmError?: string;
+  fcm_token_resolved_from?: string;
 }
+
+// Sólo estas tipos generan push FCM (DriverAlertOverlay.TIPOS_REGULACION).
+// Los analíticos de ACK sólo aplican a estos tipos — para info events no
+// esperamos que el conductor acuse.
+const TIPOS_QUE_GENERAN_PUSH = new Set([
+  'RIVAL_PISANDO_TURNO',
+  'PELIGRO_BUNCHING',
+  'DISPARO_MANUAL',
+]);
 
 // ─── Constantes ────────────────────────────────────────────────────────────
 
@@ -309,6 +330,123 @@ export default function ShadowAnalyticsPage() {
     return [...pairs.values()].sort((a, b) => b.count - a.count).slice(0, 15);
   }, [filtered]);
 
+  // ── Analytics de ACK Performance ────────────────────────────────────────
+  // Sólo aplica a alertas que GENERAN push (TIPOS_QUE_GENERAN_PUSH).
+  // Info events no esperamos que el chofer acuse — no cuentan.
+
+  const alertasConPush = useMemo(
+    () => filtered.filter((a) => TIPOS_QUE_GENERAN_PUSH.has(a.tipo)),
+    [filtered],
+  );
+
+  const ackKpis = useMemo(() => {
+    const total = alertasConPush.length;
+    const pushEnviadas = alertasConPush.filter((a) => a.fcmSent === true).length;
+    const pushFallidas = alertasConPush.filter((a) => a.fcmSent === false).length;
+    const acusadas = alertasConPush.filter((a) => !!a.ack_at).length;
+    const ackRate = total > 0 ? (acusadas / total) * 100 : 0;
+    const pushSuccessRate =
+      pushEnviadas + pushFallidas > 0
+        ? (pushEnviadas / (pushEnviadas + pushFallidas)) * 100
+        : 0;
+    const ackTimes = alertasConPush
+      .filter((a) => typeof a.ack_response_time_sec === 'number')
+      .map((a) => a.ack_response_time_sec as number);
+    const avgResponseSec =
+      ackTimes.length > 0
+        ? Math.round(ackTimes.reduce((s, n) => s + n, 0) / ackTimes.length)
+        : 0;
+    const medianResponseSec = (() => {
+      if (ackTimes.length === 0) return 0;
+      const sorted = [...ackTimes].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 === 0
+        ? Math.round((sorted[mid - 1]! + sorted[mid]!) / 2)
+        : sorted[mid]!;
+    })();
+    return {
+      total,
+      pushEnviadas,
+      pushFallidas,
+      acusadas,
+      noAcusadas: total - acusadas,
+      ackRate,
+      pushSuccessRate,
+      avgResponseSec,
+      medianResponseSec,
+    };
+  }, [alertasConPush]);
+
+  // ── Top conductores por ack_rate ──────────────────────────────────────
+  // Sólo conductores con >= 3 alertas en el período (evitar ranking sesgado
+  // por muestras chicas). Orden: ackRate DESC, luego avgResponseSec ASC.
+
+  const topDrivers = useMemo(() => {
+    const byDriver = new Map<
+      string,
+      { cocheId: string; recibidas: number; acusadas: number; totalResponseSec: number }
+    >();
+    for (const a of alertasConPush) {
+      const c = String(a.coche_id ?? '').trim();
+      if (!c) continue;
+      const entry = byDriver.get(c) ?? {
+        cocheId: c,
+        recibidas: 0,
+        acusadas: 0,
+        totalResponseSec: 0,
+      };
+      entry.recibidas += 1;
+      if (a.ack_at) {
+        entry.acusadas += 1;
+        entry.totalResponseSec += Number(a.ack_response_time_sec ?? 0);
+      }
+      byDriver.set(c, entry);
+    }
+    return [...byDriver.values()]
+      .filter((d) => d.recibidas >= 3)
+      .map((d) => ({
+        cocheId: d.cocheId,
+        recibidas: d.recibidas,
+        acusadas: d.acusadas,
+        ackRate: (d.acusadas / d.recibidas) * 100,
+        avgResponseSec: d.acusadas > 0 ? Math.round(d.totalResponseSec / d.acusadas) : 0,
+      }))
+      .sort((a, b) => {
+        if (b.ackRate !== a.ackRate) return b.ackRate - a.ackRate;
+        return a.avgResponseSec - b.avgResponseSec;
+      })
+      .slice(0, 20);
+  }, [alertasConPush]);
+
+  // ── Histograma de tiempos de respuesta ────────────────────────────────
+  // Buckets: 0-5s, 5-15s, 15-30s, 30-60s, 60s+, No ACK
+
+  const responseTimeHistogram = useMemo(() => {
+    const buckets = [
+      { label: '0-5s', min: 0, max: 5, count: 0, color: '#22c55e' },
+      { label: '5-15s', min: 5, max: 15, count: 0, color: '#84cc16' },
+      { label: '15-30s', min: 15, max: 30, count: 0, color: '#eab308' },
+      { label: '30-60s', min: 30, max: 60, count: 0, color: '#f97316' },
+      { label: '60s+', min: 60, max: Infinity, count: 0, color: '#ef4444' },
+      { label: 'No ACK', min: -1, max: -1, count: 0, color: '#475569' },
+    ];
+    for (const a of alertasConPush) {
+      if (!a.ack_at) {
+        buckets[5]!.count += 1;
+        continue;
+      }
+      const t = Number(a.ack_response_time_sec ?? 0);
+      for (let i = 0; i < 5; i++) {
+        const b = buckets[i]!;
+        if (t >= b.min && t < b.max) {
+          b.count += 1;
+          break;
+        }
+      }
+    }
+    return buckets;
+  }, [alertasConPush]);
+
   // ── Export ─────────────────────────────────────────────────────────────
 
   const handleExport = useCallback(() => {
@@ -353,9 +491,53 @@ export default function ShadowAnalyticsPage() {
     );
     XLSX.utils.book_append_sheet(wb, sheet4, 'Distribución horaria');
 
+    // Hoja 5: Resumen de ACK Performance
+    const sheet5 = XLSX.utils.json_to_sheet([
+      { Métrica: 'Alertas con push FCM esperado', Valor: ackKpis.total },
+      { Métrica: 'Push entregadas (fcmSent=true)', Valor: ackKpis.pushEnviadas },
+      { Métrica: 'Push fallidas (fcmSent=false)', Valor: ackKpis.pushFallidas },
+      { Métrica: 'Tasa de éxito FCM (%)', Valor: Math.round(ackKpis.pushSuccessRate * 10) / 10 },
+      { Métrica: 'Acuses recibidos', Valor: ackKpis.acusadas },
+      { Métrica: 'Sin acuse', Valor: ackKpis.noAcusadas },
+      { Métrica: 'Tasa de acuse (%)', Valor: Math.round(ackKpis.ackRate * 10) / 10 },
+      { Métrica: 'Tiempo de respuesta promedio (s)', Valor: ackKpis.avgResponseSec },
+      { Métrica: 'Tiempo de respuesta mediano (s)', Valor: ackKpis.medianResponseSec },
+    ]);
+    XLSX.utils.book_append_sheet(wb, sheet5, 'ACK KPIs');
+
+    // Hoja 6: Top conductores por ack_rate
+    const sheet6 = XLSX.utils.json_to_sheet(
+      topDrivers.map((d, i) => ({
+        '#': i + 1,
+        Coche: d.cocheId,
+        'Alertas recibidas': d.recibidas,
+        'Acuses enviados': d.acusadas,
+        'Tasa de acuse (%)': Math.round(d.ackRate * 10) / 10,
+        'Tiempo respuesta promedio (s)': d.avgResponseSec,
+      })),
+    );
+    XLSX.utils.book_append_sheet(wb, sheet6, 'Top Conductores ACK');
+
+    // Hoja 7: Distribución de tiempos de respuesta
+    const sheet7 = XLSX.utils.json_to_sheet(
+      responseTimeHistogram.map((b) => ({
+        'Rango de respuesta': b.label,
+        Eventos: b.count,
+      })),
+    );
+    XLSX.utils.book_append_sheet(wb, sheet7, 'Histograma tiempos ACK');
+
     const date = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `skillroute-shadow-analytics-${date}.xlsx`);
-  }, [filtered, topDuelos, dailySeries, hourlyDistribution]);
+  }, [
+    filtered,
+    topDuelos,
+    dailySeries,
+    hourlyDistribution,
+    ackKpis,
+    topDrivers,
+    responseTimeHistogram,
+  ]);
 
   // ── UI ─────────────────────────────────────────────────────────────────
 
@@ -680,6 +862,207 @@ export default function ShadowAnalyticsPage() {
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      {/* ═══ ACK PERFORMANCE ═══════════════════════════════════════════════
+          Métricas de rendimiento del loop FCM → overlay del conductor → ACK.
+          Indica cuántas alertas efectivamente llegaron, cuántas se acusaron,
+          y qué tan rápido responden los conductores. KPI operativo clave
+          para justificar la inversión en la pila de alertas tácticas. */}
+      <section className="mt-6 bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              Rendimiento de Acuses (ACK) — loop FCM → conductor → respuesta
+            </h2>
+            <p className="text-[10px] text-slate-500 mt-1 max-w-4xl">
+              Mide el funcionamiento del loop operacional: push FCM entregada
+              al dispositivo del conductor, recepción del overlay táctico,
+              tiempo hasta el click "RECIBIDO". Sólo cuenta alertas de tipos
+              que disparan push (RIVAL_PISANDO_TURNO, PELIGRO_BUNCHING,
+              DISPARO_MANUAL). KPI operativo análogo al de mensajería crítica
+              (ring-tone acknowledgement) de CAD/AVL internacionales.
+            </p>
+          </div>
+        </div>
+
+        {ackKpis.total === 0 ? (
+          <div className="py-10 text-center">
+            <CheckCircle2 className="w-10 h-10 text-slate-700 mx-auto mb-3" />
+            <div className="text-sm text-slate-400">
+              Sin alertas de regulación en el período
+            </div>
+            <div className="text-xs text-slate-600 mt-1 max-w-md mx-auto">
+              El loop FCM sólo se activa con alertas críticas (rival pisando
+              turno, bunching detectado o disparo manual). Ampliá el rango
+              temporal o esperá a que el sistema las genere.
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* KPIs ACK — 4 cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+              <div className="bg-slate-950/50 border border-emerald-500/20 rounded-lg p-3">
+                <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                  <UserCheck className="w-3 h-3" />
+                  Tasa de acuse
+                </div>
+                <div className="text-3xl font-black text-emerald-400 mt-1 tabular-nums">
+                  {ackKpis.ackRate.toFixed(1)}%
+                </div>
+                <div className="text-[10px] text-slate-500 mt-1">
+                  {ackKpis.acusadas.toLocaleString('es-UY')} de{' '}
+                  {ackKpis.total.toLocaleString('es-UY')} alertas
+                </div>
+              </div>
+
+              <div className="bg-slate-950/50 border border-cyan-500/20 rounded-lg p-3">
+                <div className="flex items-center gap-1.5 text-[10px] text-cyan-400 font-bold uppercase tracking-wider">
+                  <Timer className="w-3 h-3" />
+                  Tiempo de respuesta
+                </div>
+                <div className="text-3xl font-black text-cyan-400 mt-1 tabular-nums">
+                  {ackKpis.avgResponseSec}
+                  <span className="text-sm font-bold text-cyan-500/70 ml-1">s</span>
+                </div>
+                <div className="text-[10px] text-slate-500 mt-1">
+                  mediana {ackKpis.medianResponseSec}s
+                </div>
+              </div>
+
+              <div className="bg-slate-950/50 border border-blue-500/20 rounded-lg p-3">
+                <div className="flex items-center gap-1.5 text-[10px] text-blue-400 font-bold uppercase tracking-wider">
+                  <BellRing className="w-3 h-3" />
+                  Push entregadas
+                </div>
+                <div className="text-3xl font-black text-blue-400 mt-1 tabular-nums">
+                  {ackKpis.pushSuccessRate.toFixed(1)}%
+                </div>
+                <div className="text-[10px] text-slate-500 mt-1">
+                  {ackKpis.pushEnviadas.toLocaleString('es-UY')} ok ·{' '}
+                  {ackKpis.pushFallidas.toLocaleString('es-UY')} falló
+                </div>
+              </div>
+
+              <div className="bg-slate-950/50 border border-slate-600/40 rounded-lg p-3">
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                  <AlertTriangle className="w-3 h-3" />
+                  Sin acuse
+                </div>
+                <div className="text-3xl font-black text-slate-400 mt-1 tabular-nums">
+                  {ackKpis.noAcusadas.toLocaleString('es-UY')}
+                </div>
+                <div className="text-[10px] text-slate-500 mt-1">
+                  {ackKpis.total > 0
+                    ? Math.round(
+                        (ackKpis.noAcusadas / ackKpis.total) * 100,
+                      )
+                    : 0}
+                  % del total
+                </div>
+              </div>
+            </div>
+
+            {/* Histograma de tiempos de respuesta + Top conductores */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-slate-950/40 border border-slate-800 rounded-lg p-4">
+                <h3 className="text-xs font-bold text-slate-300 mb-3 uppercase tracking-wider">
+                  Distribución de tiempos de respuesta
+                </h3>
+                <div style={{ width: '100%', height: 220 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={responseTimeHistogram}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <XAxis dataKey="label" stroke="#64748b" fontSize={10} />
+                      <YAxis stroke="#64748b" fontSize={10} />
+                      <ReTooltip
+                        contentStyle={{
+                          background: '#0f172a',
+                          border: '1px solid #334155',
+                          borderRadius: 6,
+                        }}
+                        labelStyle={{ color: '#e2e8f0' }}
+                      />
+                      <Bar dataKey="count" name="Alertas">
+                        {responseTimeHistogram.map((b, i) => (
+                          <Cell key={i} fill={b.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-2">
+                  Un buen operativo tiene la mayoría de acuses en 0-15s
+                  (verde/lima). Acuses &gt; 30s sugieren conductores no
+                  atentos al tablet o problemas de señal.
+                </p>
+              </div>
+
+              <div className="bg-slate-950/40 border border-slate-800 rounded-lg p-4">
+                <h3 className="text-xs font-bold text-slate-300 mb-3 uppercase tracking-wider">
+                  Top conductores por tasa de acuse
+                </h3>
+                {topDrivers.length === 0 ? (
+                  <div className="text-center py-6 text-slate-500 text-xs">
+                    Sin conductores con ≥3 alertas en el período
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto max-h-[220px] overflow-y-auto custom-scrollbar">
+                    <table className="min-w-full text-xs">
+                      <thead className="sticky top-0 bg-slate-950/90 backdrop-blur">
+                        <tr className="text-left text-slate-500 uppercase tracking-wider border-b border-slate-800">
+                          <th className="px-2 py-1.5">#</th>
+                          <th className="px-2 py-1.5">Coche</th>
+                          <th className="px-2 py-1.5 text-right">Rec.</th>
+                          <th className="px-2 py-1.5 text-right">ACK %</th>
+                          <th className="px-2 py-1.5 text-right">Resp.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {topDrivers.map((d, i) => {
+                          const ackBadge =
+                            d.ackRate >= 80
+                              ? 'text-emerald-400'
+                              : d.ackRate >= 50
+                                ? 'text-amber-400'
+                                : 'text-red-400';
+                          return (
+                            <tr
+                              key={d.cocheId}
+                              className="border-b border-slate-800/50 hover:bg-slate-800/30"
+                            >
+                              <td className="px-2 py-1.5 text-slate-600">{i + 1}</td>
+                              <td className="px-2 py-1.5 font-mono font-bold text-slate-300">
+                                {d.cocheId}
+                              </td>
+                              <td className="px-2 py-1.5 text-right font-mono text-slate-400">
+                                {d.recibidas}
+                              </td>
+                              <td
+                                className={`px-2 py-1.5 text-right font-mono font-black ${ackBadge}`}
+                              >
+                                {d.ackRate.toFixed(0)}%
+                              </td>
+                              <td className="px-2 py-1.5 text-right font-mono text-cyan-400">
+                                {d.avgResponseSec > 0 ? `${d.avgResponseSec}s` : '—'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <p className="text-[10px] text-slate-500 mt-2">
+                  Ranking de conductores con ≥3 alertas. Verde = ≥80% de
+                  acuse (bueno), ámbar = 50-80% (aceptable), rojo = &lt;50%
+                  (requiere seguimiento operativo).
+                </p>
+              </div>
+            </div>
+          </>
         )}
       </section>
 
