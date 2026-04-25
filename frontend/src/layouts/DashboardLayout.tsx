@@ -1,5 +1,5 @@
 import { Suspense, useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Menu, X, Zap, Activity, ShieldAlert } from 'lucide-react'; // Added ShieldAlert
 import clsx from 'clsx';
 import Sidebar from '../components/Sidebar';
@@ -116,6 +116,7 @@ const SystemStatus = () => {
 const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user } = useAuth();
+  const location = useLocation();
 
   return (
     <div className="flex h-screen w-full max-w-[100vw] bg-slate-900 overflow-hidden relative">
@@ -182,7 +183,7 @@ const DashboardLayout = () => {
           <div className="p-4 md:p-8 min-h-full flex flex-col flex-1 max-w-[100vw] w-full">
             <RoadAlertsWidget />
             <div className="flex-1 min-h-0 relative w-full max-w-full">
-              <RouteErrorBoundary module="Módulo">
+              <RouteErrorBoundary key={location.pathname} module="Módulo">
                 <Suspense
                   fallback={
                     <div className="flex flex-col items-center justify-center p-12 text-slate-500">
