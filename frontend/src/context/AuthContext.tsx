@@ -63,12 +63,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: firebaseUser.email || undefined,
           };
 
+          /**
+           * Workaround conocido de Firebase: onAuthStateChanged se dispara
+           * apenas hay token, pero el SDK Firestore puede tardar unos
+           * milisegundos en propagar la auth a sus listeners. Si llamamos
+           * getDoc inmediatamente, devuelve permission-denied aunque las
+           * rules permiten read. Solución: retry con backoff exponencial
+           * si vemos permission-denied. Max 3 intentos = ~700ms total.
+           */
           try {
             const userDocRef = doc(db, 'users', firebaseUser.uid);
-            const userSnap = await getDoc(userDocRef);
+            let userSnap: Awaited<ReturnType<typeof getDoc>> | null = null;
+            let lastErr: unknown = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+              try {
+                userSnap = await getDoc(userDocRef);
+                break;
+              } catch (err) {
+                lastErr = err;
+                const code = (err as { code?: string })?.code ?? '';
+                if (code === 'permission-denied' && attempt < 2) {
+                  // Backoff: 100ms, 250ms (suma <400ms en peor caso)
+                  await new Promise((r) => setTimeout(r, 100 + attempt * 150));
+                  continue;
+                }
+                throw err;
+              }
+            }
 
-            if (userSnap.exists()) {
-              const userData = userSnap.data();
+            if (userSnap?.exists()) {
+              const userData = userSnap.data() as Record<string, any>;
               finalUser = {
                 ...finalUser,
                 internalNumber: userData?.datos_empresa?.legajo || '----',
@@ -76,9 +100,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 lastName: userData?.datos_personales?.apellido || '',
                 role: userData?.rol || prevRole || 'USER',
               };
+            } else if (lastErr) {
+              throw lastErr;
             }
           } catch (dbError) {
-            console.error('⚠️ [AuthContext] DB Profile Unreachable:', dbError);
+            // Mantener warn para no romper login si Firestore tarda mucho.
+            // El localStorage cache (tf_user) cubre el rol mientras tanto.
+            console.warn('[AuthContext] DB Profile no disponible tras retries; usando cache local:', dbError);
           }
 
           setToken(freshToken);

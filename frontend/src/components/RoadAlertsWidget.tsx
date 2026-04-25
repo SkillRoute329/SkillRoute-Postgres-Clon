@@ -33,9 +33,15 @@ const RoadAlertsWidget = ({ hideTitle = false }: { hideTitle?: boolean }) => {
     }
   };
 
+  // Esperar a que el AuthContext termine de inicializar antes de queryear.
+  // Sin este guard, loadAlerts() se ejecuta apenas monta el widget — antes
+  // de que onAuthStateChanged termine — y dispara permission-denied porque
+  // el SDK Firestore aun no propago la auth.
   useEffect(() => {
+    if (!user?.uid) return;
     void loadAlerts();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,7 +234,7 @@ const RoadAlertsWidget = ({ hideTitle = false }: { hideTitle?: boolean }) => {
             >
               {canCreate && a?.id && (
                 <button
-                  onClick={() => handleResolve(a.id)}
+                  onClick={() => handleResolve(a.id!)}
                   className="absolute top-2 right-2 text-slate-400 hover:text-green-500"
                   title="Marcar Resuelto"
                 >
