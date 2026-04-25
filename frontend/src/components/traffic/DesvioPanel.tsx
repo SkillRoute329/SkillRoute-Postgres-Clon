@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import {
   Plus,
   Pencil,
@@ -94,17 +95,19 @@ export default function DesvioPanel({
   onOpenEditor,
   onDesviosChange,
 }: DesvioPanelProps) {
+  const { user } = useAuth();
   const [desvios, setDesvios] = useState<DesvioGuardado[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  // Escuchar desvíos en tiempo real
+  // Escuchar desvíos en tiempo real. Guard de auth igual que RoadAlertsWidget.
   useEffect(() => {
+    if (!lineaCodigo || !user?.uid) return;
     const unsub = listenDesviosPorLinea(lineaCodigo, (nuevos) => {
       setDesvios(nuevos);
       onDesviosChange?.();
     });
     return () => unsub();
-  }, [lineaCodigo, onDesviosChange]);
+  }, [lineaCodigo, onDesviosChange, user?.uid]);
 
   // Tick cada 60s para re-evaluar "vigente ahora" sin recarga de datos
   // Simplemente forzamos un re-render cambiando un estado contador (o recreando array)

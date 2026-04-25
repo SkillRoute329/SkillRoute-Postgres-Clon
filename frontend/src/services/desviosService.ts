@@ -86,7 +86,7 @@ export function listenDesviosPorLinea(
       onUpdate(desvios);
     },
     (err) => {
-      console.error('[desviosService] Error escuchando desvios:', err);
+      console.error('[desviosService] Error escuchando desvios:', err, new Error().stack);
     },
   );
 }
