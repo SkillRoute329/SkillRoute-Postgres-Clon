@@ -35,6 +35,12 @@ yarn-error.log*
 # === Firebase ===
 .firebase/
 
+# === Credenciales — NUNCA commitear ===
+*serviceAccountKey*.json
+*firebase-adminsdk*.json
+*service-account*.json
+credentials.json
+
 # === Python ===
 .venv/
 __pycache__/
