@@ -308,16 +308,10 @@ export default function NavigationModule() {
       .then((data) => {
         setLinea(data);
         setSelectedStopId(null);
-        // Auto-sync recorrido desde GeoServer solo para UCOT (tiene API pública)
-        if (empresaPropia === 70 && data && (!data.recorrido || data.recorrido.length === 0)) {
-          const baseNumero = String(data.codigo ?? lineCodigo).replace(/[ab]$/i, '') || lineCodigo;
-          setSyncing(true);
-          syncLineaFromAPI(selectedCodigo, baseNumero)
-            .then(() => getLineaDataByAgency(70, lineCodigo))
-            .then((newData) => { if (newData) setLinea(newData); })
-            .catch(console.error)
-            .finally(() => setSyncing(false));
-        }
+        // Auto-sync STM API deshabilitado — proxy devuelve 403 (endpoint legacy
+        // bloqueado por la IMM, CLAUDE.md§"No usar"). El setDoc con datos basura
+        // que devuelve la API rota disparaba "permission-denied" en consola.
+        // Pendiente: migrar a shapes_cross_operator (backlog SESION_ACTUAL).
       })
       .finally(() => setLoading(false));
   }, [selectedCodigo, empresaPropia, getLineCodigo]);
@@ -524,8 +518,9 @@ export default function NavigationModule() {
     try {
       const lineCodigo = getLineCodigo(selectedCodigo);
       if (empresaPropia === 70) {
-        const baseNumero = String(lineCodigo).replace(/[ab]$/i, '') || lineCodigo;
-        await syncLineaFromAPI(selectedCodigo, baseNumero);
+        // syncLineaFromAPI deshabilitado: proxy STM devuelve 403 (endpoint legacy
+        // bloqueado por la IMM). Solo recargamos desde Firestore.
+        console.warn('[Navegador] Sincronización STM temporalmente no disponible — datos cargados desde Firestore offline.');
       }
       const data = await getLineaDataByAgency(empresaPropia, lineCodigo);
       setLinea(data);
