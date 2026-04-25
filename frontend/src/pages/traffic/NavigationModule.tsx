@@ -203,7 +203,6 @@ export default function NavigationModule() {
       .filter((item) => {
         if (!item.codigo || String(item.codigo).startsWith('linea-')) return false;
         if (String(item.nombre).startsWith('Competencia:')) return false;
-        if (/^(317|371|379)[a-z]?$/i.test(String(item.codigo))) return false;
         // getLineasByAgency ya filtra por operador propio
         if (filterLinea !== TODAS && item.codigo.replace(/[ab]$/i, '') !== filterLinea)
           return false;
@@ -1006,6 +1005,25 @@ export default function NavigationModule() {
               </p>
               <p className="text-slate-500 text-xs mt-3">
                 Use «Actualizar datos» para cargar paradas y recorrido desde la API.
+              </p>
+            </div>
+          ) : selectedCodigo && linea && (
+              linea.recorrido.length === 0 ||
+              linea.paradas.every((p) => p.lat === 0 && p.lng === 0)
+          ) ? (
+            <div className="w-full h-full min-h-[300px] bg-slate-800 rounded-xl border border-amber-700/50 flex flex-col items-center justify-center p-6 text-center">
+              <AlertTriangle className="w-12 h-12 text-amber-500 mb-3" />
+              <p className="text-amber-200 font-medium">
+                Esta línea aún no tiene shape ni paradas georreferenciadas
+              </p>
+              <p className="text-slate-400 text-sm mt-2 max-w-md">
+                La sincronización con STM API está temporalmente fuera de servicio (endpoint
+                legacy bloqueado por la IMM). Las paradas se muestran a la derecha con sus
+                nombres pero sin coordenadas.
+              </p>
+              <p className="text-slate-500 text-xs mt-3">
+                Próxima migración: cargar shapes desde el feed GTFS importado a{' '}
+                <code className="mx-1 px-1 py-0.5 rounded bg-slate-900">shapes_cross_operator</code>.
               </p>
             </div>
           ) : (

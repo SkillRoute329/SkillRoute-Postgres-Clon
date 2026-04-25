@@ -448,6 +448,20 @@ service cloud.firestore {
     }
 
     // ============================================================
+    // DESVÍOS GUARDADOS — overlays de ruta alternativa por línea
+    //   (Navegador: TrafficModule → panel Desvíos → mapa editor).
+    //   - Lectura: cualquier autenticado.
+    //   - Escritura: solo TRAFFIC o ADMIN.
+    //   - Delete: prohibido (audit trail).
+    // ============================================================
+    match /desvios_guardados/{document=**} {
+      allow read: if isAuthenticated();
+      allow create: if isTrafficOrAdmin();
+      allow update: if isTrafficOrAdmin();
+      allow delete: if false;
+    }
+
+    // ============================================================
     // DELEGACIONES AL INSPECTOR (desde Módulo Agentes Digitales — Fix #6)
     //   - Lectura: operadores y admin.
     //   - Creación: cualquier autenticado (operador que delega).
