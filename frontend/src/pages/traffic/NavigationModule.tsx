@@ -242,9 +242,11 @@ export default function NavigationModule() {
     setViajeIniciado(false);
   }, [selectedCodigo]);
 
-  // Actualiza el contador de desvíos cada vez que cambia la línea o se guarda uno nuevo
+  // Actualiza el contador de desvíos cada vez que cambia la línea o se guarda uno nuevo.
+  // Guard de auth: esperar a user?.uid antes de abrir el listener (mismo patrón que
+  // RoadAlertsWidget) para evitar permission-denied en la ventana pre-auth.
   useEffect(() => {
-    if (!selectedCodigo) {
+    if (!selectedCodigo || !user?.uid) {
       setDesviosCount({ total: 0, activos: 0 });
       setDesviosEnMapa([]);
       return;
@@ -257,7 +259,7 @@ export default function NavigationModule() {
     });
 
     return () => unsub();
-  }, [selectedCodigo, _desviosVersion]);
+  }, [selectedCodigo, _desviosVersion, user?.uid]);
 
   // Resuelve el código de línea dado un id (necesario para getLineaDataByAgency cross-op)
   const getLineCodigo = useCallback(
