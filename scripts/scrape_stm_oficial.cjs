@@ -6,7 +6,7 @@
  *   - Shape (LineString) IDA y VUELTA
  *   - Paradas (Points) con nombre y lat/lng
  *
- * Persiste a Firestore como `shapes_cross_operator/{empresa}_{linea}_{sentido}`
+ * Persiste a Firestore como `shapes_cross_operator/{agencyId}_{linea}_{sentido}`
  * con la estructura unificada que consume `navigationDataService`.
  *
  * Mecánica probada en sandbox 2026-04-26:
@@ -18,7 +18,6 @@
  *
  * Cómo correr:
  *   cd C:\Users\jonat\Desktop\PROYECTOS\GestionUcot
- *   npm i puppeteer firebase-admin       # si no están
  *   node scripts/scrape_stm_oficial.cjs   # ~60-90 min total
  *
  * Variables de entorno requeridas:
@@ -34,18 +33,54 @@ const fs = require('fs');
 const path = require('path');
 
 const STM_URL = 'https://www.montevideo.gub.uy/app/stm/horarios/';
+const STM_ONLINE_URL = 'https://www.montevideo.gub.uy/buses/rest/stm-online';
+const STM_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/121.0.0.0 Safari/537.36',
+  'Content-Type': 'application/json',
+  Accept: 'application/json',
+  Referer: 'https://www.montevideo.gub.uy/buses/',
+  Origin: 'https://www.montevideo.gub.uy',
+};
+
 const OUT_DIR = path.join(__dirname, '..', 'data', 'stm_scraped');
 const ERRORS_FILE = path.join(OUT_DIR, 'errors.json');
 const SUCCESS_FILE = path.join(OUT_DIR, 'success.json');
 
-// ─── Mapeo línea → empresa (heurística por código de bus IMM) ────────────────
-// Para códigos numéricos, agrupar por rango. Líneas con prefijo letra (CE, BT,
-// L, D, G) son típicamente diferenciales/locales — empresa se determina post
-// scrapeo cruzando con el endpoint stm-online (que sí reporta codigoEmpresa).
-function inferirAgencyId(_lineaCodigo) {
-  // Por ahora null: se completa con un cross-merge posterior contra
-  // `competidores` o `gps_pings_raw` que sí tienen el codigoEmpresa real.
-  return null;
+// ─── Mapeo línea → empresa desde stm-online (se construye en main()) ──────────
+// Clave: String(linea), Valor: number (codigoEmpresa: 10=COETC, 20=COME, 50=CUTCSA, 70=UCOT)
+let lineaToEmpresa = new Map();
+
+function inferirAgencyId(lineaCodigo) {
+  return lineaToEmpresa.get(String(lineaCodigo)) ?? null;
+}
+
+// ─── Construir mapa linea→empresa llamando stm-online UNA vez ─────────────────
+async function buildLineaToEmpresaMap() {
+  console.log('Consultando stm-online para mapear líneas → empresa…');
+  try {
+    const res = await fetch(STM_ONLINE_URL, {
+      method: 'POST',
+      headers: STM_HEADERS,
+      body: JSON.stringify({ empresa: '-1' }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    let mapped = 0;
+    for (const f of data.features ?? []) {
+      const p = f.properties;
+      if (p?.linea && p?.codigoEmpresa) {
+        const k = String(p.linea);
+        if (!lineaToEmpresa.has(k)) {
+          lineaToEmpresa.set(k, Number(p.codigoEmpresa));
+          mapped++;
+        }
+      }
+    }
+    console.log(`stm-online: ${data.features?.length ?? 0} buses → ${mapped} líneas únicas mapeadas`);
+  } catch (e) {
+    console.warn(`[WARN] stm-online falló (${e.message}). agencyId quedará null para todas las líneas.`);
+  }
 }
 
 // ─── Conversión UTM 21S → WGS84 (mismo algoritmo verificado en browser) ──────
@@ -94,15 +129,46 @@ function utm21sToLatLng(easting, northing) {
   return { lat: (lat * 180) / Math.PI, lng: (lng * 180) / Math.PI };
 }
 
-// ─── Scraper principal ───────────────────────────────────────────────────────
-async function scrapeLinea(page, lineaTexto) {
-  await page.goto(STM_URL, { waitUntil: 'networkidle2', timeout: 30000 });
-  await page.waitForSelector('select[id$="slLinea_input"]', { timeout: 15000 });
+// ─── Extractor de datos del mapa OL (reutilizado por cada sentido) ────────────
+const EXTRACT_MAP_DATA_FN = `
+(function extractMapData() {
+  var layers = window.map.getLayers().getArray();
+  var shape = [], seenSh = {}, paradas = [], seenP = {};
+  layers.forEach(function(l) {
+    var src = l.getSource && l.getSource();
+    if (!src || typeof src.getFeatures !== 'function') return;
+    src.getFeatures().forEach(function(f) {
+      var geom = f.getGeometry && f.getGeometry();
+      if (!geom) return;
+      if (geom.getType() === 'LineString') {
+        geom.getCoordinates().forEach(function(c) {
+          var ll = window.utm21sToLatLng(c[0], c[1]);
+          var k = ll.lat.toFixed(6) + ',' + ll.lng.toFixed(6);
+          if (!seenSh[k]) { seenSh[k] = 1; shape.push(ll); }
+        });
+      } else if (geom.getType() === 'Point') {
+        var c = geom.getCoordinates();
+        var ll = window.utm21sToLatLng(c[0], c[1]);
+        var txt = f.get('txt') || '';
+        var m = txt.match(/<span class=["']?value["']?>\\s*([^<]+?)\\s*<\\/span>/);
+        var nombre = m ? m[1].trim() : null;
+        var k = ll.lat.toFixed(5) + ',' + ll.lng.toFixed(5) + ',' + (nombre || '');
+        if (!seenP[k]) { seenP[k] = 1; paradas.push({ lat: ll.lat, lng: ll.lng, nombre: nombre }); }
+      }
+    });
+  });
+  return { shape: shape, paradas: paradas };
+})()
+`;
 
-  // Inyectar utm21sToLatLng en el contexto de la página
+// ─── Scraper por sentido (ciclo completo independiente, sin goBack) ───────────
+// Razón: goBack() retorna al formulario vacío (estado pre-Consultar), no a la
+// lista de resultados. Hacer 2 ciclos completos independientes es más confiable.
+async function scrapeLineaSentido(page, lineaTexto, sentido) {
+  await page.goto(STM_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.waitForSelector('select[id$="slLinea_input"]', { timeout: 20000 });
   await page.evaluate(`window.utm21sToLatLng = ${utm21sToLatLng.toString()};`);
 
-  // Seleccionar línea
   const ok = await page.evaluate((linTxt) => {
     const sel = document.querySelector('select[id$="slLinea_input"]');
     const opt = Array.from(sel.options).find((o) => o.text.trim() === linTxt);
@@ -111,106 +177,102 @@ async function scrapeLinea(page, lineaTexto) {
     sel.dispatchEvent(new Event('change', { bubbles: true }));
     return true;
   }, lineaTexto);
-  if (!ok) return { error: 'linea-no-encontrada', linea: lineaTexto };
+  if (!ok) return null;
 
-  // Click CONSULTAR
+  // Click Consultar
   await page.evaluate(() => {
     const btn = [...document.querySelectorAll('a, button, .ui-button')].find((e) =>
       /consultar/i.test((e.textContent || '').trim()),
     );
     btn?.click();
   });
-  await page.waitForTimeout(4000);
+  await new Promise((r) => setTimeout(r, 4000));
 
-  const result = { linea: lineaTexto, ida: null, vuelta: null };
-
-  for (const tab of ['Ida', 'Vuelta']) {
-    // Cambiar tab si existe
-    await page.evaluate((t) => {
+  // Si es Vuelta, cambiar tab
+  if (sentido === 'Vuelta') {
+    await page.evaluate(() => {
       const el = [...document.querySelectorAll('a, span, li')].find(
-        (e) => e.textContent.trim() === t,
+        (e) => e.textContent.trim() === 'Vuelta',
       );
       el?.click();
-    }, tab);
-    await page.waitForTimeout(1500);
-
-    // Click primer botón Recorrido (2do icono de la primera fila)
-    const opened = await page.evaluate(() => {
-      const rows = document.querySelectorAll('table tbody tr');
-      if (rows.length === 0) return false;
-      const btns = rows[0].querySelectorAll('a, button, .ui-button');
-      if (btns.length < 2) return false;
-      btns[1].click();
-      return true;
     });
-    if (!opened) continue;
-
-    // Esperar mapa.xhtml y que window.map esté listo
-    await page.waitForFunction(
-      'window.map && typeof window.map.getLayers === "function"',
-      { timeout: 15000 },
-    );
-    // Re-inyectar el converter
-    await page.evaluate(`window.utm21sToLatLng = ${utm21sToLatLng.toString()};`);
-
-    // Extraer shape + paradas
-    const datos = await page.evaluate(() => {
-      const layers = window.map.getLayers().getArray();
-      const shape = [];
-      const seenSh = new Set();
-      const paradas = [];
-      const seenP = new Set();
-      layers.forEach((l) => {
-        const feats =
-          l.getSource && l.getSource().getFeatures && l.getSource().getFeatures();
-        if (!feats) return;
-        feats.forEach((f) => {
-          const geom = f.getGeometry && f.getGeometry();
-          if (!geom) return;
-          if (geom.getType() === 'LineString') {
-            geom.getCoordinates().forEach((c) => {
-              const ll = window.utm21sToLatLng(c[0], c[1]);
-              const k = `${ll.lat.toFixed(6)},${ll.lng.toFixed(6)}`;
-              if (!seenSh.has(k)) {
-                seenSh.add(k);
-                shape.push(ll);
-              }
-            });
-          } else if (geom.getType() === 'Point') {
-            const c = geom.getCoordinates();
-            const ll = window.utm21sToLatLng(c[0], c[1]);
-            const txt = f.get('txt') || '';
-            const m = txt.match(/<span class=["']?value["']?>\s*([^<]+?)\s*<\/span>/);
-            const nombre = m ? m[1].trim() : null;
-            const k = `${ll.lat.toFixed(5)},${ll.lng.toFixed(5)},${nombre || ''}`;
-            if (!seenP.has(k)) {
-              seenP.add(k);
-              paradas.push({ lat: ll.lat, lng: ll.lng, nombre });
-            }
-          }
-        });
-      });
-      return { shape, paradas };
-    });
-
-    result[tab.toLowerCase()] = datos;
-
-    // Volver al listado
-    await page.goBack({ waitUntil: 'networkidle2' });
-    await page.waitForTimeout(2000);
+    await new Promise((r) => setTimeout(r, 1500));
   }
+
+  const btnExiste = await page.evaluate(() =>
+    !!document.querySelector('button[title="Mostrar recorrido"]'),
+  );
+  if (!btnExiste) return null;
+
+  // Navegar al mapa — domcontentloaded porque la página carga tiles indefinidamente
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }),
+    page.evaluate(() => document.querySelector('button[title="Mostrar recorrido"]').click()),
+  ]);
+
+  // Esperar LineString en OL (el shape vectorial llega antes que los tiles raster)
+  const lineStringOk = await page
+    .waitForFunction(
+      `window.map &&
+       typeof window.map.getLayers === "function" &&
+       window.map.getLayers().getArray().some(function(l) {
+         return l.getSource && l.getSource() &&
+                typeof l.getSource().getFeatures === "function" &&
+                l.getSource().getFeatures().some(function(f) {
+                  var g = f.getGeometry && f.getGeometry();
+                  return g && g.getType() === "LineString";
+                });
+       })`,
+      { timeout: 20000 },
+    )
+    .catch(() => null);
+
+  // Fallback: si no hay LineString en 20s, esperar cualquier feature (líneas sin shape)
+  if (!lineStringOk) {
+    await page
+      .waitForFunction(
+        `window.map &&
+         window.map.getLayers().getArray().some(function(l) {
+           return l.getSource && l.getSource() &&
+                  typeof l.getSource().getFeatures === "function" &&
+                  l.getSource().getFeatures().length > 0;
+         })`,
+        { timeout: 5000 },
+      )
+      .catch(() => {});
+  }
+
+  await page.evaluate(`window.utm21sToLatLng = ${utm21sToLatLng.toString()};`);
+  const datos = await page.evaluate(EXTRACT_MAP_DATA_FN);
+  return datos;
+}
+
+// ─── Scraper principal (llama scrapeLineaSentido 2 veces: Ida + Vuelta) ───────
+async function scrapeLinea(page, lineaTexto) {
+  const result = { linea: lineaTexto, ida: null, vuelta: null };
+  result.ida = await scrapeLineaSentido(page, lineaTexto, 'Ida').catch((e) => {
+    console.error(`  [Ida] ${e.message}`);
+    return null;
+  });
+  result.vuelta = await scrapeLineaSentido(page, lineaTexto, 'Vuelta').catch((e) => {
+    console.error(`  [Vuelta] ${e.message}`);
+    return null;
+  });
   return result;
 }
 
 // ─── Persistencia Firestore ──────────────────────────────────────────────────
 async function persistirEnFirestore(db, scrapeResult) {
   const linea = scrapeResult.linea;
-  const agencyId = inferirAgencyId(linea); // null por ahora — se cruza después
+  const agencyId = inferirAgencyId(linea);
   for (const sentido of ['ida', 'vuelta']) {
     const data = scrapeResult[sentido];
     if (!data || !data.shape || data.shape.length === 0) continue;
     const sentidoUpper = sentido.toUpperCase();
-    const docId = `imm_${linea}_${sentidoUpper}`;
+    // Doc ID incluye agencyId cuando lo conocemos, para que navigationDataService
+    // pueda buscar por where('agencyId', '==', String(agencyId)) correctamente.
+    const prefix = agencyId ? String(agencyId) : 'imm';
+    const docId = `${prefix}_${linea}_${sentidoUpper}`;
     await db
       .collection('shapes_cross_operator')
       .doc(docId)
@@ -239,33 +301,55 @@ async function main() {
   admin.initializeApp();
   const db = admin.firestore();
 
+  // 0. Construir mapa línea → empresa desde stm-online (una sola llamada)
+  await buildLineaToEmpresaMap();
+
   const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
   const page = await browser.newPage();
   page.setDefaultTimeout(30000);
 
-  // 1. Levantar el catálogo de líneas
-  await page.goto(STM_URL, { waitUntil: 'networkidle2' });
-  await page.waitForSelector('select[id$="slLinea_input"]');
-  const lineas = await page.evaluate(() => {
+  // 1. Levantar el catálogo de líneas del dropdown JSF
+  await page.goto(STM_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.waitForSelector('select[id$="slLinea_input"]', { timeout: 20000 });
+  const lineasJSF = await page.evaluate(() => {
     const sel = document.querySelector('select[id$="slLinea_input"]');
     return Array.from(sel.options)
       .filter((o) => o.value && !o.text.includes('Seleccione'))
       .map((o) => o.text.trim());
   });
-  console.log(`Catálogo: ${lineas.length} líneas`);
+  console.log(`Catálogo JSF: ${lineasJSF.length} líneas`);
+
+  // 2. Cross-check: líneas operando hoy que no están en el dropdown JSF
+  const lineasJSFSet = new Set(lineasJSF);
+  const lineasExtra = [];
+  for (const linea of lineaToEmpresa.keys()) {
+    if (!lineasJSFSet.has(linea)) {
+      lineasExtra.push(linea);
+    }
+  }
+  if (lineasExtra.length > 0) {
+    console.log(`stm-online tiene ${lineasExtra.length} líneas extra (no en JSF): ${lineasExtra.join(', ')}`);
+  }
+
+  // Lista completa = JSF + extras de stm-online
+  const lineas = [...lineasJSF, ...lineasExtra];
+  console.log(`Total a scrapear: ${lineas.length} líneas`);
 
   const success = [];
   const errors = [];
 
   for (let i = 0; i < lineas.length; i++) {
     const linea = lineas[i];
-    console.log(`[${i + 1}/${lineas.length}] ${linea}…`);
+    const empresa = lineaToEmpresa.get(String(linea));
+    const empresaLabel = empresa ? `emp:${empresa}` : 'sin-empresa';
+    console.log(`[${i + 1}/${lineas.length}] ${linea} (${empresaLabel})…`);
     try {
       const r = await scrapeLinea(page, linea);
       if (r.ida || r.vuelta) {
         await persistirEnFirestore(db, r);
         success.push({
           linea,
+          agencyId: empresa ?? null,
           idaShape: r.ida?.shape?.length ?? 0,
           idaParadas: r.ida?.paradas?.length ?? 0,
           vueltaShape: r.vuelta?.shape?.length ?? 0,
@@ -289,10 +373,18 @@ async function main() {
   fs.writeFileSync(ERRORS_FILE, JSON.stringify(errors, null, 2));
   await browser.close();
 
+  // Resumen por empresa
+  const porEmpresa = {};
+  for (const s of success) {
+    const k = String(s.agencyId ?? 'desconocida');
+    porEmpresa[k] = (porEmpresa[k] ?? 0) + 1;
+  }
+
   console.log(`\n=== RESUMEN ===`);
   console.log(`Total: ${lineas.length}`);
   console.log(`OK: ${success.length}`);
   console.log(`Errores: ${errors.length}`);
+  console.log(`Por empresa:`, porEmpresa);
 }
 
 main().catch((e) => {
