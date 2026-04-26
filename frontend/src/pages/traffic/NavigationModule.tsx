@@ -271,6 +271,7 @@ export default function NavigationModule() {
   );
 
   useEffect(() => {
+    if (!user?.uid) return; // esperar auth antes de consultar Firestore
     setListCompleta([]);
     setSelectedCodigo('');
     setFilterLinea(TODAS);
@@ -288,7 +289,7 @@ export default function NavigationModule() {
         }
       })
       .finally(() => setLoading(false));
-  }, [lineaParam, empresaPropia]);
+  }, [lineaParam, empresaPropia, user?.uid]);
 
   useEffect(() => {
     if (
