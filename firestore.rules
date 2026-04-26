@@ -219,6 +219,7 @@ service cloud.firestore {
     match /shapes_cross_operator/{document=**} {
       // Lectura: conductores, tráfico, admin (Navegador + ShadowRadar + análisis cross-op).
       // Escritura: solo admin SDK (scraper STM + shapeBuilder Cloud Function).
+      // Hash bump 2026-04-26-bb: forzar upload real (Firebase CLI hash stale).
       allow get, list: if isAuthenticated();
       allow write: if false;
     }
