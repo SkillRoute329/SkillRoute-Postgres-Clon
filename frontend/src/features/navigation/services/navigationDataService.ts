@@ -23,6 +23,7 @@ import {
   query,
   where,
   getDocs,
+  getDocsFromServer,
   limit as limitDocs,
   doc,
   getDoc,
@@ -179,7 +180,10 @@ function haversineMetros(p1: PuntoLatLng, p2: PuntoLatLng): number {
  */
 async function fetchShapesCrossOperator(agencyId: number): Promise<LineaUCOTResumen[]> {
   try {
-    const snap = await getDocs(
+    // getDocsFromServer fuerza la query al servidor, ignorando el caché local.
+    // Necesario porque persistentLocalCache puede tener cacheado un "permission-denied"
+    // de antes del fix de reglas, sirviendo el resultado denegado sin consultar Firebase.
+    const snap = await getDocsFromServer(
       query(
         collection(db, SHAPES_COL),
         where('agencyId', '==', String(agencyId)),
@@ -239,7 +243,7 @@ async function fetchShapeForLinea(
   const sentidoFiltro: 'IDA' | 'VUELTA' = codigo.endsWith('b') ? 'VUELTA' : 'IDA';
 
   try {
-    const snap = await getDocs(
+    const snap = await getDocsFromServer(
       query(
         collection(db, SHAPES_COL),
         where('agencyId', '==', String(agencyId)),
@@ -384,7 +388,7 @@ export function getEmpresaLabel(agencyId: number): string {
  */
 export async function hayShapesParaOperador(agencyId: number): Promise<boolean> {
   try {
-    const snap = await getDocs(
+    const snap = await getDocsFromServer(
       query(
         collection(db, SHAPES_COL),
         where('agencyId', '==', String(agencyId)),
