@@ -217,7 +217,9 @@ service cloud.firestore {
     }
 
     match /shapes_cross_operator/{document=**} {
-      allow read: if isAuthenticated();
+      // Lectura: conductores, tráfico, admin (Navegador + ShadowRadar + análisis cross-op).
+      // Escritura: solo admin SDK (scraper STM + shapeBuilder Cloud Function).
+      allow get, list: if isAuthenticated();
       allow write: if false;
     }
 
