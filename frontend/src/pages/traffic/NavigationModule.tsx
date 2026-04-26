@@ -30,7 +30,10 @@ import {
   syncLineaFromAPI,
   type LineaUCOTResumen,
 } from '../../services/ucotLinesService';
-import { getLineasByAgency, getLineaDataByAgency } from '../../services/linesService';
+import {
+  getNavigationLineas,
+  getNavigationLineaData,
+} from '../../features/navigation/services/navigationDataService';
 import {
   getOverride,
   setOverride,
@@ -272,7 +275,7 @@ export default function NavigationModule() {
     setSelectedCodigo('');
     setFilterLinea(TODAS);
     setLoading(true);
-    getLineasByAgency(empresaPropia)
+    getNavigationLineas(empresaPropia)
       .then((list) => {
         setListCompleta(list);
         if (list.length > 0) {
@@ -304,7 +307,7 @@ export default function NavigationModule() {
     }
     setLoading(true);
     const lineCodigo = getLineCodigo(selectedCodigo);
-    getLineaDataByAgency(empresaPropia, lineCodigo)
+    getNavigationLineaData(empresaPropia, lineCodigo)
       .then((data) => {
         setLinea(data);
         setSelectedStopId(null);
@@ -422,7 +425,7 @@ export default function NavigationModule() {
     clearRouteOverride(selectedCodigo);
     setRouteHasOverride(false);
     setShowRouteEditor(false);
-    getLineaDataByAgency(empresaPropia, getLineCodigo(selectedCodigo))
+    getNavigationLineaData(empresaPropia, getLineCodigo(selectedCodigo))
       .then(setLinea)
       .catch(() => {});
   }, [selectedCodigo, empresaPropia, getLineCodigo]);
@@ -522,7 +525,7 @@ export default function NavigationModule() {
         // bloqueado por la IMM). Solo recargamos desde Firestore.
         console.warn('[Navegador] Sincronización STM temporalmente no disponible — datos cargados desde Firestore offline.');
       }
-      const data = await getLineaDataByAgency(empresaPropia, lineCodigo);
+      const data = await getNavigationLineaData(empresaPropia, lineCodigo);
       setLinea(data);
     } catch (e) {
       console.error(e);
@@ -693,7 +696,7 @@ export default function NavigationModule() {
                   type="button"
                   onClick={() => {
                     setLoading(true);
-                    getLineasByAgency(empresaPropia)
+                    getNavigationLineas(empresaPropia)
                       .then((list) => {
                         setListCompleta(list);
                         if (list.length > 0 && !selectedCodigo) setSelectedCodigo(list[0].id);

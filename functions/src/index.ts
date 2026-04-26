@@ -892,3 +892,14 @@ export { systemHealth } from './systemHealth';
 // ─── NeTEx Framework Discovery (EU/Interop stds) ─────────────────────────────
 // GET /netexEndpoint/discovery.{xml,json} para agregadores MaaS europeos.
 export { netexEndpoint } from './netexEndpoint';
+
+// ─── GPS History Accumulator — acumula pings GPS con TTL 7 días ──────────────
+// Cron 60s: muestrea todos los buses del sistema y persiste en gps_pings_raw.
+// Fuente primaria para shapeBuilder (shapes GPS-derived cross-operador).
+export { gpsHistoryAccumulatorTick } from './gpsHistoryAccumulator';
+
+// ─── Shape Builder — reconstruye shapes desde historial GPS ──────────────────
+// Cron 1h: lee gps_pings_raw, aplica Douglas-Peucker, materializa en
+// shapes_cross_operator/{agencyId}_{linea}_{variante} con agencyId correcto.
+// HTTP /shapeBuilderRun?agencyId=70&linea=300 para forzar reconstrucción puntual.
+export { shapeBuilderTick, shapeBuilderRun } from './shapeBuilder';
