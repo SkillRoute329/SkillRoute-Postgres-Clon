@@ -220,7 +220,8 @@ async function fetchShapesCrossOperator(agencyId: number): Promise<LineaUCOTResu
     return out.sort((a, b) =>
       a.codigo.localeCompare(b.codigo, undefined, { numeric: true }),
     );
-  } catch {
+  } catch (err) {
+    console.error(`[navigationDataService] fetchShapesCrossOperator(${agencyId}) falló:`, err);
     return [];
   }
 }
@@ -301,7 +302,8 @@ async function fetchShapeForLinea(
         nanoseconds: 0,
       } as unknown as LineaUCOT['ultimaActualizacion'],
     };
-  } catch {
+  } catch (err) {
+    console.error(`[navigationDataService] fetchShapeForLinea(${agencyId}, ${codigo}) falló:`, err);
     return null;
   }
 }
@@ -390,7 +392,8 @@ export async function hayShapesParaOperador(agencyId: number): Promise<boolean> 
       ),
     );
     return !snap.empty;
-  } catch {
+  } catch (err) {
+    console.error(`[navigationDataService] hayShapesParaOperador(${agencyId}) falló:`, err);
     return false;
   }
 }

@@ -159,6 +159,14 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "vehicle_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
         { "fieldPath": "timestampGPS", "order": "DESCENDING" }
       ]
     },
@@ -208,6 +216,14 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "tipo", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "vehicle_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "empresa", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "ASCENDING" }
       ]
     },
@@ -283,6 +299,22 @@
         { "fieldPath": "operadorId", "order": "ASCENDING" },
         { "fieldPath": "estado", "order": "ASCENDING" },
         { "fieldPath": "resolvedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "shapes_cross_operator",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "linea", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "shapes_cross_operator",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "sentido", "order": "ASCENDING" }
       ]
     }
   ],
