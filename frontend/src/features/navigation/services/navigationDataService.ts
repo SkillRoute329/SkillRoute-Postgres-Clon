@@ -28,7 +28,7 @@ import {
   doc,
   getDoc,
 } from 'firebase/firestore';
-import { db } from '../../../config/firebase';
+import { db, auth } from '../../../config/firebase';
 import type { LineaUCOT, ParadaUcot, PuntoLatLng, SentidoLinea } from '../../../types/lineasUcot';
 import {
   getLineasByAgency,
@@ -43,6 +43,15 @@ import {
 import { LINE_ARCHETYPES } from '../../../data/lineTemplates';
 
 const SHAPES_COL = 'shapes_cross_operator';
+
+// Fuerza al Firestore SDK a sincronizar el auth token antes de cualquier query.
+// Con persistentMultipleTabManager, el SDK puede no tener el token en cold start
+// aunque Firebase Auth sí lo tenga — getIdToken() dispara la sincronización interna.
+async function ensureAuthToken(): Promise<void> {
+  if (auth.currentUser) {
+    await auth.currentUser.getIdToken();
+  }
+}
 
 const AGENCY_NAME: Record<number, string> = {
   10: 'COETC',
@@ -180,9 +189,7 @@ function haversineMetros(p1: PuntoLatLng, p2: PuntoLatLng): number {
  */
 async function fetchShapesCrossOperator(agencyId: number): Promise<LineaUCOTResumen[]> {
   try {
-    // getDocsFromServer fuerza la query al servidor, ignorando el caché local.
-    // Necesario porque persistentLocalCache puede tener cacheado un "permission-denied"
-    // de antes del fix de reglas, sirviendo el resultado denegado sin consultar Firebase.
+    await ensureAuthToken();
     const snap = await getDocsFromServer(
       query(
         collection(db, SHAPES_COL),
@@ -243,6 +250,7 @@ async function fetchShapeForLinea(
   const sentidoFiltro: 'IDA' | 'VUELTA' = codigo.endsWith('b') ? 'VUELTA' : 'IDA';
 
   try {
+    await ensureAuthToken();
     const snap = await getDocsFromServer(
       query(
         collection(db, SHAPES_COL),
@@ -388,6 +396,7 @@ export function getEmpresaLabel(agencyId: number): string {
  */
 export async function hayShapesParaOperador(agencyId: number): Promise<boolean> {
   try {
+    await ensureAuthToken();
     const snap = await getDocsFromServer(
       query(
         collection(db, SHAPES_COL),
@@ -402,7 +411,3 @@ export async function hayShapesParaOperador(agencyId: number): Promise<boolean> 
   }
 }
 
-// Suprime el TS warning si `doc` y `getDoc` no se usan (los imports están listos
-// para una posible expansión futura — fetch directo por agencyId_linea_variante).
-void doc;
-void getDoc;
