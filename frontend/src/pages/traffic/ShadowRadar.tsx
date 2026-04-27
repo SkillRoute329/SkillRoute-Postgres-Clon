@@ -572,6 +572,10 @@ const ShadowRadar: React.FC = () => {
         hrrRatio: number | null;
         /** Distancia hasta el siguiente bus de tu misma empresa+línea, en metros. */
         distanciaMismaLineaPropiaM: number | null;
+        /** Presión competitiva 0-100: combina HRR × pctAInB (DRO).
+         *  Mide qué tanto riesgo comercial real representa este rival en el corredor.
+         *  0-30 → baja, 30-60 → media, 60+ → alta. Solo para T1/T2. */
+        presionCompetitivaScore: number | null;
       };
 
       /** Velocidad de fallback en km/h cuando un bus reporta 0/undefined.
@@ -668,6 +672,10 @@ const ShadowRadar: React.FC = () => {
           dist,
           r.velocidad,
         );
+        const presionCompetitivaScore =
+          hrrCanonical.hrrRatio !== null
+            ? Math.min(Math.round(hrrCanonical.hrrRatio * (overlap.pctAInB / 100) * 100), 100)
+            : null;
         droRivales.push({
           ...r,
           distanciaMetros: dist,
@@ -678,6 +686,7 @@ const ShadowRadar: React.FC = () => {
           closingKmh: closing.closingKmh,
           hrrRatio: hrrCanonical.hrrRatio,
           distanciaMismaLineaPropiaM: hrrCanonical.distanciaMismaLineaPropiaM,
+          presionCompetitivaScore,
         });
       }
 
@@ -702,6 +711,7 @@ const ShadowRadar: React.FC = () => {
             closingKmh: closing.closingKmh,
             hrrRatio: hrrCanonical.hrrRatio,
             distanciaMismaLineaPropiaM: hrrCanonical.distanciaMismaLineaPropiaM,
+            presionCompetitivaScore: null,
           };
         })
         .filter(r => {
@@ -1238,8 +1248,9 @@ const ShadowRadar: React.FC = () => {
                                 etaSec === null
                                   ? 'Velocidades similares, rival mantiene distancia'
                                   : `ETA ${etaTxt} a cierre · Δv ${r.closingKmh} km/h`;
-                              // HRR canónico (Swiftly/NYC MTA): headway propio / headway al rival.
+                              // HRR canónico (Swiftly/NYC MTA) + Presión Competitiva DRO
                               const hrr = r.hrrRatio;
+                              const pcs = r.presionCompetitivaScore;
                               const hrrColor =
                                 hrr === null
                                   ? 'text-slate-500'
@@ -1258,7 +1269,21 @@ const ShadowRadar: React.FC = () => {
                                       : hrr <= 1.2
                                       ? 'tu próximo bus y el rival llegan parejo (empate)'
                                       : 'rival llega antes que tu próximo bus (perdés pasajero)') +
-                                    ` · próximo propio a ${r.distanciaMismaLineaPropiaM ?? '?'}m`;
+                                    ` · próximo propio a ${r.distanciaMismaLineaPropiaM ?? '?'}m` +
+                                    (pcs !== null ? ` · Presión DRO: ${pcs}/100` : '');
+                              const pcsColor =
+                                pcs === null
+                                  ? ''
+                                  : pcs < 30
+                                  ? 'bg-emerald-900/40 text-emerald-400 border-emerald-700'
+                                  : pcs < 60
+                                  ? 'bg-amber-900/40 text-amber-400 border-amber-700'
+                                  : 'bg-red-900/50 text-red-300 border-red-700';
+                              const pcsTitle =
+                                pcs === null
+                                  ? ''
+                                  : `Presión competitiva DRO: ${pcs}/100 (HRR×corredor_compartido) — ` +
+                                    (pcs < 30 ? 'baja amenaza en corredor' : pcs < 60 ? 'amenaza moderada' : 'amenaza alta — corredor compartido con rival fuerte');
                               return (
                                 <div key={i} className="flex items-center justify-between text-xs bg-slate-900/80 rounded px-2 py-1 border border-slate-800 gap-2">
                                   <span className="text-red-400 font-bold flex items-center gap-1 min-w-0">
@@ -1281,6 +1306,14 @@ const ShadowRadar: React.FC = () => {
                                     >
                                       HRR {hrrTxt}
                                     </span>
+                                    {pcs !== null && (
+                                      <span
+                                        className={`font-mono text-[9px] font-bold px-1.5 py-0.5 rounded border ${pcsColor}`}
+                                        title={pcsTitle}
+                                      >
+                                        {pcs}%
+                                      </span>
+                                    )}
                                     <span className={`font-mono font-bold ${
                                       r.distanciaMetros < 500 ? 'text-red-400' : 'text-orange-400'
                                     }`}>
