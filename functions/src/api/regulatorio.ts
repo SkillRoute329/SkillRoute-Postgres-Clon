@@ -51,6 +51,22 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 // ─── Auth middleware ────────────────────────────────────────────────
+/**
+ * requireAdmin — convención de auth del sistema SkillRoute
+ *
+ * IMPORTANTE: el sistema NO usa custom claims del JWT para roles.
+ * Replica la lógica de firestore.rules `getUserRole()`:
+ *   1) Verificar ID token con Firebase Auth.
+ *   2) Leer documento `users/{uid}` de Firestore.
+ *   3) Aceptar campo `role` o `rol` (compatibilidad legacy), normalizar
+ *      a lowercase.
+ *   4) Permitir solo si role ∈ {admin, superadmin}.
+ *
+ * El campo `name` del JWT (Firebase Auth `displayName`) NO indica rol —
+ * es un display string. Bug detectado bajo Regla §12 cuando un
+ * SuperAdmin con `displayName: "SuperAdmin"` recibía 403 porque el
+ * código original leía `decoded.role` en lugar de `users/{uid}.role`.
+ */
 async function requireAdmin(
   req: Request,
   res: Response,
@@ -64,12 +80,26 @@ async function requireAdmin(
   const idToken = authHeader.substring(7);
   try {
     const decoded = await admin.auth().verifyIdToken(idToken);
-    const role = (decoded as { role?: string }).role;
-    if (role !== 'ADMIN' && role !== 'SUPERADMIN') {
-      res.status(403).json({ error: 'Solo ADMIN o SUPERADMIN' });
+    const userDoc = await db.collection('users').doc(decoded.uid).get();
+    if (!userDoc.exists) {
+      res.status(403).json({
+        error: 'Usuario no registrado en sistema',
+        detail: 'No existe documento users/{uid} en Firestore',
+      });
       return;
     }
-    (req as Request & { user?: typeof decoded }).user = decoded;
+    const userData = userDoc.data() || {};
+    const rawRole = (userData.role ?? userData.rol ?? '').toString().toLowerCase();
+    const isAdmin = rawRole === 'admin' || rawRole === 'superadmin';
+    if (!isAdmin) {
+      res.status(403).json({
+        error: 'Solo ADMIN o SUPERADMIN',
+        detail: `Tu rol actual es '${rawRole || 'sin rol'}'. Contacta al administrador.`,
+      });
+      return;
+    }
+    (req as Request & { user?: typeof decoded; userRole?: string }).user = decoded;
+    (req as Request & { user?: typeof decoded; userRole?: string }).userRole = rawRole;
     next();
   } catch (err) {
     res.status(401).json({ error: 'Token inválido', detail: String(err) });
@@ -107,47 +137,49 @@ interface OTPMetric {
 }
 
 /**
- * Calcula OTP en vivo cruzando vehicle_events con horarios_stm.
+ * Mapea código numérico de operador (input del API) a agencyId string
+ * (campo real en Firestore vehicle_events).
+ */
+function codigoToAgencyId(codigo: number): string {
+  return String(codigo);
+}
+
+/**
+ * Calcula OTP en vivo desde vehicle_events usando estadoCumplimiento
+ * (campo pre-calculado por el sistema, fuente canónica de OTP).
  *
- * IMPORTANTE: si una línea no tiene horarios_stm cargados, sus eventos
- * NO cuentan como "fuera de hora" — cuentan como "no medibles".
- * Esto evita el bug crítico de reportar OTP=0% engañoso a un regulador
- * por falta de datos. Bug detectado bajo Regla §12 (verificación
- * en producción excluyente).
+ * Schema real verificado bajo Regla §12 (2026-04-25):
+ *  - vehicle_events.agencyId: string ("70" = UCOT, etc.)
+ *  - vehicle_events.createdAt: Timestamp (no "timestamp")
+ *  - vehicle_events.estadoCumplimiento: string ya pre-calculado:
+ *      EN_TIEMPO       → en hora (cuenta para OTP)
+ *      ADELANTADO      → fuera de hora (penaliza OTP)
+ *      SIN_HORARIO     → no medible (línea sin horarios_stm)
+ *      FUERA_DE_SERVICIO → no medible (coche en cochera/depósito)
+ *  - vehicle_events.desviacionMin: number (fallback si estadoCumplimiento ausente)
+ *  - NO existe el campo "tipo" en este schema.
  *
- * El campo `desviacionMin` ideal es precalculado por el ingestor IMM,
- * pero como ese pipeline aún no calcula desviación (gap conocido del
- * scraper STM por parada), aplicamos un fallback gracioso:
- * 1) Si el evento tiene `desviacionMin` numérico → usarlo.
- * 2) Si NO lo tiene pero su línea tiene `horarios_stm` → marcar
- *    como "medible pendiente de cálculo cron" (cuenta hacia
- *    `noMedibles` con razón "desviacion_pending").
- * 3) Si NO tiene `desviacionMin` y su línea NO tiene `horarios_stm`
- *    → marcar como "no medible por falta de horarios" y registrar
- *    la línea en `lineasSinHorariosStm`.
+ * Lógica de evaluación:
+ * 1) Si estadoCumplimiento === EN_TIEMPO → medible, en hora.
+ * 2) Si estadoCumplimiento === ADELANTADO → medible, fuera de hora.
+ * 3) Si estadoCumplimiento === SIN_HORARIO/FUERA_DE_SERVICIO → no medible.
+ * 4) Si no hay estadoCumplimiento pero hay desviacionMin numérico → fallback.
+ * 5) Si nada → no medible.
+ *
+ * Usamos el índice existente (agencyId ASC, createdAt ASC) — ya
+ * en firestore.indexes.json desde antes.
  */
 async function calcularOTP(
   empresa: number | null,
   desde: Date,
   hasta: Date,
 ): Promise<OTPMetric> {
-  // Paso 1 — cargar set de líneas que tienen horarios_stm disponibles
-  const lineasConHorarios = new Set<string>();
-  try {
-    const horariosSnap = await db.collection('horarios_stm').select().limit(500).get();
-    horariosSnap.forEach((doc) => lineasConHorarios.add(doc.id));
-  } catch (err) {
-    console.warn('[regulatorio.calcularOTP] no se pudo cargar horarios_stm:', err);
-  }
-
-  // Paso 2 — cargar eventos de arrivals
   let q: FirebaseFirestore.Query = db
     .collection('vehicle_events')
-    .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(desde))
-    .where('timestamp', '<=', admin.firestore.Timestamp.fromDate(hasta))
-    .where('tipo', '==', 'arrival_at_stop');
+    .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(desde))
+    .where('createdAt', '<=', admin.firestore.Timestamp.fromDate(hasta));
   if (empresa !== null) {
-    q = q.where('empresa', '==', empresa);
+    q = q.where('agencyId', '==', codigoToAgencyId(empresa));
   }
   const snap = await q.limit(50000).get();
 
@@ -162,19 +194,27 @@ async function calcularOTP(
     const d = doc.data();
     total++;
     const linea = String(d.linea || '').trim();
+    const estado = String(d.estadoCumplimiento || '').toUpperCase();
     const desv = d.desviacionMin;
 
-    if (typeof desv === 'number' && !isNaN(desv)) {
-      // Caso 1: desviación precalculada disponible — métrica medible
+    if (estado === 'EN_TIEMPO') {
+      medibles++;
+      enHora++;
+      if (linea) lineasMedidas.add(linea);
+    } else if (estado === 'ADELANTADO') {
+      medibles++;
+      if (linea) lineasMedidas.add(linea);
+    } else if (estado === 'SIN_HORARIO') {
+      noMedibles++;
+      if (linea) lineasFaltantes.add(linea);
+    } else if (estado === 'FUERA_DE_SERVICIO') {
+      noMedibles++;
+    } else if (typeof desv === 'number' && !isNaN(desv)) {
+      // Fallback secundario: usar desviacionMin si no hay estadoCumplimiento
       medibles++;
       if (linea) lineasMedidas.add(linea);
       if (Math.abs(desv) <= 5) enHora++;
-    } else if (linea && lineasConHorarios.has(linea)) {
-      // Caso 2: línea tiene horarios_stm pero falta cálculo de desviación
-      // (cron pipeline pendiente). No medible HOY — pendiente.
-      noMedibles++;
     } else {
-      // Caso 3: línea sin horarios_stm — gap conocido del scraper STM
       noMedibles++;
       if (linea) lineasFaltantes.add(linea);
     }
@@ -203,21 +243,25 @@ async function coberturaCrossOp(
   desde: Date,
   hasta: Date,
 ): Promise<CoberturaMetric[]> {
+  // Schema real (verificado bajo §12): agencyId string, createdAt, idBus.
+  // Usa el índice existente (agencyId ASC, createdAt ASC).
   const empresas = [10, 20, 50, 70];
   const result: CoberturaMetric[] = [];
   for (const empresa of empresas) {
     const snap = await db
       .collection('vehicle_events')
-      .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(desde))
-      .where('timestamp', '<=', admin.firestore.Timestamp.fromDate(hasta))
-      .where('empresa', '==', empresa)
+      .where('agencyId', '==', codigoToAgencyId(empresa))
+      .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(desde))
+      .where('createdAt', '<=', admin.firestore.Timestamp.fromDate(hasta))
       .limit(20000)
       .get();
     const busesSet = new Set<string>();
     const lineasSet = new Set<string>();
     snap.forEach((doc) => {
       const d = doc.data();
-      if (d.coche) busesSet.add(String(d.coche));
+      // idBus es el campo canónico; coche es legacy.
+      const bus = d.idBus ?? d.coche;
+      if (bus !== undefined && bus !== null) busesSet.add(String(bus));
       if (d.linea) lineasSet.add(String(d.linea));
     });
     result.push({
