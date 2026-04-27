@@ -77,17 +77,8 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         { path: '/dashboard/traffic/centro-turno', label: 'Centro de Turno', icon: Zap },
         { path: '/dashboard/traffic/fleet-monitor', label: 'Monitoreo de Flota', icon: Radio },
         { path: '/dashboard/traffic/otp', label: 'Puntualidad OTP', icon: BarChart3 },
+        { path: '/dashboard/traffic/diagnostico-cumplimiento', label: 'Diagnóstico de Cumplimiento', icon: Search },
         { path: '/dashboard/traffic/incidents', label: 'Centro de Incidencias', icon: Siren },
-        {
-          path: '/dashboard/traffic/inspector-control',
-          label: 'Control Inspectores',
-          icon: Activity,
-        },
-        {
-          path: '/dashboard/traffic/inspector-capture',
-          label: 'Captura Inspector (Móvil)',
-          icon: Smartphone,
-        },
       ],
     },
     {
@@ -233,6 +224,8 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         { path: '/dashboard/admin/audit-log', label: 'Audit Log', icon: ClipboardList },
         { path: '/dashboard/admin/cross-op-coverage', label: 'Cobertura Cross-Op', icon: Network },
         { path: '/dashboard/admin/rendicion-cuentas', label: 'Rendición de Cuentas', icon: ClipboardList },
+        { path: '/dashboard/traffic/inspector-control', label: 'Control Inspectores', icon: Activity },
+        { path: '/dashboard/traffic/inspector-capture', label: 'Captura Inspector', icon: Smartphone },
       ],
     },
     {

@@ -130,6 +130,7 @@ const CentroTurnoDashboard = lazy(() => import('./pages/traffic/CentroTurnoDashb
 const PanelFinancieroOperativo = lazy(() => import('./pages/traffic/PanelFinancieroOperativo'));
 const DisponibilidadFlota = lazy(() => import('./pages/fleet/DisponibilidadFlota'));
 const PanelRendicionCuentas = lazy(() => import('./pages/admin/PanelRendicionCuentas'));
+const DiagnosticoCumplimiento = lazy(() => import('./pages/traffic/DiagnosticoCumplimiento'));
 // Sprint 1 (2026-04-25): Pricing público — accesible sin auth
 const PricingPage = lazy(() => import('./pages/public/PricingPage'));
 const OnboardingPage = lazy(() => import('./pages/public/OnboardingPage'));
@@ -290,6 +291,7 @@ function App() {
                     <Route path="traffic/roi-calculator" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ROICalculator /></PrivateRoute>} />
                     <Route path="traffic/desvios" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><GestionDesviosPage /></PrivateRoute>} />
                     <Route path="traffic/centro-turno" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CentroTurnoDashboard /></PrivateRoute>} />
+                    <Route path="traffic/diagnostico-cumplimiento" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><DiagnosticoCumplimiento /></PrivateRoute>} />
                     <Route path="traffic/financiero-operativo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><PanelFinancieroOperativo /></PrivateRoute>} />
                     <Route path="fleet/disponibilidad" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><DisponibilidadFlota /></PrivateRoute>} />
                     <Route path="admin/rendicion-cuentas" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><PanelRendicionCuentas /></PrivateRoute>} />
