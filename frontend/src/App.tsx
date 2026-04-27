@@ -121,6 +121,7 @@ const ShadowAnalytics = lazy(() => import('./pages/traffic/ShadowAnalytics'));
 const MarketPenetration = lazy(() => import('./pages/traffic/MarketPenetration'));
 const CorridorMarketShare = lazy(() => import('./pages/traffic/CorridorMarketShare'));
 const ROICalculator = lazy(() => import('./pages/traffic/ROICalculator'));
+const GestionDesviosPage = lazy(() => import('./pages/traffic/GestionDesviosPage'));
 const StmScraperStatus = lazy(() => import('./pages/admin/StmScraperStatus'));
 const HeadwayInsights = lazy(() => import('./pages/traffic/HeadwayInsights'));
 const GPSPlayback = lazy(() => import('./pages/traffic/GPSPlayback'));
@@ -282,6 +283,7 @@ function App() {
                     <Route path="traffic/penetration" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><MarketPenetration /></PrivateRoute>} />
                     <Route path="traffic/market-share" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorridorMarketShare /></PrivateRoute>} />
                     <Route path="traffic/roi-calculator" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ROICalculator /></PrivateRoute>} />
+                    <Route path="traffic/desvios" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><GestionDesviosPage /></PrivateRoute>} />
                     <Route path="traffic/scraper-status" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><StmScraperStatus /></PrivateRoute>} />
                     <Route path="traffic/headway-insights" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><HeadwayInsights /></PrivateRoute>} />
                     <Route path="traffic/gps-playback" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><GPSPlayback /></PrivateRoute>} />

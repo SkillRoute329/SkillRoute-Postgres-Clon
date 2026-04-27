@@ -38,6 +38,7 @@ import {
   Route,
   Network,
   PieChart,
+  Navigation,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
@@ -183,6 +184,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           path: '/dashboard/traffic/contingency',
           label: 'Gestión de Contingencia',
           icon: ShieldAlert,
+        },
+        {
+          path: '/dashboard/traffic/desvios',
+          label: 'Centro de Desvíos',
+          icon: Navigation,
         },
       ],
     },
