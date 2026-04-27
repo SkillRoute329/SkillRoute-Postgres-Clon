@@ -6,7 +6,7 @@
 
 ---
 
-**Última actualización:** 2026-04-27 (sesión completa — audit + perf + scraper + Socket.io cleanup + deploy)
+**Última actualización:** 2026-04-27 (sesión continua — @ts-nocheck cleanup + ShadowRadar stale closure + refreshCompetidores verificado)
 
 ---
 
@@ -49,18 +49,21 @@ Verificar en orden:
 
 ## 🗂️ BACKLOG PRIORIZADO
 
-1. **MyShifts.tsx + Marketplace.tsx** — tienen `@ts-nocheck`, revisar y tipar correctamente.
-2. **Schedule/Cloud Function refresh periódico `competidores`** — el cron `refreshCompetidoresTick` ya está activo. Verificar que la colección `competidores` en Firestore se actualiza con datos reales cada 10 min.
-3. **Scraper JSF horarios reales** — el fix de agencyId está deployado; pendiente correr el scraper completo y verificar que los datos de horarios quedan bien en Firestore.
-4. **ShadowRadar.tsx:753** — posible stale closure (`ucotFlota` faltante en deps useMemo). Bajo riesgo pero anotado.
-5. **APK Android** — Capacitor configurado, pendiente generar.
-6. **Warn pre-auth race** en NavigationModule: guard `!user?.uid` en useEffect ~línea 300.
+1. **Scraper JSF horarios reales** — el fix de agencyId está deployado; pendiente correr el scraper completo y verificar que los datos de horarios quedan bien en Firestore.
+2. **APK Android** — Capacitor configurado, pendiente generar.
+3. **MaintenanceDashboard RBAC**: botón "cerrar ticket" inline no valida rol — revisar antes de producción real.
+
+### ✅ Completados en esta sesión
+- MyShifts.tsx — @ts-nocheck removido, ShiftAction union type, Promise<void> explícito
+- Marketplace.tsx — @ts-nocheck removido, filtro de búsqueda conectado (línea/coche/servicio)
+- refreshCompetidoresTick — verificado: 1124 buses, 3 competidores, 3041ms ✅
+- ShadowRadar.tsx:753 — stale closure corregido (ucotFlota agregado a deps del useMemo HRR)
+- NavigationModule warn pre-auth — guards `!user?.uid` ya presentes en líneas 253 y 276
 
 ---
 
 ## 🐛 BUGS CONOCIDOS NO CRÍTICOS
 
-- **Warn pre-auth race** en NavigationModule: aparece 1 vez por cambio de línea (fallback funciona). Fix: guard `!user?.uid` en useEffect ~línea 300.
 - **Errores TS pre-existentes** en `cascadeEngineService.ts` y `scheduleComplianceEngine.ts` — no bloquean build.
 - **MaintenanceDashboard RBAC**: botón "cerrar ticket" inline no valida rol — revisar antes de producción real.
 - **ShadowRadar IIFE getDocs line 449** — promesa puede completarse después del unmount (memory leak marginal).
