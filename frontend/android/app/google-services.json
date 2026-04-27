@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "231108889084",
+    "project_id": "ucot-gestor-cloud",
+    "storage_bucket": "ucot-gestor-cloud.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:231108889084:android:1c61add7f1754f635f0a79",
+        "android_client_info": {
+          "package_name": "com.ucot.transforma"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAfvPDh_uzQJOU2U9t4-0Xw36iqkOfQEqc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
