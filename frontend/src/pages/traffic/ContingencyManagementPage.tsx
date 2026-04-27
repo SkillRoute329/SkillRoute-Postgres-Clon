@@ -175,7 +175,7 @@ export default function ContingencyManagementPage() {
     });
 
     const afterTable =
-      (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+      ((doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 46) + 8;
     doc.setFontSize(11);
     doc.text('Vehículos disponibles para reemplazo:', 14, afterTable);
     autoTable(doc, {

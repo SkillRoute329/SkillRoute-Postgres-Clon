@@ -25,8 +25,8 @@ const MyBalance = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    calculateBalance();
-  }, []);
+    if (currentUser) calculateBalance();
+  }, [currentUser]);
 
   const calculateBalance = async () => {
     try {
@@ -71,7 +71,7 @@ const MyBalance = () => {
       // Combine for table display, adding a 'type' property for the table logic if needed, or just handling it there
       setDisplayShifts(
         [...assignedShifts, ...cededShifts].sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+          (a, b) => new Date(b.date ?? '').getTime() - new Date(a.date ?? '').getTime(),
         ),
       );
     } catch (err) {
@@ -224,8 +224,7 @@ const MyBalance = () => {
                         Base: $
                         {(shift as Record<string, unknown>).totalValue
                           ? (
-                              Number((shift as Record<string, unknown>).totalValue) -
-                              Number((shift as Record<string, unknown>).extraHours ?? 0) * 0
+                              Number((shift as Record<string, unknown>).totalValue)
                             ).toLocaleString()
                           : '---'}
                       </div>

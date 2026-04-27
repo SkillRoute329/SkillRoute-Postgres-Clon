@@ -47,6 +47,9 @@ import {
   Users,
   Wrench,
   Zap,
+  Radio,
+  Network,
+  Map,
 } from 'lucide-react';
 
 import { db } from '../../config/firebase';

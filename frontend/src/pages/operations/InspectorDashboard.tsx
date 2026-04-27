@@ -316,13 +316,17 @@ const InspectorDashboard = () => {
 
     setOffsets((prev) => ({ ...prev, [serviceNumber]: newValue }));
 
-    await BulletinService.save({
-      type: 'OFFSET',
-      line,
-      date: new Date().toISOString().split('T')[0],
-      serviceNumber,
-      value: newValue,
-    });
+    try {
+      await BulletinService.save({
+        type: 'OFFSET',
+        line,
+        date: new Date().toISOString().split('T')[0],
+        serviceNumber,
+        value: newValue,
+      });
+    } catch (e) {
+      console.error('adjustService save error', e);
+    }
   };
 
   /**
@@ -358,7 +362,7 @@ const InspectorDashboard = () => {
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold flex items-center gap-2">
             <Users className="text-primary-500" />
-            <span className="hidden md:inline">Control Inspectores V2 (LIVE)</span>
+            <span className="hidden md:inline">Control Inspectores V2 (EN VIVO)</span>
           </h1>
           <div className="flex items-center gap-2">
             <select

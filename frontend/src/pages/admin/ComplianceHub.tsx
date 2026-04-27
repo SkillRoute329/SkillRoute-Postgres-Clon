@@ -70,7 +70,7 @@ function calcularEstadoReporte(
   if (yaEnviado) return { estado: 'al_dia', diasRestantes };
   if (diasRestantes < 0) return { estado: 'vencido', diasRestantes };
   if (diasRestantes <= 3) return { estado: 'proximo', diasRestantes };
-  return { estado: 'proximo', diasRestantes };
+  return { estado: 'al_dia', diasRestantes };
 }
 
 // ─── Componente ───────────────────────────────────────────────────────────────

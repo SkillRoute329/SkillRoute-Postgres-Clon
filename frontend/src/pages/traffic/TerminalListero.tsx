@@ -552,12 +552,14 @@ function TabSemana({
     const promises = weekDates.map((fecha) =>
       ProgramacionSemanalService.getByFecha(fecha).then((r) => ({ fecha, r })),
     );
-    Promise.all(promises).then((results) => {
-      const map = new Map<string, ProgramacionSemanalRecord>();
-      results.forEach(({ fecha, r }) => { if (r) map.set(fecha, r); });
-      setSemanaData(map);
-      setLoadingSemana(false);
-    });
+    Promise.all(promises)
+      .then((results) => {
+        const map = new Map<string, ProgramacionSemanalRecord>();
+        results.forEach(({ fecha, r }) => { if (r) map.set(fecha, r); });
+        setSemanaData(map);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingSemana(false));
   }, [baseDate]);
 
   const handleParalizaAsignar = async (
@@ -1720,6 +1722,7 @@ export default function TerminalListero() {
   useEffect(() => {
     Promise.all([UserService.getAll(), FleetService.getVehicles()])
       .then(([u, v]) => { setUsers(u); setVehicles(v); })
+      .catch(() => {})
       .finally(() => setLoadingBase(false));
   }, []);
 
@@ -1942,9 +1945,9 @@ export default function TerminalListero() {
         {activeTab === 'semana' && (
           <TabSemana
             coches={coches}
-            programacion={programacion}
             users={users}
             baseDate={selectedDate}
+            onDateChange={setSelectedDate}
           />
         )}
         {activeTab === 'correlativos' && (

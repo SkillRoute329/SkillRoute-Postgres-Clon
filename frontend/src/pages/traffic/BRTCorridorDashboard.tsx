@@ -623,16 +623,16 @@ export default function BRTCorridorDashboard() {
   const [tarifaKmSlider, setTarifaKmSlider] = useState(420);
   const [kmDiaSlider, setKmDiaSlider] = useState(220);
 
-  const corredor = CORREDORES.find(c => c.id === corredorSel)!;
-  const escenario = ESCENARIOS_DESVIO.find(e => e.id === escenarioSel)!;
+  const corredor = CORREDORES.find(c => c.id === corredorSel) ?? CORREDORES[0];
+  const escenario = ESCENARIOS_DESVIO.find(e => e.id === escenarioSel) ?? ESCENARIOS_DESVIO[0];
 
   const m = MODELO_FINANCIERO;
   const margenActual = m.actual.ingresoDia - m.actual.costoDia;
   const ingresoBRTCalc = tarifaKmSlider * kmDiaSlider;
   const margenBRTCalc = ingresoBRTCalc - m.brt.costoDia;
   const margenBRT = m.brt.ingresoDia - m.brt.costoDia;
-  const mejoraPct = Math.round((margenBRT / margenActual - 1) * 100);
-  const mejoraPctCalc = Math.round((margenBRTCalc / margenActual - 1) * 100);
+  const mejoraPct = margenActual !== 0 ? Math.round((margenBRT / margenActual - 1) * 100) : 0;
+  const mejoraPctCalc = margenActual !== 0 ? Math.round((margenBRTCalc / margenActual - 1) * 100) : 0;
 
   const colorFase: Record<string, string> = {
     amber: 'border-amber-700/50 bg-amber-900/10',

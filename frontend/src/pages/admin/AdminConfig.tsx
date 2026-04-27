@@ -213,44 +213,11 @@ const AdminConfig = () => {
   };
 
   const handleDownloadReport = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/reports/shifts-pdf', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Error generating report');
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `reporte_turnos_${new Date().toISOString().split('T')[0]}.pdf`;
-      a.click();
-    } catch (error) {
-      console.error(error);
-      alert('Error al generar el reporte PDF');
-    }
+    alert('El reporte PDF de turnos requiere el servidor local. Esta función estará disponible en la próxima versión.');
   };
 
   const handleDownloadBackup = async () => {
-    if (!confirm('Generar un backup puede tomar unos segundos. ¿Continuar?')) return;
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/backups/download', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Error downloading backup');
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      // The backend sets Content-Disposition, but we can force a name too if needed.
-      // Usually the browser respects the header if we just navigate, but with blob we define it.
-      a.download = `backup_${new Date().toISOString().split('T')[0]}.sql`;
-      a.click();
-    } catch (error) {
-      console.error(error);
-      alert('Error al descargar el backup SQL');
-    }
+    alert('El backup SQL requiere el servidor local. Esta función estará disponible en la próxima versión.');
   };
 
   if (isLoading)
