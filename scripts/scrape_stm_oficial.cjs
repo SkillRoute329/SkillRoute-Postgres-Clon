@@ -50,8 +50,16 @@ const SUCCESS_FILE = path.join(OUT_DIR, 'success.json');
 // Clave: String(linea), Valor: number (codigoEmpresa: 10=COETC, 20=COME, 50=CUTCSA, 70=UCOT)
 let lineaToEmpresa = new Map();
 
-function inferirAgencyId(lineaCodigo) {
-  return lineaToEmpresa.get(String(lineaCodigo)) ?? null;
+// El dropdown JSF devuelve textos completos como "300 - Cat. Central x 8 de Oct."
+// stm-online devuelve solo el código numérico "300".
+// Esta función extrae el código para que los dos mapas coincidan.
+function extractCodigo(lineaTexto) {
+  const m = String(lineaTexto).trim().match(/^(\d+[A-Za-z]?)/);
+  return m ? m[1] : String(lineaTexto).trim();
+}
+
+function inferirAgencyId(lineaTexto) {
+  return lineaToEmpresa.get(extractCodigo(lineaTexto)) ?? null;
 }
 
 // ─── Construir mapa linea→empresa llamando stm-online UNA vez ─────────────────
@@ -263,8 +271,11 @@ async function scrapeLinea(page, lineaTexto) {
 
 // ─── Persistencia Firestore ──────────────────────────────────────────────────
 async function persistirEnFirestore(db, scrapeResult) {
-  const linea = scrapeResult.linea;
-  const agencyId = inferirAgencyId(linea);
+  // Extraer código limpio ("300") del texto completo del dropdown JSF
+  // ("300 - Cat. Central x 8 de Oct.") para que navigationDataService pueda
+  // encontrarlo por `entry.linea === '300'`.
+  const linea = extractCodigo(scrapeResult.linea);
+  const agencyId = inferirAgencyId(scrapeResult.linea);
   for (const sentido of ['ida', 'vuelta']) {
     const data = scrapeResult[sentido];
     if (!data || !data.shape || data.shape.length === 0) continue;
@@ -319,11 +330,13 @@ async function main() {
   });
   console.log(`Catálogo JSF: ${lineasJSF.length} líneas`);
 
-  // 2. Cross-check: líneas operando hoy que no están en el dropdown JSF
-  const lineasJSFSet = new Set(lineasJSF);
+  // 2. Cross-check: líneas operando hoy que no están en el dropdown JSF.
+  // Comparar por código numérico ("300") porque el texto del dropdown es
+  // "300 - Cat. Central x 8 de Oct." mientras que stm-online devuelve "300".
+  const lineasJSFCodigosSet = new Set(lineasJSF.map(extractCodigo));
   const lineasExtra = [];
   for (const linea of lineaToEmpresa.keys()) {
-    if (!lineasJSFSet.has(linea)) {
+    if (!lineasJSFCodigosSet.has(linea)) {
       lineasExtra.push(linea);
     }
   }
@@ -340,7 +353,7 @@ async function main() {
 
   for (let i = 0; i < lineas.length; i++) {
     const linea = lineas[i];
-    const empresa = lineaToEmpresa.get(String(linea));
+    const empresa = lineaToEmpresa.get(extractCodigo(linea));
     const empresaLabel = empresa ? `emp:${empresa}` : 'sin-empresa';
     console.log(`[${i + 1}/${lineas.length}] ${linea} (${empresaLabel})…`);
     try {
