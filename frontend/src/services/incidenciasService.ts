@@ -175,3 +175,42 @@ export function tiempoRelativo(timestamp: string): string {
   if (diff < 86400) return `Hace ${Math.floor(diff / 3600)} h`;
   return `Hace ${Math.floor(diff / 86400)} días`;
 }
+
+// ── Geo helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * ¿El punto está dentro de `toleranciaMetros` del recorrido?
+ * Útil para decidir si auto-asociar la incidencia con la línea o reportarla
+ * como incidencia geográfica independiente.
+ */
+export function puntoSobreRecorrido(
+  punto: { lat: number; lng: number } | null | undefined,
+  recorrido: Array<{ lat: number; lng: number }> | undefined,
+  toleranciaMetros = 60,
+): boolean {
+  if (!punto || !recorrido || recorrido.length < 2) return false;
+  for (let i = 1; i < recorrido.length; i++) {
+    if (distPointSegmentMetros(punto, recorrido[i - 1], recorrido[i]) <= toleranciaMetros) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Distancia en metros desde un punto a un segmento (proyección plana local). */
+function distPointSegmentMetros(
+  p: { lat: number; lng: number },
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const cos = Math.cos((p.lat * Math.PI) / 180);
+  const M = 111320;
+  const ax = a.lng * cos * M, ay = a.lat * M;
+  const bx = b.lng * cos * M, by = b.lat * M;
+  const px = p.lng * cos * M, py = p.lat * M;
+  const dx = bx - ax, dy = by - ay;
+  if (dx === 0 && dy === 0) return Math.hypot(px - ax, py - ay);
+  let t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy);
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}

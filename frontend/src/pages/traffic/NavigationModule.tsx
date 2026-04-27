@@ -132,6 +132,8 @@ export default function NavigationModule() {
   const [showDesvioPanel, setShowDesvioPanel] = useState(false);
   const [_desviosVersion, setDesviosVersion] = useState(0);
   const [showIncidencias, setShowIncidencias] = useState(false);
+  const [pickingIncidencia, setPickingIncidencia] = useState(false);
+  const [puntoIncidencia, setPuntoIncidencia] = useState<{ lat: number; lng: number } | null>(null);
   const [incidenciasAbiertas, setIncidenciasAbiertas] = useState<number>(0);
   useEffect(() => {
     // Resolver cuenta asíncronamente
@@ -781,8 +783,7 @@ export default function NavigationModule() {
                 <button
                   type="button"
                   onClick={() => setShowIncidencias(true)}
-                  disabled={!selectedCodigo}
-                  className="relative flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 active:bg-amber-400 text-white disabled:opacity-50 touch-manipulation"
+                  className="relative flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 active:bg-amber-400 text-white touch-manipulation"
                   title="Reportar situación en ruta"
                 >
                   <span className="text-base leading-none">🚨</span>
@@ -830,8 +831,7 @@ export default function NavigationModule() {
                 <button
                   type="button"
                   onClick={() => setShowIncidencias(true)}
-                  disabled={!selectedCodigo}
-                  className="relative flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 active:bg-amber-400 text-white disabled:opacity-50 font-medium shadow-lg touch-manipulation"
+                  className="relative flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 active:bg-amber-400 text-white font-medium shadow-lg touch-manipulation"
                   title="Reportar situación en ruta"
                 >
                   <span className="text-base leading-none">🚨</span>
@@ -1038,9 +1038,30 @@ export default function NavigationModule() {
                 conductorMode={conductorMode}
                 followUser={(viajeIniciado && conductorMode) || isNavigating}
                 isNavigating={isNavigating || viajeIniciado}
-                onMapClick={() => {}}
+                onMapClick={(lat, lng) => {
+                  if (pickingIncidencia) {
+                    setPuntoIncidencia({ lat, lng });
+                    setPickingIncidencia(false);
+                    setShowIncidencias(true);
+                  }
+                }}
                 desviosGuardados={desviosEnMapa}
               />
+
+              {pickingIncidencia && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[25] bg-amber-600 text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-3 max-w-[90vw]">
+                  <span className="text-xl">📍</span>
+                  <span className="text-sm font-semibold">
+                    Toque el lugar de la incidencia en el mapa
+                  </span>
+                  <button
+                    onClick={() => setPickingIncidencia(false)}
+                    className="ml-2 px-2 py-1 rounded-lg bg-amber-700 hover:bg-amber-800 text-xs"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
 
               {/* HUD: Panel Gigante (Head-Up Display) de Próxima Parada para Conducción */}
               {(isNavigating || (conductorMode && viajeIniciado)) && siguienteParada && (
@@ -1076,7 +1097,7 @@ export default function NavigationModule() {
                 </div>
               )}
 
-              {conductorMode && selectedCodigo && (
+              {conductorMode && (
                 <button
                   type="button"
                   onClick={() => setShowIncidencias(true)}
@@ -1184,8 +1205,15 @@ export default function NavigationModule() {
           }
           conductorUid={user?.uid}
           posicionActual={navigationPosition}
+          puntoMarcadoEnMapa={puntoIncidencia}
+          recorridoLinea={linea?.recorrido}
+          onSolicitarMarcarMapa={() => {
+            setShowIncidencias(false);
+            setPickingIncidencia(true);
+          }}
           onClose={() => {
             setShowIncidencias(false);
+            setPuntoIncidencia(null);
             contarIncidenciasAbiertas()
               .then((count) => setIncidenciasAbiertas(count))
               .catch(() => {});
