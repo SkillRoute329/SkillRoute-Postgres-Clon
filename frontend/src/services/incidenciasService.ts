@@ -10,7 +10,7 @@ import {
   serverTimestamp,
   where,
 } from 'firebase/firestore';
-import { auth, db } from '../config/firebase';
+import { auth, db, authReady } from '../config/firebase';
 
 export type TipoIncidencia =
   | 'corte_calle'
@@ -57,13 +57,10 @@ export const INCIDENCIA_META: Record<
 };
 
 // ── Auth cold-start helper ───────────────────────────────────────────────────
-// persistentMultipleTabManager desacopla auth del SDK Firestore: auth.currentUser
-// es null hasta que onAuthStateChanged resuelve por primera vez. authStateReady()
-// espera ese primer evento antes de hacer cualquier query Firestore.
+// authReady resuelve cuando onAuthStateChanged dispara por primera vez (estado real),
+// más fiable que authStateReady() con persistentMultipleTabManager en cold start.
 async function ensureAuthReady(): Promise<void> {
-  if (typeof (auth as any).authStateReady === 'function') {
-    await (auth as any).authStateReady();
-  }
+  await authReady;
   if (auth.currentUser) {
     await auth.currentUser.getIdToken();
   }

@@ -6,6 +6,7 @@ import {
   setPersistence,
   browserLocalPersistence,
   connectAuthEmulator,
+  onAuthStateChanged,
 } from 'firebase/auth';
 import {
   initializeFirestore,
@@ -51,6 +52,15 @@ if (useEmulator) {
   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
 }
 setPersistence(auth, browserLocalPersistence);
+
+// Resuelve una sola vez cuando el SDK de auth determina el estado inicial (user o null).
+// Más fiable que authStateReady() en cold start con persistentMultipleTabManager.
+export const authReady = new Promise<void>((resolve) => {
+  const unsub = onAuthStateChanged(auth, () => {
+    unsub();
+    resolve();
+  });
+});
 
 export const storage = getStorage(app);
 
