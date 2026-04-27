@@ -191,9 +191,8 @@ const MaintenanceDashboard = () => {
     setUsedParts((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // --- RBAC CHECK ---
-  const { user } = useAuth(); // Import useAuth hook at top level first! This snippet assumes useAuth is imported.
-  // However, I need to add useAuth import at top of file first.
+  const { user } = useAuth();
+  const canCloseTicket = ['Admin', 'SuperAdmin', 'Encargado'].includes(user?.role ?? '');
 
   const handleCloseTicket = async () => {
     if (!auditReport) return;
@@ -619,8 +618,8 @@ const MaintenanceDashboard = () => {
                 {report.description}
               </p>
 
-              {/* Process Button Overlay */}
-              {report.status !== 'FINALIZADO' && (
+              {/* Process Button Overlay — solo para Admin/SuperAdmin/Encargado */}
+              {report.status !== 'FINALIZADO' && canCloseTicket && (
                 <div className="absolute top-4 right-4">
                   <button
                     onClick={() => handleOpenProcess(report)}
@@ -903,8 +902,9 @@ const MaintenanceDashboard = () => {
                     alert('Error al cerrar reparación');
                   }
                 }}
-                disabled={!solution.trim()}
+                disabled={!solution.trim() || !canCloseTicket}
                 className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm disabled:opacity-40"
+                title={!canCloseTicket ? 'Solo Admin o Encargado puede cerrar tickets' : undefined}
               >
                 Cerrar reparación
               </button>
