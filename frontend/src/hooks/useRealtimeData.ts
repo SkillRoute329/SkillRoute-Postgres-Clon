@@ -15,7 +15,7 @@ export function useLocationUpdates() {
   const [lastUpdate, setLastUpdate] = useState<LocationUpdate | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, 'viajes_activos'));
+    const q = query(collection(db, 'viajes_activos'), limit(200));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setLocations((prev) => {
         const newMap = new Map(prev);
@@ -68,7 +68,7 @@ export function useServiceStatusUpdates() {
   const [lastUpdate, setLastUpdate] = useState<ServiceStatusChange | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, 'viajes_activos'));
+    const q = query(collection(db, 'viajes_activos'), limit(200));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setServices((prev) => {
         const newMap = new Map(prev);

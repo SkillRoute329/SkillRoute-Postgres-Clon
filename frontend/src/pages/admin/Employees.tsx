@@ -26,17 +26,18 @@ const Employees = () => {
   });
 
   useEffect(() => {
-    loadEmployees();
-  }, []);
+    if (token) loadEmployees();
+  }, [token]);
 
   const loadEmployees = async () => {
-    // Fetch users for now as they contain employee info
-    // Ideal: fetch /api/employees endpoint if exists, otherwise /api/users
     try {
       const res = await fetch(`${API_URL}/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) setEmployees(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setEmployees(Array.isArray(data) ? data : []);
+      }
     } catch (e) {
       console.error(e);
     }

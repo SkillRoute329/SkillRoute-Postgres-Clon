@@ -6,7 +6,6 @@
  * Zero llamadas a Firestore en runtime — los shapes van en el bundle.
  */
 
-import shapesRaw from '../../../data/shapesAllOperators.json';
 import type { LineaUCOT, ParadaUcot, PuntoLatLng, SentidoLinea } from '../../../types/lineasUcot';
 import type { LineaUCOTResumen } from '../../../services/linesService';
 import { LINE_ARCHETYPES } from '../../../data/lineTemplates';
@@ -24,7 +23,20 @@ interface ShapeEntry {
   paradas: Array<{ lat: number; lng: number; nombre: string | null }>;
 }
 
-const allShapes = shapesRaw as Record<string, ShapeEntry>;
+// Lazy-loading cache — el JSON (9.7 MB) se descarga solo cuando se necesita,
+// no en el bundle inicial. La promesa se crea una sola vez y se reutiliza.
+let _shapesCache: Record<string, ShapeEntry> | null = null;
+let _shapesPromise: Promise<Record<string, ShapeEntry>> | null = null;
+
+function getShapes(): Promise<Record<string, ShapeEntry>> {
+  if (_shapesCache) return Promise.resolve(_shapesCache);
+  if (_shapesPromise) return _shapesPromise;
+  _shapesPromise = import('../../../data/shapesAllOperators.json').then((mod) => {
+    _shapesCache = mod.default as Record<string, ShapeEntry>;
+    return _shapesCache;
+  });
+  return _shapesPromise;
+}
 
 const AGENCY_NAME: Record<number, string> = {
   10: 'COETC',
@@ -169,7 +181,8 @@ function entryToLineaUCOT(docId: string, entry: ShapeEntry, codigo: string, agen
  * Lista todas las variantes disponibles para un operador.
  * Retorna resúmenes para el dropdown del Navegador.
  */
-export function listCrossOpLineasInyectadas(agencyId: number): LineaUCOTResumen[] {
+export async function listCrossOpLineasInyectadas(agencyId: number): Promise<LineaUCOTResumen[]> {
+  const allShapes = await getShapes();
   const agencyStr = String(agencyId);
   const out: LineaUCOTResumen[] = [];
 
@@ -207,7 +220,8 @@ export function listCrossOpLineasInyectadas(agencyId: number): LineaUCOTResumen[
  * agencyId) y otros tienen el prefijo canónico `{agencyId}_`. Después del
  * reassign de agencyId, ambos formatos conviven en el JSON.
  */
-export function getCrossOpLineaInyectada(agencyId: number, codigo: string): LineaUCOT | null {
+export async function getCrossOpLineaInyectada(agencyId: number, codigo: string): Promise<LineaUCOT | null> {
+  const allShapes = await getShapes();
   const agencyStr = String(agencyId);
   const baseCodigo = String(codigo).replace(/[ab]$/i, '').trim();
   const sentidoBuscado: 'IDA' | 'VUELTA' = String(codigo).toLowerCase().endsWith('b') ? 'VUELTA' : 'IDA';

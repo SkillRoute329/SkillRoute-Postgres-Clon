@@ -138,7 +138,7 @@ function distribuirParadasSobreShape(
  */
 export async function getNavigationLineas(agencyId: number): Promise<LineaUCOTResumen[]> {
   // Fuente 1: shapes estáticos cross-operator (todos los operadores)
-  const crossOp = listCrossOpLineasInyectadas(agencyId);
+  const crossOp = await listCrossOpLineasInyectadas(agencyId);
 
   // Fuente 2: routeCache UCOT (complementa para UCOT)
   const inyectadas = agencyId === 70 ? listUCOTLineasInyectadas().map(inyectadaToResumen) : [];
@@ -175,7 +175,7 @@ export async function getNavigationLineaData(
   codigo: string,
 ): Promise<LineaUCOT | null> {
   // 1. Shapes estáticos cross-operator
-  const desdeShapes = getCrossOpLineaInyectada(agencyId, codigo);
+  const desdeShapes = await getCrossOpLineaInyectada(agencyId, codigo);
   if (desdeShapes && desdeShapes.recorrido.length >= 3) return desdeShapes;
 
   // 2. routeCache estático UCOT
@@ -203,7 +203,7 @@ export function getEmpresaLabel(agencyId: number): string {
  * Con shapes estáticos, siempre hay datos para cualquier operador en scope.
  */
 export async function hayShapesParaOperador(agencyId: number): Promise<boolean> {
-  return listCrossOpLineasInyectadas(agencyId).length > 0;
+  return (await listCrossOpLineasInyectadas(agencyId)).length > 0;
 }
 
 // Unused but kept for import compatibility with any existing callers

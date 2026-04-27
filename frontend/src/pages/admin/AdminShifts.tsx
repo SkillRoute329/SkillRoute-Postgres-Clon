@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { ShiftService, type Shift } from '../../services/api';
 import { PDFService } from '../../services/pdf';
@@ -183,7 +183,7 @@ const AdminShifts = () => {
   // State for PDF Automation (Refactored for Stability)
   const [autoDownload, setAutoDownload] = useState(false);
   const [downloadInterval, setDownloadInterval] = useState(60); // minutes
-  const lastDownloadRef = useState({ time: Date.now() })[0]; // Mutable ref-like object or strictly useRef
+  const lastDownloadRef = useRef({ time: Date.now() });
 
   // Load settings
   useEffect(() => {
@@ -206,12 +206,11 @@ const AdminShifts = () => {
     if (autoDownload && downloadInterval > 0) {
       const checkAndDownload = async () => {
         const now = Date.now();
-        const timeSinceLast = (now - lastDownloadRef.time) / 1000 / 60;
+        const timeSinceLast = (now - lastDownloadRef.current.time) / 1000 / 60;
 
         if (timeSinceLast >= downloadInterval) {
           console.log('Running Auto PDF Download...');
           try {
-            // Independent fetch to avoid state dependency
             const freshData = await ShiftService.getAll(selectedDate);
             const today = new Date().toLocaleDateString();
             const todaysShifts = freshData.filter(
@@ -220,7 +219,7 @@ const AdminShifts = () => {
 
             if (todaysShifts.length > 0) {
               PDFService.generateDailyReport(todaysShifts, today);
-              lastDownloadRef.time = now; // Update ref without triggering re-render
+              lastDownloadRef.current.time = now;
             }
           } catch (e) {
             console.error('Auto PDF Error', e);
@@ -278,7 +277,7 @@ const AdminShifts = () => {
                 htmlFor="autoPDF"
                 className="text-sm text-slate-300 cursor-pointer select-none font-medium"
               >
-                Auto PDF
+                PDF Automático
               </label>
             </div>
 

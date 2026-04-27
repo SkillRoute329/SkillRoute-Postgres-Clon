@@ -1,6 +1,7 @@
 import { Suspense, useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Menu, X, Zap, Activity, ShieldAlert } from 'lucide-react'; // Added ShieldAlert
+import { Menu, X, Zap, Activity, ShieldAlert, Bus, Bell, MapPin } from 'lucide-react';
+import { LiveDataProvider, useLiveData } from '../context/LiveDataContext';
 import clsx from 'clsx';
 import Sidebar from '../components/Sidebar';
 import NotificationsDropdown from '../components/NotificationsDropdown';
@@ -8,8 +9,7 @@ import RoadAlertsWidget from '../components/RoadAlertsWidget';
 import RouteErrorBoundary from '../components/RouteErrorBoundary';
 import DriverAlertOverlay from '../components/DriverAlertOverlay';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../config/firebase';
-import { getDoc, doc } from 'firebase/firestore';
+
 
 const SimulationBanner = () => {
   const isSim = sessionStorage.getItem('TRANSFORMA_SIMULATION_MODE') === 'true';
@@ -18,6 +18,51 @@ const SimulationBanner = () => {
     <div className="bg-purple-600 text-white text-xs font-bold px-4 py-1 flex items-center justify-center gap-2 animate-pulse shadow-lg z-[1000] relative">
       <ShieldAlert className="w-4 h-4" />
       MODO SIMULACIÓN / PRUEBAS - CAMBIOS NO GUARDADOS
+    </div>
+  );
+};
+
+// ── Indicadores en vivo — usa LiveDataContext ─────────────────────────────────
+const LiveIndicators = () => {
+  const { fleetKPIs, busesLoading, alertasCriticas, otpHoy, selectedLine, setSelectedLine } = useLiveData();
+  return (
+    <div className="hidden md:flex items-center gap-2 text-[11px] font-bold">
+      <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700/60 rounded-full px-3 py-1" title="Buses propios en línea ahora">
+        <Bus className={`w-3 h-3 ${busesLoading ? 'text-slate-500 animate-pulse' : 'text-emerald-400'}`} />
+        <span className="text-slate-200">{busesLoading ? '···' : fleetKPIs.totalPropios}</span>
+        <span className="text-slate-500">buses</span>
+      </div>
+
+      {alertasCriticas > 0 && (
+        <div className="flex items-center gap-1.5 bg-red-950/60 border border-red-500/40 rounded-full px-3 py-1 animate-pulse" title="Alertas críticas activas">
+          <Bell className="w-3 h-3 text-red-400" />
+          <span className="text-red-300">{alertasCriticas}</span>
+        </div>
+      )}
+
+      {otpHoy !== null && (
+        <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700/60 rounded-full px-3 py-1" title="OTP del día (GPS)">
+          <span className={otpHoy >= 90 ? 'text-emerald-400' : otpHoy >= 75 ? 'text-yellow-400' : 'text-red-400'}>
+            {otpHoy.toFixed(1)}%
+          </span>
+          <span className="text-slate-500">OTP</span>
+        </div>
+      )}
+
+      {/* Línea seleccionada — contexto compartido entre módulos */}
+      {selectedLine && (
+        <div className="flex items-center gap-1.5 bg-blue-950/60 border border-blue-500/40 rounded-full pl-3 pr-1.5 py-1" title="Línea activa en todos los módulos">
+          <MapPin className="w-3 h-3 text-blue-400" />
+          <span className="text-blue-300">L{selectedLine}</span>
+          <button
+            onClick={() => setSelectedLine(null)}
+            className="ml-1 text-slate-500 hover:text-white transition-colors rounded-full p-0.5"
+            title="Limpiar filtro de línea"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -34,20 +79,11 @@ const SystemStatus = () => {
   const checkStatus = async () => {
     const start = Date.now();
     try {
-      await getDoc(doc(db, '_healthcheck', 'status'));
-      const lat = Date.now() - start;
-      setLatency(lat);
+      await fetch('/version.json', { cache: 'no-store' });
+      setLatency(Date.now() - start);
       setStatus('online');
-    } catch (e: any) {
-      if (e?.code === 'permission-denied') {
-        // Red está funcionando, el servidor respondió aunque haya bloqueado por reglas
-        const lat = Date.now() - start;
-        setLatency(lat);
-        setStatus('online');
-      } else {
-        console.error('Health Check Failed:', e);
-        setStatus('offline');
-      }
+    } catch {
+      setStatus('offline');
     }
   };
 
@@ -113,7 +149,7 @@ const SystemStatus = () => {
   );
 };
 
-const DashboardLayout = () => {
+const DashboardLayoutInner = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user } = useAuth();
   const location = useLocation();
@@ -155,6 +191,8 @@ const DashboardLayout = () => {
           </button>
 
           <div className="flex-1"></div>
+
+          <LiveIndicators />
 
           <div className="flex items-center gap-4">
             {/* Health Check Widget */}
@@ -214,5 +252,11 @@ const DashboardLayout = () => {
     </div>
   );
 };
+
+const DashboardLayout = () => (
+  <LiveDataProvider>
+    <DashboardLayoutInner />
+  </LiveDataProvider>
+);
 
 export default DashboardLayout;

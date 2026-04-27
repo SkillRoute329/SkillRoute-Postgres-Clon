@@ -625,7 +625,7 @@ export default function ShadowAnalyticsPage() {
             title="Exportar a Excel (4 hojas)"
           >
             <Download className="w-4 h-4" />
-            Export
+            Exportar
           </button>
         </div>
       </div>

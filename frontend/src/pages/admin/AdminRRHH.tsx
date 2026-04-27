@@ -564,8 +564,12 @@ const StructureTab = () => {
   });
 
   const loadData = async () => {
-    const data = await DepartmentService.getAll();
-    setDepts(data);
+    try {
+      const data = await DepartmentService.getAll();
+      setDepts(data);
+    } catch (e) {
+      console.error('Error cargando áreas:', e);
+    }
   };
 
   useEffect(() => { loadData(); }, []);
@@ -680,11 +684,11 @@ const StructureTab = () => {
                 </button>
               </div>
 
-              {dept.jobRoles.length === 0 ? (
+              {(dept.jobRoles ?? []).length === 0 ? (
                 <p className="text-sm text-slate-600 italic">Sin cargos definidos.</p>
               ) : (
                 <div className="space-y-2">
-                  {dept.jobRoles.map((role: any) => (
+                  {(dept.jobRoles ?? []).map((role: any) => (
                     <div
                       key={role.id}
                       className="flex items-center justify-between p-3 bg-slate-950/50 rounded-lg border border-slate-800/50"
