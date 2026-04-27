@@ -224,7 +224,7 @@ export default function EconomicProjectionsPage() {
       // Map lineaId → avg + tendencia
       const inspData = new Map<string, { avg: number; tendencia: number }>();
       byLinea.forEach((v, lineaId) => {
-        const avg = v.pasajeros.reduce((a, b) => a + b, 0) / v.pasajeros.length;
+        const avg = v.pasajeros.length > 0 ? v.pasajeros.reduce((a, b) => a + b, 0) / v.pasajeros.length : 0;
         const avgRec =
           v.recientes.length > 0
             ? v.recientes.reduce((a, b) => a + b, 0) / v.recientes.length
