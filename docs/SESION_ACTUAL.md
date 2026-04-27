@@ -6,72 +6,55 @@
 
 ---
 
-**Última actualización:** 2026-04-27 (sesión audit completa + performance fixes)
+**Última actualización:** 2026-04-27 (sesión completa — audit + perf + scraper + Socket.io cleanup + deploy)
 
 ---
 
 ## ✅ SESIÓN 2026-04-27 — CERRADA
 
-### Performance Fixes Aplicados
+### Todo lo desplegado en esta sesión (commit `e9e61dac` en producción)
 
-| Fix | Impacto | Commit |
+| Cambio | Descripción | Commit |
 |---|---|---|
-| `crossOpShapesInjector.ts`: import estático → dynamic import() | -6 MB del bundle inicial. Shapes solo cargan al abrir Navegador | `4b7db0d8` |
-| `DashboardLayout.tsx SystemStatus`: `getDoc` Firestore → `fetch /version.json` | -2880 lecturas Firestore/día eliminadas | `4b7db0d8` |
-| `useRealtimeData.ts`: `limit(200)` en ambos onSnapshot `viajes_activos` | Previene descarga sin límite | `4b7db0d8` |
-
-### Auditoría Completa de Módulos
-
-**Batch 3** (7 bugs): AdminRRHH null jobRoles, Employees cold-start + array guard, AdminShifts useRef fix, ShadowAnalytics/AdminShifts traducciones
-
-**Batch 4** (9 bugs): AdminAuditLog traducciones Create/Update/Delete, StmScraperStatus cabeceras inglés + N/A, ABLPage undefined%, AdminSeed res.ok guard
-
-**Batch 5** (5 bugs): CEODashboard "Executive Command", DigitalAgentsModule "GPS OK", CompetitorIntelligencePage 3× res.ok guard
-
-**Batch 6** (1 bug): EconomicProjectionsPage división por cero v.pasajeros.length===0
-
-**Batch 7** (scan completo): módulos restantes auditados — mayormente falsos positivos o severidad muy baja. Sin crashes confirmados pendientes.
-
-### Estado Deploy
-
-Commit actual en producción: `8677b9ea`
+| Lazy-load shapes JSON | -6 MB bundle inicial; shapes cargan al abrir Navegador | `4b7db0d8` |
+| Healthcheck sin Firestore | fetch /version.json reemplaza getDoc → -2880 lecturas/día | `4b7db0d8` |
+| viajes_activos limit(200) | Previene descarga sin límite en onSnapshot | `4b7db0d8` |
+| Audit batch 3 (7 bugs) | AdminRRHH null jobRoles, Employees cold-start + array guard, AdminShifts useRef | `4b7db0d8` |
+| Audit batch 4 (9 bugs) | AdminAuditLog traducciones, StmScraperStatus cabeceras ES, ABLPage undefined%, AdminSeed res.ok | `ef638f1e` |
+| Audit batch 5 (5 bugs) | CEODashboard, DigitalAgentsModule, CompetitorIntelligence 3× res.ok guard | `02c8293c` |
+| Audit batch 6 (1 bug) | EconomicProjectionsPage división por cero pasajeros.length===0 | `8677b9ea` |
+| Fix agencyId scraper | extractCodigo() extrae código numérico del texto JSF completo | `27d42086` |
+| LiveVehicleMap rewrite | Elimina Socket.io; Firestore-driven; centro Montevideo; dark theme | `e9e61dac` |
+| AlertPanel rewrite | Elimina useConnectedUsers stub; labels ES; dark theme | `e9e61dac` |
+| Cloud Functions deploy | refreshCompetidoresTick (cron cada 10 min) activo en producción | `e9e61dac` |
 
 ---
 
 ## 🎯 PRÓXIMO PASO INMEDIATO
 
-### 1. Verificación visual en producción
+### Verificación visual en producción (requiere login ADMIN)
 
-Los módulos con más cambios en esta sesión son los que más necesitan verificación visual:
+URL: `https://ucot-gestor-cloud.web.app`
 
-```
-https://ucot-gestor-cloud.web.app
-```
+Verificar en orden:
 
-Verificar en este orden (con usuario ADMIN logueado):
-
-1. `/dashboard/traffic/fleet-monitor` → mapa con buses, no crash
-2. `/dashboard/admin/shifts` → tabla carga, checkboxes "PDF Automático" visible
-3. `/dashboard/traffic/shadow` → ShadowRadar carga y actualiza
-4. `/dashboard/traffic/competitor-intelligence` → CompetitorIntelligence carga sin error
-5. `/dashboard/admin/audit-log` → AuditLog con labels "Creación/Actualización/Eliminación"
-6. Sidebar → click "Navegador" → primer clic debe cargar sin error (ya no está en bundle inicial, carga al abrir)
-
-### 2. Próximas features pendientes
-
-Ver backlog abajo.
+1. `/dashboard/traffic/fleet-monitor` → LiveVehicleMap carga, mapa centrado en Montevideo, no crash
+2. `/dashboard/admin/shifts` → tabla carga, checkbox visible como "PDF Automático"
+3. `/dashboard/traffic/shadow` → ShadowRadar carga y muestra datos live
+4. `/dashboard/traffic/competitor-intelligence` → carga sin error
+5. `/dashboard/admin/audit-log` → labels "Creación/Actualización/Eliminación"
+6. Sidebar → click "Navegador" (primer clic carga shapes, no debe crashear)
 
 ---
 
 ## 🗂️ BACKLOG PRIORIZADO
 
-1. **Fix agencyId en scraper** — `scripts/scrape_stm_oficial.cjs:45` función `inferirAgencyId` retorna null.
-2. **Verificación shapes cross-operador** — NavigationModule con CUTCSA/COME/COETC → confirmar >95% con shape.
-3. **Schedule/Cloud Function refresh periódico `competidores`** — scraper JSF horarios reales por línea.
-4. **Listeners Socket.io frontend** — incompletos, Socket.io no tiene listeners en frontend.
-5. **MyShifts.tsx + Marketplace.tsx** — tienen `@ts-nocheck`, revisar y tipar correctamente.
-6. **ShadowRadar.tsx:753** — posible stale closure (`ucotFlota` faltante en deps useMemo). Bajo riesgo pero anotado.
-7. **APK Android** — Capacitor configurado, pendiente.
+1. **MyShifts.tsx + Marketplace.tsx** — tienen `@ts-nocheck`, revisar y tipar correctamente.
+2. **Schedule/Cloud Function refresh periódico `competidores`** — el cron `refreshCompetidoresTick` ya está activo. Verificar que la colección `competidores` en Firestore se actualiza con datos reales cada 10 min.
+3. **Scraper JSF horarios reales** — el fix de agencyId está deployado; pendiente correr el scraper completo y verificar que los datos de horarios quedan bien en Firestore.
+4. **ShadowRadar.tsx:753** — posible stale closure (`ucotFlota` faltante en deps useMemo). Bajo riesgo pero anotado.
+5. **APK Android** — Capacitor configurado, pendiente generar.
+6. **Warn pre-auth race** en NavigationModule: guard `!user?.uid` en useEffect ~línea 300.
 
 ---
 
@@ -87,4 +70,6 @@ Ver backlog abajo.
 - **authReady pattern**: para cualquier servicio Firestore que falle en cold start con `permission-denied`, importar `authReady` de `config/firebase.ts` y hacer `await authReady` antes de queries. Ya aplicado en `incidenciasService.ts`.
 - **crossOpShapesInjector lazy**: las funciones `listCrossOpLineasInyectadas` y `getCrossOpLineaInyectada` son ahora async. Cualquier caller nuevo debe await-las.
 - **Healthcheck sin Firestore**: `SystemStatus` en DashboardLayout ahora hace `fetch /version.json` — no consume cuota Firestore.
+- **Socket.io deprecated**: LiveVehicleMap y AlertPanel ya no usan Socket.io. El hook `useSocket` es un stub que retorna `connected: true`. No crear nuevos componentes que dependan de Socket.io — usar Firestore onSnapshot para estado en tiempo real.
+- **extractCodigo en scraper**: el JSF de STM devuelve textos completos como "300 - Cat. Central x 8 de Oct." — siempre usar `extractCodigo()` para obtener el código numérico limpio antes de cualquier lookup o persistencia en Firestore.
 - **Ruflo descartado permanentemente**: vulnerabilidades de seguridad críticas. Multi-agente: Agent tool nativo de Claude Code.
