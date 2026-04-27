@@ -71,7 +71,7 @@ export async function reportarIncidencia(
     conductorUid?: string;
   },
 ): Promise<IncidenciaReportada> {
-  const payload = {
+  const payload: Record<string, unknown> = {
     type: tipo,
     status: 'ABIERTO',
     priority: tipo === 'accidente' ? 'ALTA' : 'MEDIA',
@@ -80,12 +80,12 @@ export async function reportarIncidencia(
       ? { uid: extras.conductorUid, name: extras.conductorUid }
       : { uid: 'DRIVER', name: 'Conductor' },
     source: 'DRIVER_APP',
-    lat: extras?.lat,
-    lng: extras?.lng,
-    lineaCodigo: extras?.lineaCodigo,
-    lineaNombre: extras?.lineaNombre,
     createdAt: serverTimestamp(),
   };
+  if (extras?.lat !== undefined) payload.lat = extras.lat;
+  if (extras?.lng !== undefined) payload.lng = extras.lng;
+  if (extras?.lineaCodigo) payload.lineaCodigo = extras.lineaCodigo;
+  if (extras?.lineaNombre) payload.lineaNombre = extras.lineaNombre;
 
   const ref = await addDoc(collection(db, COL), payload);
 

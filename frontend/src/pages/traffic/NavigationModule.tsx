@@ -1197,10 +1197,10 @@ export default function NavigationModule() {
       {/* ── Panel de incidencias rápidas ── */}
       {showIncidencias && (
         <IncidenciaRapida
-          lineaCodigo={selectedCodigo ?? undefined}
+          lineaCodigo={linea?.codigo ?? undefined}
           lineaNombre={
             linea
-              ? `${linea.nombre || selectedCodigo} — ${linea.origen || ''} → ${linea.destino || ''}`
+              ? `${linea.nombre || linea.codigo} — ${linea.origen || ''} → ${linea.destino || ''}`
               : undefined
           }
           conductorUid={user?.uid}
