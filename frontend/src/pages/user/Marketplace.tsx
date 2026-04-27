@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { ShiftService, type Shift } from '../../services/api';
 import ShiftCard from '../../components/ShiftCard';
@@ -11,12 +10,13 @@ const Marketplace = () => {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [confirmationShift, setConfirmationShift] = useState<Shift | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadPublicShifts();
   }, []);
 
-  const loadPublicShifts = async () => {
+  const loadPublicShifts = async (): Promise<void> => {
     setIsLoading(true);
     try {
       const data = await ShiftService.getAll();
@@ -28,7 +28,7 @@ const Marketplace = () => {
     }
   };
 
-  const handleTakeShift = async (id: number) => {
+  const handleTakeShift = async (id: number | string): Promise<void> => {
     if (!user) {
       alert('Debes iniciar sesión para tomar un turno');
       return;
@@ -36,11 +36,11 @@ const Marketplace = () => {
 
     try {
       const shiftToTake = shifts.find((s) => s.id === id);
-      await ShiftService.assign(id, user.id);
+      await ShiftService.assign(id as number, user.id);
       if (shiftToTake) {
         setConfirmationShift(shiftToTake);
       } else {
-        loadPublicShifts();
+        await loadPublicShifts();
       }
     } catch (error) {
       console.error('Error taking shift:', error);
@@ -48,18 +48,29 @@ const Marketplace = () => {
     }
   };
 
-  const handleDownloadPdf = () => {
-    if (confirmationShift) {
+  const handleDownloadPdf = (): void => {
+    if (confirmationShift && user) {
       generateShiftTicket(confirmationShift, user);
       setConfirmationShift(null);
-      loadPublicShifts();
+      void loadPublicShifts();
     }
   };
 
-  const handleCloseModal = () => {
+  const handleCloseModal = (): void => {
     setConfirmationShift(null);
-    loadPublicShifts();
+    void loadPublicShifts();
   };
+
+  const filteredShifts = searchQuery
+    ? shifts.filter((s) => {
+        const q = searchQuery.toLowerCase();
+        return (
+          String(s.line ?? '').toLowerCase().includes(q) ||
+          String(s.carNumber ?? '').toLowerCase().includes(q) ||
+          String(s.serviceNumber ?? '').toLowerCase().includes(q)
+        );
+      })
+    : shifts;
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -78,6 +89,8 @@ const Marketplace = () => {
           <input
             type="text"
             placeholder="Filtrar por línea, coche..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-slate-900 border border-slate-700 text-white rounded-xl pl-9 pr-4 py-2 text-sm focus:border-primary-500 focus:outline-none w-full md:w-64 transition-all"
           />
         </div>
@@ -97,26 +110,28 @@ const Marketplace = () => {
         <div className="text-center py-20 text-slate-500 animate-pulse font-medium">
           <span>Buscando turnos disponibles...</span>
         </div>
-      ) : (
+      ) : filteredShifts.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {shifts.length > 0 ? (
-            shifts.map((shift) => (
-              <ShiftCard
-                key={shift.id}
-                shift={shift}
-                variant="public"
-                onAction={(action, id) => {
-                  if (action === 'take') handleTakeShift(id);
-                }}
-              />
-            ))
-          ) : (
-            <div className="col-span-full text-center py-20 bg-slate-900/50 rounded-2xl border border-slate-800">
-              <p className="text-slate-500">
-                <span>No hay turnos disponibles en el mercado actualmente.</span>
-              </p>
-            </div>
-          )}
+          {filteredShifts.map((shift) => (
+            <ShiftCard
+              key={shift.id}
+              shift={shift}
+              variant="public"
+              onAction={(action, id) => {
+                if (action === 'take') void handleTakeShift(id);
+              }}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-20 bg-slate-900/50 rounded-2xl border border-slate-800">
+          <p className="text-slate-500">
+            <span>
+              {searchQuery
+                ? `Sin resultados para "${searchQuery}"`
+                : 'No hay turnos disponibles en el mercado actualmente.'}
+            </span>
+          </p>
         </div>
       )}
 
@@ -125,7 +140,7 @@ const Marketplace = () => {
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl animate-scale-in">
             <div className="text-center">
               <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Search className="w-10 h-10 text-green-500" />
+                <span className="text-4xl">✓</span>
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">
                 <span>¡Turno Asignado!</span>

@@ -1,9 +1,10 @@
-// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { ShiftService, type Shift } from '../../services/api';
 import ShiftCard from '../../components/ShiftCard';
 import { Clock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+
+type ShiftAction = 'approve' | 'reject' | 'take' | 'assign' | 'edit' | 'delete';
 
 const MyShifts = () => {
   const { user: currentUser } = useAuth();
@@ -45,13 +46,13 @@ const MyShifts = () => {
     }
   };
 
-  const handleAction = async (action: string, id: number) => {
+  const handleAction = async (action: ShiftAction, id: number | string) => {
     if (action === 'delete') {
       setDeleteId(id); // Open Modal
     }
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = async (): Promise<void> => {
     if (!deleteId) return;
 
     try {
