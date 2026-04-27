@@ -1028,7 +1028,7 @@ export default function DigitalAgentsModule() {
                               </div>
                             </div>
                             <span className="text-emerald-400 text-xs font-bold flex items-center gap-1">
-                              <Activity className="w-3 h-3" /> GPS OK
+                              <Activity className="w-3 h-3" /> GPS Activo
                             </span>
                           </div>
                         ))}

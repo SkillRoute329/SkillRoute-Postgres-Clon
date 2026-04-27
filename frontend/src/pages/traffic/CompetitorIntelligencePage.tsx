@@ -269,6 +269,7 @@ export default function CompetitorIntelligencePage() {
       const res = await fetch(`${base}/api/lines/ucot`, {
         signal: AbortSignal.timeout(15000),
       });
+      if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
       const data: LineasData = await res.json();
 
       if (!data.ok) throw new Error('STM no disponible');
@@ -294,6 +295,7 @@ export default function CompetitorIntelligencePage() {
               const r = await fetch(`${base}/api/analysis/${l.linea}`, {
                 signal: AbortSignal.timeout(15000),
               });
+              if (!r.ok) throw new Error(`HTTP ${r.status}`);
               const a: AnalysisData = await r.json();
               setAnalysisMap((prev) => ({ ...prev, [l.linea]: a }));
             } catch {
@@ -326,6 +328,7 @@ export default function CompetitorIntelligencePage() {
       const res = await fetch(`${activeBridge}/api/analysis/${linea}`, {
         signal: AbortSignal.timeout(15000),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: AnalysisData = await res.json();
       setDetailData(data);
       setAnalysisMap((prev) => ({ ...prev, [linea]: data }));

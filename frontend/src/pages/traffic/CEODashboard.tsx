@@ -502,8 +502,8 @@ export default function CEODashboard() {
           </div>
           <div>
             <h1 className="text-lg md:text-xl font-black text-white tracking-tight flex items-center gap-2">
-              Executive Command
-              <span className="text-slate-500 font-medium">Dashboard</span>
+              Centro de Mando
+              <span className="text-slate-500 font-medium">Ejecutivo</span>
               <span className="text-[9px] font-black text-primary-400 bg-primary-500/15 px-1.5 py-0.5 rounded border border-primary-500/20">
                 v6.0
               </span>
