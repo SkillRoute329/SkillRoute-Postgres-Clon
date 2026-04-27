@@ -104,6 +104,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6 MiB — incluye data-shapes-all (~5.4 MB)
       },
     }),
   ],
@@ -257,6 +258,9 @@ export default defineConfig({
             nid.includes('ucot_master_2026')
           ) {
             return 'data-ucot-master';
+          }
+          if (nid.includes('shapesAllOperators')) {
+            return 'data-shapes-all';
           }
         },
       },
