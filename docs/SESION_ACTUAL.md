@@ -6,7 +6,7 @@
 
 ---
 
-**Última actualización:** 2026-04-27 (sesión continua — @ts-nocheck cleanup + ShadowRadar stale closure + refreshCompetidores verificado)
+**Última actualización:** 2026-04-27 (sesión continua — RBAC MaintenanceDashboard + APK Android generada + scraper verificado)
 
 ---
 
@@ -49,24 +49,33 @@ Verificar en orden:
 
 ## 🗂️ BACKLOG PRIORIZADO
 
-1. **Scraper JSF horarios reales** — el fix de agencyId está deployado; pendiente correr el scraper completo y verificar que los datos de horarios quedan bien en Firestore.
-2. **APK Android** — Capacitor configurado, pendiente generar.
-3. **MaintenanceDashboard RBAC**: botón "cerrar ticket" inline no valida rol — revisar antes de producción real.
+1. **Correr scraper JSF completo con persistencia en Firestore** — el fix de agencyId fue verificado (muestra emp:10/50/70 correctamente, 141 líneas). Pendiente: correr con flag `--persist` o equivalente para escribir datos reales en Firestore y verificar que la colección `stm_horarios` queda correcta.
+2. **APK Release firmada** — la APK debug está generada (18MB, en Escritorio). Pendiente: generar keystore, firmar con `assembleRelease`, subir a Google Play o distribuir por MDM interno.
+3. **Completar módulo Agentes Digitales** — DigitalAgentsModule.tsx está incompleto (feature real pendiente).
 
 ### ✅ Completados en esta sesión
 - MyShifts.tsx — @ts-nocheck removido, ShiftAction union type, Promise<void> explícito
 - Marketplace.tsx — @ts-nocheck removido, filtro de búsqueda conectado (línea/coche/servicio)
 - refreshCompetidoresTick — verificado: 1124 buses, 3 competidores, 3041ms ✅
-- ShadowRadar.tsx:753 — stale closure corregido (ucotFlota agregado a deps del useMemo HRR)
+- ShadowRadar.tsx:753 — stale closure corregido (ucotFlota en deps del useMemo HRR)
 - NavigationModule warn pre-auth — guards `!user?.uid` ya presentes en líneas 253 y 276
+- MaintenanceDashboard RBAC — `canCloseTicket` derivado de rol, botones ocultos/deshabilitados para User
+- APK Android debug — BUILD SUCCESSFUL, 18 MB, en Escritorio como `SkillRoute-debug.apk`
+- Scraper agencyId fix — verificado: 141 líneas scrapeadas, agencyId correcto (emp:10/50/70)
 
 ---
 
 ## 🐛 BUGS CONOCIDOS NO CRÍTICOS
 
 - **Errores TS pre-existentes** en `cascadeEngineService.ts` y `scheduleComplianceEngine.ts` — no bloquean build.
-- **MaintenanceDashboard RBAC**: botón "cerrar ticket" inline no valida rol — revisar antes de producción real.
 - **ShadowRadar IIFE getDocs line 449** — promesa puede completarse después del unmount (memory leak marginal).
+
+## 📱 APK ANDROID
+
+- **Debug APK**: `C:\Users\jonat\Desktop\SkillRoute-debug.apk` (18 MB)
+- Build: Capacitor 8 + @capacitor/android, Java 21, Android SDK 36
+- Para Release: generar keystore → `./gradlew assembleRelease` → firmar con `apksigner`
+- Comando para reinstalar en dispositivo vía ADB: `adb install -r SkillRoute-debug.apk`
 
 ## 🔑 DECISIONES OPERATIVAS
 
