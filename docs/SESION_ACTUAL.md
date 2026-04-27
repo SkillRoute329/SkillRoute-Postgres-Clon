@@ -6,82 +6,85 @@
 
 ---
 
-**Última actualización:** 2026-04-26 (sesión corrección módulos Control+Monitoreo y Flota+Mantenimiento)
+**Última actualización:** 2026-04-27 (sesión audit completa + performance fixes)
 
 ---
 
-## ✅ SPRINT CONTROL Y MONITOREO — CERRADO
+## ✅ SESIÓN 2026-04-27 — CERRADA
 
-Todos los fixes aplicados, deployados y verificados (0 NULs, TypeScript limpio, build OK):
+### Performance Fixes Aplicados
 
-| Módulo | Bug corregido | Estado |
+| Fix | Impacto | Commit |
 |---|---|---|
-| **FleetMonitorModule** | 3 crashes: `Building2` import faltante, `ucotFiltrados` → `propiosFiltrados`, `kpis.totalUCOT` → `kpis.totalPropios` | ✅ |
-| **IncidentCommandCenter** | `useEmpresaPropia()` llamado fuera del componente (módulo level) → Invalid hook call | ✅ |
-| **OTPDashboard** | Colección `inspecciones` → `inspections` + eliminada dependencia ScheduleService (retornaba null). Ahora usa `timeDeltaMinutes` directo | ✅ |
-| **InspectorCaptura** | Firestore: colección `inspections` sin regla explícita → writes silenciosamente denegados. Regla agregada: `isInspector() || isTrafficOrAdmin()` | ✅ |
-| **Control Inspectores** | No requirió cambios de código (depende de datos Firestore) | ✅ |
+| `crossOpShapesInjector.ts`: import estático → dynamic import() | -6 MB del bundle inicial. Shapes solo cargan al abrir Navegador | `4b7db0d8` |
+| `DashboardLayout.tsx SystemStatus`: `getDoc` Firestore → `fetch /version.json` | -2880 lecturas Firestore/día eliminadas | `4b7db0d8` |
+| `useRealtimeData.ts`: `limit(200)` en ambos onSnapshot `viajes_activos` | Previene descarga sin límite | `4b7db0d8` |
 
-Firestore rules deployadas con la nueva regla para `inspections`.
+### Auditoría Completa de Módulos
 
----
+**Batch 3** (7 bugs): AdminRRHH null jobRoles, Employees cold-start + array guard, AdminShifts useRef fix, ShadowAnalytics/AdminShifts traducciones
 
-## ✅ SPRINT FLOTA Y MANTENIMIENTO — CERRADO
+**Batch 4** (9 bugs): AdminAuditLog traducciones Create/Update/Delete, StmScraperStatus cabeceras inglés + N/A, ABLPage undefined%, AdminSeed res.ok guard
 
-| Módulo | Bug corregido | Estado |
-|---|---|---|
-| **MaintenanceDashboard** | `XIcon` no existe en lucide-react → crash al abrir modales. Fix: import `X` + reemplazar ambos usos | ✅ |
-| **InspectionForm (Revisión Vehicular)** | `Camera.getPhoto()` de Capacitor lanza excepción en web sin fallback → crash. Fix: `catch` → `fileInputRef.current?.click()` + `handleFileChange` async | ✅ |
-| **VehicleList (Coches/Inventario)** | Después de crear/editar vehículo llamaba `loadVehicles()` en vez de `loadData()` → users y esquemas de rotación no se refrescaban | ✅ |
-| **Asignación de Servicios** | No requirió cambios de código | ✅ |
-| **Alertas de Vía** | No requirió cambios de código | ✅ |
+**Batch 5** (5 bugs): CEODashboard "Executive Command", DigitalAgentsModule "GPS OK", CompetitorIntelligencePage 3× res.ok guard
 
-Build + deploy hosting en producción ✅. TypeScript limpio, 0 NULs en todos los chunks.
+**Batch 6** (1 bug): EconomicProjectionsPage división por cero v.pasajeros.length===0
+
+**Batch 7** (scan completo): módulos restantes auditados — mayormente falsos positivos o severidad muy baja. Sin crashes confirmados pendientes.
+
+### Estado Deploy
+
+Commit actual en producción: `8677b9ea`
 
 ---
 
 ## 🎯 PRÓXIMO PASO INMEDIATO
 
-### Verificación visual en producción (requiere login en https://ucot-gestor-cloud.web.app)
+### 1. Verificación visual en producción
 
-Pasos para Jonathan o próxima sesión con browser MCP:
+Los módulos con más cambios en esta sesión son los que más necesitan verificación visual:
 
-1. **FleetMonitorModule** — `/dashboard/traffic/fleet-monitor` → debe cargar mapa con buses, no mostrar crash
-2. **IncidentCommandCenter** — `/dashboard/traffic/incidents` → debe cargar lista de incidencias
-3. **OTPDashboard** — `/dashboard/traffic/otp` → debe mostrar registros de puntualidad (requiere datos en colección `inspections`)
-4. **MaintenanceDashboard** — `/dashboard/fleet/maintenance` → abrir cualquier orden de trabajo → botón ✕ del modal debe cerrar sin crash
-5. **InspectionForm** — `/dashboard/fleet/inspection/{vehicleId}` → paso 2, tocar zona de foto → debe abrir selector de archivos (en web) o cámara (en Android)
-6. **VehicleList** — `/dashboard/fleet/vehicles` → crear o editar un vehículo → después de guardar, la lista + usuarios + esquemas deben estar actualizados
-
-### Si OTPDashboard sigue vacío
-Puede ser que no haya docs en `inspections` todavía. Verificar con:
 ```
-Firebase Console → Firestore → colección `inspections` → contar documentos
+https://ucot-gestor-cloud.web.app
 ```
-Si hay 0 docs: el OTP se llena cuando un inspector captura puntualidad (InspectorCapture). La corrección de Firestore rules (sesión de hoy) debloqueó los writes.
+
+Verificar en este orden (con usuario ADMIN logueado):
+
+1. `/dashboard/traffic/fleet-monitor` → mapa con buses, no crash
+2. `/dashboard/admin/shifts` → tabla carga, checkboxes "PDF Automático" visible
+3. `/dashboard/traffic/shadow` → ShadowRadar carga y actualiza
+4. `/dashboard/traffic/competitor-intelligence` → CompetitorIntelligence carga sin error
+5. `/dashboard/admin/audit-log` → AuditLog con labels "Creación/Actualización/Eliminación"
+6. Sidebar → click "Navegador" → primer clic debe cargar sin error (ya no está en bundle inicial, carga al abrir)
+
+### 2. Próximas features pendientes
+
+Ver backlog abajo.
 
 ---
 
 ## 🗂️ BACKLOG PRIORIZADO
 
-1. **Fix agencyId en scraper** — `scripts/scrape_stm_oficial.cjs:45` función `inferirAgencyId` retorna null. Completar con tabla de rangos de líneas por empresa.
-2. **Verificación shapes cross-operador** — abrir NavigationModule con CUTCSA/COME/COETC y confirmar >95% con shape (24-72h post-shapeBuilder).
-3. **Sprint 2** — HeadwayInsights + GPSPlayback (archivos creados: `HeadwayInsights.tsx`, `GPSPlayback.tsx`, pendientes de wire-up).
-4. **Otros módulos sidebar** — Agentes Digitales, pronósticos, cartones — auditar igual que Control+Monitoreo.
-5. **Listeners Socket.io frontend** — incompletos.
-6. **APK Android** — Capacitor configurado, pendiente.
+1. **Fix agencyId en scraper** — `scripts/scrape_stm_oficial.cjs:45` función `inferirAgencyId` retorna null.
+2. **Verificación shapes cross-operador** — NavigationModule con CUTCSA/COME/COETC → confirmar >95% con shape.
+3. **Schedule/Cloud Function refresh periódico `competidores`** — scraper JSF horarios reales por línea.
+4. **Listeners Socket.io frontend** — incompletos, Socket.io no tiene listeners en frontend.
+5. **MyShifts.tsx + Marketplace.tsx** — tienen `@ts-nocheck`, revisar y tipar correctamente.
+6. **ShadowRadar.tsx:753** — posible stale closure (`ucotFlota` faltante en deps useMemo). Bajo riesgo pero anotado.
+7. **APK Android** — Capacitor configurado, pendiente.
 
 ---
 
 ## 🐛 BUGS CONOCIDOS NO CRÍTICOS
 
 - **Warn pre-auth race** en NavigationModule: aparece 1 vez por cambio de línea (fallback funciona). Fix: guard `!user?.uid` en useEffect ~línea 300.
-- **Errores TS pre-existentes** en `cascadeEngineService.ts` y `scheduleComplianceEngine.ts` — no bloquean build, no introducidos en esta sesión.
-- **MaintenanceDashboard RBAC**: botón "cerrar ticket" inline no valida rol — cualquier autenticado puede cerrarlo. No crítico para la demo pero revisar antes de producción real.
+- **Errores TS pre-existentes** en `cascadeEngineService.ts` y `scheduleComplianceEngine.ts` — no bloquean build.
+- **MaintenanceDashboard RBAC**: botón "cerrar ticket" inline no valida rol — revisar antes de producción real.
+- **ShadowRadar IIFE getDocs line 449** — promesa puede completarse después del unmount (memory leak marginal).
 
-## 🔑 DECISIONES OPERATIVAS DE ESTA SESIÓN
+## 🔑 DECISIONES OPERATIVAS
 
-- **Ruflo descartado permanentemente**: vulnerabilidades de seguridad críticas (prompt injection MCP, preinstall destructivo, SQL injection). Ver memory `feedback_multiagente_nativo.md`.
-- **Multi-agente**: se usa el Agent tool nativo de Claude Code (subagent_type Explore/Plan/general-purpose). No instalar herramientas externas de orquestación.
-- **OTP sin ScheduleService**: `timeDeltaMinutes` ya viene pre-calculado en cada documento de `inspections`. No se necesita ScheduleService para mostrar OTP.
-- **InspectionForm fallback**: en web, el selector de archivos con `capture="environment"` simula la cámara. En Android con Capacitor, usa la cámara nativa. Coexisten sin conflicto.
+- **authReady pattern**: para cualquier servicio Firestore que falle en cold start con `permission-denied`, importar `authReady` de `config/firebase.ts` y hacer `await authReady` antes de queries. Ya aplicado en `incidenciasService.ts`.
+- **crossOpShapesInjector lazy**: las funciones `listCrossOpLineasInyectadas` y `getCrossOpLineaInyectada` son ahora async. Cualquier caller nuevo debe await-las.
+- **Healthcheck sin Firestore**: `SystemStatus` en DashboardLayout ahora hace `fetch /version.json` — no consume cuota Firestore.
+- **Ruflo descartado permanentemente**: vulnerabilidades de seguridad críticas. Multi-agente: Agent tool nativo de Claude Code.
