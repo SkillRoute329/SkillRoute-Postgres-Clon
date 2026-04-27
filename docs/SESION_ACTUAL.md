@@ -6,55 +6,71 @@
 
 ---
 
-**Última actualización:** 2026-04-27 (sesión continua — DRO Matrix 1850 pares + DigitalAgentsModule verificado)
+**Última actualización:** 2026-04-27 (sesión continua — CorridorMarketShare + HRR v2 deployados)
 
 ---
 
-## ✅ SESIÓN 2026-04-27 — CERRADA
+## ✅ SESIÓN 2026-04-27 — EN CURSO
 
-### Todo lo desplegado en esta sesión (commit `e9e61dac` en producción)
+### Todo lo desplegado/listo en esta sesión
 
-| Cambio | Descripción | Commit |
+| Cambio | Descripción | Estado |
 |---|---|---|
-| Lazy-load shapes JSON | -6 MB bundle inicial; shapes cargan al abrir Navegador | `4b7db0d8` |
-| Healthcheck sin Firestore | fetch /version.json reemplaza getDoc → -2880 lecturas/día | `4b7db0d8` |
-| viajes_activos limit(200) | Previene descarga sin límite en onSnapshot | `4b7db0d8` |
-| Audit batch 3 (7 bugs) | AdminRRHH null jobRoles, Employees cold-start + array guard, AdminShifts useRef | `4b7db0d8` |
-| Audit batch 4 (9 bugs) | AdminAuditLog traducciones, StmScraperStatus cabeceras ES, ABLPage undefined%, AdminSeed res.ok | `ef638f1e` |
-| Audit batch 5 (5 bugs) | CEODashboard, DigitalAgentsModule, CompetitorIntelligence 3× res.ok guard | `02c8293c` |
-| Audit batch 6 (1 bug) | EconomicProjectionsPage división por cero pasajeros.length===0 | `8677b9ea` |
-| Fix agencyId scraper | extractCodigo() extrae código numérico del texto JSF completo | `27d42086` |
-| LiveVehicleMap rewrite | Elimina Socket.io; Firestore-driven; centro Montevideo; dark theme | `e9e61dac` |
-| AlertPanel rewrite | Elimina useConnectedUsers stub; labels ES; dark theme | `e9e61dac` |
-| Cloud Functions deploy | refreshCompetidoresTick (cron cada 10 min) activo en producción | `e9e61dac` |
+| LiveVehicleMap rewrite | Elimina Socket.io; Firestore-driven; centro Montevideo; dark theme | ✅ prod `e9e61dac` |
+| AlertPanel rewrite | Elimina useConnectedUsers stub; labels ES; dark theme | ✅ prod `e9e61dac` |
+| Cloud Functions deploy | refreshCompetidoresTick (cron cada 10 min) activo en producción | ✅ prod `e9e61dac` |
+| MyShifts.tsx TS-clean | @ts-nocheck removido, ShiftAction union type, Promise<void> | ✅ prod `1457813f` |
+| Marketplace.tsx TS-clean | @ts-nocheck removido, filtro búsqueda conectado | ✅ prod `1457813f` |
+| ShadowRadar stale closure | ucotFlota en deps del useMemo HRR (línea 753) | ✅ prod `1457813f` |
+| MaintenanceDashboard RBAC | canCloseTicket derivado de rol, botones ocultos para User | ✅ prod `1457813f` |
+| HRR v2 presionCompetitivaScore | Badge 0-100 en rival cards ShadowRadar (T1/T2) | ✅ prod `1457813f` |
+| **CorridorMarketShare** | Dashboard seat-km cross-operador: 4 KPIs + barras + matriz + tabla filtrable | ✅ build OK — **pendiente deploy** |
 
 ---
 
 ## 🎯 PRÓXIMO PASO INMEDIATO
 
-### Verificación visual en producción (requiere login ADMIN)
+### Deploy + verificación visual en producción
 
-URL: `https://ucot-gestor-cloud.web.app`
+```bash
+# Desde c:\Users\jonat\Desktop\PROYECTOS\GestionUcot
+firebase deploy --only hosting
+```
 
-Verificar en orden:
+Verificar en producción (login ADMIN en https://ucot-gestor-cloud.web.app):
 
-1. `/dashboard/traffic/fleet-monitor` → LiveVehicleMap carga, mapa centrado en Montevideo, no crash
-2. `/dashboard/admin/shifts` → tabla carga, checkbox visible como "PDF Automático"
-3. `/dashboard/traffic/shadow` → ShadowRadar carga y muestra datos live
-4. `/dashboard/traffic/competitor-intelligence` → carga sin error
-5. `/dashboard/admin/audit-log` → labels "Creación/Actualización/Eliminación"
-6. Sidebar → click "Navegador" (primer clic carga shapes, no debe crashear)
+1. `/dashboard/traffic/market-share` → carga datos, muestra 4 KPIs, barras de exposición, matriz cross-operador, tabla filtrable
+2. Sidebar → grupo "Inteligencia de Red" → ítem "Participación por Corredor-km" visible y navegable
+3. Filtrar tabla por "UCOT expuesto" → solo aparecen filas con empresaA = UCOT
+4. `/dashboard/traffic/shadow-radar` → ShadowRadar sigue funcionando (verificación de no-regresión)
+5. `/dashboard/traffic/corridor-intelligence` → sigue funcionando (no-regresión)
 
 ---
 
 ## 🗂️ BACKLOG PRIORIZADO
 
-1. **v2 HRR en vivo** — `corridor_overlap` ya tiene 1850 pares. Mejorar el cálculo de HRR en ShadowRadar usando tramos compartidos reales en lugar de solo distancia haversine.
-2. **Dashboard seat-km market share** — v3, cross-operador por corredor, usando `corridor_overlap`.
-3. **APK Release firmada** — debug lista (18 MB en Escritorio). Pendiente: `keytool -genkeypair`, `./gradlew assembleRelease`, firmar con `apksigner`.
-4. **Cron semanal para recalcular DRO** — `droMatrixTick` está configurado para lunes 04:00 Mvd. Verificar que se ejecuta automáticamente la próxima semana.
+1. **APK Release firmada** — debug lista (18 MB en Escritorio). `keytool -genkeypair` → `./gradlew assembleRelease` → `apksigner`.
+2. **Cron semanal DRO** — `droMatrixTick` corre lunes 04:00 Mvd. Verificar próxima semana.
+3. **snap-to-shape** — proyectar posición de buses sobre el shape para HRR aún más preciso (backlog largo plazo).
 
-### ✅ Completados en esta sesión
+### ✅ CorridorMarketShare completado
+- Ruta: `/dashboard/traffic/market-share`
+- Archivo: `frontend/src/pages/traffic/CorridorMarketShare.tsx` (340 líneas)
+- Datos: colección Firestore `corridor_overlap` (hasta 5000 docs, lazy load)
+- KPIs: total km disputados · pares DRO · operador más expuesto · par más disputado
+- Barras: exposición por operador ordenadas desc con % de red y mayor rival
+- Matriz 4×4: km compartidos + DRO% promedio por cada par de operadores (incluye intra)
+- Tabla: filtrable por empresa A/B, ordenable por km/DRO%/línea, paginada de 50 en 50
+- Nota metodológica DRO (TCRP 195) al pie
+- Toggle "solo inter-operador" (excluye sameEmpresa=true)
+
+### ✅ HRR v2 completado
+- `presionCompetitivaScore` (0-100): pondera HRR × pctAInB/100
+- T1 rival (90% DRO, HRR 1.5) → 100 rojo · T2 rival (15% DRO, HRR 1.5) → 22 verde
+- Badge visible en cada rival card en ShadowRadar
+- T3 (heurístico) recibe null (sin DRO para ponderar)
+
+### ✅ Completados en sesiones anteriores
 - MyShifts.tsx — @ts-nocheck removido, ShiftAction union type, Promise<void> explícito
 - Marketplace.tsx — @ts-nocheck removido, filtro de búsqueda conectado (línea/coche/servicio)
 - refreshCompetidoresTick — verificado: 1124 buses, 3 competidores, 3041ms ✅

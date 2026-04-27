@@ -37,6 +37,7 @@ import {
   DollarSign,
   Route,
   Network,
+  PieChart,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
@@ -137,6 +138,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           path: '/dashboard/traffic/penetration',
           label: 'Análisis de Penetración',
           icon: TrendingUp,
+        },
+        {
+          path: '/dashboard/traffic/market-share',
+          label: 'Participación por Corredor-km',
+          icon: PieChart,
         },
         {
           path: '/dashboard/traffic/headway-insights',
