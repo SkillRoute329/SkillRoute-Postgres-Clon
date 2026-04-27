@@ -3,7 +3,7 @@
  * Muestra para cada fecha disponible qué coche físico corre qué servicio.
  * Incluye indicador GPS en vivo desde STM (UCOT empresa 70).
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { Bus, Search, RefreshCw, Calendar, ArrowRight, Clock, Route, Wifi, WifiOff, Building2 } from 'lucide-react';
 
@@ -278,9 +278,8 @@ export default function DistribucionDiaria() {
               {cochesFiltrados.map((c) => {
                 const gps = gpsMap[c.coche];
                 return (
-                <>
+                <Fragment key={c.coche}>
                   <tr
-                    key={c.coche}
                     className={`border-b border-slate-800/60 hover:bg-slate-900/40 transition-colors cursor-pointer ${detalleServicio?.servicio === c.servicio ? 'bg-primary-950/30' : ''}`}
                     onClick={() => fetchDetalle(c.servicio)}
                   >
@@ -361,7 +360,7 @@ export default function DistribucionDiaria() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
                 );
               })}
             </tbody>

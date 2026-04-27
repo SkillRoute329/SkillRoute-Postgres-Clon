@@ -139,6 +139,16 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           icon: TrendingUp,
         },
         {
+          path: '/dashboard/traffic/headway-insights',
+          label: 'Espaciado entre Buses',
+          icon: BarChart3,
+        },
+        {
+          path: '/dashboard/traffic/gps-playback',
+          label: 'Reproducción GPS',
+          icon: Route,
+        },
+        {
           path: '/dashboard/traffic/ceo',
           label: 'Centro de Mando',
           icon: TrendingUp,

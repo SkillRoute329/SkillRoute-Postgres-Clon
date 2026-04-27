@@ -372,7 +372,7 @@ function ArchivePanel({ defaultAgency }: { defaultAgency: string }) {
         setArchives(a);
         if (a.length > 0) setSelectedWeek(a[0].week);
       })
-      .catch(e => setError(e.message))
+      .catch(e => setError(e instanceof Error ? e.message : 'Error desconocido'))
       .finally(() => setLoadingList(false));
   }, []);
 
@@ -385,7 +385,7 @@ function ArchivePanel({ defaultAgency }: { defaultAgency: string }) {
         if (d) { setLines(d.lines); setTotalRecords(d.totalRecords); }
         else setLines([]);
       })
-      .catch(e => setError(e.message))
+      .catch(e => setError(e instanceof Error ? e.message : 'Error desconocido'))
       .finally(() => setLoadingData(false));
   }, [selectedWeek, agencyFilter]);
 

@@ -304,6 +304,7 @@ export default function EconomicProjectionsPage() {
 
   /* ── Export PDF ── */
   const exportPDF = () => {
+    try {
     const doc = new jsPDF();
     doc.setFontSize(16);
     doc.text('Proyecciones Económicas — UCOT', 14, 20);
@@ -352,6 +353,9 @@ export default function EconomicProjectionsPage() {
     });
 
     doc.save(`proyecciones_ucot_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (err) {
+      console.error('[exportPDF] Error generando PDF:', err);
+    }
   };
 
   /* ── Estado color ── */

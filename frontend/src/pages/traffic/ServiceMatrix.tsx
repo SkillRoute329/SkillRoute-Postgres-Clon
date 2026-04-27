@@ -199,7 +199,7 @@ export default function ServiceMatrix() {
                 >
                   <div className="font-bold truncate">{item.fileName}</div>
                   <div className="flex items-center justify-between mt-1 text-[10px] opacity-70">
-                    <span>{new Date(item.uploadedAt?.seconds * 1000).toLocaleDateString()}</span>
+                    <span>{item.createdAt?.seconds ? new Date(item.createdAt.seconds * 1000).toLocaleDateString() : '—'}</span>
                     <span className="uppercase">{item.area || 'Gral'}</span>
                   </div>
                 </button>
