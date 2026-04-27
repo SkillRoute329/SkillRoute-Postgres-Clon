@@ -251,9 +251,9 @@ export default function AdminAuditLog() {
             className="w-full mt-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm text-white"
           >
             <option value="">Todas</option>
-            <option value="create">Create</option>
-            <option value="update">Update</option>
-            <option value="delete">Delete</option>
+            <option value="create">Creación</option>
+            <option value="update">Actualización</option>
+            <option value="delete">Eliminación</option>
           </select>
         </div>
         <div>
@@ -286,15 +286,15 @@ export default function AdminAuditLog() {
           <div className="text-2xl font-black text-fuchsia-400 mt-1">{filteredEvents.length}</div>
         </div>
         <div className="bg-slate-900/60 border border-emerald-500/20 rounded-lg p-3">
-          <div className="text-[10px] text-emerald-400 uppercase tracking-wider font-bold">Create</div>
+          <div className="text-[10px] text-emerald-400 uppercase tracking-wider font-bold">Creaciones</div>
           <div className="text-2xl font-black text-emerald-400 mt-1">{stats.byAction.create}</div>
         </div>
         <div className="bg-slate-900/60 border border-cyan-500/20 rounded-lg p-3">
-          <div className="text-[10px] text-cyan-400 uppercase tracking-wider font-bold">Update</div>
+          <div className="text-[10px] text-cyan-400 uppercase tracking-wider font-bold">Actualizaciones</div>
           <div className="text-2xl font-black text-cyan-400 mt-1">{stats.byAction.update}</div>
         </div>
         <div className="bg-slate-900/60 border border-red-500/20 rounded-lg p-3">
-          <div className="text-[10px] text-red-400 uppercase tracking-wider font-bold">Delete</div>
+          <div className="text-[10px] text-red-400 uppercase tracking-wider font-bold">Eliminaciones</div>
           <div className="text-2xl font-black text-red-400 mt-1">{stats.byAction.delete}</div>
         </div>
         <div className="bg-slate-900/60 border border-slate-800 rounded-lg p-3 col-span-2">

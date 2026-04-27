@@ -112,17 +112,17 @@ const StmScraperStatus: React.FC = () => {
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="text-slate-600 border-b border-slate-900">
                 <tr>
-                  <th className="font-normal pb-2">Timestamp</th>
-                  <th className="font-normal pb-2">Status</th>
-                  <th className="font-normal pb-2">Rival Count</th>
-                  <th className="font-normal pb-2">Troughput</th>
+                  <th className="font-normal pb-2">Fecha/Hora</th>
+                  <th className="font-normal pb-2">Estado</th>
+                  <th className="font-normal pb-2">Competidores</th>
+                  <th className="font-normal pb-2">Tráfico</th>
                   <th className="font-normal pb-2">Respuesta</th>
                 </tr>
               </thead>
               <tbody className="text-slate-400">
                 {logs.map((log) => (
                   <tr key={log.id} className="border-b border-slate-900/50 hover:bg-slate-900/20 transition-colors">
-                    <td className="py-2 text-indigo-400 font-bold">{log.tiempo?.toDate().toISOString() || 'N/A'}</td>
+                    <td className="py-2 text-indigo-400 font-bold">{log.tiempo?.toDate().toLocaleString('es-UY') || 'N/D'}</td>
                     <td className="py-2">
                       <span className={`px-2 py-0.5 rounded text-xs font-black ${log.status === 'SUCCESS' ? 'bg-emerald-900/50 text-emerald-400' : 'bg-red-900/50 text-red-400'}`}>
                         {log.status}
@@ -130,7 +130,7 @@ const StmScraperStatus: React.FC = () => {
                     </td>
                     <td className="py-2">{log.vehiculos_competencia} objs</td>
                     <td className="py-2">{(log.bytes_descargados / 1024).toFixed(2)} KB</td>
-                    <td className="py-2 font-mono text-xs opacity-70 truncate max-w-xs">{log.error_msg || 'OK - Paquetes parseados'}</td>
+                    <td className="py-2 font-mono text-xs opacity-70 truncate max-w-xs">{log.error_msg || 'Paquetes procesados correctamente'}</td>
                   </tr>
                 ))}
               </tbody>

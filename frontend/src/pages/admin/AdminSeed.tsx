@@ -9,9 +9,10 @@ import { CheckCircle2, AlertTriangle, Loader2, Database, Bus, FileText, Users, C
 // Llama a un endpoint de la API para cargar datos reales desde Excel
 async function seedViaApi(endpoint: string): Promise<string> {
   const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+  if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
   const data = await res.json();
   if (!data.ok) throw new Error(data.error || 'Error desconocido');
-  return data.message ?? 'OK';
+  return data.message ?? 'Completado';
 }
 import {
   seedFlota,
