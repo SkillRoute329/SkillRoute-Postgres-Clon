@@ -6,7 +6,7 @@
 
 ---
 
-**Última actualización:** 2026-04-27 (sesión continua — RBAC MaintenanceDashboard + APK Android generada + scraper verificado)
+**Última actualización:** 2026-04-27 (sesión continua — DRO Matrix 1850 pares + DigitalAgentsModule verificado)
 
 ---
 
@@ -49,9 +49,10 @@ Verificar en orden:
 
 ## 🗂️ BACKLOG PRIORIZADO
 
-1. **Correr scraper JSF completo con persistencia en Firestore** — el fix de agencyId fue verificado (muestra emp:10/50/70 correctamente, 141 líneas). Pendiente: correr con flag `--persist` o equivalente para escribir datos reales en Firestore y verificar que la colección `stm_horarios` queda correcta.
-2. **APK Release firmada** — la APK debug está generada (18MB, en Escritorio). Pendiente: generar keystore, firmar con `assembleRelease`, subir a Google Play o distribuir por MDM interno.
-3. **Completar módulo Agentes Digitales** — DigitalAgentsModule.tsx está incompleto (feature real pendiente).
+1. **v2 HRR en vivo** — `corridor_overlap` ya tiene 1850 pares. Mejorar el cálculo de HRR en ShadowRadar usando tramos compartidos reales en lugar de solo distancia haversine.
+2. **Dashboard seat-km market share** — v3, cross-operador por corredor, usando `corridor_overlap`.
+3. **APK Release firmada** — debug lista (18 MB en Escritorio). Pendiente: `keytool -genkeypair`, `./gradlew assembleRelease`, firmar con `apksigner`.
+4. **Cron semanal para recalcular DRO** — `droMatrixTick` está configurado para lunes 04:00 Mvd. Verificar que se ejecuta automáticamente la próxima semana.
 
 ### ✅ Completados en esta sesión
 - MyShifts.tsx — @ts-nocheck removido, ShiftAction union type, Promise<void> explícito

@@ -778,7 +778,7 @@ catalogodatos.gub.uy                          → WAF bloquea acceso programáti
 | Pronósticos | `EconomicProjectionsPage.tsx` + `forecastService.ts` | 🟡 Sin datos reales |
 | Flota | `FleetMonitorModule.tsx` + `fleetService.ts` | 🟡 Básico |
 | ShadowRadar | `ShadowRadar.tsx` | 🟢 Live cross-operador (2026-04-24) |
-| Agentes Digitales | `DigitalAgentsModule.tsx` | 🔴 Incompleto |
+| Agentes Digitales | `DigitalAgentsModule.tsx` | 🟢 Funcional — endpoint /api/inteligencia verified live |
 | Seguridad | `firestore.rules` | 🟢 RBAC OK |
 
 ## Glosario del Proyecto
@@ -798,12 +798,12 @@ catalogodatos.gub.uy                          → WAF bloquea acceso programáti
 1. ~~Conectar datos reales desde IMM~~ — ✅ GPS lista. Falta scraper JSF horarios.
 2. ~~Corregir reglas Firestore~~ — ✅ Hechas (commit 97093ce6).
 3. ~~Fix ShadowRadar datos estáticos~~ — ✅ Resuelto (2026-04-24).
-4. **🟢 MVP matriz DRO cross-operador** — reemplazar heurística destino/heading actual
-5. Schedule/Cloud Function refresh periódico `competidores`
-6. Scraper JSF horarios reales por línea
-7. v2 HRR en vivo + v3 dashboard seat-km market share
-8. Completar listeners Socket.io frontend
-9. Generar APK Android
+4. ~~**MVP matriz DRO cross-operador**~~ — ✅ 1167 shapes + 1850 pares DRO en corridor_overlap (2026-04-27). ShadowRadar consume tiering T1/T2/T3.
+5. ~~Schedule/Cloud Function refresh periódico `competidores`~~ — ✅ refreshCompetidoresTick cada 10 min activo.
+6. ~~Scraper JSF horarios reales por línea~~ — ✅ 141 líneas, agencyId correcto, shapes en Firestore.
+7. ~~Generar APK Android~~ — ✅ SkillRoute-debug.apk (18 MB) generada 2026-04-27.
+8. **v2 HRR en vivo** — usando corridor_overlap para headway real en tramo compartido
+9. **Dashboard seat-km market share** — v3, cross-operador por corredor
 
 ## Notas de Contexto
 - Jonathan no es programador — es emprendedor con conocimiento profundo del negocio de transporte
