@@ -77,6 +77,13 @@ const InspectionForm = () => {
     }
   };
 
+  const addDamageWithPhoto = (zone: string, photoUrl: string) => {
+    const desc = prompt(`Describe el daño en: ${zone}`);
+    if (desc) {
+      setDamages((prev) => [...prev, { zone, description: desc, severity: 'Medium', photoUrl }]);
+    }
+  };
+
   const handleCameraClick = async (zone: string) => {
     setCapturingZone(zone);
     try {
@@ -86,24 +93,22 @@ const InspectionForm = () => {
         width: 1024,
         resultType: CameraResultType.DataUrl,
       });
+      if (image.dataUrl) addDamageWithPhoto(zone, image.dataUrl);
+    } catch {
+      // Capacitor Camera no disponible en web — usar selector de archivo
+      fileInputRef.current?.click();
+    }
+  };
 
-      if (image.dataUrl) {
-        // 2. Ask for Description (Could use native dialog later)
-        const desc = prompt(`Describe el daño en: ${zone}`);
-        if (desc) {
-          setDamages([
-            ...damages,
-            {
-              zone: zone,
-              description: desc,
-              severity: 'Medium',
-              photoUrl: image.dataUrl,
-            },
-          ]);
-        }
-      }
-    } catch (e) {
-      console.warn('Camera cancelled or failed', e);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // reset para permitir seleccionar el mismo archivo de nuevo
+    if (!file || !capturingZone) return;
+    try {
+      const dataUrl = await compressImage(file);
+      addDamageWithPhoto(capturingZone, dataUrl);
+    } catch (err) {
+      console.warn('Error procesando imagen seleccionada', err);
     }
   };
 
@@ -171,13 +176,14 @@ const InspectionForm = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 animate-fade-in-up pb-32 md:pb-24">
-      {/* Hidden File Input */}
+      {/* Hidden File Input — fallback para web cuando Capacitor Camera no está disponible */}
       <input
         type="file"
         ref={fileInputRef}
         accept="image/*"
-        capture="environment" // Forces Rear Camera on Mobile
+        capture="environment"
         className="hidden"
+        onChange={handleFileChange}
       />
 
       {/* Error Message Display */}

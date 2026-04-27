@@ -17,6 +17,7 @@ import {
   Download,
   Printer,
   Wrench,
+  X,
 } from 'lucide-react';
 import {
   MaintenanceService,
@@ -653,7 +654,7 @@ const MaintenanceDashboard = () => {
                 onClick={() => setIsModalOpen(false)}
                 className="text-slate-400 hover:text-white"
               >
-                <XIcon className="w-6 h-6" />
+                <X className="w-6 h-6" />
               </button>
             </div>
 
@@ -791,7 +792,7 @@ const MaintenanceDashboard = () => {
                 onClick={() => setProcessModalOpen(false)}
                 className="text-slate-400 hover:text-white"
               >
-                <XIcon className="w-6 h-6" />
+                <X className="w-6 h-6" />
               </button>
             </div>
 

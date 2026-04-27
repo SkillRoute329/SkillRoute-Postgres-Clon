@@ -249,7 +249,7 @@ const VehicleList = () => {
       }
 
       setShowModal(false);
-      loadVehicles();
+      loadData();
     } catch (error: any) {
       console.error('Save error', error);
       const msg = error.response?.data?.message || error.message || 'Error técnico al guardar';
