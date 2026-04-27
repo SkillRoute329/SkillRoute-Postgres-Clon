@@ -194,6 +194,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           label: 'Proyecciones Económicas',
           icon: DollarSign,
         },
+        {
+          path: '/dashboard/traffic/roi-calculator',
+          label: 'Calculadora de ROI',
+          icon: TrendingUp,
+        },
       ],
     },
     {
