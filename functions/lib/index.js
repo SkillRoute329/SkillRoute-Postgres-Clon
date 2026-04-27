@@ -36,7 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.refreshCompetidoresNow = exports.refreshCompetidoresTick = exports.refreshHorariosUcotNow = exports.refreshHorariosUcotTick = exports.intelligenceApi = exports.stmHorariosProxy = exports.parseBulkTicketsStorage = exports.stmOnlineProxy = exports.testIngestaIMM = exports.ingestaIMMTick = exports.onAlertaRegulacion = exports.limpiarPingsRivales = exports.rivalPingIngestion = exports.shadowDispatcherTick = exports.alertaSoCBajo = exports.alertasVencimientosDocumentales = exports.expirarDesvios = exports.gpsWebhookV2 = exports.gpsWebhook = exports.discoverVariants = exports.syncVariantRoutes = exports.geoserverProxy = exports.seedUCOTData = exports.syncParadasSTMCron = exports.syncParadasSTM = exports.syncUCOTLinesCron = exports.syncUCOTLines = exports.montevideoProxy = void 0;
+exports.auditLogQuery = exports.auditLogServiceMatrices = exports.auditLogServiceDefinitions = exports.auditLogReglasRotacion = exports.auditLogUsers = exports.auditLogVehiculos = exports.auditLogVehicles = exports.auditLogLineas = exports.auditLogLineasUcot = exports.auditLogParametrosOperativosHistorial = exports.auditLogParametrosOperativos = exports.computeServiceDeliveryCron = exports.computeServiceDeliveryNow = exports.penetrationHistoric = exports.computePenetrationCron = exports.computePenetrationNow = exports.computeAdherenceCron = exports.computeAdherenceNow = exports.refreshAllStmHorariosTick = exports.refreshAllStmHorariosNow = exports.autoStatsCollectorNow = exports.autoStatsCollectorTick = exports.refreshCompetidoresNow = exports.refreshCompetidoresTick = exports.refreshHorariosUcotNow = exports.refreshHorariosUcotTick = exports.intelligenceApi = exports.stmHorariosProxy = exports.parseBulkTicketsStorage = exports.stmOnlineProxy = exports.testIngestaIMM = exports.ingestaIMMTick = exports.onAlertaRegulacion = exports.limpiarPingsRivales = exports.rivalPingIngestion = exports.shadowDispatcherTick = exports.alertaSoCBajo = exports.alertasVencimientosDocumentales = exports.expirarDesvios = exports.gpsWebhookV2 = exports.gpsWebhook = exports.discoverVariants = exports.syncVariantRoutes = exports.geoserverProxy = exports.seedUCOTData = exports.syncParadasSTMCron = exports.syncParadasSTM = exports.syncUCOTLinesCron = exports.syncUCOTLines = exports.montevideoProxy = void 0;
+exports.shapeBuilderRun = exports.shapeBuilderTick = exports.gpsHistoryAccumulatorTick = exports.netexEndpoint = exports.systemHealth = exports.siriRealtime = exports.gtfsStatic = exports.regulatorio = exports.refreshGtfsRtAlerts = exports.gtfsRealtime = exports.acknowledgeAlerta = exports.onAlertaCreated = exports.historicBunching = exports.historicOtp = exports.recomputeDroMatrixNow = exports.droMatrixTick = exports.reconstructShapesNow = exports.reconstructShapesTick = exports.listVehicleArchives = exports.archiveVehicleEventsNow = exports.archiveVehicleEventsTick = void 0;
 const functions = __importStar(require("firebase-functions/v1"));
 const admin = __importStar(require("firebase-admin"));
 const axios_1 = __importDefault(require("axios"));
@@ -655,7 +656,7 @@ exports.stmHorariosProxy = functions.https.onRequest((req, res) => {
             }
             const response = await (0, axios_1.default)(config);
             // Copy content-type from STM
-            res.set('Content-Type', response.headers['content-type'] || 'text/html; charset=UTF-8');
+            res.set('Content-Type', String(response.headers['content-type'] || 'text/html; charset=UTF-8'));
             // Send raw buffer back
             res.send(response.data);
         }
@@ -677,3 +678,140 @@ Object.defineProperty(exports, "refreshHorariosUcotNow", { enumerable: true, get
 var refreshCompetidores_1 = require("./refreshCompetidores");
 Object.defineProperty(exports, "refreshCompetidoresTick", { enumerable: true, get: function () { return refreshCompetidores_1.refreshCompetidoresTick; } });
 Object.defineProperty(exports, "refreshCompetidoresNow", { enumerable: true, get: function () { return refreshCompetidores_1.refreshCompetidoresNow; } });
+// ─── AutoStats Collector — GPS+GTFS cada 5min ─────────────────────────────────
+// Acumula historial de cumplimiento horario sin inspectores.
+// Funciona para UCOT, CUTCSA, COETC, COME simultáneamente.
+var autoStatsCollector_1 = require("./autoStatsCollector");
+Object.defineProperty(exports, "autoStatsCollectorTick", { enumerable: true, get: function () { return autoStatsCollector_1.autoStatsCollectorTick; } });
+Object.defineProperty(exports, "autoStatsCollectorNow", { enumerable: true, get: function () { return autoStatsCollector_1.autoStatsCollectorNow; } });
+// ─── Refresh horarios STM completo (todas las empresas, todas las líneas) ─────
+var refreshAllStmHorarios_1 = require("./refreshAllStmHorarios");
+Object.defineProperty(exports, "refreshAllStmHorariosNow", { enumerable: true, get: function () { return refreshAllStmHorarios_1.refreshAllStmHorariosNow; } });
+Object.defineProperty(exports, "refreshAllStmHorariosTick", { enumerable: true, get: function () { return refreshAllStmHorarios_1.refreshAllStmHorariosTick; } });
+// ─── Schedule Adherence Engine — OTP planificado vs real ──────────────────────
+// Cruza vehicle_events (GPS real) contra horarios_stm (programación oficial)
+// y produce auto_stats_diarios/{YYYY-MM-DD}_{agencyId} con OTP real UITP.
+// Métrica canónica: |desviación| ≤ 5 min = A_TIEMPO.
+// Cron horario procesa la hora previa; endpoint manual permite recalcular días.
+var scheduleAdherence_1 = require("./scheduleAdherence");
+Object.defineProperty(exports, "computeAdherenceNow", { enumerable: true, get: function () { return scheduleAdherence_1.computeAdherenceNow; } });
+Object.defineProperty(exports, "computeAdherenceCron", { enumerable: true, get: function () { return scheduleAdherence_1.computeAdherenceCron; } });
+// ─── Market Penetration — snapshot diario de cuota cross-operador ─────────────
+// Cron 23:45 Mvd toma snapshot de buses observados por (línea × agencyId)
+// y persiste en penetracion_diaria/{ymd}_{linea}. Permite reconstruir
+// histórico de penetración sin mantener cartones detallados.
+// HTTP /penetrationHistoric?agencyId=X&days=N&topLineas=M para el dashboard.
+var marketPenetration_1 = require("./marketPenetration");
+Object.defineProperty(exports, "computePenetrationNow", { enumerable: true, get: function () { return marketPenetration_1.computePenetrationNow; } });
+Object.defineProperty(exports, "computePenetrationCron", { enumerable: true, get: function () { return marketPenetration_1.computePenetrationCron; } });
+Object.defineProperty(exports, "penetrationHistoric", { enumerable: true, get: function () { return marketPenetration_1.penetrationHistoric; } });
+// ─── Service Delivery Engine — KPI canónico UITP cartones plan/ejec ───────────
+// Cruza cartones planificados vs cartones_completados y produce
+// service_delivery_diaria/{ymd}_{agencyId} con SD = ejec/plan.
+// Cron 23:30 Mvd procesa el día. HTTP manual permite recalcular días específicos.
+var serviceDeliveryEngine_1 = require("./serviceDeliveryEngine");
+Object.defineProperty(exports, "computeServiceDeliveryNow", { enumerable: true, get: function () { return serviceDeliveryEngine_1.computeServiceDeliveryNow; } });
+Object.defineProperty(exports, "computeServiceDeliveryCron", { enumerable: true, get: function () { return serviceDeliveryEngine_1.computeServiceDeliveryCron; } });
+// ─── Audit Log — trazabilidad de cambios sobre colecciones críticas ───────────
+// Trigger onWrite registra cada cambio (create/update/delete) en audit_log/
+// con before/after/diff/uid/email para compliance y debugging.
+var auditLog_1 = require("./auditLog");
+Object.defineProperty(exports, "auditLogParametrosOperativos", { enumerable: true, get: function () { return auditLog_1.auditLogParametrosOperativos; } });
+Object.defineProperty(exports, "auditLogParametrosOperativosHistorial", { enumerable: true, get: function () { return auditLog_1.auditLogParametrosOperativosHistorial; } });
+Object.defineProperty(exports, "auditLogLineasUcot", { enumerable: true, get: function () { return auditLog_1.auditLogLineasUcot; } });
+Object.defineProperty(exports, "auditLogLineas", { enumerable: true, get: function () { return auditLog_1.auditLogLineas; } });
+Object.defineProperty(exports, "auditLogVehicles", { enumerable: true, get: function () { return auditLog_1.auditLogVehicles; } });
+Object.defineProperty(exports, "auditLogVehiculos", { enumerable: true, get: function () { return auditLog_1.auditLogVehiculos; } });
+Object.defineProperty(exports, "auditLogUsers", { enumerable: true, get: function () { return auditLog_1.auditLogUsers; } });
+Object.defineProperty(exports, "auditLogReglasRotacion", { enumerable: true, get: function () { return auditLog_1.auditLogReglasRotacion; } });
+Object.defineProperty(exports, "auditLogServiceDefinitions", { enumerable: true, get: function () { return auditLog_1.auditLogServiceDefinitions; } });
+Object.defineProperty(exports, "auditLogServiceMatrices", { enumerable: true, get: function () { return auditLog_1.auditLogServiceMatrices; } });
+Object.defineProperty(exports, "auditLogQuery", { enumerable: true, get: function () { return auditLog_1.auditLogQuery; } });
+// ─── Archive Vehicle Events — Rotativo semanal a Storage ─────────────────────
+// Exporta vehicle_events a Firebase Storage y purga Firestore.
+// Mantiene Firestore pequeño (7 días) y el historial en Storage (ilimitado, barato).
+var archiveVehicleEvents_1 = require("./archiveVehicleEvents");
+Object.defineProperty(exports, "archiveVehicleEventsTick", { enumerable: true, get: function () { return archiveVehicleEvents_1.archiveVehicleEventsTick; } });
+Object.defineProperty(exports, "archiveVehicleEventsNow", { enumerable: true, get: function () { return archiveVehicleEvents_1.archiveVehicleEventsNow; } });
+Object.defineProperty(exports, "listVehicleArchives", { enumerable: true, get: function () { return archiveVehicleEvents_1.listVehicleArchives; } });
+// ─── Shape Reconstruction — shapes cross-operador desde vehicle_events ────────
+// DIRECTRIZ 2026-04-24: SkillRoute analiza el sistema metropolitano completo.
+// Reconstruye polilíneas de UCOT/CUTCSA/COME/COETC desde el histórico GPS.
+// Base para la matriz DRO (v2) y snap-to-shape en ShadowRadar.
+var shapeReconstruction_1 = require("./shapeReconstruction");
+Object.defineProperty(exports, "reconstructShapesTick", { enumerable: true, get: function () { return shapeReconstruction_1.reconstructShapesTick; } });
+Object.defineProperty(exports, "reconstructShapesNow", { enumerable: true, get: function () { return shapeReconstruction_1.reconstructShapesNow; } });
+// ─── DRO Matrix — Directional Route Overlap entre shapes ─────────────────────
+// Consume shapes_cross_operator y produce corridor_overlap con pctAInB,
+// sharedKm, sameEmpresa (para intra-empresa canibalización).
+// Reemplaza la heurística de destino/heading en ShadowRadar.
+var droMatrix_1 = require("./droMatrix");
+Object.defineProperty(exports, "droMatrixTick", { enumerable: true, get: function () { return droMatrix_1.droMatrixTick; } });
+Object.defineProperty(exports, "recomputeDroMatrixNow", { enumerable: true, get: function () { return droMatrix_1.recomputeDroMatrixNow; } });
+// ─── FCM Alert Dispatcher — push al conductor + ACK loop ──────────────────────
+// ─── Histórico de KPIs (CEO V7 fase 2) ────────────────────────────────────────
+// Series diarias para los botones 7D/30D del Centro de Mando.
+// /historicOtp?days=N&agencyId=X → puntualidad por día
+// /historicBunching?days=N&agencyId=X → aglomeración por día
+var historicMetrics_1 = require("./historicMetrics");
+Object.defineProperty(exports, "historicOtp", { enumerable: true, get: function () { return historicMetrics_1.historicOtp; } });
+Object.defineProperty(exports, "historicBunching", { enumerable: true, get: function () { return historicMetrics_1.historicBunching; } });
+// DIRECTRIZ 2026-04-24: cierra el loop operacional (Swiftly/Optibus-style).
+// onAlertaCreated: dispara FCM cada vez que se crea un doc en alertas_regulacion.
+// acknowledgeAlerta: HTTP endpoint que marca ack_at + response_time_sec cuando
+// el chofer toca "OK" en la notificación.
+var fcmAlertDispatcher_1 = require("./fcmAlertDispatcher");
+Object.defineProperty(exports, "onAlertaCreated", { enumerable: true, get: function () { return fcmAlertDispatcher_1.onAlertaCreated; } });
+Object.defineProperty(exports, "acknowledgeAlerta", { enumerable: true, get: function () { return fcmAlertDispatcher_1.acknowledgeAlerta; } });
+// ─── GTFS-Realtime Publisher ─────────────────────────────────────────────────
+// Fase 1 #5 (2026-04-23): publica VehiclePositions GTFS-RT para integración
+// con Google Maps, Moovit, Citymapper y cualquier agregador MaaS.
+// URLs tras deploy:
+//   /gtfsRealtime/vehicle-positions.pb   — protobuf (producción)
+//   /gtfsRealtime/vehicle-positions.json — JSON (debug)
+//   /gtfsRealtime/feed-info              — metadata
+var gtfsRealtime_1 = require("./gtfsRealtime");
+Object.defineProperty(exports, "gtfsRealtime", { enumerable: true, get: function () { return gtfsRealtime_1.gtfsRealtime; } });
+Object.defineProperty(exports, "refreshGtfsRtAlerts", { enumerable: true, get: function () { return gtfsRealtime_1.refreshGtfsRtAlerts; } });
+// ─── Compliance Reporting (Sprint 1, 2026-04-25) ─────────────────────────────
+// GET/POST /regulatorio/export — PDF estructurado cumplimiento OTP + KPIs UITP
+// Auth: ADMIN/SUPERADMIN
+var regulatorio_1 = require("./api/regulatorio");
+Object.defineProperty(exports, "regulatorio", { enumerable: true, get: function () { return regulatorio_1.regulatorio; } });
+// ─── GTFS-Static Publisher ───────────────────────────────────────────────────
+// Trim+ #1 (2026-04-23): dataset estático (routes, stops, trips, shapes) que
+// complementa GTFS-RT. Agregadores MaaS consumen ambos.
+//   /gtfsStatic/feed.zip    — application/zip (producción)
+//   /gtfsStatic/feed-info   — metadata JSON
+var gtfsStatic_1 = require("./gtfsStatic");
+Object.defineProperty(exports, "gtfsStatic", { enumerable: true, get: function () { return gtfsStatic_1.gtfsStatic; } });
+// ─── SIRI-Lite Publisher (mercado UE) ────────────────────────────────────────
+// Trim+ #68 (2026-04-23): VehicleMonitoring + StopMonitoring en formato SIRI-Lite JSON
+// para agregadores MaaS europeos.
+//   /siriRealtime/vm.json
+//   /siriRealtime/sm.json
+//   /siriRealtime/discovery.json
+var siriRealtime_1 = require("./siriRealtime");
+Object.defineProperty(exports, "siriRealtime", { enumerable: true, get: function () { return siriRealtime_1.siriRealtime; } });
+// ─── System Health Monitoring (operational observability) ────────────────────
+// Trim+ #72 (2026-04-23): agrega estado de todos los componentes en un JSON.
+//   /systemHealth          — estado completo (cache 30s)
+//   /systemHealth?fresh=1  — force refresh
+var systemHealth_1 = require("./systemHealth");
+Object.defineProperty(exports, "systemHealth", { enumerable: true, get: function () { return systemHealth_1.systemHealth; } });
+// ─── NeTEx Framework Discovery (EU/Interop stds) ─────────────────────────────
+// GET /netexEndpoint/discovery.{xml,json} para agregadores MaaS europeos.
+var netexEndpoint_1 = require("./netexEndpoint");
+Object.defineProperty(exports, "netexEndpoint", { enumerable: true, get: function () { return netexEndpoint_1.netexEndpoint; } });
+// ─── GPS History Accumulator — acumula pings GPS con TTL 7 días ──────────────
+// Cron 60s: muestrea todos los buses del sistema y persiste en gps_pings_raw.
+// Fuente primaria para shapeBuilder (shapes GPS-derived cross-operador).
+var gpsHistoryAccumulator_1 = require("./gpsHistoryAccumulator");
+Object.defineProperty(exports, "gpsHistoryAccumulatorTick", { enumerable: true, get: function () { return gpsHistoryAccumulator_1.gpsHistoryAccumulatorTick; } });
+// ─── Shape Builder — reconstruye shapes desde historial GPS ──────────────────
+// Cron 1h: lee gps_pings_raw, aplica Douglas-Peucker, materializa en
+// shapes_cross_operator/{agencyId}_{linea}_{variante} con agencyId correcto.
+// HTTP /shapeBuilderRun?agencyId=70&linea=300 para forzar reconstrucción puntual.
+var shapeBuilder_1 = require("./shapeBuilder");
+Object.defineProperty(exports, "shapeBuilderTick", { enumerable: true, get: function () { return shapeBuilder_1.shapeBuilderTick; } });
+Object.defineProperty(exports, "shapeBuilderRun", { enumerable: true, get: function () { return shapeBuilder_1.shapeBuilderRun; } });

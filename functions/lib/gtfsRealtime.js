@@ -1,0 +1,574 @@
+"use strict";
+/**
+ * gtfsRealtime.ts — GTFS-Realtime VehiclePositions Publisher
+ * ==========================================================
+ * Fase 1 #5 (2026-04-23)
+ *
+ * Expone las posiciones GPS en vivo de todos los buses de Montevideo
+ * (UCOT + CUTCSA + COETC + COME) como feed GTFS-Realtime estándar.
+ *
+ * Habilita integración con:
+ *   - Google Maps Transit
+ *   - Moovit
+ *   - Citymapper
+ *   - Transit App
+ *   - Cualquier agregador MaaS que consuma GTFS-RT
+ *
+ * SPEC: https://gtfs.org/realtime/
+ *
+ * Endpoints:
+ *   GET /vehicle-positions.pb    → protobuf (producción)
+ *   GET /vehicle-positions.json  → JSON (debug + inspección humana)
+ *   GET /feed-info               → metadata del publisher
+ *   GET /health                  → readiness check
+ *
+ * Cache: 15 segundos (GTFS-RT recomienda refresh 15-30s).
+ *
+ * Limitaciones reconocidas de esta versión (documentadas en GTFS_RT_PUBLISHER.md):
+ *   - Solo VehiclePositions. TripUpdates y ServiceAlerts requieren
+ *     schedule estático publicado (GTFS-static), aún no disponible.
+ *   - trip.trip_id es aproximado (sub_linea + destino) porque IMM no
+ *     expone trip_id oficial en su snapshot en vivo.
+ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.gtfsRealtime = exports.refreshGtfsRtAlerts = void 0;
+const functions = __importStar(require("firebase-functions/v1"));
+const admin = __importStar(require("firebase-admin"));
+const express = require("express");
+const cors = require("cors");
+const axios = require("axios");
+const getDbRt = () => admin.firestore();
+// ─── CONSTANTES ──────────────────────────────────────────────────────────────
+const STM_URL = 'https://www.montevideo.gub.uy/buses/rest/stm-online';
+const STM_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/121.0.0.0 Safari/537.36',
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+    Referer: 'https://www.montevideo.gub.uy/buses/',
+    Origin: 'https://www.montevideo.gub.uy',
+};
+/** codigoEmpresa IMM → agency_id GTFS */
+const AGENCIES = {
+    10: { id: 'coetc', name: 'COETC' },
+    20: { id: 'come', name: 'COME' },
+    50: { id: 'cutcsa', name: 'CUTCSA' },
+    70: { id: 'ucot', name: 'UCOT' },
+};
+/** Cache TTL: 15s — GTFS-RT consumers recargan cada 15-30s. */
+const CACHE_TTL_MS = 15000;
+let feedCache = null;
+// ─── FETCH + PARSE STM ───────────────────────────────────────────────────────
+async function fetchAllBuses() {
+    var _a, _b, _c, _d, _e;
+    const now = Date.now();
+    if (feedCache && now - feedCache.fetchedAt < CACHE_TTL_MS) {
+        return feedCache.rawBuses;
+    }
+    const res = await axios.default.post(STM_URL, { empresa: '-1' }, { headers: STM_HEADERS, timeout: 20000 });
+    const geojson = res.data;
+    const buses = [];
+    const tsObservado = Math.floor(now / 1000);
+    for (const f of (_a = geojson === null || geojson === void 0 ? void 0 : geojson.features) !== null && _a !== void 0 ? _a : []) {
+        const p = (_b = f === null || f === void 0 ? void 0 : f.properties) !== null && _b !== void 0 ? _b : {};
+        const coords = (_d = (_c = f === null || f === void 0 ? void 0 : f.geometry) === null || _c === void 0 ? void 0 : _c.coordinates) !== null && _d !== void 0 ? _d : [];
+        const lng = Number(coords[0]);
+        const lat = Number(coords[1]);
+        // GPS válido = lat/lng en Uruguay (ambos negativos)
+        if (!(lat < 0 && lng < 0))
+            continue;
+        const codEmp = Number(p.codigoEmpresa) || 0;
+        const agency = AGENCIES[codEmp];
+        if (!agency)
+            continue; // ignorar empresas desconocidas
+        buses.push({
+            codigoBus: String((_e = p.codigoBus) !== null && _e !== void 0 ? _e : 'SN'),
+            codigoEmpresa: codEmp,
+            empresaId: agency.id,
+            empresaNombre: agency.name,
+            linea: p.linea ? String(p.linea) : null,
+            sublinea: p.sublinea ? String(p.sublinea) : null,
+            destino: p.destinoDesc ? String(p.destinoDesc) : null,
+            variante: typeof p.variante === 'number' ? p.variante : null,
+            lat,
+            lng,
+            velocidadKmh: Number(p.velocidad) || 0,
+            timestampObservado: tsObservado,
+        });
+    }
+    feedCache = { rawBuses: buses, fetchedAt: now };
+    return buses;
+}
+// ─── CONSTRUCCIÓN GTFS-RT FEED ───────────────────────────────────────────────
+/**
+ * Construye el FeedMessage GTFS-Realtime con VehiclePositions.
+ * Usa la lib oficial `gtfs-realtime-bindings` (wrapping de protobufjs).
+ *
+ * Returns: FeedMessage como instancia (para serializar a .pb o .json).
+ */
+async function buildFeedMessage(opts = {}) {
+    // Import dinámico para no romper el startup cuando la dep no está instalada todavía
+    const gtfsRt = require('gtfs-realtime-bindings');
+    const { FeedMessage, FeedEntity, FeedHeader, VehiclePosition, TripDescriptor, Position } = gtfsRt.transit_realtime;
+    const buses = await fetchAllBuses();
+    const tsUnix = Math.floor(Date.now() / 1000);
+    const filtered = opts.agencyFilter
+        ? buses.filter((b) => b.empresaId === opts.agencyFilter)
+        : buses;
+    const entities = filtered.map((b) => {
+        var _a, _b, _c;
+        // trip_id aproximado: concatenamos linea + sublinea + variante. El consumidor
+        // GTFS-static deberá cruzar por route_id+headsign. Documentado como limitación.
+        const tripIdAprox = [b.linea, (_a = b.sublinea) !== null && _a !== void 0 ? _a : '', (_b = b.variante) !== null && _b !== void 0 ? _b : ''].join('|');
+        return FeedEntity.create({
+            id: `${b.empresaId}-${b.codigoBus}`,
+            vehicle: VehiclePosition.create({
+                trip: TripDescriptor.create({
+                    routeId: (_c = b.linea) !== null && _c !== void 0 ? _c : '',
+                    tripId: tripIdAprox,
+                    scheduleRelationship: TripDescriptor.ScheduleRelationship.SCHEDULED,
+                }),
+                vehicle: {
+                    id: `${b.empresaId}-${b.codigoBus}`,
+                    label: `${b.empresaNombre} ${b.codigoBus}`,
+                },
+                position: Position.create({
+                    latitude: b.lat,
+                    longitude: b.lng,
+                    // GTFS-RT expects speed in m/s
+                    speed: b.velocidadKmh > 0 ? b.velocidadKmh * 0.277778 : undefined,
+                }),
+                timestamp: b.timestampObservado,
+                currentStatus: VehiclePosition.VehicleStopStatus.IN_TRANSIT_TO,
+            }),
+        });
+    });
+    const feed = FeedMessage.create({
+        header: FeedHeader.create({
+            gtfsRealtimeVersion: '2.0',
+            incrementality: FeedHeader.Incrementality.FULL_DATASET,
+            timestamp: tsUnix,
+        }),
+        entity: entities,
+    });
+    return { feed, FeedMessage, totalEntities: entities.length, fetchedBuses: buses.length };
+}
+// ─── EXPRESS APP ─────────────────────────────────────────────────────────────
+const app = express();
+app.use(cors({ origin: true }));
+/**
+ * Health check — no toca STM, solo confirma que la función está viva.
+ */
+app.get('/health', (_req, res) => {
+    res.json({
+        ok: true,
+        publisher: 'UCOT SkillRoute GTFS-RT Publisher',
+        gtfsRealtimeVersion: '2.0',
+        incrementality: 'FULL_DATASET',
+        cacheMaxAgeSec: Math.floor(CACHE_TTL_MS / 1000),
+        endpoints: {
+            protobuf: '/vehicle-positions.pb',
+            json: '/vehicle-positions.json',
+            feedInfo: '/feed-info',
+        },
+    });
+});
+/**
+ * Feed info — metadata para el consumidor (agencies publicadas, límites, etc.).
+ */
+app.get('/feed-info', (_req, res) => {
+    res.json({
+        publisher: 'UCOT SkillRoute',
+        publisherUrl: 'https://ucot-gestor-cloud.web.app',
+        language: 'es',
+        defaultLanguage: 'es',
+        feedVersion: '1.0.0',
+        agencies: Object.values(AGENCIES),
+        feedContents: {
+            vehiclePositions: { supported: true, cadenceSeconds: 15 },
+            tripUpdates: { supported: true, cadenceSeconds: 30, source: 'vehicle_events.desviacionMin (UITP/TfL >=5min thresholds)' },
+            serviceAlerts: { supported: true, cadenceSeconds: 60, source: 'alertas_regulacion (severidad CRITICA + RIVAL_PISANDO_TURNO)' },
+        },
+        documentation: 'https://ucot-gestor-cloud.web.app/docs/gtfs-rt',
+    });
+});
+/**
+ * Endpoint principal — protobuf (producción).
+ * Consumido por: Google Maps, Moovit, Citymapper, Transit App.
+ */
+app.get('/vehicle-positions.pb', async (req, res) => {
+    var _a;
+    try {
+        const agencyFilter = (_a = req.query.agency) === null || _a === void 0 ? void 0 : _a.toLowerCase();
+        const { feed, FeedMessage, totalEntities } = await buildFeedMessage({ agencyFilter });
+        const buffer = FeedMessage.encode(feed).finish();
+        res.setHeader('Content-Type', 'application/x-protobuf');
+        res.setHeader('Cache-Control', `public, max-age=${Math.floor(CACHE_TTL_MS / 1000)}`);
+        res.setHeader('X-Feed-Entities', String(totalEntities));
+        res.setHeader('X-Gtfs-Realtime-Version', '2.0');
+        res.status(200).send(Buffer.from(buffer));
+    }
+    catch (err) {
+        console.error('[gtfsRealtime /vehicle-positions.pb] Error:', (err === null || err === void 0 ? void 0 : err.message) || err);
+        res.status(502).json({
+            ok: false,
+            error: (err === null || err === void 0 ? void 0 : err.message) || String(err),
+            hint: 'Si falla por require("gtfs-realtime-bindings"), correr "npm install" en functions/',
+        });
+    }
+});
+// ═══════════════════════════════════════════════════════════════════════════
+// TRIP UPDATES (V2 — 2026-04-25, datos reales)
+// ═══════════════════════════════════════════════════════════════════════════
+// Emite delay (segundos) por vehículo basado en `desviacionMin` ya calculado
+// upstream por el ingestor IMM contra horarios_stm. Convención GTFS-RT:
+//   delay > 0  → atrasado
+//   delay < 0  → adelantado
+//   delay = 0  → puntual
+// Sólo se publican buses con |delay| >= 60s (puntuales se asumen on-time).
+const FIRESTORE_DESV_LOOKBACK_MS = 5 * 60 * 1000;
+let _busComplianceCache = null;
+async function loadLatestComplianceByBus() {
+    if (_busComplianceCache && Date.now() - _busComplianceCache.ts < 30 * 1000) {
+        return _busComplianceCache.data;
+    }
+    const admin = await Promise.resolve().then(() => __importStar(require('firebase-admin')));
+    if (!admin.default.apps.length)
+        admin.default.initializeApp();
+    const db = admin.default.firestore();
+    const sinceTs = admin.default.firestore.Timestamp.fromMillis(Date.now() - FIRESTORE_DESV_LOOKBACK_MS);
+    const snap = await db
+        .collection('vehicle_events')
+        .where('createdAt', '>=', sinceTs)
+        .orderBy('createdAt', 'desc')
+        .limit(8000)
+        .get();
+    const map = new Map();
+    snap.forEach((doc) => {
+        var _a, _b, _c, _d, _e, _f, _g, _h;
+        const ev = doc.data();
+        const idBus = String((_a = ev.idBus) !== null && _a !== void 0 ? _a : '').trim();
+        const agencyId = String((_b = ev.agencyId) !== null && _b !== void 0 ? _b : '').trim();
+        if (!idBus || !agencyId)
+            return;
+        const key = `${agencyId}-${idBus}`;
+        if (map.has(key))
+            return;
+        const desviacionMin = typeof ev.desviacionMin === 'number' ? ev.desviacionMin : null;
+        if (desviacionMin === null)
+            return;
+        const tsObs = (_g = (_f = (_e = (_d = (_c = ev.createdAt) === null || _c === void 0 ? void 0 : _c.toDate) === null || _d === void 0 ? void 0 : _d.call(_c)) === null || _e === void 0 ? void 0 : _e.getTime) === null || _f === void 0 ? void 0 : _f.call(_e)) !== null && _g !== void 0 ? _g : Date.now();
+        map.set(key, {
+            delaySec: Math.round(desviacionMin * 60),
+            estado: String((_h = ev.estadoCumplimiento) !== null && _h !== void 0 ? _h : ''),
+            tsObservado: Math.floor(tsObs / 1000),
+        });
+    });
+    _busComplianceCache = { ts: Date.now(), data: map };
+    return map;
+}
+async function buildTripUpdatesFeed() {
+    const gtfsRt = require('gtfs-realtime-bindings');
+    const { FeedMessage, FeedEntity, FeedHeader, TripUpdate, TripDescriptor } = gtfsRt.transit_realtime;
+    const buses = await fetchAllBuses();
+    const compliance = await loadLatestComplianceByBus();
+    const tsUnix = Math.floor(Date.now() / 1000);
+    const entities = buses
+        .map((b) => {
+        var _a, _b, _c;
+        const key = `${b.empresaId}-${b.codigoBus}`;
+        const c = compliance.get(key);
+        if (!c || Math.abs(c.delaySec) < 60)
+            return null;
+        const tripIdAprox = [b.linea, (_a = b.sublinea) !== null && _a !== void 0 ? _a : '', (_b = b.variante) !== null && _b !== void 0 ? _b : ''].join('|');
+        return FeedEntity.create({
+            id: `tu-${b.empresaId}-${b.codigoBus}`,
+            tripUpdate: TripUpdate.create({
+                trip: TripDescriptor.create({
+                    routeId: (_c = b.linea) !== null && _c !== void 0 ? _c : '',
+                    tripId: tripIdAprox,
+                    scheduleRelationship: TripDescriptor.ScheduleRelationship.SCHEDULED,
+                }),
+                vehicle: {
+                    id: `${b.empresaId}-${b.codigoBus}`,
+                    label: `${b.empresaNombre} ${b.codigoBus}`,
+                },
+                delay: c.delaySec,
+                timestamp: c.tsObservado,
+            }),
+        });
+    })
+        .filter((e) => e !== null);
+    const feed = FeedMessage.create({
+        header: FeedHeader.create({
+            gtfsRealtimeVersion: '2.0',
+            incrementality: FeedHeader.Incrementality.FULL_DATASET,
+            timestamp: tsUnix,
+        }),
+        entity: entities,
+    });
+    return { feed, FeedMessage, totalEntities: entities.length };
+}
+app.get('/trip-updates.pb', async (_req, res) => {
+    try {
+        const { feed, FeedMessage, totalEntities } = await buildTripUpdatesFeed();
+        const buffer = FeedMessage.encode(feed).finish();
+        res.setHeader('Content-Type', 'application/x-protobuf');
+        res.setHeader('Cache-Control', `public, max-age=${Math.floor(CACHE_TTL_MS / 1000)}`);
+        res.setHeader('X-Feed-Entities', String(totalEntities));
+        res.setHeader('X-Gtfs-Realtime-Version', '2.0');
+        res.status(200).send(Buffer.from(buffer));
+    }
+    catch (err) {
+        console.error('[gtfsRealtime /trip-updates.pb] Error:', (err === null || err === void 0 ? void 0 : err.message) || err);
+        res.status(502).json({ ok: false, error: (err === null || err === void 0 ? void 0 : err.message) || String(err) });
+    }
+});
+app.get('/trip-updates.json', async (_req, res) => {
+    try {
+        const { feed, FeedMessage, totalEntities } = await buildTripUpdatesFeed();
+        const obj = FeedMessage.toObject(feed, { longs: Number, enums: String });
+        res.setHeader('Cache-Control', `public, max-age=${Math.floor(CACHE_TTL_MS / 1000)}`);
+        res.json({
+            meta: {
+                totalEntities,
+                source: 'vehicle_events.desviacionMin (cruzado contra horarios_stm en cada ingesta IMM)',
+                threshold: '|delay| >= 60s — buses puntuales se asumen on-time por convención GTFS-RT',
+            },
+            feed: obj,
+        });
+    }
+    catch (err) {
+        console.error('[gtfsRealtime /trip-updates.json] Error:', (err === null || err === void 0 ? void 0 : err.message) || err);
+        res.status(502).json({ ok: false, error: (err === null || err === void 0 ? void 0 : err.message) || String(err) });
+    }
+});
+// ═══════════════════════════════════════════════════════════════════════════
+// SERVICE ALERTS (Trim+ #3, 2026-04-23)
+// ═══════════════════════════════════════════════════════════════════════════
+// Mapea `desvios_activos` + `alertas_regulacion` (alta severidad) a Alert
+// entities GTFS-RT. Consumido por apps MaaS que muestran interrupciones de
+// servicio al pasajero.
+async function buildServiceAlertsFeed() {
+    const gtfsRt = require('gtfs-realtime-bindings');
+    const { FeedMessage, FeedEntity, FeedHeader, Alert, TimeRange, EntitySelector, TranslatedString } = gtfsRt.transit_realtime;
+    const db = getDbRt();
+    const entities = [];
+    const tsUnix = Math.floor(Date.now() / 1000);
+    // 1) Desvíos activos — `desvios_activos` no expirados
+    try {
+        const nowTs = admin.firestore.Timestamp.now();
+        const snap = await db
+            .collection('desvios_activos')
+            .where('expirado', '==', false)
+            .where('expire_at', '>', nowTs)
+            .limit(200)
+            .get();
+        snap.forEach((d) => {
+            var _a, _b, _c, _d, _e, _f;
+            const data = d.data();
+            const lineaId = String((_b = (_a = data.linea_id) !== null && _a !== void 0 ? _a : data.lineaId) !== null && _b !== void 0 ? _b : '');
+            if (!lineaId)
+                return;
+            entities.push(FeedEntity.create({
+                id: `alert-desvio-${d.id}`,
+                alert: Alert.create({
+                    activePeriod: [
+                        TimeRange.create({
+                            start: tsUnix,
+                            end: (_d = (_c = data.expire_at) === null || _c === void 0 ? void 0 : _c.seconds) !== null && _d !== void 0 ? _d : tsUnix + 3600,
+                        }),
+                    ],
+                    informedEntity: [
+                        EntitySelector.create({ routeId: lineaId }),
+                    ],
+                    cause: Alert.Cause.OTHER_CAUSE,
+                    effect: Alert.Effect.DETOUR,
+                    headerText: TranslatedString.create({
+                        translation: [{ text: `Desvío línea ${lineaId}`, language: 'es' }],
+                    }),
+                    descriptionText: TranslatedString.create({
+                        translation: [
+                            {
+                                text: String((_f = (_e = data.descripcion) !== null && _e !== void 0 ? _e : data.motivo) !== null && _f !== void 0 ? _f : 'Desvío activo'),
+                                language: 'es',
+                            },
+                        ],
+                    }),
+                }),
+            }));
+        });
+    }
+    catch (err) {
+        console.warn('[gtfsRealtime service-alerts] desvios_activos no disponible:', err);
+    }
+    // 2) Alertas de regulación críticas — `alertas_regulacion` no leídas en últimos 15 min
+    try {
+        const since = admin.firestore.Timestamp.fromMillis(Date.now() - 15 * 60 * 1000);
+        const snap = await db
+            .collection('alertas_regulacion')
+            .where('timestamp', '>=', since)
+            .orderBy('timestamp', 'desc')
+            .limit(100)
+            .get();
+        snap.forEach((d) => {
+            var _a, _b, _c, _d, _e, _f;
+            const data = d.data();
+            const lineaId = String((_b = (_a = data.linea_id) !== null && _a !== void 0 ? _a : data.lineaId) !== null && _b !== void 0 ? _b : '');
+            if (!lineaId)
+                return;
+            const tipo = String((_c = data.tipo) !== null && _c !== void 0 ? _c : 'REGULACION');
+            // Solo emitir a consumidores si el impacto es al pasajero
+            // (saltamos alertas tácticas puramente internas como DISPARO_MANUAL)
+            if (tipo === 'DISPARO_MANUAL')
+                return;
+            entities.push(FeedEntity.create({
+                id: `alert-reg-${d.id}`,
+                alert: Alert.create({
+                    activePeriod: [
+                        TimeRange.create({ start: (_e = (_d = data.timestamp) === null || _d === void 0 ? void 0 : _d.seconds) !== null && _e !== void 0 ? _e : tsUnix, end: tsUnix + 900 }),
+                    ],
+                    informedEntity: [EntitySelector.create({ routeId: lineaId })],
+                    cause: Alert.Cause.OTHER_CAUSE,
+                    effect: Alert.Effect.SIGNIFICANT_DELAYS,
+                    headerText: TranslatedString.create({
+                        translation: [{ text: `Demora en línea ${lineaId}`, language: 'es' }],
+                    }),
+                    descriptionText: TranslatedString.create({
+                        translation: [
+                            {
+                                text: String((_f = data.mensaje_chofer) !== null && _f !== void 0 ? _f : `Irregularidad de frecuencia (${tipo})`),
+                                language: 'es',
+                            },
+                        ],
+                    }),
+                }),
+            }));
+        });
+    }
+    catch (err) {
+        console.warn('[gtfsRealtime service-alerts] alertas_regulacion no disponible:', err);
+    }
+    const feed = FeedMessage.create({
+        header: FeedHeader.create({
+            gtfsRealtimeVersion: '2.0',
+            incrementality: FeedHeader.Incrementality.FULL_DATASET,
+            timestamp: tsUnix,
+        }),
+        entity: entities,
+    });
+    return { feed, FeedMessage, totalEntities: entities.length };
+}
+app.get('/service-alerts.pb', async (_req, res) => {
+    try {
+        const { feed, FeedMessage, totalEntities } = await buildServiceAlertsFeed();
+        const buffer = FeedMessage.encode(feed).finish();
+        res.setHeader('Content-Type', 'application/x-protobuf');
+        res.setHeader('Cache-Control', 'public, max-age=60'); // Alerts cachean más que positions
+        res.setHeader('X-Feed-Entities', String(totalEntities));
+        res.setHeader('X-Gtfs-Realtime-Version', '2.0');
+        res.status(200).send(Buffer.from(buffer));
+    }
+    catch (err) {
+        console.error('[gtfsRealtime /service-alerts.pb] Error:', (err === null || err === void 0 ? void 0 : err.message) || err);
+        res.status(502).json({ ok: false, error: (err === null || err === void 0 ? void 0 : err.message) || String(err) });
+    }
+});
+app.get('/service-alerts.json', async (_req, res) => {
+    try {
+        const { feed, FeedMessage, totalEntities } = await buildServiceAlertsFeed();
+        const obj = FeedMessage.toObject(feed, { longs: Number, enums: String });
+        res.setHeader('Cache-Control', 'public, max-age=60');
+        res.json({ meta: { totalEntities }, feed: obj });
+    }
+    catch (err) {
+        console.error('[gtfsRealtime /service-alerts.json] Error:', (err === null || err === void 0 ? void 0 : err.message) || err);
+        res.status(502).json({ ok: false, error: (err === null || err === void 0 ? void 0 : err.message) || String(err) });
+    }
+});
+/**
+ * Endpoint JSON — debug humano (mismo contenido del feed pero legible).
+ * NO usar para producción — protobuf es 5-10× más compacto.
+ */
+app.get('/vehicle-positions.json', async (req, res) => {
+    var _a, _b;
+    try {
+        const agencyFilter = (_a = req.query.agency) === null || _a === void 0 ? void 0 : _a.toLowerCase();
+        const { feed, FeedMessage, totalEntities, fetchedBuses } = await buildFeedMessage({
+            agencyFilter,
+        });
+        const obj = FeedMessage.toObject(feed, {
+            longs: Number,
+            enums: String,
+            bytes: String,
+        });
+        res.setHeader('Cache-Control', `public, max-age=${Math.floor(CACHE_TTL_MS / 1000)}`);
+        res.json({
+            meta: {
+                totalEntities,
+                fetchedBusesFromIMM: fetchedBuses,
+                cachedFromIMMAt: (_b = feedCache === null || feedCache === void 0 ? void 0 : feedCache.fetchedAt) !== null && _b !== void 0 ? _b : null,
+                notice: 'Formato JSON para debugging. Producción debe consumir /vehicle-positions.pb (protobuf).',
+            },
+            feed: obj,
+        });
+    }
+    catch (err) {
+        console.error('[gtfsRealtime /vehicle-positions.json] Error:', (err === null || err === void 0 ? void 0 : err.message) || err);
+        res.status(502).json({ ok: false, error: (err === null || err === void 0 ? void 0 : err.message) || String(err) });
+    }
+});
+// ─── CRON: refresh Service Alerts cache (Sprint 1, 2026-04-25) ──────────────
+// Ejecuta buildServiceAlertsFeed cada minuto para mantener el snapshot fresco
+// en memoria. El endpoint /service-alerts.pb sirve directamente desde este
+// snapshot sin tocar Firestore en cada request del consumidor MaaS.
+let _alertsFeedCache = null;
+exports.refreshGtfsRtAlerts = functions
+    .runWith({ timeoutSeconds: 60, memory: '128MB' })
+    .pubsub.schedule('every 1 minutes')
+    .onRun(async (_context) => {
+    try {
+        const result = await buildServiceAlertsFeed();
+        _alertsFeedCache = Object.assign(Object.assign({}, result), { ts: Date.now() });
+        console.log('[refreshGtfsRtAlerts] Feed actualizado:', result.totalEntities, 'entidades');
+    }
+    catch (err) {
+        console.error('[refreshGtfsRtAlerts] Error:', err);
+    }
+});
+// ─── EXPORT CLOUD FUNCTION ───────────────────────────────────────────────────
+exports.gtfsRealtime = functions
+    .runWith({ timeoutSeconds: 60, memory: '256MB' })
+    .https.onRequest(app);
