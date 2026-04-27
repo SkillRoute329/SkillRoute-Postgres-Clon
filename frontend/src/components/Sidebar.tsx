@@ -74,6 +74,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     {
       title: 'Control y Monitoreo',
       items: [
+        { path: '/dashboard/traffic/centro-turno', label: 'Centro de Turno', icon: Zap },
         { path: '/dashboard/traffic/fleet-monitor', label: 'Monitoreo de Flota', icon: Radio },
         { path: '/dashboard/traffic/otp', label: 'Puntualidad OTP', icon: BarChart3 },
         { path: '/dashboard/traffic/incidents', label: 'Centro de Incidencias', icon: Siren },
@@ -93,6 +94,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       title: 'Flota y Mantenimiento',
       items: [
         { path: '/dashboard/fleet', label: 'Coches / Inventario', icon: Bus },
+        { path: '/dashboard/fleet/disponibilidad', label: 'Disponibilidad de Flota', icon: Activity },
         { path: '/dashboard/admin/maintenance', label: 'Mantenimiento', icon: Wrench },
         { path: '/dashboard/fleet/check', label: 'Revisión Vehicular', icon: Clipboard },
         {
@@ -201,6 +203,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           icon: DollarSign,
         },
         {
+          path: '/dashboard/traffic/financiero-operativo',
+          label: 'Gestión Financiera Operativa',
+          icon: BarChart3,
+        },
+        {
           path: '/dashboard/traffic/roi-calculator',
           label: 'Calculadora de ROI',
           icon: TrendingUp,
@@ -225,6 +232,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         { path: '/dashboard/admin/turnos-operativos', label: 'Turnos & Umbrales OTP', icon: Calendar },
         { path: '/dashboard/admin/audit-log', label: 'Audit Log', icon: ClipboardList },
         { path: '/dashboard/admin/cross-op-coverage', label: 'Cobertura Cross-Op', icon: Network },
+        { path: '/dashboard/admin/rendicion-cuentas', label: 'Rendición de Cuentas', icon: ClipboardList },
       ],
     },
     {

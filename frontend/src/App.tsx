@@ -125,6 +125,10 @@ const GestionDesviosPage = lazy(() => import('./pages/traffic/GestionDesviosPage
 const StmScraperStatus = lazy(() => import('./pages/admin/StmScraperStatus'));
 const HeadwayInsights = lazy(() => import('./pages/traffic/HeadwayInsights'));
 const GPSPlayback = lazy(() => import('./pages/traffic/GPSPlayback'));
+const CentroTurnoDashboard = lazy(() => import('./pages/traffic/CentroTurnoDashboard'));
+const PanelFinancieroOperativo = lazy(() => import('./pages/traffic/PanelFinancieroOperativo'));
+const DisponibilidadFlota = lazy(() => import('./pages/fleet/DisponibilidadFlota'));
+const PanelRendicionCuentas = lazy(() => import('./pages/admin/PanelRendicionCuentas'));
 // Sprint 1 (2026-04-25): Pricing público — accesible sin auth
 const PricingPage = lazy(() => import('./pages/public/PricingPage'));
 const OnboardingPage = lazy(() => import('./pages/public/OnboardingPage'));
@@ -284,6 +288,10 @@ function App() {
                     <Route path="traffic/market-share" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorridorMarketShare /></PrivateRoute>} />
                     <Route path="traffic/roi-calculator" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ROICalculator /></PrivateRoute>} />
                     <Route path="traffic/desvios" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><GestionDesviosPage /></PrivateRoute>} />
+                    <Route path="traffic/centro-turno" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CentroTurnoDashboard /></PrivateRoute>} />
+                    <Route path="traffic/financiero-operativo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><PanelFinancieroOperativo /></PrivateRoute>} />
+                    <Route path="fleet/disponibilidad" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><DisponibilidadFlota /></PrivateRoute>} />
+                    <Route path="admin/rendicion-cuentas" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><PanelRendicionCuentas /></PrivateRoute>} />
                     <Route path="traffic/scraper-status" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><StmScraperStatus /></PrivateRoute>} />
                     <Route path="traffic/headway-insights" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><HeadwayInsights /></PrivateRoute>} />
                     <Route path="traffic/gps-playback" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><GPSPlayback /></PrivateRoute>} />
