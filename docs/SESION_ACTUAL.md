@@ -24,7 +24,10 @@
 | ShadowRadar stale closure | ucotFlota en deps del useMemo HRR (línea 753) | ✅ prod `1457813f` |
 | MaintenanceDashboard RBAC | canCloseTicket derivado de rol, botones ocultos para User | ✅ prod `1457813f` |
 | HRR v2 presionCompetitivaScore | Badge 0-100 en rival cards ShadowRadar (T1/T2) | ✅ prod `1457813f` |
-| **CorridorMarketShare** | Dashboard seat-km cross-operador: 4 KPIs + barras + matriz + tabla filtrable | ✅ build OK — **pendiente deploy** |
+| **CorridorMarketShare** | Dashboard seat-km cross-operador: 4 KPIs + barras + matriz + tabla filtrable | ✅ prod `914c0c9f` |
+| **APK Release v1.0** | Keystore RSA 2048, signingConfig gradle, APK firmada v2 (16 MB) | ✅ `0bb7fa20` |
+| **ROICalculator** | Calculadora ROI vs. inspección manual — sliders, comparativa, resumen ejecutivo | ✅ prod `a4206113` |
+| **GestionDesviosPage** | Centro despacho: eventos RT, notif. push a conductores, historial ACK | ✅ prod `a4a69200` |
 
 ---
 
