@@ -16,6 +16,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { LineaUCOT, PuntoLatLng } from '../../types/lineasUcot';
 import type { DesvioGuardado } from '../../services/desviosService';
+import type { BusLive } from '../../hooks/useLiveBusesByLine';
 
 function MapClickHandler({ onMapClick }: { onMapClick?: (lat: number, lng: number) => void }) {
   useMapEvents({
@@ -123,6 +124,43 @@ interface RouteMapProps {
   pickedHasta?: { lat: number; lng: number } | null;
   /** Desvíos guardados en localStorage para mostrar como overlay punteado. */
   desviosGuardados?: DesvioGuardado[];
+  /** Buses en vivo de la línea (GPS ahora mismo). */
+  liveBuses?: BusLive[];
+}
+
+/** Color por fuente del bus (mismo patrón que ShadowRadar). */
+const BUS_COLOR_BY_FUENTE: Record<BusLive['fuente'], string> = {
+  viajes_activos: '#10b981', // green-500
+  vehicle_events: '#3b82f6', // blue-500
+  competidores: '#a855f7',   // purple-500
+};
+
+function busIcon(b: BusLive): L.DivIcon {
+  const color = BUS_COLOR_BY_FUENTE[b.fuente];
+  const heading = typeof b.heading === 'number' ? b.heading : 0;
+  return L.divIcon({
+    html: `<div style="
+      width: 26px; height: 26px;
+      background: ${color}; color: white;
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+      display: flex; align-items: center; justify-content: center;
+      transform: rotate(${heading}deg);
+      transition: transform .4s ease;
+    ">
+      <div style="
+        width: 0; height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-bottom: 9px solid white;
+        margin-top: -2px;
+      "></div>
+    </div>`,
+    className: 'bus-live-marker',
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
 }
 
 export default function RouteMap({
@@ -137,8 +175,10 @@ export default function RouteMap({
   pickedDesde,
   pickedHasta,
   desviosGuardados = [],
+  liveBuses = [],
 }: RouteMapProps) {
-  if (!linea) {
+  // Si no hay línea NI buses live, no hay nada que renderizar.
+  if (!linea && liveBuses.length === 0) {
     return (
       <div className="w-full h-full min-h-[300px] bg-slate-800 flex items-center justify-center text-slate-500">
         <p>Seleccione una línea</p>
@@ -147,16 +187,26 @@ export default function RouteMap({
   }
 
   // Filtrar puntos inválidos (lat=0,lng=0) ANTES de dibujar la polyline
-  const positions = linea.recorrido
+  const positions = (linea?.recorrido ?? [])
     .filter(isValidPoint)
     .map((p) => [p.lat, p.lng] as [number, number]);
-  const desviosActivosFijos = linea.desviosFijos.filter((d) => d.activo);
-  const desviosActivosTemp = linea.desviosTemporales.filter((d) => d.activo);
+  const desviosActivosFijos = linea?.desviosFijos.filter((d) => d.activo) ?? [];
+  const desviosActivosTemp = linea?.desviosTemporales.filter((d) => d.activo) ?? [];
+
+  // Para FitBounds: combinar puntos del recorrido + posiciones de buses live.
+  const allFitPoints: PuntoLatLng[] = [
+    ...((linea?.recorrido ?? []).filter(isValidPoint)),
+    ...liveBuses.map((b) => ({ lat: b.lat, lng: b.lng })),
+  ];
+  const fitCenter: [number, number] =
+    allFitPoints.length > 0
+      ? [allFitPoints[Math.floor(allFitPoints.length / 2)].lat, allFitPoints[Math.floor(allFitPoints.length / 2)].lng]
+      : DEFAULT_CENTER;
 
   return (
     <div className="w-full h-full min-h-[300px] rounded-xl overflow-hidden border border-slate-700 relative z-[1]">
       <MapContainer
-        center={positions.length > 0 ? positions[Math.floor(positions.length / 2)] : DEFAULT_CENTER}
+        center={fitCenter}
         zoom={DEFAULT_ZOOM}
         className="h-full w-full"
         scrollWheelZoom
@@ -166,9 +216,9 @@ export default function RouteMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapClickHandler onMapClick={onMapClick} />
-        {positions.length > 1 && !followUser && <FitBounds points={linea.recorrido} />}
+        {allFitPoints.length > 1 && !followUser && <FitBounds points={allFitPoints} />}
         {followUser && <FollowUser userPosition={userPosition} active={followUser} />}
-        {!followUser && <CenterOnStop stopId={highlightStopId} paradas={linea.paradas} />}
+        {!followUser && linea && <CenterOnStop stopId={highlightStopId} paradas={linea.paradas} />}
 
         {/* Recorrido principal */}
         <Polyline positions={positions} pathOptions={blueOptions} />
@@ -235,6 +285,7 @@ export default function RouteMap({
 
         {/* Paradas como CircleMarkers en modo navegación (contraste ámbar) */}
         {isNavigating &&
+          linea &&
           linea.paradas.length > 0 &&
           linea.paradas.map((p) => {
             if (p.lat === 0 && p.lng === 0) return null;
@@ -338,25 +389,42 @@ export default function RouteMap({
           })}
 
         {/* Paradas */}
-        {linea.paradas.map((p, i) => {
-          if (p.lat === 0 && p.lng === 0) return null;
-          return (
-            <Marker
-              key={p.id}
-              position={[p.lat, p.lng]}
-              icon={createIcon(
-                i === 0 ? 'I' : i === linea.paradas.length - 1 ? 'F' : String(p.orden || i + 1),
-                i === 0 ? '#059669' : i === linea.paradas.length - 1 ? '#dc2626' : '#475569',
-              )}
-            >
-              <Popup>
-                <strong>{p.nombre}</strong>
-                <br />
-                Orden: {p.orden || i + 1}
-              </Popup>
-            </Marker>
-          );
-        })}
+        {linea &&
+          linea.paradas.map((p, i) => {
+            if (p.lat === 0 && p.lng === 0) return null;
+            return (
+              <Marker
+                key={p.id}
+                position={[p.lat, p.lng]}
+                icon={createIcon(
+                  i === 0 ? 'I' : i === linea.paradas.length - 1 ? 'F' : String(p.orden || i + 1),
+                  i === 0 ? '#059669' : i === linea.paradas.length - 1 ? '#dc2626' : '#475569',
+                )}
+              >
+                <Popup>
+                  <strong>{p.nombre}</strong>
+                  <br />
+                  Orden: {p.orden || i + 1}
+                </Popup>
+              </Marker>
+            );
+          })}
+
+        {/* ── Buses en vivo (GPS actual de la flota operando esta línea) ── */}
+        {liveBuses.map((b) => (
+          <Marker key={b.id} position={[b.lat, b.lng]} icon={busIcon(b)}>
+            <Popup>
+              <strong>{b.empresa} · {b.codigoLinea}</strong>
+              <br />
+              Coche {b.cocheId}
+              <br />
+              {b.velocidad != null ? `${Math.round(b.velocidad)} km/h · ` : ''}
+              hace {b.hacieCuantoMin} min
+              <br />
+              <span style={{ opacity: 0.6, fontSize: 11 }}>fuente: {b.fuente}</span>
+            </Popup>
+          </Marker>
+        ))}
 
         {/* Ubicación del usuario (vista conductor/navegaciòn estilo Waze) */}
         {userPosition && (
