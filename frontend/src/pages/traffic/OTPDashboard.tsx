@@ -13,7 +13,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { collection, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { ScheduleService } from '../../services/scheduleService';
 import {
   TrendingUp,
   TrendingDown,
@@ -119,10 +118,10 @@ export default function OTPDashboard() {
       desde.setDate(desde.getDate() - dias);
       const desdeTs = Timestamp.fromDate(desde);
 
-      // 2. Traer inspecciones con horaReal registrada
+      // 2. Traer inspecciones desde la colección correcta (InspectorCapture → 'inspections')
       const snap = await getDocs(
         query(
-          collection(db, 'inspecciones'),
+          collection(db, 'inspections'),
           where('createdAt', '>=', desdeTs),
           orderBy('createdAt', 'desc'),
           limit(2000),
@@ -136,42 +135,29 @@ export default function OTPDashboard() {
         return;
       }
 
-      // 3. Procesar cada inspección
+      // 3. Procesar cada inspección usando los campos reales guardados por InspectorCapture
       const regs: OTPRegistro[] = [];
 
       for (const d of snap.docs) {
         const data = d.data();
 
-        // La inspección debe tener lineaId + horaReal
-        const lineaId: string = (data.lineaId ?? data.linea ?? '') as string;
-        const horaReal: string = (data.horaReal ?? data.horaPasada ?? '') as string;
+        // InspectionService guarda: lineId, scheduledTime, actualPassedAt (Timestamp), timeDeltaMinutes
+        const lineaId: string = ((data.lineId ?? data.lineaId ?? data.linea ?? '') as string);
+        const timeDeltaMinutes: number | null =
+          typeof data.timeDeltaMinutes === 'number' ? data.timeDeltaMinutes : null;
 
-        if (!lineaId || !horaReal) continue;
+        if (!lineaId || timeDeltaMinutes === null) continue;
 
-        // Obtener horario programado (variante 'a' = IDA por defecto)
-        // ScheduleService.getSchedule es síncrono (retorna ScheduleEntry, no Promise)
-        let schedule: ReturnType<typeof ScheduleService.getSchedule> | null = null;
-        try {
-          schedule = ScheduleService.getSchedule(`${lineaId}a`);
-        } catch {
-          continue;
+        // Convertir actualPassedAt (Timestamp) a HH:MM
+        let horaReal = '';
+        if (data.actualPassedAt instanceof Timestamp) {
+          const dt = data.actualPassedAt.toDate();
+          horaReal = `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
         }
-        if (!schedule || !schedule.salidas?.length) continue;
+        if (!horaReal) continue;
 
-        // Hallar el servicio más cercano en tiempo al horaReal
-        const horaRealMin = horaToMin(horaReal);
-        let closest: { hora: string; diff: number } | null = null;
-
-        for (const salida of schedule.salidas) {
-          const diff = horaRealMin - horaToMin(salida.hora);
-          if (!closest || Math.abs(diff) < Math.abs(closest.diff)) {
-            closest = { hora: salida.hora, diff };
-          }
-        }
-
-        if (!closest) continue;
-
-        const clasificacion = clasificar(closest.diff);
+        const scheduledTime: string = (data.scheduledTime ?? '') as string;
+        const clasificacion = clasificar(timeDeltaMinutes);
         const fecha =
           data.createdAt instanceof Timestamp
             ? data.createdAt.toDate().toISOString().split('T')[0]
@@ -181,10 +167,10 @@ export default function OTPDashboard() {
           id: d.id,
           lineaId,
           lineaNombre: (data.lineaNombre as string | undefined) ?? `Línea ${lineaId}`,
-          servicioId: (data.servicioId ?? data.numServicio) as string | undefined,
-          horaProgramada: closest.hora,
+          servicioId: (data.cartonServiceId ?? data.servicioId) as string | undefined,
+          horaProgramada: scheduledTime || '—',
           horaReal,
-          diferencia: closest.diff,
+          diferencia: timeDeltaMinutes,
           clasificacion,
           fecha,
         });

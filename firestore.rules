@@ -160,6 +160,12 @@ service cloud.firestore {
       allow write: if isInspector() || isAdminNorm();
     }
 
+    // Registros de inspección de campo (InspectorCapture → InspectorDashboard → OTPDashboard)
+    match /inspections/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isInspector() || isTrafficOrAdmin();
+    }
+
     match /maintenance/{document=**} {
       allow read: if isAuthenticated();
       allow write: if isAdminNorm();

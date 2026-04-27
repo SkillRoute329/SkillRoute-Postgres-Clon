@@ -10,7 +10,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
   Radio, AlertTriangle, Bus, TrendingUp, Activity,
-  RefreshCw, Eye, EyeOff, Filter,
+  RefreshCw, Eye, EyeOff, Filter, Building2,
 } from 'lucide-react';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -265,7 +265,7 @@ export default function FleetMonitorModule() {
               { label: 'Rivales en vía', value: kpis.totalRivales, color: 'text-blue-400', icon: Activity },
               { label: 'Líneas operando', value: kpis.lineasActivas, color: 'text-emerald-400', icon: TrendingUp },
               { label: 'Bunching ' + empresaCfg.label + ' ', value: kpis.bunchingPares, color: kpis.bunchingPares > 0 ? 'text-red-400' : 'text-slate-500', icon: AlertTriangle },
-              { label: 'Total en ruta', value: kpis.totalUCOT + kpis.totalRivales, color: 'text-white', icon: Radio },
+              { label: 'Total en ruta', value: kpis.totalPropios + kpis.totalRivales, color: 'text-white', icon: Radio },
             ].map(({ label, value, color, icon: Icon }) => (
               <div key={label} className="bg-slate-800/40 rounded-lg px-3 py-1.5 flex items-center gap-2">
                 <Icon className={`w-3.5 h-3.5 flex-none ${color}`} />
@@ -326,7 +326,7 @@ export default function FleetMonitorModule() {
                 />
                 <MapRecenter center={MONTEVIDEO_CENTER} />
 
-                {ucotFiltrados.map((b) => (
+                {propiosFiltrados.map((b) => (
                   <Marker
                     key={b.id}
                     position={[b.lat, b.lng]}

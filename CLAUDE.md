@@ -3,6 +3,29 @@
 
 ---
 
+## 🤖 Orquestación Multi-Agente (DIRECTRIZ PERMANENTE — todos los proyectos de Jonathan)
+
+Claude Code usa su herramienta `Agent` nativa para orquestar subagentes paralelos. **Ruflo y cualquier herramienta externa de orquestación quedan DESCARTADOS** por problemas críticos de seguridad confirmados (prompt injection, código destructivo obfuscado, persistencia tipo malware — auditado abril 2026).
+
+### Patrones concretos para SkillRoute
+
+| Tarea | Agentes a lanzar |
+|---|---|
+| Diagnóstico de bug multi-archivo | `Explore` (localizar) en paralelo con `general-purpose` (leer contexto) |
+| Feature cross-operador nueva | `Plan` (arquitectura) → `general-purpose` frontend + `general-purpose` backend en paralelo |
+| Verificación funcional post-deploy | `general-purpose` con curl a endpoints + WebFetch a URL pública |
+| Auditoría de módulo (ej. ShadowRadar, CartonManager) | `Explore` + `general-purpose` en paralelo |
+| Research de API externa o estándar GTFS | `general-purpose` (WebSearch + WebFetch) sin bloquear el hilo principal |
+
+### Regla de paralelismo obligatoria
+Si hay **2+ tareas independientes en un mismo pedido**, lanzarlas en un **único mensaje con múltiples Agent calls**. Nunca secuenciar lo que puede correr en paralelo. Esto aplica especialmente a: búsqueda en frontend + búsqueda en backend, verificación de múltiples endpoints, análisis de varios módulos.
+
+### Cuándo NO usar subagentes
+- Cambio de una sola línea o archivo <200 líneas → hacerlo directamente sin overhead
+- Tarea B que depende del resultado de tarea A → secuencial, no paralela
+
+---
+
 ## 🤖 Comportamientos automáticos del agente (OBLIGATORIOS)
 
 Estas instrucciones se aplican **automáticamente** al inicio de cualquier sesión donde se toque código. No requieren que el usuario las pida.

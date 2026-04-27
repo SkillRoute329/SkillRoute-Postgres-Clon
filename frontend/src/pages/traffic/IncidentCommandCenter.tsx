@@ -32,7 +32,6 @@ import {
   Shield,
   X,
 } from 'lucide-react';
-import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 
 /* ─── Types ───────────────────────────────────────────── */
 
@@ -426,5 +425,5 @@ export default function IncidentCommandCenter() {
       </div>
     </div>
   );
-}  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
+}
 
