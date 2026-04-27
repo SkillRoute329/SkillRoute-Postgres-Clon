@@ -10,7 +10,7 @@ import {
   serverTimestamp,
   where,
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { auth, db } from '../config/firebase';
 
 export type TipoIncidencia =
   | 'corte_calle'
@@ -71,14 +71,16 @@ export async function reportarIncidencia(
     conductorUid?: string;
   },
 ): Promise<IncidenciaReportada> {
+  // Sync token con Firestore SDK (persistentMultipleTabManager desacopla auth en cold start)
+  if (auth.currentUser) await auth.currentUser.getIdToken();
+
+  const reporterUid = extras?.conductorUid ?? auth.currentUser?.uid ?? 'anonymous';
   const payload: Record<string, unknown> = {
     type: tipo,
     status: 'ABIERTO',
     priority: tipo === 'accidente' ? 'ALTA' : 'MEDIA',
     description: extras?.descripcion ?? INCIDENCIA_META[tipo]?.label,
-    reportedBy: extras?.conductorUid
-      ? { uid: extras.conductorUid, name: extras.conductorUid }
-      : { uid: 'DRIVER', name: 'Conductor' },
+    reportedBy: { uid: reporterUid, name: reporterUid },
     source: 'DRIVER_APP',
     createdAt: serverTimestamp(),
   };
@@ -108,6 +110,9 @@ export async function getIncidencias(filtros?: {
   soloAbiertas?: boolean;
   limite?: number;
 }): Promise<IncidenciaReportada[]> {
+  // Sync token con Firestore SDK (persistentMultipleTabManager desacopla auth en cold start)
+  if (auth.currentUser) await auth.currentUser.getIdToken();
+
   const qArgs: any[] = [orderBy('createdAt', 'desc')];
 
   if (filtros?.soloAbiertas) {

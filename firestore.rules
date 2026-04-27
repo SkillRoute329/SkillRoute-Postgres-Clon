@@ -229,9 +229,11 @@ service cloud.firestore {
     // ============================================================
     match /incidencias/{document=**} {
       allow read: if isAuthenticated();
-      // Conductor puede CREAR (reportar). Solo admin/tráfico/inspector pueden cerrar/modificar.
+      // Conductor puede CREAR si reportedBy.uid coincide con su uid.
+      // Admin/tráfico/inspector también pueden crear (ej. despacho reporta por conductor).
       allow create: if isAuthenticated()
-        && request.resource.data.reportedBy.uid == request.auth.uid;
+        && (request.resource.data.reportedBy.uid == request.auth.uid
+            || isAdminNorm() || isTrafficOrAdmin() || isInspector());
       allow update, delete: if isAdminNorm() || isTrafficOrAdmin() || isInspector();
     }
 
