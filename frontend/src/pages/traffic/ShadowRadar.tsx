@@ -18,6 +18,7 @@ import { fetchSTMPosiciones } from '../../services/stmLiveService';
 import { Radar, ShieldAlert, Bus, AlertTriangle, Zap, CheckCircle2, Target, X, Crosshair, Flag, Eye, Users, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
+import { useLiveData } from '../../context/LiveDataContext';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -164,6 +165,7 @@ const ShadowRadar: React.FC = () => {
   const [isScanning, setIsScanning] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const { empresaPropia, setEmpresaPropia } = useEmpresaPropia();
+  const { setSelectedLine } = useLiveData();
 
   // Buffer para tracking direccional
   const prevPositionsRef = useRef<Record<string, { lat: number; lng: number; heading?: number }>>({});
@@ -748,7 +750,7 @@ const ShadowRadar: React.FC = () => {
 
       return { ucot, rivales: rivalesCercanos, estado };
     });
-  }, [ucotFiltrados, competidores, overlapsByRivalKey, empresaPropia]);
+  }, [ucotFiltrados, ucotFlota, competidores, overlapsByRivalKey, empresaPropia]);
 
   // ─── ShadowDispatcher automático (useEffect) ─────────────────────────────
   // Se declara acá (después del useMemo emparejamientos) para evitar TDZ.
@@ -1332,7 +1334,9 @@ const ShadowRadar: React.FC = () => {
                 return (
                   <div
                     key={alerta.id}
-                    className={`flex flex-col gap-2 p-3 rounded-xl border text-sm transition-all duration-300 ${getAlertColor(alerta.tipo, alerta.leido)}`}
+                    className={`flex flex-col gap-2 p-3 rounded-xl border text-sm transition-all duration-300 ${getAlertColor(alerta.tipo, alerta.leido)} ${alerta.linea_id ? 'cursor-pointer hover:opacity-90' : ''}`}
+                    onClick={() => alerta.linea_id && setSelectedLine(alerta.linea_id)}
+                    title={alerta.linea_id ? `Filtrar por línea ${alerta.linea_id} en todos los módulos` : undefined}
                   >
                     <div className="flex items-center gap-2">
                       {getAlertIcon(alerta.tipo, alerta.leido)}
