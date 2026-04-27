@@ -2,6 +2,7 @@ import {
   collection,
   query,
   orderBy,
+  where,
   onSnapshot,
   addDoc,
   serverTimestamp,
@@ -16,8 +17,19 @@ const COL = 'service_matrices';
 const STORAGE_PREFIX = 'matrices';
 
 export const ServiceMatrixService = {
-  subscribeToHistory(callback: (history: unknown[]) => void) {
-    const q = query(collection(db, COL), orderBy('createdAt', 'desc'));
+  /**
+   * Suscribe al historial de matrices filtrando por empresa.
+   * Si empresaId es null/undefined, trae todas (comportamiento legacy para SuperAdmin sin empresa seleccionada).
+   */
+  subscribeToHistory(
+    callback: (history: unknown[]) => void,
+    empresaId?: number | null,
+  ) {
+    const base = collection(db, COL);
+    const q =
+      empresaId != null
+        ? query(base, where('empresaId', '==', empresaId), orderBy('createdAt', 'desc'))
+        : query(base, orderBy('createdAt', 'desc'));
     return onSnapshot(q, (snap) => {
       callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
@@ -29,7 +41,7 @@ export const ServiceMatrixService = {
    */
   async uploadMatrix(
     file: File,
-    opts?: { uploadedBy?: string; area?: string },
+    opts?: { uploadedBy?: string; area?: string; empresaId?: number },
   ): Promise<{ id: string; fileUrl: string; fileName: string; storagePath: string }> {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `${STORAGE_PREFIX}/${Date.now()}_${safeName}`;
@@ -55,6 +67,7 @@ export const ServiceMatrixService = {
       version: 1,
       uploadedBy: opts?.uploadedBy ?? null,
       area: opts?.area ?? 'Gral',
+      empresaId: opts?.empresaId ?? null,
     });
 
     return { id: docRef.id, fileUrl, fileName: file.name, storagePath };

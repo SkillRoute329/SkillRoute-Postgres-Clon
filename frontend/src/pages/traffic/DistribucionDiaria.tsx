@@ -66,7 +66,7 @@ export default function DistribucionDiaria() {
   const [rotacion, setRotacion] = useState<RotacionDia | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [fecha, setFecha] = useState('2026-01-21');
+  const [fecha, setFecha] = useState(() => new Date().toISOString().split('T')[0]);
   const [busqueda, setBusqueda] = useState('');
   const [lineaFiltro, setLineaFiltro] = useState('');
   const [detalleServicio, setDetalleServicio] = useState<any | null>(null);

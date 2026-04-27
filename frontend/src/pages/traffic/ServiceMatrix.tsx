@@ -57,18 +57,28 @@ export default function ServiceMatrix() {
   const loadMatrixByItemRef = useRef(loadMatrixByItem);
   loadMatrixByItemRef.current = loadMatrixByItem;
 
-  // Suscripción al historial Firestore. Auto-selección: si hay historial y nada seleccionado ni archivo local, se asigna matrixHistory[0] (más reciente).
+  // Suscripción al historial Firestore filtrada por empresa propia.
+  // Re-suscribe automáticamente cuando cambia empresaPropia.
   useEffect(() => {
     setIsLoadingHistory(true);
+    // Limpiar selección anterior al cambiar de empresa
+    setSelectedCloudId(null);
+    setWorkbook(null);
+    setSheets([]);
+    setCurrentData([]);
+    setSelectedSheet('');
+
     const unsubscribe = ServiceMatrixService.subscribeToHistory((history) => {
       setMatrixHistory(history);
       setIsLoadingHistory(false);
+      // Auto-selecciona la matriz más reciente de la empresa si no hay nada cargado
       if (history.length > 0 && !selectedCloudIdRef.current && !fileRef.current) {
         loadMatrixByItemRef.current?.(history[0]);
       }
-    });
+    }, empresaPropia);
+
     return () => unsubscribe();
-  }, []);
+  }, [empresaPropia]);
 
   const handleDeleteMatrix = async (
     e: React.MouseEvent,
@@ -114,6 +124,7 @@ export default function ServiceMatrix() {
       await ServiceMatrixService.uploadMatrix(selected, {
         uploadedBy: String(user?.id ?? user?.internalNumber ?? ''),
         area: 'Gral',
+        empresaId: empresaPropia,
       });
       toast.success('Matriz guardada en la nube. Persistente al refrescar.');
       setFile(selected);
@@ -182,6 +193,18 @@ export default function ServiceMatrix() {
           {isLoadingHistory ? (
             <div className="flex justify-center p-4">
               <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
+            </div>
+          ) : matrixHistory.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-6 text-center gap-2">
+              <FileSpreadsheet className="w-8 h-8 text-slate-700" />
+              <p className="text-[11px] text-slate-500 leading-snug">
+                Sin matrices guardadas para este operador.
+              </p>
+              {canUpload && (
+                <p className="text-[10px] text-slate-600">
+                  Subí un archivo XLSX para comenzar.
+                </p>
+              )}
             </div>
           ) : (
             matrixHistory.map((item) => (

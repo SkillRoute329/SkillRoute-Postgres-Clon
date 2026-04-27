@@ -28,6 +28,7 @@ const PushNotificationInit = () => {
 
 // Lazy Load Pages
 const DashboardHome = lazy(() => import('./pages/DashboardHome'));
+const RoleBasedLanding = lazy(() => import('./pages/RoleBasedLanding'));
 
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminBalances = lazy(() => import('./pages/admin/AdminBalances'));
@@ -200,7 +201,7 @@ function App() {
                   <Route path="/admin/debug" element={<SystemDoctor />} />
 
                   <Route path="/dashboard" element={<DashboardLayout />}>
-                    <Route index element={<DashboardHome />} />
+                    <Route index element={<RoleBasedLanding />} />
 
                     {/* Admin Routes — require ADMIN role */}
                     <Route path="admin/users" element={<PrivateRoute roles={['ADMIN']}><AdminUsers /></PrivateRoute>} />

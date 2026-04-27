@@ -10,9 +10,10 @@
  * Sin simulaciones. Sin datos hardcoded de estado. Sólo Firestore + ScheduleService.
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { collection, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { useState, useEffect } from 'react';
+import { collection, query, where, orderBy, limit, onSnapshot, Timestamp } from 'firebase/firestore';
+import { db, authReady } from '../../config/firebase';
+import { useLiveData } from '../../context/LiveDataContext';
 import {
   TrendingUp,
   TrendingDown,
@@ -102,32 +103,21 @@ const OTP_COLOR = (otp: number) => {
 /* ─── Component ───────────────────────────────────────── */
 
 export default function OTPDashboard() {
+  const { otpHoy, otpSeries } = useLiveData();
   const [registros, setRegistros] = useState<OTPRegistro[]>([]);
   const [byLinea, setByLinea] = useState<OTPLinea[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dias, setDias] = useState<7 | 14 | 30>(7);
   const [sortBy, setSortBy] = useState<'otp' | 'linea' | 'demora'>('otp');
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const fetchOTP = useCallback(async () => {
+  useEffect(() => {
     setLoading(true);
     setError(null);
-    try {
-      // 1. Fecha límite
-      const desde = new Date();
-      desde.setDate(desde.getDate() - dias);
-      const desdeTs = Timestamp.fromDate(desde);
+    let unsubscribe: (() => void) | null = null;
 
-      // 2. Traer inspecciones desde la colección correcta (InspectorCapture → 'inspections')
-      const snap = await getDocs(
-        query(
-          collection(db, 'inspections'),
-          where('createdAt', '>=', desdeTs),
-          orderBy('createdAt', 'desc'),
-          limit(2000),
-        ),
-      );
-
+    const processSnapshot = (snap: import('firebase/firestore').QuerySnapshot) => {
       if (snap.empty) {
         setRegistros([]);
         setByLinea([]);
@@ -135,7 +125,7 @@ export default function OTPDashboard() {
         return;
       }
 
-      // 3. Procesar cada inspección usando los campos reales guardados por InspectorCapture
+      // Procesar cada inspección usando los campos reales guardados por InspectorCapture
       const regs: OTPRegistro[] = [];
 
       for (const d of snap.docs) {
@@ -178,7 +168,7 @@ export default function OTPDashboard() {
 
       setRegistros(regs);
 
-      // 4. Agregar por línea
+      // Agregar por línea
       const map = new Map<string, OTPLinea>();
       for (const r of regs) {
         if (!map.has(r.lineaId)) {
@@ -218,17 +208,35 @@ export default function OTPDashboard() {
       });
 
       setByLinea(lineas);
-    } catch (e) {
-      console.error('OTP fetch error:', e);
-      setError('No se pudieron cargar los datos de puntualidad. Verifica la conexión.');
-    } finally {
       setLoading(false);
-    }
-  }, [dias]);
+    };
 
-  useEffect(() => {
-    void fetchOTP();
-  }, [fetchOTP]);
+    void authReady.then(() => {
+      // Fecha límite
+      const desde = new Date();
+      desde.setDate(desde.getDate() - dias);
+      const desdeTs = Timestamp.fromDate(desde);
+
+      unsubscribe = onSnapshot(
+        query(
+          collection(db, 'inspections'),
+          where('createdAt', '>=', desdeTs),
+          orderBy('createdAt', 'desc'),
+          limit(2000),
+        ),
+        processSnapshot,
+        (e) => {
+          console.error('OTP onSnapshot error:', e);
+          setError('No se pudieron cargar los datos de puntualidad. Verifica la conexión.');
+          setLoading(false);
+        },
+      );
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [dias, refreshKey]);
 
   /* ── KPIs globales ── */
   const totalReg = registros.length;
@@ -257,6 +265,37 @@ export default function OTPDashboard() {
   /* ─── RENDER ───────────────────────────────────────────── */
   return (
     <div className="min-h-screen bg-slate-950 p-4 md:p-6 space-y-6">
+
+      {/* ── Banner OTP GPS en vivo — fuente autorizada ── */}
+      {otpHoy !== null && (
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 px-5 py-4 flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`text-4xl font-black ${otpHoy >= 90 ? 'text-emerald-400' : otpHoy >= 75 ? 'text-yellow-400' : 'text-red-400'}`}>
+              {otpHoy.toFixed(1)}%
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">OTP en tiempo real (GPS)</p>
+              <p className="text-xs text-slate-400">Basado en {otpSeries.find(s => s.date === new Date().toISOString().slice(0,10))?.total?.toLocaleString() ?? '—'} servicios GPS monitoreados hoy</p>
+            </div>
+          </div>
+          {otpSeries.length > 1 && (
+            <div className="flex items-end gap-1 h-8 ml-auto">
+              {otpSeries.slice(-7).map((s) => (
+                <div key={s.date} className="flex flex-col items-center gap-0.5" title={`${s.date}: ${s.value}%`}>
+                  <div
+                    className={`w-5 rounded-sm ${s.value >= 90 ? 'bg-emerald-500' : s.value >= 75 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                    style={{ height: `${Math.max(4, (s.value / 100) * 32)}px` }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-slate-500 w-full">
+            ℹ El OTP GPS mide el cumplimiento horario de todos los servicios activos cruzando posición GPS contra horarios STM scrapeados. Los datos de inspecciones manuales se muestran debajo.
+          </p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
@@ -288,7 +327,7 @@ export default function OTPDashboard() {
             </button>
           ))}
           <button
-            onClick={() => void fetchOTP()}
+            onClick={() => setRefreshKey((k) => k + 1)}
             disabled={loading}
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/60 border border-white/5 text-xs text-slate-300 hover:bg-slate-700/60 transition-all disabled:opacity-50"
           >
