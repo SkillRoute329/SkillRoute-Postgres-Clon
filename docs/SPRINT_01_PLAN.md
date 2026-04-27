@@ -55,11 +55,271 @@ abierto. Los gaps documentados en orden de detección:
    Output incluye nuevo bloque `calidadDeDatos` transparente con conteos,
    cobertura % y advertencias para regulador.
 4. **Índice Firestore faltante** — query `agencyId AND createdAt BETWEEN`
-   necesita índice `(agencyId ASC, createdAt ASC)` pero solo existe DESC.
-   Endpoint individual por operador caería con 500. ⏸️ **Pendiente Code:
-   agregar línea en `firestore.indexes.json`**.
+   necesita índice. ✅ **Code agregó 2 índices** en commit 34baabe0
+   (`empresa, tipo, timestamp` + `tipo, timestamp`).
 
-## ORDEN ACTUALIZADA PARA CLAUDE CODE (post-§12, iteración 2)
+### Iteración 3 — gap CRÍTICO detectado por Cowork verificando con Chrome MCP §12
+5. **Endpoint regulatorio devuelve 403 a usuarios admin reales.**
+   Causa raíz: `requireAdmin` en `regulatorio.ts` leía `decoded.role`
+   del JWT, pero el sistema SkillRoute **NO usa custom claims** —
+   replica la lógica de `firestore.rules getUserRole()` que lee
+   el documento `users/{uid}` y el campo `role` o `rol` lowercase.
+   El JWT tiene `name: "SuperAdmin"` como displayName (Firebase Auth)
+   pero eso NO indica rol. Bug habría bloqueado completamente el feature
+   regulatorio si se hubiera presentado a CUTCSA.
+   ✅ **Fix aplicado en `functions/src/api/regulatorio.ts`**: refactor
+   de `requireAdmin()` para verificar contra Firestore `users/{uid}`,
+   aceptar `role` o `rol`, normalizar lowercase. Mensaje de error mejor
+   ("Tu rol actual es 'X'. Contacta al administrador.").
+
+### Iteración 4 — dos errores 500 detectados por Cowork tras fix de auth
+6. **`/export?empresa=70` devuelve 500** — Firestore reporta:
+   *"That index is currently building and cannot be used yet"*. El índice
+   `(empresa, tipo, timestamp)` que Code agregó en commit 34baabe0 está
+   en construcción todavía. Firestore puede tardar minutos a horas en
+   indexar colecciones grandes. **No requiere acción de código** — solo
+   esperar al build de Firestore.
+7. **`/export-cross-op` devuelve 500** — falta otro índice. La función
+   `coberturaCrossOp()` en `regulatorio.ts` filtra `vehicle_events` por
+   `empresa = X AND timestamp BETWEEN A AND B` (sin `tipo`). El índice
+   existente de Code es `(empresa, tipo, timestamp)` — sirve para
+   `calcularOTP()` pero NO para `coberturaCrossOp()`.
+   ✅ **Fix aplicado en `firestore.indexes.json`**: agregado índice
+   `(empresa, timestamp)` para queries cross-op sin filtro por tipo.
+
+### Iteración 7 — índice (agencyId, createdAt ASC) faltante §12
+10. **Después del fix `timestampGPS → createdAt`, Firestore exige
+    índice ASC.** El existente es `(agencyId, createdAt DESC)`. Aunque
+    técnicamente BETWEEN funciona con cualquier dirección, Firestore
+    aquí pide explícitamente ASC. ✅ **Fix aplicado en
+    `firestore.indexes.json`**: agregados índices
+    `(agencyId ASC, createdAt ASC)` y `(createdAt ASC)` para queries
+    sin filtro por agencyId.
+
+### Iteración 6 — campo timestamp incorrecto detectado §12
+9. **`timestampGPS` no existe en docs actuales de `vehicle_events`.**
+   El ingestor cambió y solo puebla `createdAt` ahora. Los 3 docs viejos
+   con `timestampGPS` son legacy. Mi query con
+   `where('timestampGPS', '>=', X)` excluía todos los docs nuevos que
+   carecen de ese campo (Firestore comportamiento estándar). Por eso
+   los endpoints respondían 200 pero con `total: 0` para todos los
+   operadores.
+   ✅ **Fix aplicado en `regulatorio.ts`**: replace_all
+   `timestampGPS → createdAt`. El índice existente
+   `(agencyId ASC, createdAt DESC)` cubre el query BETWEEN.
+
+### Iteración 5 — schema mismatch crítico detectado por Cowork con query directa Firestore §12
+8. **Schema real de `vehicle_events` no coincide con el código.**
+   Verificación con Firestore REST API expuso los campos reales:
+   - `empresa: string` ("UCOT", no número 70)
+   - `agencyId: string` ("70", string del código numérico)
+   - `timestampGPS: Timestamp` (NO existe `timestamp`)
+   - `estadoCumplimiento: string` (EN_TIEMPO / ADELANTADO / SIN_HORARIO / FUERA_DE_SERVICIO) — **fuente canónica de OTP pre-calculada por el sistema**
+   - `desviacionMin: number` (existe, 80% de cobertura — Code se equivocó al decir "todos null")
+   - `idBus: string` (NO existe `coche` excepto legacy)
+   - **NO existe el campo `tipo`** — el filtro `tipo === 'arrival_at_stop'` siempre devolvía 0 docs.
+   ✅ **Fix aplicado en `functions/src/api/regulatorio.ts`**:
+   - `calcularOTP()` reescrito para usar `agencyId` + `timestampGPS` +
+     `estadoCumplimiento` como fuente canónica. Fallback a `desviacionMin`.
+   - `coberturaCrossOp()` reescrito con mismo schema.
+   - Helper `codigoToAgencyId(num)` para mapear input numérico API → agencyId string.
+   - Los 3 índices Firestore que agregamos esta sesión son **innecesarios** (campos `tipo` y `timestamp` no existen). Quedan inactivos sin costo. El índice `(agencyId, timestampGPS ASC)` que ya existía pre-Sprint 1 es el correcto.
+
+## ORDEN PARA CLAUDE CODE (iteración 7 — deploy índices ASC)
+
+```
+Cowork agregó 2 índices Firestore nuevos a firestore.indexes.json:
+- (agencyId ASC, createdAt ASC) — para query con filtro por operador
+- (createdAt ASC) — para query global cross-op
+
+Tu trabajo:
+   firebase deploy --only firestore:indexes
+
+Después esperar 1-10 minutos al build de Firestore. Cuando ambos
+índices estén "Enabled" en Firebase Console, avisar a Cowork.
+
+https://console.firebase.google.com/project/ucot-gestor-cloud/firestore/indexes
+```
+
+## ORDEN PARA CLAUDE CODE (iteración 6 — fix createdAt + redeploy)
+
+> Ajuste pequeño tras la iteración 5.
+
+```
+Cowork hizo replace_all timestampGPS → createdAt en
+functions/src/api/regulatorio.ts. El campo timestampGPS no existe en
+los docs actuales de vehicle_events; solo createdAt.
+
+Tu trabajo:
+   cd functions && npm run build && cd ..
+   firebase deploy --only functions:regulatorio
+
+Avisar a Cowork. Cowork hará verificación §12 final con token Admin.
+Si JSON sale con datos reales, commit con mensaje preparado y push.
+
+Si build/deploy falla → "## NOTA DE JONATHAN" en SESION_ACTUAL.md.
+```
+
+## ORDEN PARA CLAUDE CODE (iteración 5 — schema fix + redeploy final)
+
+> Pegar este bloque a Code para cerrar Sprint 1.
+
+```
+Continuamos Sprint 1 §12 iteración 5. Leé docs/SPRINT_01_PLAN.md
+sección "Iteración 5".
+
+Cowork detectó schema mismatch crítico verificando con Firestore REST
+API. Los campos reales de vehicle_events son:
+- agencyId (string) — usar en lugar de empresa(number)
+- timestampGPS (Timestamp) — usar en lugar de timestamp inexistente
+- estadoCumplimiento (string) — fuente canónica de OTP pre-calculada
+- NO existe el campo "tipo"
+
+Cowork ya refactorizó functions/src/api/regulatorio.ts:
+- calcularOTP usa agencyId + timestampGPS + estadoCumplimiento
+- coberturaCrossOp usa mismos campos
+- Helper codigoToAgencyId mapea input numérico API → agencyId string
+
+Tu trabajo:
+
+PASO 1 — REBUILD + REDEPLOY:
+   cd functions && npm run build && cd ..
+   firebase deploy --only functions:regulatorio
+
+PASO 2 — AVISAR a Cowork. Cowork hará verificación §12 con Chrome MCP.
+
+PASO 3 — VERIFICACIÓN §12 (Cowork ejecuta directamente):
+   Cowork va a:
+   a) /export?empresa=70 con token Jonathan → debe devolver 200 con
+      otp.total > 0 (UCOT tiene eventos en abril). pctOTP debe ser
+      número (no null) si hay eventos con estadoCumplimiento.
+   b) /export-cross-op con token Jonathan → debe devolver 200 con
+      cobertura mostrando buses y lineas para los 4 operadores
+      (UCOT/CUTCSA/COME/COETC).
+   c) calidadDeDatos.advertencias[] debe explicar el contexto.
+
+PASO 4 — COMMIT (después que Cowork confirme verificación OK):
+   git add functions/src/api/regulatorio.ts firestore.indexes.json \
+     docs/SPRINT_01_PLAN.md docs/SESION_ACTUAL.md
+   git commit -m "fix(regulatorio): refactor para schema real vehicle_events
+
+   Verificación §12 con Firestore REST API expuso schema mismatch:
+   - empresa es string (UCOT) no número
+   - agencyId es string (70) — usar para filtrar
+   - timestampGPS, no timestamp
+   - estadoCumplimiento es la fuente canónica de OTP pre-calculada
+   - NO existe el campo tipo
+
+   Refactor:
+   - calcularOTP usa estadoCumplimiento (EN_TIEMPO/ADELANTADO/SIN_HORARIO/
+     FUERA_DE_SERVICIO) como fuente primaria. Fallback a desviacionMin.
+   - coberturaCrossOp usa agencyId + timestampGPS.
+   - Helper codigoToAgencyId mapea API numérico → agencyId string.
+
+   Verificado bajo §12 con token Admin real:
+   - /export?empresa=70 devuelve OTP medible.
+   - /export-cross-op devuelve cobertura real de 4 operadores.
+
+   Sprint 1 cerrado al 100%."
+   git push
+
+PASO 5 — SI ALGO FALLA:
+   Escribir "## NOTA DE JONATHAN" en SESION_ACTUAL.md describiendo
+   qué falló. NO commitear.
+```
+
+## ORDEN PARA CLAUDE CODE (iteración 4 — deploy índice cross-op + esperar)
+
+> Pegar a Code para resolver los dos 500.
+
+```
+Continuamos Sprint 1 §12 iteración 4. Leé docs/SPRINT_01_PLAN.md
+sección "Iteración 4".
+
+Cowork detectó 2 errores 500 al verificar con Chrome MCP usando token
+de SuperAdmin. Diagnóstico exacto desde body de respuesta de Firestore:
+
+- /export-cross-op: falta índice (empresa, timestamp) sin tipo.
+  Cowork ya agregó el índice en firestore.indexes.json.
+
+- /export?empresa=70: índice (empresa, tipo, timestamp) que vos agregaste
+  en commit 34baabe0 está en estado "currently building". No requiere
+  fix, solo esperar a Firestore.
+
+Tu trabajo:
+
+PASO 1 — DEPLOY ÍNDICES:
+   firebase deploy --only firestore:indexes
+
+PASO 2 — ESPERAR. Los índices Firestore tardan en construirse.
+   Verificar progreso en:
+   https://console.firebase.google.com/project/ucot-gestor-cloud/firestore/indexes
+
+   Cuando ambos estén "Enabled" (no "Building"), avisame.
+
+PASO 3 — COMMIT (después que el deploy del índice se aplique):
+   git add firestore.indexes.json docs/SPRINT_01_PLAN.md
+   git commit -m "fix(regulatorio): agregar índice (empresa, timestamp) para coberturaCrossOp
+
+   Bug detectado bajo Regla §12 al verificar /export-cross-op con token real.
+   Firestore devolvía 500 porque coberturaCrossOp filtra empresa+timestamp
+   sin incluir tipo, y solo existía el índice (empresa, tipo, timestamp).
+
+   El índice de Cowork (empresa, timestamp) cubre la query cross-op
+   independiente. El de Code (empresa, tipo, timestamp) sigue cubriendo
+   calcularOTP que sí filtra por tipo.
+
+   Sprint 1 §12 iteración 4 — pendiente verificación final con token
+   real una vez los índices terminen de construir."
+   git push
+```
+
+## ORDEN PARA CLAUDE CODE (iteración 3 — fix auth regulatorio)
+
+> Pegar este bloque a Code para cerrar Sprint 1 al 100%.
+
+```
+Continuamos Sprint 1 bajo Regla §12, iteración 3. Leé CLAUDE.md
+(especial §12) y docs/SPRINT_01_PLAN.md sección "Iteración 3".
+
+Cowork detectó bug crítico verificando con Chrome MCP: el endpoint
+regulatorio devolvía 403 incluso a SuperAdmin reales. Causa: leía
+decoded.role del JWT en lugar de Firestore users/{uid}.role como hace
+firestore.rules. Fix aplicado en functions/src/api/regulatorio.ts.
+
+Tu trabajo:
+
+PASO 1 — REBUILD + REDEPLOY functions:
+   cd functions && npm run build && cd ..
+   firebase deploy --only functions:regulatorio
+
+PASO 2 — VERIFICAR §12 directo (sin esperar a Jonathan):
+   Cowork hará la verificación funcional con Chrome MCP usando el
+   token del usuario logueado en el browser de Jonathan, una vez que
+   el deploy esté en producción.
+
+PASO 3 — COMMIT:
+   git add -A
+   git commit -m "fix(regulatorio): auth lee Firestore users/{uid}.role en lugar de JWT custom claim
+
+   Bug crítico detectado bajo Regla §12 al verificar con Chrome MCP:
+   endpoint regulatorio devolvía 403 a usuarios SuperAdmin reales.
+
+   Causa: requireAdmin() leía decoded.role del JWT, pero SkillRoute
+   no usa custom claims — replica la lógica de firestore.rules
+   getUserRole() que lee users/{uid}.role o .rol normalizado lowercase.
+   El name: 'SuperAdmin' del JWT es solo displayName de Firebase Auth.
+
+   Fix: refactor requireAdmin para hacer fetch a Firestore users/{uid}
+   y validar role/rol lowercase contra ['admin', 'superadmin'].
+   Mensaje de error mejorado con rol actual del usuario.
+
+   Habría bloqueado completamente el feature regulatorio si llegaba
+   a CUTCSA con auth ADMIN."
+   git push
+```
+
+## ORDEN ANTERIOR (iteración 2 — superada por iteración 3)
 
 > Pegar este bloque a Code para cerrar Sprint 1 al 100%.
 

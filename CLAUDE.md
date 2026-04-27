@@ -471,6 +471,48 @@ confirma OK.
 
 ---
 
+### 13. Bridge Cowork ↔ Code (DIRECTRIZ 2026-04-26)
+
+Hay un bridge de mensajes en `cowork-tools/bridge/inbox.md` que permite que
+Cowork y Code coordinen sin que Jonathan copie/pegue entre ventanas.
+
+**Al ABRIR sesión**, si Jonathan dice "leé el bridge" o "hay mensajes pendientes":
+
+```bash
+python cowork-tools\bridge\bridge_pull.py code
+```
+
+Esto muestra los mensajes pendientes para Code. Ejecutar desde la raíz del repo.
+
+**Para responder o reportar estado:**
+
+```bash
+python cowork-tools\bridge\bridge_push.py \
+  --from code --to cowork \
+  --ref BRIDGE-NNN \
+  --status DONE|BLOCKED|IN_PROGRESS|INFO \
+  --topic "Título del mensaje" \
+  --body "Cuerpo del mensaje"
+```
+
+**Statuses posibles:** `PENDING`, `IN_PROGRESS`, `DONE`, `BLOCKED`, `INFO`.
+
+**Protocolo:**
+- `inbox.md` es append-only — nunca editar entradas existentes, solo agregar.
+- Si una tarea llega como `PENDING`, responder con `IN_PROGRESS` al empezar
+  y `DONE` (o `BLOCKED`) al terminar.
+- Si Code no puede completar una verificación (ej. login con 2FA, browser
+  interactivo, comando que requiere el entorno de Cowork), marcar `BLOCKED`
+  con descripción exacta de qué falta y qué hizo Code hasta ahí.
+- Leer `cowork-tools/bridge/AGENT_INSTRUCTIONS.md` para el protocolo completo.
+
+**Nota sobre encoding en Windows:** `bridge_pull.py` puede fallar con
+`UnicodeEncodeError` al imprimir `→` en consola cp1252. El archivo
+`inbox.md` igual se actualiza correctamente — el error es solo de display.
+Si ocurre, leer `inbox.md` directamente con `Read`.
+
+---
+
 ## 📘 Documentos que debe leer el agente antes de tocar código
 
 Si la tarea implica crear, mover, renombrar o reorganizar archivos, **leer primero**:
