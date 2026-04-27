@@ -56,6 +56,19 @@ export const INCIDENCIA_META: Record<
   DEMORA: { label: 'Demora', emoji: '⏱️', color: 'text-blue-400 bg-blue-500/10' },
 };
 
+// ── Auth cold-start helper ───────────────────────────────────────────────────
+// persistentMultipleTabManager desacopla auth del SDK Firestore: auth.currentUser
+// es null hasta que onAuthStateChanged resuelve por primera vez. authStateReady()
+// espera ese primer evento antes de hacer cualquier query Firestore.
+async function ensureAuthReady(): Promise<void> {
+  if (typeof (auth as any).authStateReady === 'function') {
+    await (auth as any).authStateReady();
+  }
+  if (auth.currentUser) {
+    await auth.currentUser.getIdToken();
+  }
+}
+
 // ── CRUD (Firestore) ────────────────────────────────────────────────────────
 
 const COL = 'incidencias';
@@ -71,8 +84,7 @@ export async function reportarIncidencia(
     conductorUid?: string;
   },
 ): Promise<IncidenciaReportada> {
-  // Sync token con Firestore SDK (persistentMultipleTabManager desacopla auth en cold start)
-  if (auth.currentUser) await auth.currentUser.getIdToken();
+  await ensureAuthReady();
 
   const reporterUid = extras?.conductorUid ?? auth.currentUser?.uid ?? 'anonymous';
   const payload: Record<string, unknown> = {
@@ -110,8 +122,7 @@ export async function getIncidencias(filtros?: {
   soloAbiertas?: boolean;
   limite?: number;
 }): Promise<IncidenciaReportada[]> {
-  // Sync token con Firestore SDK (persistentMultipleTabManager desacopla auth en cold start)
-  if (auth.currentUser) await auth.currentUser.getIdToken();
+  await ensureAuthReady();
 
   const qArgs: any[] = [orderBy('createdAt', 'desc')];
 
@@ -152,6 +163,7 @@ export async function getIncidencias(filtros?: {
 }
 
 export async function marcarResuelta(id: string): Promise<void> {
+  await ensureAuthReady();
   await updateDoc(doc(db, COL, id), {
     status: 'CERRADO',
     closedAt: serverTimestamp(),
