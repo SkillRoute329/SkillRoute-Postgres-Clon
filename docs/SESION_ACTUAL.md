@@ -49,9 +49,8 @@ Verificar en producción (login ADMIN en https://ucot-gestor-cloud.web.app):
 
 ## 🗂️ BACKLOG PRIORIZADO
 
-1. **APK Release firmada** — debug lista (18 MB en Escritorio). `keytool -genkeypair` → `./gradlew assembleRelease` → `apksigner`.
-2. **Cron semanal DRO** — `droMatrixTick` corre lunes 04:00 Mvd. Verificar próxima semana.
-3. **snap-to-shape** — proyectar posición de buses sobre el shape para HRR aún más preciso (backlog largo plazo).
+1. **Cron semanal DRO** — `droMatrixTick` corre lunes 04:00 Mvd. Verificar próxima semana.
+2. **snap-to-shape** — proyectar posición de buses sobre el shape para HRR aún más preciso (backlog largo plazo).
 
 ### ✅ CorridorMarketShare completado
 - Ruta: `/dashboard/traffic/market-share`
@@ -89,10 +88,13 @@ Verificar en producción (login ADMIN en https://ucot-gestor-cloud.web.app):
 
 ## 📱 APK ANDROID
 
+- **Release APK** ✅: `C:\Users\jonat\Desktop\SkillRoute-release-v1.0.apk` (16 MB) — firmada con v2
 - **Debug APK**: `C:\Users\jonat\Desktop\SkillRoute-debug.apk` (18 MB)
 - Build: Capacitor 8 + @capacitor/android, Java 21, Android SDK 36
-- Para Release: generar keystore → `./gradlew assembleRelease` → firmar con `apksigner`
-- Comando para reinstalar en dispositivo vía ADB: `adb install -r SkillRoute-debug.apk`
+- Keystore: `frontend/android/app/skillroute-release.keystore` (NO commiteado — ver keystore.properties)
+- **⚠️ RESGUARDAR**: contraseña del keystore = `SkillRoute2026!` — si se pierde, no se pueden publicar actualizaciones en Google Play
+- Instalar en dispositivo: `adb install -r SkillRoute-release-v1.0.apk`
+- Para actualizar y re-publicar: `cap sync android && ./gradlew assembleRelease` (ya configurado)
 
 ## 🔑 DECISIONES OPERATIVAS
 
