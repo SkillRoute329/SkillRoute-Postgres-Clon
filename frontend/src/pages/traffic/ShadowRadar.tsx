@@ -269,6 +269,7 @@ const ShadowRadar: React.FC = () => {
       orderBy('timestamp', 'desc'),
       limit(20),
     );
+    let unsubAlertasFallback: (() => void) | undefined;
     const unsubAlertas = onSnapshot(
       qAlertas,
       (snapshot) => {
@@ -280,7 +281,7 @@ const ShadowRadar: React.FC = () => {
         // Fallback sin filtro si el índice no existe aún
         console.warn('[ShadowRadar] Query con empresa_id falló, usando sin filtro:', err);
         const qFallback = query(collection(db, 'alertas_regulacion'), orderBy('timestamp', 'desc'), limit(20));
-        onSnapshot(qFallback, (snap) => {
+        unsubAlertasFallback = onSnapshot(qFallback, (snap) => {
           const data: AlertaRegulacion[] = [];
           snap.forEach((doc) => data.push({ id: doc.id, ...doc.data() } as AlertaRegulacion));
           setAlertas(data);
@@ -457,6 +458,7 @@ const ShadowRadar: React.FC = () => {
 
     return () => {
       unsubAlertas();
+      unsubAlertasFallback?.();
       unsubViajes();
       unsubVehicleEvents();
       unsubOverlap();

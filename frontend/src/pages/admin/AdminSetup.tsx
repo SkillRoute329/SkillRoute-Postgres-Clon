@@ -318,6 +318,18 @@ const AdminSetup = () => {
         </div>
       </div>
 
+      {/* Warning: datos generados, no reales */}
+      <div className="mb-6 p-4 bg-red-500/10 border border-red-500/40 rounded-xl">
+        <p className="text-red-400 font-bold text-sm flex items-center gap-2 mb-1">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          Datos de demostración — NO son registros reales de UCOT
+        </p>
+        <p className="text-slate-400 text-xs leading-relaxed">
+          Este panel genera <strong className="text-slate-200">137 vehículos ficticios</strong>, <strong className="text-slate-200">163 servicios con horarios calculados</strong> y rutas estáticas para pruebas iniciales del sistema.
+          Para cargar los datos reales de UCOT (691 empleados, 257 coches, cartones oficiales), usá el panel <strong className="text-slate-200">"Carga Datos UCOT"</strong> en esta misma sección.
+        </p>
+      </div>
+
       {/* Action Card */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
         {/* Top info */}

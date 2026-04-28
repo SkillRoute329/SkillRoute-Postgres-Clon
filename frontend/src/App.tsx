@@ -58,6 +58,7 @@ const DriverSchedule = lazy(() => import('./pages/driver/DriverSchedule'));
 const DriverServiceView = lazy(() => import('./pages/driver/DriverServiceView'));
 const DriverNavigation = lazy(() => import('./pages/driver/DriverNavigation'));
 const NewReport = lazy(() => import('./pages/driver/NewReport'));
+const DriverCompliance = lazy(() => import('./pages/driver/DriverCompliance'));
 const ABLPage = lazy(() => import('./pages/abl/ABLPage'));
 const PenalizationsPage = lazy(() => import('./pages/abl/penalizations/PenalizationsPage'));
 const ServiceMatrix = lazy(() => import('./pages/traffic/ServiceMatrix'));
@@ -101,6 +102,7 @@ const AdminAuditLog = lazy(() => import('./pages/admin/AdminAuditLog'));
 const AdminDisruptionsPage = lazy(() => import('./features/disruptions').then(m => ({ default: m.AdminDisruptionsPage })));
 const AdminOrganization = lazy(() => import('./pages/admin/AdminOrganization'));
 const AdminSeed = lazy(() => import('./pages/admin/AdminSeed'));
+const AsignacionVehiculos = lazy(() => import('./pages/admin/AsignacionVehiculos'));
 const AdminSetup = lazy(() => import('./pages/admin/AdminSetup'));
 const AdminShifts = lazy(() => import('./pages/admin/AdminShifts'));
 const CrossOpCoverage = lazy(() => import('./pages/admin/CrossOpCoverage'));
@@ -131,6 +133,22 @@ const PanelFinancieroOperativo = lazy(() => import('./pages/traffic/PanelFinanci
 const DisponibilidadFlota = lazy(() => import('./pages/fleet/DisponibilidadFlota'));
 const PanelRendicionCuentas = lazy(() => import('./pages/admin/PanelRendicionCuentas'));
 const DiagnosticoCumplimiento = lazy(() => import('./pages/traffic/DiagnosticoCumplimiento'));
+const RankingCoches = lazy(() => import('./pages/traffic/RankingCoches'));
+// Hubs unificados (wrapper de tabs — no reemplazan los componentes originales)
+const CumplimientoHub      = lazy(() => import('./pages/traffic/CumplimientoHub'));
+const CorredoresHub        = lazy(() => import('./pages/traffic/CorredoresHub'));
+const TurnoVivoHub         = lazy(() => import('./pages/traffic/TurnoVivoHub'));
+const MapaFlotaHub         = lazy(() => import('./pages/traffic/MapaFlotaHub'));
+const IncidenciasHub       = lazy(() => import('./pages/traffic/IncidenciasHub'));
+const ListeroHub           = lazy(() => import('./pages/traffic/ListeroHub'));
+const PlanificacionHub     = lazy(() => import('./pages/traffic/PlanificacionHub'));
+const FinancieroHub        = lazy(() => import('./pages/traffic/FinancieroHub'));
+const MapasHub             = lazy(() => import('./pages/traffic/MapasHub'));
+const GestionFlotaHub      = lazy(() => import('./pages/fleet/GestionFlotaHub'));
+const GestionPersonalHub   = lazy(() => import('./pages/admin/GestionPersonalHub'));
+const InspectoresHub       = lazy(() => import('./pages/admin/InspectoresHub'));
+const SistemaAdminHub      = lazy(() => import('./pages/admin/SistemaAdminHub'));
+const RegulatorioHub       = lazy(() => import('./pages/admin/RegulatorioHub'));
 // Sprint 1 (2026-04-25): Pricing público — accesible sin auth
 const PricingPage = lazy(() => import('./pages/public/PricingPage'));
 const OnboardingPage = lazy(() => import('./pages/public/OnboardingPage'));
@@ -207,32 +225,33 @@ function App() {
                     {/* Admin Routes — require ADMIN role */}
                     <Route path="admin/users" element={<PrivateRoute roles={['ADMIN']}><AdminUsers /></PrivateRoute>} />
                     <Route path="admin/balances" element={<PrivateRoute roles={['ADMIN']}><AdminBalances /></PrivateRoute>} />
-                    <Route path="admin/rrhh" element={<PrivateRoute roles={['ADMIN','RRHH']}><AdminRRHH /></PrivateRoute>} />
-                    <Route path="admin/rrhh/rotation" element={<PrivateRoute roles={['ADMIN','RRHH']}><RotationManager /></PrivateRoute>} />
-                    <Route path="admin/rrhh/feriados" element={<PrivateRoute roles={['ADMIN','RRHH']}><FeriadosPage /></PrivateRoute>} />
+                    <Route path="admin/rrhh" element={<PrivateRoute roles={['ADMIN','RRHH']}><GestionPersonalHub /></PrivateRoute>} />
+                    <Route path="admin/rrhh/rotation" element={<Navigate to="/dashboard/admin/rrhh" replace />} />
+                    <Route path="admin/rrhh/feriados" element={<Navigate to="/dashboard/admin/rrhh" replace />} />
                     <Route path="admin/communications" element={<PrivateRoute roles={['ADMIN']}><AdminWhatsApp /></PrivateRoute>} />
                     <Route path="admin/whatsapp-bot" element={<PrivateRoute roles={['ADMIN']}><AdminWhatsAppSettings /></PrivateRoute>} />
-                    <Route path="admin/maintenance" element={<PrivateRoute roles={['ADMIN','MANTENIMIENTO']}><MaintenanceDashboard /></PrivateRoute>} />
-                    <Route path="admin/maintenance-system" element={<PrivateRoute roles={['ADMIN']}><AppMaintenance /></PrivateRoute>} />
-                    <Route path="admin/ingestion" element={<PrivateRoute roles={['ADMIN']}><DataIngestion /></PrivateRoute>} />
+                    <Route path="admin/maintenance" element={<Navigate to="/dashboard/admin/sistema" replace />} />
+                    <Route path="admin/maintenance-system" element={<Navigate to="/dashboard/admin/sistema" replace />} />
+                    <Route path="admin/ingestion" element={<Navigate to="/dashboard/admin/sistema" replace />} />
                     <Route path="admin/cartones" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><AdminCartones /></PrivateRoute>} />
                     <Route path="admin/users/create" element={<PrivateRoute roles={['ADMIN']}><UserManagement /></PrivateRoute>} />
-                    <Route path="admin/employees" element={<PrivateRoute roles={['ADMIN','RRHH']}><Employees /></PrivateRoute>} />
+                    <Route path="admin/asignacion-vehiculos" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><AsignacionVehiculos /></PrivateRoute>} />
+                    <Route path="admin/employees" element={<Navigate to="/dashboard/admin/rrhh" replace />} />
                     <Route path="admin/stress-test" element={<PrivateRoute roles={['ADMIN']}><AdminStressTest /></PrivateRoute>} />
                     <Route path="admin/params" element={<PrivateRoute roles={['ADMIN']}><SystemParamsPage /></PrivateRoute>} />
                     <Route path="admin/service-categories" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ServiceCategoryPage /></PrivateRoute>} />
                     <Route path="admin/boletines" element={<PrivateRoute roles={['ADMIN']}><AdminBoletines /></PrivateRoute>} />
-                    <Route path="admin/config" element={<PrivateRoute roles={['ADMIN']}><AdminConfig /></PrivateRoute>} />
-                    <Route path="admin/parametros" element={<PrivateRoute roles={['ADMIN']}><AdminParametros /></PrivateRoute>} />
+                    <Route path="admin/config" element={<Navigate to="/dashboard/admin/sistema" replace />} />
+                    <Route path="admin/parametros" element={<Navigate to="/dashboard/admin/sistema" replace />} />
                     <Route path="admin/parametros-operativos" element={<PrivateRoute roles={['ADMIN','SUPERADMIN']}><AdminParametrosOperativos /></PrivateRoute>} />
-                    <Route path="admin/turnos-operativos" element={<PrivateRoute roles={['ADMIN','SUPERADMIN']}><AdminTurnosOperativos /></PrivateRoute>} />
-                    <Route path="admin/audit-log" element={<PrivateRoute roles={['ADMIN','SUPERADMIN']}><AdminAuditLog /></PrivateRoute>} />
+                    <Route path="admin/turnos-operativos" element={<Navigate to="/dashboard/admin/sistema" replace />} />
+                    <Route path="admin/audit-log" element={<Navigate to="/dashboard/admin/regulatorio" replace />} />
                     <Route path="admin/disruptions" element={<PrivateRoute roles={['ADMIN','SUPERADMIN','TRAFFIC']}><AdminDisruptionsPage /></PrivateRoute>} />
                     <Route path="admin/organization" element={<PrivateRoute roles={['ADMIN']}><AdminOrganization /></PrivateRoute>} />
-                    <Route path="admin/setup" element={<PrivateRoute roles={['ADMIN']}><AdminSetup /></PrivateRoute>} />
-                    <Route path="admin/seed" element={<PrivateRoute roles={['ADMIN','SUPERADMIN']}><AdminSeed /></PrivateRoute>} />
-                    <Route path="admin/shifts" element={<PrivateRoute roles={['ADMIN','RRHH']}><AdminShifts /></PrivateRoute>} />
-                    <Route path="admin/cross-op-coverage" element={<PrivateRoute roles={['ADMIN','SUPERADMIN']}><CrossOpCoverage /></PrivateRoute>} />
+                    <Route path="admin/setup" element={<Navigate to="/dashboard/admin/sistema" replace />} />
+                    <Route path="admin/seed" element={<Navigate to="/dashboard/admin/sistema" replace />} />
+                    <Route path="admin/shifts" element={<Navigate to="/dashboard/admin/rrhh" replace />} />
+                    <Route path="admin/cross-op-coverage" element={<Navigate to="/dashboard/admin/regulatorio" replace />} />
 
                     {/* Super Admin Routes */}
                     <Route path="super-admin/tenants" element={<PrivateRoute roles={['SUPERADMIN']}><TenantsManager /></PrivateRoute>} />
@@ -241,33 +260,33 @@ function App() {
                     <Route path="alerts" element={<RoadAlertsPage />} />
 
                     {/* Fleet Management Routes */}
-                    <Route path="fleet" element={<VehicleList />} />
+                    <Route path="fleet" element={<GestionFlotaHub />} />
                     <Route path="fleet/inspect/:id" element={<InspectionForm />} />
-                    <Route path="fleet/check" element={<VehicleCheck />} />
+                    <Route path="fleet/check" element={<Navigate to="/dashboard/fleet" replace />} />
 
                     {/* Universal Resource Manager Route */}
                     <Route path="universal/:entity" element={<UniversalPage />} />
 
                     {/* Traffic Department Routes — require TRAFFIC or ADMIN */}
-                    <Route path="traffic/service-matrix" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO','INSPECTOR']}><ServiceMatrix /></PrivateRoute>} />
-                    <Route path="traffic/inspector-control" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><InspectorDashboard /></PrivateRoute>} />
-                    <Route path="traffic/inspector-capture" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><InspectorCapture /></PrivateRoute>} />
+                    <Route path="traffic/service-matrix" element={<Navigate to="/dashboard/traffic/planificacion" replace />} />
+                    <Route path="traffic/inspector-control" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><InspectoresHub /></PrivateRoute>} />
+                    <Route path="traffic/inspector-capture" element={<Navigate to="/dashboard/traffic/inspector-control" replace />} />
                     {/* Redirect legacy: Estadisticas Inspectores deprecada -> CEO Dashboard */}
                     <Route path="traffic/statistics" element={<Navigate to="/dashboard/traffic/ceo" replace />} />
                     <Route path="traffic/autostats" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><AutoStatsModule /></PrivateRoute>} />
                     <Route path="traffic/analytics" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ServiceAnalytics /></PrivateRoute>} />
-                    <Route path="traffic/cartons" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><CartonManager /></PrivateRoute>} />
+                    <Route path="traffic/cartons" element={<Navigate to="/dashboard/traffic/planificacion" replace />} />
                     <Route
                       path="traffic/cartons/detail/:lineId/:serviceId"
                       element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><CartonDetail /></PrivateRoute>}
                     />
                     <Route path="traffic/navigation" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO','DRIVER','CONDUCTOR']}><NavigationModule /></PrivateRoute>} />
-                    <Route path="traffic/fleet-monitor" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><FleetMonitorModule /></PrivateRoute>} />
+                    <Route path="traffic/fleet-monitor" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><MapaFlotaHub /></PrivateRoute>} />
                     <Route path="traffic/cutcsa-fleet" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CUTCSAFleetDashboard /></PrivateRoute>} />
-                    <Route path="traffic/listero" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><TerminalListero /></PrivateRoute>} />
-                    <Route path="traffic/listero-cascada" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><ListeroModule /></PrivateRoute>} />
-                    <Route path="traffic/distribucion" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><DistribucionDiaria /></PrivateRoute>} />
-                    <Route path="traffic/boletin" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><BoletinInspeccion /></PrivateRoute>} />
+                    <Route path="traffic/listero" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><ListeroHub /></PrivateRoute>} />
+                    <Route path="traffic/listero-cascada" element={<Navigate to="/dashboard/traffic/listero" replace />} />
+                    <Route path="traffic/distribucion" element={<Navigate to="/dashboard/traffic/listero" replace />} />
+                    <Route path="traffic/boletin" element={<Navigate to="/dashboard/traffic/planificacion" replace />} />
                     <Route path="traffic/personal" element={<PrivateRoute roles={['ADMIN','TRAFFIC','RRHH']}><PersonalUcot /></PrivateRoute>} />
                     {/* Promovido 2026-04-25: V7 es ahora el dashboard ejecutivo default. */}
                     <Route path="traffic/ceo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CEODashboardV7 /></PrivateRoute>} />
@@ -283,30 +302,41 @@ function App() {
                     {/* Restaurado 2026-04-25: LiveMapPage tiene heatmap de demanda que CorridorMap no cubre. Ambos conviven con roles distintos. */}
                     <Route path="traffic/live-map" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><LiveMapPage /></PrivateRoute>} />
                     <Route path="traffic/shadow-radar" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ShadowRadar /></PrivateRoute>} />
-                    <Route path="traffic/corridor-intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorridorIntelligence /></PrivateRoute>} />
-                    <Route path="traffic/corridor-map" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorridorMap /></PrivateRoute>} />
-                    <Route path="traffic/shadow-analytics" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ShadowAnalytics /></PrivateRoute>} />
-                    <Route path="traffic/penetration" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><MarketPenetration /></PrivateRoute>} />
-                    <Route path="traffic/market-share" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorridorMarketShare /></PrivateRoute>} />
-                    <Route path="traffic/roi-calculator" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ROICalculator /></PrivateRoute>} />
-                    <Route path="traffic/desvios" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><GestionDesviosPage /></PrivateRoute>} />
-                    <Route path="traffic/centro-turno" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CentroTurnoDashboard /></PrivateRoute>} />
-                    <Route path="traffic/diagnostico-cumplimiento" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><DiagnosticoCumplimiento /></PrivateRoute>} />
-                    <Route path="traffic/financiero-operativo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><PanelFinancieroOperativo /></PrivateRoute>} />
-                    <Route path="fleet/disponibilidad" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><DisponibilidadFlota /></PrivateRoute>} />
-                    <Route path="admin/rendicion-cuentas" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><PanelRendicionCuentas /></PrivateRoute>} />
-                    <Route path="traffic/scraper-status" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><StmScraperStatus /></PrivateRoute>} />
-                    <Route path="traffic/headway-insights" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><HeadwayInsights /></PrivateRoute>} />
-                    <Route path="traffic/gps-playback" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><GPSPlayback /></PrivateRoute>} />
+                    {/* Hub: Inteligencia de Corredores + Participación km en tabs */}
+                    <Route path="traffic/corridor-intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorredoresHub /></PrivateRoute>} />
+                    {/* Redirect: market-share ahora es tab del hub de corredores */}
+                    <Route path="traffic/market-share" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />
+                    <Route path="traffic/corridor-map" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><MapasHub /></PrivateRoute>} />
+                    <Route path="traffic/shadow-analytics" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />
+                    <Route path="traffic/penetration" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />
+                    <Route path="traffic/roi-calculator" element={<Navigate to="/dashboard/traffic/financiero" replace />} />
+                    <Route path="traffic/desvios" element={<Navigate to="/dashboard/traffic/centro-turno" replace />} />
+                    <Route path="traffic/centro-turno" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><TurnoVivoHub /></PrivateRoute>} />
+                    {/* Hub: Diagnóstico por Línea + Ranking de Coches en tabs */}
+                    <Route path="traffic/diagnostico-cumplimiento" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CumplimientoHub /></PrivateRoute>} />
+                    {/* Redirect: ranking-coches ahora es tab del hub de cumplimiento */}
+                    <Route path="traffic/ranking-coches" element={<Navigate to="/dashboard/traffic/diagnostico-cumplimiento" replace />} />
+                    <Route path="traffic/financiero-operativo" element={<Navigate to="/dashboard/traffic/financiero" replace />} />
+                    <Route path="fleet/disponibilidad" element={<Navigate to="/dashboard/fleet" replace />} />
+                    <Route path="admin/rendicion-cuentas" element={<Navigate to="/dashboard/admin/regulatorio" replace />} />
+                    <Route path="traffic/scraper-status" element={<Navigate to="/dashboard/admin/sistema" replace />} />
+                    <Route path="traffic/headway-insights" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />
+                    <Route path="traffic/gps-playback" element={<Navigate to="/dashboard/traffic/corridor-map" replace />} />
                     <Route path="traffic/agents" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
                     <Route path="traffic/brt" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><BRTCorridorDashboard /></PrivateRoute>} />
                     <Route path="traffic/otp" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><OTPDashboard /></PrivateRoute>} />
-                    <Route path="traffic/incidents" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><IncidentCommandCenter /></PrivateRoute>} />
-                    <Route path="traffic/projections" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><EconomicProjectionsPage /></PrivateRoute>} />
-                    <Route path="traffic/contingency" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ContingencyManagementPage /></PrivateRoute>} />
+                    <Route path="traffic/incidents" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><IncidenciasHub /></PrivateRoute>} />
+                    <Route path="traffic/projections" element={<Navigate to="/dashboard/traffic/financiero" replace />} />
+                    <Route path="traffic/contingency" element={<Navigate to="/dashboard/traffic/incidents" replace />} />
                     <Route path="fleet/ev-charge" element={<EVChargeOptimizer />} />
-                    <Route path="admin/compliance" element={<ComplianceHub />} />
+                    <Route path="admin/compliance" element={<Navigate to="/dashboard/admin/regulatorio" replace />} />
                     <Route path="talento" element={<TalentCenter />} />
+
+                    {/* Hubs nuevos — rutas que no existían antes de la consolidación */}
+                    <Route path="traffic/planificacion" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><PlanificacionHub /></PrivateRoute>} />
+                    <Route path="traffic/financiero" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><FinancieroHub /></PrivateRoute>} />
+                    <Route path="admin/sistema" element={<PrivateRoute roles={['ADMIN']}><SistemaAdminHub /></PrivateRoute>} />
+                    <Route path="admin/regulatorio" element={<PrivateRoute roles={['ADMIN','SUPERADMIN']}><RegulatorioHub /></PrivateRoute>} />
 
                     {/* User Routes — require login */}
                     <Route path="create-shift" element={<PrivateRoute><CreateShift /></PrivateRoute>} />
@@ -320,6 +350,7 @@ function App() {
                     <Route path="driver/navigation" element={<PrivateRoute roles={['ADMIN','DRIVER','CONDUCTOR']}><DriverNavigation /></PrivateRoute>} />
                     <Route path="driver/report" element={<PrivateRoute roles={['ADMIN','DRIVER','CONDUCTOR']}><NewReport /></PrivateRoute>} />
                     <Route path="driver/bus-navigation" element={<PrivateRoute roles={['ADMIN','DRIVER','CONDUCTOR']}><BusNavigation /></PrivateRoute>} />
+                    <Route path="driver/compliance" element={<PrivateRoute roles={['ADMIN','DRIVER','CONDUCTOR']}><DriverCompliance /></PrivateRoute>} />
 
                     {/* Operations Routes */}
                     <Route path="operations/distribution" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><Distribution /></PrivateRoute>} />

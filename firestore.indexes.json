@@ -107,6 +107,14 @@
       ]
     },
     {
+      "collectionGroup": "eventos_desvio",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "resuelto", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "pings",
       "queryScope": "COLLECTION",
       "fields": [
@@ -318,5 +326,18 @@
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "vehicle_events",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "gps_pings_raw",
+      "fieldPath": "ttl",
+      "ttl": true,
+      "indexes": []
+    }
+  ]
 }

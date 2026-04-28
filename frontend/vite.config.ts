@@ -262,6 +262,12 @@ export default defineConfig({
           if (nid.includes('shapesAllOperators')) {
             return 'data-shapes-all';
           }
+          // Forzar chunk propio para evitar TDZ de Rollup cuando se bundlea
+          // con EconomicProjectionsPage (lazy). Sin este pin el inicializador
+          // de `v()` queda después de su primer uso y tira ReferenceError.
+          if (nid.includes('config/parametros-operativos')) {
+            return 'config-parametros';
+          }
         },
       },
     },

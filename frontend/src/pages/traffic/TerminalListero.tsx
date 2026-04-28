@@ -1780,7 +1780,7 @@ export default function TerminalListero() {
             id: String(r.id || ''),
             servicioId: servId,
             linea: String(r.linea || ''),
-            cocheId: estado?.cocheActual || String(r.vehiculo || '') || null,
+            cocheId: estado?.cocheActual || String(r.vehiculo || r.coche || r.cocheId || '') || null,
             conductorId,
             conductorNombre,
             horaInicio: String(r.horaInicio || ''),

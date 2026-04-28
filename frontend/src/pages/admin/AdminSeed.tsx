@@ -4,11 +4,21 @@
  * Solo visible para ADMIN / SUPERADMIN.
  */
 import { useState } from 'react';
+import { getAuth } from 'firebase/auth';
 import { CheckCircle2, AlertTriangle, Loader2, Database, Bus, FileText, Users, CalendarDays, PlayCircle, CloudUpload, Clock } from 'lucide-react';
 
-// Llama a un endpoint de la API para cargar datos reales desde Excel
+// Llama a un endpoint de la API con token Firebase del usuario actual
 async function seedViaApi(endpoint: string): Promise<string> {
-  const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+  const currentUser = getAuth().currentUser;
+  const token = currentUser ? await currentUser.getIdToken() : null;
+  if (!token) throw new Error('No hay sesión activa. Cerrá e iniciá sesión de nuevo.');
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
   if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
   const data = await res.json();
   if (!data.ok) throw new Error(data.error || 'Error desconocido');

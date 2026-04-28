@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { verifyToken } from '../middleware/auth';
+import { verifyAuth } from '../middleware/auth';
 import {
   listAgencies,
   getComplianceRealtime,
@@ -14,7 +14,7 @@ import {
 const router = Router();
 
 // Todas las rutas requieren auth
-router.use(verifyToken);
+router.use(verifyAuth);
 
 router.get('/health',                           getEndpointHealthHandler);
 router.get('/agencies',                         listAgencies);

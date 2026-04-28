@@ -22,6 +22,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useLiveData } from '../../context/LiveDataContext';
 import {
   collection,
   getDocs,
@@ -88,6 +89,7 @@ interface OperatorRow {
 // ─── Componente principal ──────────────────────────────────────────────────
 
 export default function CorridorIntelligencePage() {
+  const { selectedLine, setSelectedLine } = useLiveData();
   const [overlaps, setOverlaps] = useState<OverlapDoc[]>([]);
   const [shapes, setShapes] = useState<ShapeMeta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +98,7 @@ export default function CorridorIntelligencePage() {
 
   // Filtros de tabla
   const [filterEmpresa, setFilterEmpresa] = useState<string>('');
+  const [filterLinea, setFilterLinea] = useState<string>(selectedLine ?? '');
   const [filterMinPct, setFilterMinPct] = useState<number>(10);
   const [filterMinSharedKm, setFilterMinSharedKm] = useState<number>(0);
   const [filterKind, setFilterKind] = useState<'all' | 'cross' | 'intra'>('all');
@@ -140,6 +143,11 @@ export default function CorridorIntelligencePage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Adoptar línea del contexto global cuando el usuario navega desde otro módulo
+  useEffect(() => {
+    if (selectedLine) setFilterLinea(selectedLine);
+  }, [selectedLine]);
 
   // ── Aggregations ───────────────────────────────────────────────────────
 
@@ -233,12 +241,13 @@ export default function CorridorIntelligencePage() {
         if (filterKind === 'cross' && o.sameEmpresa) return false;
         if (filterKind === 'intra' && !o.sameEmpresa) return false;
         if (filterEmpresa && o.empresaA !== filterEmpresa) return false;
+        if (filterLinea && o.lineaA !== filterLinea && o.lineaB !== filterLinea) return false;
         if (o.pctAInB < filterMinPct) return false;
         if (o.sharedKm < filterMinSharedKm) return false;
         return true;
       })
       .sort((a, b) => (sortBy === 'sharedKm' ? b.sharedKm - a.sharedKm : b.pctAInB - a.pctAInB));
-  }, [overlaps, filterKind, filterEmpresa, filterMinPct, filterMinSharedKm, sortBy]);
+  }, [overlaps, filterKind, filterEmpresa, filterLinea, filterMinPct, filterMinSharedKm, sortBy]);
 
   // ── Export ─────────────────────────────────────────────────────────────
 

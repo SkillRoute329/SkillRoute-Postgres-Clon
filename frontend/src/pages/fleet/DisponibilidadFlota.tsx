@@ -22,6 +22,18 @@ import { Link } from 'react-router-dom';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
+// Normaliza los distintos esquemas de estado de vehículo que conviven en Firestore:
+// - VehicleList escribe: status = 'OPERATIONAL'|'MAINTENANCE'|'STOPPED'
+// - adminSeeds escribe: estado_operativo = 'ACTIVO'|'EN_TALLER'|...
+// - disco nativo: estado = 'activo'|'taller'|'inactivo'
+function normalizeEstado(raw: string | undefined): 'activo' | 'taller' | 'inactivo' {
+  if (!raw) return 'activo';
+  const s = raw.toLowerCase();
+  if (s === 'taller' || s === 'maintenance' || s.includes('taller')) return 'taller';
+  if (s === 'inactivo' || s === 'stopped') return 'inactivo';
+  return 'activo';
+}
+
 interface Vehiculo {
   id: string;
   numero: string;
@@ -186,7 +198,8 @@ const DisponibilidadFlota = () => {
         id: d.id,
         numero: d.data().numero ?? d.id,
         linea: d.data().linea ?? '—',
-        estado: d.data().estado ?? 'activo',
+        estado: (d.data().estado as 'activo' | 'taller' | 'inactivo') ??
+                normalizeEstado(d.data().status ?? d.data().estado_operativo),
         tipo_combustible: d.data().tipo_combustible ?? 'diesel',
         ultimo_kilometraje: d.data().ultimo_kilometraje ?? 0,
         ultimo_reporte: d.data().ultimo_reporte ?? null,
@@ -278,7 +291,7 @@ const DisponibilidadFlota = () => {
         kmLimite: pm.kmLimite,
         kmRestantes: pm.kmRestantes,
         urgencia: urg,
-        enRutaAhora: cochesEnRuta.has(v.id),
+        enRutaAhora: cochesEnRuta.has(v.numero ?? '') || cochesEnRuta.has(v.id),
       } satisfies AlertaPM;
     })
     .filter((a): a is AlertaPM => a !== null)
@@ -295,7 +308,7 @@ const DisponibilidadFlota = () => {
   // ── Filtrado de tabla ────────────────────────────────────────────────────────
 
   const vehiculosFiltrados = vehiculos.filter((v) => {
-    if (filtro === 'disponibles') return v.estado === 'activo' && !cochesEnRuta.has(v.id);
+    if (filtro === 'disponibles') return v.estado === 'activo' && !cochesEnRuta.has(v.numero ?? '') && !cochesEnRuta.has(v.id);
     if (filtro === 'taller') return v.estado === 'taller';
     if (filtro === 'alertas') return cochesConAlerta.has(v.id);
     return true;

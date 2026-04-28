@@ -115,10 +115,10 @@ export const syncUCOTLines = functions.https.onRequest((req, res) => {
 
 export const syncUCOTLinesCron = functions.pubsub.schedule('0 3 * * *')
   .timeZone('America/Montevideo')
-  .onRun(async (context) => {
-    console.log('[CRON] Iniciando sincronización de líneas UCOT');
-    await performSyncUCOTLines();
-    console.log('[CRON] Sincronización UCOT finalizada');
+  .onRun(async (_context) => {
+    // api.montevideo.gub.uy devuelve 403 — cron deshabilitado hasta que el endpoint sea accesible
+    console.warn('[CRON] syncUCOTLinesCron: endpoint 403, skipping');
+    return null;
   });
 
 
@@ -164,10 +164,10 @@ export const syncParadasSTM = functions.https.onRequest((req, res) => {
 
 export const syncParadasSTMCron = functions.pubsub.schedule('30 3 * * *')
   .timeZone('America/Montevideo')
-  .onRun(async (context) => {
-    console.log('[CRON] Iniciando sincronización de paradas STM');
-    await performSyncParadasSTM();
-    console.log('[CRON] Sincronización de paradas finalizada');
+  .onRun(async (_context) => {
+    // api.montevideo.gub.uy devuelve 403 — cron deshabilitado hasta que el endpoint sea accesible
+    console.warn('[CRON] syncParadasSTMCron: endpoint 403, skipping');
+    return null;
   });
 
 // ─── SEED: Cargar datos base de UCOT en Firestore ────────────────────────────
@@ -853,6 +853,9 @@ export {
   acknowledgeAlerta,
 } from './fcmAlertDispatcher';
 
+// FCM para incidencias: notifica supervisores y (si es urgente) conductores de la línea
+export { onIncidenciaCreated } from './incidenciaDispatcher';
+
 // ─── GTFS-Realtime Publisher ─────────────────────────────────────────────────
 // Fase 1 #5 (2026-04-23): publica VehiclePositions GTFS-RT para integración
 // con Google Maps, Moovit, Citymapper y cualquier agregador MaaS.
@@ -903,3 +906,8 @@ export { gpsHistoryAccumulatorTick } from './gpsHistoryAccumulator';
 // shapes_cross_operator/{agencyId}_{linea}_{variante} con agencyId correcto.
 // HTTP /shapeBuilderRun?agencyId=70&linea=300 para forzar reconstrucción puntual.
 export { shapeBuilderTick, shapeBuilderRun } from './shapeBuilder';
+
+// ─── Compliance Alerts — detecta líneas con cumplimiento degradado ────────────
+// Cron 6h: lee vehicle_events últimas 24h, escribe en compliance_alerts,
+// envía FCM a ADMIN/TRAFFIC si hay alertas CRITICO (< 50%).
+export { complianceAlertsTick } from './complianceAlertsTick';

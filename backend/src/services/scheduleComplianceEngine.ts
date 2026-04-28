@@ -225,13 +225,13 @@ export async function analyzeComplianceForAgency(agencyId: string): Promise<BusC
 
     if (!tripActivo) {
       results.push({
-        idBus: String(bus.codigoBus ?? '?'),
+        idBus: String(p.codigoBus),
         linea: routeShort,
         empresa: agData.agency_name,
         agencyId,
-        lat: bus.lat,
-        lon: bus.lng ?? bus.lon,
-        velocidad: bus.velocidad ?? 0,
+        lat,
+        lon,
+        velocidad: p.velocidad ?? 0,
         timestampGPS: now.toISOString(),
         tripActivo: null,
         proximaParadaControl: null,
@@ -284,7 +284,7 @@ export async function analyzeComplianceForAgency(agencyId: string): Promise<BusC
       agencyId,
       lat: busLat,
       lon: busLon,
-      velocidad: bus.velocidad ?? 0,
+      velocidad: p.velocidad ?? 0,
       timestampGPS: now.toISOString(),
       tripActivo,
       proximaParadaControl: proximaParada,

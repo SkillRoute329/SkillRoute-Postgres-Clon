@@ -348,42 +348,8 @@ export const OTP_EARLY_MIN       = v(OTP_EARLY_THRESHOLD_MIN);
 export const OTP_LATE_MIN        = v(OTP_LATE_THRESHOLD_MIN);
 export const HIGH_FREQ_HDW       = v(HIGH_FREQ_HEADWAY_MIN);
 
-// ═══════════════════════════════════════════════════════════════════════════
-// REGISTRO COMPLETO (para UI de Super Admin)
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Devuelve todos los parámetros con metadata para que la UI de Super Admin
- * los renderice con sus fuentes, disclaimers y permita editarlos.
- */
-export const PARAMETROS_REGISTRY: Record<string, ParametroEconomico> = {
-  TARIFA_STM,
-  KM_PROMEDIO_VIAJE,
-  COSTO_COMBUSTIBLE_KM,
-  COSTO_CONDUCTOR_DIA,
-  COSTO_CONDUCTOR_HORA,
-  COSTO_MANTENIMIENTO_KM,
-  COSTO_MANTENIMIENTO_DIA,
-  COSTO_SEGURO_DIA,
-  PASAJEROS_PROMEDIO_VIAJE,
-  OCUPACION_PICO,
-  OCUPACION_VALLE,
-  ELASTICIDAD_FLOTA_DEMANDA,
-  RADIO_COMPETENCIA_KM,
-  RADIO_BUNCHING_KM,
-  PASAJEROS_PROMEDIO_DIA_COCHE,
-  PASAJEROS_POR_VIAJE_IND,
-  FACTOR_COMPETENCIA_CORREDOR,
-  RIESGO_TEMPORAL_5MIN,
-  RIESGO_TEMPORAL_10MIN,
-  RIESGO_TEMPORAL_15MIN,
-  RIESGO_TEMPORAL_30MIN,
-  IVA_TRANSPORTE,
-  DIAS_PROYECCION,
-  OTP_EARLY_THRESHOLD_MIN,
-  OTP_LATE_THRESHOLD_MIN,
-  HIGH_FREQ_HEADWAY_MIN,
-};
+// PARAMETROS_REGISTRY declarado al final del archivo — después de todas las
+// constantes que referencia (evita TDZ de Rollup al bundlear como chunk lazy).
 
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -470,6 +436,39 @@ export const RIESGO_TEMPORAL_30MIN: ParametroEconomico = {
   confidence: 'estimado',
   editableByAdmin: true,
   nota: 'Riesgo residual. Para brechas > 30 min se considera competencia despreciable.',
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REGISTRO COMPLETO (para UI de Super Admin)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const PARAMETROS_REGISTRY: Record<string, ParametroEconomico> = {
+  TARIFA_STM,
+  KM_PROMEDIO_VIAJE,
+  COSTO_COMBUSTIBLE_KM,
+  COSTO_CONDUCTOR_DIA,
+  COSTO_CONDUCTOR_HORA,
+  COSTO_MANTENIMIENTO_KM,
+  COSTO_MANTENIMIENTO_DIA,
+  COSTO_SEGURO_DIA,
+  PASAJEROS_PROMEDIO_VIAJE,
+  OCUPACION_PICO,
+  OCUPACION_VALLE,
+  ELASTICIDAD_FLOTA_DEMANDA,
+  RADIO_COMPETENCIA_KM,
+  RADIO_BUNCHING_KM,
+  PASAJEROS_PROMEDIO_DIA_COCHE,
+  PASAJEROS_POR_VIAJE_IND,
+  FACTOR_COMPETENCIA_CORREDOR,
+  RIESGO_TEMPORAL_5MIN,
+  RIESGO_TEMPORAL_10MIN,
+  RIESGO_TEMPORAL_15MIN,
+  RIESGO_TEMPORAL_30MIN,
+  IVA_TRANSPORTE,
+  DIAS_PROYECCION,
+  OTP_EARLY_THRESHOLD_MIN,
+  OTP_LATE_THRESHOLD_MIN,
+  HIGH_FREQ_HEADWAY_MIN,
 };
 
 export default PARAMETROS_REGISTRY;

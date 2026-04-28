@@ -1132,7 +1132,7 @@ export default function CEODashboardV7() {
                 }
                 suffix="%"
                 description={`${estadoServicios.activos} de ${estadoServicios.total} servicios planificados ejecutándose. Equivalente a “Service Delivery” en TfL/Swiftly.`}
-                link="/dashboard/traffic/auto-stats"
+                link="/dashboard/traffic/autostats"
                 linkLabel="Ver Cumplimiento"
                 severity={coverageSeverity}
                 icon={Bus}
@@ -1141,7 +1141,7 @@ export default function CEODashboardV7() {
                 label="Riesgo Operativo"
                 value={incidenciasAlta + personalSinAsignar}
                 description={`${incidenciasAlta} incidencias críticas + ${personalSinAsignar} servicios sin chofer próx. 60 min.`}
-                link="/dashboard/traffic/incident-command"
+                link="/dashboard/traffic/incidents"
                 linkLabel="Ver Centro de Incidencias"
                 severity={riskSeverity}
                 icon={Zap}

@@ -33,6 +33,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { useLiveData } from '../../context/LiveDataContext';
 import { fetchSTMPosiciones } from '../../services/stmLiveService';
 import type { BusSTM } from '../../services/stmLiveService';
 import {
@@ -101,6 +102,7 @@ interface Filters {
 // ─── Componente principal ──────────────────────────────────────────────────
 
 export default function CorridorMapPage() {
+  const { setSelectedLine } = useLiveData();
   const [shapes, setShapes] = useState<ShapeDoc[]>([]);
   const [overlaps, setOverlaps] = useState<OverlapDoc[]>([]);
   const [buses, setBuses] = useState<BusSTM[]>([]);
@@ -486,14 +488,14 @@ export default function CorridorMapPage() {
               {visibleShapes.map((s) => (
                 <Polyline
                   key={s.key}
-                  positions={s.points.map((p) => [p.lat, p.lon]) as [number, number][]}
+                  positions={s.points.filter((p) => p.lat && p.lon).map((p) => [p.lat, p.lon]) as [number, number][]}
                   pathOptions={{
                     color: EMPRESA_COLOR[s.agencyId] ?? '#94a3b8',
                     weight: s.isCompetitive ? 5 : 2.5,
                     opacity: s.isCompetitive ? 0.9 : 0.55,
                   }}
                   eventHandlers={{
-                    click: () => setSelectedShape(s),
+                    click: () => { setSelectedShape(s); setSelectedLine(s.linea); },
                   }}
                 >
                   <Tooltip sticky>
@@ -560,7 +562,7 @@ function FitToShapes({ shapes }: { shapes: ShapeDoc[] }) {
     if (shapes.length === 0) return;
     const bounds: [number, number][] = [];
     for (const s of shapes) {
-      for (const p of s.points) bounds.push([p.lat, p.lon]);
+      for (const p of s.points) if (p.lat && p.lon) bounds.push([p.lat, p.lon]);
     }
     if (bounds.length > 0) {
       map.fitBounds(bounds, { padding: [40, 40] });

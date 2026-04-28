@@ -37,7 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.auditLogQuery = exports.auditLogServiceMatrices = exports.auditLogServiceDefinitions = exports.auditLogReglasRotacion = exports.auditLogUsers = exports.auditLogVehiculos = exports.auditLogVehicles = exports.auditLogLineas = exports.auditLogLineasUcot = exports.auditLogParametrosOperativosHistorial = exports.auditLogParametrosOperativos = exports.computeServiceDeliveryCron = exports.computeServiceDeliveryNow = exports.penetrationHistoric = exports.computePenetrationCron = exports.computePenetrationNow = exports.computeAdherenceCron = exports.computeAdherenceNow = exports.refreshAllStmHorariosTick = exports.refreshAllStmHorariosNow = exports.autoStatsCollectorNow = exports.autoStatsCollectorTick = exports.refreshCompetidoresNow = exports.refreshCompetidoresTick = exports.refreshHorariosUcotNow = exports.refreshHorariosUcotTick = exports.intelligenceApi = exports.stmHorariosProxy = exports.parseBulkTicketsStorage = exports.stmOnlineProxy = exports.testIngestaIMM = exports.ingestaIMMTick = exports.onAlertaRegulacion = exports.limpiarPingsRivales = exports.rivalPingIngestion = exports.shadowDispatcherTick = exports.alertaSoCBajo = exports.alertasVencimientosDocumentales = exports.expirarDesvios = exports.gpsWebhookV2 = exports.gpsWebhook = exports.discoverVariants = exports.syncVariantRoutes = exports.geoserverProxy = exports.seedUCOTData = exports.syncParadasSTMCron = exports.syncParadasSTM = exports.syncUCOTLinesCron = exports.syncUCOTLines = exports.montevideoProxy = void 0;
-exports.shapeBuilderRun = exports.shapeBuilderTick = exports.gpsHistoryAccumulatorTick = exports.netexEndpoint = exports.systemHealth = exports.siriRealtime = exports.gtfsStatic = exports.regulatorio = exports.refreshGtfsRtAlerts = exports.gtfsRealtime = exports.acknowledgeAlerta = exports.onAlertaCreated = exports.historicBunching = exports.historicOtp = exports.recomputeDroMatrixNow = exports.droMatrixTick = exports.reconstructShapesNow = exports.reconstructShapesTick = exports.listVehicleArchives = exports.archiveVehicleEventsNow = exports.archiveVehicleEventsTick = void 0;
+exports.complianceAlertsTick = exports.shapeBuilderRun = exports.shapeBuilderTick = exports.gpsHistoryAccumulatorTick = exports.netexEndpoint = exports.systemHealth = exports.siriRealtime = exports.gtfsStatic = exports.regulatorio = exports.refreshGtfsRtAlerts = exports.gtfsRealtime = exports.onIncidenciaCreated = exports.acknowledgeAlerta = exports.onAlertaCreated = exports.historicBunching = exports.historicOtp = exports.recomputeDroMatrixNow = exports.droMatrixTick = exports.reconstructShapesNow = exports.reconstructShapesTick = exports.listVehicleArchives = exports.archiveVehicleEventsNow = exports.archiveVehicleEventsTick = void 0;
 const functions = __importStar(require("firebase-functions/v1"));
 const admin = __importStar(require("firebase-admin"));
 const axios_1 = __importDefault(require("axios"));
@@ -138,10 +138,10 @@ exports.syncUCOTLines = functions.https.onRequest((req, res) => {
 });
 exports.syncUCOTLinesCron = functions.pubsub.schedule('0 3 * * *')
     .timeZone('America/Montevideo')
-    .onRun(async (context) => {
-    console.log('[CRON] Iniciando sincronización de líneas UCOT');
-    await performSyncUCOTLines();
-    console.log('[CRON] Sincronización UCOT finalizada');
+    .onRun(async (_context) => {
+    // api.montevideo.gub.uy devuelve 403 — cron deshabilitado hasta que el endpoint sea accesible
+    console.warn('[CRON] syncUCOTLinesCron: endpoint 403, skipping');
+    return null;
 });
 // ─── Lógica interna de Sincronización Paradas ─────────────────────────────────
 const performSyncParadasSTM = async () => {
@@ -181,10 +181,10 @@ exports.syncParadasSTM = functions.https.onRequest((req, res) => {
 });
 exports.syncParadasSTMCron = functions.pubsub.schedule('30 3 * * *')
     .timeZone('America/Montevideo')
-    .onRun(async (context) => {
-    console.log('[CRON] Iniciando sincronización de paradas STM');
-    await performSyncParadasSTM();
-    console.log('[CRON] Sincronización de paradas finalizada');
+    .onRun(async (_context) => {
+    // api.montevideo.gub.uy devuelve 403 — cron deshabilitado hasta que el endpoint sea accesible
+    console.warn('[CRON] syncParadasSTMCron: endpoint 403, skipping');
+    return null;
 });
 // ─── SEED: Cargar datos base de UCOT en Firestore ────────────────────────────
 // Usar cuando no hay datos reales disponibles todavía
@@ -763,6 +763,9 @@ Object.defineProperty(exports, "historicBunching", { enumerable: true, get: func
 var fcmAlertDispatcher_1 = require("./fcmAlertDispatcher");
 Object.defineProperty(exports, "onAlertaCreated", { enumerable: true, get: function () { return fcmAlertDispatcher_1.onAlertaCreated; } });
 Object.defineProperty(exports, "acknowledgeAlerta", { enumerable: true, get: function () { return fcmAlertDispatcher_1.acknowledgeAlerta; } });
+// FCM para incidencias: notifica supervisores y (si es urgente) conductores de la línea
+var incidenciaDispatcher_1 = require("./incidenciaDispatcher");
+Object.defineProperty(exports, "onIncidenciaCreated", { enumerable: true, get: function () { return incidenciaDispatcher_1.onIncidenciaCreated; } });
 // ─── GTFS-Realtime Publisher ─────────────────────────────────────────────────
 // Fase 1 #5 (2026-04-23): publica VehiclePositions GTFS-RT para integración
 // con Google Maps, Moovit, Citymapper y cualquier agregador MaaS.
@@ -815,3 +818,8 @@ Object.defineProperty(exports, "gpsHistoryAccumulatorTick", { enumerable: true, 
 var shapeBuilder_1 = require("./shapeBuilder");
 Object.defineProperty(exports, "shapeBuilderTick", { enumerable: true, get: function () { return shapeBuilder_1.shapeBuilderTick; } });
 Object.defineProperty(exports, "shapeBuilderRun", { enumerable: true, get: function () { return shapeBuilder_1.shapeBuilderRun; } });
+// ─── Compliance Alerts — detecta líneas con cumplimiento degradado ────────────
+// Cron 6h: lee vehicle_events últimas 24h, escribe en compliance_alerts,
+// envía FCM a ADMIN/TRAFFIC si hay alertas CRITICO (< 50%).
+var complianceAlertsTick_1 = require("./complianceAlertsTick");
+Object.defineProperty(exports, "complianceAlertsTick", { enumerable: true, get: function () { return complianceAlertsTick_1.complianceAlertsTick; } });

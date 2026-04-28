@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import StatsWidget from '../components/StatsWidget';
 import { useAuth } from '../context/AuthContext';
+import { useLiveData } from '../context/LiveDataContext';
 import ExcelUploader from '../components/ExcelUploader';
 import VehicleCheckModal from '../components/VehicleCheckModal';
 import {
@@ -31,52 +32,49 @@ interface FleetKPI {
 }
 
 function PanelOperacional() {
+  // GPS en vivo desde el contexto compartido — ya no fetcha por su cuenta
+  const { fleetKPIs, busesLoading: fleetLoading, alertas: alertasVivas } = useLiveData();
+  const fleet: FleetKPI = {
+    totalUCOT: fleetKPIs.totalPropios,
+    totalRivales: fleetKPIs.totalRivales,
+    lineasActivas: fleetKPIs.lineasActivas,
+    bunchingPares: fleetKPIs.bunchingPares,
+  };
+
   const [resumen, setResumen] = useState<ResumenDiario | null>(null);
-  const [fleet, setFleet] = useState<FleetKPI | null>(null);
   const [alertas, setAlertas] = useState<Array<{ id: string; urgencia: string; titulo: string; mensaje: string }>>([]);
   const [loading, setLoading] = useState(true);
-  const [fleetLoading, setFleetLoading] = useState(true);
+
+  // Alertas del contexto (onSnapshot) tienen prioridad; el endpoint de listero es fallback
+  useEffect(() => {
+    if (alertasVivas.length > 0) {
+      setAlertas(
+        alertasVivas.slice(0, 5).map((a) => ({
+          id: a.id,
+          urgencia: a.urgencia ?? 'media',
+          titulo: a.titulo ?? a.tipo,
+          mensaje: a.mensaje ?? '',
+        })),
+      );
+    }
+  }, [alertasVivas]);
 
   useEffect(() => {
     const fecha = new Date().toISOString().split('T')[0];
 
-    // Resumen del día
     fetch(`/api/listero/resumen?fecha=${fecha}`)
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d?.resumen) setResumen(d.resumen); })
       .catch(() => {})
       .finally(() => setLoading(false));
 
-    // Alertas activas
+    // Solo cargar alertas del endpoint si el contexto no tiene ninguna
     fetch(`/api/listero/alertas?fecha=${fecha}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.alertas) setAlertas(d.alertas.slice(0, 5)); })
-      .catch(() => {});
-
-    // GPS Fleet intel
-    fetch('/api/positions')
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (!d?.buses) return;
-        const buses = d.buses as Array<{ empresaId: number; linea: string; lat: number; lng: number }>;
-        const ucot = buses.filter((b) => b.empresaId === 70);
-        const lineas = new Set(ucot.map((b) => b.linea).filter(Boolean)).size;
-        // Detección bunching simple
-        let bunching = 0;
-        for (let i = 0; i < ucot.length; i++) {
-          for (let j = i + 1; j < ucot.length; j++) {
-            if (ucot[i].linea !== ucot[j].linea) continue;
-            const R = 6371;
-            const dLat = ((ucot[j].lat - ucot[i].lat) * Math.PI) / 180;
-            const dLng = ((ucot[j].lng - ucot[i].lng) * Math.PI) / 180;
-            const a = Math.sin(dLat / 2) ** 2 + Math.cos(ucot[i].lat * Math.PI / 180) * Math.cos(ucot[j].lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-            if (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) < 0.8) bunching++;
-          }
-        }
-        setFleet({ totalUCOT: ucot.length, totalRivales: buses.length - ucot.length, lineasActivas: lineas, bunchingPares: bunching });
+        if (d?.alertas && alertasVivas.length === 0) setAlertas(d.alertas.slice(0, 5));
       })
-      .catch(() => {})
-      .finally(() => setFleetLoading(false));
+      .catch(() => {});
   }, []);
 
   const URGENCIA_COLOR: Record<string, string> = {

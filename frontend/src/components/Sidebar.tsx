@@ -58,181 +58,87 @@ const Sidebar = ({ onClose }: SidebarProps) => {
   };
 
   const menuGroups = [
+    // ── 1. Trabajo diario: planificación, despacho, navegación ──
     {
-      title: 'Operaciones Diarias',
+      title: 'Operación Diaria',
       items: [
-        { path: '/dashboard/traffic/service-matrix', label: 'Matriz de Servicio', icon: Calendar },
-        { path: '/dashboard/traffic/cartons', label: 'Gestor de Cartones', icon: ClipboardList },
-        { path: '/dashboard/traffic/listero', label: 'Terminal Listero', icon: Users },
-        { path: '/dashboard/traffic/listero-cascada', label: 'Listero Cascada (Ops)', icon: Users },
-        { path: '/dashboard/traffic/distribucion', label: 'Distribución Diaria', icon: Route },
-        { path: '/dashboard/traffic/boletin', label: 'Boletín de Inspección', icon: FileText },
-        { path: '/dashboard/traffic/navigation', label: 'Navegador', icon: Map },
-
+        // Hub: Cartones + Matriz + Boletín + Asignación de Servicios
+        { path: '/dashboard/traffic/planificacion', label: 'Planificación',       icon: ClipboardList },
+        // Hub: Terminal Listero + Listero Cascada + Distribución
+        { path: '/dashboard/traffic/listero',       label: 'Listero y Distribución', icon: Users        },
+        { path: '/dashboard/traffic/navigation',    label: 'Navegador',           icon: Map           },
       ],
     },
+
+    // ── 2. Supervisión en turno: todo lo del despachante en una sección ──
     {
       title: 'Control y Monitoreo',
       items: [
-        { path: '/dashboard/traffic/centro-turno', label: 'Centro de Turno', icon: Zap },
-        { path: '/dashboard/traffic/fleet-monitor', label: 'Monitoreo de Flota', icon: Radio },
-        { path: '/dashboard/traffic/otp', label: 'Puntualidad OTP', icon: BarChart3 },
-        { path: '/dashboard/traffic/diagnostico-cumplimiento', label: 'Diagnóstico de Cumplimiento', icon: Search },
-        { path: '/dashboard/traffic/incidents', label: 'Centro de Incidencias', icon: Siren },
+        // Hub: Centro de Turno + Desvíos + Radar Sombra
+        { path: '/dashboard/traffic/centro-turno',             label: 'Turno en Vivo',      icon: Zap    },
+        // Hub: Monitoreo de Flota + Mapa en Vivo STM
+        { path: '/dashboard/traffic/fleet-monitor',            label: 'Posición de Flota',  icon: Radio  },
+        // Hub: Diagnóstico + Ranking + OTP + AutoStats GPS
+        { path: '/dashboard/traffic/diagnostico-cumplimiento', label: 'Cumplimiento',       icon: Search },
+        // Hub: Incidencias + Contingencia
+        { path: '/dashboard/traffic/incidents',                label: 'Incidencias',        icon: Siren  },
       ],
     },
+
+    // ── 3. Análisis estratégico y competitivo ──
     {
-      title: 'Flota y Mantenimiento',
+      title: 'Inteligencia Competitiva',
       items: [
-        { path: '/dashboard/fleet', label: 'Coches / Inventario', icon: Bus },
-        { path: '/dashboard/fleet/disponibilidad', label: 'Disponibilidad de Flota', icon: Activity },
-        { path: '/dashboard/admin/maintenance', label: 'Mantenimiento', icon: Wrench },
-        { path: '/dashboard/fleet/check', label: 'Revisión Vehicular', icon: Clipboard },
-        {
-          path: '/dashboard/admin/service-categories',
-          label: 'Asignación de Servicios',
-          icon: Tag,
-        },
-        { path: '/dashboard/alerts', label: 'Alertas de Vía', icon: AlertTriangle },
+        { path: '/dashboard/traffic/ceo',                  label: 'Centro de Mando',    icon: TrendingUp },
+        // Hub: Corredores + Market Share + Penetración + Analytics + Headway
+        { path: '/dashboard/traffic/corridor-intelligence', label: 'Análisis de Red',   icon: Network    },
+        // Hub: Mapa Corredores + Reproducción GPS
+        { path: '/dashboard/traffic/corridor-map',         label: 'Mapas Estratégicos', icon: Map        },
+        { path: '/dashboard/traffic/brt',                  label: 'BRT 2027',           icon: Train      },
       ],
     },
+
+    // ── 4. Financiero (todo en un hub) ──
     {
-      title: 'Recursos Humanos',
+      title: 'Financiero',
       items: [
-        { path: '/dashboard/admin/rrhh', label: 'Gestión de Personal', icon: Users },
-        { path: '/dashboard/admin/employees', label: 'Fichas Médicas / CI', icon: Wallet },
-        { path: '/dashboard/admin/shifts', label: 'Gestión de Turnos', icon: Calendar },
-        {
-          path: '/dashboard/traffic/rotation-matrix',
-          label: 'Matriz de Rotación',
-          icon: RefreshCw,
-        },
-        { path: '/dashboard/admin/rrhh/feriados', label: 'Feriados', icon: Calendar },
+        // Hub: Proyecciones + Financiero Operativo + ROI
+        { path: '/dashboard/traffic/financiero', label: 'Análisis Financiero', icon: DollarSign },
       ],
     },
+
+    // ── 5. Flota y personal (2 hubs) ──
     {
-      title: 'Inteligencia de Red',
+      title: 'Flota y Personal',
       items: [
-        {
-          path: '/dashboard/traffic/corridor-intelligence',
-          label: 'Inteligencia de Corredores',
-          icon: Network,
-        },
-        {
-          path: '/dashboard/traffic/corridor-map',
-          label: 'Mapa de Corredores',
-          icon: Map,
-        },
-        {
-          path: '/dashboard/traffic/shadow-analytics',
-          label: 'Analytics Shadow (Histórico)',
-          icon: Activity,
-        },
-        {
-          path: '/dashboard/traffic/penetration',
-          label: 'Análisis de Penetración',
-          icon: TrendingUp,
-        },
-        {
-          path: '/dashboard/traffic/market-share',
-          label: 'Participación por Corredor-km',
-          icon: PieChart,
-        },
-        {
-          path: '/dashboard/traffic/headway-insights',
-          label: 'Espaciado entre Buses',
-          icon: BarChart3,
-        },
-        {
-          path: '/dashboard/traffic/gps-playback',
-          label: 'Reproducción GPS',
-          icon: Route,
-        },
-        {
-          path: '/dashboard/traffic/ceo',
-          label: 'Centro de Mando',
-          icon: TrendingUp,
-        },
+        // Hub: Inventario + Disponibilidad + Mantenimiento + Revisión + Alertas
+        { path: '/dashboard/fleet',       label: 'Gestión de Flota',    icon: Bus   },
+        // Hub: Personal + Fichas + Turnos + Rotación + Feriados
+        { path: '/dashboard/admin/rrhh',  label: 'Gestión de Personal', icon: Users },
       ],
     },
-    {
-      title: 'Operación Táctica',
-      items: [
-        {
-          path: '/dashboard/traffic/shadow-radar',
-          label: 'Radar Sombra (Táctico)',
-          icon: Radio,
-        },
-        {
-          path: '/dashboard/traffic/live-map',
-          label: '🔴 Mapa en Vivo STM',
-          icon: MapPin,
-        },
-        {
-          path: '/dashboard/traffic/autostats',
-          label: 'Cumplimiento Horario',
-          icon: BarChart3,
-        },
-        {
-          path: '/dashboard/traffic/contingency',
-          label: 'Gestión de Contingencia',
-          icon: ShieldAlert,
-        },
-        {
-          path: '/dashboard/traffic/desvios',
-          label: 'Centro de Desvíos',
-          icon: Navigation,
-        },
-      ],
-    },
-    {
-      title: 'Análisis Financiero',
-      items: [
-        {
-          path: '/dashboard/traffic/projections',
-          label: 'Proyecciones Económicas',
-          icon: DollarSign,
-        },
-        {
-          path: '/dashboard/traffic/financiero-operativo',
-          label: 'Gestión Financiera Operativa',
-          icon: BarChart3,
-        },
-        {
-          path: '/dashboard/traffic/roi-calculator',
-          label: 'Calculadora de ROI',
-          icon: TrendingUp,
-        },
-      ],
-    },
+
+    // ── 6. Administración del sistema (4 items) ──
     {
       title: 'Administración',
       items: [
-        { path: '/dashboard/admin/ingestion', label: 'Ingesta de Datos', icon: FileText },
-        { path: '/dashboard/admin/setup', label: 'Setup Inicial Maestro', icon: Zap },
-        { path: '/dashboard/admin/seed', label: 'Carga Datos UCOT', icon: Database },
-        {
-          path: '/dashboard/admin/maintenance-system',
-          label: 'Estado del Sistema',
-          icon: ShieldCheck,
-        },
-        { path: '/dashboard/admin/compliance', label: 'Cumplimiento MTOP/IMM', icon: Shield },
-        { path: '/dashboard/traffic/brt', label: 'Referencia BRT 2027', icon: Train },
-        { path: '/dashboard/traffic/scraper-status', label: 'Monitor Ingesta STM', icon: Activity },
-        { path: '/dashboard/admin/config', label: 'Configuración', icon: Settings },
-        { path: '/dashboard/admin/turnos-operativos', label: 'Turnos & Umbrales OTP', icon: Calendar },
-        { path: '/dashboard/admin/audit-log', label: 'Audit Log', icon: ClipboardList },
-        { path: '/dashboard/admin/cross-op-coverage', label: 'Cobertura Cross-Op', icon: Network },
-        { path: '/dashboard/admin/rendicion-cuentas', label: 'Rendición de Cuentas', icon: ClipboardList },
-        { path: '/dashboard/traffic/inspector-control', label: 'Control Inspectores', icon: Activity },
-        { path: '/dashboard/traffic/inspector-capture', label: 'Captura Inspector', icon: Smartphone },
+        { path: '/dashboard/admin/asignacion-vehiculos', label: 'Asignación de Coches',    icon: Bus        },
+        // Hub: Control Inspectores + Captura Inspector
+        { path: '/dashboard/traffic/inspector-control',  label: 'Inspectores',             icon: Activity   },
+        // Hub: Estado Sistema + Monitor STM + Ingesta + Turnos OTP + Config + Setup + Seed
+        { path: '/dashboard/admin/sistema',              label: 'Sistema y Configuración', icon: ShieldCheck},
+        // Hub: Cumplimiento MTOP + Cross-Op + Rendición + Audit Log
+        { path: '/dashboard/admin/regulatorio',          label: 'Reportes Regulatorios',   icon: Shield     },
       ],
     },
+
+    // ── 7. Área personal del empleado ──
     {
       title: 'Mi Espacio',
       items: [
-        { path: '/dashboard/market', label: 'Bolsa de Trabajo', icon: ShoppingCart },
-        { path: '/dashboard/my-balance', label: 'Mi Cuenta', icon: Wallet },
+        { path: '/dashboard/driver/compliance', label: 'Mi Rendimiento',  icon: Activity     },
+        { path: '/dashboard/market',            label: 'Bolsa de Trabajo', icon: ShoppingCart },
+        { path: '/dashboard/my-balance',        label: 'Mi Cuenta',        icon: Wallet       },
       ],
     },
   ];
