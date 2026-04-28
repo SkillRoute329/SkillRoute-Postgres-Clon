@@ -91,7 +91,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       items: [
         { path: '/dashboard/traffic/ceo',                  label: 'Centro de Mando',    icon: TrendingUp },
         // Hub: Corredores + Market Share + Penetración + Analytics + Headway
-        { path: '/dashboard/traffic/corridor-intelligence', label: 'Análisis de Red',   icon: Network    },
+        { path: '/dashboard/traffic/corridor-intelligence', label: 'Inteligencia Cross-Op.',   icon: Network    },
         // Hub: Mapa Corredores + Reproducción GPS
         { path: '/dashboard/traffic/corridor-map',         label: 'Mapas Estratégicos', icon: Map        },
         { path: '/dashboard/traffic/brt',                  label: 'BRT 2027',           icon: Train      },

@@ -174,10 +174,10 @@ function PanelOperacional() {
         <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Accesos rápidos</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Terminal del Listero', href: '/dashboard/traffic/listero', color: 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300', desc: 'Programación y ausencias' },
-            { label: 'Hub de Inteligencia', href: '/dashboard/traffic/intelligence', color: 'bg-emerald-600/20 border-emerald-500/40 text-emerald-300', desc: 'Análisis de competencia en vivo' },
-            { label: 'Radar de Flota', href: '/dashboard/traffic/fleet-monitor', color: 'bg-amber-600/20 border-amber-500/40 text-amber-300', desc: 'GPS tiempo real' },
-            { label: 'Competencia', href: '/dashboard/traffic/live-map', color: 'bg-red-600/20 border-red-500/40 text-red-300', desc: 'CUTCSA, COME, COETC' },
+            { label: 'Inteligencia Cross-Operador', href: '/dashboard/traffic/corridor-intelligence', color: 'bg-orange-600/20 border-orange-500/40 text-orange-300', desc: 'DRO, HRR y posición de mercado' },
+            { label: 'Cumplimiento de Servicio', href: '/dashboard/traffic/diagnostico-cumplimiento', color: 'bg-emerald-600/20 border-emerald-500/40 text-emerald-300', desc: 'OTP, tendencia y diagnóstico' },
+            { label: 'Gestión de Incidencias', href: '/dashboard/traffic/incidents', color: 'bg-red-600/20 border-red-500/40 text-red-300', desc: 'Alertas y resolución en tiempo real' },
+            { label: 'Terminal del Listero', href: '/dashboard/traffic/listero', color: 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300', desc: 'Programación y asignaciones' },
           ].map(({ label, href, color, desc }) => (
             <a
               key={label}

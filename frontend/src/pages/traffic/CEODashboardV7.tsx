@@ -1109,7 +1109,7 @@ export default function CEODashboardV7() {
                 }
                 suffix="%"
                 description={`${estadoServicios.puntuales} de ${estadoServicios.conAtraso} servicios con desvío ≤3 min hoy. Métrica estándar UITP.`}
-                link="/dashboard/traffic/otp"
+                link="/dashboard/traffic/diagnostico-cumplimiento"
                 linkLabel="Ver detalle de puntualidad"
                 severity={otpSeverity}
                 icon={Gauge}
@@ -1132,7 +1132,7 @@ export default function CEODashboardV7() {
                 }
                 suffix="%"
                 description={`${estadoServicios.activos} de ${estadoServicios.total} servicios planificados ejecutándose. Equivalente a “Service Delivery” en TfL/Swiftly.`}
-                link="/dashboard/traffic/autostats"
+                link="/dashboard/traffic/diagnostico-cumplimiento"
                 linkLabel="Ver Cumplimiento"
                 severity={coverageSeverity}
                 icon={Bus}
