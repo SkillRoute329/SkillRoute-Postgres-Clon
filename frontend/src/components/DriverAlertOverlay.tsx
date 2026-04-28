@@ -22,7 +22,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { onMessage, type MessagePayload } from 'firebase/messaging';
 import { getAppMessaging } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
-import { ShieldAlert, CheckCircle2, X, Vibrate } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ShieldAlert, CheckCircle2, X, Vibrate, AlertTriangle } from 'lucide-react';
 import { useNativeDriverAlerts } from '../hooks/useNativeDriverAlerts';
 
 interface PendingAlert {
@@ -35,14 +36,21 @@ interface PendingAlert {
   rivalLinea: string;
   distanciaMetros: number;
   receivedAt: number;
+  // Campos para incidencias
+  isIncidencia?: boolean;
+  incidenciaId?: string;
+  prioridad?: string;
+  route?: string;
 }
 
 const ACK_ENDPOINT = '/acknowledgeAlerta';
 const AUTO_DISMISS_MS = 30 * 1000;
 const TIPOS_REGULACION = new Set(['RIVAL_PISANDO_TURNO', 'PELIGRO_BUNCHING', 'DISPARO_MANUAL']);
+const TIPOS_INCIDENCIA = new Set(['INCIDENCIA', 'incidencia']);
 
 export const DriverAlertOverlay = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [active, setActive] = useState<PendingAlert | null>(null);
   const [acking, setAcking] = useState(false);
   const [autoDismissIn, setAutoDismissIn] = useState<number>(AUTO_DISMISS_MS / 1000);
@@ -65,21 +73,28 @@ export const DriverAlertOverlay = () => {
         unsubscribe = onMessage(messaging, (payload: MessagePayload) => {
           const data = payload.data ?? {};
           const tipo = String(data.tipo ?? '');
-          if (!TIPOS_REGULACION.has(tipo)) {
-            // No es alerta de regulación — toast normal lo maneja
+          const esRegulacion = TIPOS_REGULACION.has(tipo);
+          const esIncidencia = TIPOS_INCIDENCIA.has(tipo);
+
+          if (!esRegulacion && !esIncidencia) {
+            // No es alerta táctica ni incidencia — toast normal lo maneja
             return;
           }
 
           const alerta: PendingAlert = {
-            alertaId: String(data.alertaId ?? ''),
+            alertaId: String(data.alertaId ?? data.incidenciaId ?? ''),
             tipo,
-            mensaje: String(payload.notification?.body ?? data.mensaje_chofer ?? ''),
+            mensaje: String(payload.notification?.body ?? data.mensaje_chofer ?? data.descripcion ?? ''),
             cocheId: String(data.coche_id ?? ''),
-            lineaId: String(data.linea_id ?? ''),
+            lineaId: String(data.linea_id ?? data.lineaCodigo ?? ''),
             rivalEmpresa: String(data.rival_empresa ?? ''),
             rivalLinea: String(data.rival_linea ?? ''),
             distanciaMetros: Number(data.distancia_metros ?? 0),
             receivedAt: Date.now(),
+            isIncidencia: esIncidencia,
+            incidenciaId: String(data.incidenciaId ?? ''),
+            prioridad: String(data.priority ?? data.prioridad ?? 'MEDIA').toUpperCase(),
+            route: String(data.route ?? ''),
           };
 
           setActive(alerta);
@@ -158,10 +173,27 @@ export const DriverAlertOverlay = () => {
 
   if (!active) return null;
 
-  const isCritical = active.tipo === 'RIVAL_PISANDO_TURNO';
-  const bgGradient = isCritical
+  const isCritical = active.tipo === 'RIVAL_PISANDO_TURNO'
+    || (active.isIncidencia && (active.prioridad === 'CRITICA' || active.prioridad === 'ALTA'));
+  const isAltaPrioridad = active.isIncidencia && active.prioridad === 'ALTA';
+
+  const bgGradient = isCritical && active.prioridad === 'CRITICA'
+    ? 'from-red-800 via-red-700 to-red-900'
+    : isCritical || isAltaPrioridad
     ? 'from-red-700 via-red-600 to-red-800'
     : 'from-amber-700 via-amber-600 to-amber-800';
+
+  const tituloHeader = active.isIncidencia
+    ? active.prioridad === 'CRITICA' ? 'INCIDENCIA CRÍTICA'
+      : active.prioridad === 'ALTA' ? 'INCIDENCIA ALTA'
+      : 'INCIDENCIA REPORTADA'
+    : active.tipo === 'RIVAL_PISANDO_TURNO' ? 'RIVAL TE PISA'
+    : active.tipo === 'PELIGRO_BUNCHING' ? 'RIVAL CERCA'
+    : 'DISPARO TÁCTICO';
+
+  const subtituloHeader = active.isIncidencia
+    ? `Incidencia en Línea ${active.lineaId || '—'}`
+    : 'Alerta de Regulación';
 
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -172,19 +204,16 @@ export const DriverAlertOverlay = () => {
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-white/20 rounded-2xl animate-pulse">
-              <ShieldAlert className="w-8 h-8" />
+              {active.isIncidencia
+                ? <AlertTriangle className="w-8 h-8" />
+                : <ShieldAlert className="w-8 h-8" />
+              }
             </div>
             <div>
               <div className="text-[10px] font-black tracking-widest uppercase opacity-80">
-                Alerta de Regulación
+                {subtituloHeader}
               </div>
-              <div className="text-xl font-black mt-0.5">
-                {active.tipo === 'RIVAL_PISANDO_TURNO'
-                  ? 'RIVAL TE PISA'
-                  : active.tipo === 'PELIGRO_BUNCHING'
-                  ? 'RIVAL CERCA'
-                  : 'DISPARO TÁCTICO'}
-              </div>
+              <div className="text-xl font-black mt-0.5">{tituloHeader}</div>
             </div>
           </div>
           <button
@@ -199,32 +228,54 @@ export const DriverAlertOverlay = () => {
         {/* Mensaje principal — tipografía GRANDE para leer manejando */}
         <div className="bg-black/30 rounded-2xl p-5 mb-5">
           <p className="text-2xl font-bold leading-tight">{active.mensaje}</p>
-          {active.distanciaMetros > 0 && (
+          {!active.isIncidencia && active.distanciaMetros > 0 && (
             <div className="mt-3 flex items-center justify-between text-sm opacity-90 font-mono">
               <span>{active.rivalEmpresa} L{active.rivalLinea}</span>
               <span className="font-black text-xl">{active.distanciaMetros} m</span>
             </div>
           )}
+          {active.isIncidencia && active.prioridad && (
+            <div className="mt-3 inline-flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-1 text-sm font-bold">
+              <span>Prioridad: {active.prioridad}</span>
+            </div>
+          )}
         </div>
 
-        {/* Botón RECIBIDO — único CTA, full-width, gigante */}
-        <button
-          onClick={handleAck}
-          disabled={acking}
-          className="w-full bg-white text-slate-900 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-60 rounded-2xl py-5 text-2xl font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg transition-all"
-        >
-          {acking ? (
-            <>
-              <div className="w-6 h-6 border-3 border-slate-900 border-t-transparent rounded-full animate-spin" />
-              ENVIANDO…
-            </>
-          ) : (
-            <>
-              <CheckCircle2 className="w-7 h-7" />
-              RECIBIDO
-            </>
+        {/* CTAs */}
+        <div className={`flex gap-3 ${active.isIncidencia ? 'flex-col' : ''}`}>
+          {/* Botón VER INCIDENCIA — solo para incidencias */}
+          {active.isIncidencia && active.route && (
+            <button
+              onClick={() => {
+                navigate(active.route!);
+                setActive(null);
+              }}
+              className="w-full bg-white/20 hover:bg-white/30 border-2 border-white/40 rounded-2xl py-3 text-lg font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all"
+            >
+              <AlertTriangle className="w-5 h-5" />
+              VER INCIDENCIA
+            </button>
           )}
-        </button>
+
+          {/* Botón RECIBIDO — CTA principal, full-width, gigante */}
+          <button
+            onClick={handleAck}
+            disabled={acking}
+            className="w-full bg-white text-slate-900 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-60 rounded-2xl py-5 text-2xl font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg transition-all"
+          >
+            {acking ? (
+              <>
+                <div className="w-6 h-6 border-3 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                ENVIANDO…
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-7 h-7" />
+                RECIBIDO
+              </>
+            )}
+          </button>
+        </div>
 
         {/* Auto-dismiss countdown */}
         <div className="mt-4 flex items-center justify-center gap-2 text-xs opacity-70">

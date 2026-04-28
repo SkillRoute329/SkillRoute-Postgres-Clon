@@ -1,16 +1,18 @@
 import { useState, lazy, Suspense } from 'react';
-import { Search, Bus, BarChart3, Activity, RefreshCw } from 'lucide-react';
+import { Search, Bus, BarChart3, Activity, TrendingUp, RefreshCw } from 'lucide-react';
 
 const DiagnosticoCumplimiento = lazy(() => import('./DiagnosticoCumplimiento'));
 const RankingCoches           = lazy(() => import('./RankingCoches'));
 const OTPDashboard            = lazy(() => import('./OTPDashboard'));
 const AutoStatsModule         = lazy(() => import('./AutoStatsModule'));
+const TendenciaTab            = lazy(() => import('./TendenciaTab'));
 
 const TABS = [
-  { key: 'diagnostico', label: 'Diagnóstico por Línea',  icon: Search   },
-  { key: 'ranking',     label: 'Ranking de Coches',      icon: Bus      },
-  { key: 'otp',         label: 'Puntualidad OTP',        icon: BarChart3 },
-  { key: 'autostats',   label: 'Cumplimiento Horario GPS',icon: Activity },
+  { key: 'diagnostico', label: 'Diagnóstico por Línea',   icon: Search     },
+  { key: 'ranking',     label: 'Ranking de Coches',        icon: Bus        },
+  { key: 'otp',         label: 'Puntualidad OTP',          icon: BarChart3  },
+  { key: 'autostats',   label: 'Cumplimiento Horario GPS', icon: Activity   },
+  { key: 'tendencia',   label: 'Semana vs Semana',         icon: TrendingUp },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -46,6 +48,7 @@ export default function CumplimientoHub() {
           {tab === 'diagnostico' ? <DiagnosticoCumplimiento /> :
            tab === 'ranking'     ? <RankingCoches />           :
            tab === 'otp'         ? <OTPDashboard />            :
+           tab === 'tendencia'   ? <TendenciaTab />            :
                                    <AutoStatsModule />}
         </Suspense>
       </div>
