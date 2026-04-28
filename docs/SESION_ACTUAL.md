@@ -6,11 +6,11 @@
 
 ---
 
-**Última actualización:** 2026-04-28 — Auditoría técnica completa + 11 bugs críticos corregidos
+**Última actualización:** 2026-04-28 — Auditoría técnica completa + 11 bugs críticos corregidos + verificación funcional 15/15 módulos
 
 ---
 
-## ✅ SESIÓN 2026-04-28 — Auditoría + Bugs Críticos
+## ✅ SESIÓN 2026-04-28 — Auditoría + Bugs Críticos + Verificación Funcional
 
 ### Bugs corregidos en esta sesión
 
@@ -28,49 +28,87 @@
 | SCHEMA | `DisponibilidadFlota.tsx` L189 | `estado` vs `status` vs `estado_operativo` → todos caían a 'activo' | `normalizeEstado()` helper unifica |
 | FCM | `functions/src/incidenciaDispatcher.ts` | Incidencias sin notificación push | Trigger `onIncidenciaCreated`: supervisores siempre + conductores si ALTA/CRITICA |
 | LISTERO | `TerminalListero.tsx` L1783 | `r.vehiculo` sin fallback a `r.coche`/`r.cocheId` | Resiliente: `r.vehiculo \|\| r.coche \|\| r.cocheId` |
+| TDZ | `parametros-operativos.ts` | `PARAMETROS_REGISTRY` referenciaba constantes declaradas abajo → ReferenceError en build | Movido al final del archivo |
+| INDEX | `firestore.indexes.json` | Query `eventos_desvio (resuelto + timestamp)` sin índice | Índice compuesto agregado |
 
 ### Archivos nuevos creados
 
 - `functions/src/api/authMiddleware.ts` — middleware `requireAdmin` compartido para Cloud Functions
 - `functions/src/incidenciaDispatcher.ts` — trigger FCM para incidencias (multicast supervisores + conductores)
+- `frontend/src/pages/traffic/TurnoVivoHub.tsx` — Hub turno vivo con lazy+Suspense+tabs
+- `frontend/src/pages/traffic/FinancieroHub.tsx` — Hub financiero por perfil
+- `frontend/src/pages/traffic/IncidenciasHub.tsx` — Hub incidencias
+- `frontend/src/pages/traffic/ListeroHub.tsx` — Hub listero terminal
+- `frontend/src/pages/traffic/MapasHub.tsx`, `CorredoresHub.tsx`, `CumplimientoHub.tsx`, `PlanificacionHub.tsx`, `MapaFlotaHub.tsx`
+- `frontend/src/pages/fleet/GestionFlotaHub.tsx`
+- `frontend/src/services/gpsPlaybackService.ts`, `headwayInsightsService.ts`
+- `scripts/check_integrity.sh`, `scripts/hotspots.sh`
 
 ### Estado de producción
 
-- Frontend: `https://ucot-gestor-cloud.web.app` — build limpio 14.69s, deploy OK
-- Functions: deploy completo, `onIncidenciaCreated` activo en us-central1
+- Commit: `53af9db4`
+- 15/15 módulos verificados en producción: 0 errores
+- TypeScript: 0 errores (frontend + functions)
+- Integrity script: ✅ OK
+
+### Verificación funcional de los 4 fixes pendientes
+
+| Fix | Resultado | Evidencia |
+|---|---|---|
+| FCM incidencias | ✅ Trigger activo | `fcmSent: false`, `fcmError: no_tokens_found` — trigger dispara, no hay tokens FCM aún registrados en dispositivos |
+| Auth admin endpoints | ✅ Verificado | SIN token → 401; CON token ADMIN → 200 + `primer empleado: SERGIO SOSA` |
+| normalizeEstado | ✅ Correcto | Vehiculos con `status: "activo"` → normalizados correctamente |
+| TerminalListero cocheId | ✅ Correcto | `ProgramacionDiariaRecord.vehiculo` es el campo principal; fallbacks legacy cubiertos |
 
 ---
 
 ## 🎯 PRÓXIMO PASO INMEDIATO
 
-### Verificación funcional de los fixes en producción (requiere browser con login ADMIN)
+### DriverAlertOverlay para incidencias (siguiente feature prioritaria)
 
-1. `/dashboard/traffic/centro-turno` → verificar que tabs no se cortan en mobile (viewport <480px)
-2. `/dashboard/fleet` → tab "Disponibilidad" → verificar que coches en servicio aparecen correctamente (no todos como "Disponible")
-3. `/dashboard/admin/sistema` → tab "Carga Datos UCOT" → intentar seed sin login → debe dar 401; con login ADMIN → debe funcionar
-4. Crear una incidencia desde `/dashboard/traffic/incidents` → verificar en Firebase Console (Firestore → incidencias) que el doc tiene `fcmSent: true` y `fcmSupervisores > 0` después de crearse
+`DriverAlertOverlay.tsx` solo maneja mensajes FCM de tipo `alertas_regulacion`. El dispatcher de incidencias envía `data.tipo` y `data.route = '/dashboard/traffic/incidents'`. Los conductores reciben el push pero no ven el overlay en la app.
 
-### Siguiente feature prioritaria
-
-**Incidencias → Notificación a conductores en pantalla (DriverAlertOverlay)**
-
-Cuando una incidencia se crea con prioridad ALTA sobre una línea, los conductores de esa línea deberían ver un overlay en la app móvil. El FCM ya se envía (nuevo `onIncidenciaCreated`), pero `DriverAlertOverlay.tsx` solo maneja alertas de tipo `alertas_regulacion`, no incidencias.
-
+**Cambio requerido:**
 - Archivo: `frontend/src/components/DriverAlertOverlay.tsx`
-- Cambio: añadir case para `tipo: 'incidencia'` en el handler `onMessage`
-- Ruta del tipo de mensaje FCM: el dispatcher envía `data.route = '/dashboard/traffic/incidents'` y `data.tipo`
+- Agregar case para `tipo: 'incidencia'` (o `data.route === '/dashboard/traffic/incidents'`) en el handler `onMessage` de FCM
+- El overlay debe mostrar: descripción, prioridad (color rojo si ALTA/CRITICA), botón "Ver incidencia" que navega a `/dashboard/traffic/incidents`
+
+**Pasos para la próxima sesión:**
+1. Leer `DriverAlertOverlay.tsx` para entender el patrón actual
+2. Agregar el case para incidencias (archivo pequeño, Cowork puede hacerlo)
+3. Verificar con el dispatcher que los campos `data.incidenciaId`, `data.tipo`, `data.lineaCodigo`, `data.priority` llegan correctamente
+
+### Deploy de índice Firestore pendiente
+
+El nuevo índice `eventos_desvio (resuelto ASC, timestamp DESC)` está en `firestore.indexes.json` pero NO fue deployado todavía. Para deployarlo:
+
+```bash
+cd c:\Users\jonat\Desktop\PROYECTOS\GestionUcot
+firebase deploy --only firestore:indexes
+```
+
+Esto tarda ~2 minutos en construirse. Sin este índice, `TurnoVivoHub` puede mostrar warning en Firestore console (la query funciona pero no está optimizada).
+
+### Registrar FCM tokens en usuarios
+
+Para que las notificaciones push lleguen a dispositivos, el supervisor/conductor debe:
+1. Abrir la app en su celular (APK v1.1 que tiene FCM configurado)
+2. Autenticarse con su cuenta
+3. El token se guarda automáticamente en `users/{uid}.fcmToken`
+
+Una vez que haya al menos un usuario con token registrado, el test de incidencia dará `fcmSent: true`.
 
 ---
 
 ## 🗂️ BACKLOG PRIORIZADO
 
-1. **Verificación visual de los 11 bugs** — confirmar en prod con browser
-2. **DriverAlertOverlay para incidencias** — UI del overlay en app móvil
+1. **Deploy índice Firestore** — `firebase deploy --only firestore:indexes` (5 min, sin código)
+2. **DriverAlertOverlay para incidencias** — overlay en app móvil cuando llega push de incidencia
 3. **HRR v2 en vivo** — headway real sobre tramo compartido usando corridor_overlap
 4. **Panel matutino del supervisor** — resumen al iniciar turno (06:00–08:00 hs)
 5. **Cron semanal DRO** — `droMatrixTick` corre lunes 04:00 Mvd. Verificar próxima semana
 6. **snap-to-shape** — proyectar posición de buses sobre el shape para HRR más preciso (backlog largo plazo)
-7. **APK v1.2** — verificación FCM en dispositivo físico Android
+7. **APK v1.2** — verificación FCM en dispositivo físico Android (probar notificaciones reales)
 
 ---
 
@@ -79,7 +117,8 @@ Cuando una incidencia se crea con prioridad ALTA sobre una línea, los conductor
 - **Errores TS pre-existentes** en `cascadeEngineService.ts` — no bloquean build
 - **ShadowRadar speed fallback**: buses parados → velocidad 20 km/h → HRR falso en terminales. Documentado, no bloqueante
 - **shapesAllOperators.json** 9.2MB excede límite SW cache 6MB → nunca se cachea. Conocido, no bloqueante
-- **VehicleList `status`** (OPERATIONAL) y **adminSeeds `estado_operativo`** (ACTIVO): DisponibilidadFlota ahora los normaliza pero VehicleList sigue escribiendo en inglés. Eventual migración a `estado` + valores en español
+- **VehicleList `status`** (OPERATIONAL): DisponibilidadFlota normaliza correctamente pero VehicleList sigue escribiendo en inglés. Eventual migración a `estado` + valores en español
+- **FCM tokens**: ningún usuario tiene token FCM registrado aún → todas las notificaciones caen a `no_tokens_found`. Se resuelve naturalmente cuando usuarios abran la app móvil.
 
 ## 📱 APK ANDROID
 
