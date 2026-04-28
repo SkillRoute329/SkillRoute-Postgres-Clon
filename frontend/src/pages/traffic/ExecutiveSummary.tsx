@@ -25,6 +25,7 @@ import {
   RefreshCw,
   Building2,
   MapPin,
+  FileDown,
 } from 'lucide-react';
 import { useEmpresaPropia, EMPRESAS_OPCIONES, type EmpresaConfig } from '../../hooks/useEmpresaPropia';
 
@@ -97,6 +98,7 @@ export default function ExecutiveSummary() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   // ── Carga de datos ────────────────────────────────────────────────────
 
@@ -288,6 +290,206 @@ export default function ExecutiveSummary() {
     };
   }, [overlaps, myAgencyId]);
 
+  // ── Exportar PDF ejecutivo ─────────────────────────────────────────────
+
+  const exportPDF = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      const PW = doc.internal.pageSize.getWidth();   // 210
+      const margin = 16;
+      const cw = PW - margin * 2;
+      let y = 0;
+
+      // ── Cabecera ──────────────────────────────────────────────────────
+      doc.setFillColor(15, 23, 42);   // slate-950
+      doc.rect(0, 0, PW, 28, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SkillRoute', margin, 12);
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184); // slate-400
+      doc.text('INTELIGENCIA DE RED — REPORTE EJECUTIVO', margin, 19);
+
+      const now = new Date();
+      const fechaStr = now.toLocaleDateString('es-UY', { day: '2-digit', month: 'long', year: 'numeric' });
+      doc.setFontSize(7);
+      doc.text(`${empresaCfg.label} · ${fechaStr}`, PW - margin, 12, { align: 'right' });
+      doc.setTextColor(251, 146, 60); // orange-400
+      doc.text('CONFIDENCIAL', PW - margin, 19, { align: 'right' });
+
+      y = 36;
+
+      // ── KPIs ──────────────────────────────────────────────────────────
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(51, 65, 85);
+      doc.text('MÉTRICAS DE POSICIÓN DE MERCADO', margin, y);
+      y += 5;
+
+      const kpiW = cw / 4 - 2;
+      const kpiItems = [
+        { label: 'Pares analizados', value: kpis.pares.toLocaleString('es-UY'), unit: 'corredores' },
+        { label: 'Red compartida', value: `${kpis.kmTotal.toLocaleString('es-UY')} km`, unit: 'con rivales' },
+        { label: 'Operadores rivales', value: String(kpis.operadoresRivales), unit: 'activos' },
+        { label: 'Balance de red', value: `${kpis.pctGanados}%`, unit: 'corredores ganados' },
+      ];
+
+      kpiItems.forEach((k, i) => {
+        const x = margin + i * (kpiW + 2.5);
+        doc.setFillColor(241, 245, 249);  // slate-100
+        doc.roundedRect(x, y, kpiW, 20, 2, 2, 'F');
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);  // slate-500
+        doc.text(k.label.toUpperCase(), x + 3, y + 5);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(k.value, x + 3, y + 13);
+        doc.setFontSize(6);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(148, 163, 184);
+        doc.text(k.unit, x + 3, y + 18);
+      });
+
+      y += 27;
+
+      // ── Amenazas y Oportunidades ───────────────────────────────────────
+      const colW = (cw - 4) / 2;
+
+      // Columna izquierda — Amenazas
+      doc.setFillColor(254, 242, 242); // red-50
+      doc.roundedRect(margin, y, colW, 6, 1, 1, 'F');
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(185, 28, 28);   // red-700
+      doc.text('▼  TOP 3 AMENAZAS', margin + 3, y + 4.5);
+
+      // Columna derecha — Oportunidades
+      doc.setFillColor(240, 253, 244); // green-50
+      doc.roundedRect(margin + colW + 4, y, colW, 6, 1, 1, 'F');
+      doc.setTextColor(21, 128, 61);   // green-700
+      doc.text('▲  TOP 3 OPORTUNIDADES', margin + colW + 7, y + 4.5);
+
+      y += 9;
+
+      const rowH = 18;
+      const renderThreatRows = (
+        items: ThreatOpportunity[],
+        xOffset: number,
+        tipo: 'amenaza' | 'oportunidad',
+      ) => {
+        items.forEach((item, i) => {
+          const rx = margin + xOffset;
+          const ry = y + i * (rowH + 2);
+          const isA = tipo === 'amenaza';
+          doc.setFillColor(isA ? 255 : 240, isA ? 249 : 253, isA ? 249 : 244);
+          doc.roundedRect(rx, ry, colW, rowH, 1.5, 1.5, 'F');
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(15, 23, 42);
+          doc.text(`${i + 1}. Línea ${item.linea}  vs  ${item.label} · L${item.lineaRival}`, rx + 3, ry + 5);
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(100, 116, 139);
+          doc.text(`${item.sharedKm.toFixed(1)} km compartidos`, rx + 3, ry + 10);
+          doc.setTextColor(isA ? 185 : 21, isA ? 28 : 128, isA ? 28 : 61);
+          doc.text(
+            `Mi DRO: ${item.droPropioEnRival.toFixed(0)}%   DRO rival: ${item.droRivalEnPropio.toFixed(0)}%   Δ ${Math.abs(item.diferencia).toFixed(0)}%`,
+            rx + 3,
+            ry + 15,
+          );
+        });
+      };
+
+      renderThreatRows(topAmenazas, 0, 'amenaza');
+      renderThreatRows(topOportunidades, colW + 4, 'oportunidad');
+
+      const filasUsadas = Math.max(topAmenazas.length, topOportunidades.length, 1);
+      y += filasUsadas * (rowH + 2) + 8;
+
+      // ── Distribución por rival ─────────────────────────────────────────
+      doc.setFillColor(241, 245, 249);
+      doc.roundedRect(margin, y, cw, 6, 1, 1, 'F');
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(37, 99, 235); // blue-600
+      doc.text('DISTRIBUCIÓN POR OPERADOR RIVAL', margin + 3, y + 4.5);
+      y += 9;
+
+      // Cabecera de tabla
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(100, 116, 139);
+      doc.text('Operador', margin + 3, y + 3);
+      doc.text('Km compartidos', margin + 45, y + 3);
+      doc.text('DRO propio prom.', margin + 85, y + 3);
+      doc.text('DRO rival prom.', margin + 118, y + 3);
+      doc.text('% Ganados', margin + 151, y + 3);
+      y += 6;
+
+      rivalSummaries.forEach((r, i) => {
+        const ry = y + i * 9;
+        if (i % 2 === 0) {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(margin, ry, cw, 9, 'F');
+        }
+        const balance = r.ganados + r.perdidos > 0
+          ? Math.round((r.ganados / (r.ganados + r.perdidos)) * 100)
+          : 50;
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(r.label, margin + 3, ry + 6);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 65, 85);
+        doc.text(`${r.sharedKm.toFixed(0)} km`, margin + 48, ry + 6);
+        doc.text(`${r.avgDroPropioEnRival.toFixed(0)}%`, margin + 92, ry + 6);
+        doc.text(`${r.avgDroRivalEnPropio.toFixed(0)}%`, margin + 124, ry + 6);
+
+        const balColor: [number, number, number] = balance >= 50
+          ? [21, 128, 61] : [185, 28, 28];
+        doc.setTextColor(...balColor);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${balance}%`, margin + 158, ry + 6);
+      });
+
+      y += rivalSummaries.length * 9 + 8;
+
+      // ── Footer ────────────────────────────────────────────────────────
+      const footerY = doc.internal.pageSize.getHeight() - 10;
+      doc.setDrawColor(226, 232, 240);
+      doc.line(margin, footerY - 3, PW - margin, footerY - 3);
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184);
+      doc.text(
+        `Generado por SkillRoute Intelligence · ${empresaCfg.label} · ${now.toLocaleString('es-UY')} · Uso exclusivo interno`,
+        margin,
+        footerY,
+      );
+      doc.text('skillroute.uy', PW - margin, footerY, { align: 'right' });
+
+      // ── Guardar ───────────────────────────────────────────────────────
+      const filename = `SkillRoute_Inteligencia_${empresaCfg.label.replace(/\s+/g, '_')}_${now.toISOString().slice(0, 10)}.pdf`;
+      doc.save(filename);
+    } catch (err) {
+      console.error('[ExportPDF]', err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // ── Render estados ────────────────────────────────────────────────────
 
   if (loading) {
@@ -344,6 +546,17 @@ export default function ExecutiveSummary() {
               Actualizado {lastRefresh.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
+          <button
+            onClick={exportPDF}
+            disabled={exporting || loading || !overlaps.length}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/10 border border-orange-500/30 text-orange-400 hover:bg-orange-500/20 hover:border-orange-500/50 disabled:opacity-40 text-xs font-medium transition-all"
+          >
+            {exporting
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <FileDown className="w-3.5 h-3.5" />
+            }
+            {exporting ? 'Generando…' : 'Exportar PDF'}
+          </button>
           <button
             onClick={loadData}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600 text-xs font-medium transition-all"
