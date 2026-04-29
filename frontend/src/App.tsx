@@ -296,12 +296,16 @@ function App() {
                     <Route path="traffic/ceo-v7" element={<Navigate to="/dashboard/traffic/ceo" replace />} />
                     <Route path="traffic/ceo-legacy" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CEODashboard /></PrivateRoute>} />
                     <Route path="traffic/rotation-matrix" element={<PrivateRoute roles={['ADMIN','TRAFFIC','RRHH']}><RotationMatrix /></PrivateRoute>} />
+                    {/* Redirects legacy: nombres en español → rutas en inglés */}
+                    <Route path="traffic/navegador" element={<Navigate to="/dashboard/traffic/navigation" replace />} />
+                    <Route path="traffic/posicion" element={<Navigate to="/dashboard/traffic/fleet-monitor" replace />} />
                     {/* Redirect legacy: Centro de Inteligencia → Inteligencia de Corredores (v3) */}
                     <Route path="traffic/intelligence" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />
                     {/* Redirect legacy: Mapa en Vivo STM → Mapa de Corredores (v4, más capas + DRO) */}
                     {/* Restaurado 2026-04-25: LiveMapPage tiene heatmap de demanda que CorridorMap no cubre. Ambos conviven con roles distintos. */}
                     <Route path="traffic/live-map" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><LiveMapPage /></PrivateRoute>} />
                     <Route path="traffic/shadow-radar" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ShadowRadar /></PrivateRoute>} />
+                    <Route path="traffic/competitor-intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CompetitorIntelligencePage /></PrivateRoute>} />
                     {/* Hub: Inteligencia de Corredores + Participación km en tabs */}
                     <Route path="traffic/corridor-intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorredoresHub /></PrivateRoute>} />
                     {/* Redirect: market-share ahora es tab del hub de corredores */}

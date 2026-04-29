@@ -1,4 +1,5 @@
 import { db, auth } from '../config/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import {
   getDocs,
   collection,
@@ -7,6 +8,14 @@ import {
   disableNetwork,
   enableNetwork,
 } from 'firebase/firestore';
+
+/** Espera el primer callback de onAuthStateChanged — evita falsos "No User" en la race condition de boot. */
+const authReady = new Promise<void>((resolve) => {
+  const unsub = onAuthStateChanged(auth, () => {
+    unsub();
+    resolve();
+  });
+});
 
 export type ConnectivityStatus = 'ONLINE' | 'OFFLINE' | 'UNSTABLE' | 'BLOCKED';
 
@@ -25,11 +34,9 @@ export const ConnectivityGuard = {
     }
 
     // 2. Firebase Connectivity Check (Ping)
-    // CRITICAL: Check Auth first to avoid Permission Denied on Boot
+    // Esperar a que auth resuelva para no evaluar currentUser antes de que onAuthStateChanged dispare.
+    await authReady;
     if (!auth.currentUser) {
-      console.log(
-        '🛡️ ConnectivityGuard: No User. Skipping Firewall/Latency Check (Permissions would fail).',
-      );
       return { status: 'ONLINE', message: 'Esperando Autenticación...' };
     }
 

@@ -107,7 +107,10 @@ export const usePushNotifications = () => {
     } catch (error) {
       const code = (error as { code?: string })?.code ?? '';
       if (code === 'messaging/token-subscribe-failed') {
-        console.warn('[FCM-Web] Push deshabilitado: VAPID/SW no configurados.');
+        if (!(window as any).__fcmWarnedOnce) {
+          (window as any).__fcmWarnedOnce = true;
+          console.info('[FCM-Web] Push deshabilitado: VAPID/SW no configurados. Se activa al integrar servicio de mensajería del operador.');
+        }
       } else {
         console.error('[FCM-Web] Error configurando notificaciones:', error);
       }

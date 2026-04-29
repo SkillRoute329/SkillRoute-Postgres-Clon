@@ -595,7 +595,7 @@ const MaintenanceDashboard = () => {
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-2">
                   <div className="font-bold text-xl text-white">
-                    Unit {report.vehicle?.internalNumber}
+                    Unidad {report.vehicle?.internalNumber}
                   </div>
                   {report.vehicle?.plate && (
                     <div className="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded">
@@ -636,7 +636,18 @@ const MaintenanceDashboard = () => {
                   <Briefcase className="w-3 h-3" />
                   {report.department?.name || 'General'}
                 </div>
-                <div>{new Date(report.createdAt).toLocaleDateString()}</div>
+                <div>
+                  {report.createdAt
+                    ? (() => {
+                        const d = (report.createdAt as any)?.toDate
+                          ? (report.createdAt as any).toDate()
+                          : new Date(report.createdAt as string);
+                        return isNaN(d.getTime())
+                          ? 'Sin registro'
+                          : new Intl.DateTimeFormat('es-UY', { dateStyle: 'short' }).format(d);
+                      })()
+                    : 'Sin registro'}
+                </div>
               </div>
             </div>
           ))}

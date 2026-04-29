@@ -96,9 +96,10 @@ interface KpiCardProps {
   icon: React.ReactNode;
   color: 'verde' | 'amarillo' | 'rojo' | 'naranja';
   loading?: boolean;
+  tooltip?: string;
 }
 
-const KpiCard = ({ label, value, icon, color, loading }: KpiCardProps) => {
+const KpiCard = ({ label, value, icon, color, loading, tooltip }: KpiCardProps) => {
   const colorMap: Record<string, string> = {
     verde: 'text-emerald-400',
     amarillo: 'text-yellow-400',
@@ -113,7 +114,10 @@ const KpiCard = ({ label, value, icon, color, loading }: KpiCardProps) => {
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-6 flex flex-col gap-3">
+    <div
+      className="bg-slate-900 border border-slate-700/50 rounded-xl p-6 flex flex-col gap-3"
+      title={tooltip}
+    >
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${bgMap[color]}`}>
         <span className={colorMap[color]}>{icon}</span>
       </div>
@@ -358,6 +362,7 @@ const CentroTurnoDashboard = () => {
           icon={<Bus size={20} />}
           color="verde"
           loading={loadingVehiculos}
+          tooltip="Coches con estado 'activo' en la planificación interna. Si este número es menor a los buses reportando GPS en tiempo real, hay coches operando sin asignación cargada en SkillRoute (probable turno asignado fuera del sistema o listero no generado)."
         />
         <KpiCard
           label="En Taller"
