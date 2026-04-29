@@ -342,7 +342,12 @@ export default function IncidentCommandCenter() {
                         )}
                         {inc.reportedBy && (
                           <span>
-                            · por <span className="text-slate-300">{inc.reportedBy.name}</span>
+                            · por{' '}
+                            <span className="text-slate-300">
+                              {inc.reportedBy.name && inc.reportedBy.name !== inc.reportedBy.uid
+                                ? inc.reportedBy.name
+                                : `Conductor #${inc.reportedBy.uid.slice(0, 6)}`}
+                            </span>
                           </span>
                         )}
                         {inc.lat && inc.lng && (

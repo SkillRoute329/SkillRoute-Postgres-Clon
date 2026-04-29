@@ -1,7 +1,7 @@
 /**
  * EconomicProjectionsPage — Centro de Proyecciones Económicas
  *
- * KPIs por línea UCOT:
+ * KPIs por línea — multi-operador (UCOT / CUTCSA / COME / COETC):
  *  - Ingresos estimados STM (tarifa × pasajeros estimados × viajes/día)
  *  - Costos operativos (combustible, conductor, mantenimiento)
  *  - Margen bruto por línea
@@ -27,8 +27,13 @@ import {
   Zap,
   Download,
   Building2,
+  Globe2,
+  ChevronDown,
+  Sparkles,
+  Info,
 } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
+import { getLineasByAgency } from '../../services/linesService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -45,6 +50,8 @@ import {
   KM_PROMEDIO_VIAJE as KM_PARAM,
   PASAJEROS_PROMEDIO_VIAJE as PAX_PARAM,
   ELASTICIDAD_FLOTA_DEMANDA as ELASTICIDAD_PARAM,
+  calcularCostoTotalEmpleado,
+  SALARIO_INSPECTOR_NOMINAL,
 } from '../../config/parametros-operativos';
 
 const TARIFA_STM_UYU = v(TARIFA_STM);
@@ -59,16 +66,49 @@ const OCUPACION_PICO = 0.85;
 const OCUPACION_VALLE = 0.45;
 const DIAS_PROYECCION = 30;
 
-/* ─── Líneas UCOT con prefijoş en ScheduleService ─────── */
+/* ─── Tipo genérico de línea para cálculos económicos ──── */
 
-const LINEAS_UCOT = [
-  { id: '370', nombre: 'Línea 370', variante: '370a', corredor: 'Cerro–Centro' },
-  { id: '517', nombre: 'Línea 517', variante: '517a', corredor: 'Cerro–Prado' },
-  { id: '369', nombre: 'Línea 369', variante: '369a', corredor: 'Cerro–Colón' },
-  { id: '300', nombre: 'Línea 300', variante: '300a', corredor: 'Cerro–Ciudad Vieja' },
-  { id: '329', nombre: 'Línea 329', variante: '329a', corredor: 'Cerro–Tres Cruces' },
-  { id: '17', nombre: 'Línea 17', variante: '17a', corredor: 'Cerro–Punta Carretas' },
+/* ── Pitch de Mercado STM — datos paramétricos cross-operador ── */
+// Inspectores estimados en proporción a flota (UCOT confirmado; resto estimado)
+const _COSTO_MES_INSPECTOR = calcularCostoTotalEmpleado(v(SALARIO_INSPECTOR_NOMINAL)).totalMensual;
+const _TASA_REEMPLAZO = 0.70; // 70 % del trabajo inspector reemplazable por SkillRoute
+
+const PITCH_OPERADORES = [
+  { codigo: 50, nombre: 'CUTCSA', inspectores: 35, licenciaUSD: 0 },  // licenciante
+  { codigo: 70, nombre: 'UCOT',   inspectores: 12, licenciaUSD: 990 },
+  { codigo: 20, nombre: 'COME',   inspectores: 8,  licenciaUSD: 490 },
+  { codigo: 10, nombre: 'COETC',  inspectores: 5,  licenciaUSD: 290 },
+].map((op) => ({
+  ...op,
+  costoActualMes: Math.round(op.inspectores * _COSTO_MES_INSPECTOR),
+  ahorroMes: Math.round(op.inspectores * _COSTO_MES_INSPECTOR * _TASA_REEMPLAZO),
+}));
+
+const PITCH_CUTCSA_AHORRO_ANUAL = PITCH_OPERADORES.find((o) => o.codigo === 50)!.ahorroMes * 12;
+const PITCH_SISTEMA_AHORRO_ANUAL = PITCH_OPERADORES.reduce((s, o) => s + o.ahorroMes, 0) * 12;
+const PITCH_LICENCIAS_USD_ANUAL  = PITCH_OPERADORES.filter((o) => o.codigo !== 50).reduce((s, o) => s + o.licenciaUSD, 0) * 12;
+const PITCH_TOTAL_INSPECTORES    = PITCH_OPERADORES.reduce((s, o) => s + o.inspectores, 0);
+
+interface LineaBase {
+  id: string;
+  nombre: string;
+  corredor: string;
+  variante: string;   // para ScheduleService (solo UCOT tiene horarios; otros usan fallback)
+  agencyId?: string;  // '70' | '50' | '20' | '10'
+  esDatoReal?: boolean; // tiene datos reales de inspecciones
+}
+
+/* ─── Líneas UCOT con horarios reales en ScheduleService ── */
+const LINEAS_UCOT: LineaBase[] = [
+  { id: '370', nombre: 'Línea 370', variante: '370a', corredor: 'Cerro–Centro', agencyId: '70' },
+  { id: '517', nombre: 'Línea 517', variante: '517a', corredor: 'Cerro–Prado', agencyId: '70' },
+  { id: '369', nombre: 'Línea 369', variante: '369a', corredor: 'Cerro–Colón', agencyId: '70' },
+  { id: '300', nombre: 'Línea 300', variante: '300a', corredor: 'Cerro–Ciudad Vieja', agencyId: '70' },
+  { id: '329', nombre: 'Línea 329', variante: '329a', corredor: 'Cerro–Tres Cruces', agencyId: '70' },
+  { id: '17', nombre: 'Línea 17', variante: '17a', corredor: 'Cerro–Punta Carretas', agencyId: '70' },
 ];
+
+const OPERADORES_TODOS = [70, 50, 20, 10] as const;
 
 /* ─── Types ───────────────────────────────────────────── */
 
@@ -86,6 +126,8 @@ interface LineaEconomica {
   tendencia: number; // % cambio últimas 2 semanas vs anteriores
   estado: 'RENTABLE' | 'EN_RIESGO' | 'DEFICITARIA';
   forecastMes: number; // UYU proyectado mes
+  agencyId?: string;
+  esDatoReal: boolean;
 }
 
 /* ─── Helpers ─────────────────────────────────────────── */
@@ -99,7 +141,7 @@ function fmtUYU(n: number): string {
 }
 
 function calcularLinea(
-  linea: (typeof LINEAS_UCOT)[0],
+  linea: LineaBase,
   inspData: Map<string, { avg: number; tendencia: number }>,
 ): LineaEconomica {
   // Viajes por día desde ScheduleService
@@ -149,6 +191,8 @@ function calcularLinea(
     tendencia: Math.round(tendencia * 10) / 10,
     estado,
     forecastMes: Math.round(margenDia * DIAS_PROYECCION),
+    agencyId: linea.agencyId,
+    esDatoReal: Boolean(insp),
   };
 }
 
@@ -158,89 +202,111 @@ export default function EconomicProjectionsPage() {
   const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const [lineas, setLineas] = useState<LineaEconomica[]>([]);
   const [loading, setLoading] = useState(true);
+  const [modoTodos, setModoTodos] = useState(false);
   const [combustibleDelta, setCombustibleDelta] = useState(0); // % ajuste escenario
   const [tarifaDelta, setTarifaDelta] = useState(0); // % ajuste escenario
   const [flotaDelta, setFlotaDelta] = useState(0); // % reducción de viajes diarios
   const [sortBy, setSortBy] = useState<'margen' | 'ingresos' | 'estado'>('margen');
+  const [showPitch, setShowPitch] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Obtener carga de pasajeros real de Firestore (últimos 30 días)
-      const desde = new Date();
-      desde.setDate(desde.getDate() - 30);
-      const desdeTs = Timestamp.fromDate(desde);
+      // ── 1. Cargar líneas del/los operador/es seleccionados ──────────────
+      const agencyIds = modoTodos ? [...OPERADORES_TODOS] : [empresaPropia];
 
-      const hace15 = new Date();
-      hace15.setDate(hace15.getDate() - 15);
-      const hace15Ts = Timestamp.fromDate(hace15);
-
-      const snap = await getDocs(
-        query(
-          collection(db, 'inspecciones'),
-          where('createdAt', '>=', desdeTs),
-          orderBy('createdAt', 'desc'),
-          limit(3000),
-        ),
+      const lineasPorOperador = await Promise.all(
+        agencyIds.map(async (aid) => {
+          if (aid === 70) return LINEAS_UCOT;
+          const res = await getLineasByAgency(aid);
+          return res.map<LineaBase>((l) => ({
+            id: l.codigo,
+            nombre: l.nombre,
+            corredor: l.origen && l.destino ? `${l.origen}–${l.destino}` : (l.empresa ?? String(aid)),
+            variante: l.codigo, // ScheduleService no tiene datos → fallback 14 viajes/día
+            agencyId: String(aid),
+          }));
+        }),
       );
+      const todasLineas = lineasPorOperador.flat();
 
-      // Agregar por lineaId → pasajeros promedio + tendencia
-      const byLinea = new Map<
-        string,
-        { pasajeros: number[]; recientes: number[]; antiguos: number[] }
-      >();
+      // ── 2. Inspecciones de pasajeros — solo UCOT tiene datos reales ─────
+      const inspData = new Map<string, { avg: number; tendencia: number }>();
+      if (agencyIds.includes(70)) {
+        const desde = new Date();
+        desde.setDate(desde.getDate() - 30);
+        const desdeTs = Timestamp.fromDate(desde);
 
-      snap.docs.forEach((d) => {
-        const data = d.data();
-        const lineaId = String(data.lineaId ?? data.linea ?? '');
-        const cargaRaw = data.passengerLoad ?? data.carga ?? data.pasajeros;
-        // Convertir carga textual a numérico
-        let cargaN = 0;
-        if (typeof cargaRaw === 'number') {
-          cargaN = cargaRaw;
-        } else if (cargaRaw === 'ALTO' || cargaRaw === 'Excelente') {
-          cargaN = PASAJEROS_PROMEDIO_VIAJE * OCUPACION_PICO;
-        } else if (cargaRaw === 'MEDIO' || cargaRaw === 'Bueno') {
-          cargaN = PASAJEROS_PROMEDIO_VIAJE * 0.65;
-        } else if (cargaRaw === 'BAJO' || cargaRaw === 'Regular' || cargaRaw === 'Malo') {
-          cargaN = PASAJEROS_PROMEDIO_VIAJE * OCUPACION_VALLE;
-        } else {
-          cargaN = PASAJEROS_PROMEDIO_VIAJE;
-        }
-        if (cargaN === 0 || !lineaId) return;
+        const hace15 = new Date();
+        hace15.setDate(hace15.getDate() - 15);
+        const hace15Ts = Timestamp.fromDate(hace15);
 
-        if (!byLinea.has(lineaId))
-          byLinea.set(lineaId, { pasajeros: [], recientes: [], antiguos: [] });
-        const row = byLinea.get(lineaId)!;
-        row.pasajeros.push(cargaN);
+        const snap = await getDocs(
+          query(
+            collection(db, 'inspecciones'),
+            where('createdAt', '>=', desdeTs),
+            orderBy('createdAt', 'desc'),
+            limit(3000),
+          ),
+        );
 
-        const createdAt = data.createdAt;
-        const esReciente =
-          createdAt instanceof Timestamp ? createdAt.toMillis() >= hace15Ts.toMillis() : false;
+        // Agregar por lineaId → pasajeros promedio + tendencia
+        const byLinea = new Map<
+          string,
+          { pasajeros: number[]; recientes: number[]; antiguos: number[] }
+        >();
+
+        snap.docs.forEach((d) => {
+          const data = d.data();
+          const lineaId = String(data.lineaId ?? data.linea ?? '');
+          const cargaRaw = data.passengerLoad ?? data.carga ?? data.pasajeros;
+          // Convertir carga textual a numérico
+          let cargaN = 0;
+          if (typeof cargaRaw === 'number') {
+            cargaN = cargaRaw;
+          } else if (cargaRaw === 'ALTO' || cargaRaw === 'Excelente') {
+            cargaN = PASAJEROS_PROMEDIO_VIAJE * OCUPACION_PICO;
+          } else if (cargaRaw === 'MEDIO' || cargaRaw === 'Bueno') {
+            cargaN = PASAJEROS_PROMEDIO_VIAJE * 0.65;
+          } else if (cargaRaw === 'BAJO' || cargaRaw === 'Regular' || cargaRaw === 'Malo') {
+            cargaN = PASAJEROS_PROMEDIO_VIAJE * OCUPACION_VALLE;
+          } else {
+            cargaN = PASAJEROS_PROMEDIO_VIAJE;
+          }
+          if (cargaN === 0 || !lineaId) return;
+
+          if (!byLinea.has(lineaId))
+            byLinea.set(lineaId, { pasajeros: [], recientes: [], antiguos: [] });
+          const row = byLinea.get(lineaId)!;
+          row.pasajeros.push(cargaN);
+
+          const createdAt = data.createdAt;
+          const esReciente =
+            createdAt instanceof Timestamp ? createdAt.toMillis() >= hace15Ts.toMillis() : false;
         if (esReciente) row.recientes.push(cargaN);
         else row.antiguos.push(cargaN);
       });
 
-      // Map lineaId → avg + tendencia
-      const inspData = new Map<string, { avg: number; tendencia: number }>();
-      byLinea.forEach((v, lineaId) => {
-        const avg = v.pasajeros.length > 0 ? v.pasajeros.reduce((a, b) => a + b, 0) / v.pasajeros.length : 0;
-        const avgRec =
-          v.recientes.length > 0
-            ? v.recientes.reduce((a, b) => a + b, 0) / v.recientes.length
-            : avg;
-        const avgAnt =
-          v.antiguos.length > 0 ? v.antiguos.reduce((a, b) => a + b, 0) / v.antiguos.length : avg;
-        const tendencia = avgAnt > 0 ? ((avgRec - avgAnt) / avgAnt) * 100 : 0;
-        inspData.set(lineaId, { avg, tendencia });
-      });
+        // Map lineaId → avg + tendencia
+        byLinea.forEach((v, lineaId) => {
+          const avg = v.pasajeros.length > 0 ? v.pasajeros.reduce((a, b) => a + b, 0) / v.pasajeros.length : 0;
+          const avgRec =
+            v.recientes.length > 0
+              ? v.recientes.reduce((a, b) => a + b, 0) / v.recientes.length
+              : avg;
+          const avgAnt =
+            v.antiguos.length > 0 ? v.antiguos.reduce((a, b) => a + b, 0) / v.antiguos.length : avg;
+          const tendencia = avgAnt > 0 ? ((avgRec - avgAnt) / avgAnt) * 100 : 0;
+          inspData.set(lineaId, { avg, tendencia });
+        });
+      } // fin bloque inspecciones UCOT
 
-      // Calcular economía por línea con ajuste de escenario
+      // ── 3. Calcular economía por línea con ajuste de escenario ───────────
       const combustibleFactor = 1 + combustibleDelta / 100;
       const tarifaFactor = 1 + tarifaDelta / 100;
       const flotaFactor = 1 - flotaDelta / 100; // Reducción de viajes/flota
 
-      const resultado = LINEAS_UCOT.map((l) => {
+      const resultado = todasLineas.map((l) => {
         const base = calcularLinea(l, inspData);
         // Aplicar ajuste de escenario y de flota (ROI Simulator)
         
@@ -281,11 +347,17 @@ export default function EconomicProjectionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [combustibleDelta, tarifaDelta, flotaDelta]);
+  }, [empresaPropia, modoTodos, combustibleDelta, tarifaDelta, flotaDelta]);
 
   useEffect(() => {
     void fetchData();
   }, [fetchData]);
+
+  // Re-fetch when operator changes
+  useEffect(() => {
+    void fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresaPropia, modoTodos]);
 
   /* ── KPIs globales ── */
   const totalIngresos = lineas.reduce((s, l) => s + l.ingresosDia, 0);
@@ -307,7 +379,7 @@ export default function EconomicProjectionsPage() {
     try {
     const doc = new jsPDF();
     doc.setFontSize(16);
-    doc.text('Proyecciones Económicas — UCOT', 14, 20);
+    doc.text(`Proyecciones Económicas — ${modoTodos ? 'Sistema Metropolitano' : empresaCfg.label}`, 14, 20);
     doc.setFontSize(9);
     doc.text(
       `Generado: ${new Date().toLocaleDateString('es-UY')} | Tarifa STM: $${TARIFA_STM_UYU} | Ajuste combustible: ${combustibleDelta > 0 ? '+' : ''}${combustibleDelta}%`,
@@ -352,7 +424,7 @@ export default function EconomicProjectionsPage() {
       headStyles: { fillColor: [30, 64, 175] },
     });
 
-    doc.save(`proyecciones_ucot_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`proyecciones_${modoTodos ? 'todos' : empresaCfg.label.toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (err) {
       console.error('[exportPDF] Error generando PDF:', err);
     }
@@ -376,14 +448,38 @@ export default function EconomicProjectionsPage() {
           </div>
           <div>
             <h1 className="text-xl font-black text-white tracking-tight">
-              Proyecciones Económicas
+              Proyecciones Económicas{modoTodos ? ` — Sistema Metropolitano` : ` — ${empresaCfg.label}`}
             </h1>
             <p className="text-xs text-slate-500">
               Rentabilidad real por línea · Simulación de escenarios · Forecast {DIAS_PROYECCION}d
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {/* Selector de operador */}
+          <div className="flex items-center bg-slate-800 rounded-xl p-0.5 text-xs font-bold">
+            <button
+              onClick={() => { setModoTodos(true); }}
+              className={`px-2.5 py-1.5 rounded-lg transition-all ${modoTodos ? 'bg-gradient-to-r from-blue-600 to-orange-500 text-white' : 'text-slate-400 hover:text-white'}`}
+            >
+              <Building2 className="w-3 h-3 inline mr-1" />
+              Todos
+            </button>
+            {[
+              { codigo: 70, label: 'UCOT', color: 'bg-yellow-500' },
+              { codigo: 50, label: 'CUTCSA', color: 'bg-blue-500' },
+              { codigo: 20, label: 'COME', color: 'bg-green-500' },
+              { codigo: 10, label: 'COETC', color: 'bg-red-500' },
+            ].map((op) => (
+              <button
+                key={op.codigo}
+                onClick={() => { setModoTodos(false); setEmpresaPropia(op.codigo); }}
+                className={`px-2.5 py-1.5 rounded-lg transition-all ${!modoTodos && empresaPropia === op.codigo ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'}`}
+              >
+                {op.label}
+              </button>
+            ))}
+          </div>
           <button
             aria-label="Actualizar proyecciones"
             onClick={() => void fetchData()}
@@ -399,6 +495,19 @@ export default function EconomicProjectionsPage() {
             <Download className="w-3.5 h-3.5" />
             PDF
           </button>
+        </div>
+      </div>
+
+      {/* Banner metodología — datos públicos como diferenciador honesto */}
+      <div className="flex gap-3 rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3">
+        <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+        <div className="text-xs text-slate-400 leading-relaxed">
+          <span className="font-semibold text-blue-300">Análisis sobre datos públicos del IMM/STM.</span>{' '}
+          Proyecciones macro calculadas con tarifa STM 2026 (UYU {TARIFA_STM_UYU}/pasajero),
+          promedio de viajes/día por línea y costo operativo estimado sobre parámetros públicos
+          (BCU combustible, planilla MTOP). Para análisis preciso por línea individual, SkillRoute
+          integra con sistema de boletera del operador y planilla de costos reales —{' '}
+          <span className="text-blue-300">disponible al firmar acuerdo de datos.</span>
         </div>
       </div>
 
@@ -563,10 +672,17 @@ export default function EconomicProjectionsPage() {
       {/* Tabla por línea */}
       <div className="rounded-2xl border border-white/[0.06] bg-slate-900/60 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
-          <h2 className="text-sm font-black text-white flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-blue-400" />
-            Rentabilidad por Línea
-          </h2>
+          <div className="flex-1">
+            <h2 className="text-sm font-black text-white flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-blue-400" />
+              Rentabilidad por Línea
+            </h2>
+            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+              <Info className="w-3 h-3 text-slate-600" />
+              Estimación con parámetros STM/BCU públicos — mismos parámetros para todas las líneas.
+              Para análisis individualizado por línea: integrar boletera del operador.
+            </p>
+          </div>
           <div className="flex items-center gap-1 bg-slate-800/60 rounded-xl p-1">
             {(
               [
@@ -677,6 +793,128 @@ export default function EconomicProjectionsPage() {
                 .join(' · ')}
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Pitch de Mercado STM — solo en modo Sistema Metropolitano */}
+      {modoTodos && !loading && (
+        <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-b from-blue-950/40 to-slate-900/60 overflow-hidden">
+          <button
+            onClick={() => setShowPitch((p) => !p)}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-blue-500/30 to-orange-500/30 rounded-xl">
+                <Globe2 className="w-5 h-5 text-blue-400" />
+              </div>
+              <div className="text-left">
+                <h2 className="text-sm font-black text-white">Valor para el Sistema Metropolitano</h2>
+                <p className="text-xs text-slate-400">
+                  Si CUTCSA licencia SkillRoute a las otras 3 empresas — impacto estimado
+                </p>
+              </div>
+            </div>
+            <ChevronDown
+              className={`w-4 h-4 text-slate-400 transition-transform ${showPitch ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {showPitch && (
+            <div className="px-5 pb-6 space-y-5 border-t border-white/5">
+              {/* KPI cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4">
+                {[
+                  {
+                    label: 'Ahorro CUTCSA (propio)',
+                    value: fmtUYU(PITCH_CUTCSA_AHORRO_ANUAL),
+                    sub: 'reducción costo inspectores/año',
+                    color: 'text-blue-400',
+                    bg: 'bg-blue-500/10 border-blue-500/20',
+                  },
+                  {
+                    label: 'Ahorro sistema (4 operadores)',
+                    value: fmtUYU(PITCH_SISTEMA_AHORRO_ANUAL),
+                    sub: 'ahorro laboral total/año',
+                    color: 'text-emerald-400',
+                    bg: 'bg-emerald-500/10 border-emerald-500/20',
+                  },
+                  {
+                    label: 'Ingresos licencias CUTCSA',
+                    value: `USD ${PITCH_LICENCIAS_USD_ANUAL.toLocaleString('es-UY')}`,
+                    sub: 'como distribuidor del sistema/año',
+                    color: 'text-orange-400',
+                    bg: 'bg-orange-500/10 border-orange-500/20',
+                  },
+                ].map((c) => (
+                  <div key={c.label} className={`rounded-xl p-4 border ${c.bg}`}>
+                    <p className="text-xs text-slate-500 mb-1">{c.label}</p>
+                    <p className={`text-xl font-black ${c.color}`}>{c.value}</p>
+                    <p className="text-xs text-slate-600 mt-0.5">{c.sub}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Tabla desglose por empresa */}
+              <div className="rounded-xl border border-white/5 overflow-hidden">
+                <div className="bg-slate-800/50 px-4 py-2.5 border-b border-white/5">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    Desglose por empresa
+                  </p>
+                </div>
+                <div className="divide-y divide-white/[0.04]">
+                  {PITCH_OPERADORES.map((op) => (
+                    <div
+                      key={op.codigo}
+                      className="grid grid-cols-4 px-4 py-3 text-xs items-center hover:bg-white/[0.02]"
+                    >
+                      <div>
+                        <span className="font-bold text-white">{op.nombre}</span>
+                        <p className="text-slate-500">~{op.inspectores} inspectores est.</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-slate-400">{fmtUYU(op.costoActualMes)}</p>
+                        <p className="text-slate-600">costo actual/mes</p>
+                      </div>
+                      <div className="text-right text-emerald-400">
+                        <p>{fmtUYU(op.ahorroMes)}</p>
+                        <p className="text-slate-600">ahorro c/SkillRoute</p>
+                      </div>
+                      <div className="text-right">
+                        {op.codigo === 50 ? (
+                          <span className="text-blue-400 font-bold">Licenciante</span>
+                        ) : (
+                          <span className="text-orange-400 font-bold">USD {op.licenciaUSD}/mes</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Argumento de cierre */}
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-r from-blue-900/20 to-orange-900/10 border border-blue-500/20">
+                <Sparkles className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-white">El argumento para la reunión</p>
+                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                    CUTCSA no compra un software — adquiere la capacidad de ser el integrador
+                    tecnológico del sistema metropolitano. El ahorro en sus propias operaciones
+                    justifica la inversión. Distribuir SkillRoute a UCOT, COME y COETC genera
+                    ingresos adicionales. Y la inteligencia cross-operador que producen los datos
+                    combinados de las 4 empresas{' '}
+                    <span className="text-blue-400 font-bold">
+                      ningún operador individual puede replicar por su cuenta
+                    </span>.
+                  </p>
+                  <p className="text-xs text-slate-600 mt-2">
+                    * Basado en {PITCH_TOTAL_INSPECTORES} inspectores estimados (proporción flota
+                    STM 2026) y costo real calculado según BPS / FONASA / BSE / Leyes 12.840 y
+                    16.101.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

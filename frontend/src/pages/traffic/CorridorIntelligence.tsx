@@ -30,6 +30,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import * as XLSX from 'xlsx';
 import {
   Download,
@@ -89,6 +90,7 @@ interface OperatorRow {
 // ─── Componente principal ──────────────────────────────────────────────────
 
 export default function CorridorIntelligencePage() {
+  const { empresaCfg } = useEmpresaPropia();
   const { selectedLine, setSelectedLine } = useLiveData();
   const [overlaps, setOverlaps] = useState<OverlapDoc[]>([]);
   const [shapes, setShapes] = useState<ShapeMeta[]>([]);
@@ -366,10 +368,11 @@ export default function CorridorIntelligencePage() {
             Inteligencia de Corredores
           </h1>
           <p className="text-slate-400 mt-2 text-sm max-w-3xl">
-            Análisis de competencia y solapamiento del sistema metropolitano completo
-            (UCOT · CUTCSA · COME · COETC). Métrica base: <strong>DRO</strong> (Directional
-            Route Overlap, TCRP 195). Cobertura cross-operador y canibalización intra-empresa en
-            un mismo tablero — imposible de reproducir por un operador individual.
+            Posición competitiva de <strong>{empresaCfg.label}</strong> en el sistema
+            metropolitano. Métrica base: <strong>DRO</strong> (Directional Route Overlap, TCRP
+            195) calculada sobre los 4 operadores (UCOT · CUTCSA · COME · COETC). Cobertura
+            cross-operador y canibalización intra-empresa en un mismo tablero — imposible de
+            reproducir por un operador individual.
           </p>
           {lastLoadedAt && (
             <div className="text-xs text-slate-600 mt-2">
@@ -521,7 +524,15 @@ export default function CorridorIntelligencePage() {
               {operatorSummary.map((r) => (
                 <tr key={r.agencyId} className="border-b border-slate-800/50 hover:bg-slate-800/30">
                   <td className="px-4 py-2 font-bold">{r.empresa} <span className="text-slate-600 text-xs">({r.agencyId})</span></td>
-                  <td className="px-4 py-2 text-right font-mono text-cyan-400">{r.shapesCount}</td>
+                  <td className="px-4 py-2 text-right font-mono">
+                    {r.shapesCount > 0 ? (
+                      <span className="text-cyan-400">{r.shapesCount}</span>
+                    ) : (
+                      <span className="text-slate-600" title="Shapes no disponibles en GTFS público. SkillRoute integra con feed interno del operador al conectar.">
+                        — pendiente
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-2 text-right font-mono">{r.avgLengthKm.toFixed(1)} km</td>
                   <td className="px-4 py-2 text-right font-mono text-red-400">{r.totalCompetitivePairs}</td>
                   <td className="px-4 py-2 text-right font-mono text-amber-400">{r.totalIntraPairs}</td>
