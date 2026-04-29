@@ -912,5 +912,11 @@ export { shapeBuilderTick, shapeBuilderRun } from './shapeBuilder';
 // envía FCM a ADMIN/TRAFFIC si hay alertas CRITICO (< 50%).
 export { complianceAlertsTick } from './complianceAlertsTick';
 
-// ─── IMM OAuth callback — stub pre-lunes 4 mayo 2026 ─────────────────────────
-export { immOAuthCallback } from './immOAuthCallback';
+// ─── IMM — Integración API oficial Intendencia de Montevideo ─────────────────
+// OAuth2 authorization_code: /immAuthorize inicia flujo, /immOAuthCallback recibe code
+// y almacena tokens en Firestore (imm_config/oauth_token) para uso por getImmToken().
+// Variantes: ingesta diaria 4AM + /seedVariantes (POST) para refresh manual.
+export { immOAuthCallback }        from './immOAuthCallback';
+export { immAuthorize }            from './immAuthorize';
+export { refreshVariantesTick, seedVariantes }        from './immVariantesService';
+export { immEta, seedParadas, refreshParadasTick }    from './immParadasService';

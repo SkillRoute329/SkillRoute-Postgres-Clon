@@ -1,77 +1,80 @@
 # 🔁 SESIÓN ACTUAL — estado vivo del trabajo en curso
 
-**Última actualización:** 2026-04-29 19:45 — Code cerró 8 items de BRIDGE-012 + deploy confirmado.
+**Última actualización:** 2026-04-29 22:20 — Integración API oficial IMM completada.
 
 ---
 
-## ✅ ESTADO: DEMO LUNES 4 MAYO — LISTA
+## ✅ ESTADO: INTEGRACIÓN IMM ACTIVA EN PRODUCCIÓN
 
-Producción en `4a7a310d` (build `1777491129408`, deploy `8acf03a7`).
-URL: `https://ucot-gestor-cloud.web.app`
+### Lo que se hizo en esta sesión (post-sprint lunes)
 
-### Items cerrados en esta sesión (4a7a310d)
+| Feature | Estado | Detalle |
+|---|---|---|
+| Skill `/verify-prod` | ✅ Deployada | Playwright autenticado contra prod, verifica 5 rutas |
+| `immTokenService.ts` | ✅ Activa | OAuth client_credentials automático, cachea en Firestore |
+| `immOAuthCallback.ts` | ✅ Upgrade real | Intercambia code por tokens (ya no es stub) |
+| `immAuthorize.ts` | ✅ Live | Redirige al portal IMM para autorización |
+| `immVariantesService.ts` | ✅ Live + 2204 docs | Variantes en `imm_variantes/`, cron 4AM |
+| `immParadasService.ts` | ✅ Live + 4938 docs | Paradas en `imm_paradas/`, ETA endpoint `/immEta` |
+| Credenciales IMM | ✅ Configuradas | `functions/.env.ucot-gestor-cloud` (gitignored) |
 
-| # | Item | Fix aplicado | Verificado en prod |
-|---|------|--------------|-------------------|
-| 1 | CEO Dashboard crash | `Map as MapIcon` — shadowing del global `new Map()` | ✅ Bundle solo tiene `new Date()` |
-| 4 | CorridorMap UCOT 0 sh. | `— pendiente` + tooltip GTFS | ✅ `pendiente` en chunk CorridorMap |
-| 5 | WithDamages en inglés | STATUS_CONFIG agrega `WithDamages → 'Con daños'` | ✅ `Con da` en chunk Maintenance |
-| 6 | Alertas RIVAL sin detalle | DashboardHome usa `linea_id+mensaje_chofer+timestamp` | ✅ `Rival pisando turno` en DashboardHome |
-| 7 | Cobertura 100%/0 turnos | `—` cuando `turnosTotal === 0` | ✅ `Sin turnos programados` en DashboardHome |
-| 8 | ConnectivityGuard ERROR rojo | `console.error → console.warn` | ✅ `console.warn` en bundle |
-| 2 | H1 CUTCSA CorridorIntelligence | Ya era dinámico (`empresaCfg.label`) — behavior OK | ✅ Deploy fresquísimo cubre |
-| 3 | H1 CUTCSA EconomicProjections | Ya era dinámico (`empresaCfg.label`) — behavior OK | ✅ Deploy fresquísimo cubre |
+### Datos en Firestore desde la API oficial IMM
 
-**Nota items 2+3:** el código YA usaba `empresaCfg.label` dinámico desde `39172dbb`. Cowork veía "CUTCSA" porque el localStorage del browser tenía ese operador seleccionado. Comportamiento correcto — para la demo CUTCSA el H1 mostrará "CUTCSA" que es exactamente lo esperado. En fresh session (incognito) muestra "UCOT" (default).
+| Colección | Documentos | Fuente | Actualización |
+|---|---|---|---|
+| `imm_variantes` | 2204 | `buses/rest/variantes` (sin auth) | Cron 4AM diario |
+| `imm_paradas` | 4938 | `api.montevideo.gub.uy/api/transportepublico/buses/busstops` | Cron 3AM domingos |
+| `imm_config/oauth_token` | 1 | Token activo (client_credentials) | Auto-renovado |
 
-### Sprints anteriores confirmados en prod
+### APIs ahora accesibles con el token IMM
 
-| Sprint | Items | Estado |
-|--------|-------|--------|
-| A (b1e59ce8) | recharts chunk, Firestore rules, índice service_matrices | ✅ |
-| B+C (39172dbb) | cross-op dinámico, datos honestos, IncidentCommand UID | ✅ |
-| D+E (64aafbf5) | branding SkillRoute, redirects, Mantenimiento fechas | ✅ |
+| Endpoint | Datos | Listo |
+|---|---|---|
+| `GET /buses?company=UCOT` | GPS oficial con speed, access, thermalConfort, emissions | ✅ |
+| `GET /buses/busstops/{id}/upcomingbuses` | ETA en segundos + metros al bus | ✅ vía `/immEta` |
+| `GET /buses/gtfs/static/latest/google_transit.zip` | GTFS v20260427 completo | ✅ (descarga manual) |
+| `GET /buses/linevariants` | Variantes oficiales | ✅ |
+
+### Credenciales IMM (NUNCA en git)
+- client_id: `51137bff` (público)
+- client_secret: en `functions/.env.ucot-gestor-cloud`
+- Estado: `Live`, Plan: Básico
 
 ---
 
 ## 📋 PRÓXIMO PASO INMEDIATO
 
-### BRIDGE-014: IMM OAuth Stub (pre-lunes, no bloqueante demo)
+### Usar datos IMM en el frontend
 
-Cowork dejó el plan en `docs/IMM_OAUTH_STUB.md`. Tarea:
-- Crear Cloud Function stub `immOAuthCallback` que devuelva 200 OK con HTML branded
-- NO canjea code por token, NO llama a API IMM real
-- URL ya registrada: `https://us-central1-ucot-gestor-cloud.cloudfunctions.net/immOAuthCallback`
-- Actualmente devuelve 404 → debe devolver 200 con branded HTML
+La API está conectada pero los datos enriquecidos todavía no se muestran en la UI. Prioridades:
 
-Pasos para Code:
-```bash
-# 1. Leer docs/IMM_OAUTH_STUB.md para el código completo
-# 2. Aplicar cambios en functions/src/index.ts (stub endpoint)
-# 3. cd functions && npm run build
-# 4. firebase deploy --only functions --project ucot-gestor-cloud
-# 5. Verificar: curl https://us-central1-ucot-gestor-cloud.cloudfunctions.net/immOAuthCallback → 200 HTML
-# 6. Verificar: curl con ?error=access_denied → 400 HTML
+1. **Fleet Monitor** — mostrar `access` (PISO BAJO/COMÚN), `speed`, `thermalConfort` junto al bus
+2. **ETA en Fleet Monitor** — cuando el usuario selecciona una línea, mostrar "Próximo bus: X min" usando `/immEta`
+3. **Paradas en el mapa** — usar `imm_paradas` para mostrar las 4938 paradas en el mapa de corredores
+
+### Para usar ETA en el frontend (HOW TO):
+```typescript
+// En cualquier componente:
+const etaRes = await fetch(
+  `https://us-central1-ucot-gestor-cloud.cloudfunctions.net/immEta?busstopId=546&lines=300,17&amountPerLine=3`
+);
+const { buses } = await etaRes.json();
+// buses[0].etaMin → minutos hasta el próximo bus
+// buses[0].acceso → "PISO BAJO" o "COMÚN"
+// buses[0].climatizacion → "Aire Acondicionado"
 ```
-
-### Verificaciones pendientes post-demo (Cowork)
-
-Cuando Cowork pueda abrir el browser:
-1. `https://ucot-gestor-cloud.web.app/dashboard/traffic/ceo` — NO debe mostrar "Error en Módulo"
-2. `https://ucot-gestor-cloud.web.app/dashboard` — alertas deben mostrar "⚠️ Rival pisando turno — Línea X" (si hay alertas activas en `alertas_regulacion`)
-3. `https://ucot-gestor-cloud.web.app/dashboard/traffic/corridor-map` — UCOT debe mostrar "— pendiente" con tooltip
-4. Consola sin ERROR rojo de ConnectivityGuard
 
 ---
 
 ## 🔲 Backlog post-demo
 
-- **BRIDGE-014**: IMM OAuth stub (pre-lunes si hay tiempo)
 - **v2 HRR en vivo**: headway real en tramo compartido
 - **Dashboard seat-km market share** v3 cross-operador
-- **Scraper JSF horarios**: scheduler refresh periódico
 - **APK Android**: actualizar con build actual
-- **Cumplimiento OTP oscilación**: verificar con 2 snapshots reales 15 min aparte (C.1 parcial)
+- **GTFS import**: procesar google_transit.zip desde la API oficial (shapes mejores)
+- **ETA en UI**: integrar `/immEta` en Fleet Monitor y mapa
+- **Paradas en mapa**: usar `imm_paradas` en CorridorMap
+- **Badge "IMM Conectado"** en admin/sistema
 
 ---
 
@@ -79,12 +82,13 @@ Cuando Cowork pueda abrir el browser:
 
 - `regresionOLS.test.ts`: 4 tests fallan (outlier en tendenciaOLS) — pre-existente
 - `monitoring.ts` warning Rollup (dynamic + static import) — pre-existente, no afecta runtime
-- Items 2+3 (H1 dinámico): en sesión con localStorage=CUTCSA mostrará "CUTCSA" — correcto
+- Items 2+3 (H1 empresa): muestran empresa del localStorage — comportamiento correcto
 
 ---
 
-## Decisiones operativas de esta sesión
+## Decisiones técnicas de esta sesión
 
-- **CEO crash causa raíz**: `import { Map } from 'lucide-react'` shadowing del global JavaScript `Map`. Fix simple: alias `Map as MapIcon`.
-- **Items 2+3**: comportamiento correcto, no había bug de código — el operador en localStorage era CUTCSA. Para la demo CUTCSA esto es el output esperado.
-- **deploy 64aafbf5**: el commit tenía el código correcto pero version.json no se actualizó en el deploy previo. Este deploy (`4a7a310d`) sí tiene version.json correcto.
+- **client_credentials flow elegido**: más simple que authorization_code para backend; no requiere login de usuario; token se renueva solo.
+- **4938 paradas en Firestore**: ahora disponibles para UI sin llamadas directas a la API IMM (performance).
+- **Credenciales en .env.ucot-gestor-cloud**: gitignored, cargado automáticamente por Firebase CLI al deploy.
+- **ETA requiere líneas**: la API IMM requiere el parámetro `lines` en `/upcomingbuses`. Sin líneas → 400.
