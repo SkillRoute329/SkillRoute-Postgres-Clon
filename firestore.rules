@@ -199,6 +199,14 @@ service cloud.firestore {
       allow write: if isInspector() || isAdminNorm();
     }
 
+    // alertas_log: log append-only generado por shadowDispatcher para analytics
+    // historico cross-operador. Solo lectura autenticada; escritura solo desde
+    // Cloud Functions (admin SDK bypass).
+    match /alertas_log/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if false; // solo Cloud Functions admin SDK
+    }
+
     match /alertas_trafico/{document=**} {
       allow read: if isAuthenticated();
       allow write: if isAdminNorm() || isTrafficOrAdmin();
@@ -311,6 +319,15 @@ service cloud.firestore {
     match /stm_alertas_competencia/{document=**} {
       allow read: if isAuthenticated();
       allow write: if isAdminNorm() || isTrafficOrAdmin();
+    }
+
+    // Alertas automáticas de cumplimiento (pobladas por complianceAlertsTick cada 6h).
+    // Lectura: tráfico + admin. Escritura: solo backend (admin SDK).
+    // El campo dismissed lo puede actualizar tráfico (descartar desde la UI).
+    match /compliance_alerts/{document=**} {
+      allow read: if isAuthenticated();
+      allow update: if isTrafficOrAdmin() && request.resource.data.keys().hasOnly(['dismissed', 'dismissedBy', 'dismissedAt']);
+      allow write: if isAdminNorm();
     }
 
     match /competencia_monitoreo/{document=**} {
@@ -498,6 +515,27 @@ service cloud.firestore {
     // ============================================================
     match /lineas_ucot/{document=**} {
       allow get, list: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+
+    // ============================================================
+    // CATEGORÍAS DE SERVICIOS (service_categories — selector de tipos de turno)
+    //   - Lectura: cualquier autenticado (tráfico + operaciones).
+    //   - Escritura: solo admin (tabla de configuración estática).
+    // ============================================================
+    match /service_categories/{document=**} {
+      allow read: if isAdminNorm() || isTrafficOrAdmin();
+      allow write: if isAdminNorm();
+    }
+
+    // ============================================================
+    // MATRICES DE SERVICIO v2 (service_matrices — programación cross-operador)
+    //   - Lectura: tráfico + admin (datos operativos sensibles).
+    //   - Escritura: solo admin.
+    //   Index requerido: empresaId ASC + createdAt DESC (firestore.indexes.json).
+    // ============================================================
+    match /service_matrices/{document=**} {
+      allow read: if isAdminNorm() || isTrafficOrAdmin();
       allow write: if isAdminNorm();
     }
 

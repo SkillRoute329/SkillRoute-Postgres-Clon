@@ -108,6 +108,9 @@ export default defineConfig({
       },
     }),
   ],
+  optimizeDeps: {
+    include: ['recharts', 'victory-vendor'],
+  },
   server: {
     host: '127.0.0.1',
     port: 3005,
@@ -227,6 +230,9 @@ export default defineConfig({
         manualChunks(id: string) {
           const nid = id.replace(/\\/g, '/');
 
+          if (nid.includes('node_modules/recharts') || nid.includes('node_modules/victory-vendor')) {
+            return 'vendor-recharts';
+          }
           if (nid.includes('node_modules/leaflet') || nid.includes('node_modules/react-leaflet')) {
             return 'vendor-leaflet';
           }

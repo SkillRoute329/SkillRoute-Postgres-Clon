@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "service_matrices",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "empresaId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "daily_shifts",
       "queryScope": "COLLECTION",
       "fields": [
@@ -327,6 +335,12 @@
     }
   ],
   "fieldOverrides": [
+    {
+      "collectionGroup": "alertas_log",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
     {
       "collectionGroup": "vehicle_events",
       "fieldPath": "expiresAt",
