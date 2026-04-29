@@ -46,6 +46,7 @@ exports.registerAdminSeedRoutes = registerAdminSeedRoutes;
  * por dominio (ADR 003).
  */
 const admin = __importStar(require("firebase-admin"));
+const authMiddleware_1 = require("./authMiddleware");
 const getDb = () => admin.firestore();
 // Data bundled — requires se resuelven contra functions/src/data/
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -63,7 +64,7 @@ const UCOT_BOLETIN = require('../data/ucot_boletin.json');
  */
 function registerAdminSeedRoutes(app) {
     // POST /api/admin/seed-personal-ucot — 691 empleados reales, idempotente (merge:true)
-    app.post('/api/admin/seed-personal-ucot', async (_req, res) => {
+    app.post('/api/admin/seed-personal-ucot', authMiddleware_1.requireAdmin, async (_req, res) => {
         try {
             const db = getDb();
             const BATCH_SIZE = 450;
@@ -106,7 +107,7 @@ function registerAdminSeedRoutes(app) {
         }
     });
     // POST /api/admin/seed-vehicles-ucot
-    app.post('/api/admin/seed-vehicles-ucot', async (_req, res) => {
+    app.post('/api/admin/seed-vehicles-ucot', authMiddleware_1.requireAdmin, async (_req, res) => {
         try {
             const db = getDb();
             const BATCH_SIZE = 450;
@@ -140,7 +141,7 @@ function registerAdminSeedRoutes(app) {
         }
     });
     // POST /api/admin/seed-horarios-ucot — servicios hábiles (cartones)
-    app.post('/api/admin/seed-horarios-ucot', async (_req, res) => {
+    app.post('/api/admin/seed-horarios-ucot', authMiddleware_1.requireAdmin, async (_req, res) => {
         var _a, _b, _c, _d, _e, _f, _g;
         try {
             const db = getDb();
@@ -173,7 +174,7 @@ function registerAdminSeedRoutes(app) {
         }
     });
     // GET /api/admin/personal — lista paginada de empleados (ordenada por interno)
-    app.get('/api/admin/personal', async (req, res) => {
+    app.get('/api/admin/personal', authMiddleware_1.requireAdmin, async (req, res) => {
         var _a;
         try {
             const limit = Math.min(parseInt(String((_a = req.query.limit) !== null && _a !== void 0 ? _a : '200')), 700);
@@ -204,10 +205,10 @@ function registerAdminSeedRoutes(app) {
         }
     });
     // PUT /api/admin/personal/:id — actualiza campos editables
-    app.put('/api/admin/personal/:id', async (req, res) => {
+    app.put('/api/admin/personal/:id', authMiddleware_1.requireAdmin, async (req, res) => {
         try {
             const db = getDb();
-            const { id } = req.params;
+            const id = String(req.params.id);
             const { cargo, rol, telefono, estado } = req.body;
             const update = { actualizadoEn: admin.firestore.FieldValue.serverTimestamp() };
             if (cargo !== undefined)
@@ -228,7 +229,7 @@ function registerAdminSeedRoutes(app) {
         }
     });
     // POST /api/admin/seed-sabado-ucot — servicios de sábado (verano)
-    app.post('/api/admin/seed-sabado-ucot', async (_req, res) => {
+    app.post('/api/admin/seed-sabado-ucot', authMiddleware_1.requireAdmin, async (_req, res) => {
         var _a, _b, _c;
         try {
             const db = getDb();
@@ -259,7 +260,7 @@ function registerAdminSeedRoutes(app) {
         }
     });
     // POST /api/admin/seed-boletin-ucot — boletín oficial
-    app.post('/api/admin/seed-boletin-ucot', async (_req, res) => {
+    app.post('/api/admin/seed-boletin-ucot', authMiddleware_1.requireAdmin, async (_req, res) => {
         try {
             const db = getDb();
             let total = 0;

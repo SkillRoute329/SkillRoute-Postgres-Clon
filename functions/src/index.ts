@@ -911,3 +911,6 @@ export { shapeBuilderTick, shapeBuilderRun } from './shapeBuilder';
 // Cron 6h: lee vehicle_events últimas 24h, escribe en compliance_alerts,
 // envía FCM a ADMIN/TRAFFIC si hay alertas CRITICO (< 50%).
 export { complianceAlertsTick } from './complianceAlertsTick';
+
+// ─── IMM OAuth callback — stub pre-lunes 4 mayo 2026 ─────────────────────────
+export { immOAuthCallback } from './immOAuthCallback';

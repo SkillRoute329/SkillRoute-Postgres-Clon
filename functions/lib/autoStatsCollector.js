@@ -396,7 +396,7 @@ async function updateEndpointHealth(results) {
 }
 // ── Exports ────────────────────────────────────────────────────────────────
 exports.autoStatsCollectorTick = functions.pubsub
-    .schedule('every 5 minutes')
+    .schedule('every 15 minutes')
     .timeZone('America/Montevideo')
     .onRun(async () => {
     try {

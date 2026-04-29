@@ -48,9 +48,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.complianceAlertsTick = void 0;
 const functions = __importStar(require("firebase-functions/v1"));
 const admin = __importStar(require("firebase-admin"));
-const UMBRAL_CRITICO = 50;
-const UMBRAL_BAJO = 65;
-const MIN_EVENTOS = 5;
+// Defaults espejo de AlertasConfigPage — se sobreescriben desde Firestore al inicio de cada ciclo
+const DEFAULTS = { UMBRAL_CRITICO: 50, UMBRAL_BAJO: 65, MIN_EVENTOS: 5 };
 const NOMBRE_EMPRESA = {
     '70': 'UCOT',
     '50': 'CUTCSA',
@@ -61,20 +60,26 @@ exports.complianceAlertsTick = functions.pubsub
     .schedule('every 6 hours')
     .timeZone('America/Montevideo')
     .onRun(async () => {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     const db = admin.firestore();
     const now = admin.firestore.Timestamp.now();
     const hace24h = admin.firestore.Timestamp.fromMillis(now.toMillis() - 24 * 60 * 60 * 1000);
+    /* ── 0. Leer umbrales configurables desde Firestore ──── */
+    const paramSnap = await db.collection('parametros_sistema').doc('default').get();
+    const paramData = paramSnap.exists ? paramSnap.data() : {};
+    const UMBRAL_CRITICO = Number((_a = paramData.UMBRAL_CRITICO) !== null && _a !== void 0 ? _a : DEFAULTS.UMBRAL_CRITICO);
+    const UMBRAL_BAJO = Number((_b = paramData.UMBRAL_BAJO) !== null && _b !== void 0 ? _b : DEFAULTS.UMBRAL_BAJO);
+    const MIN_EVENTOS = Number((_c = paramData.MIN_EVENTOS) !== null && _c !== void 0 ? _c : DEFAULTS.MIN_EVENTOS);
     /* ── 1. Leer eventos de las últimas 24h ─────────────── */
     const eventosSnap = await db
         .collection('vehicle_events')
-        .where('timestamp', '>=', hace24h)
+        .where('createdAt', '>=', hace24h)
         .get();
     const porLinea = {};
     for (const doc of eventosSnap.docs) {
         const d = doc.data();
-        const linea = String((_a = d.linea) !== null && _a !== void 0 ? _a : '?');
-        const empresa = String((_c = (_b = d.codigoEmpresa) !== null && _b !== void 0 ? _b : d.empresa) !== null && _c !== void 0 ? _c : '?');
+        const linea = String((_d = d.linea) !== null && _d !== void 0 ? _d : '?');
+        const empresa = String((_f = (_e = d.codigoEmpresa) !== null && _e !== void 0 ? _e : d.empresa) !== null && _f !== void 0 ? _f : '?');
         const key = `${empresa}_${linea}`;
         if (!porLinea[key])
             porLinea[key] = { total: 0, enTiempo: 0, empresa };
@@ -96,7 +101,7 @@ exports.complianceAlertsTick = functions.pubsub
             batch.set(ref, {
                 linea,
                 empresa,
-                empresaNombre: (_d = NOMBRE_EMPRESA[empresa]) !== null && _d !== void 0 ? _d : empresa,
+                empresaNombre: (_g = NOMBRE_EMPRESA[empresa]) !== null && _g !== void 0 ? _g : empresa,
                 pctEnTiempo: pct,
                 totalEventos: data.total,
                 nivel,
@@ -106,7 +111,7 @@ exports.complianceAlertsTick = functions.pubsub
                 dismissedAt: null,
             }, { merge: true });
             if (nivel === 'CRITICO') {
-                nuevasCriticas.push(`Línea ${linea} (${(_e = NOMBRE_EMPRESA[empresa]) !== null && _e !== void 0 ? _e : empresa}) — ${pct}%`);
+                nuevasCriticas.push(`Línea ${linea} (${(_h = NOMBRE_EMPRESA[empresa]) !== null && _h !== void 0 ? _h : empresa}) — ${pct}%`);
             }
         }
         else {

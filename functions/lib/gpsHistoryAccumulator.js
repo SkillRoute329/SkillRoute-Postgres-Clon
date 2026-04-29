@@ -160,7 +160,7 @@ async function limpiarVencidos() {
 }
 exports.gpsHistoryAccumulatorTick = functions
     .runWith({ timeoutSeconds: 90, memory: '512MB' })
-    .pubsub.schedule('every 1 minutes')
+    .pubsub.schedule('every 15 minutes')
     .onRun(async () => {
     const start = Date.now();
     const snapshot = await fetchSnapshot();

@@ -111,12 +111,12 @@ function registerAutostatsRoutes(app) {
             res.status(500).json({ ok: false, error: e.message });
         }
     });
-    // GET /api/autostats/compliance/:agencyId — snapshot en vivo desde Firestore (últimos 8 min)
+    // GET /api/autostats/compliance/:agencyId — snapshot en vivo desde Firestore (últimos 25 min)
     app.get('/api/autostats/compliance/:agencyId', async (req, res) => {
         try {
             const { agencyId } = req.params;
             const db = getDb();
-            const since = new Date(Date.now() - 8 * 60 * 1000);
+            const since = new Date(Date.now() - 25 * 60 * 1000);
             const snap = await db.collection('vehicle_events')
                 .where('agencyId', '==', agencyId)
                 .where('timestampGPS', '>=', since.toISOString())
@@ -362,6 +362,90 @@ function registerAutostatsRoutes(app) {
                 };
             }).sort((a, b) => b.totalEventos - a.totalEventos);
             res.json({ ok: true, week, agencyId: agencyId !== null && agencyId !== void 0 ? agencyId : 'all', totalRecords: filtered.length, lines });
+        }
+        catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+    // GET /api/autostats/fleet-ranking/:agencyId — ranking de coches por cumplimiento
+    // ?days=7 (máx 14) &offset=0 (máx 30, desplazamiento en días hacia atrás).
+    // offset=7 devuelve el período anterior (para calcular tendencia semana a semana).
+    app.get('/api/autostats/fleet-ranking/:agencyId', async (req, res) => {
+        var _a, _b;
+        try {
+            const { agencyId } = req.params;
+            const days = Math.min(14, parseInt((_a = req.query.days) !== null && _a !== void 0 ? _a : '7', 10));
+            const offset = Math.min(30, parseInt((_b = req.query.offset) !== null && _b !== void 0 ? _b : '0', 10));
+            const db = getDb();
+            const now = Date.now();
+            const since = new Date(now - (days + offset) * 24 * 60 * 60 * 1000).toISOString();
+            const until = offset > 0
+                ? new Date(now - offset * 24 * 60 * 60 * 1000).toISOString()
+                : null;
+            let q = db.collection('vehicle_events')
+                .where('agencyId', '==', agencyId)
+                .where('timestampGPS', '>=', since)
+                .orderBy('timestampGPS', 'desc');
+            if (until)
+                q = q.where('timestampGPS', '<', until);
+            const snap = await q.limit(4000).get();
+            const byBus = {};
+            snap.docs.forEach(d => {
+                var _a, _b, _c, _d, _e;
+                const e = d.data();
+                const id = e.idBus;
+                if (!byBus[id]) {
+                    byBus[id] = {
+                        empresa: (_b = (_a = e.empresa) !== null && _a !== void 0 ? _a : e.codigoEmpresa) !== null && _b !== void 0 ? _b : agencyId,
+                        lineas: new Set(),
+                        total: 0, enTiempo: 0, atrasado: 0, adelantado: 0,
+                        desviaciones: [], velocidades: [],
+                        ultima: (_c = e.timestampGPS) !== null && _c !== void 0 ? _c : null, primera: (_d = e.timestampGPS) !== null && _d !== void 0 ? _d : null,
+                    };
+                }
+                const b = byBus[id];
+                if (e.linea)
+                    b.lineas.add(String(e.linea));
+                b.total++;
+                if (e.estadoCumplimiento === 'EN_TIEMPO')
+                    b.enTiempo++;
+                else if (e.estadoCumplimiento === 'ATRASADO')
+                    b.atrasado++;
+                else if (e.estadoCumplimiento === 'ADELANTADO')
+                    b.adelantado++;
+                if (typeof e.desviacionMin === 'number')
+                    b.desviaciones.push(e.desviacionMin);
+                if (typeof e.velocidad === 'number' && e.velocidad > 0)
+                    b.velocidades.push(e.velocidad);
+                if (e.timestampGPS && e.timestampGPS < ((_e = b.primera) !== null && _e !== void 0 ? _e : e.timestampGPS))
+                    b.primera = e.timestampGPS;
+            });
+            const MIN_EVENTOS = 3;
+            const vehicles = Object.entries(byBus)
+                .filter(([, b]) => b.total >= MIN_EVENTOS)
+                .map(([idBus, b]) => {
+                const con = b.enTiempo + b.atrasado + b.adelantado;
+                return {
+                    idBus,
+                    empresa: b.empresa,
+                    lineasOperadas: [...b.lineas].sort(),
+                    totalEventos: b.total,
+                    pctEnTiempo: con > 0 ? Math.round((b.enTiempo / con) * 100) : 0,
+                    pctAtrasado: con > 0 ? Math.round((b.atrasado / con) * 100) : 0,
+                    pctAdelantado: con > 0 ? Math.round((b.adelantado / con) * 100) : 0,
+                    pctSinHorario: b.total > 0 ? Math.round(((b.total - con) / b.total) * 100) : 0,
+                    desviacionMediaMin: b.desviaciones.length
+                        ? Math.round(b.desviaciones.reduce((a, v) => a + v, 0) / b.desviaciones.length * 10) / 10
+                        : null,
+                    velocidadMedia: b.velocidades.length
+                        ? Math.round(b.velocidades.reduce((a, v) => a + v, 0) / b.velocidades.length)
+                        : 0,
+                    ultimaActividad: b.ultima,
+                    primeraActividad: b.primera,
+                };
+            })
+                .sort((a, b) => a.pctEnTiempo - b.pctEnTiempo);
+            res.json({ ok: true, agencyId, days, totalVehiculos: vehicles.length, vehicles });
         }
         catch (e) {
             res.status(500).json({ ok: false, error: e.message });
