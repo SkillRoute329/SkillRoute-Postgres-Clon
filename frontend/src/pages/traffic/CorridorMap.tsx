@@ -339,8 +339,15 @@ export default function CorridorMapPage() {
                     style={{ background: EMPRESA_COLOR[agencyId] }}
                   />
                   <span className="font-semibold">{EMPRESA_NAME[agencyId]}</span>
-                  <span className="text-slate-500 ml-auto">
-                    {shapes.filter((s) => s.agencyId === agencyId).length} sh.
+                  <span
+                    className="text-slate-500 ml-auto"
+                    title={shapes.filter((s) => s.agencyId === agencyId).length === 0
+                      ? 'Shapes geográficos pendientes — requiere integración con feed GTFS del operador'
+                      : undefined}
+                  >
+                    {shapes.filter((s) => s.agencyId === agencyId).length === 0
+                      ? '— pendiente'
+                      : `${shapes.filter((s) => s.agencyId === agencyId).length} sh.`}
                   </span>
                 </button>
               );

@@ -45,18 +45,29 @@ function PanelOperacional() {
   const [alertas, setAlertas] = useState<Array<{ id: string; urgencia: string; titulo: string; mensaje: string }>>([]);
   const [loading, setLoading] = useState(true);
 
+  const TIPO_LABEL: Record<string, string> = {
+    RIVAL_PISANDO_TURNO: '⚠️ Rival pisando turno',
+    PELIGRO_BUNCHING: '👁 Riesgo de bunching',
+  };
+
   // Alertas del contexto (onSnapshot) tienen prioridad; el endpoint de listero es fallback
   useEffect(() => {
     if (alertasVivas.length > 0) {
       setAlertas(
-        alertasVivas.slice(0, 5).map((a) => ({
-          id: a.id,
-          urgencia: a.urgencia ?? 'media',
-          titulo: a.titulo ?? a.tipo,
-          mensaje: a.mensaje ?? '',
-        })),
+        alertasVivas.slice(0, 5).map((a) => {
+          const raw = a as Record<string, any>;
+          const base = TIPO_LABEL[a.tipo] ?? a.tipo;
+          const linea = raw.linea_id ? ` — Línea ${raw.linea_id}` : '';
+          const titulo = a.titulo ?? `${base}${linea}`;
+          const horaStr = raw.timestamp?.toDate
+            ? ` · ${raw.timestamp.toDate().toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}`
+            : '';
+          const mensaje = a.mensaje ?? (raw.mensaje_chofer ? `${raw.mensaje_chofer}${horaStr}` : '');
+          return { id: a.id, urgencia: a.urgencia ?? 'media', titulo, mensaje };
+        }),
       );
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alertasVivas]);
 
   useEffect(() => {
@@ -96,7 +107,7 @@ function PanelOperacional() {
         ) : resumen ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'Cobertura flota', value: `${resumen.coberturaFlota}%`, icon: Activity, color: resumen.coberturaFlota >= 90 ? 'text-emerald-400' : resumen.coberturaFlota >= 75 ? 'text-amber-400' : 'text-red-400', sub: `${resumen.turnosCubiertos}/${resumen.turnosTotal} turnos` },
+              { label: 'Cobertura flota', value: resumen.turnosTotal > 0 ? `${resumen.coberturaFlota}%` : '—', icon: Activity, color: resumen.turnosTotal === 0 ? 'text-slate-500' : resumen.coberturaFlota >= 90 ? 'text-emerald-400' : resumen.coberturaFlota >= 75 ? 'text-amber-400' : 'text-red-400', sub: resumen.turnosTotal > 0 ? `${resumen.turnosCubiertos}/${resumen.turnosTotal} turnos` : 'Sin turnos programados' },
               { label: 'Sin conductor', value: resumen.turnosSinConductor, icon: Users, color: resumen.turnosSinConductor > 0 ? 'text-amber-400' : 'text-slate-500', sub: `${resumen.conductoresReservaLibres} reservas libres` },
               { label: 'Vehículos en taller', value: resumen.vehiculosEnTaller, icon: Bus, color: resumen.vehiculosEnTaller > 0 ? 'text-orange-400' : 'text-slate-500', sub: `${resumen.conductoresAusentes} ausentes hoy` },
               { label: 'Riesgo ingresos', value: `USD ${resumen.impactoIngresosRiesgoUSD}`, icon: TrendingDown, color: resumen.impactoIngresosRiesgoUSD > 0 ? 'text-red-400' : 'text-slate-500', sub: resumen.lineasEnRiesgoIMM.length > 0 ? `L${resumen.lineasEnRiesgoIMM.join(', ')} en riesgo IMM` : 'Sin riesgo IMM' },

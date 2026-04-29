@@ -49,7 +49,7 @@ import {
   Zap,
   Radio,
   Network,
-  Map,
+  Map as MapIcon,
 } from 'lucide-react';
 
 import { db } from '../../config/firebase';
@@ -1342,6 +1342,25 @@ export default function CEODashboardV7() {
             </div>
           </section>
 
+          {/* ─────────────── VALOR ESTIMADO / ROI ─────────────── */}
+          <Link
+            to="/dashboard/traffic/financiero"
+            className="flex items-center justify-between rounded-2xl border border-emerald-500/20 bg-emerald-900/10 hover:bg-emerald-900/20 px-6 py-4 transition-all group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-emerald-500/20 rounded-xl">
+                <TrendingUp className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-emerald-300">Análisis Financiero y ROI</div>
+                <div className="text-xs text-slate-400 mt-0.5">
+                  Calculadora de retorno, proyecciones económicas y gestión de costos operativos
+                </div>
+              </div>
+            </div>
+            <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
+          </Link>
+
           {/* ─────────────── MARKET SHARE ─────────────── */}
           <section className="rounded-2xl border border-white/5 bg-gradient-to-br from-slate-900/80 to-slate-900/30 p-5 shadow-xl">
             <div className="flex items-center justify-between mb-4">
@@ -1503,7 +1522,7 @@ export default function CEODashboardV7() {
                 { to: '/dashboard/traffic/shadow-radar', label: 'Radar Sombra', icon: Radio },
                 { to: '/dashboard/traffic/shadow-analytics', label: 'Shadow Analytics', icon: BarChart3 },
                 { to: '/dashboard/traffic/corridor-intelligence', label: 'Corredores', icon: Network },
-                { to: '/dashboard/traffic/corridor-map', label: 'Mapa Corredores', icon: Map },
+                { to: '/dashboard/traffic/corridor-map', label: 'Mapa Corredores', icon: MapIcon },
                 { to: '/dashboard/traffic/otp', label: 'OTP', icon: Activity },
                 { to: '/dashboard/traffic/autostats', label: 'Cumplimiento', icon: BarChart3 },
                 { to: '/dashboard/traffic/projections', label: 'Proyecciones', icon: TrendingUp },

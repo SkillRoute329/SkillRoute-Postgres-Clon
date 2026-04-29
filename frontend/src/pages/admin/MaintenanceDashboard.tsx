@@ -41,6 +41,8 @@ const STATUS_CONFIG: any = {
   PROGRAMADO: { label: 'Programado', color: 'bg-purple-500/20 text-purple-400', icon: Clock },
   DESCARTADO: { label: 'Descartado', color: 'bg-slate-500/20 text-slate-400', icon: AlertTriangle },
   FINALIZADO: { label: 'Finalizado', color: 'bg-green-500/20 text-green-400', icon: CheckCircle },
+  WithDamages: { label: 'Con daños', color: 'bg-orange-500/20 text-orange-400', icon: AlertTriangle },
+  OK: { label: 'OK', color: 'bg-emerald-500/20 text-emerald-400', icon: CheckCircle },
 };
 
 const MaintenanceDashboard = () => {

@@ -57,7 +57,7 @@ export const ConnectivityGuard = {
 
       return { status: 'ONLINE', message: 'Conexión Establecida.' };
     } catch (error: any) {
-      console.error('🛡️ ConnectivityGuard: Connection Check Failed.', error);
+      console.warn('🛡️ ConnectivityGuard: Connection Check Failed.', error?.message ?? error);
 
       if (error.code === 'permission-denied' || String(error).includes('permissions')) {
         // FAKE IT TIL YOU MAKE IT:
