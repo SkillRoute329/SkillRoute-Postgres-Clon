@@ -919,4 +919,6 @@ export { complianceAlertsTick } from './complianceAlertsTick';
 export { immOAuthCallback }        from './immOAuthCallback';
 export { immAuthorize }            from './immAuthorize';
 export { refreshVariantesTick, seedVariantes }        from './immVariantesService';
-export { immEta, seedParadas, refreshParadasTick }    from './immParadasService';
+export { immEta, seedParadas, refreshParadasTick, immParadasList } from './immParadasService';
+export { immBusesLive }                               from './immBusesService';
+export { gtfsImportTick, gtfsImportRun, gtfsDebug }   from './gtfsImporter';

@@ -35,21 +35,10 @@ async function fetchRemoteVersion(): Promise<AppVersion | null> {
 }
 
 async function hardReload(): Promise<void> {
+  // Deshabilitado — reactivar cambiando la línea de abajo a: window.location.reload();
   if (reloading) return;
   reloading = true;
-  try {
-    if ('caches' in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
-    }
-    if ('serviceWorker' in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map((r) => r.update().catch(() => {})));
-    }
-  } catch {
-    /* best-effort */
-  }
-  window.location.reload();
+  console.log('[appVersion] Nueva versión disponible — recarga automática en pausa (modo demo). Recargá manualmente para actualizar.');
 }
 
 export async function initAppVersionWatcher(): Promise<void> {

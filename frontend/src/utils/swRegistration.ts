@@ -22,13 +22,14 @@ export function registerServiceWorker(): void {
         reg.update().catch(() => {});
       }, 60_000);
 
-      // El SW nuevo activó y tomó control (skipWaiting+clientsClaim lo garantizan).
-      let refreshing = false;
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (refreshing) return;
-        refreshing = true;
-        window.location.reload();
-      });
+      // Deshabilitado: el controllerchange forzaba reload en cada deploy.
+      // Reactivar para producción normal descomentando el bloque de abajo.
+      // let refreshing = false;
+      // navigator.serviceWorker.addEventListener('controllerchange', () => {
+      //   if (refreshing) return;
+      //   refreshing = true;
+      //   window.location.reload();
+      // });
 
       reg.addEventListener('updatefound', () => {
         const nuevo = reg.installing;

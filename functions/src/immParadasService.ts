@@ -102,11 +102,8 @@ export const immEta = onRequest(
     let path = `/buses/busstops/${busstopId}/upcomingbuses?amountperline=${amountPerLine}`;
     if (lines.length) path += '&' + lines.map(l => `lines=${encodeURIComponent(l)}`).join('&');
 
-    const data = await immApiGet<EtaItem[]>(path, token);
-    if (!data) {
-      res.status(502).json({ ok: false, error: 'API IMM no disponible' });
-      return;
-    }
+    // data es null cuando la API IMM devuelve non-200 (parada sin líneas próximas = 404 normal)
+    const data = await immApiGet<EtaItem[]>(path, token) ?? [];
 
     res.json({
       ok: true,
@@ -150,5 +147,32 @@ export const seedParadas = onRequest(
       logger.error('[IMM Paradas] Error:', e);
       res.status(500).json({ ok: false, error: String(e) });
     }
+  },
+);
+
+// ─── Lista de paradas para el mapa (frontend) ────────────────────────────────
+
+/**
+ * GET /immParadasList
+ * Devuelve las 4938 paradas con lat/lng y calles. Cache 30 min.
+ * Usado por FleetMonitorModule para mostrar paradas en el mapa y lanzar ETA.
+ */
+export const immParadasList = onRequest(
+  { region: 'us-central1', cors: true },
+  async (_req, res) => {
+    const db   = getFirestore();
+    const snap = await db.collection(COLLECTION).get();
+    const paradas = snap.docs.map(d => {
+      const p = d.data() as BusStop;
+      return {
+        id:     Number(d.id),
+        lat:    p.location.coordinates[1],
+        lng:    p.location.coordinates[0],
+        calle1: p.street1,
+        calle2: p.street2,
+      };
+    });
+    res.set('Cache-Control', 'public, max-age=1800');
+    res.json({ ok: true, total: paradas.length, paradas });
   },
 );

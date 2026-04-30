@@ -28,36 +28,11 @@ export const useVersionCheck = () => {
           return;
         }
 
-        // Si las versiones difieren, forzamos actualización
+        // Si las versiones difieren, notificar pero NO recargar (modo demo activo)
         if (serverVersion !== localVersion) {
-          console.log(`🚀 New Version Detected: ${serverVersion} (Local: ${localVersion})`);
-
-          // 🎮 SIMULATION BYPASS: In Sim mode, just show UI but don't wipe data aggressively
-          const isSim = sessionStorage.getItem('TRANSFORMA_SIMULATION_MODE') === 'true';
-
-          setIsUpdating(true);
-
-          // 1. Limpiar Service Workers antiguos
-          if ('serviceWorker' in navigator) {
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            for (const registration of registrations) {
-              await registration.unregister();
-            }
-          }
-
-          // 2. Limpiar Caché de la Aplicación
-          if ('caches' in window) {
-            const keys = await caches.keys();
-            await Promise.all(keys.map((key) => caches.delete(key)));
-          }
-
-          // 3. Actualizar Referencia
+          console.log(`[version] Nueva versión disponible: ${serverVersion} — recarga automática en pausa. Recargá manualmente para actualizar.`);
           localStorage.setItem('app_version', serverVersion);
-
-          // 4. Recargar Página (dar tiempo a la animación de VersionGuard)
-          setTimeout(() => {
-            window.location.reload();
-          }, 3500);
+          // Reactivar para producción normal: window.location.reload();
         }
       } catch (error) {
         console.error('Version check failed:', error);
