@@ -17,8 +17,32 @@ import {
   Wifi,
   WifiOff,
   X,
-  Target // New icon for styling
+  Target,
+  Globe2,
 } from 'lucide-react';
+import { GtfsSchedulePanel } from '../../components/competition/GtfsSchedulePanel';
+import { collection, getDocs, query, limit, doc, getDoc } from 'firebase/firestore';
+import { db } from '../../config/firebase';
+
+interface OverlapRecord {
+  agencyA: string; lineaA: string; empresaA: string;
+  agencyB: string; lineaB: string; empresaB: string;
+  pctAInB: number; sharedKm: number; sameEmpresa: boolean;
+}
+
+const EMPRESAS_STM = [
+  { codigo: 70, nombre: 'UCOT',   color: 'amber'   },
+  { codigo: 50, nombre: 'CUTCSA', color: 'blue'    },
+  { codigo: 20, nombre: 'COME',   color: 'emerald' },
+  { codigo: 10, nombre: 'COETC',  color: 'violet'  },
+] as const;
+
+interface LineaCompetidor {
+  id: string; numeroLineaTexto: string;
+  activa: boolean; busesActivosUltimoSnapshot: number;
+  sublineas: string[]; destinos: string[];
+}
+
 const BRIDGE_PRIMARY = import.meta.env.PROD
   ? ''
   : (import.meta.env.VITE_BRIDGE_URL || 'http://localhost:3099');
@@ -220,6 +244,13 @@ export default function CompetitorIntelligencePage() {
   const [totalBuses, setTotalBuses] = useState(0);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
   const [loadingLineas, setLoadingLineas] = useState(true);
+  const [empresaSel, setEmpresaSel] = useState<number>(70);
+  const [lineasComp, setLineasComp] = useState<LineaCompetidor[]>([]);
+  const [loadingComp, setLoadingComp] = useState(false);
+  const [totalBusesComp, setTotalBusesComp] = useState(0);
+  const [selectedCompLinea, setSelectedCompLinea] = useState<LineaCompetidor | null>(null);
+  const [compOverlaps, setCompOverlaps] = useState<OverlapRecord[]>([]);
+  const [loadingOverlaps, setLoadingOverlaps] = useState(false);
 
   // Análisis por línea
   const [analysisMap, setAnalysisMap] = useState<Record<string, AnalysisData>>({});
@@ -332,12 +363,62 @@ export default function CompetitorIntelligencePage() {
       const data: AnalysisData = await res.json();
       setDetailData(data);
       setAnalysisMap((prev) => ({ ...prev, [linea]: data }));
+      // Cargar solapamiento DRO real en paralelo (reemplaza análisis de proximidad como fuente primaria)
+      void cargarOverlaps('70', linea);
     } catch (err) {
       console.error('Error cargando análisis:', err);
     } finally {
       setLoadingDetail(false);
     }
-  }, [activeBridge]);
+  }, [activeBridge]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Cargar líneas de empresa competidora (Firestore) ──────────
+  const cargarLineasCompetidor = async (codigo: number) => {
+    setLoadingComp(true);
+    setLineasComp([]);
+    try {
+      const snap = await getDoc(doc(db, 'competidores', `emp-${codigo}`));
+      if (!snap.exists()) { setLoadingComp(false); return; }
+      const data = snap.data();
+      const arr = (data.lineas ?? []) as LineaCompetidor[];
+      const activas = arr
+        .filter((l) => l.activa || l.busesActivosUltimoSnapshot > 0)
+        .sort((a, b) => b.busesActivosUltimoSnapshot - a.busesActivosUltimoSnapshot);
+      setLineasComp(activas);
+      setTotalBusesComp(activas.reduce((s, l) => s + (l.busesActivosUltimoSnapshot ?? 0), 0));
+    } catch (err) {
+      console.error('Error cargando competidor:', err);
+    } finally {
+      setLoadingComp(false);
+    }
+  };
+
+  useEffect(() => {
+    if (empresaSel !== 70) void cargarLineasCompetidor(empresaSel);
+  }, [empresaSel]); // eslint-disable-line
+
+  // ─── Solapamiento DRO para línea seleccionada ──────────────────
+  const cargarOverlaps = async (agencyId: string, linea: string) => {
+    setLoadingOverlaps(true);
+    setCompOverlaps([]);
+    try {
+      const snap = await getDocs(query(collection(db, 'corridor_overlap'), limit(3000)));
+      const relevant = snap.docs
+        .map((d) => d.data() as OverlapRecord)
+        .filter(
+          (d) =>
+            !d.sameEmpresa &&
+            ((d.agencyA === agencyId && d.lineaA === linea) ||
+             (d.agencyB === agencyId && d.lineaB === linea)),
+        )
+        .sort((a, b) => b.sharedKm - a.sharedKm);
+      setCompOverlaps(relevant);
+    } catch (err) {
+      console.error('Error cargando solapamiento:', err);
+    } finally {
+      setLoadingOverlaps(false);
+    }
+  };
 
   // ─── Estadísticas globales rápidas ──────────────────────────────────────
   const statsGlobales = (() => {
@@ -423,13 +504,17 @@ export default function CompetitorIntelligencePage() {
               <div className="flex items-center gap-1.5">
                 <Bus className="w-3.5 h-3.5 text-slate-500" />
                 <span className="text-xs text-slate-400">
-                  <span className="text-white font-bold">{totalBuses}</span> buses UCOT activos
+                  <span className="text-white font-bold">
+                    {empresaSel === 70 ? totalBuses : totalBusesComp}
+                  </span> buses {EMPRESAS_STM.find((e) => e.codigo === empresaSel)?.nombre} activos
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <TrendingUp className="w-3.5 h-3.5 text-slate-500" />
                 <span className="text-xs text-slate-400">
-                  <span className="text-white font-bold">{lineas.length}</span> líneas
+                  <span className="text-white font-bold">
+                    {empresaSel === 70 ? lineas.length : lineasComp.length}
+                  </span> líneas
                 </span>
               </div>
               <div className="flex items-center gap-1">
@@ -451,11 +536,105 @@ export default function CompetitorIntelligencePage() {
               )}
             </div>
           )}
+
+          {/* Selector de empresa */}
+          <div className="flex flex-wrap gap-1 mt-3 pt-2 border-t border-slate-800/40">
+            {EMPRESAS_STM.map((emp) => {
+              const active = empresaSel === emp.codigo;
+              const colorClass: Record<string, string> = {
+                amber:   'border-amber-500/60 text-amber-300 bg-amber-500/10',
+                blue:    'border-blue-500/60 text-blue-300 bg-blue-500/10',
+                emerald: 'border-emerald-500/60 text-emerald-300 bg-emerald-500/10',
+                violet:  'border-violet-500/60 text-violet-300 bg-violet-500/10',
+              };
+              return (
+                <button key={emp.codigo}
+                  onClick={() => { setEmpresaSel(emp.codigo); setSelectedLinea(null); setDetailData(null); }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                    active
+                      ? (colorClass[emp.color] ?? 'border-indigo-500/60 text-white bg-indigo-500/10')
+                      : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-700'
+                  }`}
+                >
+                  <Bus className="w-3 h-3" />
+                  {emp.nombre}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Grid de tarjetas */}
         <div className="flex-1 overflow-y-auto p-4">
-          {loadingLineas ? (
+          {empresaSel !== 70 ? (
+            /* ── Líneas de empresa competidora (Firestore) ── */
+            loadingComp ? (
+              <div className="grid grid-cols-2 gap-3">
+                {[1,2,3,4,5,6].map((i) => (
+                  <div key={i} className="h-24 rounded-xl bg-slate-800/50 animate-pulse" />
+                ))}
+              </div>
+            ) : lineasComp.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <Globe2 className="w-10 h-10 text-slate-600 mb-3" />
+                <p className="text-slate-500 text-sm">
+                  Sin datos para {EMPRESAS_STM.find((e) => e.codigo === empresaSel)?.nombre}
+                </p>
+                <button
+                  onClick={() => void cargarLineasCompetidor(empresaSel)}
+                  className="mt-3 text-xs text-indigo-400 hover:text-indigo-300"
+                >
+                  Reintentar
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {lineasComp.map((l) => {
+                  const colorMap: Record<number, { a: string; b: string; bg: string }> = {
+                    50: { a: 'text-blue-400',    b: 'border-blue-500/20',    bg: 'bg-blue-500/5'    },
+                    20: { a: 'text-emerald-400', b: 'border-emerald-500/20', bg: 'bg-emerald-500/5' },
+                    10: { a: 'text-violet-400',  b: 'border-violet-500/20',  bg: 'bg-violet-500/5'  },
+                  };
+                  const c = colorMap[empresaSel] ?? { a: 'text-slate-400', b: 'border-slate-700/50', bg: 'bg-slate-800/30' };
+                  return (
+                    <div
+                      key={l.id}
+                      onClick={() => {
+                        setSelectedCompLinea(l);
+                        setSelectedLinea(l.numeroLineaTexto);
+                        void cargarOverlaps(String(empresaSel), l.numeroLineaTexto);
+                      }}
+                      className={`rounded-xl border ${c.b} ${c.bg} p-3 flex flex-col gap-2 cursor-pointer hover:brightness-125 transition-all ${selectedLinea === l.numeroLineaTexto ? 'ring-1 ring-white/20' : ''}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={`text-lg font-black ${c.a}`}>Línea {l.numeroLineaTexto}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                          l.busesActivosUltimoSnapshot > 0
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : 'bg-slate-800 text-slate-600'
+                        }`}>
+                          {l.busesActivosUltimoSnapshot} buses
+                        </span>
+                      </div>
+                      {(l.destinos?.[0] || l.destinos?.[1]) && (
+                        <p className="text-[11px] text-slate-400 truncate leading-tight">
+                          {l.destinos[0]}{l.destinos[1] ? ` — ${l.destinos[1]}` : ''}
+                        </p>
+                      )}
+                      {l.sublineas?.length > 0 && (
+                        <p className="text-[10px] text-slate-600">
+                          Variantes: {l.sublineas.slice(0, 4).join(', ')}
+                        </p>
+                      )}
+                      <div className={`text-[10px] font-semibold ${l.activa ? 'text-emerald-500' : 'text-slate-700'}`}>
+                        {l.activa ? '● En servicio' : '○ Sin actividad'}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          ) : loadingLineas ? (
             <div className="grid grid-cols-2 gap-3">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div
@@ -495,6 +674,11 @@ export default function CompetitorIntelligencePage() {
               ))}
             </div>
           )}
+
+          {/* ── Horarios GTFS por empresa ─────────────────────────────────── */}
+          <div className="mt-6 pt-4 border-t border-slate-800/60">
+            <GtfsSchedulePanel />
+          </div>
         </div>
       </div>
 
@@ -504,8 +688,18 @@ export default function CompetitorIntelligencePage() {
           {/* Header detalle */}
           <div className="flex-none px-5 py-4 border-b border-slate-800/60 flex items-center justify-between">
             <div>
-              <h2 className="font-bold text-white text-lg">Análisis — Línea {selectedLinea}</h2>
-              {detailData?.timestamp && (
+              <h2 className="font-bold text-white text-lg">
+                {empresaSel !== 70
+                  ? `${EMPRESAS_STM.find((e) => e.codigo === empresaSel)?.nombre} — Línea ${selectedLinea}`
+                  : `Análisis — Línea ${selectedLinea}`}
+              </h2>
+              {empresaSel !== 70 && selectedCompLinea && (
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  {selectedCompLinea.busesActivosUltimoSnapshot} buses ·{' '}
+                  {selectedCompLinea.activa ? 'En servicio' : 'Sin actividad'}
+                </p>
+              )}
+              {empresaSel === 70 && detailData?.timestamp && (
                 <p className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
                   <Clock className="w-2.5 h-2.5" />
                   {new Date(detailData.timestamp).toLocaleTimeString('es-UY')}
@@ -514,17 +708,24 @@ export default function CompetitorIntelligencePage() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => cargarDetalle(selectedLinea)}
-                disabled={loadingDetail}
+                onClick={() => {
+                  if (empresaSel !== 70 && selectedCompLinea)
+                    void cargarOverlaps(String(empresaSel), selectedCompLinea.numeroLineaTexto);
+                  else if (selectedLinea)
+                    void cargarDetalle(selectedLinea);
+                }}
+                disabled={loadingDetail || loadingOverlaps}
                 className="text-slate-400 hover:text-white transition-colors"
                 title="Actualizar análisis"
               >
-                <RefreshCw className={`w-4 h-4 ${loadingDetail ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${(loadingDetail || loadingOverlaps) ? 'animate-spin' : ''}`} />
               </button>
               <button
                 onClick={() => {
                   setSelectedLinea(null);
                   setDetailData(null);
+                  setSelectedCompLinea(null);
+                  setCompOverlaps([]);
                 }}
                 className="text-slate-500 hover:text-slate-300 transition-colors"
                 title="Cerrar detalle"
@@ -536,7 +737,88 @@ export default function CompetitorIntelligencePage() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {loadingDetail ? (
+            {empresaSel !== 70 ? (
+              /* ── Panel análisis corredor para empresa competidora ── */
+              loadingOverlaps ? (
+                <div className="space-y-3">
+                  {[1,2,3,4].map((i) => <div key={i} className="h-14 rounded-xl bg-slate-800/60 animate-pulse" />)}
+                </div>
+              ) : selectedCompLinea ? (
+                <>
+                  {/* Info básica de la línea */}
+                  <div className="rounded-xl border border-slate-700/40 bg-slate-800/30 p-4 space-y-1.5">
+                    {selectedCompLinea.destinos?.length > 0 && (
+                      <p className="text-sm text-slate-300 leading-snug">
+                        {selectedCompLinea.destinos.join(' — ')}
+                      </p>
+                    )}
+                    {selectedCompLinea.sublineas?.length > 0 && (
+                      <p className="text-xs text-slate-500">
+                        Variantes: {selectedCompLinea.sublineas.join(', ')}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Solapamiento DRO con UCOT */}
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2">
+                      Corredores compartidos con UCOT
+                    </p>
+                    {compOverlaps.filter((o) => o.agencyA === '70' || o.agencyB === '70').length === 0 ? (
+                      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-center">
+                        <Shield className="w-7 h-7 text-emerald-500 mx-auto mb-1.5" />
+                        <p className="text-emerald-300 text-sm font-medium">Sin solapamiento con UCOT</p>
+                        <p className="text-slate-500 text-xs mt-0.5">No comparte corredor con ninguna línea UCOT</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {compOverlaps
+                          .filter((o) => o.agencyA === '70' || o.agencyB === '70')
+                          .slice(0, 12)
+                          .map((o, i) => {
+                            const isA = o.agencyA === String(empresaSel);
+                            const ucotLinea = isA ? o.lineaB : o.lineaA;
+                            const tier =
+                              o.pctAInB >= 20
+                                ? { label: 'T1', cls: 'bg-red-900/50 text-red-300 border-red-500/30' }
+                                : o.pctAInB >= 10
+                                ? { label: 'T2', cls: 'bg-amber-900/50 text-amber-300 border-amber-500/30' }
+                                : { label: 'T3', cls: 'bg-slate-800 text-slate-400 border-slate-600' };
+                            return (
+                              <div key={i} className="flex items-center gap-3 bg-slate-800/40 rounded-lg px-3 py-2.5">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-sm font-bold text-amber-400">L{ucotLinea}</span>
+                                    <span className="text-[10px] text-slate-500">UCOT</span>
+                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${tier.cls}`}>
+                                      {tier.label}
+                                    </span>
+                                  </div>
+                                  <div className="h-1.5 rounded-full bg-slate-700 overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300"
+                                      style={{ width: `${Math.min(o.pctAInB, 100)}%` }}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <p className="text-xs font-bold text-white">{Math.round(o.pctAInB)}%</p>
+                                  <p className="text-[10px] text-slate-600">{o.sharedKm?.toFixed(1)} km</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-700 text-center">
+                    DRO sobre shapes GTFS-RT STM 2026 · T1 ≥20% · T2 ≥10% · T3 &lt;10%
+                  </p>
+                </>
+              ) : (
+                <p className="text-slate-600 text-sm text-center py-12">Seleccioná una línea para ver el análisis</p>
+              )
+            ) : loadingDetail ? (
               <div className="space-y-3">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="h-20 rounded-xl bg-slate-800/60 animate-pulse" />
@@ -614,7 +896,57 @@ export default function CompetitorIntelligencePage() {
                   </div>
                 )}
 
-                {/* Lista de alertas */}
+                {/* ── Solapamiento de corredor DRO (fuente: shapes GTFS-RT) ── */}
+                {(loadingOverlaps || compOverlaps.length > 0) && (
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2 flex items-center gap-1.5">
+                      <TrendingUp className="w-3 h-3" /> Solapamiento real de corredor
+                    </p>
+                    {loadingOverlaps ? (
+                      <div className="space-y-1.5">
+                        {[1,2,3].map((i) => <div key={i} className="h-10 rounded-lg bg-slate-800/60 animate-pulse" />)}
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {compOverlaps.slice(0, 8).map((o, i) => {
+                          const isA = o.agencyA === '70';
+                          const rivalAgency = isA ? o.agencyB : o.agencyA;
+                          const rivalLinea  = isA ? o.lineaB  : o.lineaA;
+                          const rivalEmp    = isA ? o.empresaB : o.empresaA;
+                          const tier = o.pctAInB >= 20
+                            ? { label: 'T1', cls: 'bg-red-900/50 text-red-300 border-red-500/30' }
+                            : o.pctAInB >= 10
+                            ? { label: 'T2', cls: 'bg-amber-900/50 text-amber-300 border-amber-500/30' }
+                            : { label: 'T3', cls: 'bg-slate-800 text-slate-400 border-slate-600' };
+                          return (
+                            <div key={i} className="flex items-center gap-3 bg-slate-800/40 rounded-lg px-3 py-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <span className="text-xs font-bold text-white">L{rivalLinea}</span>
+                                  <span className="text-[10px] text-slate-500">{rivalEmp ?? `Emp${rivalAgency}`}</span>
+                                  <span className={`text-[9px] font-bold px-1 py-0.5 rounded border ${tier.cls}`}>{tier.label}</span>
+                                </div>
+                                <div className="h-1 rounded-full bg-slate-700 overflow-hidden">
+                                  <div className="h-full rounded-full bg-gradient-to-r from-red-500 to-amber-400"
+                                    style={{ width: `${Math.min(o.pctAInB, 100)}%` }} />
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-xs font-bold text-white">{Math.round(o.pctAInB)}%</p>
+                                <p className="text-[10px] text-slate-600">{o.sharedKm?.toFixed(1)} km</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <p className="text-[10px] text-slate-700 pt-1">
+                          Basado en shapes reales — solo rivales que comparten corredor
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Lista de alertas GPS en vivo (proximidad 300m) */}
                 {detailData.alertas?.length > 0 && (
                   <div className="space-y-2">
                     <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">

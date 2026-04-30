@@ -62,6 +62,14 @@ interface GtfsShapePoint {
   shape_pt_sequence: string;
 }
 
+interface GtfsStopTime {
+  trip_id: string;
+  arrival_time: string;
+  departure_time: string;
+  stop_id: string;
+  stop_sequence: string;
+}
+
 // ─── Download ─────────────────────────────────────────────────────────────────
 
 function fetchGtfsZip(token: string): Promise<Buffer> {
@@ -116,6 +124,7 @@ interface ImportResult {
   shapesIgnorados: number;
   routesCargadas: number;
   empresaResumen: Record<string, number>;
+  horariosEscritos: number;
   elapsedMs: number;
 }
 
@@ -144,18 +153,28 @@ async function runImport(): Promise<ImportResult> {
   }
   logger.info('[GTFS] Rutas totales en GTFS:', routeMap.size);
 
-  // trips.txt → shapeId : { routeId, directionId } (primer trip por shape)
+  // trips.txt → dos mapas: shapes (para trazados) + todos los trips (para horarios)
   const tripsTxt = await zip.file('trips.txt')?.async('text');
   if (!tripsTxt) throw new Error('trips.txt no encontrado en ZIP');
   const shapeToRoute = new Map<string, { routeId: string; directionId: number }>();
+  const tripToRoute = new Map<string, { routeId: string; directionId: number }>();
   for (const t of parseCsv<GtfsTrip>(tripsTxt)) {
-    if (!t.shape_id || shapeToRoute.has(t.shape_id)) continue;
-    shapeToRoute.set(t.shape_id, {
-      routeId: t.route_id,
-      directionId: parseInt(t.direction_id ?? '0', 10),
-    });
+    // Para shapes: primer trip por shape_id
+    if (t.shape_id && !shapeToRoute.has(t.shape_id)) {
+      shapeToRoute.set(t.shape_id, {
+        routeId: t.route_id,
+        directionId: parseInt(t.direction_id ?? '0', 10),
+      });
+    }
+    // Para horarios: TODOS los trips
+    if (t.trip_id) {
+      tripToRoute.set(t.trip_id, {
+        routeId: t.route_id,
+        directionId: parseInt(t.direction_id ?? '0', 10),
+      });
+    }
   }
-  logger.info('[GTFS] shape_ids en trips:', shapeToRoute.size);
+  logger.info('[GTFS] shape_ids en trips:', shapeToRoute.size, '| trips totales:', tripToRoute.size);
 
   // shapes.txt → shapeId : points[]
   const shapesTxt = await zip.file('shapes.txt')?.async('text');
@@ -229,16 +248,124 @@ async function runImport(): Promise<ImportResult> {
     logger.info(`[GTFS] Batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(docs.length / BATCH_SIZE)} → ${Math.min(i + BATCH_SIZE, docs.length)} shapes`);
   }
 
-  const elapsedMs = Date.now() - start;
   const shapesEscritos = docs.length;
+  logger.info('[GTFS] Shapes completas:', shapesEscritos, 'escritas,', shapesIgnorados, 'ignoradas');
 
-  logger.info('[GTFS] Importación completa:', shapesEscritos, 'shapes escritas,', shapesIgnorados, 'ignoradas,', elapsedMs, 'ms');
+  // ─── Horarios (stop_times.txt) ────────────────────────────────────────────
+  // Parsea la primera salida de cada viaje y agrega por (línea, dirección).
+  // Resultado: gtfs_horarios/{agencyId}_{routeShortName}_{directionId}
+  let horariosEscritos = 0;
+  try {
+    const stopTimesTxt = await zip.file('stop_times.txt')?.async('text');
+    if (stopTimesTxt) {
+      logger.info('[GTFS] Procesando stop_times.txt...');
+
+      // Para cada trip_id: registrar la salida del PRIMER stop (menor stop_sequence)
+      const tripFirstDep = new Map<string, { time: string; seq: number }>();
+      for (const st of parseCsv<GtfsStopTime>(stopTimesTxt)) {
+        if (!st.trip_id || !st.departure_time) continue;
+        const seq = parseInt(st.stop_sequence, 10);
+        const prev = tripFirstDep.get(st.trip_id);
+        if (!prev || seq < prev.seq) {
+          tripFirstDep.set(st.trip_id, { time: st.departure_time, seq });
+        }
+      }
+      logger.info('[GTFS] Viajes con primera salida:', tripFirstDep.size);
+
+      // Agrupar salidas por (routeShortName, directionId)
+      const horarioGrupos = new Map<string, string[]>(); // key → departures[]
+      for (const [tripId, dep] of tripFirstDep.entries()) {
+        const tripInfo = tripToRoute.get(tripId);
+        if (!tripInfo) continue;
+        const routeShortName = routeMap.get(tripInfo.routeId);
+        if (!routeShortName) continue;
+        const key = `${routeShortName}|${tripInfo.directionId}`;
+        if (!horarioGrupos.has(key)) horarioGrupos.set(key, []);
+        horarioGrupos.get(key)!.push(dep.time);
+      }
+
+      // Calcular métricas y escribir a Firestore
+      interface HorarioDoc { id: string; data: Record<string, unknown> }
+      const horarioDocs: HorarioDoc[] = [];
+
+      for (const [key, salidas] of horarioGrupos.entries()) {
+        const [routeShortName, dirStr] = key.split('|');
+        const directionId = parseInt(dirStr, 10);
+        const agencyNumId = lineaAgencyMap.get(routeShortName.toLowerCase()) ?? 0;
+        const empresa = agencyNumId ? (AGENCY_NAMES[agencyNumId] ?? `EMP_${agencyNumId}`) : 'STM';
+
+        // Normalizar y ordenar tiempos (GTFS permite >24:00 para servicios nocturnos)
+        const normalizados = salidas
+          .map(t => t.trim())
+          .filter(Boolean)
+          .sort();
+
+        const deduplicated = [...new Set(normalizados)];
+
+        // Calcular frecuencia promedio (minutos entre salidas)
+        let frecuenciaPromMin = 0;
+        if (deduplicated.length >= 2) {
+          const toMinutes = (t: string) => {
+            const [h, m] = t.split(':').map(Number);
+            return h * 60 + m;
+          };
+          const minutos = deduplicated.map(toMinutes);
+          const diffs: number[] = [];
+          for (let i = 1; i < minutos.length; i++) {
+            const d = minutos[i] - minutos[i - 1];
+            if (d > 0 && d < 180) diffs.push(d); // ignorar gaps >3h (fin de servicio)
+          }
+          frecuenciaPromMin = diffs.length > 0
+            ? Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length)
+            : 0;
+        }
+
+        const docId = `${agencyNumId}_${routeShortName}_${directionId}`;
+        horarioDocs.push({
+          id: docId,
+          data: {
+            agencyId: String(agencyNumId),
+            empresa,
+            linea: routeShortName,
+            directionId,
+            sentido: directionId === 0 ? 'IDA' : 'VUELTA',
+            salidas: deduplicated,
+            frecuenciaPromMin,
+            primerSalida: deduplicated[0] ?? '',
+            ultimaSalida: deduplicated[deduplicated.length - 1] ?? '',
+            totalViajes: deduplicated.length,
+            generadoEn,
+            fuente: 'GTFS_OFICIAL',
+          },
+        });
+      }
+
+      // Escribir en batches
+      const HORARIOS_COL = 'gtfs_horarios';
+      for (let i = 0; i < horarioDocs.length; i += BATCH_SIZE) {
+        const batch = db.batch();
+        for (const doc of horarioDocs.slice(i, i + BATCH_SIZE)) {
+          batch.set(db.collection(HORARIOS_COL).doc(doc.id), doc.data);
+        }
+        await batch.commit();
+      }
+      horariosEscritos = horarioDocs.length;
+      logger.info('[GTFS] Horarios escritos:', horariosEscritos);
+    }
+  } catch (schedErr) {
+    logger.warn('[GTFS] Error en horarios (shapes sí OK):', schedErr instanceof Error ? schedErr.message : String(schedErr));
+  }
+
+  const elapsedMs = Date.now() - start;
+
+  logger.info('[GTFS] Importación completa:', shapesEscritos, 'shapes,', horariosEscritos, 'horarios,', elapsedMs, 'ms');
   logger.info('[GTFS] Por empresa:', JSON.stringify(empresaResumen));
 
   await db.doc(HEALTH_DOC).set({
     status: shapesEscritos > 0 ? 'OK' : 'EMPTY',
     shapes_escritas: shapesEscritos,
     shapes_ignoradas: shapesIgnorados,
+    horarios_escritos: horariosEscritos,
     routes_cargadas: routeMap.size,
     empresa_resumen: empresaResumen,
     elapsed_ms: elapsedMs,
@@ -246,18 +373,18 @@ async function runImport(): Promise<ImportResult> {
     zip_bytes: zipBuffer.length,
   }, { merge: true });
 
-  return { shapesEscritos, shapesIgnorados, routesCargadas: routeMap.size, empresaResumen, elapsedMs };
+  return { shapesEscritos, shapesIgnorados, routesCargadas: routeMap.size, empresaResumen, horariosEscritos, elapsedMs };
 }
 
 // ─── Cloud Function exports ───────────────────────────────────────────────────
 
 /** Cron semanal: lunes 03:00 UTC (00:00 Uruguay). */
 export const gtfsImportTick = onSchedule(
-  { schedule: 'every monday 03:00', region: 'us-central1', timeoutSeconds: 540, memory: '1GiB' },
+  { schedule: 'every monday 03:00', region: 'us-central1', timeoutSeconds: 540, memory: '2GiB' },
   async () => {
     try {
       const result = await runImport();
-      logger.info('[GTFS] Tick OK:', result.shapesEscritos, 'shapes');
+      logger.info('[GTFS] Tick OK:', result.shapesEscritos, 'shapes,', result.horariosEscritos, 'horarios');
     } catch (err) {
       logger.error('[GTFS] Tick falló:', err instanceof Error ? err.message : String(err));
     }
@@ -265,11 +392,11 @@ export const gtfsImportTick = onSchedule(
 );
 
 /**
- * POST /gtfsImportRun — dispara la importación manual.
+ * POST /gtfsImportRun — dispara la importación manual (shapes + horarios).
  * No requiere body. Responde con el resultado completo.
  */
 export const gtfsImportRun = onRequest(
-  { region: 'us-central1', cors: true, timeoutSeconds: 540, memory: '1GiB' },
+  { region: 'us-central1', cors: true, timeoutSeconds: 540, memory: '2GiB' },
   async (_req, res) => {
     try {
       const result = await runImport();
