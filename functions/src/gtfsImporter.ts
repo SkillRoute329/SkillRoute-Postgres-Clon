@@ -198,9 +198,13 @@ async function runImport(): Promise<ImportResult> {
   const shapeToRoute = new Map<string, { routeId: string; directionId: number }>();
   const tripToRoute = new Map<string, { routeId: string; directionId: number }>();
   const routeToServiceIds = new Map<string, Set<string>>();
+  const shapeToFirstTrip = new Map<string, string>(); // shapeId → primer trip_id
   for (const t of parseCsv<GtfsTrip>(tripsTxt)) {
     if (t.shape_id && !shapeToRoute.has(t.shape_id)) {
       shapeToRoute.set(t.shape_id, { routeId: t.route_id, directionId: parseInt(t.direction_id ?? '0', 10) });
+    }
+    if (t.shape_id && t.trip_id && !shapeToFirstTrip.has(t.shape_id)) {
+      shapeToFirstTrip.set(t.shape_id, t.trip_id);
     }
     if (t.trip_id) {
       tripToRoute.set(t.trip_id, { routeId: t.route_id, directionId: parseInt(t.direction_id ?? '0', 10) });
@@ -210,7 +214,8 @@ async function runImport(): Promise<ImportResult> {
       routeToServiceIds.get(t.route_id)!.add(t.service_id);
     }
   }
-  logger.info('[GTFS] shape_ids:', shapeToRoute.size, '| trips:', tripToRoute.size);
+  const targetTripIds = new Set(shapeToFirstTrip.values());
+  logger.info('[GTFS] shape_ids:', shapeToRoute.size, '| trips:', tripToRoute.size, '| target trips:', targetTripIds.size);
 
   // shapes.txt → shapeId : points[]
   const shapesTxt = await readZipText(zip, 'shapes.txt');
@@ -272,18 +277,33 @@ async function runImport(): Promise<ImportResult> {
 
   // ─── Horarios (stop_times.txt) ─────────────────────────────────────────────
   let horariosEscritos = 0;
+  const shapeToStopIds = new Map<string, string[]>();
   try {
     const stopTimesTxt = await readZipText(zip, 'stop_times.txt');
     if (stopTimesTxt) {
       logger.info('[GTFS] Procesando stop_times.txt...');
       const tripFirstDep = new Map<string, { time: string; seq: number }>();
+      const tripOrderedStops = new Map<string, Array<{ stopId: string; seq: number }>>();
       for (const st of parseCsv<GtfsStopTime>(stopTimesTxt)) {
         if (!st.trip_id || !st.departure_time) continue;
         const seq = parseInt(st.stop_sequence, 10);
         const prev = tripFirstDep.get(st.trip_id);
         if (!prev || seq < prev.seq) tripFirstDep.set(st.trip_id, { time: st.departure_time, seq });
+        // Captura paradas ordenadas para los trips representativos de cada shape
+        if (st.stop_id && targetTripIds.has(st.trip_id)) {
+          if (!tripOrderedStops.has(st.trip_id)) tripOrderedStops.set(st.trip_id, []);
+          tripOrderedStops.get(st.trip_id)!.push({ stopId: st.stop_id, seq });
+        }
       }
-      logger.info('[GTFS] Viajes con primera salida:', tripFirstDep.size);
+      // shapeToStopIds: shapeId → [stop_id, ...] en orden de secuencia
+      for (const [shapeId, tripId] of shapeToFirstTrip) {
+        const stops = tripOrderedStops.get(tripId);
+        if (stops && stops.length > 0) {
+          stops.sort((a, b) => a.seq - b.seq);
+          shapeToStopIds.set(shapeId, stops.map(s => s.stopId));
+        }
+      }
+      logger.info('[GTFS] Viajes con primera salida:', tripFirstDep.size, '| Shapes con stopIds:', shapeToStopIds.size);
       const horarioGrupos = new Map<string, string[]>();
       for (const [tripId, dep] of tripFirstDep.entries()) {
         const ti = tripToRoute.get(tripId);
@@ -334,6 +354,21 @@ async function runImport(): Promise<ImportResult> {
       }
       horariosEscritos = horarioDocs.length;
       logger.info('[GTFS] Horarios escritos:', horariosEscritos);
+
+      // Actualizar shapes con stopIds (merge — añade el campo sin sobrescribir el resto)
+      if (shapeToStopIds.size > 0) {
+        const stopIdsUpdates = docs
+          .filter(d => shapeToStopIds.has(d.data['shapeId'] as string))
+          .map(d => ({ id: d.id, stopIds: shapeToStopIds.get(d.data['shapeId'] as string)! }));
+        for (let i = 0; i < stopIdsUpdates.length; i += BATCH_SIZE) {
+          const batch = db.batch();
+          for (const { id, stopIds } of stopIdsUpdates.slice(i, i + BATCH_SIZE)) {
+            batch.update(db.collection(SHAPES_COL).doc(id), { stopIds });
+          }
+          await batch.commit();
+        }
+        logger.info('[GTFS] Shapes actualizados con stopIds:', stopIdsUpdates.length);
+      }
     }
   } catch (err) {
     logger.warn('[GTFS] Error en horarios:', err instanceof Error ? err.message : String(err));

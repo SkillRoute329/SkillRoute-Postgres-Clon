@@ -1,16 +1,15 @@
 /**
  * navigationDataService — Wrapper para el Navegador estilo Waze.
  * ==============================================================
- * FUENTE ÚNICA: shapes estáticos en el bundle (shapesAllOperators.json).
- * Zero llamadas a Firestore en runtime — resuelve el bloqueo por
- * permission-denied en shapes_cross_operator (auditoría 2026-04-26).
- *
  * Política de fuentes (en orden de prioridad):
- *   1. crossOpShapesInjector — todos los operadores (JSON en el bundle).
- *   2. ucotShapesInjector — fallback adicional para UCOT (routeCache.json).
- *   3. linesService legacy — Firestore lineas_ucot como último recurso.
+ *   1. shapes_cross_operator (Firestore, GTFS oficial) — datos oficiales, actualizados semanalmente por gtfsImportTick.
+ *   2. crossOpShapesInjector — JSON bundle (fallback offline / DEMO_MODE sin auth).
+ *   3. ucotShapesInjector — routeCache UCOT (fallback adicional para UCOT).
+ *   4. linesService legacy — Firestore lineas_ucot como último recurso.
  */
 
+import { collection, getDocs, query, where, orderBy, limit, getDoc, doc } from 'firebase/firestore';
+import { db } from '../../../config/firebase';
 import type { LineaUCOT, SentidoLinea } from '../../../types/lineasUcot';
 import {
   getLineasByAgency,
@@ -130,20 +129,256 @@ function distribuirParadasSobreShape(
   });
 }
 
+// ─── Firestore shapes_cross_operator ────────────────────────────────────────
+
+const SHAPES_COL = 'shapes_cross_operator';
+const STOPS_COL = 'gtfs_stops';
+
+function mockTimestamp(d: Date): LineaUCOT['ultimaActualizacion'] {
+  return {
+    toDate: () => d,
+    toMillis: () => d.getTime(),
+    seconds: Math.floor(d.getTime() / 1000),
+    nanoseconds: 0,
+  } as unknown as LineaUCOT['ultimaActualizacion'];
+}
+
+interface FirestoreShape {
+  agencyId: string | number;
+  empresa: string;
+  linea: string;
+  routeLongName?: string;
+  variante?: number;
+  sentido: 'IDA' | 'VUELTA';
+  // GPS-derived docs usan { lat, lon }; GTFS importer usa { lat, lng }
+  points: Array<{ lat: number; lng?: number; lon?: number }>;
+  stopIds?: string[]; // IDs ordenados de paradas GTFS (pobla gtfsImporter.ts semanal)
+  fuente?: string;
+  generadoEn?: unknown;
+}
+
+function firestoreShapeToLinea(
+  docId: string,
+  data: FirestoreShape,
+  codigoNav: string,
+  agencyId: number,
+): LineaUCOT {
+  const ahora = new Date();
+  const recorrido: PuntoLatLng[] = data.points.map((p) => ({
+    lat: p.lat,
+    lng: p.lng ?? p.lon ?? 0,
+  }));
+  const baseCodigo = String(data.linea ?? '').trim();
+  const archetype = (LINE_ARCHETYPES as Record<string, { headers?: string[] }>)[baseCodigo];
+  const nombres = archetype?.headers ?? [];
+  const paradas = distribuirParadasSobreShape(recorrido, nombres, data.sentido === 'VUELTA');
+
+  return {
+    codigo: codigoNav,
+    numeroAPI: baseCodigo,
+    nombre: `${baseCodigo} · ${data.sentido}`,
+    empresa: data.empresa,
+    sentido: data.sentido as SentidoLinea,
+    terminalSalida: undefined,
+    terminalLlegada: undefined,
+    varianteIdx: data.sentido === 'VUELTA' ? 1 : 0,
+    paradas,
+    recorrido,
+    desviosFijos: [],
+    desviosTemporales: [],
+    ultimaActualizacion: mockTimestamp(ahora),
+    _docId: docId,
+  } as unknown as LineaUCOT;
+}
+
+/** Lista todas las líneas de un operador desde Firestore (shapes_cross_operator). */
+async function firestoreLineas(agencyId: number): Promise<LineaUCOTResumen[]> {
+  try {
+    const q = query(
+      collection(db, SHAPES_COL),
+      where('agencyId', '==', String(agencyId)),
+      orderBy('linea'),
+      limit(1500),
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return [];
+
+    // Deduplicar por linea+sentido (pueden existir docs con naming distinto)
+    const seen = new Set<string>();
+    const result: LineaUCOTResumen[] = [];
+    for (const d of snap.docs) {
+      const data = d.data() as FirestoreShape;
+      const sentido: 'IDA' | 'VUELTA' = data.sentido ?? 'IDA';
+      const key = `${String(data.linea).toLowerCase()}-${sentido}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const codigoNav = sentido === 'VUELTA' ? `${data.linea}b` : `${data.linea}a`;
+      const nombreDisplay = data.routeLongName
+        ? `${data.linea} — ${data.routeLongName}`
+        : `${data.linea} · ${sentido}`;
+      result.push({
+        id: d.id,
+        codigo: codigoNav,
+        nombre: nombreDisplay,
+        empresa: data.empresa,
+        sentido,
+        origen: data.routeLongName?.split(/[-–—]/)[0]?.trim(),
+        destino: data.routeLongName?.split(/[-–—]/)[1]?.trim(),
+      } as LineaUCOTResumen);
+    }
+    return result;
+  } catch {
+    return [];
+  }
+}
+
+/** Convierte datos crudos de Firestore en LineaUCOT — con manejo de errores aislado. */
+function shapeRawToLinea(
+  docId: string,
+  raw: Record<string, unknown>,
+  sentido: 'IDA' | 'VUELTA',
+  codigo: string,
+): LineaUCOT | null {
+  try {
+    const ahora = new Date();
+    const pts = Array.isArray(raw['points']) ? (raw['points'] as Array<Record<string, number>>) : [];
+    if (pts.length < 3) return null;
+    const recorrido: PuntoLatLng[] = pts.map((p) => ({
+      lat: Number(p['lat']) || 0,
+      lng: Number(p['lng'] ?? p['lon']) || 0,
+    }));
+    const linea = String(raw['linea'] ?? '').trim();
+    const empresa = String(raw['empresa'] ?? '');
+    const archetype = (LINE_ARCHETYPES as Record<string, { headers?: string[] } | undefined>)[linea];
+    const nombres = archetype?.headers ?? [];
+    const paradas = distribuirParadasSobreShape(recorrido, nombres, sentido === 'VUELTA');
+    return {
+      codigo,
+      numeroAPI: linea,
+      nombre: `${linea} · ${sentido}`,
+      empresa,
+      sentido: sentido as SentidoLinea,
+      terminalSalida: undefined,
+      terminalLlegada: undefined,
+      varianteIdx: sentido === 'VUELTA' ? 1 : 0,
+      paradas,
+      recorrido,
+      desviosFijos: [],
+      desviosTemporales: [],
+      ultimaActualizacion: mockTimestamp(ahora),
+      _docId: docId,
+    } as unknown as LineaUCOT;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Enriquece las paradas de una línea con nombres y coordenadas reales
+ * desde gtfs_stops. Si el shape doc tiene stopIds (poblado por gtfsImporter),
+ * las paradas genéticas de distribuirParadasSobreShape se reemplazan con
+ * las paradas oficiales del GTFS.
+ */
+async function enrichParadasFromStops(linea: LineaUCOT, stopIds: string[]): Promise<LineaUCOT> {
+  if (!stopIds.length) return linea;
+  try {
+    const CHUNK = 10;
+    const fetched: ParadaUcot[] = [];
+    for (let i = 0; i < stopIds.length; i += CHUNK) {
+      const chunk = stopIds.slice(i, i + CHUNK);
+      const snaps = await Promise.all(chunk.map(id => getDoc(doc(db, STOPS_COL, id))));
+      for (const snap of snaps) {
+        if (!snap.exists()) continue;
+        const d = snap.data();
+        fetched.push({
+          id: snap.id,
+          nombre: String(d['nombre'] || snap.id),
+          lat: Number(d['lat']) || 0,
+          lng: Number(d['lng']) || 0,
+          orden: 0,
+        } as ParadaUcot);
+      }
+    }
+    // Reordenar según la secuencia original de stopIds
+    const paradas: ParadaUcot[] = [];
+    for (let i = 0; i < stopIds.length; i++) {
+      const p = fetched.find(f => f.id === stopIds[i]);
+      if (p) paradas.push({ ...p, orden: i + 1 });
+    }
+    if (paradas.length < 2) return linea;
+    return { ...linea, paradas };
+  } catch {
+    return linea; // fallback silencioso — mejor paradas genéricas que error
+  }
+}
+
+/** Obtiene el shape de una línea/sentido desde Firestore. */
+async function firestoreLineaData(agencyId: number, codigo: string): Promise<LineaUCOT | null> {
+  const baseCodigo = String(codigo).replace(/[ab]$/i, '').trim();
+  const sentido: 'IDA' | 'VUELTA' = String(codigo).toLowerCase().endsWith('b') ? 'VUELTA' : 'IDA';
+  const directionId = sentido === 'VUELTA' ? 1 : 0;
+
+  // Prueba los dos formatos de docId conocidos: underscore (GTFS/GPS) y dash (legacy)
+  const candidateIds = [
+    `${agencyId}_${baseCodigo}_${directionId}`,  // 50_100_0
+    `${agencyId}-${baseCodigo}-${sentido}`,       // 50-100-IDA
+  ];
+
+  for (const tryId of candidateIds) {
+    try {
+      const snap = await getDoc(doc(db, SHAPES_COL, tryId));
+      if (!snap.exists()) continue;
+      const raw = snap.data() as Record<string, unknown>;
+      const result = shapeRawToLinea(tryId, raw, sentido, codigo);
+      if (!result) continue;
+      const stopIds = Array.isArray(raw['stopIds']) ? (raw['stopIds'] as string[]) : [];
+      return stopIds.length >= 2 ? enrichParadasFromStops(result, stopIds) : result;
+    } catch { continue; }
+  }
+
+  // Query fallback: busca por agencyId + linea (índice 2 campos existente), filtra sentido en JS
+  try {
+    const q = query(
+      collection(db, SHAPES_COL),
+      where('agencyId', '==', String(agencyId)),
+      where('linea', '==', baseCodigo),
+      limit(6),
+    );
+    const qs = await getDocs(q);
+    for (const d of qs.docs) {
+      try {
+        const raw = d.data() as Record<string, unknown>;
+        const docSentido = String(raw['sentido'] ?? '');
+        if (docSentido && docSentido !== sentido) continue;
+        const result = shapeRawToLinea(d.id, raw, sentido, codigo);
+        if (!result) continue;
+        const stopIds = Array.isArray(raw['stopIds']) ? (raw['stopIds'] as string[]) : [];
+        return stopIds.length >= 2 ? enrichParadasFromStops(result, stopIds) : result;
+      } catch { continue; }
+    }
+  } catch { /* fallthrough */ }
+
+  return null;
+}
+
 // ─── API pública ─────────────────────────────────────────────────────────────
 
 /**
  * Catálogo de líneas para el dropdown del Navegador.
- * Prioridad: crossOpShapesInjector > ucotShapesInjector (UCOT) > linesService legacy.
+ * Prioridad: shapes_cross_operator (Firestore GTFS) > crossOpShapesInjector (JSON) > ucotShapesInjector > linesService legacy.
  */
 export async function getNavigationLineas(agencyId: number): Promise<LineaUCOTResumen[]> {
-  // Fuente 1: shapes estáticos cross-operator (todos los operadores)
+  // Fuente 1: shapes_cross_operator Firestore (GTFS oficial, actualizado semanalmente)
+  const desdeFirestore = await firestoreLineas(agencyId);
+  if (desdeFirestore.length > 0) return desdeFirestore;
+
+  // Fuente 2: shapes estáticos cross-operator (JSON bundle — fallback offline/DEMO_MODE)
   const crossOp = await listCrossOpLineasInyectadas(agencyId);
 
-  // Fuente 2: routeCache UCOT (complementa para UCOT)
+  // Fuente 3: routeCache UCOT (complementa para UCOT)
   const inyectadas = agencyId === 70 ? listUCOTLineasInyectadas().map(inyectadaToResumen) : [];
 
-  // Fuente 3: legacy Firestore (solo si las estáticas no cubren nada)
+  // Fuente 4: legacy Firestore lineas_ucot (último recurso)
   let legacy: LineaUCOTResumen[] = [];
   if (crossOp.length === 0 && inyectadas.length === 0) {
     legacy = await getLineasByAgency(agencyId).catch(() => []);
@@ -168,23 +403,27 @@ export async function getNavigationLineas(agencyId: number): Promise<LineaUCOTRe
 
 /**
  * Detalle de línea (recorrido + paradas) — dato que consume el RouteMap.
- * Prioridad: crossOpShapesInjector > ucotShapesInjector (UCOT) > linesService legacy.
+ * Prioridad: shapes_cross_operator (Firestore GTFS) > crossOpShapesInjector (JSON) > ucotShapesInjector > linesService legacy.
  */
 export async function getNavigationLineaData(
   agencyId: number,
   codigo: string,
 ): Promise<LineaUCOT | null> {
-  // 1. Shapes estáticos cross-operator
+  // 1. shapes_cross_operator Firestore (GTFS oficial)
+  const desdeFirestore = await firestoreLineaData(agencyId, codigo);
+  if (desdeFirestore) return desdeFirestore;
+
+  // 2. Shapes estáticos cross-operator (JSON bundle fallback)
   const desdeShapes = await getCrossOpLineaInyectada(agencyId, codigo);
   if (desdeShapes && desdeShapes.recorrido.length >= 3) return desdeShapes;
 
-  // 2. routeCache estático UCOT
+  // 3. routeCache estático UCOT
   if (agencyId === 70) {
     const inj = getUCOTLineaInyectada(codigo);
     if (inj && inj.recorrido.length >= 3) return inyectadaToLineaUCOT(inj);
   }
 
-  // 3. Legacy linesService (Firestore lineas_ucot)
+  // 4. Legacy linesService (Firestore lineas_ucot)
   try {
     return await getLineaDataByAgency(agencyId, codigo);
   } catch {
