@@ -231,17 +231,41 @@ service cloud.firestore {
     }
 
     match /shapes_cross_operator/{document=**} {
-      // Lectura: conductores, tráfico, admin (Navegador + ShadowRadar + análisis cross-op).
-      // Escritura: solo admin SDK (scraper STM + shapeBuilder Cloud Function).
-      allow get, list: if isAuthenticated();
+      // Lectura pública — datos de rutas oficiales IMM, no contienen info sensible.
+      // Escritura: solo admin SDK (gtfsImporter + shapeBuilder Cloud Function).
+      allow get, list: if true;
       allow write: if false;
     }
 
     match /gtfs_horarios/{document=**} {
       // Horarios oficiales GTFS (importados semanalmente por gtfsImporter).
-      // Lectura: cualquier usuario autenticado (análisis competitivo, ShadowRadar).
+      // Lectura pública — datos de horarios oficiales IMM, no contienen info sensible.
       // Escritura: solo Cloud Function (Admin SDK, sin auth).
-      allow get, list: if isAuthenticated();
+      allow get, list: if true;
+      allow write: if false;
+    }
+
+    match /gtfs_calendar/{document=**} {
+      // Calendario GTFS por línea — patrones hábil/sábado/domingo y vigencias.
+      // Lectura pública — datos de servicio oficiales IMM, sin información sensible.
+      // Escritura: solo Cloud Function (Admin SDK, sin auth).
+      allow get, list: if true;
+      allow write: if false;
+    }
+
+    match /gtfs_stops/{document=**} {
+      // Paradas GTFS — nombre, lat/lng y accesibilidad de las ~4938 paradas del STM.
+      // Lectura pública — datos de infraestructura oficiales IMM, sin información sensible.
+      // Escritura: solo Cloud Function (Admin SDK, sin auth).
+      allow get, list: if true;
+      allow write: if false;
+    }
+
+    match /gtfs_fares/{document=**} {
+      // Tarifas GTFS — precio por línea/empresa en moneda local.
+      // Lectura pública — datos tarifarios oficiales IMM, sin información sensible.
+      // Escritura: solo Cloud Function (Admin SDK, sin auth).
+      allow get, list: if true;
       allow write: if false;
     }
 

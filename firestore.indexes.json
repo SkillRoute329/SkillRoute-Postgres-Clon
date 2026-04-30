@@ -1,6 +1,22 @@
 {
   "indexes": [
     {
+      "collectionGroup": "gtfs_horarios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "linea", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "gtfs_horarios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "linea", "order": "ASCENDING" },
+        { "fieldPath": "agencyId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "service_matrices",
       "queryScope": "COLLECTION",
       "fields": [
@@ -318,6 +334,22 @@
       ]
     },
     {
+      "collectionGroup": "gtfs_calendar",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "linea", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "gtfs_fares",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyIds", "order": "ASCENDING" },
+        { "fieldPath": "fareId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "shapes_cross_operator",
       "queryScope": "COLLECTION",
       "fields": [
@@ -330,6 +362,15 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "sentido", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "shapes_cross_operator",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "linea", "order": "ASCENDING" },
         { "fieldPath": "sentido", "order": "ASCENDING" }
       ]
     }
