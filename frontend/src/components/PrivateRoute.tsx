@@ -32,7 +32,7 @@ function hasRequiredRole(userRole: string | undefined, allowed: string[]): boole
 
 // ─── Modo demo (acceso libre sin login) ──────────────────────────────────────
 // Cambiar a false para reactivar autenticación obligatoria.
-const DEMO_MODE = true;
+const DEMO_MODE = false;
 
 export default function PrivateRoute({ children, roles = [] }: PrivateRouteProps) {
   const { isAuthenticated, user, isLoading } = useAuth();
