@@ -135,7 +135,7 @@ function PanelOperacional() {
           <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Flota GPS en tiempo real</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'UCOT en vía', value: fleet.totalUCOT, color: 'text-amber-400' },
+              { label: 'Flota propia en vía', value: fleet.totalUCOT, color: 'text-amber-400' },
               { label: 'Rivales activos', value: fleet.totalRivales, color: 'text-blue-400' },
               { label: 'Líneas operando', value: fleet.lineasActivas, color: 'text-emerald-400' },
               { label: 'Alertas bunching', value: fleet.bunchingPares, color: fleet.bunchingPares > 0 ? 'text-red-400' : 'text-slate-500' },

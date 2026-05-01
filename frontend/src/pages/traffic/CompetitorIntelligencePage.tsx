@@ -245,6 +245,7 @@ export default function CompetitorIntelligencePage() {
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
   const [loadingLineas, setLoadingLineas] = useState(true);
   const [empresaSel, setEmpresaSel] = useState<number>(70);
+  const empresaNombre = EMPRESAS_STM.find(e => e.codigo === empresaSel)?.nombre ?? 'propia';
   const [lineasComp, setLineasComp] = useState<LineaCompetidor[]>([]);
   const [loadingComp, setLoadingComp] = useState(false);
   const [totalBusesComp, setTotalBusesComp] = useState(0);
@@ -646,7 +647,7 @@ export default function CompetitorIntelligencePage() {
           ) : lineas.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <AlertTriangle className="w-12 h-12 text-amber-400 mb-4" />
-              <p className="text-slate-400 text-sm">No hay buses UCOT activos en este momento.</p>
+              <p className="text-slate-400 text-sm">No hay buses {empresaNombre} activos en este momento.</p>
               <p className="text-slate-600 text-xs mt-1">
                 La API STM puede no tener datos en este horario.
               </p>
@@ -759,16 +760,16 @@ export default function CompetitorIntelligencePage() {
                     )}
                   </div>
 
-                  {/* Solapamiento DRO con UCOT */}
+                  {/* Solapamiento DRO con empresa propia */}
                   <div>
                     <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2">
-                      Corredores compartidos con UCOT
+                      Corredores compartidos con {empresaNombre}
                     </p>
                     {compOverlaps.filter((o) => o.agencyA === '70' || o.agencyB === '70').length === 0 ? (
                       <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-center">
                         <Shield className="w-7 h-7 text-emerald-500 mx-auto mb-1.5" />
-                        <p className="text-emerald-300 text-sm font-medium">Sin solapamiento con UCOT</p>
-                        <p className="text-slate-500 text-xs mt-0.5">No comparte corredor con ninguna línea UCOT</p>
+                        <p className="text-emerald-300 text-sm font-medium">Sin solapamiento con {empresaNombre}</p>
+                        <p className="text-slate-500 text-xs mt-0.5">No comparte corredor con ninguna línea {empresaNombre}</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -789,7 +790,7 @@ export default function CompetitorIntelligencePage() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
                                     <span className="text-sm font-bold text-amber-400">L{ucotLinea}</span>
-                                    <span className="text-[10px] text-slate-500">UCOT</span>
+                                    <span className="text-[10px] text-slate-500">{empresaNombre}</span>
                                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${tier.cls}`}>
                                       {tier.label}
                                     </span>
@@ -850,7 +851,7 @@ export default function CompetitorIntelligencePage() {
                         <p className="text-2xl font-black text-white">
                           {detailData.resumen.totalBusesUcot}
                         </p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">Buses UCOT</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Buses {empresaNombre}</p>
                       </div>
                       <div className="bg-slate-900/40 rounded-lg p-3 text-center">
                         <p className="text-2xl font-black text-white">
@@ -958,10 +959,10 @@ export default function CompetitorIntelligencePage() {
                         key={idx}
                         className="bg-slate-800/60 border border-slate-700/40 rounded-xl p-3 space-y-2"
                       >
-                        {/* Bus UCOT */}
+                        {/* Bus propio */}
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full bg-indigo-500 flex-none" />
-                          <span className="text-xs text-slate-400">Bus UCOT</span>
+                          <span className="text-xs text-slate-400">Bus {empresaNombre}</span>
                           <span className="text-xs font-bold text-white ml-auto">
                             #{alerta.busUcot.codigoBus}
                           </span>

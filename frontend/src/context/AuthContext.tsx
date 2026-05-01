@@ -149,7 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-950 text-white">
         <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <h2 className="text-xl font-bold tracking-tight">Iniciando Sistema UCOT...</h2>
+        <h2 className="text-xl font-bold tracking-tight">Iniciando SkillRoute...</h2>
         <p className="text-slate-500 text-sm mt-2">Verificando credenciales seguras</p>
       </div>
     );

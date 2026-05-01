@@ -229,7 +229,7 @@ export default function AiCopilotChat({ className, placeholder, initialContext }
           <Bot className="w-5 h-5 text-indigo-400" />
         </div>
         <div className="flex-1">
-          <h3 className="text-sm font-semibold text-white">Copiloto Táctico UCOT</h3>
+          <h3 className="text-sm font-semibold text-white">Copiloto Táctico SkillRoute</h3>
           <p className="text-xs text-slate-400">llama3.1:8b · local</p>
         </div>
         {lastLatency !== null && (
