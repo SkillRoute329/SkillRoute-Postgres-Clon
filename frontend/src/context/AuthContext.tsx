@@ -1,5 +1,5 @@
 import { auth } from '../config/firebase';
-import { onAuthStateChanged, setPersistence, browserLocalPersistence, signInAnonymously } from 'firebase/auth';
+import { onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { type User } from '../services/api';
@@ -43,14 +43,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      let waitingForAnonAuth = false;
       try {
         if (firebaseUser) {
-          const isAnon = firebaseUser.isAnonymous;
-          console.log(isAnon
-            ? '👤 [AuthContext] Sesión anónima activa — acceso Firestore habilitado'
-            : '✅ [AuthContext] Firebase Session Restored:' + firebaseUser.email,
-          );
+          console.log('✅ [AuthContext] Firebase Session Restored:', firebaseUser.email);
           const freshToken = await firebaseUser.getIdToken();
 
           // Intentar recuperar rol previo de localStorage para no degradarlo
@@ -68,75 +63,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: firebaseUser.email || undefined,
           };
 
-          if (!isAnon) {
-            /**
-             * Workaround conocido de Firebase: onAuthStateChanged se dispara
-             * apenas hay token, pero el SDK Firestore puede tardar unos
-             * milisegundos en propagar la auth a sus listeners. Si llamamos
-             * getDoc inmediatamente, devuelve permission-denied aunque las
-             * rules permiten read. Solución: retry con backoff exponencial
-             * si vemos permission-denied. Max 3 intentos = ~700ms total.
-             */
-            try {
-              const userDocRef = doc(db, 'users', firebaseUser.uid);
-              let userSnap: Awaited<ReturnType<typeof getDoc>> | null = null;
-              let lastErr: unknown = null;
-              for (let attempt = 0; attempt < 3; attempt++) {
-                try {
-                  userSnap = await getDoc(userDocRef);
-                  break;
-                } catch (err) {
-                  lastErr = err;
-                  const code = (err as { code?: string })?.code ?? '';
-                  if (code === 'permission-denied' && attempt < 2) {
-                    // Backoff: 100ms, 250ms (suma <400ms en peor caso)
-                    await new Promise((r) => setTimeout(r, 100 + attempt * 150));
-                    continue;
-                  }
-                  throw err;
+          /**
+           * Workaround conocido de Firebase: onAuthStateChanged se dispara
+           * apenas hay token, pero el SDK Firestore puede tardar unos
+           * milisegundos en propagar la auth a sus listeners. Si llamamos
+           * getDoc inmediatamente, devuelve permission-denied aunque las
+           * rules permiten read. Solución: retry con backoff exponencial
+           * si vemos permission-denied. Max 3 intentos = ~700ms total.
+           */
+          try {
+            const userDocRef = doc(db, 'users', firebaseUser.uid);
+            let userSnap: Awaited<ReturnType<typeof getDoc>> | null = null;
+            let lastErr: unknown = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+              try {
+                userSnap = await getDoc(userDocRef);
+                break;
+              } catch (err) {
+                lastErr = err;
+                const code = (err as { code?: string })?.code ?? '';
+                if (code === 'permission-denied' && attempt < 2) {
+                  // Backoff: 100ms, 250ms (suma <400ms en peor caso)
+                  await new Promise((r) => setTimeout(r, 100 + attempt * 150));
+                  continue;
                 }
+                throw err;
               }
-
-              if (userSnap?.exists()) {
-                const userData = userSnap.data() as Record<string, any>;
-                finalUser = {
-                  ...finalUser,
-                  internalNumber: userData?.datos_empresa?.legajo || '----',
-                  firstName: userData?.datos_personales?.nombre || finalUser.firstName,
-                  lastName: userData?.datos_personales?.apellido || '',
-                  role: userData?.rol || prevRole || 'USER',
-                };
-              } else if (lastErr) {
-                throw lastErr;
-              }
-            } catch (dbError) {
-              // Mantener warn para no romper login si Firestore tarda mucho.
-              // El localStorage cache (tf_user) cubre el rol mientras tanto.
-              console.warn('[AuthContext] DB Profile no disponible tras retries; usando cache local:', dbError);
             }
+
+            if (userSnap?.exists()) {
+              const userData = userSnap.data() as Record<string, any>;
+              finalUser = {
+                ...finalUser,
+                internalNumber: userData?.datos_empresa?.legajo || '----',
+                firstName: userData?.datos_personales?.nombre || finalUser.firstName,
+                lastName: userData?.datos_personales?.apellido || '',
+                role: userData?.rol || prevRole || 'USER',
+              };
+            } else if (lastErr) {
+              throw lastErr;
+            }
+          } catch (dbError) {
+            // Mantener warn para no romper login si Firestore tarda mucho.
+            // El localStorage cache (tf_user) cubre el rol mientras tanto.
+            console.warn('[AuthContext] DB Profile no disponible tras retries; usando cache local:', dbError);
           }
 
           setToken(freshToken);
           setUser(finalUser);
-          if (!isAnon) {
-            localStorage.setItem('tf_token', freshToken);
-            localStorage.setItem('tf_user', JSON.stringify(finalUser));
-          }
+          localStorage.setItem('tf_token', freshToken);
+          localStorage.setItem('tf_user', JSON.stringify(finalUser));
         } else if (!localStorage.getItem('tf_token')) {
-          // Sin sesión → auth anónima para que Firestore rules isAuthenticated() pasen
-          // (DEMO_MODE: acceso sin login; el spinner sigue hasta que el anónimo se establezca)
-          waitingForAnonAuth = true;
-          console.log('💤 [AuthContext] No active session — initiating anonymous sign-in.');
-          signInAnonymously(auth).catch((err) => {
-            console.warn('[AuthContext] Anonymous sign-in failed:', err.code);
-            setInitializing(false); // no dejar colgado el spinner si el anónimo falla
-          });
+          // Solo limpiar si no hay un token de backend manual
+          console.log('💤 [AuthContext] No active session found.');
+          setToken(null);
+          setUser(null);
         }
       } catch (error) {
         console.error('❌ [AuthContext] Critical Auth Error:', error);
       } finally {
-        // No desmontar el spinner si estamos esperando el anónimo — lo desactiva la próxima llamada
-        if (!waitingForAnonAuth) setInitializing(false);
+        setInitializing(false);
       }
     });
 
