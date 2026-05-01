@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import HrrDashboard from './components/HrrDashboard';
 import {
   AlertTriangle,
   RefreshCw,
@@ -246,6 +247,7 @@ export default function CompetitorIntelligencePage() {
   const [loadingLineas, setLoadingLineas] = useState(true);
   const [empresaSel, setEmpresaSel] = useState<number>(70);
   const empresaNombre = EMPRESAS_STM.find(e => e.codigo === empresaSel)?.nombre ?? 'propia';
+  const [activeTab, setActiveTab] = useState<'intelligence' | 'hrr'>('intelligence');
   const [lineasComp, setLineasComp] = useState<LineaCompetidor[]>([]);
   const [loadingComp, setLoadingComp] = useState(false);
   const [totalBusesComp, setTotalBusesComp] = useState(0);
@@ -488,6 +490,21 @@ export default function CompetitorIntelligencePage() {
                   <span className="font-semibold tracking-wide">ENLACE ACTIVO</span>
                 </span>
               )}
+              {/* Tabs */}
+              <div className="flex items-center gap-1 bg-slate-800/60 border border-slate-700/50 rounded-xl p-1">
+                <button
+                  onClick={() => setActiveTab('intelligence')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === 'intelligence' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Inteligencia
+                </button>
+                <button
+                  onClick={() => setActiveTab('hrr')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === 'hrr' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                >
+                  HRR en vivo
+                </button>
+              </div>
               <button
                 onClick={cargarLineas}
                 disabled={loadingLineas}
@@ -565,8 +582,15 @@ export default function CompetitorIntelligencePage() {
           </div>
         </div>
 
-        {/* Grid de tarjetas */}
-        <div className="flex-1 overflow-y-auto p-4">
+        {/* ── Tab HRR en vivo ──────────────────────────────────────────────── */}
+        {activeTab === 'hrr' && (
+          <div className="flex-1 overflow-hidden">
+            <HrrDashboard agencyId={String(empresaSel)} />
+          </div>
+        )}
+
+        {/* ── Tab Inteligencia (contenido original) ────────────────────────── */}
+        <div className={activeTab === 'hrr' ? 'hidden' : 'flex-1 overflow-y-auto p-4'}>
           {empresaSel !== 70 ? (
             /* ── Líneas de empresa competidora (Firestore) ── */
             loadingComp ? (

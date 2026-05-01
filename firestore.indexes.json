@@ -390,6 +390,22 @@
         { "fieldPath": "linea", "order": "ASCENDING" },
         { "fieldPath": "sentido", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "corridor_overlap",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sameEmpresa", "order": "ASCENDING" },
+        { "fieldPath": "pctAInB", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "hrr_live",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

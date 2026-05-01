@@ -923,3 +923,9 @@ export { immEta, seedParadas, refreshParadasTick, immParadasList } from './immPa
 export { immBusesLive }                               from './immBusesService';
 export { gtfsImportTick, gtfsImportRun, gtfsDebug }   from './gtfsImporter';
 export { otpTick, computeOtpNow }                     from './otpEngine';
+
+// ─── HRR Engine — Headway-to-Rival Ratio cross-operador ──────────────────────
+// Cron 10min: calcula HRR para todos los pares T1+T2 del corridor_overlap.
+// HTTP /hrrQueryNow — fuerza recálculo y devuelve resumen.
+// HTTP /hrrData?agencyId=70 — datos actuales sin recalcular.
+export { hrrTick, hrrQueryNow, hrrData }              from './hrrEngine';
