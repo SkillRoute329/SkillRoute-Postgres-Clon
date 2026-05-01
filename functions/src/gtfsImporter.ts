@@ -238,7 +238,10 @@ async function runImport(): Promise<ImportResult> {
 
   // ─── Shapes ───────────────────────────────────────────────────────────────
   interface ShapeDoc { id: string; data: Record<string, unknown> }
-  const docs: ShapeDoc[] = [];
+  // Usamos Map para deduplicar: cuando hay varias shapes para la misma
+  // (agencyId, linea, directionId), conservamos la de mayor longitud real,
+  // no la última que aparece en shapes.txt (que podría ser una variante corta).
+  const docsMap = new Map<string, ShapeDoc>();
   let shapesIgnorados = 0;
   const empresaResumen: Record<string, number> = {};
   const generadoEn = admin.firestore.FieldValue.serverTimestamp();
@@ -253,6 +256,22 @@ async function runImport(): Promise<ImportResult> {
     rawPoints.sort((a, b) => a.seq - b.seq);
     const points = rawPoints.map(({ lat, lng }) => ({ lat, lng }));
     if (points.length < 3) { shapesIgnorados++; continue; }
+
+    // Calcular longitud real del recorrido (haversine acumulado, en metros)
+    let lengthMeters = 0;
+    for (let i = 1; i < points.length; i++) {
+      const R = 6371000;
+      const dLat = ((points[i].lat - points[i - 1].lat) * Math.PI) / 180;
+      const dLng = ((points[i].lng - points[i - 1].lng) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos((points[i - 1].lat * Math.PI) / 180) *
+          Math.cos((points[i].lat * Math.PI) / 180) *
+          Math.sin(dLng / 2) ** 2;
+      lengthMeters += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+    lengthMeters = Math.round(lengthMeters);
+
     const agencyNumId = lineaAgencyMap.get(routeShortName.toLowerCase()) ?? 0;
     const empresa = agencyNumId ? (AGENCY_NAMES[agencyNumId] ?? `EMP_${agencyNumId}`) : 'STM';
     const docId = `${agencyNumId}_${routeShortName}_${directionId}`;
@@ -260,13 +279,20 @@ async function runImport(): Promise<ImportResult> {
       agencyId: String(agencyNumId), empresa, linea: routeShortName,
       variante: directionId, sentido: directionId === 0 ? 'IDA' : 'VUELTA',
       points, puntosOriginales: points.length, puntosSimplificados: points.length,
+      lengthMeters,
       shapeId, generadoEn, fuente: 'GTFS_OFICIAL',
     };
     if (routeLongName) docData['routeLongName'] = routeLongName;
-    docs.push({ id: docId, data: docData });
-    empresaResumen[empresa] = (empresaResumen[empresa] ?? 0) + 1;
+
+    // Deduplicar: conservar la shape con mayor longitud real (recorrido completo vs. variante corta)
+    const existing = docsMap.get(docId);
+    if (!existing || (existing.data['lengthMeters'] as number) < lengthMeters) {
+      docsMap.set(docId, { id: docId, data: docData });
+      if (!existing) empresaResumen[empresa] = (empresaResumen[empresa] ?? 0) + 1;
+    }
   }
 
+  const docs = Array.from(docsMap.values());
   const BATCH_SIZE = 490;
   for (let i = 0; i < docs.length; i += BATCH_SIZE) {
     const batch = db.batch();
