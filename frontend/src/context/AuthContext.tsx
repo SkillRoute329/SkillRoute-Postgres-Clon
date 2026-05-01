@@ -127,9 +127,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // (DEMO_MODE: acceso sin login; el spinner sigue hasta que el anónimo se establezca)
           waitingForAnonAuth = true;
           console.log('💤 [AuthContext] No active session — initiating anonymous sign-in.');
-          signInAnonymously(auth).catch((err) =>
-            console.warn('[AuthContext] Anonymous sign-in failed:', err.code),
-          );
+          signInAnonymously(auth).catch((err) => {
+            console.warn('[AuthContext] Anonymous sign-in failed:', err.code);
+            setInitializing(false); // no dejar colgado el spinner si el anónimo falla
+          });
         }
       } catch (error) {
         console.error('❌ [AuthContext] Critical Auth Error:', error);
