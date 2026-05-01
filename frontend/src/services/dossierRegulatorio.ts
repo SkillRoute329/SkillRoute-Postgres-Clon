@@ -206,7 +206,7 @@ export function exportarDossierJSON(
 ): string {
   const registros = obtenerRegistros(filtros);
   const exportData = {
-    sistema: 'TransformaFácil 2.0 — Centro de Inteligencia UCOT',
+    sistema: 'SkillRoute — Inteligencia de Transporte Metropolitano',
     generadoEn: new Date().toISOString(),
     totalRegistros: registros.length,
     registros: registros.map((r) => ({

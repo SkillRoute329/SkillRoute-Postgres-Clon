@@ -89,9 +89,10 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     {
       title: 'Inteligencia Competitiva',
       items: [
-        { path: '/dashboard/traffic/ceo',                  label: 'Centro de Mando',    icon: TrendingUp },
+        { path: '/dashboard/traffic/ceo',                     label: 'Centro de Mando',       icon: TrendingUp },
+        { path: '/dashboard/traffic/competitor-intelligence', label: 'Radar de Competencia',   icon: Radar      },
         // Hub: Corredores + Market Share + Penetración + Analytics + Headway
-        { path: '/dashboard/traffic/corridor-intelligence', label: 'Inteligencia Cross-Op.',   icon: Network    },
+        { path: '/dashboard/traffic/corridor-intelligence',   label: 'Inteligencia Cross-Op.', icon: Network    },
         // Hub: Mapa Corredores + Reproducción GPS
         { path: '/dashboard/traffic/corridor-map',         label: 'Mapas Estratégicos', icon: Map        },
         { path: '/dashboard/traffic/brt',                  label: 'BRT 2027',           icon: Train      },
@@ -146,8 +147,8 @@ const Sidebar = ({ onClose }: SidebarProps) => {
   return (
     <aside className="w-full max-w-[18rem] md:max-w-[16rem] flex flex-col h-full overflow-y-auto overflow-x-hidden custom-scrollbar relative">
       <div className="p-6 flex items-center gap-3 border-b border-slate-900/50 bg-slate-900/20 shrink-0">
-        <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center font-black text-white shadow-lg shadow-primary-900/20">
-          G
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shadow-lg shadow-blue-900/30 bg-gradient-to-br from-blue-600 to-orange-500 text-sm tracking-tight">
+          SR
         </div>
         <div>
           <h1 className="text-2xl font-black bg-gradient-to-r from-blue-400 to-orange-400 bg-clip-text text-transparent">

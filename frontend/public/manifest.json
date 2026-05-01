@@ -1,11 +1,11 @@
 {
-    "name": "Transforma: Gestión en movimiento",
-    "short_name": "Transforma",
-    "start_url": ".",
+    "name": "SkillRoute — Inteligencia de Transporte",
+    "short_name": "SkillRoute",
+    "start_url": "/dashboard",
     "display": "standalone",
-    "background_color": "#0f172a",
-    "theme_color": "#0f172a",
-    "description": "Plataforma de Gestión Operativa UCOT",
+    "background_color": "#0a1628",
+    "theme_color": "#0a1628",
+    "description": "Inteligencia de transporte metropolitano. Análisis cross-operador en tiempo real sobre datos GPS del IMM/STM.",
     "icons": [
         {
             "src": "/pwa-192x192.png",

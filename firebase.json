@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "skillroute",
     "public": "frontend/dist",
     "ignore": [
       "firebase.json",
@@ -26,6 +27,10 @@
       {
         "source": "/historicBunching",
         "function": "historicBunching"
+      },
+      {
+        "source": "/penetrationHistoric",
+        "function": "penetrationHistoric"
       },
       {
         "source": "**",

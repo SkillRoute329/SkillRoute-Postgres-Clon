@@ -486,7 +486,7 @@ const PROPUESTA_ASM = {
     {
       icono: '📡',
       titulo: 'Plataforma de inteligencia ya construida',
-      detalle: 'GestionUcot 2.0: monitoreo GPS en tiempo real, KPIs operativos, gestión de incidentes, distribución diaria automatizada.',
+      detalle: 'SkillRoute: monitoreo GPS en tiempo real, KPIs operativos, gestión de incidentes, distribución diaria automatizada.',
     },
     {
       icono: '👥',
@@ -528,7 +528,7 @@ const PROPUESTA_ASM = {
     },
     opcion3: {
       nombre: 'Proveedor de Plataforma Digital ASM',
-      descripcion: 'UCOT ofrece su plataforma GestionUcot como sistema de gestión para toda la red metropolitana',
+      descripcion: 'SkillRoute es la plataforma que sistema de gestión para toda la red metropolitana',
       ingresosAnualesEstUSD: 2_400_000,
       cochesInvolucrados: 0,
       conductores: 5,
@@ -556,7 +556,7 @@ const PLAN_OBRAS = [
       'Diseño definitivo de rutas alimentadoras propuestas',
       'Capacitación conductores en protocolos BRT y atención al usuario',
       'Actualización de flota con GPS de alta precisión (integración ASM)',
-      'Implementar sistema de desvíos digitales en GestionUcot',
+      'Implementar sistema de desvíos digitales en SkillRoute',
     ],
   },
   {
@@ -602,7 +602,7 @@ const PLAN_OBRAS = [
     acciones: [
       'Sistema totalmente operativo: troncal + alimentadoras UCOT',
       'Pago por km activo — facturación mensual a ASM',
-      'KPIs en tiempo real visibles en GestionUcot + reportes ASM',
+      'KPIs en tiempo real visibles en SkillRoute + reportes ASM',
       'Expansión de alimentadoras a nuevas zonas según demanda',
       'Evaluación para nuevas licitaciones de corredores futuros',
     ],
@@ -1502,7 +1502,7 @@ export default function BRTCorridorDashboard() {
 
           <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
             <p className="text-xs text-slate-500 uppercase font-bold mb-3 flex items-center gap-2">
-              <Layers className="w-4 h-4" /> Capacidades digitales de GestionUcot para la fase de obras
+              <Layers className="w-4 h-4" /> Capacidades digitales de SkillRoute para la fase de obras
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {[
@@ -1777,7 +1777,7 @@ export default function BRTCorridorDashboard() {
                 <Layers className="w-5 h-5 text-primary-400" /> Plataforma Multi-Empresa — El paso natural al sistema completo
               </p>
               <p className="text-primary-300/80 text-sm mt-1">
-                GestionUcot 2.0 está diseñado como plataforma multi-tenant. UCOT es el primer cliente, la ASM puede ser el administrador global.
+                SkillRoute está diseñado como plataforma multi-tenant. UCOT es el primer cliente, la ASM puede ser el administrador global.
               </p>
             </div>
             <div className="p-5 space-y-4">
@@ -1850,7 +1850,7 @@ export default function BRTCorridorDashboard() {
             <Building2 className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
             <h3 className="text-xl font-black text-white mb-2">UCOT ya tiene la plataforma. Solo falta el contrato.</h3>
             <p className="text-emerald-300/80 text-sm max-w-2xl mx-auto mb-4">
-              GestionUcot 2.0 monitorea GPS en tiempo real, gestiona desvíos, genera boletines, distribuye coches y conductores
+              SkillRoute monitorea GPS en tiempo real, gestiona desvíos, genera boletines, distribuye coches y conductores
               automáticamente, y genera reportes KPI para el regulador. Es exactamente lo que la ASM necesitará operar un sistema BRT.
               Ninguna otra empresa operadora en Uruguay tiene esto hoy.
             </p>
