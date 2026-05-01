@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense } from 'react';
-import { Network, PieChart, TrendingUp, Activity, BarChart3, RefreshCw, LayoutDashboard } from 'lucide-react';
+import { Network, PieChart, TrendingUp, Activity, BarChart3, RefreshCw, LayoutDashboard, Gauge } from 'lucide-react';
 import ExecutiveSummary from './ExecutiveSummary';
 
 const CorridorIntelligence = lazy(() => import('./CorridorIntelligence'));
@@ -7,6 +7,7 @@ const CorridorMarketShare  = lazy(() => import('./CorridorMarketShare'));
 const MarketPenetration    = lazy(() => import('./MarketPenetration'));
 const ShadowAnalytics      = lazy(() => import('./ShadowAnalytics'));
 const HeadwayInsights      = lazy(() => import('./HeadwayInsights'));
+const SeatKmDashboard      = lazy(() => import('./SeatKmDashboard'));
 
 const TABS = [
   { key: 'ejecutivo',    label: 'Resumen Ejecutivo',            icon: LayoutDashboard },
@@ -15,6 +16,7 @@ const TABS = [
   { key: 'penetracion',  label: 'Análisis de Penetración',      icon: TrendingUp      },
   { key: 'analytics',    label: 'Analytics Histórico',          icon: Activity        },
   { key: 'headway',      label: 'Espaciado entre Buses',        icon: BarChart3       },
+  { key: 'seatKm',       label: 'Seat-km Market Share',         icon: Gauge           },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -64,6 +66,7 @@ export default function CorredoresHub() {
              tab === 'market'       ? <CorridorMarketShare />  :
              tab === 'penetracion'  ? <MarketPenetration />    :
              tab === 'analytics'    ? <ShadowAnalytics />      :
+             tab === 'seatKm'       ? <SeatKmDashboard />      :
                                       <HeadwayInsights />}
           </Suspense>
         )}

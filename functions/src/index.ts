@@ -929,3 +929,9 @@ export { otpTick, computeOtpNow }                     from './otpEngine';
 // HTTP /hrrQueryNow — fuerza recálculo y devuelve resumen.
 // HTTP /hrrData?agencyId=70 — datos actuales sin recalcular.
 export { hrrTick, hrrQueryNow, hrrData }              from './hrrEngine';
+
+// ─── Seat-km Calculator — market share por oferta cross-operador ──────────────
+// Cron 06:00 AM Mvd: calcula seat_km_snapshot/{YYYY-MM-DD} desde GTFS + shapes.
+// HTTP /seatKmCalculatorNow?date=YYYY-MM-DD — recálculo manual.
+// HTTP /seatKmSnapshotQuery?date=YYYY-MM-DD — consulta snapshot guardado.
+export { seatKmCalculatorCron, seatKmCalculatorNow, seatKmSnapshotQuery } from './seatKmCalculator';
