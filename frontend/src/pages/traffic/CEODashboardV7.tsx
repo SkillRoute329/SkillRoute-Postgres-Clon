@@ -49,7 +49,7 @@ import {
   Zap,
   Radio,
   Network,
-  Map as MapIcon,
+  MapPin as MapIcon,
 } from 'lucide-react';
 
 import { db } from '../../config/firebase';
