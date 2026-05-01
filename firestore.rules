@@ -269,6 +269,31 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /gtfs_timetable/{document=**} {
+      // Horarios completos GTFS por línea/dirección/tipo de servicio.
+      // Compact format: stops[] + viajes[{s,t[]}] para consultas de próximo bus.
+      // Lectura pública — datos de servicio oficiales IMM, sin información sensible.
+      // Escritura: solo Cloud Function (Admin SDK, sin auth).
+      allow get, list: if true;
+      allow write: if false;
+    }
+
+    match /bus_delays/{document=**} {
+      // Retraso actual por bus — calculado por otpEngine cada 10 min.
+      // Lectura pública para demo — contiene posición/delay de buses activos (no PII).
+      // Escritura: solo Cloud Function (Admin SDK, sin auth).
+      allow get, list: if true;
+      allow write: if false;
+    }
+
+    match /otp_summary/{document=**} {
+      // Resumen de puntualidad por línea — % a tiempo, retraso promedio, buses activos.
+      // Lectura pública para demo.
+      // Escritura: solo Cloud Function (Admin SDK, sin auth).
+      allow get, list: if true;
+      allow write: if false;
+    }
+
     // ============================================================
     // INCIDENCIAS OPERACIONALES (centro de incidencias)
     // ============================================================

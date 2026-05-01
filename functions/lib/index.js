@@ -37,7 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.auditLogQuery = exports.auditLogServiceMatrices = exports.auditLogServiceDefinitions = exports.auditLogReglasRotacion = exports.auditLogUsers = exports.auditLogVehiculos = exports.auditLogVehicles = exports.auditLogLineas = exports.auditLogLineasUcot = exports.auditLogParametrosOperativosHistorial = exports.auditLogParametrosOperativos = exports.computeServiceDeliveryCron = exports.computeServiceDeliveryNow = exports.penetrationHistoric = exports.computePenetrationCron = exports.computePenetrationNow = exports.computeAdherenceCron = exports.computeAdherenceNow = exports.refreshAllStmHorariosTick = exports.refreshAllStmHorariosNow = exports.autoStatsCollectorNow = exports.autoStatsCollectorTick = exports.refreshCompetidoresNow = exports.refreshCompetidoresTick = exports.refreshHorariosUcotNow = exports.refreshHorariosUcotTick = exports.intelligenceApi = exports.stmHorariosProxy = exports.parseBulkTicketsStorage = exports.stmOnlineProxy = exports.testIngestaIMM = exports.ingestaIMMTick = exports.onAlertaRegulacion = exports.limpiarPingsRivales = exports.rivalPingIngestion = exports.shadowDispatcherTick = exports.alertaSoCBajo = exports.alertasVencimientosDocumentales = exports.expirarDesvios = exports.gpsWebhookV2 = exports.gpsWebhook = exports.discoverVariants = exports.syncVariantRoutes = exports.geoserverProxy = exports.seedUCOTData = exports.syncParadasSTMCron = exports.syncParadasSTM = exports.syncUCOTLinesCron = exports.syncUCOTLines = exports.montevideoProxy = void 0;
-exports.immOAuthCallback = exports.complianceAlertsTick = exports.shapeBuilderRun = exports.shapeBuilderTick = exports.gpsHistoryAccumulatorTick = exports.netexEndpoint = exports.systemHealth = exports.siriRealtime = exports.gtfsStatic = exports.regulatorio = exports.refreshGtfsRtAlerts = exports.gtfsRealtime = exports.onIncidenciaCreated = exports.acknowledgeAlerta = exports.onAlertaCreated = exports.historicBunching = exports.historicOtp = exports.recomputeDroMatrixNow = exports.droMatrixTick = exports.reconstructShapesNow = exports.reconstructShapesTick = exports.listVehicleArchives = exports.archiveVehicleEventsNow = exports.archiveVehicleEventsTick = void 0;
+exports.computeOtpNow = exports.otpTick = exports.gtfsDebug = exports.gtfsImportRun = exports.gtfsImportTick = exports.immBusesLive = exports.immParadasList = exports.refreshParadasTick = exports.seedParadas = exports.immEta = exports.seedVariantes = exports.refreshVariantesTick = exports.immAuthorize = exports.immOAuthCallback = exports.complianceAlertsTick = exports.shapeBuilderRun = exports.shapeBuilderTick = exports.gpsHistoryAccumulatorTick = exports.netexEndpoint = exports.systemHealth = exports.siriRealtime = exports.gtfsStatic = exports.regulatorio = exports.refreshGtfsRtAlerts = exports.gtfsRealtime = exports.onIncidenciaCreated = exports.acknowledgeAlerta = exports.onAlertaCreated = exports.historicBunching = exports.historicOtp = exports.recomputeDroMatrixNow = exports.droMatrixTick = exports.reconstructShapesNow = exports.reconstructShapesTick = exports.listVehicleArchives = exports.archiveVehicleEventsNow = exports.archiveVehicleEventsTick = void 0;
 const functions = __importStar(require("firebase-functions/v1"));
 const admin = __importStar(require("firebase-admin"));
 const axios_1 = __importDefault(require("axios"));
@@ -823,6 +823,28 @@ Object.defineProperty(exports, "shapeBuilderRun", { enumerable: true, get: funct
 // envía FCM a ADMIN/TRAFFIC si hay alertas CRITICO (< 50%).
 var complianceAlertsTick_1 = require("./complianceAlertsTick");
 Object.defineProperty(exports, "complianceAlertsTick", { enumerable: true, get: function () { return complianceAlertsTick_1.complianceAlertsTick; } });
-// ─── IMM OAuth callback — stub pre-lunes 4 mayo 2026 ─────────────────────────
+// ─── IMM — Integración API oficial Intendencia de Montevideo ─────────────────
+// OAuth2 authorization_code: /immAuthorize inicia flujo, /immOAuthCallback recibe code
+// y almacena tokens en Firestore (imm_config/oauth_token) para uso por getImmToken().
+// Variantes: ingesta diaria 4AM + /seedVariantes (POST) para refresh manual.
 var immOAuthCallback_1 = require("./immOAuthCallback");
 Object.defineProperty(exports, "immOAuthCallback", { enumerable: true, get: function () { return immOAuthCallback_1.immOAuthCallback; } });
+var immAuthorize_1 = require("./immAuthorize");
+Object.defineProperty(exports, "immAuthorize", { enumerable: true, get: function () { return immAuthorize_1.immAuthorize; } });
+var immVariantesService_1 = require("./immVariantesService");
+Object.defineProperty(exports, "refreshVariantesTick", { enumerable: true, get: function () { return immVariantesService_1.refreshVariantesTick; } });
+Object.defineProperty(exports, "seedVariantes", { enumerable: true, get: function () { return immVariantesService_1.seedVariantes; } });
+var immParadasService_1 = require("./immParadasService");
+Object.defineProperty(exports, "immEta", { enumerable: true, get: function () { return immParadasService_1.immEta; } });
+Object.defineProperty(exports, "seedParadas", { enumerable: true, get: function () { return immParadasService_1.seedParadas; } });
+Object.defineProperty(exports, "refreshParadasTick", { enumerable: true, get: function () { return immParadasService_1.refreshParadasTick; } });
+Object.defineProperty(exports, "immParadasList", { enumerable: true, get: function () { return immParadasService_1.immParadasList; } });
+var immBusesService_1 = require("./immBusesService");
+Object.defineProperty(exports, "immBusesLive", { enumerable: true, get: function () { return immBusesService_1.immBusesLive; } });
+var gtfsImporter_1 = require("./gtfsImporter");
+Object.defineProperty(exports, "gtfsImportTick", { enumerable: true, get: function () { return gtfsImporter_1.gtfsImportTick; } });
+Object.defineProperty(exports, "gtfsImportRun", { enumerable: true, get: function () { return gtfsImporter_1.gtfsImportRun; } });
+Object.defineProperty(exports, "gtfsDebug", { enumerable: true, get: function () { return gtfsImporter_1.gtfsDebug; } });
+var otpEngine_1 = require("./otpEngine");
+Object.defineProperty(exports, "otpTick", { enumerable: true, get: function () { return otpEngine_1.otpTick; } });
+Object.defineProperty(exports, "computeOtpNow", { enumerable: true, get: function () { return otpEngine_1.computeOtpNow; } });

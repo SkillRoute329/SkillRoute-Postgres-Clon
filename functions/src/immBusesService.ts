@@ -94,6 +94,10 @@ async function fetchEmpresa(empresa: string, token: string): Promise<BusEnriquec
   }));
 }
 
+export async function getBusesEnriquecidosInternal(empresa: string): Promise<BusEnriquecido[]> {
+  return getBusesEnriquecidos(empresa);
+}
+
 async function getBusesEnriquecidos(empresa: string): Promise<BusEnriquecido[]> {
   const now = Date.now();
   if (now - cache.fetchedAt < CACHE_TTL_MS && cache.empresa === empresa) {

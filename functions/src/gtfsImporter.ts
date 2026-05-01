@@ -22,6 +22,7 @@ const HORARIOS_COL = 'gtfs_horarios';
 const CALENDAR_COL = 'gtfs_calendar';
 const FARES_COL = 'gtfs_fares';
 const STOPS_COL = 'gtfs_stops';
+const TIMETABLE_COL = 'gtfs_timetable';
 const HEALTH_DOC = 'ingesta_health/gtfs_importer';
 const GTFS_PATH = '/buses/gtfs/static/latest/google_transit.zip';
 
@@ -164,6 +165,7 @@ interface ImportResult {
   calendarEscritos: number;
   faresEscritos: number;
   stopsEscritos: number;
+  timetableEscritos: number;
   elapsedMs: number;
 }
 
@@ -199,6 +201,7 @@ async function runImport(): Promise<ImportResult> {
   const tripToRoute = new Map<string, { routeId: string; directionId: number }>();
   const routeToServiceIds = new Map<string, Set<string>>();
   const shapeToFirstTrip = new Map<string, string>(); // shapeId → primer trip_id
+  const tripToServiceId = new Map<string, string>();   // tripId → service_id
   for (const t of parseCsv<GtfsTrip>(tripsTxt)) {
     if (t.shape_id && !shapeToRoute.has(t.shape_id)) {
       shapeToRoute.set(t.shape_id, { routeId: t.route_id, directionId: parseInt(t.direction_id ?? '0', 10) });
@@ -213,6 +216,7 @@ async function runImport(): Promise<ImportResult> {
       if (!routeToServiceIds.has(t.route_id)) routeToServiceIds.set(t.route_id, new Set());
       routeToServiceIds.get(t.route_id)!.add(t.service_id);
     }
+    if (t.trip_id && t.service_id) tripToServiceId.set(t.trip_id, t.service_id);
   }
   const targetTripIds = new Set(shapeToFirstTrip.values());
   logger.info('[GTFS] shape_ids:', shapeToRoute.size, '| trips:', tripToRoute.size, '| target trips:', targetTripIds.size);
@@ -277,13 +281,16 @@ async function runImport(): Promise<ImportResult> {
 
   // ─── Horarios (stop_times.txt) ─────────────────────────────────────────────
   let horariosEscritos = 0;
+  let timetableEscritos = 0;
   const shapeToStopIds = new Map<string, string[]>();
   try {
     const stopTimesTxt = await readZipText(zip, 'stop_times.txt');
     if (stopTimesTxt) {
       logger.info('[GTFS] Procesando stop_times.txt...');
+      const depToMin = (t: string) => { const p = t.split(':'); if (p.length < 2) return -1; const h = parseInt(p[0], 10), m = parseInt(p[1], 10); return isNaN(h) || isNaN(m) ? -1 : h * 60 + m; };
       const tripFirstDep = new Map<string, { time: string; seq: number }>();
       const tripOrderedStops = new Map<string, Array<{ stopId: string; seq: number }>>();
+      const tripFullTimes = new Map<string, Array<{ stopId: string; depMin: number; seq: number }>>();
       for (const st of parseCsv<GtfsStopTime>(stopTimesTxt)) {
         if (!st.trip_id || !st.departure_time) continue;
         const seq = parseInt(st.stop_sequence, 10);
@@ -293,6 +300,14 @@ async function runImport(): Promise<ImportResult> {
         if (st.stop_id && targetTripIds.has(st.trip_id)) {
           if (!tripOrderedStops.has(st.trip_id)) tripOrderedStops.set(st.trip_id, []);
           tripOrderedStops.get(st.trip_id)!.push({ stopId: st.stop_id, seq });
+        }
+        // Captura tiempos completos para todos los trips de rutas conocidas (para timetable)
+        if (st.stop_id && tripToRoute.has(st.trip_id)) {
+          const depMin = depToMin(st.departure_time);
+          if (depMin >= 0) {
+            if (!tripFullTimes.has(st.trip_id)) tripFullTimes.set(st.trip_id, []);
+            tripFullTimes.get(st.trip_id)!.push({ stopId: st.stop_id, depMin, seq });
+          }
         }
       }
       // shapeToStopIds: shapeId → [stop_id, ...] en orden de secuencia
@@ -368,6 +383,104 @@ async function runImport(): Promise<ImportResult> {
           await batch.commit();
         }
         logger.info('[GTFS] Shapes actualizados con stopIds:', stopIdsUpdates.length);
+      }
+
+      // ─── gtfs_timetable ─────────────────────────────────────────────────────
+      if (shapeToStopIds.size > 0 && tripFullTimes.size > 0) {
+        // Tipo de servicio por service_id desde calendar.txt (es pequeño, se relee)
+        const svcTypes = new Map<string, Set<string>>();
+        const calRaw = await readZipText(zip, 'calendar.txt');
+        if (calRaw) {
+          for (const row of parseCsv<GtfsCalendarRow>(calRaw)) {
+            if (!row.service_id) continue;
+            const s = new Set<string>();
+            if (row.monday === '1' || row.tuesday === '1' || row.wednesday === '1' ||
+                row.thursday === '1' || row.friday === '1') s.add('HABIL');
+            if (row.saturday === '1') s.add('SABADO');
+            if (row.sunday === '1') s.add('DOMINGO');
+            if (s.size > 0) svcTypes.set(row.service_id, s);
+          }
+        }
+        logger.info('[GTFS] Tipos de servicio:', svcTypes.size, '| Trips con tiempos:', tripFullTimes.size);
+
+        // Orden canónico de paradas por ruta/dirección (del trip representativo)
+        const routeKeyToCanonical = new Map<string, string[]>();
+        for (const [shapeId, stopIds] of shapeToStopIds) {
+          const info = shapeToRoute.get(shapeId);
+          if (!info) continue;
+          const key = `${info.routeId}|${info.directionId}`;
+          if (!routeKeyToCanonical.has(key)) routeKeyToCanonical.set(key, stopIds);
+        }
+
+        interface TGroup {
+          agencyNumId: number; linea: string; directionId: number;
+          serviceType: string; stops: string[];
+          viajes: Array<{ s: string; t: number[] }>;
+        }
+        const groups = new Map<string, TGroup>();
+
+        for (const [tripId, times] of tripFullTimes) {
+          const ti = tripToRoute.get(tripId);
+          if (!ti) continue;
+          const ri = routeMap.get(ti.routeId);
+          if (!ri) continue;
+          const rKey = `${ti.routeId}|${ti.directionId}`;
+          const canonical = routeKeyToCanonical.get(rKey);
+          if (!canonical || canonical.length < 2) continue;
+          const svcId = tripToServiceId.get(tripId);
+          const typeSet = svcId ? (svcTypes.get(svcId) ?? new Set<string>(['HABIL'])) : new Set<string>(['HABIL']);
+          const agencyNumId = lineaAgencyMap.get(ri.shortName.toLowerCase()) ?? 0;
+
+          // Alinear tiempos al orden canónico
+          times.sort((a, b) => a.seq - b.seq);
+          const posMap = new Map<string, number>();
+          canonical.forEach((stopId, i) => posMap.set(stopId, i));
+          const tArr = new Array<number>(canonical.length).fill(-1);
+          for (const { stopId, depMin } of times) {
+            const pos = posMap.get(stopId);
+            if (pos !== undefined && tArr[pos] === -1) tArr[pos] = depMin;
+          }
+          const firstMin = tArr.find(m => m >= 0);
+          if (firstMin === undefined) continue;
+          const s = `${String(Math.floor(firstMin / 60)).padStart(2, '0')}:${String(firstMin % 60).padStart(2, '0')}`;
+
+          for (const svcType of typeSet) {
+            const gKey = `${agencyNumId}|${ti.routeId}|${ti.directionId}|${svcType}`;
+            if (!groups.has(gKey)) {
+              groups.set(gKey, { agencyNumId, linea: ri.shortName, directionId: ti.directionId, serviceType: svcType, stops: canonical, viajes: [] });
+            }
+            groups.get(gKey)!.viajes.push({ s, t: tArr });
+          }
+        }
+
+        interface TDoc { id: string; data: Record<string, unknown> }
+        const tDocs: TDoc[] = [];
+        for (const [, g] of groups) {
+          g.viajes.sort((a, b) => (a.t.find(m => m >= 0) ?? 9999) - (b.t.find(m => m >= 0) ?? 9999));
+          const empresa = g.agencyNumId ? (AGENCY_NAMES[g.agencyNumId] ?? `EMP_${g.agencyNumId}`) : 'STM';
+          tDocs.push({
+            id: `${g.agencyNumId}_${g.linea}_${g.directionId}_${g.serviceType}`,
+            data: {
+              agencyId: String(g.agencyNumId), empresa, linea: g.linea,
+              directionId: g.directionId, serviceType: g.serviceType,
+              stops: g.stops, viajes: g.viajes,
+              totalViajes: g.viajes.length,
+              primeraS: g.viajes[0]?.s ?? '',
+              ultimaS: g.viajes[g.viajes.length - 1]?.s ?? '',
+              generadoEn, fuente: 'GTFS_OFICIAL',
+            },
+          });
+        }
+        for (let i = 0; i < tDocs.length; i += BATCH_SIZE) {
+          const batch = db.batch();
+          for (const d of tDocs.slice(i, i + BATCH_SIZE)) {
+            batch.set(db.collection(TIMETABLE_COL).doc(d.id), d.data);
+          }
+          await batch.commit();
+          logger.info(`[GTFS] Timetable batch ${Math.floor(i / BATCH_SIZE) + 1} → ${Math.min(i + BATCH_SIZE, tDocs.length)}`);
+        }
+        timetableEscritos = tDocs.length;
+        logger.info('[GTFS] Timetable escritos:', timetableEscritos);
       }
     }
   } catch (err) {
@@ -550,18 +663,18 @@ async function runImport(): Promise<ImportResult> {
   }
 
   const elapsedMs = Date.now() - start;
-  logger.info('[GTFS] Completo:', shapesEscritos, 'shapes', horariosEscritos, 'horarios', calendarEscritos, 'calendar', faresEscritos, 'fares', stopsEscritos, 'stops', elapsedMs, 'ms');
+  logger.info('[GTFS] Completo:', shapesEscritos, 'shapes', horariosEscritos, 'horarios', calendarEscritos, 'calendar', faresEscritos, 'fares', stopsEscritos, 'stops', timetableEscritos, 'timetable', elapsedMs, 'ms');
 
   await db.doc(HEALTH_DOC).set({
     status: shapesEscritos > 0 ? 'OK' : 'EMPTY',
     shapes_escritas: shapesEscritos, shapes_ignoradas: shapesIgnorados,
     horarios_escritos: horariosEscritos, calendar_escritos: calendarEscritos, fares_escritos: faresEscritos,
-    stops_escritas: stopsEscritos,
+    stops_escritas: stopsEscritos, timetable_escritos: timetableEscritos,
     routes_cargadas: routeMap.size, empresa_resumen: empresaResumen,
     elapsed_ms: elapsedMs, last_run_at: admin.firestore.FieldValue.serverTimestamp(), zip_bytes: zipBuffer.length,
   }, { merge: true });
 
-  return { shapesEscritos, shapesIgnorados, routesCargadas: routeMap.size, empresaResumen, horariosEscritos, calendarEscritos, faresEscritos, stopsEscritos, elapsedMs };
+  return { shapesEscritos, shapesIgnorados, routesCargadas: routeMap.size, empresaResumen, horariosEscritos, calendarEscritos, faresEscritos, stopsEscritos, timetableEscritos, elapsedMs };
 }
 
 // ─── Cloud Function exports ───────────────────────────────────────────────────

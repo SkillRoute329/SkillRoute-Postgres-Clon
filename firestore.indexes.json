@@ -350,6 +350,23 @@
       ]
     },
     {
+      "collectionGroup": "gtfs_timetable",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "linea", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "gtfs_timetable",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "linea", "order": "ASCENDING" },
+        { "fieldPath": "serviceType", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "shapes_cross_operator",
       "queryScope": "COLLECTION",
       "fields": [

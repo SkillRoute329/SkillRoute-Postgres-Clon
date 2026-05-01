@@ -50,6 +50,7 @@ import type { LineaUCOT } from '../../types/lineasUcot';
 import RouteMap from '../../components/traffic/RouteMap';
 import RouteEditorMap from '../../components/traffic/RouteEditorMap';
 import StopsList from '../../components/traffic/StopsList';
+import StopSchedulePanel from './components/StopSchedulePanel';
 import DesvioMapEditor from '../../components/traffic/DesvioMapEditor';
 import DesvioPanel from '../../components/traffic/DesvioPanel';
 import IncidenciaRapida from '../../components/traffic/IncidenciaRapida';
@@ -273,7 +274,6 @@ export default function NavigationModule() {
   );
 
   useEffect(() => {
-    if (!user?.uid) return; // esperar auth antes de consultar Firestore
     setListCompleta([]);
     setSelectedCodigo('');
     setFilterLinea(TODAS);
@@ -291,7 +291,7 @@ export default function NavigationModule() {
         }
       })
       .finally(() => setLoading(false));
-  }, [lineaParam, empresaPropia, user?.uid]);
+  }, [lineaParam, empresaPropia]);
 
   useEffect(() => {
     if (
@@ -1010,7 +1010,7 @@ export default function NavigationModule() {
             </div>
           ) : selectedCodigo && linea && (
               linea.recorrido.length === 0 ||
-              linea.paradas.every((p) => p.lat === 0 && p.lng === 0)
+              (linea.paradas.length > 0 && linea.paradas.every((p) => p.lat === 0 && p.lng === 0))
           ) ? (
             <div className="w-full h-full min-h-[300px] bg-slate-800 rounded-xl border border-amber-700/50 flex flex-col items-center justify-center p-6 text-center">
               <AlertTriangle className="w-12 h-12 text-amber-500 mb-3" />
@@ -1018,13 +1018,11 @@ export default function NavigationModule() {
                 Esta línea aún no tiene shape ni paradas georreferenciadas
               </p>
               <p className="text-slate-400 text-sm mt-2 max-w-md">
-                La sincronización con STM API está temporalmente fuera de servicio (endpoint
-                legacy bloqueado por la IMM). Las paradas se muestran a la derecha con sus
-                nombres pero sin coordenadas.
+                No se encontró el recorrido georreferenciado para esta línea en los datos GTFS oficiales.
+                Puede que sea una línea nueva, un ramal especial o que aún no tenga shape disponible.
               </p>
               <p className="text-slate-500 text-xs mt-3">
-                Próxima migración: cargar shapes desde el feed GTFS importado a{' '}
-                <code className="mx-1 px-1 py-0.5 rounded bg-slate-900">shapes_cross_operator</code>.
+                Intentá con otra línea o seleccioná un sentido distinto.
               </p>
             </div>
           ) : (
@@ -1127,12 +1125,24 @@ export default function NavigationModule() {
           </div>
           <div className="flex-1 overflow-auto min-h-[200px]">
             {linea ? (
-              <StopsList
-                paradas={linea.paradas}
-                affectedStopIds={affectedStopIds}
-                selectedStopId={selectedStopId}
-                onSelectStop={setSelectedStopId}
-              />
+              <>
+                <StopsList
+                  paradas={linea.paradas}
+                  affectedStopIds={affectedStopIds}
+                  selectedStopId={selectedStopId}
+                  onSelectStop={setSelectedStopId}
+                />
+                {selectedStopId && (
+                  <StopSchedulePanel
+                    agencyId={empresaPropia}
+                    linea={linea.codigo}
+                    directionId={linea.varianteIdx}
+                    stopId={selectedStopId}
+                    stopName={linea.paradas.find(p => p.id === selectedStopId)?.nombre}
+                    onClose={() => setSelectedStopId(null)}
+                  />
+                )}
+              </>
             ) : selectedCodigo && hitosTeoricos.length > 0 ? (
               <div className="p-4">
                 <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">

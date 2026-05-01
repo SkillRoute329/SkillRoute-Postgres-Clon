@@ -922,3 +922,4 @@ export { refreshVariantesTick, seedVariantes }        from './immVariantesServic
 export { immEta, seedParadas, refreshParadasTick, immParadasList } from './immParadasService';
 export { immBusesLive }                               from './immBusesService';
 export { gtfsImportTick, gtfsImportRun, gtfsDebug }   from './gtfsImporter';
+export { otpTick, computeOtpNow }                     from './otpEngine';
