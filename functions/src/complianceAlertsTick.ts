@@ -14,9 +14,8 @@
 import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 
-const UMBRAL_CRITICO = 50;
-const UMBRAL_BAJO = 65;
-const MIN_EVENTOS = 5;
+// Defaults espejo de AlertasConfigPage — se sobreescriben desde Firestore al inicio de cada ciclo
+const DEFAULTS = { UMBRAL_CRITICO: 50, UMBRAL_BAJO: 65, MIN_EVENTOS: 5 };
 
 const NOMBRE_EMPRESA: Record<string, string> = {
   '70': 'UCOT',
@@ -35,23 +34,40 @@ export const complianceAlertsTick = functions.pubsub
       now.toMillis() - 24 * 60 * 60 * 1000,
     );
 
+    /* ── 0. Leer umbrales configurables desde Firestore ──── */
+    const paramSnap = await db.collection('parametros_sistema').doc('default').get();
+    const paramData = paramSnap.exists ? paramSnap.data()! : {};
+    const UMBRAL_CRITICO: number = Number(paramData.UMBRAL_CRITICO ?? DEFAULTS.UMBRAL_CRITICO);
+    const UMBRAL_BAJO: number    = Number(paramData.UMBRAL_BAJO    ?? DEFAULTS.UMBRAL_BAJO);
+    const MIN_EVENTOS: number    = Number(paramData.MIN_EVENTOS    ?? DEFAULTS.MIN_EVENTOS);
+
     /* ── 1. Leer eventos de las últimas 24h ─────────────── */
     const eventosSnap = await db
       .collection('vehicle_events')
-      .where('timestamp', '>=', hace24h)
+      .where('createdAt', '>=', hace24h)
       .get();
+
+    // Solo se cuentan eventos MEDIBLES: EN_TIEMPO, ATRASADO, ADELANTADO.
+    // SIN_HORARIO y FUERA_DE_SERVICIO se excluyen del denominador — no son
+    // incumplimientos ni cumplimientos; son períodos sin servicio programado.
+    // Incluirlos inflaba artificialmente el OTP cuando no había boletín activo
+    // (ej. madrugada, fin de semana fuera de hora). — Fix 2026-05-02.
+    const ESTADOS_MEDIBLES = new Set(['EN_TIEMPO', 'ATRASADO', 'ADELANTADO']);
 
     type LinData = { total: number; enTiempo: number; empresa: string };
     const porLinea: Record<string, LinData> = {};
 
     for (const doc of eventosSnap.docs) {
       const d = doc.data();
+      const estado: string = String(d.estadoCumplimiento ?? '');
+      // Descartar eventos no medibles — no aportan información de puntualidad real
+      if (!ESTADOS_MEDIBLES.has(estado)) continue;
       const linea: string = String(d.linea ?? '?');
       const empresa: string = String(d.codigoEmpresa ?? d.empresa ?? '?');
       const key = `${empresa}_${linea}`;
       if (!porLinea[key]) porLinea[key] = { total: 0, enTiempo: 0, empresa };
       porLinea[key].total++;
-      if (d.estadoCumplimiento === 'EN_TIEMPO') porLinea[key].enTiempo++;
+      if (estado === 'EN_TIEMPO') porLinea[key].enTiempo++;
     }
 
     /* ── 2. Calcular y escribir alertas ─────────────────── */

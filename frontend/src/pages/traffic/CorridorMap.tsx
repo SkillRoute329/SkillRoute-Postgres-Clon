@@ -30,6 +30,7 @@ import {
   collection,
   getDocs,
   query,
+  where,
   limit,
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
@@ -124,10 +125,17 @@ export default function CorridorMapPage() {
     setLoading(true);
     setError(null);
     try {
-      const [sSnap, oSnap] = await Promise.all([
-        getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
+      // Query separada por operador para evitar que limit(N) corte operadores
+      // con docIds que caen tarde en el orden natural de Firestore.
+      // La colección tiene ~1167 docs; un limit único dejaba fuera a UCOT.
+      const [s70, s50, s20, s10, oSnap] = await Promise.all([
+        getDocs(query(collection(db, 'shapes_cross_operator'), where('agencyId', '==', '70'), limit(400))),
+        getDocs(query(collection(db, 'shapes_cross_operator'), where('agencyId', '==', '50'), limit(400))),
+        getDocs(query(collection(db, 'shapes_cross_operator'), where('agencyId', '==', '20'), limit(400))),
+        getDocs(query(collection(db, 'shapes_cross_operator'), where('agencyId', '==', '10'), limit(400))),
         getDocs(query(collection(db, 'corridor_overlap'), limit(5000))),
       ]);
+      const sSnap = { docs: [...s70.docs, ...s50.docs, ...s20.docs, ...s10.docs] };
       const s: ShapeDoc[] = [];
       for (const doc of sSnap.docs) {
         const d = doc.data();

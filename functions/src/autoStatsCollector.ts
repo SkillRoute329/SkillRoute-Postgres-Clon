@@ -134,10 +134,13 @@ function calcularCumplimiento(
 ): ComplianceResult {
   const hora = now.getHours();
 
-  // Sin horario: clasificar por velocidad y franja horaria
+  // Sin horario registrado en Firestore para esta línea: no se puede calcular cumplimiento.
+  // Usamos SIN_HORARIO para que complianceAlertsTick NO lo cuente como EN_TIEMPO.
+  // FUERA_DE_SERVICIO solo si el bus está literalmente detenido en madrugada.
   if (!horario) {
     if (hora >= 1 && hora < 5) return { state: 'FUERA_DE_SERVICIO', desviacionMin: null, proximaParada: null, sentido: null, bearing };
-    const state = velocidad >= 8 ? 'EN_TIEMPO' : velocidad >= 2 ? 'ATRASADO' : 'FUERA_DE_SERVICIO';
+    // Sin horario de referencia: no marcar EN_TIEMPO por velocidad — eso inflaría OTP artificialmente.
+    const state: ComplianceState = velocidad >= 2 ? 'SIN_HORARIO' : 'FUERA_DE_SERVICIO';
     return { state, desviacionMin: null, proximaParada: null, sentido: null, bearing };
   }
 
@@ -150,7 +153,9 @@ function calcularCumplimiento(
 
   if (!dia || !dia.salidasTodas?.length) {
     if (hora >= 1 && hora < 5) return { state: 'FUERA_DE_SERVICIO', desviacionMin: null, proximaParada: null, sentido: null, bearing };
-    const state = velocidad >= 8 ? 'EN_TIEMPO' : velocidad >= 2 ? 'ATRASADO' : 'FUERA_DE_SERVICIO';
+    // Horario existe pero no tiene salidas para este día/tipo: no hay servicio programado.
+    // No inferir EN_TIEMPO desde velocidad — inflaría OTP con eventos no medibles.
+    const state: ComplianceState = velocidad >= 2 ? 'SIN_HORARIO' : 'FUERA_DE_SERVICIO';
     return { state, desviacionMin: null, proximaParada: null, sentido: null, bearing };
   }
 
@@ -428,7 +433,7 @@ async function updateEndpointHealth(results: Record<string, number>): Promise<vo
 // ── Exports ────────────────────────────────────────────────────────────────
 
 export const autoStatsCollectorTick = functions.pubsub
-  .schedule('every 5 minutes')
+  .schedule('every 15 minutes')
   .timeZone('America/Montevideo')
   .onRun(async () => {
     try {
