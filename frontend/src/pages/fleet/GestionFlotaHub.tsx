@@ -1,17 +1,21 @@
 import { useState, lazy, Suspense } from 'react';
-import { Bus, Activity, Wrench, Clipboard, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Bus, Activity, Wrench, Clipboard, AlertTriangle, RefreshCw, Fuel } from 'lucide-react';
 
 const VehicleList          = lazy(() => import('./VehicleList'));
 const DisponibilidadFlota  = lazy(() => import('./DisponibilidadFlota'));
 const MaintenanceDashboard = lazy(() => import('../admin/MaintenanceDashboard'));
 const VehicleCheck         = lazy(() => import('./VehicleCheck'));
 const RoadAlertsPage       = lazy(() => import('../alerts/RoadAlertsPage'));
+const CombustibleModule       = lazy(() => import('./CombustibleModule'));
+const MantenimientoPredictivo = lazy(() => import('./MantenimientoPredictivo'));
 
 const TABS = [
-  { key: 'inventario',    label: 'Coches / Inventario',    icon: Bus          },
-  { key: 'disponibilidad',label: 'Disponibilidad de Flota', icon: Activity     },
-  { key: 'mantenimiento', label: 'Mantenimiento',           icon: Wrench       },
-  { key: 'revision',      label: 'Revisión Vehicular',      icon: Clipboard    },
+  { key: 'inventario',    label: 'Coches / Inventario',    icon: Bus           },
+  { key: 'disponibilidad',label: 'Disponibilidad de Flota', icon: Activity      },
+  { key: 'mantenimiento', label: 'Mantenimiento',           icon: Wrench        },
+  { key: 'predictivo',   label: 'Mantenimiento Predictivo', icon: Wrench        },
+  { key: 'combustible',   label: 'Combustible',             icon: Fuel          },
+  { key: 'revision',      label: 'Revisión Vehicular',      icon: Clipboard     },
   { key: 'alertas',       label: 'Alertas de Vía',          icon: AlertTriangle },
 ] as const;
 
@@ -47,7 +51,9 @@ export default function GestionFlotaHub() {
         <Suspense fallback={<Loader />}>
           {tab === 'inventario'     ? <VehicleList />          :
            tab === 'disponibilidad' ? <DisponibilidadFlota />  :
-           tab === 'mantenimiento'  ? <MaintenanceDashboard /> :
+           tab === 'mantenimiento'  ? <MaintenanceDashboard />   :
+           tab === 'predictivo'    ? <MantenimientoPredictivo /> :
+           tab === 'combustible'    ? <CombustibleModule />    :
            tab === 'revision'       ? <VehicleCheck />         :
                                       <RoadAlertsPage />}
         </Suspense>

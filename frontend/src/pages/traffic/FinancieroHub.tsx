@@ -1,14 +1,20 @@
 import { useState, lazy, Suspense } from 'react';
-import { DollarSign, BarChart3, TrendingUp, RefreshCw } from 'lucide-react';
+import { DollarSign, BarChart3, TrendingUp, RefreshCw, Route, PieChart, Download } from 'lucide-react';
 
 const EconomicProjectionsPage  = lazy(() => import('./EconomicProjectionsPage'));
 const PanelFinancieroOperativo = lazy(() => import('./PanelFinancieroOperativo'));
 const ROICalculator            = lazy(() => import('./ROICalculator'));
+const CostoPorLinea            = lazy(() => import('./CostoPorLinea'));
+const PLPorOperador            = lazy(() => import('./PLPorOperador'));
+const ExportadorReportes       = lazy(() => import('./ExportadorReportes'));
 
 const TABS = [
+  { key: 'pl',           label: 'P&L por Operador',        icon: PieChart   },
+  { key: 'costo-linea',  label: 'Costo por Línea',         icon: Route      },
   { key: 'proyecciones', label: 'Proyecciones Económicas', icon: DollarSign },
   { key: 'operativo',    label: 'Gestión Financiera',      icon: BarChart3  },
   { key: 'roi',          label: 'Calculadora de ROI',      icon: TrendingUp },
+  { key: 'exportar',     label: 'Exportar Reportes',       icon: Download   },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -21,11 +27,11 @@ const Loader = () => (
 );
 
 export default function FinancieroHub() {
-  const [tab, setTab] = useState<TabKey>('proyecciones');
+  const [tab, setTab] = useState<TabKey>('pl');
   return (
     <div className="bg-slate-950 min-h-screen flex flex-col">
       <div className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur border-b border-slate-800 px-6 pt-5">
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
           {TABS.map((t) => {
             const Icon = t.icon;
             return (
@@ -41,9 +47,12 @@ export default function FinancieroHub() {
       </div>
       <div className="flex-1">
         <Suspense fallback={<Loader />}>
-          {tab === 'proyecciones' ? <EconomicProjectionsPage /> :
+          {tab === 'pl'           ? <PLPorOperador />           :
+           tab === 'costo-linea'  ? <CostoPorLinea />           :
+           tab === 'proyecciones' ? <EconomicProjectionsPage /> :
            tab === 'operativo'    ? <PanelFinancieroOperativo /> :
-                                    <ROICalculator />}
+           tab === 'roi'          ? <ROICalculator />            :
+                                    <ExportadorReportes />}
         </Suspense>
       </div>
     </div>

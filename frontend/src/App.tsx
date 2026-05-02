@@ -152,6 +152,8 @@ const RegulatorioHub       = lazy(() => import('./pages/admin/RegulatorioHub'));
 // Sprint 1 (2026-04-25): Pricing público — accesible sin auth
 const PricingPage = lazy(() => import('./pages/public/PricingPage'));
 const OnboardingPage = lazy(() => import('./pages/public/OnboardingPage'));
+// Centro de Mando Unificado — solo SUPERADMIN
+const CentroMandoUnificado = lazy(() => import('./pages/traffic/CentroMandoUnificado'));
 
 
 // Loading Component
@@ -255,6 +257,7 @@ function App() {
 
                     {/* Super Admin Routes */}
                     <Route path="super-admin/tenants" element={<PrivateRoute roles={['SUPERADMIN']}><TenantsManager /></PrivateRoute>} />
+                    <Route path="super-admin/centro-mando" element={<PrivateRoute roles={['SUPERADMIN']}><CentroMandoUnificado /></PrivateRoute>} />
 
                     {/* Alertas de Vía (menú Gestión de Flota) */}
                     <Route path="alerts" element={<RoadAlertsPage />} />
