@@ -938,5 +938,12 @@ export { seatKmCalculatorCron, seatKmCalculatorNow, seatKmSnapshotQuery } from '
 
 // ─── Motor de Consecuencias — grafo de dependencias operativas ────────────────
 // HTTP POST /consequencePreview — simula cascada de efectos de un evento operativo.
+// Triggers automáticos — se disparan cuando cambia Firestore (sin intervención del usuario).
 // Empresas con reglas configuradas: UCOT (70). Resto: pendiente.
 export { consequencePreview } from './consequenceApi';
+export {
+  onAbsenceCreated,
+  onShiftAssigned,
+  onVehicleStatusChanged,
+  onOTPUpdated,
+} from './consequenceTriggers';

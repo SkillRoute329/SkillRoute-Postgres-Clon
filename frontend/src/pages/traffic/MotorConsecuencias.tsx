@@ -7,10 +7,12 @@
  */
 
 import { useState, useCallback } from 'react';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 import {
   AlertTriangle, CheckCircle2, Info, Zap, Users, DollarSign,
   TrendingDown, Bus, FileText, ChevronDown, ChevronRight,
-  Play, RotateCcw, Loader2, Network
+  Play, RotateCcw, Loader2, Network, Send
 } from 'lucide-react';
 
 // ── Tipos (espejo del backend) ────────────────────────────────────────────────
@@ -133,6 +135,8 @@ export default function MotorConsecuencias() {
   const [dominiosExpandidos, setDominiosExpandidos] = useState<Set<DominioEfecto>>(
     new Set(['RRHH', 'NOMINA', 'OPERACIONES', 'OTP', 'SUBSIDIO', 'FINANZAS', 'DISCIPLINA'])
   );
+  const [ejecutando, setEjecutando] = useState(false);
+  const [ejecutado, setEjecutado] = useState(false);
 
   const toggleDominio = (d: DominioEfecto) => {
     setDominiosExpandidos((prev) => {
@@ -160,6 +164,68 @@ export default function MotorConsecuencias() {
         return { ...base, tipo: form.tipo, viajeId: 'viaje-sim-001', lineaId: form.lineaId, kmPerdidos: form.kmPerdidos, causa: form.causaViaje };
     }
   }, [form]);
+
+  // Ejecuta el evento real en Firestore → dispara el trigger automático
+  const ejecutar = useCallback(async () => {
+    if (!resultado) return;
+    setEjecutando(true);
+    try {
+      const evento = construirEvento() as any;
+      switch (form.tipo) {
+        case 'CONDUCTOR_AUSENTE':
+          await addDoc(collection(db, 'licencias_personal'), {
+            employeeId:      evento.conductorId,
+            employeeName:    evento.conductorNombre,
+            empresaId:       evento.empresaId,
+            startDate:       evento.fecha,
+            tipoLicencia:    evento.codigoAusencia,
+            lineaId:         evento.lineaId ?? null,
+            turnoId:         evento.turnoId ?? null,
+            origen:          'motor_consecuencias',
+            createdAt:       serverTimestamp(),
+          });
+          break;
+        case 'CONDUCTOR_ASIGNADO':
+          await addDoc(collection(db, 'daily_shifts'), {
+            conductorId:     evento.conductorId,
+            conductorNombre: evento.conductorNombre,
+            empresaId:       evento.empresaId,
+            lineaId:         evento.lineaId,
+            cocheId:         evento.cocheId,
+            date:            evento.fecha,
+            horaInicio:      evento.horaInicio,
+            duracionHoras:   evento.duracionHoras,
+            esTurnoPartido:  evento.esTurnoPartido,
+            tipoDia:         evento.tipoDia,
+            kmEsperados:     evento.kmEsperados,
+            aniosAntiguedad: evento.aniosAntiguedad,
+            estado:          'asignado',
+            origen:          'motor_consecuencias',
+            createdAt:       serverTimestamp(),
+          });
+          break;
+        case 'VEHICULO_FUERA_DE_SERVICIO':
+          await addDoc(collection(db, 'vehicle_events'), {
+            codigoVehiculo:  evento.cocheNumero,
+            empresaId:       evento.empresaId,
+            lineaId:         evento.lineaId ?? null,
+            estado:          'fuera_de_servicio',
+            motivo:          evento.motivo,
+            horasEstimadas:  evento.horasEstimadas,
+            origen:          'motor_consecuencias',
+            timestamp:       serverTimestamp(),
+          });
+          break;
+        default:
+          throw new Error('Este tipo de evento no se puede ejecutar directamente desde el simulador.');
+      }
+      setEjecutado(true);
+    } catch (e: any) {
+      setError(e.message ?? 'Error al ejecutar el evento');
+    } finally {
+      setEjecutando(false);
+    }
+  }, [resultado, form, construirEvento]);
 
   const simular = useCallback(async () => {
     setCargando(true);
@@ -257,7 +323,7 @@ export default function MotorConsecuencias() {
 
             {resultado && (
               <button
-                onClick={() => { setResultado(null); setError(null); }}
+                onClick={() => { setResultado(null); setError(null); setEjecutado(false); }}
                 className="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-slate-300 text-sm transition-colors"
               >
                 <RotateCcw className="w-3.5 h-3.5" /> Nueva simulación
@@ -299,6 +365,32 @@ export default function MotorConsecuencias() {
             <>
               {/* Resumen ejecutivo */}
               <ResumenEjecutivo resumen={resultado.resumen} />
+
+              {/* Botón Ejecutar */}
+              {!ejecutado ? (
+                <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-4 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-slate-200">¿Confirmar y ejecutar este evento?</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Se registrará en el sistema real y disparará el motor automáticamente.</p>
+                  </div>
+                  <button
+                    onClick={ejecutar}
+                    disabled={ejecutando}
+                    className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 rounded-xl px-4 py-2.5 font-semibold text-white text-sm whitespace-nowrap transition-all"
+                  >
+                    {ejecutando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {ejecutando ? 'Ejecutando...' : 'Ejecutar'}
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-emerald-300">Evento ejecutado</p>
+                    <p className="text-xs text-emerald-500 mt-0.5">El motor automático calculó la cascada y las alertas aparecen en el dashboard.</p>
+                  </div>
+                </div>
+              )}
 
               {/* Efectos por dominio */}
               {(Object.keys(DOMINIO_CONFIG) as DominioEfecto[]).map((dominio) => {
