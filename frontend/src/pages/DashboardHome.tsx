@@ -24,22 +24,16 @@ interface ResumenDiario {
   lineasEnRiesgoIMM: string[];
 }
 
-interface FleetKPI {
-  totalUCOT: number;
-  totalRivales: number;
-  lineasActivas: number;
-  bunchingPares: number;
-}
+const EMPRESAS_RED = [
+  { id: 70, label: 'UCOT',   color: 'text-blue-400',   bg: 'bg-blue-500/10',   border: 'border-blue-500/20'   },
+  { id: 50, label: 'CUTCSA', color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+  { id: 20, label: 'COME',   color: 'text-emerald-400',bg: 'bg-emerald-500/10',border: 'border-emerald-500/20'},
+  { id: 10, label: 'COETC',  color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+] as const;
 
 function PanelOperacional() {
   // GPS en vivo desde el contexto compartido — ya no fetcha por su cuenta
   const { fleetKPIs, busesLoading: fleetLoading, alertas: alertasVivas } = useLiveData();
-  const fleet: FleetKPI = {
-    totalUCOT: fleetKPIs.totalPropios,
-    totalRivales: fleetKPIs.totalRivales,
-    lineasActivas: fleetKPIs.lineasActivas,
-    bunchingPares: fleetKPIs.bunchingPares,
-  };
 
   const [resumen, setResumen] = useState<ResumenDiario | null>(null);
   const [alertas, setAlertas] = useState<Array<{ id: string; urgencia: string; titulo: string; mensaje: string }>>([]);
@@ -129,25 +123,50 @@ function PanelOperacional() {
         )}
       </div>
 
-      {/* GPS Fleet */}
-      {!fleetLoading && fleet && (
+      {/* GPS Fleet — vista de red metropolitana (4 operadores) */}
+      {!fleetLoading && (
         <div>
-          <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Flota GPS en tiempo real</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { label: 'Flota propia en vía', value: fleet.totalUCOT, color: 'text-amber-400' },
-              { label: 'Rivales activos', value: fleet.totalRivales, color: 'text-blue-400' },
-              { label: 'Líneas operando', value: fleet.lineasActivas, color: 'text-emerald-400' },
-              { label: 'Alertas bunching', value: fleet.bunchingPares, color: fleet.bunchingPares > 0 ? 'text-red-400' : 'text-slate-500' },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center gap-3">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest">
+              Red metropolitana GPS — tiempo real
+            </h2>
+            <span className="text-[10px] text-slate-600 font-mono">
+              {fleetKPIs.totalRed} buses en vía
+            </span>
+          </div>
+          {/* Una card por operador */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+            {EMPRESAS_RED.map(({ id, label, color, bg, border }) => (
+              <div key={id} className={`rounded-xl border p-3 flex items-center gap-3 ${bg} ${border}`}>
                 <Radio className={`w-4 h-4 flex-none ${color}`} />
                 <div>
-                  <p className={`text-xl font-black ${color}`}>{value}</p>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wide">{label}</p>
+                  <p className={`text-xl font-black ${color}`}>
+                    {fleetKPIs.perEmpresa[id] ?? 0}
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-bold">{label}</p>
+                  <p className="text-[9px] text-slate-600 uppercase tracking-wide">buses en vía</p>
                 </div>
               </div>
             ))}
+          </div>
+          {/* Métricas de red */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center gap-3">
+              <Activity className="w-4 h-4 flex-none text-emerald-400" />
+              <div>
+                <p className="text-xl font-black text-emerald-400">{fleetKPIs.lineasActivas}</p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wide">Líneas operando</p>
+              </div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center gap-3">
+              <AlertTriangle className={`w-4 h-4 flex-none ${fleetKPIs.bunchingPares > 0 ? 'text-red-400' : 'text-slate-600'}`} />
+              <div>
+                <p className={`text-xl font-black ${fleetKPIs.bunchingPares > 0 ? 'text-red-400' : 'text-slate-500'}`}>
+                  {fleetKPIs.bunchingPares}
+                </p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wide">Alertas bunching</p>
+              </div>
+            </div>
           </div>
         </div>
       )}
