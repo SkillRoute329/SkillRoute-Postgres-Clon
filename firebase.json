@@ -97,22 +97,10 @@
   },
   {
     "site": "ucot-gestor-cloud",
-    "public": "frontend/dist",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [
-      { "source": "/api/**",              "function": "intelligenceApi"    },
-      { "source": "/proxy-stm",           "function": "stmOnlineProxy"     },
-      { "source": "/proxy-horarios/**",   "function": "stmHorariosProxy"   },
-      { "source": "/historicOtp",         "function": "historicOtp"        },
-      { "source": "/historicBunching",    "function": "historicBunching"   },
-      { "source": "/penetrationHistoric", "function": "penetrationHistoric"},
-      { "source": "**",                   "destination": "/index.html"     }
-    ],
-    "headers": [
-      { "source": "/sw.js",           "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }] },
-      { "source": "/version.json",    "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }] },
-      { "source": "/index.html",      "headers": [{ "key": "Cache-Control", "value": "no-cache, must-revalidate" }] },
-      { "source": "/assets/**/*.@(js|css)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] }
+    "public": "redirect-public",
+    "ignore": ["firebase.json", "**/.*"],
+    "redirects": [
+      { "source": "/:path*", "destination": "https://skillroute.web.app/:path*", "type": 301 }
     ]
   }
   ],
