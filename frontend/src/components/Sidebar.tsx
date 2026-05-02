@@ -132,6 +132,8 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         { path: '/dashboard/admin/regulatorio',          label: 'Reportes Regulatorios',   icon: Shield     },
         // Centro de Mando Unificado — solo SUPERADMIN (guard en la página)
         { path: '/dashboard/super-admin/centro-mando',   label: 'Centro de Mando (SA)',    icon: ShieldAlert},
+        // Gantt Red Metropolitana — solo SUPERADMIN
+        { path: '/dashboard/super-admin/gantt-red',      label: 'Gantt Red (SA)',           icon: Network    },
       ],
     },
 

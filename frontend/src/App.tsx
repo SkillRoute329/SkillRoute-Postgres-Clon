@@ -154,6 +154,8 @@ const PricingPage = lazy(() => import('./pages/public/PricingPage'));
 const OnboardingPage = lazy(() => import('./pages/public/OnboardingPage'));
 // Centro de Mando Unificado — solo SUPERADMIN
 const CentroMandoUnificado = lazy(() => import('./pages/traffic/CentroMandoUnificado'));
+// Gantt Red Metropolitana — solo SUPERADMIN
+const GanttRedMetropolitana = lazy(() => import('./pages/traffic/GanttRedMetropolitana'));
 
 
 // Loading Component
@@ -258,6 +260,7 @@ function App() {
                     {/* Super Admin Routes */}
                     <Route path="super-admin/tenants" element={<PrivateRoute roles={['SUPERADMIN']}><TenantsManager /></PrivateRoute>} />
                     <Route path="super-admin/centro-mando" element={<PrivateRoute roles={['SUPERADMIN']}><CentroMandoUnificado /></PrivateRoute>} />
+                    <Route path="super-admin/gantt-red" element={<PrivateRoute roles={['SUPERADMIN']}><GanttRedMetropolitana /></PrivateRoute>} />
 
                     {/* Alertas de Vía (menú Gestión de Flota) */}
                     <Route path="alerts" element={<RoadAlertsPage />} />
