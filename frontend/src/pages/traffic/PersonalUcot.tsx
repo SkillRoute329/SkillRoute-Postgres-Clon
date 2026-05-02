@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Users, Search, RefreshCw, Phone, Badge, ChevronDown } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface Empleado {
   id: string;
@@ -72,6 +73,7 @@ function empleadoRol(e: Empleado): string {
 }
 
 export default function PersonalUcot() {
+  const { token } = useAuth();
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [loading, setLoading] = useState(false);
   const [busqueda, setBusqueda] = useState('');
@@ -81,11 +83,14 @@ export default function PersonalUcot() {
   const [seleccionado, setSeleccionado] = useState<Empleado | null>(null);
 
   const fetchPersonal = useCallback(async (rol: string, lim: number) => {
+    if (!token) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ limit: String(lim) });
       if (rol) params.set('rol', rol);
-      const res = await fetch(`/api/admin/personal?${params}`);
+      const res = await fetch(`/api/admin/personal?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       if (data.ok) {
         setEmpleados(data.empleados ?? []);

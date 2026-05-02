@@ -18,6 +18,7 @@ import {
   Save,
 } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
+import { useAuth } from '../../context/AuthContext';
 import { DepartmentService, DiscountService, DataImportService } from '../../services/api';
 import clsx from 'clsx';
 
@@ -145,6 +146,7 @@ function empRol(e: Empleado) { return e.rol ?? e.role ?? ''; }
 
 // ─── TAB: PERSONAL (691 empleados reales) ────────────────────────────────────
 const UsersTab = () => {
+  const { token } = useAuth();
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [loading, setLoading] = useState(false);
   const [busqueda, setBusqueda] = useState('');
@@ -156,10 +158,13 @@ const UsersTab = () => {
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
 
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+
   const cargar = useCallback(async () => {
+    if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/personal?limit=691');
+      const res = await fetch('/api/admin/personal?limit=691', { headers: authHeaders });
       const data = await res.json();
       if (data.ok) setEmpleados(data.empleados ?? []);
     } catch {
@@ -167,7 +172,7 @@ const UsersTab = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -197,7 +202,7 @@ const UsersTab = () => {
     try {
       const res = await fetch(`/api/admin/personal/${editando.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(editForm),
       });
       const data = await res.json();
