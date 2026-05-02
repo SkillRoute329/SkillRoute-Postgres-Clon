@@ -267,9 +267,18 @@ const MaintenanceDashboard = () => {
           titulo: '',
         };
       }
-      byVehicle[vid].fallas.push(new Date(r.createdAt));
+      // Soporte para Timestamp Firestore ({seconds, nanoseconds}) y string/number
+      const parseFecha = (v: any): Date => {
+        if (!v) return new Date(NaN);
+        if (typeof v?.toDate === 'function') return v.toDate();
+        if (v?.seconds) return new Date(v.seconds * 1000);
+        return new Date(v);
+      };
+      const fecFalla = parseFecha(r.createdAt);
+      if (isNaN(fecFalla.getTime())) continue;
+      byVehicle[vid].fallas.push(fecFalla);
       // Guardar el título de la última falla
-      const d = new Date(r.createdAt);
+      const d = fecFalla;
       const last = byVehicle[vid].fallas.reduce((a, b) => (a > b ? a : b), new Date(0));
       if (d >= last) byVehicle[vid].titulo = r.title ?? '';
     }
@@ -555,7 +564,7 @@ const MaintenanceDashboard = () => {
                       {v.ultimaFalla && (
                         <div className="text-slate-500 flex items-center gap-1.5 px-1">
                           <Clock className="w-3 h-3 flex-none" />
-                          Última falla: {v.ultimaFalla.toLocaleDateString('es-UY')}
+                          Última falla: {!isNaN(v.ultimaFalla.getTime()) ? v.ultimaFalla.toLocaleDateString('es-UY') : 'Sin fecha'}
                           {v.ultimaFallaTitulo && ` — ${v.ultimaFallaTitulo}`}
                         </div>
                       )}
@@ -761,17 +770,22 @@ const MaintenanceDashboard = () => {
               <div>
                 <label className="block text-sm text-slate-400 mb-1">Prioridad</label>
                 <div className="flex gap-4">
-                  {['LOW', 'NORMAL', 'HIGH', 'CRITICAL'].map((p) => (
-                    <label key={p} className="flex items-center gap-2 cursor-pointer">
+                  {([
+                    { value: 'LOW',      label: 'Baja'     },
+                    { value: 'NORMAL',   label: 'Normal'   },
+                    { value: 'HIGH',     label: 'Alta'     },
+                    { value: 'CRITICAL', label: 'Crítica'  },
+                  ] as const).map(({ value, label }) => (
+                    <label key={value} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="radio"
                         name="priority"
-                        value={p}
-                        checked={newReport.priority === p}
+                        value={value}
+                        checked={newReport.priority === value}
                         onChange={(e) => setNewReport({ ...newReport, priority: e.target.value })}
                         className="accent-primary-500"
                       />
-                      <span className="text-sm text-slate-300 capitalize">{p.toLowerCase()}</span>
+                      <span className="text-sm text-slate-300">{label}</span>
                     </label>
                   ))}
                 </div>

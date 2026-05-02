@@ -369,7 +369,7 @@ const InspectorCapture = () => {
             <option value="">Seleccionar línea</option>
             {lines.map((l) => (
               <option key={l} value={l}>
-                {l}
+                Línea {l}
               </option>
             ))}
           </select>
