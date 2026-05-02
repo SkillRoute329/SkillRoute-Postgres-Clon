@@ -32,8 +32,8 @@ export type UserPositionData = { lat: number; lng: number; heading?: null | numb
 const DEFAULT_CENTER: [number, number] = [-34.9, -56.16];
 const DEFAULT_ZOOM = 13;
 
-const blueOptions = { color: '#2563eb', weight: 5 };
-const orangeOptions = { color: '#ea580c', weight: 4 };
+const blueOptions = { color: '#2563eb', weight: 5, smoothFactor: 0 };
+const orangeOptions = { color: '#ea580c', weight: 4, smoothFactor: 0 };
 
 function FitBounds({ points }: { points: PuntoLatLng[] }) {
   const map = useMap();
@@ -263,6 +263,7 @@ export default function RouteMap({
                   dashArray: '10, 8',
                   lineCap: 'round',
                   lineJoin: 'round',
+                  smoothFactor: 0,
                 }}
               >
                 <Popup>
