@@ -101,7 +101,7 @@ function generarMesesOpciones(): { value: string; label: string }[] {
 
 export default function SubsidiosMTOP() {
   const { user } = useAuth();
-  const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const isSuperAdmin = (user?.role ?? '').toUpperCase() === 'SUPERADMIN';
 
   const mesesOpciones = useMemo(generarMesesOpciones, []);
   const [periodoSel, setPeriodoSel] = useState(mesesOpciones[0].value);

@@ -53,7 +53,8 @@ export default function DesvioEditor({
   const [saving, setSaving] = useState(false);
 
   const role = (user as { role?: string })?.role ?? '';
-  const canCreateFijo = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'Inspector';
+  const roleUpper = role.toUpperCase();
+  const canCreateFijo = roleUpper === 'ADMIN' || roleUpper === 'SUPERADMIN' || roleUpper === 'INSPECTOR';
   const puntoAfectado = pickedLocation
     ? pickedLocation
     : userPosition && userPosition.lat && userPosition.lng

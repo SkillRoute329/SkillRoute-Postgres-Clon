@@ -1,154 +1,109 @@
 # 🔁 SESIÓN ACTUAL — estado vivo del trabajo en curso
 
-**Última actualización:** 2026-05-02 — Phase 3 + Phase 4 deployados · 7 módulos nuevos · 5 hubs actualizados
+**Última actualización:** 2026-05-02 (tarde) — Sprint Pre-Demo completado por Claude Code
+
+> 🎯 **PRESENTACIÓN LUNES 2026-05-04 (probable CUTCSA)**. Sprint Pre-Demo ejecutado. P0+P1+P2 completos y en producción.
 
 ---
 
-## ✅ ESTADO: Phase 3 (Inteligencia de Flota) + Phase 4 (Conductor y Expansión) completados
+## ✅ SPRINT PRE-DEMO 2026-05-02 — COMPLETADO
 
-### Lo que se completó en esta sesión (2026-05-02 — continuación)
+### Lo que se ejecutó esta sesión
 
-| Módulo | Ruta / Ubicación | Estado |
+| Item | Detalle | Estado |
 |---|---|---|
-| **Mantenimiento Predictivo** | `/fleet` → tab "Mantenimiento Predictivo" | ✅ En prod |
-| **Subsidios MTOP** | `/admin/regulatorio` → tab "Subsidios MTOP" | ✅ En prod |
-| **Centro de Mando Unificado** | `/dashboard/super-admin/centro-mando` | ✅ En prod |
-| **Exportador de Reportes** | `/traffic/financiero` → tab "Exportar Reportes" | ✅ En prod |
-| **Alertas Documento Conductor** | `driver/AlertasDocumentoConductor.tsx` (componente) | ✅ Creado |
+| **P0-A: Fix VITE_API_URL** | `frontend/.env.production` → `skillroute.web.app/api`. Build + deploy hosting | ✅ En prod |
+| **P0-B: Fix bug OTP tautológico** | `autoStatsCollector.ts:226-249` — eliminada fórmula `desviacionMin=0` siempre. Ahora reporta `SIN_HORARIO` honesto (63/67 buses UCOT vs 62 EN_TIEMPO falsos) | ✅ En prod |
+| **P1-C: Filtro GPS basura** | `autoStatsCollector.ts:303-313` — descarta coordenadas fuera del rango Uruguay (`lat -30/-36, lon -53/-58`). Los sentinela `-258` de STM ya no se graban | ✅ En prod |
+| **Fix rewrite firebase.json** | `/api/consequencePreview` movido ANTES de `/api/**`. Sin esto el Motor de Consecuencias no podía simular desde el frontend | ✅ En prod |
+| **Deploy functions** | `autoStatsCollectorTick`, `autoStatsCollectorNow`, `intelligenceApi` actualizados | ✅ En prod |
 
-### Archivos creados en Phase 3 + Phase 4
+### Descubrimientos clave (lo que Cowork no sabía)
 
-| Archivo | Descripción |
-|---|---|
-| `frontend/src/pages/fleet/MantenimientoPredictivo.tsx` | Predictivo por km/días — diesel y eléctrico (INTERVALOS_PREVENTIVO) |
-| `frontend/src/pages/admin/SubsidiosMTOP.tsx` | Estimador de subsidio estatal por línea y empresa |
-| `frontend/src/pages/traffic/CentroMandoUnificado.tsx` | Dashboard SUPERADMIN: 4 empresas en tiempo real |
-| `frontend/src/pages/traffic/ExportadorReportes.tsx` | CSV exportador: OTP, flota, costos, subsidios, combustible |
-| `frontend/src/pages/driver/AlertasDocumentoConductor.tsx` | Alertas de vencimiento de carnet/libreta para el conductor |
+El programa YA TENÍA implementados todos los módulos que Cowork proponía crear:
+- `refreshAllStmHorariosTick/Now` — cron de horarios STM (P1-D era duplicado)
+- `scheduleAdherence.ts` — agregador diario OTP en `auto_stats_diarios` (P1-E era duplicado)
+- `otpEngine.ts` — motor OTP con snap-to-stop usando GPS real de la API IMM
+- `MotorConsecuencias.tsx` — componente ya existía en `pages/traffic/`
+- `consequenceTriggers.ts` — triggers Firestore ya activos
+- Sidebar y App.tsx ya tenían la ruta `/dashboard/super-admin/motor-consecuencias`
 
-### Archivos modificados en Phase 3 + Phase 4
+### Estado APIs verificadas en producción
 
-| Archivo | Cambio |
-|---|---|
-| `frontend/src/pages/fleet/GestionFlotaHub.tsx` | +tab: Mantenimiento Predictivo |
-| `frontend/src/pages/admin/RegulatorioHub.tsx` | +tab: Subsidios MTOP |
-| `frontend/src/pages/traffic/FinancieroHub.tsx` | +tab: Exportar Reportes |
-| `frontend/src/App.tsx` | +lazy import + ruta `/super-admin/centro-mando` |
-| `frontend/src/components/Sidebar.tsx` | +ítem "Centro de Mando (SA)" en sección Administración |
-
----
-
-## ✅ Sprints anteriores completados (Phase 1 + Phase 2 — 2026-05-02 morning)
-
-| Módulo | Ruta | Estado |
+| Endpoint | Estado | Nota |
 |---|---|---|
-| Ausencias y Licencias | `/admin/rrhh` → tab "Ausencias y Licencias" | ✅ |
-| Vencimientos de Documentos | `/admin/rrhh` → tab "Vencimientos" | ✅ |
-| Control de Combustible | `/fleet` → tab "Combustible" | ✅ |
-| Costo por Línea | `/traffic/financiero` → tab "Costo por Línea" | ✅ |
-| Alertas OTP proactivas | `/traffic/cumplimiento` → tab "Alertas OTP" | ✅ |
-| P&L por Operador | `/traffic/financiero` → tab "P&L por Operador" | ✅ |
-| Despacho Confirmado | `/traffic/planificacion` → tab "Despacho Confirmado" | ✅ |
-
----
-
-## ✅ Acumulado total en producción
-
-| Feature | Estado |
-|---|---|
-| `immBusesLive` Cloud Function | ✅ GPS enriquecido 4 empresas, ~996 buses |
-| `immParadasList` Cloud Function | ✅ 4938 paradas con lat/lng, cache 30 min |
-| `gtfsImporter.ts` + `gtfs_timetable` | ✅ 1361 docs, horarios completos |
-| `otpEngine.ts` + alertas compliance | ✅ OTP cron 10min |
-| ShadowRadar DRO cross-operador | ✅ 1850 pares, tiering T1/T2/T3 |
-| SeatKm + HRR dashboards | ✅ 30.2M seat-km, 243 corredores |
-| **Ausencias y Licencias** | ✅ Phase 1 |
-| **Vencimientos Documentos** | ✅ Phase 1 |
-| **Control de Combustible** | ✅ Phase 1 (diesel + eléctrico kWh) |
-| **Alertas OTP proactivas** | ✅ Phase 1 |
-| **Despacho Confirmado** | ✅ Phase 1 (programado vs real GPS) |
-| **Costo por Línea** | ✅ Phase 2 (multi-empresa + EV) |
-| **P&L por Operador** | ✅ Phase 2 (4 empresas, SUPERADMIN) |
-| **Mantenimiento Predictivo** | ✅ Phase 3 |
-| **Subsidios MTOP** | ✅ Phase 3 |
-| **Centro de Mando Unificado** | ✅ Phase 3 / Phase 4 |
-| **Exportador de Reportes CSV** | ✅ Phase 4 |
-| **Alertas Documento Conductor** | ✅ Phase 4 |
+| `/api/autostats/health` | ✅ UP desde 2026-04-26 | 0 fallos consecutivos |
+| `/api/autostats/compliance/70` | ✅ 67 buses: 63 SIN_HORARIO, 3 EN_TIEMPO, 1 ATRASADO | OTP honesto post-fix |
+| `/api/consequencePreview` (POST) | ✅ 7 efectos: RRHH/NOMINA/OPERACIONES/OTP/SUBSIDIO/FINANZAS×2 | Rewrite corregido |
+| `autoStatsCollectorNow` | ✅ 745 buses (COETC:104, COME:43, CUTCSA:531, UCOT:67) | Fix GPS activo |
 
 ---
 
 ## 📋 PRÓXIMO PASO INMEDIATO
 
-Verificar + commit:
+**Verificación visual (Jonathan debe confirmar en browser logueado):**
 
-```bash
-cd "c:\Users\jonat\Desktop\PROYECTOS\GestionUcot"
-bash scripts/check_integrity.sh
+Ir a `https://skillroute.web.app` (Ctrl+Shift+R para limpiar cache) y verificar:
+
+1. **Dashboard principal** `/dashboard`
+   - ¿Aparecen alertas con línea + rival + distancia (no solo "RIVAL_PISANDO_TURNO")?
+   - ¿El contador de buses muestra ~700 total sin "datos no disponibles"?
+
+2. **Cumplimiento** `/dashboard/traffic/diagnostico-cumplimiento`
+   - ¿Tab UCOT ya NO muestra 100% en tiempo? (debe mostrar SIN_HORARIO o distribución variada)
+   - ¿Tab CUTCSA, COME, COETC funcionan?
+
+3. **Motor de Consecuencias** `/dashboard/super-admin/motor-consecuencias`
+   - ¿El formulario carga?
+   - Click "Simular" con CONDUCTOR_AUSENTE → ¿aparece la cascada de efectos (RRHH, Nómina, OTP, etc.)?
+
+4. **CEO Dashboard** `/dashboard/traffic/ceo-dashboard-v7`
+   - ¿Carga sin "Error en Módulo"?
+
+5. **Gantt Red** `/dashboard/super-admin/gantt-red`
+   - ¿Funciona el Gantt UCOT vs CUTCSA?
+
+**Mensaje de commit listo para ejecutar (si verificación OK):**
+
 ```
+feat(pre-demo): fix OTP honesto + GPS filtro + rewrite consequencePreview
 
-Si exit 0, commitear con:
+P0:
+- frontend/.env.production: VITE_API_URL → skillroute.web.app/api (root cause stats vacías)
+- autoStatsCollector.ts: fix bug matemático desviacionMin=0 por tautología.
+  Sin snap-to-shape: reportar SIN_HORARIO honesto vs inventar EN_TIEMPO 100%.
+  Verificado: 63/67 buses UCOT ahora SIN_HORARIO, 3 EN_TIEMPO reales, 1 ATRASADO
 
-```
-git add frontend/src/pages/fleet/MantenimientoPredictivo.tsx \
-        frontend/src/pages/admin/SubsidiosMTOP.tsx \
-        frontend/src/pages/traffic/CentroMandoUnificado.tsx \
-        frontend/src/pages/traffic/ExportadorReportes.tsx \
-        frontend/src/pages/driver/AlertasDocumentoConductor.tsx \
-        frontend/src/pages/fleet/GestionFlotaHub.tsx \
-        frontend/src/pages/admin/RegulatorioHub.tsx \
-        frontend/src/pages/traffic/FinancieroHub.tsx \
-        frontend/src/App.tsx \
-        frontend/src/components/Sidebar.tsx \
-        docs/SESION_ACTUAL.md
+P1:
+- autoStatsCollector.ts: filtrar GPS fuera de Uruguay (sentinela -258 de STM descartado)
 
-git commit -m "feat(phase3+4): mantenimiento predictivo, subsidios MTOP, centro mando unificado, exportador CSV"
-```
+Fix crítico:
+- firebase.json: mover /api/consequencePreview ANTES de /api/** en rewrites.
+  Sin esto, Motor de Consecuencias daba Cannot POST desde el frontend.
 
-Luego `git push` y deploy:
+Adaptaciones vs ORDEN_MAESTRA original:
+- stmHorariosScraperTick: YA EXISTÍA como refreshAllStmHorariosTick (no duplicado)
+- dailyAggregator: YA EXISTÍA como scheduleAdherence + historicMetrics (no duplicado)
+- MotorConsecuencias.tsx: YA EXISTÍA completo con simulador + triggers
+- App.tsx + Sidebar: ya tenían la ruta super-admin/motor-consecuencias
 
-```bash
-cd frontend && npm run build
-firebase deploy --only hosting
+NULs: 0, tsc: 0 errores, build: limpio
 ```
 
 ---
 
-## 📋 Pendiente — backlog priorizado
+## 📋 Backlog post-lunes (no urgente)
 
-### Pendiente técnico
-1. **Integración STM Card** — ingresos reales por viaje/línea/horario (confirmar API disponible)
-2. **Demanda por parada** — heatmap de validaciones STM Card
-3. **CostoPorLinea coches reales** — integrar con colección `vehiculos` real (actualmente usa distribución por linea desde Firestore, pero el campo `linea` en vehiculos puede no estar poblado para todas las empresas)
-4. **AlertasDocumentoConductor** — integrar en DriverCompliance.tsx o en el portal del conductor (ahora es componente standalone)
-5. **Módulo de licitaciones** — propuestas de servicio a STM (backlog v3)
-
-### Backlog técnico menor
-1. OTP oscillation — monitorear en prod (fix deployado 2026-05-01)
-2. Calibrar CAPACITY_BY_AGENCY — datos oficiales STM
-3. Consumir gtfs_calendar en UI — hábil/sáb/dom en Navegador
-4. APK Android — actualizar con build actual
-5. Seat-km sábado/domingo — svcType param al cron
+1. **Snap-to-shape OTP real** — usar `otpEngine.ts` (ya existe con snap-to-stop) para reemplazar el SIN_HORARIO transitorio con OTP real. `otpEngine` usa `getBusesEnriquecidosInternal` + paradas GTFS.
+2. **Refactor 11 URLs hardcodeadas** a `us-central1-ucot-gestor-cloud.cloudfunctions.net` (colección P3)
+3. **Backfill `auto_stats_diarios`** últimos 7 días: `curl .../computeAdherenceNow?date=YYYY-MM-DD&agencyId=70`
+4. **Bus GPS basura persistente** — 1 bus (de eventos viejos). Desaparece solo en el próximo ciclo.
 
 ---
 
 ## Bugs conocidos no críticos
 
+- 1 bus con GPS viejo inválido en `vehicle_events` — desaparece en el próximo ciclo del cron (5 min)
 - `regresionOLS.test.ts`: 4 tests fallan — pre-existente, no bloqueante
-- AuthContext "INT #----" durante carga — cosmético
-- `CostoPorLinea` usa coches por linea desde Firestore pero requiere campo `linea` poblado en cada vehículo
-- `SubsidiosMTOP` muestra "Datos Estimados" hasta que se integre STM Card real
-
----
-
-## APIs deployadas
-
-| Endpoint | URL | Estado |
-|---|---|---|
-| `GET /immBusesLive?empresa=all` | `immbuseslive-3o5d3sy5xq-uc.a.run.app` | ✅ |
-| `GET /immParadasList` | `immparadaslist-3o5d3sy5xq-uc.a.run.app` | ✅ |
-| `POST /gtfsImportRun` | `gtfsimportrun-3o5d3sy5xq-uc.a.run.app` | ✅ |
-| `GET /computeOtpNow` | `computeotpnow-3o5d3sy5xq-uc.a.run.app` | ✅ |
-| `GET /hrrQueryNow` | `hrrquerynow-3o5d3sy5xq-uc.a.run.app` | ✅ |
-| `GET /seatKmCalculatorNow` | `us-central1-ucot-gestor-cloud.cloudfunctions.net/seatKmCalculatorNow` | ✅ |
-| `hrrTick` (cron) | cada 10 min | ✅ |
-| `seatKmCalculatorCron` (cron) | diario 6am Montevideo | ✅ |
+- `refreshAllStmHorariosNow` timeout en 30s (tarda >30s en scrapear todas las líneas) — el cron diario corre en su schedule normal
+- `historicOtp` endpoint requiere `agencyId` sin `empresa` — documentado

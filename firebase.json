@@ -10,6 +10,10 @@
     ],
     "rewrites": [
       {
+        "source": "/api/consequencePreview",
+        "function": "consequencePreview"
+      },
+      {
         "source": "/api/**",
         "function": "intelligenceApi"
       },
@@ -20,10 +24,6 @@
       {
         "source": "/proxy-horarios/**",
         "function": "stmHorariosProxy"
-      },
-      {
-        "source": "/api/consequencePreview",
-        "function": "consequencePreview"
       },
       {
         "source": "/historicOtp",

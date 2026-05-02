@@ -405,7 +405,7 @@ function PanelDetalle({
 export default function MantenimientoPredictivo() {
   const { user } = useAuth();
   const { empresaPropia } = useEmpresaPropia();
-  const esSuperAdmin = user?.role === 'SUPERADMIN' || user?.rol === 'SUPERADMIN';
+  const esSuperAdmin = (user?.role ?? (user as any)?.rol ?? '').toUpperCase() === 'SUPERADMIN';
 
   const [vehiculos, setVehiculos] = useState<VehiculoAnalizado[]>([]);
   const [cargando, setCargando] = useState(true);

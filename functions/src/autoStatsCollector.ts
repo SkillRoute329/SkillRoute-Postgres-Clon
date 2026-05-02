@@ -220,33 +220,32 @@ function calcularCumplimiento(
   // Frecuencia del servicio
   const freq = dia.frecuenciaDominanteMin > 0 ? dia.frecuenciaDominanteMin : 10;
 
-  // Desvío: cuánto tarda más de lo esperado
-  // Si velocidad muy baja y no completó el viaje → está tardando más
-  // Estimamos: si el bus va < 5 km/h y transcurrió > 50% del tiempo → atrasado
+  // Cálculo honesto de OTP sin snap-to-shape.
+  // pctCompletado = transcurrido/duracion → tiempoEsperado = duracion*(transcurrido/duracion) = transcurrido
+  // → desviacionMin = 0 SIEMPRE: tautología matemática, no mide nada real.
+  // Sin progreso geográfico real (snap-to-shape, pendiente v2 usando otpEngine),
+  // solo detectamos los casos objetivamente medibles por tiempo:
   let desviacionMin: number | null = null;
   let state: ComplianceState;
 
-  // Calcular desviación real en minutos respecto a la progresión esperada
-  const tiempoEsperado = Math.round(duracion * pctCompletado);
-  desviacionMin = transcurrido - tiempoEsperado;
-
   if (pctCompletado > 1.2) {
-    // Superó ampliamente el tiempo previsto → atrasado estructural
+    // Bus superó el tiempo máximo del servicio → atrasado estructural confirmado
     state = 'ATRASADO';
     desviacionMin = Math.round(nMin - haciaMin);
   } else if (pctCompletado < -0.1) {
-    // Salió antes de lo programado
+    // Bus arrancó antes de lo programado
     state = 'ADELANTADO';
     desviacionMin = Math.round(desdeMin - nMin);
-  } else if (desviacionMin > 5) {
-    // Más de 5 minutos de atraso respecto a la progresión esperada
+  } else if (velocidad < 2 && transcurrido > duracion * 0.7) {
+    // Bus detenido habiendo consumido >70% del tiempo del servicio → probable atraso
     state = 'ATRASADO';
-  } else if (desviacionMin < -3) {
-    state = 'ADELANTADO';
+    desviacionMin = Math.round(transcurrido - duracion * 0.7);
   } else {
-    // En ventana normal (±5 min) — incluye paradas en terminales/semáforos
-    state = 'EN_TIEMPO';
-    desviacionMin = Math.max(0, desviacionMin);
+    // Dentro de la ventana programada: sin métrica geográfica no podemos confirmar
+    // puntualidad. Reportar SIN_HORARIO es honesto vs inventar EN_TIEMPO 100%.
+    // otpEngine.ts tiene el snap-to-stop real; estos datos alimentan scheduleAdherence.
+    state = 'SIN_HORARIO';
+    desviacionMin = null;
   }
 
   // Parada próxima: destino del servicio activo
@@ -305,6 +304,13 @@ async function snapshotAgency(stmCode: string): Promise<number> {
     const p = feat.properties;
     if (!p?.codigoBus || !p?.linea) continue;
     const [lon, lat] = feat.geometry.coordinates;
+    // Coordenadas sentinela de STM para buses sin fix GPS (ej: -258,-258). Descartar.
+    if (typeof lat !== 'number' || typeof lon !== 'number' ||
+        Math.abs(lat) > 90 || Math.abs(lon) > 180 ||
+        lat > -30 || lat < -36 || lon > -53 || lon < -58) {
+      console.warn(`[AutoStats] GPS descartado: bus ${p.codigoBus} (${lat},${lon})`);
+      continue;
+    }
     const velocidad = p.velocidad ?? 0;
     const idBus = String(p.codigoBus);
 

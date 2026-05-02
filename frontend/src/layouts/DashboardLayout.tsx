@@ -69,7 +69,6 @@ const LiveIndicators = () => {
 
 // --- SYSTEM HEALTH INDICATOR with POPUP ---
 import { SystemHealthPanel } from '../components/admin/SystemHealthPanel';
-import { ConnectivityDebugWidget } from '../components/admin/ConnectivityDebugWidget';
 
 const SystemStatus = () => {
   const [status, setStatus] = useState<'online' | 'offline' | 'checking'>('checking');
@@ -241,8 +240,7 @@ const DashboardLayoutInner = () => {
           </div>
         </div>
 
-        {/* NETWORK DEBUGGER (Only Admins) */}
-        {user?.role === 'ADMIN' && <ConnectivityDebugWidget />}
+
       </main>
 
       {/* Overlay FCM de alertas tácticas — activo en todas las vistas

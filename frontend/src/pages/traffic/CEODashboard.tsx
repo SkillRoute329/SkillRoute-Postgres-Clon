@@ -1091,7 +1091,7 @@ export default function CEODashboard() {
                         ))}
                       </div>
                       <div className="p-2 rounded-lg bg-slate-800/30 text-[10px] text-slate-500">
-                        Líneas: {busGpsStats.lineasOperadas.join(', ') || '—'}
+                        Líneas: {busGpsStats.lineasOperadas?.join(', ') || '—'}
                       </div>
                       {busGpsStats.ultimaActividad && (
                         <p className="text-[10px] text-slate-600">
