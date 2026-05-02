@@ -22,6 +22,10 @@
         "function": "stmHorariosProxy"
       },
       {
+        "source": "/api/consequencePreview",
+        "function": "consequencePreview"
+      },
+      {
         "source": "/historicOtp",
         "function": "historicOtp"
       },

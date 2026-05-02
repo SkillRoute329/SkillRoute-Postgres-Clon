@@ -97,6 +97,7 @@ const AdminParametrosOperativos = lazy(() => import('./pages/admin/AdminParametr
 const AdminTurnosOperativos = lazy(() => import('./pages/admin/ParametrosOperativos'));
 // 2026-04-25: Admin Audit Log — trazabilidad de cambios
 const AdminAuditLog = lazy(() => import('./pages/admin/AdminAuditLog'));
+const MotorConsecuencias = lazy(() => import('./pages/traffic/MotorConsecuencias'));
 // Trim+ #69 (2026-04-23): gestión de disrupciones operacionales
 // Migrado a feature-first 2026-04-24 (ADR 002)
 const AdminDisruptionsPage = lazy(() => import('./features/disruptions').then(m => ({ default: m.AdminDisruptionsPage })));
@@ -261,6 +262,7 @@ function App() {
                     <Route path="super-admin/tenants" element={<PrivateRoute roles={['SUPERADMIN']}><TenantsManager /></PrivateRoute>} />
                     <Route path="super-admin/centro-mando" element={<PrivateRoute roles={['SUPERADMIN']}><CentroMandoUnificado /></PrivateRoute>} />
                     <Route path="super-admin/gantt-red" element={<PrivateRoute roles={['SUPERADMIN']}><GanttRedMetropolitana /></PrivateRoute>} />
+                    <Route path="super-admin/motor-consecuencias" element={<PrivateRoute roles={['SUPERADMIN', 'ADMIN']}><MotorConsecuencias /></PrivateRoute>} />
 
                     {/* Alertas de Vía (menú Gestión de Flota) */}
                     <Route path="alerts" element={<RoadAlertsPage />} />

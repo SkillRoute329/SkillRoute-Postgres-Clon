@@ -935,3 +935,8 @@ export { hrrTick, hrrQueryNow, hrrData }              from './hrrEngine';
 // HTTP /seatKmCalculatorNow?date=YYYY-MM-DD — recálculo manual.
 // HTTP /seatKmSnapshotQuery?date=YYYY-MM-DD — consulta snapshot guardado.
 export { seatKmCalculatorCron, seatKmCalculatorNow, seatKmSnapshotQuery } from './seatKmCalculator';
+
+// ─── Motor de Consecuencias — grafo de dependencias operativas ────────────────
+// HTTP POST /consequencePreview — simula cascada de efectos de un evento operativo.
+// Empresas con reglas configuradas: UCOT (70). Resto: pendiente.
+export { consequencePreview } from './consequenceApi';

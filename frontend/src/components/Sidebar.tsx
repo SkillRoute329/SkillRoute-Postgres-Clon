@@ -134,6 +134,8 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         { path: '/dashboard/super-admin/centro-mando',   label: 'Centro de Mando (SA)',    icon: ShieldAlert},
         // Gantt Red Metropolitana — solo SUPERADMIN
         { path: '/dashboard/super-admin/gantt-red',      label: 'Gantt Red (SA)',           icon: Network    },
+        // Motor de Consecuencias — grafo operativo
+        { path: '/dashboard/super-admin/motor-consecuencias', label: 'Motor Consecuencias', icon: Zap        },
       ],
     },
 
