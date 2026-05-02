@@ -22,7 +22,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    // 🔗 PERSISTENCE BRIDGE: Restore manual tokens (Backend 2.0)
+    // PERSISTENCE BRIDGE: Restore manual tokens (Backend 2.0)
+    // Restaurar cache inmediatamente para que el header no muestre "----" mientras Firebase resuelve
     const storedToken = localStorage.getItem('tf_token');
     const storedUser = localStorage.getItem('tf_user');
     if (storedToken && storedUser) {
@@ -35,14 +36,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    console.log('🔒 [AuthContext] Initializing Strict Auth Listener (Firebase + Backend).');
+    // Timeout de seguridad: si onAuthStateChanged no dispara en 10s
+    // (red lenta, SDK no inicializado, IndexedDB corrupto), liberar la pantalla de carga
+    // para que el usuario no quede bloqueado eternamente.
+    const timeoutId = setTimeout(() => {
+      console.warn('[AuthContext] onAuthStateChanged timeout (10s) — liberando pantalla de carga');
+      setInitializing(false);
+    }, 10000);
 
-    // Ensure persistence is set before listening
+    console.log('[AuthContext] Inicializando listener de autenticación.');
+
     setPersistence(auth, browserLocalPersistence).catch((err) =>
       console.error('Persistence Error:', err),
     );
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      clearTimeout(timeoutId); // Firebase respondió — cancelar el timeout de seguridad
       try {
         if (firebaseUser) {
           console.log('✅ [AuthContext] Firebase Session Restored:', firebaseUser.email);
@@ -126,7 +135,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   const login = (newToken: string, newUser: User) => {

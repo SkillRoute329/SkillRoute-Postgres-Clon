@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, orderBy, limit, onSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, onSnapshot, getDocs, Timestamp } from 'firebase/firestore';
 import { db, authReady } from '../../config/firebase';
 import { useLiveData } from '../../context/LiveDataContext';
 import {
@@ -27,6 +27,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
+import type { OtpSummary } from '../../services/otpService';
 
 /* ─── Types ───────────────────────────────────────────── */
 
@@ -104,6 +105,7 @@ const OTP_COLOR = (otp: number) => {
 
 export default function OTPDashboard() {
   const { otpHoy, otpSeries } = useLiveData();
+  const { empresaPropia, empresaCfg } = useEmpresaPropia();
   const [registros, setRegistros] = useState<OTPRegistro[]>([]);
   const [byLinea, setByLinea] = useState<OTPLinea[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +113,7 @@ export default function OTPDashboard() {
   const [dias, setDias] = useState<7 | 14 | 30>(7);
   const [sortBy, setSortBy] = useState<'otp' | 'linea' | 'demora'>('otp');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [otpSummaryLines, setOtpSummaryLines] = useState<OtpSummary[]>([]);
 
   useEffect(() => {
     setLoading(true);
@@ -237,6 +240,16 @@ export default function OTPDashboard() {
       if (unsubscribe) unsubscribe();
     };
   }, [dias, refreshKey]);
+
+  // Cargar otp_summary del motor GPS (otpEngine — snap-to-stop real, cada 10 min)
+  // Cross-operador: filtra por la empresa actualmente seleccionada
+  useEffect(() => {
+    void getDocs(
+      query(collection(db, 'otp_summary'), where('agencyId', '==', empresaCfg.agencyId)),
+    )
+      .then((snap) => setOtpSummaryLines(snap.docs.map((d) => d.data() as OtpSummary)))
+      .catch(() => setOtpSummaryLines([]));
+  }, [empresaPropia, refreshKey]);
 
   /* ── KPIs globales ── */
   const totalReg = registros.length;
@@ -426,16 +439,81 @@ export default function OTPDashboard() {
         </div>
       </div>
 
-      {/* No data */}
-      {!loading && totalReg === 0 && !error && (
+      {/* Sin inspecciones → mostrar Motor GPS (otp_summary cross-operador) */}
+      {!loading && totalReg === 0 && !error && otpSummaryLines.length > 0 && (
+        <div className="rounded-2xl border border-blue-500/20 bg-slate-900/60 overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-black text-white flex items-center gap-2">
+                <Zap className="w-4 h-4 text-blue-400" />
+                OTP por Línea — Motor GPS · {empresaCfg.label}
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Snap-to-stop · GPS oficial STM · Actualización cada 10 min · {otpSummaryLines.length} líneas con datos
+              </p>
+            </div>
+            <span className="text-xs px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 font-bold">
+              GPS OFICIAL
+            </span>
+          </div>
+          <div className="divide-y divide-white/[0.04]">
+            {[...otpSummaryLines]
+              .sort((a, b) => a.pctOnTime - b.pctOnTime)
+              .map((s, i) => {
+                const c = OTP_COLOR(s.pctOnTime);
+                return (
+                  <div
+                    key={`${s.agencyId}_${s.linea}`}
+                    className="flex items-center gap-4 px-5 py-3 hover:bg-white/[0.02] transition-colors"
+                  >
+                    <span className={`w-6 text-center text-xs font-black ${i === 0 ? 'text-amber-400' : 'text-slate-600'}`}>
+                      {i === 0 ? <Award className="w-4 h-4 inline" /> : `#${i + 1}`}
+                    </span>
+                    <div className="w-36 shrink-0">
+                      <p className="text-sm font-bold text-white">Línea {s.linea}</p>
+                      <p className="text-xs text-slate-500">{s.busesActivos} buses activos</p>
+                    </div>
+                    <div className="flex-1 flex items-center gap-3">
+                      <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full ${c.bar} rounded-full transition-all duration-700`}
+                          style={{ width: `${s.pctOnTime}%` }}
+                        />
+                      </div>
+                      <span className={`text-sm font-black w-12 text-right ${c.text}`}>
+                        {Math.round(s.pctOnTime)}%
+                      </span>
+                    </div>
+                    <div className="hidden md:flex items-center gap-3 text-xs text-slate-500 shrink-0">
+                      <span className="text-emerald-400">{s.aTiempo} en tiempo</span>
+                      <span className="text-red-400">{s.retrasado} ret.</span>
+                      {s.retrasoPromedioMin > 0 && (
+                        <span className="text-amber-400 flex items-center gap-0.5">
+                          <Zap className="w-3 h-3" />
+                          +{s.retrasoPromedioMin.toFixed(1)}min avg
+                        </span>
+                      )}
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-lg text-xs font-bold border hidden sm:block ${c.badge}`}>
+                      {s.pctOnTime >= 85 ? 'ÓPTIMO' : s.pctOnTime >= 70 ? 'REGULAR' : 'CRÍTICO'}
+                    </span>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
+      {/* Sin inspecciones NI motor GPS → mensaje informativo */}
+      {!loading && totalReg === 0 && !error && otpSummaryLines.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-slate-500 gap-4 rounded-2xl border border-white/5 bg-slate-900/40">
           <BarChart3 className="w-12 h-12 text-slate-600" />
           <div className="text-center">
             <p className="text-sm font-semibold text-slate-400">
-              Sin registros de inspecciones en los últimos {dias} días
+              Sin datos de puntualidad para {empresaCfg.label} en los últimos {dias} días
             </p>
             <p className="text-xs text-slate-600 mt-1">
-              Los datos OTP se generan automáticamente al registrar inspecciones con hora real.
+              El Motor GPS (otpEngine) actualiza cada 10 min. Si no hay datos, verificar que el cron esté activo para esta empresa.
             </p>
           </div>
         </div>

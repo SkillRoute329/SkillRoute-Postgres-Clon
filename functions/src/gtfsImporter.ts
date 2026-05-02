@@ -30,6 +30,16 @@ const AGENCY_NAMES: Record<number, string> = {
   70: 'UCOT', 50: 'CUTCSA', 20: 'COME', 10: 'COETC',
 };
 
+// Mapa de conversión agency_id del GTFS → código numérico interno.
+// El GTFS de la IMM puede usar el código numérico directamente ('70', '50', etc.)
+// o un alias textual. Este mapa cubre ambos casos.
+const AGENCY_CODE_MAP: Record<string, number> = {
+  '70': 70, 'UCOT': 70, 'ucot': 70,
+  '50': 50, 'CUTCSA': 50, 'cutcsa': 50, 'DES': 50,
+  '20': 20, 'COME': 20, 'come': 20, 'COM': 20,
+  '10': 10, 'COETC': 10, 'coetc': 10, 'COE': 10,
+};
+
 // ─── GTFS row types ───────────────────────────────────────────────────────────
 
 interface GtfsRoute {
@@ -184,12 +194,17 @@ async function runImport(): Promise<ImportResult> {
   // routes.txt → routeId : { shortName, longName }
   const routesTxt = await readZipText(zip, 'routes.txt');
   if (!routesTxt) throw new Error('routes.txt no encontrado en ZIP');
-  const routeMap = new Map<string, { shortName: string; longName: string }>();
+  // Guardamos también agency_id para usarlo como fuente primaria al asignar empresa.
+  // Esto resuelve el bug del "huevo y la gallina": si una empresa no tenía shapes
+  // previas en Firestore, el mapa de Firestore devolvía 0 y sus shapes se guardaban
+  // con agencyId "0" y empresa "STM". Ahora usamos el campo oficial del GTFS.
+  const routeMap = new Map<string, { shortName: string; longName: string; agencyId: string }>();
   for (const r of parseCsv<GtfsRoute>(routesTxt)) {
     if (!r.route_id || !r.route_short_name) continue;
     routeMap.set(r.route_id, {
       shortName: r.route_short_name.trim(),
       longName: (r.route_long_name ?? '').trim(),
+      agencyId: (r.agency_id ?? '').trim(),
     });
   }
   logger.info('[GTFS] Rutas totales en GTFS:', routeMap.size);
@@ -254,7 +269,11 @@ async function runImport(): Promise<ImportResult> {
     const { shortName: routeShortName, longName: routeLongName } = routeInfo;
     const { directionId } = tripInfo;
     rawPoints.sort((a, b) => a.seq - b.seq);
-    const points = rawPoints.map(({ lat, lng }) => ({ lat, lng }));
+    // Filtrar puntos fuera del bounding box de Uruguay — coordenadas (0,0) u otras
+    // latitudes/longitudes erróneas inflan enormemente el cálculo de longitud.
+    const points = rawPoints
+      .map(({ lat, lng }) => ({ lat, lng }))
+      .filter(p => p.lat >= -35.5 && p.lat <= -29.5 && p.lng >= -58.5 && p.lng <= -53.0);
     if (points.length < 3) { shapesIgnorados++; continue; }
 
     // Calcular longitud real del recorrido (haversine acumulado, en metros)
@@ -272,9 +291,19 @@ async function runImport(): Promise<ImportResult> {
     }
     lengthMeters = Math.round(lengthMeters);
 
-    const agencyNumId = lineaAgencyMap.get(routeShortName.toLowerCase()) ?? 0;
+    // Fuente primaria: agency_id del GTFS oficial (resuelve el bug de UCOT con 0 shapes).
+    // Fallback: mapa construido desde Firestore (para líneas con agencyId ya conocido).
+    const gtfsAgencyStr = routeInfo?.agencyId ?? '';
+    const agencyNumId =
+      AGENCY_CODE_MAP[gtfsAgencyStr] ??
+      lineaAgencyMap.get(routeShortName.toLowerCase()) ??
+      0;
     const empresa = agencyNumId ? (AGENCY_NAMES[agencyNumId] ?? `EMP_${agencyNumId}`) : 'STM';
-    const docId = `${agencyNumId}_${routeShortName}_${directionId}`;
+    if (!agencyNumId) {
+      logger.warn(`[GTFS] Línea sin empresa reconocida: ${routeShortName} (agency_id GTFS: "${gtfsAgencyStr}")`);
+    }
+    const sentidoStr = directionId === 0 ? 'IDA' : 'VUELTA';
+    const docId = `${agencyNumId}_${routeShortName}_${sentidoStr}`;
     const docData: Record<string, unknown> = {
       agencyId: String(agencyNumId), empresa, linea: routeShortName,
       variante: directionId, sentido: directionId === 0 ? 'IDA' : 'VUELTA',
