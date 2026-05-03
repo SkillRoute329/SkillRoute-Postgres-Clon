@@ -1,12 +1,14 @@
 import { useState, lazy, Suspense } from 'react';
-import { Radio, MapPin, RefreshCw } from 'lucide-react';
+import { Radio, MapPin, RefreshCw, BarChart2 } from 'lucide-react';
 
-const FleetMonitorModule = lazy(() => import('./FleetMonitorModule'));
-const LiveMapPage        = lazy(() => import('./LiveMapPage'));
+const FleetMonitorModule  = lazy(() => import('./FleetMonitorModule'));
+const LiveMapPage         = lazy(() => import('./LiveMapPage'));
+const FlotaInteligente    = lazy(() => import('./FlotaInteligente'));
 
 const TABS = [
-  { key: 'monitor', label: 'Monitoreo de Flota', icon: Radio  },
-  { key: 'mapa',    label: 'Mapa en Vivo STM',   icon: MapPin },
+  { key: 'monitor',      label: 'Monitoreo de Flota',    icon: Radio    },
+  { key: 'mapa',         label: 'Mapa en Vivo STM',      icon: MapPin   },
+  { key: 'inteligencia', label: 'Inteligencia de Flota', icon: BarChart2 },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -21,7 +23,7 @@ const Loader = () => (
 export default function MapaFlotaHub() {
   const [tab, setTab] = useState<TabKey>('monitor');
   return (
-    <div className="bg-slate-950 min-h-screen flex flex-col">
+    <div className="bg-slate-950 h-screen flex flex-col overflow-hidden">
       <div className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur border-b border-slate-800 px-6 pt-5">
         <div className="flex gap-1">
           {TABS.map((t) => {
@@ -37,9 +39,11 @@ export default function MapaFlotaHub() {
           })}
         </div>
       </div>
-      <div className="flex-1">
+      <div className="flex-1 overflow-auto">
         <Suspense fallback={<Loader />}>
-          {tab === 'monitor' ? <FleetMonitorModule /> : <LiveMapPage />}
+          {tab === 'monitor'      && <FleetMonitorModule />}
+          {tab === 'mapa'         && <LiveMapPage />}
+          {tab === 'inteligencia' && <FlotaInteligente />}
         </Suspense>
       </div>
     </div>
