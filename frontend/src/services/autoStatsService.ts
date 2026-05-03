@@ -287,3 +287,115 @@ export async function fetchArchiveData(week: string, agencyId?: string): Promise
   const { data } = await axios.get(`${BASE}/autostats/archive/${week}${qs}`, { headers: h });
   return data.ok ? data : null;
 }
+
+// ── Configuración Salarial ─────────────────────────────────────────────────
+
+export interface CategoriaSalarial {
+  label: string;
+  jornal: number;
+  recargo: number;
+  descripcion: string;
+}
+
+export interface TurnosVigentes {
+  vigenciaDesde: string;
+  moneda: string;
+  nota: string;
+  categorias: Record<string, CategoriaSalarial>;
+  updatedAt?: unknown;
+}
+
+export interface FranjaIRPF {
+  limiteSuperior?: number;
+  tasa: number;
+  descripcion: string;
+}
+
+export interface DescuentoItem {
+  id: string;
+  nombre: string;
+  tipo: 'porcentaje' | 'monto_fijo' | 'progresivo';
+  valor?: number;
+  franjas?: FranjaIRPF[];
+  activo: boolean;
+  orden: number;
+  descripcion: string;
+}
+
+export interface DescuentosConfig {
+  vigenciaDesde: string;
+  nota: string;
+  items: DescuentoItem[];
+  updatedAt?: unknown;
+}
+
+export interface ConfigSalarial {
+  turnos: TurnosVigentes | null;
+  descuentos: DescuentosConfig | null;
+}
+
+export async function fetchConfigSalarial(): Promise<ConfigSalarial> {
+  const h = await authHeaders();
+  const { data } = await axios.get(`${BASE}/admin/config-salarial`, { headers: h });
+  return { turnos: data.turnos ?? null, descuentos: data.descuentos ?? null };
+}
+
+export async function updateTurnosSalariales(
+  categorias: Record<string, Partial<CategoriaSalarial>>,
+  vigenciaDesde?: string,
+): Promise<void> {
+  const h = await authHeaders();
+  await axios.put(`${BASE}/admin/config-salarial/turnos`, { categorias, vigenciaDesde }, { headers: h });
+}
+
+export async function updateDescuentos(
+  items: DescuentoItem[],
+  vigenciaDesde?: string,
+): Promise<void> {
+  const h = await authHeaders();
+  await axios.put(`${BASE}/admin/config-salarial/descuentos`, { items, vigenciaDesde }, { headers: h });
+}
+
+/** Calcula descuentos y neto para un jornal bruto dado + config de descuentos */
+export function calcularJornalNeto(
+  bruto: number,
+  descuentos: DescuentosConfig | null,
+  ingresoMensualEstimado?: number,
+): {
+  bruto: number;
+  descuentosDetalle: { nombre: string; monto: number }[];
+  totalDescuentos: number;
+  neto: number;
+} {
+  if (!descuentos) return { bruto, descuentosDetalle: [], totalDescuentos: 0, neto: bruto };
+
+  const base = ingresoMensualEstimado ?? bruto * 25; // ~25 jornales/mes
+  const detalle: { nombre: string; monto: number }[] = [];
+
+  for (const item of descuentos.items.filter(i => i.activo).sort((a, b) => a.orden - b.orden)) {
+    if (item.tipo === 'porcentaje' && item.valor != null) {
+      detalle.push({ nombre: item.nombre, monto: Math.round(bruto * item.valor / 100) });
+    } else if (item.tipo === 'monto_fijo' && item.valor != null && item.valor > 0) {
+      const porJornal = Math.round(item.valor / 25);
+      detalle.push({ nombre: item.nombre, monto: porJornal });
+    } else if (item.tipo === 'progresivo' && item.franjas) {
+      // IRPF: calcular sobre ingreso mensual estimado, prorratear al jornal
+      let irpfMensual = 0;
+      let resto = base;
+      let prevLimite = 0;
+      for (const franja of item.franjas) {
+        const limite = franja.limiteSuperior ?? Infinity;
+        const tramo = Math.min(Math.max(resto, 0), limite - prevLimite);
+        irpfMensual += tramo * franja.tasa / 100;
+        resto -= tramo;
+        prevLimite = limite;
+        if (resto <= 0) break;
+      }
+      const irpfJornal = Math.round(irpfMensual / 25);
+      if (irpfJornal > 0) detalle.push({ nombre: item.nombre, monto: irpfJornal });
+    }
+  }
+
+  const totalDescuentos = detalle.reduce((s, d) => s + d.monto, 0);
+  return { bruto, descuentosDetalle: detalle, totalDescuentos, neto: bruto - totalDescuentos };
+}

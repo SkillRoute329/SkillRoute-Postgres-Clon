@@ -37,12 +37,18 @@ exports.vehicleStatsTick = void 0;
 /**
  * vehicleStatsTick — Estadísticas diarias por coche para las 4 empresas.
  *
- * Fuente: vehicle_events (GPS real IMM, todas las empresas).
- * Enriquecimiento: distribuciones_diarias/{fecha}/registros (solo UCOT cuando existen).
+ * Fuente GPS: vehicle_events (IMM STM, todas las empresas).
+ * Enriquecimiento UCOT: distribuciones_diarias (conductores por coche).
+ * Enriquecimiento modelo: colección vehicles (marca/tipo por idBus).
  * Colección destino: vehicle_stats/{agencyId}_{idBus}
  *
+ * Auto-registro: coches detectados en GPS que no están en vehicles
+ * se guardan automáticamente con auto_detected=true para revisión.
+ *
+ * Regla de negocio: cada coche puede tener 1, 2 o 3 conductores por día (turnos).
+ * Cada asignación conductor-coche = 1 jornal. totalJornales refleja la carga laboral real.
+ *
  * Cron: diario 23:45 Montevideo (después de conductorStatsTick 23:30).
- * Merge incremental: agrega el día sin borrar historial anterior.
  */
 const functions = __importStar(require("firebase-functions/v1"));
 const admin = __importStar(require("firebase-admin"));
@@ -57,8 +63,8 @@ function pct(num, total) {
 function avg(arr) {
     return arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length * 10) / 10 : null;
 }
-async function processAgency(db, agencyId, today, sinceISO, distribByCoche) {
-    var _a, _b, _c, _d, _e, _f;
+async function processAgency(db, agencyId, today, sinceISO, distribByCoche, marcaMap) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
     const empresa = (_a = AGENCIES[agencyId]) !== null && _a !== void 0 ? _a : agencyId;
     const snap = await db.collection('vehicle_events')
         .where('agencyId', '==', agencyId)
@@ -68,7 +74,6 @@ async function processAgency(db, agencyId, today, sinceISO, distribByCoche) {
         .get();
     if (snap.empty)
         return {};
-    // Agrupar por idBus
     const byBus = {};
     snap.docs.forEach(d => {
         var _a, _b;
@@ -101,31 +106,47 @@ async function processAgency(db, agencyId, today, sinceISO, distribByCoche) {
         if (dTotal < MIN_EVENTOS)
             continue;
         const dCon = dEnTiempo + dAtrasado + dAdelantado;
-        // Enriquecimiento conductor (solo UCOT)
-        const reg = agencyId === UCOT_AGENCY ? distribByCoche[idBus] : undefined;
-        const interno = (_b = reg === null || reg === void 0 ? void 0 : reg.interno) !== null && _b !== void 0 ? _b : null;
-        const nombre = (_c = reg === null || reg === void 0 ? void 0 : reg.nombre) !== null && _c !== void 0 ? _c : null;
-        const turno = (_d = reg === null || reg === void 0 ? void 0 : reg.turno) !== null && _d !== void 0 ? _d : null;
-        const servicio = (_e = reg === null || reg === void 0 ? void 0 : reg.servicio) !== null && _e !== void 0 ? _e : null;
+        // Enriquecimiento conductores UCOT (1-3 por coche)
+        const regs = agencyId === UCOT_AGENCY ? ((_b = distribByCoche[idBus]) !== null && _b !== void 0 ? _b : []) : [];
+        const conductoresDia = regs.map(r => {
+            var _a, _b, _c, _d;
+            return ({
+                interno: (_a = r.interno) !== null && _a !== void 0 ? _a : null,
+                nombre: (_b = r.nombre) !== null && _b !== void 0 ? _b : null,
+                turno: (_c = r.turno) !== null && _c !== void 0 ? _c : null,
+                servicio: (_d = r.servicio) !== null && _d !== void 0 ? _d : null,
+            });
+        });
+        const jornalesDia = conductoresDia.length;
+        // Enriquecimiento modelo — clave agencyId_idBus, fallback solo idBus (UCOT legacy)
+        const vehicleInfo = (_d = (_c = marcaMap[`${agencyId}_${idBus}`]) !== null && _c !== void 0 ? _c : marcaMap[idBus]) !== null && _d !== void 0 ? _d : null;
         const diaStats = {
             fecha: today, totalEventos: dTotal,
             pctEnTiempo: pct(dEnTiempo, dCon),
             pctAtrasado: pct(dAtrasado, dCon),
             pctAdelantado: pct(dAdelantado, dCon),
-            velocidadMedia: (_f = avg(dVels)) !== null && _f !== void 0 ? _f : 0,
+            velocidadMedia: (_e = avg(dVels)) !== null && _e !== void 0 ? _e : 0,
             desviacionMediaMin: avg(dDesv),
             lineas: [...dLineas].sort(),
-            interno, nombre, turno, servicio,
+            conductoresDia,
+            jornalesDia,
+            interno: (_g = (_f = conductoresDia[0]) === null || _f === void 0 ? void 0 : _f.interno) !== null && _g !== void 0 ? _g : null,
+            nombre: (_j = (_h = conductoresDia[0]) === null || _h === void 0 ? void 0 : _h.nombre) !== null && _j !== void 0 ? _j : null,
+            turno: (_l = (_k = conductoresDia[0]) === null || _k === void 0 ? void 0 : _k.turno) !== null && _l !== void 0 ? _l : null,
+            servicio: (_o = (_m = conductoresDia[0]) === null || _m === void 0 ? void 0 : _m.servicio) !== null && _o !== void 0 ? _o : null,
         };
         const key = `${agencyId}_${idBus}`;
         if (!accMap[key]) {
             accMap[key] = {
                 agencyId, empresa, idBus,
+                marca: (_p = vehicleInfo === null || vehicleInfo === void 0 ? void 0 : vehicleInfo.marca) !== null && _p !== void 0 ? _p : null,
+                tipo: (_q = vehicleInfo === null || vehicleInfo === void 0 ? void 0 : vehicleInfo.tipo) !== null && _q !== void 0 ? _q : null,
                 total: 0, enTiempo: 0, atrasado: 0, adelantado: 0,
                 desviaciones: [], velocidades: [],
                 lineasSet: new Set(), ultimaActividad: today,
                 ultimoInterno: null, ultimoNombre: null,
-                conductoresKnown: new Set(), historial: [],
+                conductoresKnown: new Set(), totalJornales: 0,
+                historial: [],
             };
         }
         const acc = accMap[key];
@@ -133,41 +154,104 @@ async function processAgency(db, agencyId, today, sinceISO, distribByCoche) {
         acc.enTiempo += dEnTiempo;
         acc.atrasado += dAtrasado;
         acc.adelantado += dAdelantado;
+        acc.totalJornales += jornalesDia;
         acc.desviaciones.push(...dDesv);
         acc.velocidades.push(...dVels);
         dLineas.forEach(l => acc.lineasSet.add(l));
-        if (interno) {
-            acc.conductoresKnown.add(interno);
-            acc.ultimoInterno = interno;
-            acc.ultimoNombre = nombre;
-        }
+        conductoresDia.forEach(c => {
+            if (c.interno) {
+                acc.conductoresKnown.add(c.interno);
+                acc.ultimoInterno = c.interno;
+                acc.ultimoNombre = c.nombre;
+            }
+        });
         acc.historial.push(diaStats);
     }
     console.log(`[vehicleStats] ${empresa}: ${Object.keys(accMap).length} buses con datos hoy`);
     return accMap;
 }
+async function autoRegistrarNuevos(db, allAccMap, marcaMap, today) {
+    const vehiclesColl = db.collection('vehicles');
+    const nuevos = [];
+    for (const [key, acc] of Object.entries(allAccMap)) {
+        const mapKey1 = `${acc.agencyId}_${acc.idBus}`;
+        const mapKey2 = acc.idBus;
+        if (!marcaMap[mapKey1] && !marcaMap[mapKey2]) {
+            nuevos.push({ key, acc });
+        }
+    }
+    if (nuevos.length === 0)
+        return;
+    console.log(`[vehicleStats] Auto-registrando ${nuevos.length} coches nuevos detectados por GPS`);
+    // Escribir en lotes de 400
+    for (let i = 0; i < nuevos.length; i += 400) {
+        const batch = db.batch();
+        for (const { acc } of nuevos.slice(i, i + 400)) {
+            const docId = `AUTO_${acc.agencyId}_${acc.idBus}`;
+            batch.set(vehiclesColl.doc(docId), {
+                agencyId: acc.agencyId,
+                empresa: acc.empresa,
+                coche: acc.idBus,
+                interno: acc.idBus,
+                marca: null,
+                tipo: null,
+                lineas: [...acc.lineasSet].sort(),
+                estado_operativo: 'ACTIVO',
+                activo: true,
+                auto_detected: true,
+                primera_deteccion: today,
+                ultima_actividad: today,
+                pendiente_confirmacion: true,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+        }
+        await batch.commit();
+    }
+    console.log(`[vehicleStats] ${nuevos.length} coches nuevos registrados en vehicles (pendientes de confirmación).`);
+}
 async function runVehicleStatsTick(db) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
     const since = new Date(now);
     since.setUTCHours(0, 0, 0, 0);
     const sinceISO = since.toISOString();
     console.log(`[vehicleStats] Procesando ${today}`);
-    // Cargar distribuciones UCOT del día (enriquecimiento)
+    // ── Cargar mapa de marcas/tipos desde vehicles collection ─────────────────
+    const vehiclesSnap = await db.collection('vehicles').get();
+    const marcaMap = {};
+    vehiclesSnap.docs.forEach(d => {
+        var _a, _b, _c, _d, _e;
+        const v = d.data();
+        const coche = String((_b = (_a = v.coche) !== null && _a !== void 0 ? _a : v.interno) !== null && _b !== void 0 ? _b : '');
+        if (!coche)
+            return;
+        const agencyId = String((_c = v.agencyId) !== null && _c !== void 0 ? _c : '70');
+        const info = { marca: (_d = v.marca) !== null && _d !== void 0 ? _d : null, tipo: (_e = v.tipo) !== null && _e !== void 0 ? _e : null };
+        marcaMap[`${agencyId}_${coche}`] = info;
+        marcaMap[coche] = info; // fallback sin agencyId para UCOT legacy
+    });
+    console.log(`[vehicleStats] Mapa de marcas cargado: ${Object.keys(marcaMap).length / 2} vehículos`);
+    // ── Distribuciones UCOT del día (múltiples conductores por coche) ─────────
     const distribSnap = await db.collection('distribuciones_diarias')
         .doc(today).collection('registros').get();
     const distribByCoche = {};
     distribSnap.docs.forEach(d => {
+        var _a;
         const reg = d.data();
-        if (reg.coche)
-            distribByCoche[String(reg.coche)] = reg;
+        if (!reg.coche)
+            return;
+        const key = String(reg.coche);
+        (distribByCoche[key] = (_a = distribByCoche[key]) !== null && _a !== void 0 ? _a : []).push(reg);
     });
-    console.log(`[vehicleStats] Distribuciones UCOT hoy: ${distribSnap.size} coches`);
-    // Procesar todas las empresas en paralelo
-    const results = await Promise.all(Object.keys(AGENCIES).map(agencyId => processAgency(db, agencyId, today, sinceISO, distribByCoche)));
+    console.log(`[vehicleStats] Distribuciones UCOT hoy: ${distribSnap.size} registros, ${Object.keys(distribByCoche).length} coches únicos`);
+    // ── Procesar todas las empresas en paralelo ───────────────────────────────
+    const results = await Promise.all(Object.keys(AGENCIES).map(agencyId => processAgency(db, agencyId, today, sinceISO, distribByCoche, marcaMap)));
     const allAccMap = Object.assign({}, ...results);
     const coll = db.collection('vehicle_stats');
+    // ── Auto-registrar coches nuevos detectados por GPS ───────────────────────
+    await autoRegistrarNuevos(db, allAccMap, marcaMap, today);
+    // ── Merge a vehicle_stats ─────────────────────────────────────────────────
     for (const [key, acc] of Object.entries(allAccMap)) {
         const existing = await coll.doc(key).get();
         let mergedHistorial = acc.historial;
@@ -176,31 +260,38 @@ async function runVehicleStatsTick(db) {
             const prevHistorial = ((_a = prev.historial) !== null && _a !== void 0 ? _a : []).filter((h) => h.fecha !== today);
             mergedHistorial = [...prevHistorial, ...acc.historial]
                 .sort((a, b) => a.fecha.localeCompare(b.fecha));
-            // Acumular sobre totales históricos
             acc.total += (_b = prev.totalEventos) !== null && _b !== void 0 ? _b : 0;
             acc.enTiempo += Math.round((((_c = prev.pctEnTiempo) !== null && _c !== void 0 ? _c : 0) / 100) * ((_d = prev.totalEventos) !== null && _d !== void 0 ? _d : 0));
             acc.atrasado += Math.round((((_e = prev.pctAtrasado) !== null && _e !== void 0 ? _e : 0) / 100) * ((_f = prev.totalEventos) !== null && _f !== void 0 ? _f : 0));
             acc.adelantado += Math.round((((_g = prev.pctAdelantado) !== null && _g !== void 0 ? _g : 0) / 100) * ((_h = prev.totalEventos) !== null && _h !== void 0 ? _h : 0));
-            ((_j = prev.lineasOperadas) !== null && _j !== void 0 ? _j : []).forEach((l) => acc.lineasSet.add(l));
-            ((_k = prev.conductoresConocidos) !== null && _k !== void 0 ? _k : []).forEach((i) => acc.conductoresKnown.add(i));
-            // Mantener último conductor conocido si hoy no tenemos
+            acc.totalJornales += (_j = prev.totalJornales) !== null && _j !== void 0 ? _j : 0;
+            ((_k = prev.lineasOperadas) !== null && _k !== void 0 ? _k : []).forEach((l) => acc.lineasSet.add(l));
+            ((_l = prev.conductoresConocidos) !== null && _l !== void 0 ? _l : []).forEach((i) => acc.conductoresKnown.add(i));
             if (!acc.ultimoInterno && prev.ultimoInterno) {
                 acc.ultimoInterno = prev.ultimoInterno;
                 acc.ultimoNombre = prev.ultimoNombre;
             }
+            // Preservar marca si ya estaba y ahora no la tenemos en marcaMap
+            if (!acc.marca && prev.marca)
+                acc.marca = prev.marca;
+            if (!acc.tipo && prev.tipo)
+                acc.tipo = prev.tipo;
         }
         const con = acc.enTiempo + acc.atrasado + acc.adelantado;
         await coll.doc(key).set({
             agencyId: acc.agencyId,
             empresa: acc.empresa,
             idBus: acc.idBus,
+            marca: acc.marca,
+            tipo: acc.tipo,
             diasActivos: mergedHistorial.length,
             totalEventos: acc.total,
+            totalJornales: acc.totalJornales,
             pctEnTiempo: pct(acc.enTiempo, con),
             pctAtrasado: pct(acc.atrasado, con),
             pctAdelantado: pct(acc.adelantado, con),
             pctSinHorario: pct(acc.total - con, acc.total),
-            velocidadMedia: (_l = avg(acc.velocidades)) !== null && _l !== void 0 ? _l : 0,
+            velocidadMedia: (_m = avg(acc.velocidades)) !== null && _m !== void 0 ? _m : 0,
             desviacionMediaMin: avg(acc.desviaciones),
             lineasOperadas: [...acc.lineasSet].sort(),
             ultimaActividad: today,

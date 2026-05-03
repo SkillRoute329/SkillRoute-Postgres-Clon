@@ -16,15 +16,19 @@ import {
   Phone,
   RefreshCw,
   Save,
+  CalendarDays,
+  Settings2,
 } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { useAuth } from '../../context/AuthContext';
 import { DepartmentService, DiscountService, DataImportService } from '../../services/api';
 import clsx from 'clsx';
+import { JornalesTab } from './JornalesTab';
+import { ConfigSalarialTab } from './ConfigSalarialTab';
 
 const AdminRRHH = () => {
   const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
-    const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'discounts'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'discounts' | 'jornales' | 'salarios'>('users');
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto animate-fade-in-up pb-24">
@@ -74,12 +78,38 @@ const AdminRRHH = () => {
         >
           Descuentos y Retenciones
         </button>
+        <button
+          onClick={() => setActiveTab('jornales')}
+          className={clsx(
+            'px-6 py-3 font-medium text-sm transition-colors border-b-2 flex items-center gap-1.5',
+            activeTab === 'jornales'
+              ? 'border-emerald-500 text-emerald-400'
+              : 'border-transparent text-slate-400 hover:text-white',
+          )}
+        >
+          <CalendarDays className="w-3.5 h-3.5" />
+          Jornales
+        </button>
+        <button
+          onClick={() => setActiveTab('salarios')}
+          className={clsx(
+            'px-6 py-3 font-medium text-sm transition-colors border-b-2 flex items-center gap-1.5',
+            activeTab === 'salarios'
+              ? 'border-amber-500 text-amber-400'
+              : 'border-transparent text-slate-400 hover:text-white',
+          )}
+        >
+          <Settings2 className="w-3.5 h-3.5" />
+          Config. Salarial
+        </button>
       </div>
 
       <div className="min-h-[400px]">
         {activeTab === 'users' && <UsersTab />}
         {activeTab === 'structure' && <StructureTab />}
         {activeTab === 'discounts' && <DiscountsTab />}
+        {activeTab === 'jornales' && <JornalesTab />}
+        {activeTab === 'salarios' && <ConfigSalarialTab />}
       </div>
     </div>
   );

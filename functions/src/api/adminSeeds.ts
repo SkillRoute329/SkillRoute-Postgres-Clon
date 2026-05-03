@@ -11,6 +11,7 @@
  */
 import * as admin from 'firebase-admin';
 import type { Express } from 'express';
+import { requireAdmin } from './authMiddleware';
 
 const getDb = () => admin.firestore();
 
@@ -39,7 +40,7 @@ const UCOT_BOLETIN: Record<string, any> = require('../data/ucot_boletin.json');
  */
 export function registerAdminSeedRoutes(app: Express) {
   // POST /api/admin/seed-personal-ucot — 691 empleados reales, idempotente (merge:true)
-  app.post('/api/admin/seed-personal-ucot', async (_req, res) => {
+  app.post('/api/admin/seed-personal-ucot', requireAdmin, async (_req, res) => {
     try {
       const db = getDb();
       const BATCH_SIZE = 450;
@@ -88,7 +89,7 @@ export function registerAdminSeedRoutes(app: Express) {
   });
 
   // POST /api/admin/seed-vehicles-ucot
-  app.post('/api/admin/seed-vehicles-ucot', async (_req, res) => {
+  app.post('/api/admin/seed-vehicles-ucot', requireAdmin, async (_req, res) => {
     try {
       const db = getDb();
       const BATCH_SIZE = 450;
@@ -122,7 +123,7 @@ export function registerAdminSeedRoutes(app: Express) {
   });
 
   // POST /api/admin/seed-horarios-ucot — servicios hábiles (cartones)
-  app.post('/api/admin/seed-horarios-ucot', async (_req, res) => {
+  app.post('/api/admin/seed-horarios-ucot', requireAdmin, async (_req, res) => {
     try {
       const db = getDb();
       const BATCH_SIZE = 450;
@@ -154,7 +155,7 @@ export function registerAdminSeedRoutes(app: Express) {
   });
 
   // GET /api/admin/personal — lista paginada de empleados (ordenada por interno)
-  app.get('/api/admin/personal', async (req, res) => {
+  app.get('/api/admin/personal', requireAdmin, async (req, res) => {
     try {
       const limit = Math.min(parseInt(String(req.query.limit ?? '200')), 700);
       const rol = req.query.rol ? String(req.query.rol) : null;
@@ -188,10 +189,10 @@ export function registerAdminSeedRoutes(app: Express) {
   });
 
   // PUT /api/admin/personal/:id — actualiza campos editables
-  app.put('/api/admin/personal/:id', async (req, res) => {
+  app.put('/api/admin/personal/:id', requireAdmin, async (req, res) => {
     try {
       const db = getDb();
-      const { id } = req.params;
+      const id = String(req.params.id);
       const { cargo, rol, telefono, estado } = req.body as any;
       const update: any = { actualizadoEn: admin.firestore.FieldValue.serverTimestamp() };
       if (cargo !== undefined) update.cargo = cargo;
@@ -206,7 +207,7 @@ export function registerAdminSeedRoutes(app: Express) {
   });
 
   // POST /api/admin/seed-sabado-ucot — servicios de sábado (verano)
-  app.post('/api/admin/seed-sabado-ucot', async (_req, res) => {
+  app.post('/api/admin/seed-sabado-ucot', requireAdmin, async (_req, res) => {
     try {
       const db = getDb();
       let total = 0;
@@ -236,7 +237,7 @@ export function registerAdminSeedRoutes(app: Express) {
   });
 
   // POST /api/admin/seed-boletin-ucot — boletín oficial
-  app.post('/api/admin/seed-boletin-ucot', async (_req, res) => {
+  app.post('/api/admin/seed-boletin-ucot', requireAdmin, async (_req, res) => {
     try {
       const db = getDb();
       let total = 0;
@@ -258,6 +259,69 @@ export function registerAdminSeedRoutes(app: Express) {
         await batch.commit();
       }
       res.json({ ok: true, message: `${total} líneas del boletín cargadas (${Object.values(UCOT_BOLETIN).reduce((a: number, l: any) => a + l.servicios.length, 0)} servicios)`, total });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // ── Configuración Salarial ─────────────────────────────────────────────────
+
+  // GET /api/admin/config-salarial — lee turnos_vigentes y descuentos
+  app.get('/api/admin/config-salarial', requireAdmin, async (_req, res) => {
+    try {
+      const db = getDb();
+      const [turnosDoc, descuentosDoc] = await Promise.all([
+        db.collection('config_salarial').doc('turnos_vigentes').get(),
+        db.collection('config_salarial').doc('descuentos').get(),
+      ]);
+      res.json({
+        ok: true,
+        turnos:     turnosDoc.exists    ? turnosDoc.data()     : null,
+        descuentos: descuentosDoc.exists ? descuentosDoc.data() : null,
+      });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // PUT /api/admin/config-salarial/turnos — actualiza valores de jornal por categoría
+  app.put('/api/admin/config-salarial/turnos', requireAdmin, async (req, res) => {
+    try {
+      const db = getDb();
+      const { categorias, vigenciaDesde, nota } = req.body;
+      if (!categorias) {
+        res.status(400).json({ ok: false, error: 'categorias requerido' });
+        return;
+      }
+      await db.collection('config_salarial').doc('turnos_vigentes').set({
+        categorias,
+        vigenciaDesde: vigenciaDesde ?? new Date().toISOString().slice(0, 10),
+        moneda: 'UYU',
+        nota: nota ?? '',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      res.json({ ok: true, message: 'Turnos actualizados' });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // PUT /api/admin/config-salarial/descuentos — actualiza reglas de descuento
+  app.put('/api/admin/config-salarial/descuentos', requireAdmin, async (req, res) => {
+    try {
+      const db = getDb();
+      const { items, vigenciaDesde, nota } = req.body;
+      if (!items || !Array.isArray(items)) {
+        res.status(400).json({ ok: false, error: 'items (array) requerido' });
+        return;
+      }
+      await db.collection('config_salarial').doc('descuentos').set({
+        items,
+        vigenciaDesde: vigenciaDesde ?? new Date().toISOString().slice(0, 10),
+        nota: nota ?? '',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      res.json({ ok: true, message: 'Descuentos actualizados' });
     } catch (err: any) {
       res.status(500).json({ ok: false, error: err.message });
     }

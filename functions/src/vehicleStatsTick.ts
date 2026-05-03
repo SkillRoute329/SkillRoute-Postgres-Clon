@@ -1,12 +1,18 @@
 /**
  * vehicleStatsTick — Estadísticas diarias por coche para las 4 empresas.
  *
- * Fuente: vehicle_events (GPS real IMM, todas las empresas).
- * Enriquecimiento: distribuciones_diarias/{fecha}/registros (solo UCOT cuando existen).
+ * Fuente GPS: vehicle_events (IMM STM, todas las empresas).
+ * Enriquecimiento UCOT: distribuciones_diarias (conductores por coche).
+ * Enriquecimiento modelo: colección vehicles (marca/tipo por idBus).
  * Colección destino: vehicle_stats/{agencyId}_{idBus}
  *
+ * Auto-registro: coches detectados en GPS que no están en vehicles
+ * se guardan automáticamente con auto_detected=true para revisión.
+ *
+ * Regla de negocio: cada coche puede tener 1, 2 o 3 conductores por día (turnos).
+ * Cada asignación conductor-coche = 1 jornal. totalJornales refleja la carga laboral real.
+ *
  * Cron: diario 23:45 Montevideo (después de conductorStatsTick 23:30).
- * Merge incremental: agrega el día sin borrar historial anterior.
  */
 import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
@@ -17,6 +23,13 @@ const AGENCIES: Record<string, string> = {
 const UCOT_AGENCY = '70';
 const MIN_EVENTOS = 3;
 
+interface ConductorDia {
+  interno: number | null;
+  nombre: string | null;
+  turno: string | null;
+  servicio: number | null;
+}
+
 interface DiaVehicle {
   fecha: string;
   totalEventos: number;
@@ -26,7 +39,9 @@ interface DiaVehicle {
   velocidadMedia: number;
   desviacionMediaMin: number | null;
   lineas: string[];
-  // Enriquecimiento conductor (solo UCOT cuando hay distribuciones)
+  conductoresDia: ConductorDia[];
+  jornalesDia: number;
+  // Backward compat: primer conductor del día
   interno: number | null;
   nombre: string | null;
   turno: string | null;
@@ -37,6 +52,8 @@ interface VehicleAcc {
   agencyId: string;
   empresa: string;
   idBus: string;
+  marca: string | null;
+  tipo: string | null;
   total: number;
   enTiempo: number;
   atrasado: number;
@@ -48,6 +65,7 @@ interface VehicleAcc {
   ultimoInterno: number | null;
   ultimoNombre: string | null;
   conductoresKnown: Set<number>;
+  totalJornales: number;
   historial: DiaVehicle[];
 }
 
@@ -63,7 +81,8 @@ async function processAgency(
   agencyId: string,
   today: string,
   sinceISO: string,
-  distribByCoche: Record<string, admin.firestore.DocumentData>,
+  distribByCoche: Record<string, admin.firestore.DocumentData[]>,
+  marcaMap: Record<string, { marca: string | null; tipo: string | null }>,
 ): Promise<Record<string, VehicleAcc>> {
   const empresa = AGENCIES[agencyId] ?? agencyId;
 
@@ -76,7 +95,6 @@ async function processAgency(
 
   if (snap.empty) return {};
 
-  // Agrupar por idBus
   const byBus: Record<string, admin.firestore.DocumentData[]> = {};
   snap.docs.forEach(d => {
     const e = d.data();
@@ -106,12 +124,18 @@ async function processAgency(
 
     const dCon = dEnTiempo + dAtrasado + dAdelantado;
 
-    // Enriquecimiento conductor (solo UCOT)
-    const reg = agencyId === UCOT_AGENCY ? distribByCoche[idBus] : undefined;
-    const interno: number | null  = reg?.interno  ?? null;
-    const nombre: string | null   = reg?.nombre   ?? null;
-    const turno: string | null    = reg?.turno    ?? null;
-    const servicio: number | null = reg?.servicio ?? null;
+    // Enriquecimiento conductores UCOT (1-3 por coche)
+    const regs = agencyId === UCOT_AGENCY ? (distribByCoche[idBus] ?? []) : [];
+    const conductoresDia: ConductorDia[] = regs.map(r => ({
+      interno:  r.interno  ?? null,
+      nombre:   r.nombre   ?? null,
+      turno:    r.turno    ?? null,
+      servicio: r.servicio ?? null,
+    }));
+    const jornalesDia = conductoresDia.length;
+
+    // Enriquecimiento modelo — clave agencyId_idBus, fallback solo idBus (UCOT legacy)
+    const vehicleInfo = marcaMap[`${agencyId}_${idBus}`] ?? marcaMap[idBus] ?? null;
 
     const diaStats: DiaVehicle = {
       fecha: today, totalEventos: dTotal,
@@ -121,38 +145,97 @@ async function processAgency(
       velocidadMedia: avg(dVels) ?? 0,
       desviacionMediaMin: avg(dDesv),
       lineas: [...dLineas].sort(),
-      interno, nombre, turno, servicio,
+      conductoresDia,
+      jornalesDia,
+      interno:  conductoresDia[0]?.interno  ?? null,
+      nombre:   conductoresDia[0]?.nombre   ?? null,
+      turno:    conductoresDia[0]?.turno    ?? null,
+      servicio: conductoresDia[0]?.servicio ?? null,
     };
 
     const key = `${agencyId}_${idBus}`;
     if (!accMap[key]) {
       accMap[key] = {
         agencyId, empresa, idBus,
+        marca: vehicleInfo?.marca ?? null,
+        tipo:  vehicleInfo?.tipo  ?? null,
         total: 0, enTiempo: 0, atrasado: 0, adelantado: 0,
         desviaciones: [], velocidades: [],
         lineasSet: new Set(), ultimaActividad: today,
         ultimoInterno: null, ultimoNombre: null,
-        conductoresKnown: new Set(), historial: [],
+        conductoresKnown: new Set(), totalJornales: 0,
+        historial: [],
       };
     }
     const acc = accMap[key];
-    acc.total       += dTotal;
-    acc.enTiempo    += dEnTiempo;
-    acc.atrasado    += dAtrasado;
-    acc.adelantado  += dAdelantado;
+    acc.total          += dTotal;
+    acc.enTiempo       += dEnTiempo;
+    acc.atrasado       += dAtrasado;
+    acc.adelantado     += dAdelantado;
+    acc.totalJornales  += jornalesDia;
     acc.desviaciones.push(...dDesv);
     acc.velocidades.push(...dVels);
     dLineas.forEach(l => acc.lineasSet.add(l));
-    if (interno) {
-      acc.conductoresKnown.add(interno);
-      acc.ultimoInterno = interno;
-      acc.ultimoNombre  = nombre;
-    }
+    conductoresDia.forEach(c => {
+      if (c.interno) {
+        acc.conductoresKnown.add(c.interno);
+        acc.ultimoInterno = c.interno;
+        acc.ultimoNombre  = c.nombre;
+      }
+    });
     acc.historial.push(diaStats);
   }
 
   console.log(`[vehicleStats] ${empresa}: ${Object.keys(accMap).length} buses con datos hoy`);
   return accMap;
+}
+
+async function autoRegistrarNuevos(
+  db: admin.firestore.Firestore,
+  allAccMap: Record<string, VehicleAcc>,
+  marcaMap: Record<string, { marca: string | null; tipo: string | null }>,
+  today: string,
+): Promise<void> {
+  const vehiclesColl = db.collection('vehicles');
+  const nuevos: Array<{ key: string; acc: VehicleAcc }> = [];
+
+  for (const [key, acc] of Object.entries(allAccMap)) {
+    const mapKey1 = `${acc.agencyId}_${acc.idBus}`;
+    const mapKey2 = acc.idBus;
+    if (!marcaMap[mapKey1] && !marcaMap[mapKey2]) {
+      nuevos.push({ key, acc });
+    }
+  }
+
+  if (nuevos.length === 0) return;
+
+  console.log(`[vehicleStats] Auto-registrando ${nuevos.length} coches nuevos detectados por GPS`);
+
+  // Escribir en lotes de 400
+  for (let i = 0; i < nuevos.length; i += 400) {
+    const batch = db.batch();
+    for (const { acc } of nuevos.slice(i, i + 400)) {
+      const docId = `AUTO_${acc.agencyId}_${acc.idBus}`;
+      batch.set(vehiclesColl.doc(docId), {
+        agencyId:        acc.agencyId,
+        empresa:         acc.empresa,
+        coche:           acc.idBus,
+        interno:         acc.idBus,
+        marca:           null,
+        tipo:            null,
+        lineas:          [...acc.lineasSet].sort(),
+        estado_operativo:'ACTIVO',
+        activo:          true,
+        auto_detected:   true,
+        primera_deteccion: today,
+        ultima_actividad:  today,
+        pendiente_confirmacion: true,
+        createdAt:       admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    }
+    await batch.commit();
+  }
+  console.log(`[vehicleStats] ${nuevos.length} coches nuevos registrados en vehicles (pendientes de confirmación).`);
 }
 
 async function runVehicleStatsTick(db: admin.firestore.Firestore): Promise<void> {
@@ -164,26 +247,46 @@ async function runVehicleStatsTick(db: admin.firestore.Firestore): Promise<void>
 
   console.log(`[vehicleStats] Procesando ${today}`);
 
-  // Cargar distribuciones UCOT del día (enriquecimiento)
+  // ── Cargar mapa de marcas/tipos desde vehicles collection ─────────────────
+  const vehiclesSnap = await db.collection('vehicles').get();
+  const marcaMap: Record<string, { marca: string | null; tipo: string | null }> = {};
+  vehiclesSnap.docs.forEach(d => {
+    const v = d.data();
+    const coche = String(v.coche ?? v.interno ?? '');
+    if (!coche) return;
+    const agencyId = String(v.agencyId ?? '70');
+    const info = { marca: v.marca ?? null, tipo: v.tipo ?? null };
+    marcaMap[`${agencyId}_${coche}`] = info;
+    marcaMap[coche] = info; // fallback sin agencyId para UCOT legacy
+  });
+  console.log(`[vehicleStats] Mapa de marcas cargado: ${Object.keys(marcaMap).length / 2} vehículos`);
+
+  // ── Distribuciones UCOT del día (múltiples conductores por coche) ─────────
   const distribSnap = await db.collection('distribuciones_diarias')
     .doc(today).collection('registros').get();
-  const distribByCoche: Record<string, admin.firestore.DocumentData> = {};
+  const distribByCoche: Record<string, admin.firestore.DocumentData[]> = {};
   distribSnap.docs.forEach(d => {
     const reg = d.data();
-    if (reg.coche) distribByCoche[String(reg.coche)] = reg;
+    if (!reg.coche) return;
+    const key = String(reg.coche);
+    (distribByCoche[key] = distribByCoche[key] ?? []).push(reg);
   });
-  console.log(`[vehicleStats] Distribuciones UCOT hoy: ${distribSnap.size} coches`);
+  console.log(`[vehicleStats] Distribuciones UCOT hoy: ${distribSnap.size} registros, ${Object.keys(distribByCoche).length} coches únicos`);
 
-  // Procesar todas las empresas en paralelo
+  // ── Procesar todas las empresas en paralelo ───────────────────────────────
   const results = await Promise.all(
     Object.keys(AGENCIES).map(agencyId =>
-      processAgency(db, agencyId, today, sinceISO, distribByCoche)
+      processAgency(db, agencyId, today, sinceISO, distribByCoche, marcaMap)
     )
   );
 
   const allAccMap: Record<string, VehicleAcc> = Object.assign({}, ...results);
   const coll = db.collection('vehicle_stats');
 
+  // ── Auto-registrar coches nuevos detectados por GPS ───────────────────────
+  await autoRegistrarNuevos(db, allAccMap, marcaMap, today);
+
+  // ── Merge a vehicle_stats ─────────────────────────────────────────────────
   for (const [key, acc] of Object.entries(allAccMap)) {
     const existing = await coll.doc(key).get();
     let mergedHistorial: DiaVehicle[] = acc.historial;
@@ -196,19 +299,21 @@ async function runVehicleStatsTick(db: admin.firestore.Firestore): Promise<void>
       mergedHistorial = [...prevHistorial, ...acc.historial]
         .sort((a, b) => a.fecha.localeCompare(b.fecha));
 
-      // Acumular sobre totales históricos
       acc.total      += prev.totalEventos ?? 0;
       acc.enTiempo   += Math.round(((prev.pctEnTiempo  ?? 0) / 100) * (prev.totalEventos ?? 0));
       acc.atrasado   += Math.round(((prev.pctAtrasado  ?? 0) / 100) * (prev.totalEventos ?? 0));
       acc.adelantado += Math.round(((prev.pctAdelantado ?? 0) / 100) * (prev.totalEventos ?? 0));
+      acc.totalJornales += prev.totalJornales ?? 0;
       (prev.lineasOperadas ?? []).forEach((l: string) => acc.lineasSet.add(l));
       (prev.conductoresConocidos ?? []).forEach((i: number) => acc.conductoresKnown.add(i));
 
-      // Mantener último conductor conocido si hoy no tenemos
       if (!acc.ultimoInterno && prev.ultimoInterno) {
         acc.ultimoInterno = prev.ultimoInterno;
         acc.ultimoNombre  = prev.ultimoNombre;
       }
+      // Preservar marca si ya estaba y ahora no la tenemos en marcaMap
+      if (!acc.marca && prev.marca) acc.marca = prev.marca;
+      if (!acc.tipo  && prev.tipo)  acc.tipo  = prev.tipo;
     }
 
     const con = acc.enTiempo + acc.atrasado + acc.adelantado;
@@ -216,8 +321,11 @@ async function runVehicleStatsTick(db: admin.firestore.Firestore): Promise<void>
       agencyId:             acc.agencyId,
       empresa:              acc.empresa,
       idBus:                acc.idBus,
+      marca:                acc.marca,
+      tipo:                 acc.tipo,
       diasActivos:          mergedHistorial.length,
       totalEventos:         acc.total,
+      totalJornales:        acc.totalJornales,
       pctEnTiempo:          pct(acc.enTiempo,  con),
       pctAtrasado:          pct(acc.atrasado,  con),
       pctAdelantado:        pct(acc.adelantado, con),

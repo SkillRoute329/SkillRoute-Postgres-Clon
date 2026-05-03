@@ -62,17 +62,20 @@ def cargar_eventos_por_dia(db, agency_id, fecha_dia):
     return [d.to_dict() for d in snap]
 
 def cargar_distribuciones(db, fecha):
-    """Carga distribuciones del día (solo UCOT tiene esto)."""
+    """Carga distribuciones del día (solo UCOT tiene esto).
+    Un coche puede tener 1, 2 o 3 conductores (turnos distintos).
+    Retorna dict {idBus: [reg1, reg2, ...]} — lista, nunca sobreescribe.
+    """
     regs_snap = (db.collection("distribuciones_diarias")
                    .document(fecha)
                    .collection("registros")
                    .get())
-    por_coche = {}
+    por_coche = defaultdict(list)
     for reg_doc in regs_snap:
         reg = reg_doc.to_dict()
         coche = reg.get("coche")
         if coche:
-            por_coche[str(int(coche))] = reg
+            por_coche[str(int(coche))].append(reg)
     return por_coche
 
 def main():
@@ -137,12 +140,18 @@ def main():
 
                 d_con = d_en_tiempo + d_atrasado + d_adelantado
 
-                # Enriquecimiento con conductor (UCOT solamente)
-                reg = distrib.get(idBus)
-                interno  = reg.get("interno")  if reg else None
-                nombre   = reg.get("nombre")   if reg else None
-                turno    = reg.get("turno")    if reg else None
-                servicio = reg.get("servicio") if reg else None
+                # Enriquecimiento con conductores (UCOT): 1, 2 o 3 por coche
+                regs = distrib.get(idBus, []) if agency_id == "70" else []
+                conductores_dia = [
+                    {
+                        "interno":  r.get("interno"),
+                        "nombre":   r.get("nombre"),
+                        "turno":    r.get("turno"),
+                        "servicio": r.get("servicio"),
+                    }
+                    for r in regs if r.get("interno")
+                ]
+                jornales_dia = len(conductores_dia)
 
                 dia_stats = {
                     "fecha":           fecha,
@@ -153,11 +162,14 @@ def main():
                     "velocidadMedia":  avg(d_vels) or 0,
                     "desviacionMediaMin": avg(d_desv),
                     "lineas":          sorted(d_lineas),
-                    # Conductor (None para no-UCOT o días sin distribución)
-                    "interno":  interno,
-                    "nombre":   nombre,
-                    "turno":    turno,
-                    "servicio": servicio,
+                    # Múltiples conductores por día
+                    "conductoresDia": conductores_dia,
+                    "jornalesDia":    jornales_dia,
+                    # Backward compat: primer conductor
+                    "interno":  conductores_dia[0]["interno"]  if conductores_dia else None,
+                    "nombre":   conductores_dia[0]["nombre"]   if conductores_dia else None,
+                    "turno":    conductores_dia[0]["turno"]    if conductores_dia else None,
+                    "servicio": conductores_dia[0]["servicio"] if conductores_dia else None,
                 }
 
                 key = f"{agency_id}_{idBus}"
@@ -170,24 +182,27 @@ def main():
                         "desv": [], "vels": [],
                         "lineas": set(),
                         "ultimaActividad": fecha,
-                        "conductoresKnown": set(),  # internos conocidos
+                        "conductoresKnown": set(),
+                        "totalJornales": 0,
                         "historial": [],
                     }
 
                 acc = vehicle_data[key]
-                acc["total"]      += d_total
-                acc["enTiempo"]   += d_en_tiempo
-                acc["atrasado"]   += d_atrasado
-                acc["adelantado"] += d_adelantado
+                acc["total"]         += d_total
+                acc["enTiempo"]      += d_en_tiempo
+                acc["atrasado"]      += d_atrasado
+                acc["adelantado"]    += d_adelantado
+                acc["totalJornales"] += jornales_dia
                 acc["desv"].extend(d_desv)
                 acc["vels"].extend(d_vels)
                 acc["lineas"].update(d_lineas)
                 if fecha > acc["ultimaActividad"]:
                     acc["ultimaActividad"] = fecha
-                if interno:
-                    acc["conductoresKnown"].add(interno)
-                    acc["ultimoInterno"] = interno
-                    acc["ultimoNombre"]  = nombre
+                for c in conductores_dia:
+                    if c["interno"]:
+                        acc["conductoresKnown"].add(c["interno"])
+                        acc["ultimoInterno"] = c["interno"]
+                        acc["ultimoNombre"]  = c["nombre"]
                 acc["historial"].append(dia_stats)
 
     total_buses = len(vehicle_data)
@@ -226,6 +241,7 @@ def main():
             "idBus":              acc["idBus"],
             "diasActivos":        len(acc["historial"]),
             "totalEventos":       acc["total"],
+            "totalJornales":      acc["totalJornales"],
             "pctEnTiempo":        pct(acc["enTiempo"],  con),
             "pctAtrasado":        pct(acc["atrasado"],  con),
             "pctAdelantado":      pct(acc["adelantado"], con),
@@ -234,7 +250,6 @@ def main():
             "desviacionMediaMin": avg(acc["desv"]),
             "lineasOperadas":     sorted(acc["lineas"]),
             "ultimaActividad":    acc["ultimaActividad"],
-            # Conductor (None si no hay distribuciones para esta empresa/día)
             "ultimoInterno":      ultimo_interno,
             "ultimoNombre":       ultimo_nombre,
             "conductoresConocidos": sorted(acc["conductoresKnown"]),

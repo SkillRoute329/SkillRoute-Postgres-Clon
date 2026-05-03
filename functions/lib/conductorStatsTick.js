@@ -38,6 +38,11 @@ exports.conductorStatsTick = void 0;
  * conductorStatsTick — Cruza vehicle_events del día con distribuciones_diarias
  * para atribuir estadísticas de OTP a cada conductor.
  *
+ * Regla de negocio: un coche puede tener 1, 2 o 3 conductores por día (turnos).
+ * Cada conductor en distribuciones_diarias recibe su propia entrada en conductor_stats.
+ * Todos los conductores que manejaron el mismo coche ese día comparten los stats GPS
+ * del coche (no podemos dividir por turno sin horarios exactos de cada turno).
+ *
  * Cron: diario 23:30 hora Montevideo.
  * Colección destino: conductor_stats/{agencyId}_{interno}
  * Merge incremental: acumula historial por día, recalcula agregados.
@@ -45,7 +50,7 @@ exports.conductorStatsTick = void 0;
 const functions = __importStar(require("firebase-functions/v1"));
 const admin = __importStar(require("firebase-admin"));
 const AGENCY_ID = '70';
-const MIN_EVENTOS = 5; // mínimo de pings GPS para considerar un turno válido
+const MIN_EVENTOS = 5;
 function pct(num, total) {
     return total > 0 ? Math.round(num / total * 1000) / 10 : 0;
 }
@@ -56,7 +61,6 @@ async function processConductorStats(db) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
-    // Ventana: desde las 00:00 de hoy (UTC)
     const since = new Date(now);
     since.setUTCHours(0, 0, 0, 0);
     const sinceISO = since.toISOString();
@@ -71,7 +75,7 @@ async function processConductorStats(db) {
     console.log(`[conductorStats] vehicle_events hoy: ${evSnap.size}`);
     if (evSnap.empty)
         return;
-    // Agrupar por idBus
+    // Agrupar GPS por idBus
     const byBus = {};
     evSnap.docs.forEach(d => {
         var _a, _b;
@@ -81,27 +85,29 @@ async function processConductorStats(db) {
             return;
         (byBus[id] = (_b = byBus[id]) !== null && _b !== void 0 ? _b : []).push(e);
     });
-    // ── 2. Distribuciones del día ────────────────────────────────────────────
+    // ── 2. Distribuciones del día — múltiples conductores por coche ──────────
     const distribSnap = await db.collection('distribuciones_diarias')
         .doc(today)
         .collection('registros')
         .get();
+    // Lista de registros por coche (1, 2 o 3 conductores posibles)
     const distribByCoche = {};
     distribSnap.docs.forEach(d => {
+        var _a;
         const reg = d.data();
-        if (reg.coche)
-            distribByCoche[String(reg.coche)] = reg;
+        if (!reg.coche)
+            return;
+        const key = String(reg.coche);
+        (distribByCoche[key] = (_a = distribByCoche[key]) !== null && _a !== void 0 ? _a : []).push(reg);
     });
-    console.log(`[conductorStats] Distribuciones/${today}: ${distribSnap.size} coches`);
-    // ── 3. Cruzar bus → conductor, calcular métricas del día ─────────────────
+    console.log(`[conductorStats] Distribuciones/${today}: ${distribSnap.size} registros, ${Object.keys(distribByCoche).length} coches únicos`);
+    // ── 3. Cruzar bus → conductores, calcular métricas del día ───────────────
     const conductores = {};
     for (const [idBus, evs] of Object.entries(byBus)) {
-        const reg = distribByCoche[idBus];
-        if (!reg)
+        const regs = distribByCoche[idBus];
+        if (!regs || regs.length === 0)
             continue;
-        const interno = reg.interno;
-        if (!interno)
-            continue;
+        // Calcular stats GPS del coche para este día (compartidas entre todos sus conductores)
         let dTotal = 0, dEnTiempo = 0, dAtrasado = 0, dAdelantado = 0;
         const dDesv = [], dVels = [];
         const dLineas = new Set();
@@ -123,37 +129,43 @@ async function processConductorStats(db) {
         if (dTotal < MIN_EVENTOS)
             continue;
         const dCon = dEnTiempo + dAtrasado + dAdelantado;
-        const diaStats = {
-            fecha: today, coche: idBus,
-            turno: (_a = reg.turno) !== null && _a !== void 0 ? _a : null, servicio: (_b = reg.servicio) !== null && _b !== void 0 ? _b : null,
-            totalEventos: dTotal,
-            pctEnTiempo: pct(dEnTiempo, dCon),
-            pctAtrasado: pct(dAtrasado, dCon),
-            pctAdelantado: pct(dAdelantado, dCon),
-            velocidadMedia: (_c = avg(dVels)) !== null && _c !== void 0 ? _c : 0,
-            desviacionMediaMin: avg(dDesv),
-            lineas: [...dLineas].sort(),
-        };
-        const key = `${AGENCY_ID}_${interno}`;
-        if (!conductores[key]) {
-            conductores[key] = {
-                agencyId: AGENCY_ID, interno, nombre: (_d = reg.nombre) !== null && _d !== void 0 ? _d : '',
-                total: 0, enTiempo: 0, atrasado: 0, adelantado: 0,
-                desviaciones: [], velocidades: [],
-                coches: new Set(), lineas: new Set(),
-                ultimaActividad: today, historial: [],
+        // Cada conductor que manejó este coche hoy recibe su jornal con los stats del coche
+        for (const reg of regs) {
+            const interno = reg.interno;
+            if (!interno)
+                continue;
+            const diaStats = {
+                fecha: today, coche: idBus,
+                turno: (_a = reg.turno) !== null && _a !== void 0 ? _a : null, servicio: (_b = reg.servicio) !== null && _b !== void 0 ? _b : null,
+                totalEventos: dTotal,
+                pctEnTiempo: pct(dEnTiempo, dCon),
+                pctAtrasado: pct(dAtrasado, dCon),
+                pctAdelantado: pct(dAdelantado, dCon),
+                velocidadMedia: (_c = avg(dVels)) !== null && _c !== void 0 ? _c : 0,
+                desviacionMediaMin: avg(dDesv),
+                lineas: [...dLineas].sort(),
             };
+            const key = `${AGENCY_ID}_${interno}`;
+            if (!conductores[key]) {
+                conductores[key] = {
+                    agencyId: AGENCY_ID, interno, nombre: (_d = reg.nombre) !== null && _d !== void 0 ? _d : '',
+                    total: 0, enTiempo: 0, atrasado: 0, adelantado: 0,
+                    desviaciones: [], velocidades: [],
+                    coches: new Set(), lineas: new Set(),
+                    ultimaActividad: today, historial: [],
+                };
+            }
+            const acc = conductores[key];
+            acc.total += dTotal;
+            acc.enTiempo += dEnTiempo;
+            acc.atrasado += dAtrasado;
+            acc.adelantado += dAdelantado;
+            acc.desviaciones.push(...dDesv);
+            acc.velocidades.push(...dVels);
+            acc.coches.add(idBus);
+            dLineas.forEach(l => acc.lineas.add(l));
+            acc.historial.push(diaStats);
         }
-        const acc = conductores[key];
-        acc.total += dTotal;
-        acc.enTiempo += dEnTiempo;
-        acc.atrasado += dAtrasado;
-        acc.adelantado += dAdelantado;
-        acc.desviaciones.push(...dDesv);
-        acc.velocidades.push(...dVels);
-        acc.coches.add(idBus);
-        dLineas.forEach(l => acc.lineas.add(l));
-        acc.historial.push(diaStats);
     }
     console.log(`[conductorStats] Conductores con datos hoy: ${Object.keys(conductores).length}`);
     // ── 4. Merge a conductor_stats (acumulación incremental) ──────────────────
@@ -163,11 +175,9 @@ async function processConductorStats(db) {
         let mergedHistorial = acc.historial;
         if (existing.exists) {
             const prev = existing.data();
-            // Mantener historial anterior, reemplazando el día de hoy si ya existe
             const prevHistorial = ((_e = prev.historial) !== null && _e !== void 0 ? _e : []).filter((h) => h.fecha !== today);
             mergedHistorial = [...prevHistorial, ...acc.historial]
                 .sort((a, b) => a.fecha.localeCompare(b.fecha));
-            // Re-acumular sobre historial completo para consistencia
             acc.total += (_f = prev.totalEventos) !== null && _f !== void 0 ? _f : 0;
             acc.enTiempo += Math.round((((_g = prev.pctEnTiempo) !== null && _g !== void 0 ? _g : 0) / 100) * ((_h = prev.totalEventos) !== null && _h !== void 0 ? _h : 0));
             acc.atrasado += Math.round((((_j = prev.pctAtrasado) !== null && _j !== void 0 ? _j : 0) / 100) * ((_k = prev.totalEventos) !== null && _k !== void 0 ? _k : 0));
@@ -180,7 +190,7 @@ async function processConductorStats(db) {
             agencyId: acc.agencyId,
             interno: acc.interno,
             nombre: acc.nombre,
-            diasActivos: mergedHistorial.length,
+            diasActivos: mergedHistorial.length, // = total jornales trabajados
             totalEventos: acc.total,
             pctEnTiempo: pct(acc.enTiempo, con),
             pctAtrasado: pct(acc.atrasado, con),
@@ -197,7 +207,6 @@ async function processConductorStats(db) {
     }
     console.log(`[conductorStats] Completado: ${Object.keys(conductores).length} conductores actualizados.`);
 }
-// ── Export: cron diario 23:30 Montevideo ─────────────────────────────────────
 exports.conductorStatsTick = functions.pubsub
     .schedule('30 23 * * *')
     .timeZone('America/Montevideo')

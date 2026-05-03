@@ -287,4 +287,66 @@ function registerAdminSeedRoutes(app) {
             res.status(500).json({ ok: false, error: err.message });
         }
     });
+    // ── Configuración Salarial ─────────────────────────────────────────────────
+    // GET /api/admin/config-salarial — lee turnos_vigentes y descuentos
+    app.get('/api/admin/config-salarial', authMiddleware_1.requireAdmin, async (_req, res) => {
+        try {
+            const db = getDb();
+            const [turnosDoc, descuentosDoc] = await Promise.all([
+                db.collection('config_salarial').doc('turnos_vigentes').get(),
+                db.collection('config_salarial').doc('descuentos').get(),
+            ]);
+            res.json({
+                ok: true,
+                turnos: turnosDoc.exists ? turnosDoc.data() : null,
+                descuentos: descuentosDoc.exists ? descuentosDoc.data() : null,
+            });
+        }
+        catch (err) {
+            res.status(500).json({ ok: false, error: err.message });
+        }
+    });
+    // PUT /api/admin/config-salarial/turnos — actualiza valores de jornal por categoría
+    app.put('/api/admin/config-salarial/turnos', authMiddleware_1.requireAdmin, async (req, res) => {
+        try {
+            const db = getDb();
+            const { categorias, vigenciaDesde, nota } = req.body;
+            if (!categorias) {
+                res.status(400).json({ ok: false, error: 'categorias requerido' });
+                return;
+            }
+            await db.collection('config_salarial').doc('turnos_vigentes').set({
+                categorias,
+                vigenciaDesde: vigenciaDesde !== null && vigenciaDesde !== void 0 ? vigenciaDesde : new Date().toISOString().slice(0, 10),
+                moneda: 'UYU',
+                nota: nota !== null && nota !== void 0 ? nota : '',
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+            res.json({ ok: true, message: 'Turnos actualizados' });
+        }
+        catch (err) {
+            res.status(500).json({ ok: false, error: err.message });
+        }
+    });
+    // PUT /api/admin/config-salarial/descuentos — actualiza reglas de descuento
+    app.put('/api/admin/config-salarial/descuentos', authMiddleware_1.requireAdmin, async (req, res) => {
+        try {
+            const db = getDb();
+            const { items, vigenciaDesde, nota } = req.body;
+            if (!items || !Array.isArray(items)) {
+                res.status(400).json({ ok: false, error: 'items (array) requerido' });
+                return;
+            }
+            await db.collection('config_salarial').doc('descuentos').set({
+                items,
+                vigenciaDesde: vigenciaDesde !== null && vigenciaDesde !== void 0 ? vigenciaDesde : new Date().toISOString().slice(0, 10),
+                nota: nota !== null && nota !== void 0 ? nota : '',
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+            res.json({ ok: true, message: 'Descuentos actualizados' });
+        }
+        catch (err) {
+            res.status(500).json({ ok: false, error: err.message });
+        }
+    });
 }

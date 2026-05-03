@@ -2,6 +2,11 @@
  * conductorStatsTick — Cruza vehicle_events del día con distribuciones_diarias
  * para atribuir estadísticas de OTP a cada conductor.
  *
+ * Regla de negocio: un coche puede tener 1, 2 o 3 conductores por día (turnos).
+ * Cada conductor en distribuciones_diarias recibe su propia entrada en conductor_stats.
+ * Todos los conductores que manejaron el mismo coche ese día comparten los stats GPS
+ * del coche (no podemos dividir por turno sin horarios exactos de cada turno).
+ *
  * Cron: diario 23:30 hora Montevideo.
  * Colección destino: conductor_stats/{agencyId}_{interno}
  * Merge incremental: acumula historial por día, recalcula agregados.
@@ -10,7 +15,7 @@ import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 
 const AGENCY_ID     = '70';
-const MIN_EVENTOS   = 5;  // mínimo de pings GPS para considerar un turno válido
+const MIN_EVENTOS   = 5;
 
 interface DiaStats {
   fecha: string;
@@ -53,7 +58,6 @@ async function processConductorStats(db: admin.firestore.Firestore): Promise<voi
   const now   = new Date();
   const today = now.toISOString().slice(0, 10);
 
-  // Ventana: desde las 00:00 de hoy (UTC)
   const since = new Date(now);
   since.setUTCHours(0, 0, 0, 0);
   const sinceISO = since.toISOString();
@@ -71,7 +75,7 @@ async function processConductorStats(db: admin.firestore.Firestore): Promise<voi
   console.log(`[conductorStats] vehicle_events hoy: ${evSnap.size}`);
   if (evSnap.empty) return;
 
-  // Agrupar por idBus
+  // Agrupar GPS por idBus
   const byBus: Record<string, admin.firestore.DocumentData[]> = {};
   evSnap.docs.forEach(d => {
     const e = d.data();
@@ -80,30 +84,31 @@ async function processConductorStats(db: admin.firestore.Firestore): Promise<voi
     (byBus[id] = byBus[id] ?? []).push(e);
   });
 
-  // ── 2. Distribuciones del día ────────────────────────────────────────────
+  // ── 2. Distribuciones del día — múltiples conductores por coche ──────────
   const distribSnap = await db.collection('distribuciones_diarias')
     .doc(today)
     .collection('registros')
     .get();
 
-  const distribByCoche: Record<string, admin.firestore.DocumentData> = {};
+  // Lista de registros por coche (1, 2 o 3 conductores posibles)
+  const distribByCoche: Record<string, admin.firestore.DocumentData[]> = {};
   distribSnap.docs.forEach(d => {
     const reg = d.data();
-    if (reg.coche) distribByCoche[String(reg.coche)] = reg;
+    if (!reg.coche) return;
+    const key = String(reg.coche);
+    (distribByCoche[key] = distribByCoche[key] ?? []).push(reg);
   });
 
-  console.log(`[conductorStats] Distribuciones/${today}: ${distribSnap.size} coches`);
+  console.log(`[conductorStats] Distribuciones/${today}: ${distribSnap.size} registros, ${Object.keys(distribByCoche).length} coches únicos`);
 
-  // ── 3. Cruzar bus → conductor, calcular métricas del día ─────────────────
+  // ── 3. Cruzar bus → conductores, calcular métricas del día ───────────────
   const conductores: Record<string, ConductorAcc> = {};
 
   for (const [idBus, evs] of Object.entries(byBus)) {
-    const reg = distribByCoche[idBus];
-    if (!reg) continue;
+    const regs = distribByCoche[idBus];
+    if (!regs || regs.length === 0) continue;
 
-    const interno: number = reg.interno;
-    if (!interno) continue;
-
+    // Calcular stats GPS del coche para este día (compartidas entre todos sus conductores)
     let dTotal = 0, dEnTiempo = 0, dAtrasado = 0, dAdelantado = 0;
     const dDesv: number[] = [], dVels: number[] = [];
     const dLineas = new Set<string>();
@@ -121,38 +126,45 @@ async function processConductorStats(db: admin.firestore.Firestore): Promise<voi
     if (dTotal < MIN_EVENTOS) continue;
 
     const dCon = dEnTiempo + dAtrasado + dAdelantado;
-    const diaStats: DiaStats = {
-      fecha: today, coche: idBus,
-      turno: reg.turno ?? null, servicio: reg.servicio ?? null,
-      totalEventos:    dTotal,
-      pctEnTiempo:     pct(dEnTiempo,  dCon),
-      pctAtrasado:     pct(dAtrasado,  dCon),
-      pctAdelantado:   pct(dAdelantado, dCon),
-      velocidadMedia:  avg(dVels) ?? 0,
-      desviacionMediaMin: avg(dDesv),
-      lineas: [...dLineas].sort(),
-    };
 
-    const key = `${AGENCY_ID}_${interno}`;
-    if (!conductores[key]) {
-      conductores[key] = {
-        agencyId: AGENCY_ID, interno, nombre: reg.nombre ?? '',
-        total: 0, enTiempo: 0, atrasado: 0, adelantado: 0,
-        desviaciones: [], velocidades: [],
-        coches: new Set(), lineas: new Set(),
-        ultimaActividad: today, historial: [],
+    // Cada conductor que manejó este coche hoy recibe su jornal con los stats del coche
+    for (const reg of regs) {
+      const interno: number = reg.interno;
+      if (!interno) continue;
+
+      const diaStats: DiaStats = {
+        fecha: today, coche: idBus,
+        turno: reg.turno ?? null, servicio: reg.servicio ?? null,
+        totalEventos:    dTotal,
+        pctEnTiempo:     pct(dEnTiempo,  dCon),
+        pctAtrasado:     pct(dAtrasado,  dCon),
+        pctAdelantado:   pct(dAdelantado, dCon),
+        velocidadMedia:  avg(dVels) ?? 0,
+        desviacionMediaMin: avg(dDesv),
+        lineas: [...dLineas].sort(),
       };
+
+      const key = `${AGENCY_ID}_${interno}`;
+      if (!conductores[key]) {
+        conductores[key] = {
+          agencyId: AGENCY_ID, interno, nombre: reg.nombre ?? '',
+          total: 0, enTiempo: 0, atrasado: 0, adelantado: 0,
+          desviaciones: [], velocidades: [],
+          coches: new Set(), lineas: new Set(),
+          ultimaActividad: today, historial: [],
+        };
+      }
+      const acc = conductores[key];
+      acc.total       += dTotal;
+      acc.enTiempo    += dEnTiempo;
+      acc.atrasado    += dAtrasado;
+      acc.adelantado  += dAdelantado;
+      acc.desviaciones.push(...dDesv);
+      acc.velocidades.push(...dVels);
+      acc.coches.add(idBus);
+      dLineas.forEach(l => acc.lineas.add(l));
+      acc.historial.push(diaStats);
     }
-    const acc = conductores[key];
-    acc.total       += dTotal;
-    acc.enTiempo    += dEnTiempo;
-    acc.atrasado    += dAtrasado;
-    acc.adelantado  += dAdelantado;
-    acc.desviaciones.push(...dDesv);
-    acc.velocidades.push(...dVels);
-    acc.coches.add(idBus);
-    dLineas.forEach(l => acc.lineas.add(l));
-    acc.historial.push(diaStats);
   }
 
   console.log(`[conductorStats] Conductores con datos hoy: ${Object.keys(conductores).length}`);
@@ -166,14 +178,12 @@ async function processConductorStats(db: admin.firestore.Firestore): Promise<voi
 
     if (existing.exists) {
       const prev = existing.data()!;
-      // Mantener historial anterior, reemplazando el día de hoy si ya existe
       const prevHistorial: DiaStats[] = (prev.historial ?? []).filter(
         (h: DiaStats) => h.fecha !== today
       );
       mergedHistorial = [...prevHistorial, ...acc.historial]
         .sort((a, b) => a.fecha.localeCompare(b.fecha));
 
-      // Re-acumular sobre historial completo para consistencia
       acc.total      += prev.totalEventos ?? 0;
       acc.enTiempo   += Math.round(((prev.pctEnTiempo  ?? 0) / 100) * (prev.totalEventos ?? 0));
       acc.atrasado   += Math.round(((prev.pctAtrasado  ?? 0) / 100) * (prev.totalEventos ?? 0));
@@ -187,7 +197,7 @@ async function processConductorStats(db: admin.firestore.Firestore): Promise<voi
       agencyId:           acc.agencyId,
       interno:            acc.interno,
       nombre:             acc.nombre,
-      diasActivos:        mergedHistorial.length,
+      diasActivos:        mergedHistorial.length,   // = total jornales trabajados
       totalEventos:       acc.total,
       pctEnTiempo:        pct(acc.enTiempo,  con),
       pctAtrasado:        pct(acc.atrasado,  con),
@@ -206,7 +216,6 @@ async function processConductorStats(db: admin.firestore.Firestore): Promise<voi
   console.log(`[conductorStats] Completado: ${Object.keys(conductores).length} conductores actualizados.`);
 }
 
-// ── Export: cron diario 23:30 Montevideo ─────────────────────────────────────
 export const conductorStatsTick = functions.pubsub
   .schedule('30 23 * * *')
   .timeZone('America/Montevideo')
