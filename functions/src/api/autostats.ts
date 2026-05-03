@@ -437,4 +437,53 @@ export function registerAutostatsRoutes(app: Express) {
       res.json({ ok: true, agencyId, totalConductores: conductores.length, conductores });
     } catch (e: any) { res.status(500).json({ ok: false, error: e.message }); }
   });
+
+  // GET /api/autostats/vehicle-stats/:agencyId — perfil de coches (todas las empresas)
+  // Lee de `vehicle_stats` (actualizada por vehicleStatsTick 23:45 diario).
+  // Incluye enriquecimiento de conductor para UCOT cuando hay distribuciones disponibles.
+  // ?sortBy=otp|actividad (default: otp asc) &limit=300 (máx 500)
+  app.get('/api/autostats/vehicle-stats/:agencyId', async (req, res) => {
+    try {
+      const { agencyId } = req.params;
+      const limit  = Math.min(500, parseInt((req.query.limit  as string) ?? '300', 10));
+      const sortBy = (req.query.sortBy as string) ?? 'otp';
+      const db = getDb();
+
+      const orderField = sortBy === 'actividad' ? 'ultimaActividad' : 'pctEnTiempo';
+      const orderDir   = sortBy === 'actividad'
+        ? ('desc' as const)
+        : ('asc'  as const);
+
+      const snap = await db.collection('vehicle_stats')
+        .where('agencyId', '==', agencyId)
+        .orderBy(orderField, orderDir)
+        .limit(limit)
+        .get();
+
+      const buses = snap.docs.map(d => {
+        const r = d.data();
+        return {
+          idBus:                r.idBus,
+          empresa:              r.empresa ?? agencyId,
+          diasActivos:          r.diasActivos ?? 0,
+          totalEventos:         r.totalEventos ?? 0,
+          pctEnTiempo:          r.pctEnTiempo ?? 0,
+          pctAtrasado:          r.pctAtrasado ?? 0,
+          pctAdelantado:        r.pctAdelantado ?? 0,
+          pctSinHorario:        r.pctSinHorario ?? 0,
+          velocidadMedia:       r.velocidadMedia ?? 0,
+          desviacionMediaMin:   r.desviacionMediaMin ?? null,
+          lineasOperadas:       r.lineasOperadas ?? [],
+          ultimaActividad:      r.ultimaActividad ?? null,
+          // Conductor (null para empresas sin distribuciones)
+          ultimoInterno:        r.ultimoInterno ?? null,
+          ultimoNombre:         r.ultimoNombre  ?? null,
+          conductoresConocidos: r.conductoresConocidos ?? [],
+          historial:            r.historial ?? [],
+        };
+      });
+
+      res.json({ ok: true, agencyId, totalBuses: buses.length, buses });
+    } catch (e: any) { res.status(500).json({ ok: false, error: e.message }); }
+  });
 }

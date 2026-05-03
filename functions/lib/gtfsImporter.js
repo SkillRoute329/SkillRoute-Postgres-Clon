@@ -65,6 +65,15 @@ const GTFS_PATH = '/buses/gtfs/static/latest/google_transit.zip';
 const AGENCY_NAMES = {
     70: 'UCOT', 50: 'CUTCSA', 20: 'COME', 10: 'COETC',
 };
+// Mapa de conversión agency_id del GTFS → código numérico interno.
+// El GTFS de la IMM puede usar el código numérico directamente ('70', '50', etc.)
+// o un alias textual. Este mapa cubre ambos casos.
+const AGENCY_CODE_MAP = {
+    '70': 70, 'UCOT': 70, 'ucot': 70,
+    '50': 50, 'CUTCSA': 50, 'cutcsa': 50, 'DES': 50,
+    '20': 20, 'COME': 20, 'come': 20, 'COM': 20,
+    '10': 10, 'COETC': 10, 'coetc': 10, 'COE': 10,
+};
 // ─── Download ─────────────────────────────────────────────────────────────────
 function fetchGtfsZip(token) {
     return new Promise((resolve, reject) => {
@@ -116,7 +125,7 @@ async function buildLineaAgencyMap() {
     return map;
 }
 async function runImport() {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8;
     const start = Date.now();
     const token = await (0, immTokenService_1.getImmToken)();
     if (!token)
@@ -130,6 +139,10 @@ async function runImport() {
     const routesTxt = await readZipText(zip, 'routes.txt');
     if (!routesTxt)
         throw new Error('routes.txt no encontrado en ZIP');
+    // Guardamos también agency_id para usarlo como fuente primaria al asignar empresa.
+    // Esto resuelve el bug del "huevo y la gallina": si una empresa no tenía shapes
+    // previas en Firestore, el mapa de Firestore devolvía 0 y sus shapes se guardaban
+    // con agencyId "0" y empresa "STM". Ahora usamos el campo oficial del GTFS.
     const routeMap = new Map();
     for (const r of parseCsv(routesTxt)) {
         if (!r.route_id || !r.route_short_name)
@@ -137,6 +150,7 @@ async function runImport() {
         routeMap.set(r.route_id, {
             shortName: r.route_short_name.trim(),
             longName: ((_a = r.route_long_name) !== null && _a !== void 0 ? _a : '').trim(),
+            agencyId: ((_b = r.agency_id) !== null && _b !== void 0 ? _b : '').trim(),
         });
     }
     logger.info('[GTFS] Rutas totales en GTFS:', routeMap.size);
@@ -151,13 +165,13 @@ async function runImport() {
     const tripToServiceId = new Map(); // tripId → service_id
     for (const t of parseCsv(tripsTxt)) {
         if (t.shape_id && !shapeToRoute.has(t.shape_id)) {
-            shapeToRoute.set(t.shape_id, { routeId: t.route_id, directionId: parseInt((_b = t.direction_id) !== null && _b !== void 0 ? _b : '0', 10) });
+            shapeToRoute.set(t.shape_id, { routeId: t.route_id, directionId: parseInt((_c = t.direction_id) !== null && _c !== void 0 ? _c : '0', 10) });
         }
         if (t.shape_id && t.trip_id && !shapeToFirstTrip.has(t.shape_id)) {
             shapeToFirstTrip.set(t.shape_id, t.trip_id);
         }
         if (t.trip_id) {
-            tripToRoute.set(t.trip_id, { routeId: t.route_id, directionId: parseInt((_c = t.direction_id) !== null && _c !== void 0 ? _c : '0', 10) });
+            tripToRoute.set(t.trip_id, { routeId: t.route_id, directionId: parseInt((_d = t.direction_id) !== null && _d !== void 0 ? _d : '0', 10) });
         }
         if (t.service_id && t.route_id) {
             if (!routeToServiceIds.has(t.route_id))
@@ -207,7 +221,11 @@ async function runImport() {
         const { shortName: routeShortName, longName: routeLongName } = routeInfo;
         const { directionId } = tripInfo;
         rawPoints.sort((a, b) => a.seq - b.seq);
-        const points = rawPoints.map(({ lat, lng }) => ({ lat, lng }));
+        // Filtrar puntos fuera del bounding box de Uruguay — coordenadas (0,0) u otras
+        // latitudes/longitudes erróneas inflan enormemente el cálculo de longitud.
+        const points = rawPoints
+            .map(({ lat, lng }) => ({ lat, lng }))
+            .filter(p => p.lat >= -35.5 && p.lat <= -29.5 && p.lng >= -58.5 && p.lng <= -53.0);
         if (points.length < 3) {
             shapesIgnorados++;
             continue;
@@ -225,9 +243,16 @@ async function runImport() {
             lengthMeters += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
         lengthMeters = Math.round(lengthMeters);
-        const agencyNumId = (_d = lineaAgencyMap.get(routeShortName.toLowerCase())) !== null && _d !== void 0 ? _d : 0;
-        const empresa = agencyNumId ? ((_e = AGENCY_NAMES[agencyNumId]) !== null && _e !== void 0 ? _e : `EMP_${agencyNumId}`) : 'STM';
-        const docId = `${agencyNumId}_${routeShortName}_${directionId}`;
+        // Fuente primaria: agency_id del GTFS oficial (resuelve el bug de UCOT con 0 shapes).
+        // Fallback: mapa construido desde Firestore (para líneas con agencyId ya conocido).
+        const gtfsAgencyStr = (_e = routeInfo === null || routeInfo === void 0 ? void 0 : routeInfo.agencyId) !== null && _e !== void 0 ? _e : '';
+        const agencyNumId = (_g = (_f = AGENCY_CODE_MAP[gtfsAgencyStr]) !== null && _f !== void 0 ? _f : lineaAgencyMap.get(routeShortName.toLowerCase())) !== null && _g !== void 0 ? _g : 0;
+        const empresa = agencyNumId ? ((_h = AGENCY_NAMES[agencyNumId]) !== null && _h !== void 0 ? _h : `EMP_${agencyNumId}`) : 'STM';
+        if (!agencyNumId) {
+            logger.warn(`[GTFS] Línea sin empresa reconocida: ${routeShortName} (agency_id GTFS: "${gtfsAgencyStr}")`);
+        }
+        const sentidoStr = directionId === 0 ? 'IDA' : 'VUELTA';
+        const docId = `${agencyNumId}_${routeShortName}_${sentidoStr}`;
         const docData = {
             agencyId: String(agencyNumId), empresa, linea: routeShortName,
             variante: directionId, sentido: directionId === 0 ? 'IDA' : 'VUELTA',
@@ -242,7 +267,7 @@ async function runImport() {
         if (!existing || existing.data['lengthMeters'] < lengthMeters) {
             docsMap.set(docId, { id: docId, data: docData });
             if (!existing)
-                empresaResumen[empresa] = ((_f = empresaResumen[empresa]) !== null && _f !== void 0 ? _f : 0) + 1;
+                empresaResumen[empresa] = ((_j = empresaResumen[empresa]) !== null && _j !== void 0 ? _j : 0) + 1;
         }
     }
     const docs = Array.from(docsMap.values());
@@ -319,8 +344,8 @@ async function runImport() {
             for (const [key, salidas] of horarioGrupos.entries()) {
                 const [shortName, dirStr] = key.split('|');
                 const directionId = parseInt(dirStr, 10);
-                const agencyNumId = (_g = lineaAgencyMap.get(shortName.toLowerCase())) !== null && _g !== void 0 ? _g : 0;
-                const empresa = agencyNumId ? ((_h = AGENCY_NAMES[agencyNumId]) !== null && _h !== void 0 ? _h : `EMP_${agencyNumId}`) : 'STM';
+                const agencyNumId = (_k = lineaAgencyMap.get(shortName.toLowerCase())) !== null && _k !== void 0 ? _k : 0;
+                const empresa = agencyNumId ? ((_l = AGENCY_NAMES[agencyNumId]) !== null && _l !== void 0 ? _l : `EMP_${agencyNumId}`) : 'STM';
                 const normalizados = salidas.map(t => t.trim()).filter(Boolean).sort();
                 const deduplicated = [...new Set(normalizados)];
                 let frecuenciaPromMin = 0;
@@ -341,7 +366,7 @@ async function runImport() {
                         agencyId: String(agencyNumId), empresa, linea: shortName, directionId,
                         sentido: directionId === 0 ? 'IDA' : 'VUELTA',
                         salidas: deduplicated, frecuenciaPromMin,
-                        primerSalida: (_j = deduplicated[0]) !== null && _j !== void 0 ? _j : '', ultimaSalida: (_k = deduplicated[deduplicated.length - 1]) !== null && _k !== void 0 ? _k : '',
+                        primerSalida: (_m = deduplicated[0]) !== null && _m !== void 0 ? _m : '', ultimaSalida: (_o = deduplicated[deduplicated.length - 1]) !== null && _o !== void 0 ? _o : '',
                         totalViajes: deduplicated.length, generadoEn, fuente: 'GTFS_OFICIAL',
                     },
                 });
@@ -414,8 +439,8 @@ async function runImport() {
                     if (!canonical || canonical.length < 2)
                         continue;
                     const svcId = tripToServiceId.get(tripId);
-                    const typeSet = svcId ? ((_l = svcTypes.get(svcId)) !== null && _l !== void 0 ? _l : new Set(['HABIL'])) : new Set(['HABIL']);
-                    const agencyNumId = (_m = lineaAgencyMap.get(ri.shortName.toLowerCase())) !== null && _m !== void 0 ? _m : 0;
+                    const typeSet = svcId ? ((_p = svcTypes.get(svcId)) !== null && _p !== void 0 ? _p : new Set(['HABIL'])) : new Set(['HABIL']);
+                    const agencyNumId = (_q = lineaAgencyMap.get(ri.shortName.toLowerCase())) !== null && _q !== void 0 ? _q : 0;
                     // Alinear tiempos al orden canónico
                     times.sort((a, b) => a.seq - b.seq);
                     const posMap = new Map();
@@ -441,7 +466,7 @@ async function runImport() {
                 const tDocs = [];
                 for (const [, g] of groups) {
                     g.viajes.sort((a, b) => { var _a, _b; return ((_a = a.t.find(m => m >= 0)) !== null && _a !== void 0 ? _a : 9999) - ((_b = b.t.find(m => m >= 0)) !== null && _b !== void 0 ? _b : 9999); });
-                    const empresa = g.agencyNumId ? ((_o = AGENCY_NAMES[g.agencyNumId]) !== null && _o !== void 0 ? _o : `EMP_${g.agencyNumId}`) : 'STM';
+                    const empresa = g.agencyNumId ? ((_r = AGENCY_NAMES[g.agencyNumId]) !== null && _r !== void 0 ? _r : `EMP_${g.agencyNumId}`) : 'STM';
                     tDocs.push({
                         id: `${g.agencyNumId}_${g.linea}_${g.directionId}_${g.serviceType}`,
                         data: {
@@ -449,8 +474,8 @@ async function runImport() {
                             directionId: g.directionId, serviceType: g.serviceType,
                             stops: g.stops, viajes: g.viajes,
                             totalViajes: g.viajes.length,
-                            primeraS: (_q = (_p = g.viajes[0]) === null || _p === void 0 ? void 0 : _p.s) !== null && _q !== void 0 ? _q : '',
-                            ultimaS: (_s = (_r = g.viajes[g.viajes.length - 1]) === null || _r === void 0 ? void 0 : _r.s) !== null && _s !== void 0 ? _s : '',
+                            primeraS: (_t = (_s = g.viajes[0]) === null || _s === void 0 ? void 0 : _s.s) !== null && _t !== void 0 ? _t : '',
+                            ultimaS: (_v = (_u = g.viajes[g.viajes.length - 1]) === null || _u === void 0 ? void 0 : _u.s) !== null && _v !== void 0 ? _v : '',
                             generadoEn, fuente: 'GTFS_OFICIAL',
                         },
                     });
@@ -487,8 +512,8 @@ async function runImport() {
                         row.thursday === '1' || row.friday === '1',
                     sabado: row.saturday === '1',
                     domingo: row.sunday === '1',
-                    start: (_t = row.start_date) !== null && _t !== void 0 ? _t : '',
-                    end: (_u = row.end_date) !== null && _u !== void 0 ? _u : '',
+                    start: (_w = row.start_date) !== null && _w !== void 0 ? _w : '',
+                    end: (_x = row.end_date) !== null && _x !== void 0 ? _x : '',
                 });
             }
             // calendar_dates: exceptions (informativo — guardadas en el doc)
@@ -496,7 +521,7 @@ async function runImport() {
             if (calendarDatesTxt) {
                 for (const row of parseCsv(calendarDatesTxt)) {
                     if (row.date)
-                        exceptionDates.set(row.date, ((_v = exceptionDates.get(row.date)) !== null && _v !== void 0 ? _v : 0) + 1);
+                        exceptionDates.set(row.date, ((_y = exceptionDates.get(row.date)) !== null && _y !== void 0 ? _y : 0) + 1);
                 }
             }
             const calDocs = new Map();
@@ -504,8 +529,8 @@ async function runImport() {
                 const ri = routeMap.get(routeId);
                 if (!ri)
                     continue;
-                const agencyNumId = (_w = lineaAgencyMap.get(ri.shortName.toLowerCase())) !== null && _w !== void 0 ? _w : 0;
-                const empresa = agencyNumId ? ((_x = AGENCY_NAMES[agencyNumId]) !== null && _x !== void 0 ? _x : `EMP_${agencyNumId}`) : 'STM';
+                const agencyNumId = (_z = lineaAgencyMap.get(ri.shortName.toLowerCase())) !== null && _z !== void 0 ? _z : 0;
+                const empresa = agencyNumId ? ((_0 = AGENCY_NAMES[agencyNumId]) !== null && _0 !== void 0 ? _0 : `EMP_${agencyNumId}`) : 'STM';
                 const docId = `${agencyNumId}_${ri.shortName}`;
                 let tieneHabil = false, tieneSabado = false, tieneDomingo = false;
                 let vigenciaDesde = '', vigenciaHasta = '';
@@ -566,9 +591,9 @@ async function runImport() {
                     continue;
                 fareAttrs.set(row.fare_id, {
                     price: parseFloat(row.price) || 0,
-                    currency: (_y = row.currency_type) !== null && _y !== void 0 ? _y : 'UYU',
-                    payMethod: parseInt((_z = row.payment_method) !== null && _z !== void 0 ? _z : '0', 10),
-                    transfers: parseInt((_0 = row.transfers) !== null && _0 !== void 0 ? _0 : '-1', 10),
+                    currency: (_1 = row.currency_type) !== null && _1 !== void 0 ? _1 : 'UYU',
+                    payMethod: parseInt((_2 = row.payment_method) !== null && _2 !== void 0 ? _2 : '0', 10),
+                    transfers: parseInt((_3 = row.transfers) !== null && _3 !== void 0 ? _3 : '-1', 10),
                 });
             }
             const fareRoutes = new Map();
@@ -583,7 +608,7 @@ async function runImport() {
             }
             const fareDocs = [];
             for (const [fareId, attr] of fareAttrs.entries()) {
-                const routeIds = (_1 = fareRoutes.get(fareId)) !== null && _1 !== void 0 ? _1 : new Set();
+                const routeIds = (_4 = fareRoutes.get(fareId)) !== null && _4 !== void 0 ? _4 : new Set();
                 const lineas = [];
                 const agencyIdsSet = new Set();
                 const empresasSet = new Set();
@@ -592,10 +617,10 @@ async function runImport() {
                     if (!ri)
                         continue;
                     lineas.push(ri.shortName);
-                    const aid = (_2 = lineaAgencyMap.get(ri.shortName.toLowerCase())) !== null && _2 !== void 0 ? _2 : 0;
+                    const aid = (_5 = lineaAgencyMap.get(ri.shortName.toLowerCase())) !== null && _5 !== void 0 ? _5 : 0;
                     if (aid) {
                         agencyIdsSet.add(String(aid));
-                        empresasSet.add((_3 = AGENCY_NAMES[aid]) !== null && _3 !== void 0 ? _3 : `EMP_${aid}`);
+                        empresasSet.add((_6 = AGENCY_NAMES[aid]) !== null && _6 !== void 0 ? _6 : `EMP_${aid}`);
                     }
                 }
                 fareDocs.push({
@@ -641,8 +666,8 @@ async function runImport() {
                     id: row.stop_id,
                     data: {
                         stopId: row.stop_id,
-                        codigo: ((_4 = row.stop_code) !== null && _4 !== void 0 ? _4 : '').trim(),
-                        nombre: ((_5 = row.stop_name) !== null && _5 !== void 0 ? _5 : '').trim(),
+                        codigo: ((_7 = row.stop_code) !== null && _7 !== void 0 ? _7 : '').trim(),
+                        nombre: ((_8 = row.stop_name) !== null && _8 !== void 0 ? _8 : '').trim(),
                         lat, lng,
                         accesible: row.wheelchair_boarding === '1',
                         generadoEn, fuente: 'GTFS_OFICIAL',

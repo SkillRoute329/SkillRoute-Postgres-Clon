@@ -17,6 +17,22 @@
       ]
     },
     {
+      "collectionGroup": "vehicle_stats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "pctEnTiempo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "vehicle_stats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "ultimaActividad", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "compliance_alerts",
       "queryScope": "COLLECTION",
       "fields": [

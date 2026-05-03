@@ -491,4 +491,53 @@ function registerAutostatsRoutes(app) {
             res.status(500).json({ ok: false, error: e.message });
         }
     });
+    // GET /api/autostats/vehicle-stats/:agencyId — perfil de coches (todas las empresas)
+    // Lee de `vehicle_stats` (actualizada por vehicleStatsTick 23:45 diario).
+    // Incluye enriquecimiento de conductor para UCOT cuando hay distribuciones disponibles.
+    // ?sortBy=otp|actividad (default: otp asc) &limit=300 (máx 500)
+    app.get('/api/autostats/vehicle-stats/:agencyId', async (req, res) => {
+        var _a, _b;
+        try {
+            const { agencyId } = req.params;
+            const limit = Math.min(500, parseInt((_a = req.query.limit) !== null && _a !== void 0 ? _a : '300', 10));
+            const sortBy = (_b = req.query.sortBy) !== null && _b !== void 0 ? _b : 'otp';
+            const db = getDb();
+            const orderField = sortBy === 'actividad' ? 'ultimaActividad' : 'pctEnTiempo';
+            const orderDir = sortBy === 'actividad'
+                ? 'desc'
+                : 'asc';
+            const snap = await db.collection('vehicle_stats')
+                .where('agencyId', '==', agencyId)
+                .orderBy(orderField, orderDir)
+                .limit(limit)
+                .get();
+            const buses = snap.docs.map(d => {
+                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
+                const r = d.data();
+                return {
+                    idBus: r.idBus,
+                    empresa: (_a = r.empresa) !== null && _a !== void 0 ? _a : agencyId,
+                    diasActivos: (_b = r.diasActivos) !== null && _b !== void 0 ? _b : 0,
+                    totalEventos: (_c = r.totalEventos) !== null && _c !== void 0 ? _c : 0,
+                    pctEnTiempo: (_d = r.pctEnTiempo) !== null && _d !== void 0 ? _d : 0,
+                    pctAtrasado: (_e = r.pctAtrasado) !== null && _e !== void 0 ? _e : 0,
+                    pctAdelantado: (_f = r.pctAdelantado) !== null && _f !== void 0 ? _f : 0,
+                    pctSinHorario: (_g = r.pctSinHorario) !== null && _g !== void 0 ? _g : 0,
+                    velocidadMedia: (_h = r.velocidadMedia) !== null && _h !== void 0 ? _h : 0,
+                    desviacionMediaMin: (_j = r.desviacionMediaMin) !== null && _j !== void 0 ? _j : null,
+                    lineasOperadas: (_k = r.lineasOperadas) !== null && _k !== void 0 ? _k : [],
+                    ultimaActividad: (_l = r.ultimaActividad) !== null && _l !== void 0 ? _l : null,
+                    // Conductor (null para empresas sin distribuciones)
+                    ultimoInterno: (_m = r.ultimoInterno) !== null && _m !== void 0 ? _m : null,
+                    ultimoNombre: (_o = r.ultimoNombre) !== null && _o !== void 0 ? _o : null,
+                    conductoresConocidos: (_p = r.conductoresConocidos) !== null && _p !== void 0 ? _p : [],
+                    historial: (_q = r.historial) !== null && _q !== void 0 ? _q : [],
+                };
+            });
+            res.json({ ok: true, agencyId, totalBuses: buses.length, buses });
+        }
+        catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
 }

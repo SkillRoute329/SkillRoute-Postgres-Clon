@@ -1,0 +1,27 @@
+fix(shadow-radar): datos live cross-operador + filtro estricto direccion
+
+ShadowRadar.tsx:
+- Corrige TDZ en useEffect del shadowDispatcher (TS2448).
+- Restaura archivo truncado (patron documentado en CLAUDE.md).
+- Separa ucotFlotaVE como state dedicado para vehicle_events,
+  resolviendo race condition con viajes_activos que congelaba datos.
+- Merge con prioridad: viajes_activos > IMM > vehicle_events.
+- Filtra buses sin linea en las 3 fuentes (IMM, vehicle_events,
+  viajes_activos).
+- Reemplaza filtro de 80 grados por regla de negocio: destino
+  coincidente (tokens >=5 chars) o heading <=60 grados. Sin info
+  direccional, el rival se descarta (conservador).
+
+CLAUDE.md:
+- Nueva directriz "Alcance del producto (DIRECTRIZ 2026-04-24)":
+  SkillRoute es para el sistema metropolitano completo de Uruguay,
+  no solo UCOT. Los datos UCOT existentes son demo.
+- Actualiza estado ShadowRadar a verde (live cross-operador).
+- Actualiza prioridades con plan MVP -> v2 -> v3 basado en TCRP 195
+  y UITP: matriz DRO, HRR, seat-km market share por corredor.
+- Agrega DRO y HRR al glosario.
+- Incluye mejoras meta pre-existentes no committeadas
+  (Comportamientos automaticos, check_integrity obligatorio,
+  Patron de truncamiento).
+
+Ref: investigacion estado del arte + verificacion live en localhost:3005.

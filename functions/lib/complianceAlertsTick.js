@@ -60,7 +60,7 @@ exports.complianceAlertsTick = functions.pubsub
     .schedule('every 6 hours')
     .timeZone('America/Montevideo')
     .onRun(async () => {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     const db = admin.firestore();
     const now = admin.firestore.Timestamp.now();
     const hace24h = admin.firestore.Timestamp.fromMillis(now.toMillis() - 24 * 60 * 60 * 1000);
@@ -75,16 +75,26 @@ exports.complianceAlertsTick = functions.pubsub
         .collection('vehicle_events')
         .where('createdAt', '>=', hace24h)
         .get();
+    // Solo se cuentan eventos MEDIBLES: EN_TIEMPO, ATRASADO, ADELANTADO.
+    // SIN_HORARIO y FUERA_DE_SERVICIO se excluyen del denominador — no son
+    // incumplimientos ni cumplimientos; son períodos sin servicio programado.
+    // Incluirlos inflaba artificialmente el OTP cuando no había boletín activo
+    // (ej. madrugada, fin de semana fuera de hora). — Fix 2026-05-02.
+    const ESTADOS_MEDIBLES = new Set(['EN_TIEMPO', 'ATRASADO', 'ADELANTADO']);
     const porLinea = {};
     for (const doc of eventosSnap.docs) {
         const d = doc.data();
-        const linea = String((_d = d.linea) !== null && _d !== void 0 ? _d : '?');
-        const empresa = String((_f = (_e = d.codigoEmpresa) !== null && _e !== void 0 ? _e : d.empresa) !== null && _f !== void 0 ? _f : '?');
+        const estado = String((_d = d.estadoCumplimiento) !== null && _d !== void 0 ? _d : '');
+        // Descartar eventos no medibles — no aportan información de puntualidad real
+        if (!ESTADOS_MEDIBLES.has(estado))
+            continue;
+        const linea = String((_e = d.linea) !== null && _e !== void 0 ? _e : '?');
+        const empresa = String((_g = (_f = d.codigoEmpresa) !== null && _f !== void 0 ? _f : d.empresa) !== null && _g !== void 0 ? _g : '?');
         const key = `${empresa}_${linea}`;
         if (!porLinea[key])
             porLinea[key] = { total: 0, enTiempo: 0, empresa };
         porLinea[key].total++;
-        if (d.estadoCumplimiento === 'EN_TIEMPO')
+        if (estado === 'EN_TIEMPO')
             porLinea[key].enTiempo++;
     }
     /* ── 2. Calcular y escribir alertas ─────────────────── */
@@ -101,7 +111,7 @@ exports.complianceAlertsTick = functions.pubsub
             batch.set(ref, {
                 linea,
                 empresa,
-                empresaNombre: (_g = NOMBRE_EMPRESA[empresa]) !== null && _g !== void 0 ? _g : empresa,
+                empresaNombre: (_h = NOMBRE_EMPRESA[empresa]) !== null && _h !== void 0 ? _h : empresa,
                 pctEnTiempo: pct,
                 totalEventos: data.total,
                 nivel,
@@ -111,7 +121,7 @@ exports.complianceAlertsTick = functions.pubsub
                 dismissedAt: null,
             }, { merge: true });
             if (nivel === 'CRITICO') {
-                nuevasCriticas.push(`Línea ${linea} (${(_h = NOMBRE_EMPRESA[empresa]) !== null && _h !== void 0 ? _h : empresa}) — ${pct}%`);
+                nuevasCriticas.push(`Línea ${linea} (${(_j = NOMBRE_EMPRESA[empresa]) !== null && _j !== void 0 ? _j : empresa}) — ${pct}%`);
             }
         }
         else {

@@ -1,0 +1,71 @@
+═══════════════════════════════════════════════════════════════════════
+ INSTRUCCIONES PARA COMMITEAR MANUALMENTE (el sandbox no pudo)
+═══════════════════════════════════════════════════════════════════════
+
+1. Cerrar cualquier GUI de git que tengas abierta sobre el repo (SourceTree,
+   GitHub Desktop, ventana de Git Bash, pestaña Git de VS Code). Una de esas
+   está sosteniendo un lock del índice.
+
+2. Abrir PowerShell o CMD en la carpeta del proyecto:
+
+   cd C:\Users\jonat\Desktop\PROYECTOS\GestionUcot
+
+3. Liberar el lock si quedó colgado:
+
+   del .git\index.lock
+
+4. Stagear los dos archivos:
+
+   git add CLAUDE.md frontend\src\pages\traffic\ShadowRadar.tsx
+
+5. Commitear con este mensaje (copiá el bloque completo, incluye los saltos
+   de línea):
+
+   git commit -F docs\commit_messages\2026-04-24-shadowradar-cross-operador.txt
+
+   (O si preferís -m, usá el mensaje al final de este archivo).
+
+6. Correr la verificación final:
+
+   bash scripts/check_integrity.sh
+
+   Debe salir "INTEGRIDAD OK — listo para deploy".
+
+7. (Opcional) Deploy si querés que la directriz y el fix queden en prod:
+
+   firebase deploy --only hosting
+
+   (Solo hosting porque los cambios son 100% frontend + docs, nada de
+   functions ni rules en este commit.)
+
+═══════════════════════════════════════════════════════════════════════
+ Mensaje de commit sugerido (inline por si no querés usar -F)
+═══════════════════════════════════════════════════════════════════════
+
+fix(shadow-radar): datos live cross-operador + filtro estricto direccion
+
+ShadowRadar.tsx:
+- Corrige TDZ en useEffect del shadowDispatcher (TS2448).
+- Restaura archivo truncado (patron documentado en CLAUDE.md).
+- Separa ucotFlotaVE como state dedicado para vehicle_events,
+  resolviendo race condition con viajes_activos que congelaba datos.
+- Merge con prioridad: viajes_activos > IMM > vehicle_events.
+- Filtra buses sin linea en las 3 fuentes (IMM, vehicle_events,
+  viajes_activos).
+- Reemplaza filtro de 80 grados por regla de negocio: destino
+  coincidente (tokens >=5 chars) o heading <=60 grados. Sin info
+  direccional, el rival se descarta (conservador).
+
+CLAUDE.md:
+- Nueva directriz "Alcance del producto (DIRECTRIZ 2026-04-24)":
+  SkillRoute es para el sistema metropolitano completo de Uruguay,
+  no solo UCOT. Los datos UCOT existentes son demo.
+- Actualiza estado ShadowRadar a verde (live cross-operador).
+- Actualiza prioridades con plan MVP -> v2 -> v3 basado en TCRP 195
+  y UITP: matriz DRO, HRR, seat-km market share por corredor.
+- Agrega DRO y HRR al glosario.
+- Incluye mejoras meta pre-existentes no committeadas
+  (Comportamientos automaticos, check_integrity obligatorio,
+  Patron de truncamiento).
+
+Ref: investigacion estado del arte + verificacion live en localhost:3005.

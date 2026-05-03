@@ -184,6 +184,61 @@ export async function fetchConductorRanking(agencyId: string): Promise<Conductor
   return data;
 }
 
+// ── vehicle_stats — perfil de coches para las 4 empresas (con conductor opcional) ──
+
+export interface VehicleDiaStats {
+  fecha: string;
+  totalEventos: number;
+  pctEnTiempo: number;
+  pctAtrasado: number;
+  pctAdelantado: number;
+  velocidadMedia: number;
+  desviacionMediaMin: number | null;
+  lineas: string[];
+  // Conductor (solo UCOT cuando hay distribuciones)
+  interno: number | null;
+  nombre: string | null;
+  turno: string | null;
+  servicio: number | null;
+}
+export interface VehicleStats {
+  idBus: string;
+  empresa: string;
+  diasActivos: number;
+  totalEventos: number;
+  pctEnTiempo: number;
+  pctAtrasado: number;
+  pctAdelantado: number;
+  pctSinHorario: number;
+  velocidadMedia: number;
+  desviacionMediaMin: number | null;
+  lineasOperadas: string[];
+  ultimaActividad: string | null;
+  // Conductor (null para empresas sin distribuciones)
+  ultimoInterno: number | null;
+  ultimoNombre: string | null;
+  conductoresConocidos: number[];
+  historial: VehicleDiaStats[];
+}
+export interface VehicleStatsResponse {
+  ok: boolean;
+  agencyId: string;
+  totalBuses: number;
+  buses: VehicleStats[];
+}
+
+export async function fetchVehicleStats(
+  agencyId: string,
+  sortBy: 'otp' | 'actividad' = 'otp',
+): Promise<VehicleStatsResponse> {
+  const h = await authHeaders();
+  const { data } = await axios.get(
+    `${BASE}/autostats/vehicle-stats/${agencyId}?sortBy=${sortBy}`,
+    { headers: h },
+  );
+  return data;
+}
+
 export const AGENCY_LABELS: Record<string, string> = {
   '10': 'COETC', '20': 'COME', '50': 'CUTCSA', '70': 'UCOT',
 };

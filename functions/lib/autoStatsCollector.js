@@ -129,11 +129,14 @@ function detectarSentido(bearing, variantes) {
 function calcularCumplimiento(velocidad, linea, horario, bearing, now) {
     var _a, _b, _c, _d, _e, _f, _g, _h;
     const hora = now.getHours();
-    // Sin horario: clasificar por velocidad y franja horaria
+    // Sin horario registrado en Firestore para esta línea: no se puede calcular cumplimiento.
+    // Usamos SIN_HORARIO para que complianceAlertsTick NO lo cuente como EN_TIEMPO.
+    // FUERA_DE_SERVICIO solo si el bus está literalmente detenido en madrugada.
     if (!horario) {
         if (hora >= 1 && hora < 5)
             return { state: 'FUERA_DE_SERVICIO', desviacionMin: null, proximaParada: null, sentido: null, bearing };
-        const state = velocidad >= 8 ? 'EN_TIEMPO' : velocidad >= 2 ? 'ATRASADO' : 'FUERA_DE_SERVICIO';
+        // Sin horario de referencia: no marcar EN_TIEMPO por velocidad — eso inflaría OTP artificialmente.
+        const state = velocidad >= 2 ? 'SIN_HORARIO' : 'FUERA_DE_SERVICIO';
         return { state, desviacionMin: null, proximaParada: null, sentido: null, bearing };
     }
     // Buscar el día con fallback: acentos pueden variar entre versiones del scraper
@@ -142,7 +145,9 @@ function calcularCumplimiento(velocidad, linea, horario, bearing, now) {
     if (!dia || !((_h = dia.salidasTodas) === null || _h === void 0 ? void 0 : _h.length)) {
         if (hora >= 1 && hora < 5)
             return { state: 'FUERA_DE_SERVICIO', desviacionMin: null, proximaParada: null, sentido: null, bearing };
-        const state = velocidad >= 8 ? 'EN_TIEMPO' : velocidad >= 2 ? 'ATRASADO' : 'FUERA_DE_SERVICIO';
+        // Horario existe pero no tiene salidas para este día/tipo: no hay servicio programado.
+        // No inferir EN_TIEMPO desde velocidad — inflaría OTP con eventos no medibles.
+        const state = velocidad >= 2 ? 'SIN_HORARIO' : 'FUERA_DE_SERVICIO';
         return { state, desviacionMin: null, proximaParada: null, sentido: null, bearing };
     }
     const nMin = nowMin(now);
@@ -198,35 +203,34 @@ function calcularCumplimiento(velocidad, linea, horario, bearing, now) {
     const pctCompletado = duracion > 0 ? transcurrido / duracion : 0;
     // Frecuencia del servicio
     const freq = dia.frecuenciaDominanteMin > 0 ? dia.frecuenciaDominanteMin : 10;
-    // Desvío: cuánto tarda más de lo esperado
-    // Si velocidad muy baja y no completó el viaje → está tardando más
-    // Estimamos: si el bus va < 5 km/h y transcurrió > 50% del tiempo → atrasado
+    // Cálculo honesto de OTP sin snap-to-shape.
+    // pctCompletado = transcurrido/duracion → tiempoEsperado = duracion*(transcurrido/duracion) = transcurrido
+    // → desviacionMin = 0 SIEMPRE: tautología matemática, no mide nada real.
+    // Sin progreso geográfico real (snap-to-shape, pendiente v2 usando otpEngine),
+    // solo detectamos los casos objetivamente medibles por tiempo:
     let desviacionMin = null;
     let state;
-    // Calcular desviación real en minutos respecto a la progresión esperada
-    const tiempoEsperado = Math.round(duracion * pctCompletado);
-    desviacionMin = transcurrido - tiempoEsperado;
     if (pctCompletado > 1.2) {
-        // Superó ampliamente el tiempo previsto → atrasado estructural
+        // Bus superó el tiempo máximo del servicio → atrasado estructural confirmado
         state = 'ATRASADO';
         desviacionMin = Math.round(nMin - haciaMin);
     }
     else if (pctCompletado < -0.1) {
-        // Salió antes de lo programado
+        // Bus arrancó antes de lo programado
         state = 'ADELANTADO';
         desviacionMin = Math.round(desdeMin - nMin);
     }
-    else if (desviacionMin > 5) {
-        // Más de 5 minutos de atraso respecto a la progresión esperada
+    else if (velocidad < 2 && transcurrido > duracion * 0.7) {
+        // Bus detenido habiendo consumido >70% del tiempo del servicio → probable atraso
         state = 'ATRASADO';
-    }
-    else if (desviacionMin < -3) {
-        state = 'ADELANTADO';
+        desviacionMin = Math.round(transcurrido - duracion * 0.7);
     }
     else {
-        // En ventana normal (±5 min) — incluye paradas en terminales/semáforos
-        state = 'EN_TIEMPO';
-        desviacionMin = Math.max(0, desviacionMin);
+        // Dentro de la ventana programada: sin métrica geográfica no podemos confirmar
+        // puntualidad. Reportar SIN_HORARIO es honesto vs inventar EN_TIEMPO 100%.
+        // otpEngine.ts tiene el snap-to-stop real; estos datos alimentan scheduleAdherence.
+        state = 'SIN_HORARIO';
+        desviacionMin = null;
     }
     // Parada próxima: destino del servicio activo
     const proximaParada = mejorServicio.destino || null;
@@ -276,6 +280,13 @@ async function snapshotAgency(stmCode) {
         if (!(p === null || p === void 0 ? void 0 : p.codigoBus) || !(p === null || p === void 0 ? void 0 : p.linea))
             continue;
         const [lon, lat] = feat.geometry.coordinates;
+        // Coordenadas sentinela de STM para buses sin fix GPS (ej: -258,-258). Descartar.
+        if (typeof lat !== 'number' || typeof lon !== 'number' ||
+            Math.abs(lat) > 90 || Math.abs(lon) > 180 ||
+            lat > -30 || lat < -36 || lon > -53 || lon < -58) {
+            console.warn(`[AutoStats] GPS descartado: bus ${p.codigoBus} (${lat},${lon})`);
+            continue;
+        }
         const velocidad = (_b = p.velocidad) !== null && _b !== void 0 ? _b : 0;
         const idBus = String(p.codigoBus);
         // Calcular bearing desde última posición

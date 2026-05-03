@@ -941,6 +941,11 @@ export { seatKmCalculatorCron, seatKmCalculatorNow, seatKmSnapshotQuery } from '
 // distribuciones_diarias/{hoy}/registros, escribe conductor_stats/{70_interno}.
 export { conductorStatsTick } from './conductorStatsTick';
 
+// ─── Vehicle Stats — perfil de coches para las 4 empresas del sistema ─────────
+// Cron 23:45 Mvd: lee vehicle_events de hoy para COETC/COME/CUTCSA/UCOT,
+// enriquece UCOT con distribuciones cuando existen, escribe vehicle_stats/{agencyId_idBus}.
+export { vehicleStatsTick } from './vehicleStatsTick';
+
 // ─── Motor de Consecuencias — grafo de dependencias operativas ────────────────
 // HTTP POST /consequencePreview — simula cascada de efectos de un evento operativo.
 // Triggers automáticos — se disparan cuando cambia Firestore (sin intervención del usuario).
