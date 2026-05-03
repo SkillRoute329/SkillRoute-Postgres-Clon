@@ -936,6 +936,11 @@ export { hrrTick, hrrQueryNow, hrrData }              from './hrrEngine';
 // HTTP /seatKmSnapshotQuery?date=YYYY-MM-DD — consulta snapshot guardado.
 export { seatKmCalculatorCron, seatKmCalculatorNow, seatKmSnapshotQuery } from './seatKmCalculator';
 
+// ─── Conductor Stats — cruce distribuciones × vehicle_events por conductor ────
+// Cron 23:30 Mvd: lee vehicle_events del día para UCOT, cruza con
+// distribuciones_diarias/{hoy}/registros, escribe conductor_stats/{70_interno}.
+export { conductorStatsTick } from './conductorStatsTick';
+
 // ─── Motor de Consecuencias — grafo de dependencias operativas ────────────────
 // HTTP POST /consequencePreview — simula cascada de efectos de un evento operativo.
 // Triggers automáticos — se disparan cuando cambia Firestore (sin intervención del usuario).

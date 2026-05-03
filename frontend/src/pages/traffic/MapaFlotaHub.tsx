@@ -1,14 +1,16 @@
 import { useState, lazy, Suspense } from 'react';
-import { Radio, MapPin, RefreshCw, BarChart2 } from 'lucide-react';
+import { Radio, MapPin, RefreshCw, BarChart2, Users } from 'lucide-react';
 
-const FleetMonitorModule  = lazy(() => import('./FleetMonitorModule'));
-const LiveMapPage         = lazy(() => import('./LiveMapPage'));
-const FlotaInteligente    = lazy(() => import('./FlotaInteligente'));
+const FleetMonitorModule        = lazy(() => import('./FleetMonitorModule'));
+const LiveMapPage               = lazy(() => import('./LiveMapPage'));
+const FlotaInteligente          = lazy(() => import('./FlotaInteligente'));
+const RendimientoConductores    = lazy(() => import('./RendimientoConductores'));
 
 const TABS = [
-  { key: 'monitor',      label: 'Monitoreo de Flota',    icon: Radio    },
-  { key: 'mapa',         label: 'Mapa en Vivo STM',      icon: MapPin   },
-  { key: 'inteligencia', label: 'Inteligencia de Flota', icon: BarChart2 },
+  { key: 'monitor',      label: 'Monitoreo de Flota',      icon: Radio    },
+  { key: 'mapa',         label: 'Mapa en Vivo STM',        icon: MapPin   },
+  { key: 'inteligencia', label: 'Inteligencia de Flota',   icon: BarChart2 },
+  { key: 'conductores',  label: 'Rendimiento Conductores', icon: Users    },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -44,6 +46,7 @@ export default function MapaFlotaHub() {
           {tab === 'monitor'      && <FleetMonitorModule />}
           {tab === 'mapa'         && <LiveMapPage />}
           {tab === 'inteligencia' && <FlotaInteligente />}
+          {tab === 'conductores'  && <RendimientoConductores />}
         </Suspense>
       </div>
     </div>

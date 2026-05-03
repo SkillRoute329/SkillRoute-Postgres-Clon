@@ -142,6 +142,48 @@ export function getUcotCartonUrl(servicio: string, minuta = 'HABILES'): string {
   return `${BASE}/ucot/carton/${servicio}?minuta=${minuta}`;
 }
 
+export interface ConductorDiaStats {
+  fecha: string;
+  coche: string;
+  turno: string | null;
+  servicio: number | null;
+  totalEventos: number;
+  pctEnTiempo: number;
+  pctAtrasado: number;
+  pctAdelantado: number;
+  velocidadMedia: number;
+  desviacionMediaMin: number | null;
+  lineas: string[];
+}
+export interface ConductorSummary {
+  interno: number;
+  nombre: string;
+  diasActivos: number;
+  totalEventos: number;
+  pctEnTiempo: number;
+  pctAtrasado: number;
+  pctAdelantado: number;
+  pctSinHorario: number;
+  velocidadMedia: number;
+  desviacionMediaMin: number | null;
+  cochesOperados: string[];
+  lineasOperadas: string[];
+  ultimaActividad: string | null;
+  historial: ConductorDiaStats[];
+}
+export interface ConductorRankingResponse {
+  ok: boolean;
+  agencyId: string;
+  totalConductores: number;
+  conductores: ConductorSummary[];
+}
+
+export async function fetchConductorRanking(agencyId: string): Promise<ConductorRankingResponse> {
+  const h = await authHeaders();
+  const { data } = await axios.get(`${BASE}/autostats/conductor-ranking/${agencyId}`, { headers: h });
+  return data;
+}
+
 export const AGENCY_LABELS: Record<string, string> = {
   '10': 'COETC', '20': 'COME', '50': 'CUTCSA', '70': 'UCOT',
 };
@@ -161,6 +203,21 @@ export interface ArchiveWeekData {
   agencyId: string;
   totalRecords: number;
   lines: LineSummary[];
+}
+
+export interface FleetRankingResponse {
+  ok: boolean;
+  agencyId: string;
+  days: number;
+  totalVehiculos: number;
+  vehicles: VehicleSummary[];
+}
+
+export async function fetchFleetRanking(agencyId: string, days = 7, offset = 0): Promise<FleetRankingResponse> {
+  const h = await authHeaders();
+  const qs = offset > 0 ? `?days=${days}&offset=${offset}` : `?days=${days}`;
+  const { data } = await axios.get(`${BASE}/autostats/fleet-ranking/${agencyId}${qs}`, { headers: h });
+  return data;
 }
 
 export async function fetchArchiveList(): Promise<ArchiveFileInfo[]> {

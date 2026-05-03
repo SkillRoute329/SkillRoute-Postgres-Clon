@@ -1,109 +1,139 @@
 # 🔁 SESIÓN ACTUAL — estado vivo del trabajo en curso
 
-**Última actualización:** 2026-05-02 (tarde) — Sprint Pre-Demo completado por Claude Code
+**Última actualización:** 2026-05-03 — Sesión OCR Distribuciones + Rendimiento Conductores
 
-> 🎯 **PRESENTACIÓN LUNES 2026-05-04 (probable CUTCSA)**. Sprint Pre-Demo ejecutado. P0+P1+P2 completos y en producción.
+> 🎯 **ARQUITECTURA**: Sistema metropolitano completo — COETC (10), COME (20), CUTCSA (50), UCOT (70). Jonathan es super-admin con visión de todos los operadores.
 
 ---
 
-## ✅ SPRINT PRE-DEMO 2026-05-02 — COMPLETADO
+## ✅ MÓDULOS COMPLETADOS EN ESTA SESIÓN
 
-### Lo que se ejecutó esta sesión
-
-| Item | Detalle | Estado |
+| Módulo | Descripción | Estado |
 |---|---|---|
-| **P0-A: Fix VITE_API_URL** | `frontend/.env.production` → `skillroute.web.app/api`. Build + deploy hosting | ✅ En prod |
-| **P0-B: Fix bug OTP tautológico** | `autoStatsCollector.ts:226-249` — eliminada fórmula `desviacionMin=0` siempre. Ahora reporta `SIN_HORARIO` honesto (63/67 buses UCOT vs 62 EN_TIEMPO falsos) | ✅ En prod |
-| **P1-C: Filtro GPS basura** | `autoStatsCollector.ts:303-313` — descarta coordenadas fuera del rango Uruguay (`lat -30/-36, lon -53/-58`). Los sentinela `-258` de STM ya no se graban | ✅ En prod |
-| **Fix rewrite firebase.json** | `/api/consequencePreview` movido ANTES de `/api/**`. Sin esto el Motor de Consecuencias no podía simular desde el frontend | ✅ En prod |
-| **Deploy functions** | `autoStatsCollectorTick`, `autoStatsCollectorNow`, `intelligenceApi` actualizados | ✅ En prod |
+| OCR Distribuciones | 8.097 registros cargados en `distribuciones_diarias` (31 fechas, marzo-abril 2026) | ✅ En Firestore |
+| conductor_stats | 68 conductores UCOT con OTP real del 29-abr en `conductor_stats` | ✅ En Firestore |
+| conductorStatsTick | Cloud Function cron 23:30 — cruza vehicle_events × distribuciones diariamente | ✅ Compilado |
+| API conductor-ranking | `GET /api/autostats/conductor-ranking/:agencyId` — lee `conductor_stats` | ✅ Código listo |
+| RendimientoConductores | Nueva UI tab "Rendimiento Conductores" en MapaFlotaHub | ✅ Código listo |
 
-### Descubrimientos clave (lo que Cowork no sabía)
+### Detalles técnicos del cruce conductor-stats
+- **Colección fuente 1**: `distribuciones_diarias/{fecha}/registros` — qué conductor manejó qué coche
+- **Colección fuente 2**: `vehicle_events` — GPS real IMM, estadoCumplimiento por evento
+- **Clave de join**: `String(coche) === idBus`
+- **Colección destino**: `conductor_stats/{agencyId}_{interno}` (ej: `70_5`)
+- **Estructura**: `{interno, nombre, diasActivos, totalEventos, pctEnTiempo, pctAtrasado, pctAdelantado, pctSinHorario, velocidadMedia, desviacionMediaMin, cochesOperados, lineasOperadas, ultimaActividad, historial[{fecha, coche, turno, servicio, pctEnTiempo, ...}]}`
+- **Acumulación**: merge incremental por día — el cron diario agrega el día de hoy sin borrar historial anterior
+- **Backfill realizado**: 29-abr-2026 (único día con solapamiento distribuciones × vehicle_events disponible)
 
-El programa YA TENÍA implementados todos los módulos que Cowork proponía crear:
-- `refreshAllStmHorariosTick/Now` — cron de horarios STM (P1-D era duplicado)
-- `scheduleAdherence.ts` — agregador diario OTP en `auto_stats_diarios` (P1-E era duplicado)
-- `otpEngine.ts` — motor OTP con snap-to-stop usando GPS real de la API IMM
-- `MotorConsecuencias.tsx` — componente ya existía en `pages/traffic/`
-- `consequenceTriggers.ts` — triggers Firestore ya activos
-- Sidebar y App.tsx ya tenían la ruta `/dashboard/super-admin/motor-consecuencias`
+### Por qué solo 29-abr en el backfill
+- `vehicle_events` tiene datos de abr-25 a may-3 (TTL ~10 días en la práctica)
+- `distribuciones_diarias` tiene registros tipo A (conductores) en: 10-mar, 7-20 abr, 29-abr
+- Único solapamiento histórico posible: **29 de abril** (93 coches asignados × 7440 eventos GPS = 68 conductores cruzados)
+- **A partir de esta noche**: el cron `conductorStatsTick` acumula automáticamente cada noche a las 23:30
 
-### Estado APIs verificadas en producción
-
-| Endpoint | Estado | Nota |
+### Scripts y archivos creados/modificados
+| Archivo | Tipo | Descripción |
 |---|---|---|
-| `/api/autostats/health` | ✅ UP desde 2026-04-26 | 0 fallos consecutivos |
-| `/api/autostats/compliance/70` | ✅ 67 buses: 63 SIN_HORARIO, 3 EN_TIEMPO, 1 ATRASADO | OTP honesto post-fix |
-| `/api/consequencePreview` (POST) | ✅ 7 efectos: RRHH/NOMINA/OPERACIONES/OTP/SUBSIDIO/FINANZAS×2 | Rewrite corregido |
-| `autoStatsCollectorNow` | ✅ 745 buses (COETC:104, COME:43, CUTCSA:531, UCOT:67) | Fix GPS activo |
+| `scripts/cross_reference_conductor_stats.py` | NUEVO | Backfill manual: cruza Firestore por fechas |
+| `scripts/load_distribuciones_firestore.py` | MODIFICADO | Fix ADC auth + print ASCII |
+| `functions/src/conductorStatsTick.ts` | NUEVO | Cloud Function cron diario 23:30 |
+| `functions/src/api/autostats.ts` | MODIFICADO | Nuevo endpoint `GET /conductor-ranking/:agencyId` |
+| `frontend/src/services/autoStatsService.ts` | MODIFICADO | Tipos `ConductorSummary` + `fetchConductorRanking()` |
+| `frontend/src/pages/traffic/RendimientoConductores.tsx` | NUEVO | UI tabla conductores con historial expandible |
+| `frontend/src/pages/traffic/MapaFlotaHub.tsx` | MODIFICADO | 4ta tab "Rendimiento Conductores" |
+| `functions/src/index.ts` | MODIFICADO | Export `conductorStatsTick` |
+| `firestore.indexes.json` | MODIFICADO | 2 índices para `conductor_stats` |
 
 ---
 
 ## 📋 PRÓXIMO PASO INMEDIATO
 
-**Verificación visual (Jonathan debe confirmar en browser logueado):**
+### 1. Commit + deploy (0 errores TypeScript, build limpio)
 
-Ir a `https://skillroute.web.app` (Ctrl+Shift+R para limpiar cache) y verificar:
+```powershell
+cd C:\Users\jonat\Desktop\PROYECTOS\GestionUcot
 
-1. **Dashboard principal** `/dashboard`
-   - ¿Aparecen alertas con línea + rival + distancia (no solo "RIVAL_PISANDO_TURNO")?
-   - ¿El contador de buses muestra ~700 total sin "datos no disponibles"?
+git add functions/src/conductorStatsTick.ts
+git add functions/src/api/autostats.ts
+git add functions/src/index.ts
+git add functions/lib/
+git add frontend/src/pages/traffic/RendimientoConductores.tsx
+git add frontend/src/pages/traffic/MapaFlotaHub.tsx
+git add frontend/src/services/autoStatsService.ts
+git add scripts/cross_reference_conductor_stats.py
+git add scripts/load_distribuciones_firestore.py
+git add scripts/merge_distribuciones.py
+git add firestore.indexes.json
+git add docs/
 
-2. **Cumplimiento** `/dashboard/traffic/diagnostico-cumplimiento`
-   - ¿Tab UCOT ya NO muestra 100% en tiempo? (debe mostrar SIN_HORARIO o distribución variada)
-   - ¿Tab CUTCSA, COME, COETC funcionan?
+git commit -m "feat(conductor-stats): OTP real por conductor — cruce distribuciones x GPS
 
-3. **Motor de Consecuencias** `/dashboard/super-admin/motor-consecuencias`
-   - ¿El formulario carga?
-   - Click "Simular" con CONDUCTOR_AUSENTE → ¿aparece la cascada de efectos (RRHH, Nómina, OTP, etc.)?
+- Cloud Function conductorStatsTick (cron 23:30 Mvd): cruza vehicle_events
+  del dia con distribuciones_diarias para atribuir OTP a cada conductor
+- Endpoint GET /api/autostats/conductor-ranking/:agencyId lee conductor_stats
+- UI RendimientoConductores: tabla con OTP%, velocidad, desvio, historial por dia
+- Script backfill cross_reference_conductor_stats.py: 68 conductores UCOT cargados
+- 8097 registros OCR cargados en distribuciones_diarias (31 fechas)"
 
-4. **CEO Dashboard** `/dashboard/traffic/ceo-dashboard-v7`
-   - ¿Carga sin "Error en Módulo"?
-
-5. **Gantt Red** `/dashboard/super-admin/gantt-red`
-   - ¿Funciona el Gantt UCOT vs CUTCSA?
-
-**Mensaje de commit listo para ejecutar (si verificación OK):**
-
+git push
 ```
-feat(pre-demo): fix OTP honesto + GPS filtro + rewrite consequencePreview
 
-P0:
-- frontend/.env.production: VITE_API_URL → skillroute.web.app/api (root cause stats vacías)
-- autoStatsCollector.ts: fix bug matemático desviacionMin=0 por tautología.
-  Sin snap-to-shape: reportar SIN_HORARIO honesto vs inventar EN_TIEMPO 100%.
-  Verificado: 63/67 buses UCOT ahora SIN_HORARIO, 3 EN_TIEMPO reales, 1 ATRASADO
-
-P1:
-- autoStatsCollector.ts: filtrar GPS fuera de Uruguay (sentinela -258 de STM descartado)
-
-Fix crítico:
-- firebase.json: mover /api/consequencePreview ANTES de /api/** en rewrites.
-  Sin esto, Motor de Consecuencias daba Cannot POST desde el frontend.
-
-Adaptaciones vs ORDEN_MAESTRA original:
-- stmHorariosScraperTick: YA EXISTÍA como refreshAllStmHorariosTick (no duplicado)
-- dailyAggregator: YA EXISTÍA como scheduleAdherence + historicMetrics (no duplicado)
-- MotorConsecuencias.tsx: YA EXISTÍA completo con simulador + triggers
-- App.tsx + Sidebar: ya tenían la ruta super-admin/motor-consecuencias
-
-NULs: 0, tsc: 0 errores, build: limpio
+### 2. Deploy Cloud Function + indexes
+```powershell
+firebase deploy --only functions
+firebase deploy --only firestore:indexes
 ```
+
+### 3. Verificación visual (browser logueado en skillroute.web.app)
+- URL: `https://skillroute.web.app/dashboard/traffic/flota-hub`
+- Tab: **"Rendimiento Conductores"**
+- Confirmar: ¿aparecen los 68 conductores con OTP%, días activos, coches operados?
+- Confirmar: ¿se puede expandir una fila para ver el historial del 29-abr?
+- Confirmar: ¿el selector UCOT funciona? Las otras empresas muestran "Sin datos" (normal)
 
 ---
 
-## 📋 Backlog post-lunes (no urgente)
+## 🔄 Estado de los datos en Firestore
 
-1. **Snap-to-shape OTP real** — usar `otpEngine.ts` (ya existe con snap-to-stop) para reemplazar el SIN_HORARIO transitorio con OTP real. `otpEngine` usa `getBusesEnriquecidosInternal` + paradas GTFS.
-2. **Refactor 11 URLs hardcodeadas** a `us-central1-ucot-gestor-cloud.cloudfunctions.net` (colección P3)
-3. **Backfill `auto_stats_diarios`** últimos 7 días: `curl .../computeAdherenceNow?date=YYYY-MM-DD&agencyId=70`
-4. **Bus GPS basura persistente** — 1 bus (de eventos viejos). Desaparece solo en el próximo ciclo.
+| Colección | Documentos | Último dato |
+|---|---|---|
+| `distribuciones_diarias` | 31 raíz + subcolecciones | 29-abr-2026 |
+| `distribuciones_diarias/{fecha}/registros` | 3.274 registros tipo A | — |
+| `conductor_stats` | 68 conductores UCOT | 29-abr-2026 |
+| `vehicle_events` | TTL ~10 días, cron cada 15min | Vivo |
+
+**Cómo crecer `conductor_stats`:**
+1. Cargar nuevas planillas de distribución (OCR) para fechas recientes
+2. El cron `conductorStatsTick` cruza automáticamente a las 23:30 cada noche
+3. O correr manualmente: `python scripts/cross_reference_conductor_stats.py --days=14`
 
 ---
 
-## Bugs conocidos no críticos
+## 🏗️ ARQUITECTURA MULTI-EMPRESA (DIRECTRIZ PERMANENTE)
 
-- 1 bus con GPS viejo inválido en `vehicle_events` — desaparece en el próximo ciclo del cron (5 min)
-- `regresionOLS.test.ts`: 4 tests fallan — pre-existente, no bloqueante
-- `refreshAllStmHorariosNow` timeout en 30s (tarda >30s en scrapear todas las líneas) — el cron diario corre en su schedule normal
-- `historicOtp` endpoint requiere `agencyId` sin `empresa` — documentado
+| Empresa | Código | Datos disponibles |
+|---|---|---|
+| COETC | 10 | GPS live, GTFS shapes (38), rutas STM, vehicle_events |
+| COME | 20 | GPS live, GTFS shapes (22), rutas STM, vehicle_events |
+| CUTCSA | 50 | GPS live, GTFS shapes (186), rutas STM, vehicle_events |
+| UCOT | 70 | GPS live, GTFS shapes (28), rutas STM + datos internos (691 empleados, 257 coches, cartones, distribuciones, **68 conductores con OTP real**) |
+
+---
+
+## 🐛 Bugs conocidos no críticos
+
+- `serviceAccountKey.json` en `backend_legacy/` tiene JWT inválido — usar ADC de gcloud para scripts Python (`gcloud auth application-default login`)
+- 6 shapes GTFS con empresa "STM" (agencyId no reconocido en `AGENCY_CODE_MAP`)
+- `persistentMultipleTabManager` Firebase auth: causa cold-start lento (timeout 10s como workaround)
+- `otp_summary` puede estar vacío si `otpEngine` no corrió para todos los operadores
+
+---
+
+## 📦 Backlog priorizado
+
+1. **Deploy + verificación visual** — commit + push + firebase deploy + abrir tab "Rendimiento Conductores"
+2. **Cargar más distribuciones** — OCR de planillas de mayo para que `conductorStatsTick` tenga datos a cruzar cada noche
+3. **M5** — Selector "TODAS" para super-admin (vista comparativa 4 empresas)
+4. **M6** — Verificar que `otpEngine` escribe en `otp_summary` para los 4 operadores
+5. **Clasificación de coches** — IMM GPS no da motor/tipo. Necesita fuente externa
+6. **M7** — Verificar que `droMatrix` sigue corriendo correctamente post-cambio GTFS shapes

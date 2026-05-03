@@ -583,3 +583,32 @@ SkillRoute ahora opera 100% cross-operador desde el sidebar. Cualquier operador 
 - Backend: endpoints `/api/listero/*` deben respetar el `agencyId` query param.
 - Backend: `/api/cartones/oficiales` debería filtrar por agencyId del operador propio.
 
+---
+
+## Sesión 2026-05-02 (noche) — Corrección módulo por módulo
+
+### Features entregadas
+
+| Feature | Commits | Estado |
+|---|---|---|
+| M1: AuthContext timeout 10s | (sesión previa) | ✅ Prod |
+| M2: Fix UCOT shapes GTFS — AGENCY_CODE_MAP | 8248c2c3 | ✅ Prod |
+| M3: OTPDashboard conectado a otp_summary | 8248c2c3 | ✅ Prod |
+| M4: Fix auth header en fetch Personal | 54a060f0 | ✅ Prod |
+
+### Métricas verificadas
+
+- `shapes_cross_operator`: COETC=38, COME=22, CUTCSA=186, UCOT=28 (antes UCOT=0)
+- `personal` en Firestore: 884 docs totales, 691 con IDs P0001-P0691
+- GTFS re-import: 280 shapes escritas, 4891 paradas, 1361 trips de horario
+
+### Decisiones tomadas
+
+- **No correr seed de personal**: Los datos ya estaban. El bug era falta de auth en el fetch.
+- **OTP cross-operador por diseño**: useEmpresaPropia() en lugar de hardcode agencyId=70
+- **Verificación desde Node.js + ADC**: Para bugs de Firestore, verificar con Admin SDK local antes de tocar código
+
+### Quedó afuera (y por qué)
+
+- **Selector "TODAS" para super-admin**: Requiere diseño de UI comparativa — tarea para próxima sesión
+- **M6 otpEngine cross-operador**: Verificar si escribe para todas las empresas o solo UCOT

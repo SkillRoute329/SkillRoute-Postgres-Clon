@@ -1,6 +1,75 @@
 {
   "indexes": [
     {
+      "collectionGroup": "conductor_stats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "pctEnTiempo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "conductor_stats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "ultimaActividad", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "compliance_alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "dismissed", "order": "ASCENDING" },
+        { "fieldPath": "nivel", "order": "ASCENDING" },
+        { "fieldPath": "pctEnTiempo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "compliance_alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "dismissed", "order": "ASCENDING" },
+        { "fieldPath": "empresa", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "cargas_combustible",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "DESCENDING" },
+        { "fieldPath": "hora", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "cargas_combustible",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "vehiculoId", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "DESCENDING" },
+        { "fieldPath": "hora", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "licencias_personal",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "licencias_personal",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fechaDesde", "order": "ASCENDING" },
+        { "fieldPath": "fechaHasta", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "gtfs_horarios",
       "queryScope": "COLLECTION",
       "fields": [

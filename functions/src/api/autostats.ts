@@ -67,12 +67,12 @@ export function registerAutostatsRoutes(app: Express) {
     } catch (e: any) { res.status(500).json({ ok: false, error: e.message }); }
   });
 
-  // GET /api/autostats/compliance/:agencyId — snapshot en vivo desde Firestore (últimos 8 min)
+  // GET /api/autostats/compliance/:agencyId — snapshot en vivo desde Firestore (últimos 25 min)
   app.get('/api/autostats/compliance/:agencyId', async (req, res) => {
     try {
       const { agencyId } = req.params;
       const db = getDb();
-      const since = new Date(Date.now() - 8 * 60 * 1000);
+      const since = new Date(Date.now() - 25 * 60 * 1000);
       const snap = await db.collection('vehicle_events')
         .where('agencyId', '==', agencyId)
         .where('timestampGPS', '>=', since.toISOString())
@@ -312,6 +312,129 @@ export function registerAutostatsRoutes(app: Express) {
       }).sort((a, b) => b.totalEventos - a.totalEventos);
 
       res.json({ ok: true, week, agencyId: agencyId ?? 'all', totalRecords: filtered.length, lines });
+    } catch (e: any) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // GET /api/autostats/fleet-ranking/:agencyId — ranking de coches por cumplimiento
+  // ?days=7 (máx 14) &offset=0 (máx 30, desplazamiento en días hacia atrás).
+  // offset=7 devuelve el período anterior (para calcular tendencia semana a semana).
+  app.get('/api/autostats/fleet-ranking/:agencyId', async (req, res) => {
+    try {
+      const { agencyId } = req.params;
+      const days   = Math.min(14, parseInt((req.query.days   as string) ?? '7',  10));
+      const offset = Math.min(30, parseInt((req.query.offset as string) ?? '0', 10));
+      const db = getDb();
+      const now = Date.now();
+      const since = new Date(now - (days + offset) * 24 * 60 * 60 * 1000).toISOString();
+      const until = offset > 0
+        ? new Date(now - offset * 24 * 60 * 60 * 1000).toISOString()
+        : null;
+
+      let q = db.collection('vehicle_events')
+        .where('agencyId', '==', agencyId)
+        .where('timestampGPS', '>=', since)
+        .orderBy('timestampGPS', 'desc');
+      if (until) q = (q as any).where('timestampGPS', '<', until);
+
+      const snap = await q.limit(4000).get();
+
+      type BusAcc = {
+        empresa: string; lineas: Set<string>;
+        total: number; enTiempo: number; atrasado: number; adelantado: number;
+        desviaciones: number[]; velocidades: number[];
+        ultima: string | null; primera: string | null;
+      };
+      const byBus: Record<string, BusAcc> = {};
+
+      snap.docs.forEach(d => {
+        const e = d.data();
+        const id: string = e.idBus;
+        if (!byBus[id]) {
+          byBus[id] = {
+            empresa: e.empresa ?? e.codigoEmpresa ?? agencyId,
+            lineas: new Set(),
+            total: 0, enTiempo: 0, atrasado: 0, adelantado: 0,
+            desviaciones: [], velocidades: [],
+            ultima: e.timestampGPS ?? null, primera: e.timestampGPS ?? null,
+          };
+        }
+        const b = byBus[id];
+        if (e.linea) b.lineas.add(String(e.linea));
+        b.total++;
+        if (e.estadoCumplimiento === 'EN_TIEMPO') b.enTiempo++;
+        else if (e.estadoCumplimiento === 'ATRASADO') b.atrasado++;
+        else if (e.estadoCumplimiento === 'ADELANTADO') b.adelantado++;
+        if (typeof e.desviacionMin === 'number') b.desviaciones.push(e.desviacionMin);
+        if (typeof e.velocidad === 'number' && e.velocidad > 0) b.velocidades.push(e.velocidad);
+        if (e.timestampGPS && e.timestampGPS < (b.primera ?? e.timestampGPS)) b.primera = e.timestampGPS;
+      });
+
+      const MIN_EVENTOS = 3;
+      const vehicles = Object.entries(byBus)
+        .filter(([, b]) => b.total >= MIN_EVENTOS)
+        .map(([idBus, b]) => {
+          const con = b.enTiempo + b.atrasado + b.adelantado;
+          return {
+            idBus,
+            empresa: b.empresa,
+            lineasOperadas: [...b.lineas].sort(),
+            totalEventos: b.total,
+            pctEnTiempo:   con > 0 ? Math.round((b.enTiempo  / con) * 100) : 0,
+            pctAtrasado:   con > 0 ? Math.round((b.atrasado   / con) * 100) : 0,
+            pctAdelantado: con > 0 ? Math.round((b.adelantado / con) * 100) : 0,
+            pctSinHorario: b.total > 0 ? Math.round(((b.total - con) / b.total) * 100) : 0,
+            desviacionMediaMin: b.desviaciones.length
+              ? Math.round(b.desviaciones.reduce((a, v) => a + v, 0) / b.desviaciones.length * 10) / 10
+              : null,
+            velocidadMedia: b.velocidades.length
+              ? Math.round(b.velocidades.reduce((a, v) => a + v, 0) / b.velocidades.length)
+              : 0,
+            ultimaActividad: b.ultima,
+            primeraActividad: b.primera,
+          };
+        })
+        .sort((a, b) => a.pctEnTiempo - b.pctEnTiempo);
+
+      res.json({ ok: true, agencyId, days, totalVehiculos: vehicles.length, vehicles });
+    } catch (e: any) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // GET /api/autostats/conductor-ranking/:agencyId — ranking de conductores por OTP
+  // Lee de la colección persistente `conductor_stats` (actualizada por conductorStatsTick diario).
+  // ?limit=100 (máx 500)
+  app.get('/api/autostats/conductor-ranking/:agencyId', async (req, res) => {
+    try {
+      const { agencyId } = req.params;
+      const limit = Math.min(500, parseInt((req.query.limit as string) ?? '200', 10));
+      const db = getDb();
+
+      const snap = await db.collection('conductor_stats')
+        .where('agencyId', '==', agencyId)
+        .orderBy('pctEnTiempo', 'asc')
+        .limit(limit)
+        .get();
+
+      const conductores = snap.docs.map(d => {
+        const r = d.data();
+        return {
+          interno:            r.interno,
+          nombre:             r.nombre ?? '',
+          diasActivos:        r.diasActivos ?? 0,
+          totalEventos:       r.totalEventos ?? 0,
+          pctEnTiempo:        r.pctEnTiempo ?? 0,
+          pctAtrasado:        r.pctAtrasado ?? 0,
+          pctAdelantado:      r.pctAdelantado ?? 0,
+          pctSinHorario:      r.pctSinHorario ?? 0,
+          velocidadMedia:     r.velocidadMedia ?? 0,
+          desviacionMediaMin: r.desviacionMediaMin ?? null,
+          cochesOperados:     r.cochesOperados ?? [],
+          lineasOperadas:     r.lineasOperadas ?? [],
+          ultimaActividad:    r.ultimaActividad ?? null,
+          historial:          r.historial ?? [],
+        };
+      });
+
+      res.json({ ok: true, agencyId, totalConductores: conductores.length, conductores });
     } catch (e: any) { res.status(500).json({ ok: false, error: e.message }); }
   });
 }

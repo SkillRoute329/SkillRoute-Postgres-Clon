@@ -451,4 +451,44 @@ function registerAutostatsRoutes(app) {
             res.status(500).json({ ok: false, error: e.message });
         }
     });
+    // GET /api/autostats/conductor-ranking/:agencyId — ranking de conductores por OTP
+    // Lee de la colección persistente `conductor_stats` (actualizada por conductorStatsTick diario).
+    // ?limit=100 (máx 500)
+    app.get('/api/autostats/conductor-ranking/:agencyId', async (req, res) => {
+        var _a;
+        try {
+            const { agencyId } = req.params;
+            const limit = Math.min(500, parseInt((_a = req.query.limit) !== null && _a !== void 0 ? _a : '200', 10));
+            const db = getDb();
+            const snap = await db.collection('conductor_stats')
+                .where('agencyId', '==', agencyId)
+                .orderBy('pctEnTiempo', 'asc')
+                .limit(limit)
+                .get();
+            const conductores = snap.docs.map(d => {
+                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+                const r = d.data();
+                return {
+                    interno: r.interno,
+                    nombre: (_a = r.nombre) !== null && _a !== void 0 ? _a : '',
+                    diasActivos: (_b = r.diasActivos) !== null && _b !== void 0 ? _b : 0,
+                    totalEventos: (_c = r.totalEventos) !== null && _c !== void 0 ? _c : 0,
+                    pctEnTiempo: (_d = r.pctEnTiempo) !== null && _d !== void 0 ? _d : 0,
+                    pctAtrasado: (_e = r.pctAtrasado) !== null && _e !== void 0 ? _e : 0,
+                    pctAdelantado: (_f = r.pctAdelantado) !== null && _f !== void 0 ? _f : 0,
+                    pctSinHorario: (_g = r.pctSinHorario) !== null && _g !== void 0 ? _g : 0,
+                    velocidadMedia: (_h = r.velocidadMedia) !== null && _h !== void 0 ? _h : 0,
+                    desviacionMediaMin: (_j = r.desviacionMediaMin) !== null && _j !== void 0 ? _j : null,
+                    cochesOperados: (_k = r.cochesOperados) !== null && _k !== void 0 ? _k : [],
+                    lineasOperadas: (_l = r.lineasOperadas) !== null && _l !== void 0 ? _l : [],
+                    ultimaActividad: (_m = r.ultimaActividad) !== null && _m !== void 0 ? _m : null,
+                    historial: (_o = r.historial) !== null && _o !== void 0 ? _o : [],
+                };
+            });
+            res.json({ ok: true, agencyId, totalConductores: conductores.length, conductores });
+        }
+        catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
 }
