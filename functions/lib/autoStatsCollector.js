@@ -93,40 +93,96 @@ function angleDiff(a, b) {
     const d = Math.abs(a - b) % 360;
     return d > 180 ? 360 - d : d;
 }
-/**
- * Sentido: IDA = bus moviéndose hacia el destino de la variante.
- * Usamos la dirección geográfica del vector origen→destino de cada variante
- * (inferida desde sus nombres: términos como "Norte", "Cerro", "Pocitos", etc.)
- * como heurística de último recurso. Para Montevideo, la ciudad antigua está
- * al SW y la periferia al NE/E/N, por lo que:
- *   bearing ∈ [0,135] ∪ [315,360] → periferia (IDA en muchas líneas)
- *   bearing ∈ [135,315]            → centro (VUELTA en muchas líneas)
- * Pero mejor: si las salidas de la variante A van a FullMin < FullMin de B
- * entonces A es la variante del servicio de mañana/ida.
- *
- * NOTA: Si el nombre del destino contiene "centro", "ciudad vieja", "MDEO" → VUELTA
- * Si contiene "cerro", "pocitos", "maldonado", "instrucciones", "portones" → IDA
- */
-function detectarSentido(bearing, variantes) {
-    if (!bearing)
-        return null;
-    if (variantes.length < 2)
-        return 'IDA';
-    // Palabras clave de destinos "hacia el centro" → VUELTA
-    const CENTRO = /centro|ciudad vieja|mdeo|aduana|tres cruces|palacio|goes|zitarrosa/i;
-    // Determinar cuál variante es "hacia el centro" (VUELTA)
-    const vueltaIdx = variantes.findIndex(v => CENTRO.test(v.destino) || CENTRO.test(v.origen));
-    // Si tenemos 2 variantes: una es IDA (outbound) y otra VUELTA (inbound)
-    // El bearing hacia el sur/suroeste de Montevideo → VUELTA (hacia Ciudad Vieja)
-    // Montevideo: ciudad vieja ≈ bearing 225° desde periferia
-    const haciaCentro = angleDiff(bearing, 225) < 90;
-    if (vueltaIdx >= 0) {
-        return haciaCentro ? 'VUELTA' : 'IDA';
+/** Distancia en km al punto del trazado GTFS más cercano para el tipo de servicio dado. */
+function calcBestDistKm(lat, lon, gtfsDocs, svc, stopCache) {
+    const activeDocs = gtfsDocs.filter(d => d.serviceType === svc);
+    let bestDist = Infinity;
+    for (const tt of activeDocs) {
+        for (const sid of tt.stops) {
+            const sc = stopCache.get(sid);
+            if (!sc)
+                continue;
+            const d = haversineKm(lat, lon, sc.lat, sc.lon);
+            if (d < bestDist)
+                bestDist = d;
+        }
     }
-    return haciaCentro ? 'VUELTA' : 'IDA';
+    return bestDist;
+}
+function haversineKm(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+        + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.asin(Math.sqrt(a));
+}
+function svcTypeNow(d) {
+    const uyt = new Date(d.getTime() - 3 * 3600000); // UTC → UYT (UTC-3)
+    const dow = uyt.getDay();
+    return dow === 0 ? 'DOMINGO' : dow === 6 ? 'SABADO' : 'HABIL';
+}
+/** Minutos desde medianoche en hora de Uruguay (UTC-3) */
+function evMinUYT(d) {
+    const uyt = new Date(d.getTime() - 3 * 3600000);
+    return uyt.getHours() * 60 + uyt.getMinutes();
+}
+/** Palabras clave de destinos "hacia el centro" → VUELTA (volver al núcleo de Montevideo). */
+const RX_CENTRO = /\b(centro|ciudad vieja|mdeo|aduana|tres cruces|palacio|goes|zitarrosa|plaza independencia|18 de julio|terminal[\s-]?(rio|baltasar)|baltasar brum)\b/i;
+/** Palabras clave de destinos hacia la periferia → IDA. Lista usada como tie-breaker
+ *  cuando el `destinoDesc` no matchea CENTRO pero sí un punto cardinal. */
+const RX_PERIFERIA = /\b(cerro|pocitos|maldonado|instrucciones|portones|paso molino|colon|conciliacion|union|malvin|carrasco|piedras blancas|sayago|paso de la arena|las piedras|la paz|toledo|pando|barros blancos|aeropuerto|punta de rieles|peñarol|pe[ñn]arol|villa garcia|villa española)\b/i;
+/**
+ * Detección de sentido (IDA = saliendo del centro / VUELTA = volviendo al centro).
+ *
+ * Estrategia en cascada:
+ *   1. `destinoDesc` del feed STM (cartelito del bus). Más confiable: lo eligió el
+ *      conductor. Si matchea CENTRO → VUELTA. Si matchea PERIFERIA → IDA.
+ *   2. Bearing del bus + heurística cardinal de Montevideo (ciudad vieja al SW,
+ *      bearing ≈225° desde periferia). Solo si `bearing` no es null.
+ *   3. Si las variantes del horario tienen un destino "centro" reconocible y
+ *      tenemos bearing, comparar.
+ *
+ * Si nada se puede determinar → null. NUNCA inventar (regla Anti-Simulación).
+ */
+function detectarSentido(bearing, variantes, destinoDesc) {
+    // 1) Cartelito del bus (la fuente más fuerte cuando está disponible).
+    if (destinoDesc) {
+        const dd = destinoDesc.trim();
+        if (dd.length > 0) {
+            if (RX_CENTRO.test(dd))
+                return 'VUELTA';
+            if (RX_PERIFERIA.test(dd))
+                return 'IDA';
+        }
+    }
+    // 2) Bearing absoluto del bus respecto al centro (ciudad vieja ≈ SW = 225°).
+    //    Si el bus se mueve hacia el SW (rango 180–270°) → va al centro → VUELTA.
+    //    Si se mueve hacia NE/E/N (rango 0–135°) → se aleja del centro → IDA.
+    if (bearing !== null) {
+        const haciaCentro = angleDiff(bearing, 225) < 70; // ventana ±70° alrededor de 225
+        const haciaPeriferia = angleDiff(bearing, 45) < 70;
+        if (haciaCentro)
+            return 'VUELTA';
+        if (haciaPeriferia)
+            return 'IDA';
+        // Si el bearing cae en zonas ambiguas (E puro, N puro), seguimos al fallback
+        // del horario.
+    }
+    // 3) Fallback: combinar bearing con destinos del horario. Sólo si tenemos
+    //    bearing y al menos 2 variantes (sentido distinguible).
+    if (bearing !== null && variantes.length >= 2) {
+        const vueltaIdx = variantes.findIndex(v => RX_CENTRO.test(v.destino) || RX_CENTRO.test(v.origen));
+        if (vueltaIdx >= 0) {
+            const haciaCentro = angleDiff(bearing, 225) < 90;
+            return haciaCentro ? 'VUELTA' : 'IDA';
+        }
+    }
+    // No se puede determinar honestamente.
+    return null;
 }
 // ── Motor de cumplimiento ──────────────────────────────────────────────────
-function calcularCumplimiento(velocidad, linea, horario, bearing, now) {
+function calcularCumplimiento(velocidad, linea, horario, bearing, now, destinoDesc) {
     var _a, _b, _c, _d, _e, _f, _g, _h;
     const hora = now.getHours();
     // Sin horario registrado en Firestore para esta línea: no se puede calcular cumplimiento.
@@ -151,13 +207,12 @@ function calcularCumplimiento(velocidad, linea, horario, bearing, now) {
         return { state, desviacionMin: null, proximaParada: null, sentido: null, bearing };
     }
     const nMin = nowMin(now);
-    // Detectar sentido con bearing
-    const sentido = detectarSentido(bearing, dia.variantes);
+    // Detectar sentido con bearing + destinoDesc del cartelito (fuente más fuerte)
+    const sentido = detectarSentido(bearing, dia.variantes, destinoDesc);
     // Filtrar variante por sentido si es posible
-    const CENTRO = /centro|ciudad vieja|mdeo|aduana|tres cruces|palacio|goes|zitarrosa/i;
     let salidas = dia.salidasTodas;
     if (sentido && dia.variantes.length >= 2) {
-        const filtradas = salidas.filter(s => sentido === 'VUELTA' ? CENTRO.test(s.destino) : !CENTRO.test(s.destino));
+        const filtradas = salidas.filter(s => sentido === 'VUELTA' ? RX_CENTRO.test(s.destino) : !RX_CENTRO.test(s.destino));
         if (filtradas.length > 0)
             salidas = filtradas;
     }
@@ -206,8 +261,10 @@ function calcularCumplimiento(velocidad, linea, horario, bearing, now) {
     // Cálculo honesto de OTP sin snap-to-shape.
     // pctCompletado = transcurrido/duracion → tiempoEsperado = duracion*(transcurrido/duracion) = transcurrido
     // → desviacionMin = 0 SIEMPRE: tautología matemática, no mide nada real.
-    // Sin progreso geográfico real (snap-to-shape, pendiente v2 usando otpEngine),
-    // solo detectamos los casos objetivamente medibles por tiempo:
+    // Política Anti-Simulación (DIRECTRIZ 2026-05-02): NUNCA inventar desv=0 cuando no
+    // tenemos snap-to-shape. Si solo conocemos la ventana horaria del servicio, solo
+    // detectamos los casos objetivamente medibles (atraso/adelanto extremo); el resto
+    // queda como SIN_HORARIO con desv=null para que la UI muestre "s/d".
     let desviacionMin = null;
     let state;
     if (pctCompletado > 1.2) {
@@ -226,15 +283,150 @@ function calcularCumplimiento(velocidad, linea, horario, bearing, now) {
         desviacionMin = Math.round(transcurrido - duracion * 0.7);
     }
     else {
-        // Dentro de la ventana programada: sin métrica geográfica no podemos confirmar
-        // puntualidad. Reportar SIN_HORARIO es honesto vs inventar EN_TIEMPO 100%.
-        // otpEngine.ts tiene el snap-to-stop real; estos datos alimentan scheduleAdherence.
+        // Sin snap-to-shape no podemos medir la desviación real respecto al horario
+        // por parada. Antes esto se marcaba como EN_TIEMPO con desv=0 — eso producía
+        // OTP inflado artificialmente y un campo `desviacionMin = 0` exacto en miles
+        // de eventos (ej: COETC L405 96 eventos seguidos con desv=0). No es real.
+        // Política correcta: SIN_HORARIO + desv=null. La UI muestra "s/d" y el
+        // dashboard de OTP lo excluye del cálculo.
         state = 'SIN_HORARIO';
         desviacionMin = null;
     }
     // Parada próxima: destino del servicio activo
     const proximaParada = mejorServicio.destino || null;
     return { state, desviacionMin, proximaParada, sentido, bearing };
+}
+// ── Snap-to-shape OTP ──────────────────────────────────────────────────────
+const SNAP_TOL_MIN = 4; // ±4 min = EN_TIEMPO (tolerancia IMM Uruguay)
+const SNAP_MAX_KM = 0.4; // descarte si el bus está a >400m de la parada más cercana
+const SNAP_MAX_DIFF = 60; // descarte si ningún viaje cae en ±60 min
+const DESVIO_UMBRAL_KM = 0.3; // 300m del trazado = fuera de ruta confirmado
+/**
+ * Calcula el estado de cumplimiento comparando la posición GPS del bus contra
+ * el horario GTFS oficial por parada. Es el método preciso: en lugar de comparar
+ * el tiempo global del servicio, compara la hora real con la hora programada
+ * para la parada más cercana (≤400m). Tolerancia EN_TIEMPO = ±3 min (TCRP 165).
+ *
+ * Retorna null si no hay datos GTFS, ninguna parada está a ≤400m, o ningún
+ * viaje cae en la ventana de ±60 min. En ese caso se usa calcularCumplimiento().
+ */
+function snapToGtfsCompliance(lat, lon, evMin, gtfsDocs, svc, stopCache) {
+    const activeDocs = gtfsDocs.filter(d => d.serviceType === svc);
+    if (!activeDocs.length)
+        return null;
+    let bestDist = Infinity, bestStopIdx = -1, bestDocIdx = -1;
+    for (let di = 0; di < activeDocs.length; di++) {
+        const tt = activeDocs[di];
+        for (let si = 0; si < tt.stops.length; si++) {
+            const sc = stopCache.get(tt.stops[si]);
+            if (!sc)
+                continue;
+            const d = haversineKm(lat, lon, sc.lat, sc.lon);
+            if (d < bestDist) {
+                bestDist = d;
+                bestStopIdx = si;
+                bestDocIdx = di;
+            }
+        }
+    }
+    if (bestDocIdx === -1 || bestDist > SNAP_MAX_KM)
+        return null;
+    const tt = activeDocs[bestDocIdx];
+    const N = tt.stops.length;
+    let bestTripDiff = Infinity, bestDeviation = 0;
+    for (const viaje of tt.viajes) {
+        const tripStartMin = toMin(viaje.s);
+        if (tripStartMin === null)
+            continue;
+        // Intentar etapa exacta primero (punto de control con tiempo asignado)
+        const explicit = viaje.t[bestStopIdx];
+        let scheduledMin;
+        if (explicit !== -1 && explicit !== undefined) {
+            scheduledMin = explicit;
+        }
+        else {
+            // Bus entre etapas — interpolar entre el punto de control anterior y el siguiente.
+            // El GTFS del IMM solo asigna tiempos a las etapas de control; las paradas
+            // intermedias tienen t=-1. La interpolación lineal refleja cómo el conductor
+            // gestiona los tiempos entre etapas.
+            let ia = -1, ta = -1, ib = -1, tb = -1;
+            for (let si = bestStopIdx; si >= 0; si--) {
+                const t = viaje.t[si];
+                if (t !== -1 && t !== undefined) {
+                    ia = si;
+                    ta = t;
+                    break;
+                }
+            }
+            for (let si = bestStopIdx; si < N; si++) {
+                const t = viaje.t[si];
+                if (t !== -1 && t !== undefined) {
+                    ib = si;
+                    tb = t;
+                    break;
+                }
+            }
+            if (ia === -1 && ib === -1)
+                continue;
+            if (ia === -1)
+                scheduledMin = tb;
+            else if (ib === -1)
+                scheduledMin = ta;
+            else
+                scheduledMin = Math.round(ta + ((bestStopIdx - ia) / (ib - ia)) * (tb - ta));
+        }
+        const diff = Math.abs(evMin - scheduledMin);
+        if (diff < bestTripDiff) {
+            bestTripDiff = diff;
+            bestDeviation = evMin - scheduledMin;
+        }
+    }
+    if (bestTripDiff > SNAP_MAX_DIFF)
+        return null;
+    const sc = stopCache.get(tt.stops[bestStopIdx]);
+    const state = Math.abs(bestDeviation) <= SNAP_TOL_MIN ? 'EN_TIEMPO' :
+        bestDeviation > 0 ? 'ATRASADO' : 'ADELANTADO';
+    return { state, desviacionMin: Math.round(bestDeviation), parada: sc.nombre };
+}
+/**
+ * Convierte documentos de gtfs_timetable al formato LineaHorario que usa calcularCumplimiento.
+ * Se usa como fuente primaria de horarios (datos oficiales IMM con tiempos por parada).
+ */
+function convertGtfsToLineaHorario(linea, docs) {
+    var _a, _b, _c, _d, _e, _f;
+    const dias = {};
+    for (const doc of docs) {
+        const diaKey = doc.serviceType === 'HABIL' ? 'Hábiles'
+            : doc.serviceType === 'SABADO' ? 'Sábados'
+                : 'Domingos';
+        const salidas = doc.viajes
+            .filter(v => v.s)
+            .map(v => {
+            var _a, _b, _c;
+            return ({
+                desde: v.s,
+                hacia: (_a = doc.ultimaS) !== null && _a !== void 0 ? _a : v.s,
+                origen: (_b = doc.stops[0]) !== null && _b !== void 0 ? _b : '',
+                destino: (_c = doc.stops[doc.stops.length - 1]) !== null && _c !== void 0 ? _c : '',
+            });
+        });
+        if (!salidas.length)
+            continue;
+        const freqMin = salidas.length > 1
+            ? Math.round((((_a = toMin(salidas[salidas.length - 1].desde)) !== null && _a !== void 0 ? _a : 0) - ((_b = toMin(salidas[0].desde)) !== null && _b !== void 0 ? _b : 0)) / (salidas.length - 1))
+            : 10;
+        if (!dias[diaKey]) {
+            dias[diaKey] = {
+                variantes: [{ origen: (_c = doc.stops[0]) !== null && _c !== void 0 ? _c : '', destino: (_d = doc.stops[doc.stops.length - 1]) !== null && _d !== void 0 ? _d : '', frecuenciaMin: freqMin, horaInicio: (_e = doc.primeraS) !== null && _e !== void 0 ? _e : salidas[0].desde, horaFin: (_f = doc.ultimaS) !== null && _f !== void 0 ? _f : salidas[salidas.length - 1].desde }],
+                salidasTodas: salidas,
+                frecuenciaDominanteMin: freqMin,
+            };
+        }
+        else {
+            dias[diaKey].salidasTodas.push(...salidas);
+        }
+    }
+    return { linea, dias };
 }
 // ── Fetch GPS ──────────────────────────────────────────────────────────────
 async function fetchGPS(stmCode) {
@@ -243,18 +435,28 @@ async function fetchGPS(stmCode) {
     return (_b = (_a = res.data) === null || _a === void 0 ? void 0 : _a.features) !== null && _b !== void 0 ? _b : [];
 }
 // ── Snapshot completo de un operador ──────────────────────────────────────
+/** Velocidad máxima razonable en km/h para un bus urbano. Lecturas por encima de
+ *  esto son típicamente glitches del GPS (multipath, salto de fix). */
+const MAX_VELOCIDAD_KMH = 90;
+/** Distancia máxima en metros que un bus puede recorrer en menos de 30s sin que
+ *  sea un salto absurdo (≈ 60 km/h). Pings con más → descarte. */
+const MAX_JUMP_METERS = 500;
+const MAX_JUMP_DT_MS = 30 * 1000;
 async function snapshotAgency(stmCode) {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
     const empresa = (_a = AGENCY_NAMES[stmCode]) !== null && _a !== void 0 ? _a : `Empresa ${stmCode}`;
     const features = await fetchGPS(stmCode);
+    const stats = { events: 0, discardedSentinel: 0, discardedSpeed: 0, discardedJump: 0 };
     if (!features.length)
-        return 0;
+        return stats;
     const now = new Date();
+    const svc = svcTypeNow(now);
     const expiresAt = new Date(now.getTime() + TTL_DAYS * 24 * 60 * 60 * 1000);
     const tsISO = now.toISOString();
     // 1. Recopilar IDs y líneas únicas
+    // Clave compuesta empresa_coche para evitar colisión entre operadores (ej: UCOT 91 ≠ CUTCSA 91)
     const busIds = features
-        .map(f => String(f.properties.codigoBus))
+        .map(f => `${stmCode}_${f.properties.codigoBus}`)
         .filter(Boolean);
     const lineasUnicas = [...new Set(features.map(f => f.properties.linea).filter(Boolean))];
     // 2. Batch-leer posiciones anteriores y horarios en paralelo
@@ -272,8 +474,63 @@ async function snapshotAgency(stmCode) {
         if (doc.exists)
             horariosMap.set(doc.id, doc.data());
     }
+    // Cargar gtfs_timetable para TODAS las líneas activas por ID directo (sin query compuesta).
+    //   Doble uso: fallback horariosMap + snap-to-shape OTP por parada.
+    // IDs canónicos: `${agencyId}_${linea}_${directionId}_${serviceType}`
+    const gtfsRawCache = new Map();
+    if (lineasUnicas.length > 0) {
+        const docIds = [];
+        for (const linea of lineasUnicas) {
+            for (const svcT of ['HABIL', 'SABADO', 'DOMINGO']) {
+                for (const dir of [0, 1]) {
+                    docIds.push(`${stmCode}_${linea}_${dir}_${svcT}`);
+                }
+            }
+        }
+        for (let i = 0; i < docIds.length; i += 30) {
+            const chunk = docIds.slice(i, i + 30);
+            const docs = await db.getAll(...chunk.map(id => db.collection('gtfs_timetable').doc(id)));
+            for (const doc of docs) {
+                if (!doc.exists)
+                    continue;
+                const data = doc.data();
+                if (!gtfsRawCache.has(data.linea))
+                    gtfsRawCache.set(data.linea, []);
+                gtfsRawCache.get(data.linea).push(data);
+            }
+        }
+        // Rellenar horariosMap para líneas sin horarios_stm scrapeados
+        for (const [linea, docs] of gtfsRawCache) {
+            if (!horariosMap.has(linea)) {
+                horariosMap.set(linea, convertGtfsToLineaHorario(linea, docs));
+            }
+        }
+    }
+    // Cargar coordenadas de paradas (snap-to-shape)
+    const gtfsStopCache = new Map();
+    const allStopIds = new Set();
+    for (const docs of gtfsRawCache.values()) {
+        for (const doc of docs)
+            doc.stops.forEach(s => allStopIds.add(s));
+    }
+    const stopIdsArr = [...allStopIds];
+    for (let i = 0; i < stopIdsArr.length; i += 30) {
+        const chunk = stopIdsArr.slice(i, i + 30);
+        const snaps = await Promise.all(chunk.map(id => db.collection('gtfs_stops').doc(id).get()));
+        for (const snap of snaps) {
+            if (!snap.exists)
+                continue;
+            const s = snap.data();
+            gtfsStopCache.set(snap.id, {
+                lat: parseFloat(String((_c = (_b = s.stop_lat) !== null && _b !== void 0 ? _b : s.lat) !== null && _c !== void 0 ? _c : '0')),
+                lon: parseFloat(String((_f = (_e = (_d = s.stop_lon) !== null && _d !== void 0 ? _d : s.lon) !== null && _e !== void 0 ? _e : s.lng) !== null && _f !== void 0 ? _f : '0')),
+                nombre: String((_h = (_g = s.stop_name) !== null && _g !== void 0 ? _g : s.nombre) !== null && _h !== void 0 ? _h : snap.id),
+            });
+        }
+    }
     // 3. Procesar cada bus
     const events = [];
+    const desvioEvents = [];
     const lastPosBatch = db.batch();
     for (const feat of features) {
         const p = feat.properties;
@@ -284,23 +541,57 @@ async function snapshotAgency(stmCode) {
         if (typeof lat !== 'number' || typeof lon !== 'number' ||
             Math.abs(lat) > 90 || Math.abs(lon) > 180 ||
             lat > -30 || lat < -36 || lon > -53 || lon < -58) {
-            console.warn(`[AutoStats] GPS descartado: bus ${p.codigoBus} (${lat},${lon})`);
+            stats.discardedSentinel++;
+            console.warn(`[AutoStats] GPS descartado (sentinela): bus ${p.codigoBus} (${lat},${lon})`);
             continue;
         }
-        const velocidad = (_b = p.velocidad) !== null && _b !== void 0 ? _b : 0;
+        const velocidad = (_j = p.velocidad) !== null && _j !== void 0 ? _j : 0;
         const idBus = String(p.codigoBus);
-        // Calcular bearing desde última posición
-        const prev = lastPosMap.get(idBus);
+        // Filtros de calidad UITP-style ───────────────────────────────────────────
+        // (a) Velocidad GPS > 90 km/h en bus urbano = error de fix (salto, multipath).
+        if (velocidad > MAX_VELOCIDAD_KMH) {
+            stats.discardedSpeed++;
+            continue;
+        }
+        // (b) Salto espacial > 500m en < 30s respecto al ping previo: glitch GPS.
+        //     Usamos el `prev` que ya cargamos para bearing.
+        const prev = lastPosMap.get(`${stmCode}_${idBus}`);
+        if (prev) {
+            const dtMs = Date.now() - prev.ts;
+            if (dtMs > 0 && dtMs < MAX_JUMP_DT_MS) {
+                const jumpM = haversineKm(prev.lat, prev.lon, lat, lon) * 1000;
+                if (jumpM > MAX_JUMP_METERS) {
+                    stats.discardedJump++;
+                    continue;
+                }
+            }
+        }
+        // Calcular bearing desde última posición (clave compuesta empresa_coche)
+        // TTL 24h: con cron cada 15 min y operadores que paran de noche, una ventana
+        // de 15 min generaba 0% de bearing detectado en producción (cold-start cada
+        // mañana). 24h cubre el caso normal (recuperar el último ping del día previo)
+        // sin contaminar (el dist>20m descarta saltos absurdos por relogueo).
         let bearing = null;
-        if (prev && (Date.now() - prev.ts) < 15 * 60 * 1000) { // solo si < 15 min
+        if (prev && (Date.now() - prev.ts) < 24 * 60 * 60 * 1000) { // < 24h
             const dist = Math.hypot(lat - prev.lat, lon - prev.lon);
             if (dist > 0.0002) { // ~20m mínimo para bearing confiable
                 bearing = calcBearing(prev.lat, prev.lon, lat, lon);
             }
         }
-        // Calcular cumplimiento
-        const horario = (_c = horariosMap.get(p.linea)) !== null && _c !== void 0 ? _c : null;
-        const result = calcularCumplimiento(velocidad, p.linea, horario, bearing, now);
+        // Calcular cumplimiento — snap-to-shape preferido (OTP real por parada)
+        const horario = (_k = horariosMap.get(p.linea)) !== null && _k !== void 0 ? _k : null;
+        const gtfsDocs = (_l = gtfsRawCache.get(p.linea)) !== null && _l !== void 0 ? _l : [];
+        const destinoDesc = (_m = p.destinoDesc) !== null && _m !== void 0 ? _m : null;
+        const snapResult = snapToGtfsCompliance(lat, lon, evMinUYT(now), gtfsDocs, svc, gtfsStopCache);
+        const result = snapResult
+            ? {
+                state: snapResult.state,
+                desviacionMin: snapResult.desviacionMin,
+                proximaParada: snapResult.parada,
+                sentido: detectarSentido(bearing, (_q = (_p = (_o = horario === null || horario === void 0 ? void 0 : horario.dias) === null || _o === void 0 ? void 0 : _o[tipoDia(now)]) === null || _p === void 0 ? void 0 : _p.variantes) !== null && _q !== void 0 ? _q : [], destinoDesc),
+                bearing,
+            }
+            : calcularCumplimiento(velocidad, p.linea, horario, bearing, now, destinoDesc);
         events.push({
             idBus, agencyId: stmCode, empresa, linea: p.linea,
             lat, lon, velocidad,
@@ -313,6 +604,23 @@ async function snapshotAgency(stmCode) {
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             expiresAt,
         });
+        // Detección de desvío geográfico: bus a >300m del trazado GTFS y en movimiento
+        if (gtfsDocs.length > 0 && gtfsStopCache.size > 0 && velocidad > 5) {
+            const distKm = calcBestDistKm(lat, lon, gtfsDocs, svc, gtfsStopCache);
+            if (distKm > DESVIO_UMBRAL_KM) {
+                const bucketId = Math.floor(now.getTime() / (15 * 60000));
+                desvioEvents.push({
+                    docId: `${stmCode}_${idBus}_${bucketId}`,
+                    data: {
+                        coche_id: idBus, linea_id: p.linea, agencyId: stmCode,
+                        tipo: 'FUERA_DE_RUTA', lat, lng: lon,
+                        metros_fuera: Math.round(distKm * 1000),
+                        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                        notificado: false, resuelto: false,
+                    },
+                });
+            }
+        }
     }
     // 4. Guardar vehicle_events en batches de 400
     const coll = db.collection(COLLECTION);
@@ -322,19 +630,25 @@ async function snapshotAgency(stmCode) {
             batch.set(coll.doc(), ev);
         await batch.commit();
     }
+    // 4b. Guardar eventos de desvío (set con ID time-bucketed = dedup automático por 15 min)
+    for (const { docId, data } of desvioEvents) {
+        void db.collection('eventos_desvio').doc(docId).set(data, { merge: true });
+    }
     // 5. Actualizar posiciones en batches de 400 (límite Firestore)
-    const lastPosEntries = Array.from(lastPosMap.entries());
+    // Clave compuesta empresa_coche para no mezclar buses de distintos operadores
     const posWrites = features.map(f => {
-        const idBus = String(f.properties.codigoBus);
+        const busNum = String(f.properties.codigoBus);
+        const posKey = `${stmCode}_${busNum}`;
         const [lon, lat] = f.geometry.coordinates;
-        return { idBus, lat, lon };
+        return { posKey, busNum, lat, lon };
     });
     for (let i = 0; i < posWrites.length; i += 400) {
         const posBatch = db.batch();
-        for (const { idBus, lat, lon } of posWrites.slice(i, i + 400)) {
-            posBatch.set(db.collection(LAST_POS_COLL).doc(idBus), {
+        for (const { posKey, busNum, lat, lon } of posWrites.slice(i, i + 400)) {
+            posBatch.set(db.collection(LAST_POS_COLL).doc(posKey), {
                 lat, lon, ts: now.getTime(),
-                linea: (_e = (_d = features.find(f => String(f.properties.codigoBus) === idBus)) === null || _d === void 0 ? void 0 : _d.properties.linea) !== null && _e !== void 0 ? _e : '',
+                agencyId: stmCode,
+                linea: (_s = (_r = features.find(f => String(f.properties.codigoBus) === busNum)) === null || _r === void 0 ? void 0 : _r.properties.linea) !== null && _s !== void 0 ? _s : '',
                 empresa,
             });
         }
@@ -342,10 +656,11 @@ async function snapshotAgency(stmCode) {
     }
     // Eliminar el batch anterior (ya no se usa)
     void lastPosBatch;
-    return events.length;
+    stats.events = events.length;
+    return stats;
 }
-// ── Función principal ──────────────────────────────────────────────────────
 async function runCollection() {
+    var _a;
     const results = {};
     for (const code of Object.keys(AGENCY_NAMES)) {
         try {
@@ -353,15 +668,22 @@ async function runCollection() {
         }
         catch (err) {
             console.error(`[AutoStats] Error ${AGENCY_NAMES[code]}:`, err === null || err === void 0 ? void 0 : err.message);
-            results[AGENCY_NAMES[code]] = -1;
+            results[AGENCY_NAMES[code]] = { error: (_a = err === null || err === void 0 ? void 0 : err.message) !== null && _a !== void 0 ? _a : 'unknown' };
         }
     }
     return results;
 }
+/** ¿Todos los operadores fallaron? Usado por health tracking. */
+function allOperatorsFailed(results) {
+    const vals = Object.values(results);
+    if (vals.length === 0)
+        return true;
+    return vals.every(v => 'error' in v);
+}
 // ── Health tracking ────────────────────────────────────────────────────────
 const HEALTH_DOC = () => db.collection('system_status').doc('stm_gps');
 async function updateEndpointHealth(results) {
-    const allFailed = Object.values(results).every(v => v === -1);
+    const allFailed = allOperatorsFailed(results);
     const now = admin.firestore.Timestamp.now();
     const ref = HEALTH_DOC();
     try {
