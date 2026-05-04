@@ -55,9 +55,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         if (firebaseUser) {
           console.log('✅ [AuthContext] Firebase Session Restored:', firebaseUser.email);
-          const freshToken = await firebaseUser.getIdToken();
-          // Leer custom claims del JWT (seteados por el backend al login)
-          const tokenResult = await getIdTokenResult(firebaseUser);
+          // forceRefresh=true garantiza que los claims seteados con setCustomUserClaims
+          // (permanentes en la cuenta Firebase) estén en el token, incluso tras recarga.
+          const freshToken = await firebaseUser.getIdToken(true);
+          const tokenResult = await getIdTokenResult(firebaseUser, true);
           const claimsRole = tokenResult.claims?.role as string | undefined;
 
           // Intentar recuperar rol previo de localStorage para no degradarlo

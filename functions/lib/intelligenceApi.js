@@ -1020,6 +1020,13 @@ app.post('/api/auth/login', async (req, res) => {
         const role = String((_l = (_k = data.role) !== null && _k !== void 0 ? _k : data.rol) !== null && _l !== void 0 ? _l : 'user').toLowerCase();
         const agencyId = String((_o = (_m = data.agencyId) !== null && _m !== void 0 ? _m : data.empresa) !== null && _o !== void 0 ? _o : '70');
         const claims = { role, agencyId, internalNumber };
+        // setCustomUserClaims persiste el rol EN la cuenta Firebase Auth —
+        // así el ID token renovado tras recargar la página sigue teniendo el rol correcto.
+        // createCustomToken solo dura hasta el primer refresh; setCustomUserClaims es permanente.
+        try {
+            await admin.auth().setCustomUserClaims(uid, { role, agencyId, internalNumber });
+        }
+        catch (_) { }
         const customToken = await admin.auth().createCustomToken(uid, claims);
         // Asegurar que el documento `users/{uid}` exista con la forma esperada por
         // el AuthContext (lee doc(db,'users',uid)). Mergeamos los datos sin pisar.

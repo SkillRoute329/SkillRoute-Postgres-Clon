@@ -1069,6 +1069,10 @@ app.post('/api/auth/login', async (req, res) => {
     const agencyId = String(data.agencyId ?? data.empresa ?? '70');
 
     const claims: Record<string, any> = { role, agencyId, internalNumber };
+    // setCustomUserClaims persiste el rol EN la cuenta Firebase Auth —
+    // así el ID token renovado tras recargar la página sigue teniendo el rol correcto.
+    // createCustomToken solo dura hasta el primer refresh; setCustomUserClaims es permanente.
+    try { await admin.auth().setCustomUserClaims(uid, { role, agencyId, internalNumber }); } catch (_) {}
     const customToken = await admin.auth().createCustomToken(uid, claims);
 
     // Asegurar que el documento `users/{uid}` exista con la forma esperada por
