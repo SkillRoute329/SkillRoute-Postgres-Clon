@@ -1,5 +1,5 @@
 import { auth } from '../config/firebase';
-import { onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { onAuthStateChanged, setPersistence, browserLocalPersistence, getIdTokenResult } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { type User } from '../services/api';
@@ -56,6 +56,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (firebaseUser) {
           console.log('✅ [AuthContext] Firebase Session Restored:', firebaseUser.email);
           const freshToken = await firebaseUser.getIdToken();
+          // Leer custom claims del JWT (seteados por el backend al login)
+          const tokenResult = await getIdTokenResult(firebaseUser);
+          const claimsRole = tokenResult.claims?.role as string | undefined;
 
           // Intentar recuperar rol previo de localStorage para no degradarlo
           const storedPrev = localStorage.getItem('tf_user');
@@ -68,7 +71,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             firstName: firebaseUser.displayName?.split(' ')[0] || 'Usuario',
             lastName: '',
             fullName: firebaseUser.displayName || 'Usuario Sistema',
-            role: prevRole || 'USER',
+            // Prioridad: claims JWT (set por backend) > localStorage > default
+            role: claimsRole || prevRole || 'USER',
             email: firebaseUser.email || undefined,
           };
 
@@ -107,7 +111,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 internalNumber: userData?.datos_empresa?.legajo || '----',
                 firstName: userData?.datos_personales?.nombre || finalUser.firstName,
                 lastName: userData?.datos_personales?.apellido || '',
-                role: (userData?.rol ?? userData?.role) || prevRole || 'USER',
+                // Firestore > claims JWT > localStorage > default
+                role: (userData?.rol ?? userData?.role) || claimsRole || prevRole || 'USER',
               };
             } else if (lastErr) {
               throw lastErr;
