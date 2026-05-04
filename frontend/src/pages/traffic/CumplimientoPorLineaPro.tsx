@@ -18,17 +18,21 @@
  *        hardcode. Si una línea no tiene eventos, se muestra "Sin datos".
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import {
   collection, getDocs, limit, orderBy, query, where,
 } from 'firebase/firestore';
 import {
   RefreshCw, ChevronLeft, AlertTriangle, CheckCircle, Clock,
   MapPin, Bus, Search, Calendar, ArrowRight, ArrowLeft, TrendingDown,
-  TrendingUp, BarChart3,
+  TrendingUp, BarChart3, Activity,
 } from 'lucide-react';
 import { db, authReady } from '../../config/firebase';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
+
+// Vista "Auditoría estilo IMM" (timeline de control points + pasadas reales).
+// Lazy para no cargarla hasta que el usuario haga click en "Auditoría".
+const AuditoriaLineaTimeline = lazy(() => import('./AuditoriaLineaTimeline'));
 
 /* ─── Constantes ───────────────────────────────────────── */
 
@@ -168,7 +172,10 @@ export default function CumplimientoPorLineaPro() {
   const [sentido, setSentido] = useState<Sentido>('TODOS');
   const [filtroLinea, setFiltroLinea] = useState('');
   const [lineaSeleccionada, setLineaSeleccionada] = useState<string | null>(null);
-  const [sentidoMatriz, setSentidoMatriz] = useState<'IDA' | 'VUELTA'>('IDA');
+  // 'AMBOS' incluye eventos con sentido null (detector de bearing no concluyente)
+  const [sentidoMatriz, setSentidoMatriz] = useState<'IDA' | 'VUELTA' | 'AMBOS'>('AMBOS');
+  // Si está set, abre la vista Auditoría estilo IMM en pantalla completa.
+  const [auditoriaLinea, setAuditoriaLinea] = useState<string | null>(null);
 
   const [eventos, setEventos] = useState<VehicleEvent[]>([]);
   const [cargando, setCargando] = useState(false);
@@ -272,10 +279,13 @@ export default function CumplimientoPorLineaPro() {
 
   const matriz: MatrizLinea | null = useMemo(() => {
     if (!lineaSeleccionada) return null;
-    const evs = eventos.filter(e =>
-      e.linea === lineaSeleccionada &&
-      (sentidoMatriz === 'IDA' ? e.sentido === 'IDA' : e.sentido === 'VUELTA'),
-    );
+    const evs = eventos.filter(e => {
+      if (e.linea !== lineaSeleccionada) return false;
+      if (sentidoMatriz === 'AMBOS') return true;
+      // En modos IDA/VUELTA estricto incluímos también null (detector no concluyente)
+      // para no perder pasadas — el sentido real es responsabilidad del backend.
+      return e.sentido === sentidoMatriz || e.sentido === null;
+    });
     if (evs.length === 0) return null;
 
     // Agrupar pases por (parada, idBus)
@@ -372,6 +382,25 @@ export default function CumplimientoPorLineaPro() {
   /* ── Render ────────────────────────────────────────── */
 
   const operador = AGENCIAS[agencyId] ?? agencyId;
+
+  // Modo auditoría a pantalla completa — toma sobre toda la página.
+  if (auditoriaLinea) {
+    return (
+      <Suspense fallback={
+        <div className="bg-slate-950 min-h-screen flex items-center justify-center text-slate-400">
+          <RefreshCw className="w-5 h-5 animate-spin mr-2" /> Cargando auditoría…
+        </div>
+      }>
+        <AuditoriaLineaTimeline
+          agencyId={agencyId}
+          linea={auditoriaLinea}
+          fechaInicial={diaSeleccionado}
+          operadorNombre={operador}
+          onCerrar={() => setAuditoriaLinea(null)}
+        />
+      </Suspense>
+    );
+  }
 
   return (
     <div className="bg-slate-950 min-h-screen p-6 text-slate-100">
@@ -483,8 +512,11 @@ export default function CumplimientoPorLineaPro() {
               onFiltro={setFiltroLinea}
               onSeleccionar={(l, s) => {
                 setLineaSeleccionada(l);
-                setSentidoMatriz(s ?? 'IDA');
+                // Si la fila clickeada tiene sentido detectado, lo usamos; sino 'AMBOS'
+                // para ver todas las pasadas (caso típico cuando el detector aún no se calibró).
+                setSentidoMatriz(s ?? 'AMBOS');
               }}
+              onAuditoria={(l) => setAuditoriaLinea(l)}
               vacio={resumenLineas.length === 0}
             />
           ) : (
@@ -521,11 +553,12 @@ function KpiCard({ label, valor, sub, color = 'text-slate-100', interactive, chi
 
 /* ─── Sub-componente: lista de líneas ─────────────────── */
 
-function ListaLineas({ lineas, filtro, onFiltro, onSeleccionar, vacio }: {
+function ListaLineas({ lineas, filtro, onFiltro, onSeleccionar, onAuditoria, vacio }: {
   lineas: LineaResumen[];
   filtro: string;
   onFiltro: (s: string) => void;
   onSeleccionar: (linea: string, sentido: 'IDA' | 'VUELTA' | null) => void;
+  onAuditoria?: (linea: string) => void;
   vacio: boolean;
 }) {
   return (
@@ -580,7 +613,7 @@ function ListaLineas({ lineas, filtro, onFiltro, onSeleccionar, vacio }: {
                   <td className="py-2.5 px-3">
                     {l.sentido === 'IDA' && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30">→ IDA</span>}
                     {l.sentido === 'VUELTA' && <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-300 border border-orange-500/30">← VUELTA</span>}
-                    {!l.sentido && <span className="text-xs text-slate-500">—</span>}
+                    {!l.sentido && <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/40 text-slate-400 border border-slate-600/40" title="Detector de sentido sin certeza (pocos puntos GPS recientes)">s/d</span>}
                   </td>
                   <td className="py-2.5 px-3 text-center text-slate-200">{l.cochesActivos}</td>
                   <td className="py-2.5 px-3 text-center text-slate-300">{l.totalEventos}</td>
@@ -601,12 +634,23 @@ function ListaLineas({ lineas, filtro, onFiltro, onSeleccionar, vacio }: {
                     {l.pctSinHorario}%
                   </td>
                   <td className="py-2.5 px-3">
-                    <button
-                      onClick={() => onSeleccionar(l.linea, l.sentido)}
-                      className="text-xs font-semibold px-2.5 py-1 rounded-md bg-blue-600/20 border border-blue-500/40 text-blue-300 hover:text-white hover:bg-blue-600/30 transition-all"
-                    >
-                      Ver matriz <ChevronLeft className="w-3 h-3 inline -rotate-180 ml-0.5" />
-                    </button>
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <button
+                        onClick={() => onAuditoria?.(l.linea)}
+                        className="text-xs font-semibold px-2.5 py-1 rounded-md bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 hover:text-white hover:bg-emerald-600/30 transition-all flex items-center gap-1"
+                        title="Auditoría estilo IMM: salidas + timeline de control points + pasadas reales"
+                      >
+                        <Activity className="w-3 h-3" />
+                        Auditoría
+                      </button>
+                      <button
+                        onClick={() => onSeleccionar(l.linea, l.sentido)}
+                        className="text-xs font-semibold px-2.5 py-1 rounded-md bg-blue-600/20 border border-blue-500/40 text-blue-300 hover:text-white hover:bg-blue-600/30 transition-all"
+                        title="Matriz puntos de control × coches"
+                      >
+                        Matriz
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -622,8 +666,8 @@ function ListaLineas({ lineas, filtro, onFiltro, onSeleccionar, vacio }: {
 
 function MatrizPuntosControl({ linea, sentidoMatriz, setSentidoMatriz, matriz, dia, onVolver, operador }: {
   linea: string;
-  sentidoMatriz: 'IDA' | 'VUELTA';
-  setSentidoMatriz: (s: 'IDA' | 'VUELTA') => void;
+  sentidoMatriz: 'IDA' | 'VUELTA' | 'AMBOS';
+  setSentidoMatriz: (s: 'IDA' | 'VUELTA' | 'AMBOS') => void;
   matriz: MatrizLinea | null;
   dia: string;
   onVolver: () => void;
@@ -652,6 +696,13 @@ function MatrizPuntosControl({ linea, sentidoMatriz, setSentidoMatriz, matriz, d
           </div>
         </div>
         <div className="flex rounded-lg overflow-hidden border border-slate-700">
+          <button
+            onClick={() => setSentidoMatriz('AMBOS')}
+            className={`px-3 py-1.5 text-xs font-semibold ${sentidoMatriz === 'AMBOS' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
+            title="Incluye pasadas sin sentido detectado"
+          >
+            AMBOS
+          </button>
           <button
             onClick={() => setSentidoMatriz('IDA')}
             className={`px-3 py-1.5 text-xs font-semibold ${sentidoMatriz === 'IDA' ? 'bg-blue-600 text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
