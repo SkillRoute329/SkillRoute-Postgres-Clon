@@ -64,9 +64,12 @@ interface ComplianceAlerta {
 }
 
 interface VehiculoDoc {
-  agencyId?: number;
+  agencyId?: number | string;
+  empresa?: number | string;
   state?: string;
   estado?: string;
+  estado_operativo?: string;
+  activo?: boolean;
 }
 
 interface VehicleEvent {
@@ -155,8 +158,9 @@ function semaforo(otp: number | null): { color: string; label: string; dot: stri
 }
 
 function isVehiculoActivo(v: VehiculoDoc): boolean {
-  const s = (v.state || v.estado || '').toLowerCase();
-  return s === 'activo' || s === 'en_servicio' || s === 'en servicio' || s === 'activo';
+  if (v.activo === true) return true;
+  const s = (v.state || v.estado || v.estado_operativo || '').toLowerCase();
+  return s === 'activo' || s === 'en_servicio' || s === 'en servicio' || s === 'disponible';
 }
 
 // ── Componente principal ───────────────────────────────────────────────────
@@ -531,8 +535,10 @@ export default function CentroMandoUnificado() {
                         <div className="text-lg font-black text-white">
                           {cargando ? (
                             <Loader2 className="w-4 h-4 animate-spin text-slate-600 mx-auto" />
+                          ) : estado?.totalVehiculos ? (
+                            estado.vehiculosActivos
                           ) : (
-                            estado?.vehiculosActivos ?? 0
+                            <span className="text-slate-600 text-sm">—</span>
                           )}
                         </div>
                         <p className="text-[10px] text-slate-500">activos</p>
@@ -541,8 +547,10 @@ export default function CentroMandoUnificado() {
                         <div className="text-lg font-black text-white">
                           {cargando ? (
                             <Loader2 className="w-4 h-4 animate-spin text-slate-600 mx-auto" />
+                          ) : estado?.totalVehiculos ? (
+                            estado.totalVehiculos
                           ) : (
-                            estado?.totalVehiculos ?? 0
+                            <span className="text-slate-600 text-sm" title="Sin datos de flota cargados">—</span>
                           )}
                         </div>
                         <p className="text-[10px] text-slate-500">total flota</p>
