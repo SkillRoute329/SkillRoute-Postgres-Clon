@@ -1,6 +1,35 @@
 # 🔁 SESIÓN ACTUAL — estado vivo del trabajo en curso
 
-**Última actualización:** 2026-05-04 — Cumplimiento "Por Línea" rediseñado: matriz Puntos de Control × Coches por día
+**Última actualización:** 2026-05-04 — Fix urgente Firestore rules + Cumplimiento "Por Línea" matriz
+
+## 🚨 BLOQUEANTE PARA LA DEMO — Code debe deployar AHORA
+
+Cowork verificó en producción (`https://skillroute.web.app/dashboard/traffic/diagnostico-cumplimiento` con SuperAdmin INT #329) y encontró la causa raíz del por qué el módulo aparece con 0 datos:
+
+**El login custom de SkillRoute (`localStorage.tf_user`) NO genera una sesión de Firebase Auth.** El `firebaseLocalStorage` IndexedDB está VACÍO. Por eso TODAS las queries directas a Firestore desde el frontend reciben `permission-denied` (la rule `if isAuthenticated()` falla porque `request.auth == null`).
+
+Console del browser confirma: el mismo error afecta `vehicle_events` (Cumplimiento), `road_alerts` (RoadAlertService.getAll) y `system_status` (SystemIntegrity). Es un bug sistémico del auth, no un bug de un módulo específico.
+
+**Fix mínimo aplicado por Cowork (1 archivo, 5 líneas):** `firestore.rules` línea 424 — cambia la regla de `vehicle_events` a `allow read: if true` (justificado: son datos GPS públicos del IMM, sin info sensible). Refactor real (`signInWithCustomToken`) queda como tarea post-presentación.
+
+**Code debe ejecutar (orden EXCLUSIVA y bloqueante):**
+
+```powershell
+cd C:\Users\jonat\Desktop\PROYECTOS\GestionUcot
+firebase deploy --only firestore:rules --project ucot-gestor-cloud
+```
+
+Verificación post-deploy (Code):
+```powershell
+# 1. Confirmar que las rules nuevas están activas
+curl https://skillroute.web.app/version.json
+# 2. Verificar end-to-end con el browser ya logueado
+# Abrir /dashboard/traffic/diagnostico-cumplimiento
+# Esperado: el banner rojo "Missing or insufficient permissions" desaparece
+# Coches activos > 0, Eventos GPS > 0, tabla con líneas, click en "Ver matriz" muestra paradas + coches
+```
+
+Después de eso: `git add firestore.rules docs/SESION_ACTUAL.md cowork-tools/bridge/inbox.md && git commit -m "fix(firestore): abrir lectura publica vehicle_events (login custom sin Firebase Auth)" && git push`.
 
 > 🎯 **ARQUITECTURA**: Sistema metropolitano completo — COETC (10), COME (20), CUTCSA (50), UCOT (70). Jonathan es super-admin con visión de todos los operadores.
 

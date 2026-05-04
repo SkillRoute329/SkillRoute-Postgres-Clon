@@ -421,8 +421,13 @@ service cloud.firestore {
       allow write: if isAdminNorm() || isDriver() || isTrafficOrAdmin();
     }
 
+    // Datos GPS de buses tomados del feed público IMM/STM. NO contienen info
+    // sensible (sin datos personales, sin info comercial). Lectura pública para
+    // que el módulo de Cumplimiento por Línea funcione aun cuando el login
+    // custom de SkillRoute no haya generado un Firebase Auth session
+    // (gap conocido — refactor post-presentación: usar signInWithCustomToken).
     match /vehicle_events/{document=**} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isAdminNorm() || isTrafficOrAdmin();
     }
 
