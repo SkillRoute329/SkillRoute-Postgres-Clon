@@ -191,23 +191,31 @@ export default function CentroMandoUnificado() {
       // Cargar datos de todas las empresas en paralelo
       const resultados = await Promise.allSettled(
         EMPRESAS.map(async (empresa) => {
-          // compliance_alerts activas de esta empresa
-          const alertasQuery = query(
-            collection(db, 'compliance_alerts'),
-            where('dismissed', '==', false),
-            limit(100),
-          );
-          const alertasSnap = await getDocs(alertasQuery);
-          const todasAlertas = alertasSnap.docs.map((d) => ({
-            id: d.id,
-            ...(d.data() as Omit<ComplianceAlerta, 'id'>),
-          })) as ComplianceAlerta[];
-
-          // Filtrar por empresa (campo puede ser número o string)
-          const alertasEmpresa = todasAlertas.filter((a) => {
-            const empId = typeof a.empresa === 'string' ? parseInt(a.empresa) : (a.empresa ?? 0);
-            return empId === empresa.id;
-          });
+          // compliance_alerts activas de esta empresa — dos queries por tipo de campo
+          const [snapNum, snapStr] = await Promise.all([
+            getDocs(query(
+              collection(db, 'compliance_alerts'),
+              where('dismissed', '==', false),
+              where('empresa', '==', empresa.id),
+              limit(100),
+            )),
+            getDocs(query(
+              collection(db, 'compliance_alerts'),
+              where('dismissed', '==', false),
+              where('empresa', '==', String(empresa.id)),
+              limit(100),
+            )),
+          ]);
+          const seenIds = new Set<string>();
+          const alertasEmpresa: ComplianceAlerta[] = [];
+          for (const snap of [snapNum, snapStr]) {
+            for (const d of snap.docs) {
+              if (!seenIds.has(d.id)) {
+                seenIds.add(d.id);
+                alertasEmpresa.push({ id: d.id, ...(d.data() as Omit<ComplianceAlerta, 'id'>) } as ComplianceAlerta);
+              }
+            }
+          }
 
           // Calcular OTP promedio
           const alertasConOtp = alertasEmpresa.filter(

@@ -978,8 +978,9 @@ async function updateEndpointHealth(results: CollectionResult): Promise<void> {
 
 // ── Exports ────────────────────────────────────────────────────────────────
 
-export const autoStatsCollectorTick = functions.pubsub
-  .schedule('every 15 minutes')
+export const autoStatsCollectorTick = functions
+  .runWith({ timeoutSeconds: 540, memory: '1GB' })
+  .pubsub.schedule('every 15 minutes')
   .timeZone('America/Montevideo')
   .onRun(async () => {
     try {

@@ -395,6 +395,7 @@ function ModalParaliza({
   onClose: () => void;
   onAsignar: (userId: string, turnoBase: 1 | 2, targetCocheNum: string, targetServicio: string) => Promise<void>;
 }) {
+  const { empresaPropia } = useEmpresaPropia();
   const cocheConfig = coches.find((c) => c.cocheInternalNumber === cocheInternalNumber);
   const userMap = new Map(users.map((u) => [String(u.uid || u.id), u]));
   const [saving, setSaving] = useState<string | null>(null);
@@ -430,9 +431,11 @@ function ModalParaliza({
         <button onClick={onClose}><X className="w-4 h-4 text-slate-400" /></button>
       </div>
       <div className="p-4 space-y-4 overflow-y-auto flex-1">
-        <p className="text-xs text-amber-400 bg-amber-900/20 border border-amber-700/30 rounded-lg px-3 py-2">
-          ⚠️ Regla UCOT: Respetar turno del conductor. T1 → T1 en nueva unidad, T2 → T2.
-        </p>
+        {empresaPropia === 70 && (
+          <p className="text-xs text-amber-400 bg-amber-900/20 border border-amber-700/30 rounded-lg px-3 py-2">
+            ⚠️ Regla UCOT: Respetar turno del conductor. T1 → T1 en nueva unidad, T2 → T2.
+          </p>
+        )}
 
         {cocheConfig.personal.map((p) => {
           const u = userMap.get(p.userId);
