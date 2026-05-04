@@ -6,6 +6,67 @@
 
 ---
 
+## 🎯 FIX UX NAVEGACIÓN NOTEBOOK — Code debe deployar (post-Auditoría)
+
+Cowork verificó la Auditoría en prod (commit `83b18497`) — funciona perfecto:
+**109 puntos de control · 7 coches detectados · 27 pasadas GPS** en línea 306 IDA del domingo.
+Pero detectó 3 problemas UX que bloquean la navegación en notebook 1366×768 (la pantalla del usuario en la demo):
+
+1. **Scrollbars invisibles globalmente** (CSS `::-webkit-scrollbar { display: none }`).
+   La sidebar tiene 1885 px de contenido en 710 px visibles — 1175 px ocultos sin indicador. El usuario no ve que se puede scrollear.
+2. **Build badge** posicionado `bottom-left` con `z-index: 9999` taparía el último item de la sidebar.
+3. **Sidebar items demasiado altos** (`min-h-44px py-3` para mobile táctil). En notebook ocupan 2x el alto necesario.
+
+### Fixes aplicados por Cowork (3 archivos editados)
+
+**`frontend/src/index.css`** (regla `::-webkit-scrollbar`):
+- Antes: `display: none` global → invisible.
+- Después: `width: 10px`, thumb `slate-600/70` con hover, track `slate-900/40` redondeado, padding interior. Firefox: `scrollbar-width: thin` + `scrollbar-color`. Mantiene oculta solo en `@media (hover: none) and (pointer: coarse)` (mobile táctil).
+
+**`frontend/src/components/BuildBadge.tsx`**:
+- Movido de `bottom-left` a `bottom-right`, `z-index 40` (no 9999), `opacity 0.6`. Ya no tapa la sidebar.
+
+**`frontend/src/components/Sidebar.tsx`**:
+- Header: `p-6` → `px-4 py-3`, logo `w-10 h-10` → `w-9 h-9`, título `text-2xl` → `text-xl lg:text-2xl`.
+- Nav: `p-4 space-y-8 mt-4` → `px-3 py-2 space-y-3 lg:space-y-4 mt-1`.
+- Items: `min-h-44px py-3` → `min-h-[36px] lg:min-h-[40px] py-1.5 lg:py-2`.
+  Mobile mantiene 44px (responsive). Notebook desktop usa 36-40px → 30 % menos altura, todos los items visibles sin scroll.
+
+### Verificación Cowork
+
+- `npx tsc --noEmit --skipLibCheck` = 0 errores ✅
+- 0 NULs en los 3 archivos ✅
+- No-regresión §11: solo edits de paddings/tamaños, no tocan lógica ✅
+
+### Acción Code
+
+```powershell
+cd C:\Users\jonat\Desktop\PROYECTOS\GestionUcot\frontend
+npm run build
+cd ..
+firebase deploy --only hosting --project ucot-gestor-cloud
+curl https://skillroute.web.app/version.json
+# Esperado: commit nuevo (no 83b18497)
+
+git add frontend/src/index.css frontend/src/components/BuildBadge.tsx frontend/src/components/Sidebar.tsx docs/SESION_ACTUAL.md cowork-tools/bridge/inbox.md
+git commit -m "fix(ux): scrollbars visibles + sidebar compacta + badge reposicionado para notebook 1366x768
+
+- index.css: regla global ::-webkit-scrollbar pasa de display:none a 10px
+  con thumb slate-600/70. Mobile tactil mantiene oculta via hover:none.
+- BuildBadge.tsx: bottom-left zIndex 9999 -> bottom-right zIndex 40 opacity 0.6.
+- Sidebar.tsx: header p-6 -> px-4 py-3, items min-h-44px py-3 -> min-h-36px
+  lg:40px py-1.5 lg:py-2, gap secciones space-y-8 -> space-y-3 lg:space-y-4.
+  Mobile mantiene 44px tactil; notebook 36-40px (30% menos altura, todos
+  los items visibles sin scroll en 1366x768).
+
+No-regresion: solo paddings/tamanos, no logica."
+git push origin main
+```
+
+Verificación visual post-deploy: la sidebar muestra TODOS los items del menú visibles sin scroll en 1366×768. Si hay scroll necesario, la barra es visible (slate-600). Build badge en esquina inferior derecha, opaco.
+
+---
+
 ## 🚨 ENTREGA CRÍTICA PRE-DEMO — Code debe deployar AHORA
 
 ### Qué se entrega esta iteración (DIFERENCIADOR DEL PITCH)

@@ -29,10 +29,13 @@ export default function BuildBadge() {
     <div
       title={`build ${version.buildId}\ncommit ${version.commit}\nbuilt ${version.builtAt}`}
       style={{
+        // Movido a la esquina inferior-DERECHA para no taparse con el último item
+        // de la sidebar en notebooks (1366×768). El sticky de la página suele tener
+        // contenido propio en bottom-left.
         position: 'fixed',
         bottom: 6,
-        left: 6,
-        zIndex: 9999,
+        right: 8,
+        zIndex: 40,
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
         fontSize: 9,
         lineHeight: 1.2,
@@ -43,6 +46,7 @@ export default function BuildBadge() {
         padding: '2px 6px',
         pointerEvents: 'none',
         letterSpacing: 0.2,
+        opacity: 0.6,
       }}
     >
       build {version.commit} · {fechaCorta}
