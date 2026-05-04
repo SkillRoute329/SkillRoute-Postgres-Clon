@@ -937,10 +937,11 @@ app.post('/api/recomputeSentido', recomputeSentidoHandler);
 // modo que getAuth().currentUser !== null y las reglas Firestore que requieren
 // isAuthenticated() pasen sin tener que abrir colecciones a `read: if true`.
 app.post('/api/auth/login', async (req, res) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w;
     try {
-        const internalNumber = String((_b = (_a = req.body) === null || _a === void 0 ? void 0 : _a.internalNumber) !== null && _b !== void 0 ? _b : '').trim();
-        const password = String((_d = (_c = req.body) === null || _c === void 0 ? void 0 : _c.password) !== null && _d !== void 0 ? _d : '');
+        // Acepta internalNumber, username o interno — compatibilidad con SW cacheado
+        const internalNumber = String((_f = (_d = (_b = (_a = req.body) === null || _a === void 0 ? void 0 : _a.internalNumber) !== null && _b !== void 0 ? _b : (_c = req.body) === null || _c === void 0 ? void 0 : _c.username) !== null && _d !== void 0 ? _d : (_e = req.body) === null || _e === void 0 ? void 0 : _e.interno) !== null && _f !== void 0 ? _f : '').trim();
+        const password = String((_h = (_g = req.body) === null || _g === void 0 ? void 0 : _g.password) !== null && _h !== void 0 ? _h : '');
         if (!internalNumber || !password) {
             return res.status(400).json({ ok: false, error: 'internalNumber y password son requeridos' });
         }
@@ -992,8 +993,8 @@ app.post('/api/auth/login', async (req, res) => {
         const data = match.data;
         const docPath = match.id; // ej. "users/P0329"
         const uid = `emp_${internalNumber}`;
-        const role = String((_f = (_e = data.role) !== null && _e !== void 0 ? _e : data.rol) !== null && _f !== void 0 ? _f : 'USER').toUpperCase();
-        const agencyId = String((_g = data.agencyId) !== null && _g !== void 0 ? _g : '70');
+        const role = String((_k = (_j = data.role) !== null && _j !== void 0 ? _j : data.rol) !== null && _k !== void 0 ? _k : 'USER').toUpperCase();
+        const agencyId = String((_l = data.agencyId) !== null && _l !== void 0 ? _l : '70');
         const claims = { role, agencyId, internalNumber };
         const customToken = await admin.auth().createCustomToken(uid, claims);
         // Asegurar que el documento `users/{uid}` exista con la forma esperada por
@@ -1001,12 +1002,12 @@ app.post('/api/auth/login', async (req, res) => {
         await db.collection('users').doc(uid).set({
             internalNumber,
             legajo: internalNumber,
-            rol: (_h = data.rol) !== null && _h !== void 0 ? _h : role,
+            rol: (_m = data.rol) !== null && _m !== void 0 ? _m : role,
             role,
             agencyId,
-            fullName: (_k = (_j = data.fullName) !== null && _j !== void 0 ? _j : data.nombre) !== null && _k !== void 0 ? _k : null,
-            nombre: (_l = data.nombre) !== null && _l !== void 0 ? _l : null,
-            apellido: (_m = data.apellido) !== null && _m !== void 0 ? _m : null,
+            fullName: (_p = (_o = data.fullName) !== null && _o !== void 0 ? _o : data.nombre) !== null && _p !== void 0 ? _p : null,
+            nombre: (_q = data.nombre) !== null && _q !== void 0 ? _q : null,
+            apellido: (_r = data.apellido) !== null && _r !== void 0 ? _r : null,
             sourceDoc: docPath,
             loginAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
@@ -1018,15 +1019,15 @@ app.post('/api/auth/login', async (req, res) => {
                 internalNumber,
                 role,
                 agencyId,
-                fullName: (_p = (_o = data.fullName) !== null && _o !== void 0 ? _o : data.nombre) !== null && _p !== void 0 ? _p : null,
-                firstName: (_q = data.nombre) !== null && _q !== void 0 ? _q : null,
-                lastName: (_r = data.apellido) !== null && _r !== void 0 ? _r : null,
+                fullName: (_t = (_s = data.fullName) !== null && _s !== void 0 ? _s : data.nombre) !== null && _t !== void 0 ? _t : null,
+                firstName: (_u = data.nombre) !== null && _u !== void 0 ? _u : null,
+                lastName: (_v = data.apellido) !== null && _v !== void 0 ? _v : null,
             },
         });
     }
     catch (err) {
         console.error('[auth/login] Error:', err);
-        res.status(500).json({ ok: false, error: (_s = err === null || err === void 0 ? void 0 : err.message) !== null && _s !== void 0 ? _s : String(err) });
+        res.status(500).json({ ok: false, error: (_w = err === null || err === void 0 ? void 0 : err.message) !== null && _w !== void 0 ? _w : String(err) });
     }
 });
 // ─── EXPORT CLOUD FUNCTION ───────────────────────────────────────────────────

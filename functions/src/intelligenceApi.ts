@@ -983,7 +983,10 @@ app.post('/api/recomputeSentido', recomputeSentidoHandler);
 // isAuthenticated() pasen sin tener que abrir colecciones a `read: if true`.
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const internalNumber = String(req.body?.internalNumber ?? '').trim();
+    // Acepta internalNumber, username o interno — compatibilidad con SW cacheado
+    const internalNumber = String(
+      req.body?.internalNumber ?? req.body?.username ?? req.body?.interno ?? ''
+    ).trim();
     const password = String(req.body?.password ?? '');
     if (!internalNumber || !password) {
       return res.status(400).json({ ok: false, error: 'internalNumber y password son requeridos' });
