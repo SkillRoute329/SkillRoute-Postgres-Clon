@@ -591,19 +591,21 @@ function ListaLineas({ lineas, filtro, onFiltro, onSeleccionar, onAuditoria, vac
       )}
 
       {lineas.length > 0 && (
-        <div className="overflow-x-auto bg-slate-900/40 border border-slate-700/40 rounded-xl">
+        <div className="overflow-x-auto overflow-y-auto max-h-[65vh] bg-slate-900/40 border border-slate-700/40 rounded-xl relative">
           <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-700/50 bg-slate-800/40">
-                <th className="text-left py-2.5 px-4 text-xs uppercase tracking-widest text-slate-400">Línea</th>
-                <th className="text-left py-2.5 px-3 text-xs uppercase tracking-widest text-slate-400">Sent.</th>
-                <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-400">Coches</th>
-                <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-400">Eventos</th>
-                <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-400">% En tiempo</th>
-                <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-400">% Atras.</th>
-                <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-400">% Adel.</th>
-                <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-400">Sin Hor.</th>
-                <th className="py-2.5 px-3"></th>
+            {/* Header sticky: queda fijo al hacer scroll para no perder el contexto
+                de qué columna estás viendo (UX 2026-05-04). */}
+            <thead className="sticky top-0 z-20 bg-slate-900 shadow-md">
+              <tr className="border-b border-slate-700/50 bg-slate-900">
+                <th className="text-left py-2.5 px-4 text-xs uppercase tracking-widest text-slate-300 font-bold">Línea</th>
+                <th className="text-left py-2.5 px-3 text-xs uppercase tracking-widest text-slate-300 font-bold">Sent.</th>
+                <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-300 font-bold">Coches</th>
+                <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-300 font-bold">Eventos</th>
+                <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-300 font-bold">% En tiempo</th>
+                <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-300 font-bold">% Atras.</th>
+                <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-300 font-bold">% Adel.</th>
+                <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-300 font-bold">Sin Hor.</th>
+                <th className="py-2.5 px-3 bg-slate-900"></th>
               </tr>
             </thead>
             <tbody>

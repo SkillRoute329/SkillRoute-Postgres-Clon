@@ -21,8 +21,8 @@ import {
   CheckCircle, Clock, MapPin, Bus,
 } from 'lucide-react';
 import {
-  fetchAuditoriaLineaSentido, ymdMvd,
-  type AuditoriaLineaSentido, type Salida,
+  fetchAuditoriaLineaSentido, ymdMvd, minToHora,
+  type AuditoriaLineaSentido, type Salida, type PasadaGPS,
 } from '../../services/auditoriaService';
 import SalidaTimelineModal from '../../components/audit/SalidaTimelineModal';
 
@@ -147,9 +147,9 @@ export default function AuditoriaLineaTimeline({
         <div className="flex border-b border-slate-700">
           {(['IDA', 'VUELTA'] as const).map(t => {
             const dat = t === 'IDA' ? ida : vuelta;
-            const pct = dat ? dat.pctEnTiempoSentido : null;
+            const pct = dat ? dat.pctEnTiempoLineaCompleta : null;
             const sal = dat?.salidas.length ?? 0;
-            const tot = dat?.totalPasadasSentido ?? 0;
+            const tot = dat?.totalEventosLineaCompleta ?? 0;
             return (
               <button
                 key={t}
@@ -162,7 +162,7 @@ export default function AuditoriaLineaTimeline({
                 {t}
                 {dat && (
                   <span className="ml-2 text-xs font-normal text-slate-400">
-                    ({sal} salidas · <span className={`font-bold ${colorPct(pct)}`}>{pct ?? 0}%</span> en tiempo · {tot} pasadas)
+                    ({sal} salidas · <span className={`font-bold ${colorPct(pct)}`}>{pct ?? 0}%</span> en tiempo · {tot} eventos GPS)
                   </span>
                 )}
                 {!dat && !cargando && <span className="ml-2 text-xs text-slate-600">(sin horario)</span>}
@@ -203,17 +203,35 @@ export default function AuditoriaLineaTimeline({
           </div>
         )}
 
+        {/* Warning cuando los GPS no traen sentido (eventos duplicados en IDA/VUELTA) */}
+        {!cargando && !error && datosTab && datosTab.sentidoCobertura < 50 && datosTab.totalEventosLineaCompleta > 0 && (
+          <div className="mt-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-2 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-yellow-200/90 leading-relaxed">
+              <span className="font-bold">Sentido sin detectar:</span> sólo {datosTab.sentidoCobertura}% de los eventos GPS traen IDA/VUELTA del backend.
+              Los datos mostrados en esta tab incluyen también pasadas con sentido desconocido — pueden coincidir con la otra dirección.
+              El detector de bearing del autoStatsCollector se calibra con varios puntos GPS consecutivos por bus.
+            </p>
+          </div>
+        )}
+
         {/* Tabla de salidas */}
         {!cargando && !error && datosTab && (
           <div className="mt-4 mb-8">
             {/* KPIs sentido */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
               <KpiCard label="Salidas programadas" valor={datosTab.salidas.length.toString()} sub={`hoy (${fmtFechaCorta(fecha)})`} />
               <KpiCard label="Puntos de control" valor={datosTab.controlPointsCount.toString()} sub={`${datosTab.stopsCount} paradas totales`} />
               <KpiCard
-                label={`% en tiempo (${tab})`}
+                label={`% en tiempo línea (${tab})`}
+                valor={`${datosTab.pctEnTiempoLineaCompleta}%`}
+                sub={`${datosTab.totalEventosLineaCompleta} eventos GPS · igual que el listado`}
+                color={colorPct(datosTab.pctEnTiempoLineaCompleta)}
+              />
+              <KpiCard
+                label="% en tiempo (asociadas)"
                 valor={`${datosTab.pctEnTiempoSentido}%`}
-                sub={`${datosTab.totalPasadasSentido} pasadas detectadas`}
+                sub={`${datosTab.totalPasadasSentido} pasadas en CP ±12 min`}
                 color={colorPct(datosTab.pctEnTiempoSentido)}
               />
               <KpiCard
@@ -225,6 +243,14 @@ export default function AuditoriaLineaTimeline({
             </div>
 
             <SalidasTabla salidas={datosTab.salidas} onAbrir={setSalidaModal} />
+
+            {/* Pasadas que no encajaron en la ventana ±12 min de ningún viaje
+                (gaps entre servicios, eventos al inicio/fin del día sin viaje
+                activo, etc.). Se muestran SIEMPRE para no esconder ningún
+                registro GPS — política de transparencia. */}
+            {datosTab.pasadasHuerfanas.length > 0 && (
+              <PasadasHuerfanas pasadas={datosTab.pasadasHuerfanas} />
+            )}
           </div>
         )}
       </div>
@@ -274,18 +300,18 @@ function SalidasTabla({ salidas, onAbrir }: {
   }
   return (
     <div className="bg-slate-900/40 border border-slate-700/40 rounded-xl overflow-hidden">
-      <div className="overflow-x-auto max-h-[68vh]">
+      <div className="overflow-x-auto overflow-y-auto max-h-[60vh]">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10">
+          <thead className="sticky top-0 z-20 shadow-md">
             <tr className="bg-slate-900 border-b border-slate-700/60">
-              <th className="text-left px-4 py-3 text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Desde</th>
-              <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Salida</th>
-              <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Llegada</th>
-              <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Destino</th>
-              <th className="text-center px-3 py-3 text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Coches</th>
-              <th className="text-center px-3 py-3 text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Pasadas</th>
-              <th className="text-center px-3 py-3 text-[10px] uppercase tracking-widest text-slate-400 font-semibold">% En tiempo</th>
-              <th className="px-3 py-3 text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Detalle</th>
+              <th className="text-left px-4 py-3 text-[10px] uppercase tracking-widest text-slate-300 font-bold bg-slate-900">Desde</th>
+              <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest text-slate-300 font-bold bg-slate-900">Salida</th>
+              <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest text-slate-300 font-bold bg-slate-900">Llegada</th>
+              <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest text-slate-300 font-bold bg-slate-900">Destino</th>
+              <th className="text-center px-3 py-3 text-[10px] uppercase tracking-widest text-slate-300 font-bold bg-slate-900">Coches</th>
+              <th className="text-center px-3 py-3 text-[10px] uppercase tracking-widest text-slate-300 font-bold bg-slate-900">Pasadas</th>
+              <th className="text-center px-3 py-3 text-[10px] uppercase tracking-widest text-slate-300 font-bold bg-slate-900">% En tiempo</th>
+              <th className="px-3 py-3 text-[10px] uppercase tracking-widest text-slate-300 font-bold bg-slate-900">Detalle</th>
             </tr>
           </thead>
           <tbody>
@@ -337,6 +363,86 @@ function SalidasTabla({ salidas, onAbrir }: {
           Salidas resaltadas = tienen pasadas GPS detectadas en el día.
           Click en "Ver" abre el timeline de control points con la desviación de cada coche.
         </p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Sub: pasadas huérfanas (eventos GPS no asociados a ningún viaje) ─ */
+
+function PasadasHuerfanas({ pasadas }: { pasadas: PasadaGPS[] }) {
+  // Agrupar por bus para resumir
+  const porBus: Record<string, PasadaGPS[]> = {};
+  for (const p of pasadas) {
+    (porBus[p.idBus] ||= []).push(p);
+  }
+  const buses = Object.entries(porBus).sort((a, b) => b[1].length - a[1].length);
+  // Ordenar pasadas por hora dentro de cada bus
+  for (const [, ps] of buses) ps.sort((a, b) => a.tReal - b.tReal);
+
+  return (
+    <div className="mt-4 bg-slate-900/40 border border-yellow-700/30 rounded-xl overflow-hidden">
+      <div className="px-4 py-2.5 bg-yellow-900/15 border-b border-yellow-700/20 flex items-center gap-2">
+        <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+        <p className="text-[11px] text-yellow-200/90 leading-relaxed">
+          <span className="font-bold">{pasadas.length} {pasadas.length === 1 ? 'pasada GPS sin asociar' : 'pasadas GPS sin asociar'}</span>
+          {' — '}eventos detectados fuera de la ventana ±12 min de cualquier viaje programado
+          (ej. en gaps entre servicios, primera/última hora del día).
+          Igual los mostramos para no esconder ningún registro.
+        </p>
+      </div>
+      <div className="overflow-x-auto overflow-y-auto max-h-[40vh]">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 z-10 shadow-md">
+            <tr className="bg-slate-900 border-b border-slate-700/60">
+              <th className="text-left px-4 py-2 text-[10px] uppercase tracking-widest text-slate-300 font-bold bg-slate-900">Coche</th>
+              <th className="text-left px-3 py-2 text-[10px] uppercase tracking-widest text-slate-300 font-bold bg-slate-900">Hora</th>
+              <th className="text-left px-3 py-2 text-[10px] uppercase tracking-widest text-slate-300 font-bold bg-slate-900">Última parada reportada</th>
+              <th className="text-center px-3 py-2 text-[10px] uppercase tracking-widest text-slate-300 font-bold bg-slate-900">Desviación</th>
+              <th className="text-center px-3 py-2 text-[10px] uppercase tracking-widest text-slate-300 font-bold bg-slate-900">Estado backend</th>
+            </tr>
+          </thead>
+          <tbody>
+            {buses.flatMap(([idBus, ps]) =>
+              ps.map((p, i) => (
+                <tr key={`${idBus}_${i}`} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                  <td className="px-4 py-1.5 text-xs">
+                    <span className="font-bold text-blue-300">Coche {idBus}</span>
+                    {i === 0 && ps.length > 1 && (
+                      <span className="text-[9px] text-slate-500 ml-1.5">({ps.length} pasadas)</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-1.5 font-mono text-[11px] text-slate-200">{minToHora(p.tReal)}</td>
+                  <td className="px-3 py-1.5 text-[11px] text-slate-300 truncate max-w-[280px]">
+                    {p.proximaParada ?? <span className="text-slate-600 italic">—</span>}
+                  </td>
+                  <td className="px-3 py-1.5 text-center">
+                    <span className={`text-[11px] font-bold ${
+                      Math.abs(p.desv) <= 4 ? 'text-emerald-400' :
+                      p.desv > 8 ? 'text-red-400' :
+                      p.desv < -5 ? 'text-orange-400' : 'text-yellow-400'
+                    }`}>
+                      {p.desv > 0 ? '+' : ''}{p.desv} min
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5 text-center">
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                      p.estado === 'EN_TIEMPO' ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30' :
+                      p.estado === 'ATRASADO' ? 'bg-red-500/10 text-red-300 border border-red-500/30' :
+                      p.estado === 'ADELANTADO' ? 'bg-orange-500/10 text-orange-300 border border-orange-500/30' :
+                      'bg-slate-700/30 text-slate-400 border border-slate-600/30'
+                    }`}>
+                      {p.estado === 'EN_TIEMPO' ? 'EN TIEMPO' :
+                       p.estado === 'ATRASADO' ? 'ATRASADO' :
+                       p.estado === 'ADELANTADO' ? 'ADELANTADO' :
+                       p.estado === 'SIN_HORARIO' ? 's/horario' : p.estado}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

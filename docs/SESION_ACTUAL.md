@@ -6,6 +6,103 @@
 
 ---
 
+## 🎯 FIX COHERENCIA AUDITORÍA + STICKY HEADERS (Code debe deployar AHORA)
+
+### Problemas reportados por Jonathan + verificados por Cowork en prod
+
+**1. Inconsistencia de %**: la fila resumen muestra L149 CUTCSA con 18% en tiempo, 18% atrasado, 64% adelantado (= 22 eventos coherentes con datos crudos). Al entrar a la Auditoría detallada, los viajes 00:34-03:26 mostraban "0% en tiempo · 5/7/8/2 pasadas" — números no consistentes.
+
+**Causa raíz** (auditoría cross-API directa a Firestore): mi auditoriaService calculaba `desv = tReal - tProgramado` por su cuenta, asignando eventos al control point temporalmente más cercano. Pero el backend ya hace **snap-to-shape geográfico** y guarda `desviacionMin` real en cada evento. Mi cálculo manual daba números distintos al del backend → discrepancia con la fila resumen.
+
+**Fix**: usar `ev.desviacionMin` del backend cuando está disponible (en lugar de mi cálculo). Cumplimiento `EN_TIEMPO` ahora considera AMBAS condiciones: `estado === EN_TIEMPO` (del backend) o `|desv| <= 4 min`.
+
+**2. Header tabla NO sticky**: al hacer scroll en el listado de líneas, los nombres de columna (LÍNEA / SENT. / COCHES / EVENTOS / etc.) salían de vista. Mismo problema en la tabla de salidas de la auditoría.
+
+**Fix**: `<thead className="sticky top-0 z-20 bg-slate-900 shadow-md">` + bg explícito en cada `<th>` para evitar transparencia. Aplicado en CumplimientoPorLineaPro y AuditoriaLineaTimeline.
+
+**3. Eventos sin sentido detectado** (Cowork verificó cross-operador):
+- UCOT: 0/22 con sentido detectado
+- CUTCSA: 0/33 (top 3) con sentido
+- COETC: 0/131 con sentido (línea G)
+- COME: 4/23 con sentido
+
+El detector de bearing del autoStatsCollector no se está calibrando bien (necesita varios puntos GPS consecutivos por bus, y el TTL de 7 días puede no acumular suficientes en líneas con baja frecuencia). Resultado: las tabs IDA y VUELTA muestran los MISMOS eventos null duplicados.
+
+**Fix**: agregada métrica `sentidoCobertura` y warning amarillo visible en la auditoría cuando < 50%. Texto: "Sentido sin detectar: sólo X% traen IDA/VUELTA del backend. Los datos en esta tab incluyen también pasadas con sentido desconocido — pueden coincidir con la otra dirección."
+
+**4. Bug pre-existente del backend** (NO se arregla en esta sesión, queda documentado):
+COETC L405 muestra **96 eventos, todos con `desviacionMin = 0` y estado `EN_TIEMPO`**. Esto es la fórmula tautológica que SESION_ACTUAL.md ya documenta del autoStatsCollector — no viene mi código. Se sospecha que es endpoint del IMM que devuelve estado idéntico para esa línea, o un bug en el snap-to-shape para esa ruta. **Acción post-presentación**: revisar `functions/src/autoStatsCollector.ts` líneas relacionadas con L405. Si el ingeniero CUTCSA pregunta por una línea con 100% en tiempo, decir que esos datos están bajo revisión técnica.
+
+### Líneas con mejor data para la demo
+
+| Operador | Línea | Eventos | Coches | % en tiempo | Notas |
+|---|---|---|---|---|---|
+| **COETC** | **G** | 131 | 25 | 61% | **Recomendada** — historia completa |
+| COETC | 427 | 92 | 15 | 76% | También buena |
+| COETC | 2 | 90 | 19 | 60% | Rica en data |
+| **CUTCSA** | **103** | 33 | — | mostrar | Buena para CUTCSA pitch |
+| CUTCSA | 182 | 33 | — | mostrar | También buena |
+| UCOT | 306 | 4 hoy / 22+ dom | varios | varía | Muy poca data hoy → usar **dom 03 may** |
+
+### Archivos modificados (3, todos edits chicos)
+
+| Archivo | Cambio |
+|---|---|
+| `frontend/src/services/auditoriaService.ts` | Usa `ev.desviacionMin` del backend; agrega `pctEnTiempoLineaCompleta`, `totalEventosLineaCompleta`, `sentidoCobertura` |
+| `frontend/src/pages/traffic/AuditoriaLineaTimeline.tsx` | KPI "% en tiempo línea" + KPI "% asociadas"; warning sentido<50%; sticky thead en tabla salidas |
+| `frontend/src/pages/traffic/CumplimientoPorLineaPro.tsx` | Sticky thead en tabla listado de líneas, max-h 65vh |
+
+### Verificación Cowork
+
+- `npx tsc --noEmit --skipLibCheck --noUnusedLocals` = 0 errores ✅
+- 0 NULs ✅
+- No-regresión §11: matriz, ranking, OTP, por coche, semana vs semana, etapas — INTACTOS. Solo edits aditivos en service + KPIs + sticky header. ✅
+
+### Acción Code (≤ 8 minutos)
+
+```powershell
+cd C:\Users\jonat\Desktop\PROYECTOS\GestionUcot\frontend
+npm run build
+cd ..
+firebase deploy --only hosting --project ucot-gestor-cloud
+curl https://skillroute.web.app/version.json
+# Esperado: commit nuevo, no 83b18497
+
+git add frontend/src/services/auditoriaService.ts `
+        frontend/src/pages/traffic/AuditoriaLineaTimeline.tsx `
+        frontend/src/pages/traffic/CumplimientoPorLineaPro.tsx `
+        docs/SESION_ACTUAL.md cowork-tools/bridge/inbox.md
+
+git commit -m "fix(auditoria): coherencia con fila resumen + sticky headers + warning sentido
+
+(1) Usa ev.desviacionMin del backend (snap-to-shape geografico) en lugar
+de calcular tReal-tProgramado a mano. Resuelve la discrepancia entre el %
+de la fila resumen y el detalle de la auditoria reportada por el usuario
+en L149 CUTCSA (fila decia 18% en tiempo, viajes detallados decian 0%
+incorrectamente porque mi calc manual era impreciso).
+
+(2) Agrega KPI '% en tiempo linea' (igual que la fila resumen, sobre
+todos los eventos del dia) ademas del KPI '% asociadas' (solo eventos
+matcheados a control points +-12 min). El usuario ve ambos numeros y
+puede contrastar.
+
+(3) Header tabla sticky: thead con sticky top-0 z-20 bg-slate-900 +
+overflow-y-auto max-h-65vh, en listado de lineas Y tabla de salidas.
+
+(4) Warning visible cuando sentidoCobertura<50% (los GPS no traen
+IDA/VUELTA del backend) - aclara por que las tabs IDA y VUELTA pueden
+mostrar las mismas pasadas duplicadas. Cowork verifico cross-operador
+que CUTCSA/UCOT/COETC tienen 0% sentido detectado actualmente.
+
+No-regresion §11 verificada: tsc 0 errores, NULs 0, solo aditivos."
+
+git push origin main
+```
+
+Reportar DONE en bridge con buildId nuevo. Cowork verifica visualmente.
+
+---
+
 ## 🎯 FIX UX NAVEGACIÓN NOTEBOOK — Code debe deployar (post-Auditoría)
 
 Cowork verificó la Auditoría en prod (commit `83b18497`) — funciona perfecto:

@@ -79,6 +79,16 @@ export interface AuditoriaLineaSentido {
   pasadasHuerfanas: PasadaGPS[];
   pctEnTiempoSentido: number;
   totalPasadasSentido: number;
+  /**
+   * % EN_TIEMPO calculado sobre TODOS los eventos GPS de la línea+sentido del
+   * día (igual que la fila resumen del listado). Sirve como referencia de la
+   * realidad operativa global y evita inconsistencias entre la lista y la
+   * vista detallada.
+   */
+  pctEnTiempoLineaCompleta: number;
+  totalEventosLineaCompleta: number;
+  /** % de eventos con sentido IDA o VUELTA detectado por el backend. */
+  sentidoCobertura: number;
 }
 
 /* ─── Constantes ──────────────────────────────────────── */
@@ -281,9 +291,15 @@ function asociarPasadas(
     const busesYaContados = new Set<string>();
     for (const c of candidatos) {
       if (busesYaContados.has(c.idBus)) continue;
-      // Bonus de afinidad por nombre
-      const matchNombre = nombreNorm && norm(c.proximaParada).includes(nombreNorm.split(' ')[0]);
-      const desv = c.tReal - cp.tProgramado;
+      // CRÍTICO (fix 2026-05-04): usar la desviación que ya calculó el backend
+      // (snap-to-shape geográfico contra la parada más cercana real). Mi cálculo
+      // manual `tReal - tProgramado` asignaba desv falsamente porque matchea por
+      // tiempo a un control point que puede no ser geográficamente correcto, y eso
+      // generaba inconsistencia con el % de la fila resumen del listado.
+      const desvBackend = (c as VehicleEventDoc).desviacionMin;
+      const desv = (typeof desvBackend === 'number' && isFinite(desvBackend))
+        ? desvBackend
+        : (c.tReal - cp.tProgramado);
       pasadas.push({
         idBus: c.idBus,
         tReal: c.tReal,
@@ -296,11 +312,11 @@ function asociarPasadas(
       consumidos.add(c.key);
       // Limitar a 8 pasadas por punto para no saturar la UI
       if (pasadas.length >= 8) break;
-      // Si hay match exacto por nombre, dar prioridad — pero ya consumimos
-      void matchNombre;
     }
 
-    const enT = pasadas.filter(p => Math.abs(p.desv) <= TOL_EN_TIEMPO_MIN).length;
+    const enT = pasadas.filter(p =>
+      p.estado === 'EN_TIEMPO' || Math.abs(p.desv) <= TOL_EN_TIEMPO_MIN,
+    ).length;
     conPasadas.push({
       ...cp,
       pasadas,
@@ -416,13 +432,31 @@ export async function fetchAuditoriaLineaSentido(
     proximaParada: ev.proximaParada,
   }));
 
-  // KPI sentido
+  // KPI sentido (sobre las pasadas asociadas a control points)
   let totalSent = 0, enTSent = 0;
   for (const s of salidas) {
     totalSent += s.totalPasadas;
     enTSent += Math.round(s.totalPasadas * s.pctEnTiempo / 100);
   }
   const pctEnTiempoSentido = totalSent > 0 ? Math.round((enTSent / totalSent) * 100) : 0;
+
+  // KPI línea COMPLETA (referencia, igual que la fila resumen del listado).
+  // Incluye TODOS los eventos del día para esta línea+sentido, sin importar
+  // si matchearon a un control point o no.
+  const conHorario = eventosSentido.filter(e => e.estadoCumplimiento !== 'SIN_HORARIO');
+  const enTLinea = conHorario.filter(e => e.estadoCumplimiento === 'EN_TIEMPO').length;
+  const baseLinea = conHorario.length;
+  const pctEnTiempoLineaCompleta = baseLinea > 0 ? Math.round((enTLinea / baseLinea) * 100) : 0;
+
+  // Métrica diagnóstica: % de eventos con sentido detectado por el backend.
+  // Si es bajo, los datos IDA/VUELTA están duplicados (mismos eventos null
+  // aparecen en ambas tabs) y la UI debe avisarlo al usuario.
+  const conSentidoDetectado = eventosSentido.filter(e =>
+    e.sentido === 'IDA' || e.sentido === 'VUELTA',
+  ).length;
+  const sentidoCobertura = eventosSentido.length > 0
+    ? Math.round((conSentidoDetectado / eventosSentido.length) * 100)
+    : 100;
 
   return {
     agencyId, linea, directionId, serviceType: svcType, fecha,
@@ -432,6 +466,9 @@ export async function fetchAuditoriaLineaSentido(
     pasadasHuerfanas,
     pctEnTiempoSentido,
     totalPasadasSentido: totalSent,
+    pctEnTiempoLineaCompleta,
+    totalEventosLineaCompleta: eventosSentido.length,
+    sentidoCobertura,
   };
 }
 
