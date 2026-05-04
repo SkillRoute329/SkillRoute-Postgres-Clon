@@ -536,6 +536,95 @@ Si ocurre, leer `inbox.md` directamente con `Read`.
 
 ---
 
+### 14. Validación cross-operador antes de DONE (DIRECTRIZ 2026-05-04)
+
+**Cualquier feature nueva debe verificarse en los 4 operadores antes de reportar DONE.**
+No solo en el operador que el desarrollador tenía abierto al momento de implementar.
+
+**Razón documentada:** El bug de `agencyId == "70"` hardcodeado solo se detectó en QA visual cuando se cambió `empresaPropia` a otro operador. Con `empresaPropia = 70` el feature parecía funcionar perfectamente. Con `empresaPropia = 50` (CUTCSA), el filtro devolvía vacío y el módulo mostraba "Sin datos". El bug existía en producción y ningún check técnico (tsc, build, integrity) lo habría detectado.
+
+**Criterio obligatorio — verificar para UCOT (70), CUTCSA (50), COME (20) y COETC (10):**
+
+```bash
+# Grep previo al commit — buscar hardcodes residuales:
+grep -rn "=== 70\|== '70'\|== \"70\"" \
+  frontend/src/pages frontend/src/components frontend/src/hooks \
+  --include="*.ts" --include="*.tsx" | grep -v "//\|test\|Regla UCOT"
+
+grep -rn '"UCOT"\|"CUTCSA"' \
+  frontend/src/pages frontend/src/components \
+  --include="*.tsx" | grep -v "//\|import\|OPERADORES\|option\|Option"
+```
+
+**Verificación visual obligatoria (al menos 2 operadores):**
+
+```
+□ Con empresaPropia = 70 (UCOT): el feature muestra datos correctos de UCOT
+□ Con empresaPropia = 50 (CUTCSA): el feature muestra datos correctos de CUTCSA
+  — sin mostrar datos de UCOT, sin textos "UCOT", sin reglas específicas de UCOT
+□ Con empresaPropia = 20 o 10: el feature no muestra error, muestra estado vacío correcto
+  si no hay datos (no error de JS)
+```
+
+**Casos especiales permitidos:**
+
+```typescript
+// ✅ Condición con empresaPropia explícita — aceptable si la regla es realmente específica
+{empresaPropia === 70 && (
+  <p>⚠️ Regla UCOT: Respetar turno del conductor.</p>
+)}
+
+// ❌ Hardcode silencioso — inaceptable
+const datos = await getDatos(70);  // Siempre carga UCOT independiente del usuario
+```
+
+**Si no es posible verificar los 4 operadores** (ej. no hay datos de COME o COETC en el entorno de dev), al menos verificar UCOT + CUTCSA. Documentar en el commit message cuáles se verificaron y cuáles no.
+
+**Aplicación al workflow Cowork↔Code:**
+Cowork verifica los greps antes de pasar el changeset a Code. Code corre la verificación visual en el browser con las 2 empresas principales. Ambos reportan los operadores verificados en el mensaje de commit.
+
+---
+
+### 15. Verificación de deploy excluyente (DIRECTRIZ 2026-05-04)
+
+**Ningún reporte de DONE es válido sin verificación efectiva en producción de los 3 puntos siguientes.**
+
+Razón documentada: en la sesión 2026-05-04 perdimos múltiples ciclos porque Code reportaba DONE basándose en "tsc 0 errores + comando de deploy ejecutado" sin verificar que el commit efectivamente esté en producción ni que la pantalla afectada cargue datos. Casos concretos: commit 33d64b15 reportado como deployado mientras `/version.json` mostraba `c17f475a` anterior; Centro de Mando con BUSES ACTIVOS=0 reportado como fix completado.
+
+**Antes de reportar DONE en cualquier bridge que involucre deploy:**
+
+1. **Confirmar commit en producción.** Ejecutar:
+
+```bash
+curl -s "https://skillroute.web.app/version.json"
+```
+
+El campo `commit` debe coincidir EXACTAMENTE con el hash del commit pusheado. Si no coincide: rebuild + redeploy hasta que coincida. No es válido confiar en que `firebase deploy` ejecutó OK — el bundle puede haber tomado un build anterior o el deploy puede haber skipeado archivos sin avisar.
+
+2. **Smoke test visual de la pantalla tocada.** Abrir la URL del módulo afectado en el browser. Confirmar que:
+   - No hay banner de error visible
+   - Los KPIs/datos que el fix debía resolver muestran valores reales (no 0, no "Sin datos", no "—")
+   - Console del browser no tiene errores nuevos
+
+3. **Diff antes/después con métrica concreta.** El reporte DONE debe incluir una métrica medible que cambió:
+   - ❌ Mal: "ALERTAS OTP funciona ahora"
+   - ✅ Bien: "ALERTAS OTP pasó de 0 a 22, BUSES ACTIVOS de 0 a 113, cron lastCheck de hace 11h a hace 2 min"
+
+**Si la verificación falla:**
+
+- No reportar DONE.
+- Documentar en el bridge qué punto falló y por qué.
+- Aplicar el fix correctivo antes de reintentar.
+
+**Excepción permitida**: cuando el fix es exclusivamente de funciones backend sin componente visual (ej. cron, agregadores), reemplazar el punto 2 por un `curl` al endpoint relevante con verificación del payload.
+
+**Aplicación práctica al workflow Cowork↔Code:**
+- Code ejecuta los 3 puntos antes de responder al bridge.
+- Si Code reporta DONE sin los 3 puntos cumplidos, Cowork puede rechazar el reporte y pedir verificación.
+- Esto NO es opcional — es condición de cierre de cualquier task de deploy.
+
+---
+
 ## 📘 Documentos que debe leer el agente antes de tocar código
 
 Si la tarea implica crear, mover, renombrar o reorganizar archivos, **leer primero**:
@@ -544,6 +633,67 @@ Si la tarea implica crear, mover, renombrar o reorganizar archivos, **leer prime
 2. **`ARQUITECTURA_OBJETIVO.md`** — estructura objetivo completa, plan de migración, inventario de limpieza. Leer cuando haya que decidir refactors.
 
 Estas reglas son vinculantes para código nuevo. Convertir código legacy es incremental (scout rule, no refactor masivo).
+
+### 📌 Reglas de negocio de dominio — OBLIGATORIO leer antes de implementar
+
+Si la tarea toca **análisis de rutas, competencia entre líneas, solapamiento, DRO, sentidos de recorrido, o comparación entre operadores**, leer **ANTES de escribir una sola línea**:
+
+3. **`docs/REGLAS_COMPETENCIA_TRANSPORTE.md`** — reglas de negocio fijas sobre qué es competencia real, cuándo comparar IDA vs VUELTA, qué es un par DRO válido, y el patrón de código obligatorio. **No se reimplementa sin haber leído este archivo.**
+
+**Resumen ejecutivo (leer siempre, aunque no toques rutas):**
+- Dos líneas compiten solo si van en el **mismo sentido** (IDA con IDA, VUELTA con VUELTA)
+- **NUNCA** comparar IDA vs VUELTA — geográficamente comparten calles pero no son competencia
+- **NUNCA** comparar una línea contra sí misma en cualquier dirección
+- En comparación interna (misma empresa): cada par A-B se muestra una sola vez, nunca B-A duplicado
+- DRO = % de puntos GPS de A que están a ≤ 120m de algún punto de B (TCRP 195)
+
+---
+
+## 🚫 Regla Anti-Simulación (DIRECTRIZ PERMANENTE — 2026-05-02)
+
+**SkillRoute nunca presenta datos simulados, generados o aleatorios como si fueran datos reales.**
+Esta plataforma se vende a operadores y reguladores como fuente de verdad del sistema metropolitano. Un dato falso visible en producción destruye la credibilidad del producto de forma irreversible.
+
+### Lo que está PROHIBIDO sin excepción
+
+| Patrón | Ejemplo | Por qué es grave |
+|--------|---------|-----------------|
+| `Math.random()` para datos operativos | `ocupacion: 65 + Math.random() * 30` | El usuario ve un % de ocupación que cambia con cada render — no hay datos reales de IMM para esto |
+| Arrays hardcodeados como si fueran datos reales | `[{ linea: '300', pasajeros: 1500 }]` | Son inventados; en producción parecen reales |
+| Valores fallback numéricos sin advertencia visible | `frecuencia: 12` cuando Firestore falla | El usuario no sabe que es un default |
+| Latencia simulada | `setLatency(Math.random() * 50 + 10)` | Muestra conectividad falsa; puede enmascarar problemas reales |
+
+### Qué hacer en su lugar
+
+1. **Sin datos → mostrar ausencia, no inventar**: `null` en el campo + texto "Sin datos disponibles" en la UI. Nunca inventar un número plausible.
+2. **Datos estimados → marcarlos**: si un parámetro operativo es calibrado (no medido), mostrar badge `Estimado` o `Ref.` y proveer la fuente (UITP, TCRP, contrato UCOT, etc.).
+3. **Latencia real → medir con Firestore**: `getDoc(doc(db,'system','ping'))` cronometrado, NO `Math.random()`.
+4. **Fallback de API caída → informar el error**, no sustituir con números ficticios.
+
+### Fuentes válidas de datos en SkillRoute
+
+| Tipo de dato | Fuente válida | Colección Firestore |
+|-------------|---------------|---------------------|
+| Posición de buses en vivo | IMM STM GPS `POST stm-online` | `viajes_activos` |
+| Recorridos (shapes) | GTFS oficial IMM | `shapes_cross_operator` |
+| Horarios | GTFS oficial IMM | `gtfs_timetable` |
+| Solapamiento DRO | Calculado desde shapes reales | `corridor_overlap` |
+| Flota UCOT | Seed desde Excel oficial UCOT | `vehicles` |
+| Servicios UCOT | Seed desde boletín oficial UCOT | `services` |
+
+### Archivos con simuladores existentes — NO activar en producción
+
+- `frontend/src/services/telemetrySimulator.ts` — escribe datos GPS falsos en Firestore. Solo para desarrollo local con guard `VITE_ALLOW_SIMULATORS=true`.
+- `frontend/src/simulation/ChaosEngine.ts` — modifica Firestore cada 5 segundos. Solo activable desde consola del browser vía `window.startChaos()`. Nunca en producción.
+- `frontend/src/components/operations/mockData.ts` — `@deprecated`. No importar.
+- `frontend/src/components/operations/rotationMockData.ts` — `@deprecated`. No importar.
+
+### Antes de hacer commit: chequeo obligatorio
+
+```bash
+grep -r "Math\.random()" frontend/src/pages frontend/src/services frontend/src/hooks --include="*.ts" --include="*.tsx"
+```
+Si el resultado no está vacío, investigar y justificar cada ocurrencia antes de commitear. Si es un simulador de desarrollo, agregar guard `if (import.meta.env.VITE_ALLOW_SIMULATORS !== 'true') return;`.
 
 ---
 
