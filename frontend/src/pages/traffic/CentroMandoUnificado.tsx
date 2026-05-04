@@ -66,6 +66,7 @@ interface ComplianceAlerta {
 interface VehiculoDoc {
   agencyId?: number | string;
   empresa?: number | string;
+  status?: string;
   state?: string;
   estado?: string;
   estado_operativo?: string;
@@ -159,7 +160,7 @@ function semaforo(otp: number | null): { color: string; label: string; dot: stri
 
 function isVehiculoActivo(v: VehiculoDoc): boolean {
   if (v.activo === true) return true;
-  const s = (v.state || v.estado || v.estado_operativo || '').toLowerCase();
+  const s = (v.status || v.state || v.estado || v.estado_operativo || '').toLowerCase();
   return s === 'activo' || s === 'en_servicio' || s === 'en servicio' || s === 'disponible';
 }
 
