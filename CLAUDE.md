@@ -625,6 +625,38 @@ El campo `commit` debe coincidir EXACTAMENTE con el hash del commit pusheado. Si
 
 ---
 
+### 16. Stop-and-fix: no avanzar con fallas abiertas (DIRECTRIZ 2026-05-04)
+
+**Si durante cualquier tarea se detecta una falla, inconsistencia o algo pendiente de resolver, el agente NO avanza hacia otro módulo o feature hasta cerrar lo que está roto.**
+
+Razón: avanzar sobre fallas abiertas genera deuda acumulada difícil de rastrear. Cuando una sesión termina con 3 bugs "en progreso" y 2 features nuevas, ninguno llega a verificación real en producción. El stack de incompletos crece hasta que un incidente en producción lo derrumba todo junto.
+
+**Definición de "falla abierta" — aplica cualquiera de estas condiciones:**
+
+| Condición | Ejemplo concreto |
+|---|---|
+| Verificación §15 falló o quedó pendiente | `version.json` no coincide con commit, o BUSES ACTIVOS sigue en 0 sin diagnóstico |
+| Bug reportado vía bridge sin DONE confirmado | BRIDGE-039 en estado PENDING sin respuesta Code |
+| Error de consola en browser introducido por un cambio reciente | `TypeError` nuevo en módulo tocado |
+| `tsc --noEmit` con errores nuevos después de un edit | Errores TS introducidos en esta sesión |
+| Integridad de datos sospechosa sin diagnóstico | Colección `vehiculos` con 0 docs sin explicación |
+| Commit deployado que no llegó a producción | `version.json` en prod no coincide con el último push |
+
+**Protocolo obligatorio ante una falla abierta:**
+
+1. **Pausar** cualquier tarea nueva. No importa cuánto pidió el usuario en el mismo mensaje.
+2. **Diagnosticar** la falla con las herramientas disponibles (curl, grep, tsc, Read, bridge).
+3. **Escalar si no se puede resolver solo**: escribir en el bridge qué se intentó, qué falta, y qué acción requiere Cowork o Jonathan. Ser específico: no "no pude verificar" sino "gcloud auth no disponible — necesito que Cowork corra `admin.firestore().collection('vehiculos').limit(5).get()` y reporte los tipos de agencyId".
+4. **Solo después** de que la falla esté cerrada (DONE confirmado, verificación §15 cumplida, o escalada formalmente), continuar con la próxima tarea.
+
+**La única excepción**: si Jonathan explícitamente dice "dejá eso, pasemos a X", entonces la falla abierta se documenta en `docs/SESION_ACTUAL.md` bajo "BUGS CONOCIDOS NO CRÍTICOS" con todo el contexto necesario para retomar, y se avanza. Pero el agente no toma esa decisión solo.
+
+**Aplicación al workflow Cowork↔Code:**
+- Si Code detecta una falla al ejecutar el "PRÓXIMO PASO INMEDIATO" de SESION_ACTUAL.md, no sigue con el paso 2 — reporta el bloqueo vía bridge y espera.
+- Si Cowork deja tareas abiertas en SESION_ACTUAL.md sin diagnóstico, Code las menciona antes de empezar trabajo nuevo.
+
+---
+
 ## 📘 Documentos que debe leer el agente antes de tocar código
 
 Si la tarea implica crear, mover, renombrar o reorganizar archivos, **leer primero**:
