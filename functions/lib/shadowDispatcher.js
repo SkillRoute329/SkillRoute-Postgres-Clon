@@ -682,25 +682,29 @@ exports.limpiarPingsRivales = functions
 exports.onAlertaRegulacion = functions.firestore
     .document('alertas_regulacion/{cocheId}')
     .onWrite(async (change, context) => {
-    var _a, _b, _c;
+    var _a, _b, _c, _d, _e;
     const { cocheId } = context.params;
     const datos = change.after.data();
-    // Solo actuar si la alerta es nueva (no existe before) o fue reseteada a leido=false
-    if (!datos || datos.leido === true)
+    // Solo actuar si la alerta es nueva (no existe before) o fue reseteada a leido=false.
+    // fcmSent=true: ya se envió la notificación en este ciclo, no reenviar.
+    if (!datos || datos.leido === true || datos.fcmSent === true)
         return;
     const before = change.before.data();
     if (before && before.leido === false && ((_a = before.timestamp) === null || _a === void 0 ? void 0 : _a.isEqual(datos.timestamp)))
         return;
-    // Leer FCM token desde el cartón activo
+    // datos.coche_id es el número real del coche (ej: "123").
+    // context.params.cocheId es el ID del documento (ej: "70_123_456") — NO el coche.
+    const cocheReal = (_c = (_b = datos.coche_id) !== null && _b !== void 0 ? _b : datos.cocheId) !== null && _c !== void 0 ? _c : cocheId;
+    // Leer FCM token desde el cartón activo usando el coche real, no el ID del documento
     const cartonSnap = await db
         .collection('cartones_de_servicio')
-        .where('cocheId', '==', cocheId)
+        .where('cocheId', '==', cocheReal)
         .where('expire_at', '>', admin.firestore.Timestamp.now())
         .limit(1)
         .get();
     if (cartonSnap.empty)
         return;
-    const fcmToken = (_c = (_b = cartonSnap.docs[0].data()) === null || _b === void 0 ? void 0 : _b.chofer_snapshot) === null || _c === void 0 ? void 0 : _c.fcm_token;
+    const fcmToken = (_e = (_d = cartonSnap.docs[0].data()) === null || _d === void 0 ? void 0 : _d.chofer_snapshot) === null || _e === void 0 ? void 0 : _e.fcm_token;
     if (!fcmToken)
         return;
     try {
@@ -717,8 +721,10 @@ exports.onAlertaRegulacion = functions.firestore
             },
             android: { priority: 'high' },
         });
+        // Marcar como enviado para no reenviar si el documento se actualiza de nuevo
+        await change.after.ref.update({ fcmSent: true });
     }
     catch (err) {
-        console.warn(`[onAlertaRegulacion] FCM error coche ${cocheId}:`, err);
+        console.warn(`[onAlertaRegulacion] FCM error coche ${cocheReal}:`, err);
     }
 });

@@ -97,6 +97,10 @@ async function snapshotPenetration(ymd, windowHours = 4) {
         snap.forEach((doc) => {
             var _a, _b;
             const ev = doc.data();
+            // Política unificada (docs/POLITICA_OTP_UNIFICADA.md): FUERA_DE_SERVICIO
+            // excluido del denominador — un bus apagado no es "presencia operativa".
+            if (ev.estadoCumplimiento === 'FUERA_DE_SERVICIO')
+                return;
             const busId = String((_a = ev.idBus) !== null && _a !== void 0 ? _a : doc.id);
             if (seen.has(busId))
                 return;

@@ -111,38 +111,56 @@ function registerAutostatsRoutes(app) {
             res.status(500).json({ ok: false, error: e.message });
         }
     });
-    // GET /api/autostats/compliance/:agencyId — snapshot en vivo desde Firestore (últimos 25 min)
+    // GET /api/autostats/compliance/:agencyId — diagnóstico histórico (últimas 24h)
+    // Usa 24h en lugar de 25min para que el diagnóstico sea estable independientemente
+    // del horario en que se consulta (de noche no hay buses activos pero sí hay historia del día)
     app.get('/api/autostats/compliance/:agencyId', async (req, res) => {
+        var _a, _b, _c, _d;
         try {
             const { agencyId } = req.params;
+            const hoursBack = Math.min(48, parseInt((_a = req.query.hours) !== null && _a !== void 0 ? _a : '24', 10));
             const db = getDb();
-            const since = new Date(Date.now() - 25 * 60 * 1000);
+            const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
             const snap = await db.collection('vehicle_events')
                 .where('agencyId', '==', agencyId)
                 .where('timestampGPS', '>=', since.toISOString())
                 .orderBy('timestampGPS', 'desc')
-                .limit(500)
+                .limit(2000)
                 .get();
-            // Un registro por bus (el más reciente)
+            // Un registro por bus+sentido (el más reciente de cada combinación)
             const busMap = new Map();
             for (const doc of snap.docs) {
                 const d = doc.data();
-                if (!busMap.has(d.idBus))
-                    busMap.set(d.idBus, d);
+                const key = `${d.idBus}__${(_b = d.sentido) !== null && _b !== void 0 ? _b : 'N'}`;
+                if (!busMap.has(key))
+                    busMap.set(key, d);
             }
-            const buses = Array.from(busMap.values()).map(d => ({
-                idBus: d.idBus, linea: d.linea, empresa: d.empresa, agencyId: d.agencyId,
-                lat: d.lat, lon: d.lon, velocidad: d.velocidad,
-                estadoCumplimiento: d.estadoCumplimiento, desviacionMin: d.desviacionMin,
-                proximaParadaControl: d.proximaParada ? { name: d.proximaParada, desc: '', lat: 0, lon: 0, arrival: '' } : null,
-                distanciaParadaKm: null, timestampGPS: d.timestampGPS,
-            }));
-            // Resumen por línea
+            const buses = Array.from(busMap.values()).map(d => {
+                var _a;
+                return ({
+                    idBus: d.idBus, linea: d.linea, empresa: d.empresa, agencyId: d.agencyId,
+                    lat: d.lat, lon: d.lon, velocidad: d.velocidad,
+                    estadoCumplimiento: d.estadoCumplimiento, desviacionMin: d.desviacionMin,
+                    sentido: (_a = d.sentido) !== null && _a !== void 0 ? _a : null,
+                    proximaParadaControl: d.proximaParada ? { name: d.proximaParada, desc: '', lat: 0, lon: 0, arrival: '' } : null,
+                    distanciaParadaKm: null, timestampGPS: d.timestampGPS,
+                });
+            });
+            // Resumen por línea + sentido para distinguir IDA vs VUELTA
+            // Política unificada (docs/POLITICA_OTP_UNIFICADA.md):
+            // FUERA_DE_SERVICIO se excluye SIEMPRE. SIN_HORARIO se cuenta pero NO entra
+            // en el denominador del % cumplimiento.
             const summary = {};
             for (const b of buses) {
-                if (!summary[b.linea])
-                    summary[b.linea] = { linea: b.linea, busesActivos: 0, enTiempo: 0, atrasados: 0, adelantados: 0, sinHorario: 0, pctCumplimiento: 0 };
-                const s = summary[b.linea];
+                if (b.estadoCumplimiento === 'FUERA_DE_SERVICIO')
+                    continue;
+                const key = `${b.linea}__${(_c = b.sentido) !== null && _c !== void 0 ? _c : 'N'}`;
+                if (!summary[key])
+                    summary[key] = {
+                        linea: b.linea, sentido: (_d = b.sentido) !== null && _d !== void 0 ? _d : null,
+                        busesActivos: 0, enTiempo: 0, atrasados: 0, adelantados: 0, sinHorario: 0, pctCumplimiento: 0,
+                    };
+                const s = summary[key];
                 s.busesActivos++;
                 if (b.estadoCumplimiento === 'EN_TIEMPO')
                     s.enTiempo++;
@@ -154,25 +172,37 @@ function registerAutostatsRoutes(app) {
                     s.sinHorario++;
             }
             for (const s of Object.values(summary)) {
-                s.pctCumplimiento = s.busesActivos > 0 ? Math.round(((s.enTiempo + s.adelantados) / s.busesActivos) * 100) : 0;
+                // Política unificada: OTP = enTiempo / (enTiempo + atrasados + adelantados).
+                // Adelantado se cuenta como NO en tiempo (es incumplimiento por adelanto).
+                // SIN_HORARIO y FUERA_DE_SERVICIO no entran en el denominador.
+                const medibles = s.enTiempo + s.atrasados + s.adelantados;
+                s.pctCumplimiento = medibles > 0 ? Math.round((s.enTiempo / medibles) * 100) : 0;
             }
-            res.json({ ok: true, agencyId, timestamp: new Date().toISOString(), totalBuses: buses.length, summary, buses });
+            res.json({
+                ok: true, agencyId, timestamp: new Date().toISOString(),
+                hoursBack, totalBuses: buses.length, summary, buses,
+            });
         }
         catch (e) {
             res.status(500).json({ ok: false, error: e.message });
         }
     });
-    // GET /api/autostats/vehicle/:idBus — historial de un bus específico
+    // GET /api/autostats/vehicle/:idBus?agencyId=70 — historial de un bus específico
+    // agencyId es obligatorio para no mezclar buses de distintos operadores con el mismo número
     app.get('/api/autostats/vehicle/:idBus', async (req, res) => {
         var _a, _b, _c, _d, _e, _f, _g;
         try {
             const { idBus } = req.params;
+            const agencyId = req.query.agencyId;
             const days = Math.min(30, parseInt((_a = req.query.days) !== null && _a !== void 0 ? _a : '7', 10));
             const db = getDb();
             const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-            const snap = await db.collection('vehicle_events')
+            let q = db.collection('vehicle_events')
                 .where('idBus', '==', idBus)
-                .where('timestampGPS', '>=', since.toISOString())
+                .where('timestampGPS', '>=', since.toISOString());
+            if (agencyId)
+                q = q.where('agencyId', '==', agencyId);
+            const snap = await q
                 .orderBy('timestampGPS', 'desc')
                 .limit(2000)
                 .get();
@@ -512,7 +542,7 @@ function registerAutostatsRoutes(app) {
                 .limit(limit)
                 .get();
             const buses = snap.docs.map(d => {
-                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
+                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
                 const r = d.data();
                 return {
                     idBus: r.idBus,
@@ -527,11 +557,14 @@ function registerAutostatsRoutes(app) {
                     desviacionMediaMin: (_j = r.desviacionMediaMin) !== null && _j !== void 0 ? _j : null,
                     lineasOperadas: (_k = r.lineasOperadas) !== null && _k !== void 0 ? _k : [],
                     ultimaActividad: (_l = r.ultimaActividad) !== null && _l !== void 0 ? _l : null,
+                    marca: (_m = r.marca) !== null && _m !== void 0 ? _m : null,
+                    tipo: (_o = r.tipo) !== null && _o !== void 0 ? _o : null,
+                    totalJornales: (_p = r.totalJornales) !== null && _p !== void 0 ? _p : 0,
                     // Conductor (null para empresas sin distribuciones)
-                    ultimoInterno: (_m = r.ultimoInterno) !== null && _m !== void 0 ? _m : null,
-                    ultimoNombre: (_o = r.ultimoNombre) !== null && _o !== void 0 ? _o : null,
-                    conductoresConocidos: (_p = r.conductoresConocidos) !== null && _p !== void 0 ? _p : [],
-                    historial: (_q = r.historial) !== null && _q !== void 0 ? _q : [],
+                    ultimoInterno: (_q = r.ultimoInterno) !== null && _q !== void 0 ? _q : null,
+                    ultimoNombre: (_r = r.ultimoNombre) !== null && _r !== void 0 ? _r : null,
+                    conductoresConocidos: (_s = r.conductoresConocidos) !== null && _s !== void 0 ? _s : [],
+                    historial: (_t = r.historial) !== null && _t !== void 0 ? _t : [],
                 };
             });
             res.json({ ok: true, agencyId, totalBuses: buses.length, buses });

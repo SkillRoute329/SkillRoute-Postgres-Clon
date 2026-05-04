@@ -112,6 +112,10 @@ async function processConductorStats(db) {
         const dDesv = [], dVels = [];
         const dLineas = new Set();
         for (const ev of evs) {
+            // FUERA_DE_SERVICIO excluido del denominador (política OTP unificada,
+            // docs/POLITICA_OTP_UNIFICADA.md).
+            if (ev.estadoCumplimiento === 'FUERA_DE_SERVICIO')
+                continue;
             dTotal++;
             if (ev.estadoCumplimiento === 'EN_TIEMPO')
                 dEnTiempo++;

@@ -145,8 +145,9 @@ function computeBusDelay(busId, agencyId, linea, lat, lng, timetable, stopPositi
     const delay = currentMin - scheduledMin;
     base.scheduledMin = scheduledMin;
     base.delayMin = delay;
-    // Umbral: ≤3 min = a tiempo (tolerancia operativa estándar UITP)
-    base.estado = Math.abs(delay) <= 3 ? 'A_TIEMPO' : delay > 3 ? 'RETRASADO' : 'ADELANTADO';
+    // Política unificada: tolerancia ±4 min IMM (TCRP 165 / IMM Uruguay).
+    // Alineada con autoStatsCollector y etapaStatsTick.
+    base.estado = Math.abs(delay) <= 4 ? 'A_TIEMPO' : delay > 4 ? 'RETRASADO' : 'ADELANTADO';
     return base;
 }
 async function runOtpTick() {
