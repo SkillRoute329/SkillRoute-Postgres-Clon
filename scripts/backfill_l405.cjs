@@ -33,7 +33,10 @@ const path = require('path');
 const admin = require(path.join(__dirname, '..', 'functions', 'node_modules', 'firebase-admin'));
 
 if (!admin.apps.length) {
-  admin.initializeApp({ credential: admin.credential.applicationDefault() });
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+    projectId: 'ucot-gestor-cloud',
+  });
 }
 
 const db = admin.firestore();

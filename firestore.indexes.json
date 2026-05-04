@@ -4,492 +4,974 @@
       "collectionGroup": "conductor_stats",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "pctEnTiempo", "order": "ASCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "pctEnTiempo",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "conductor_stats",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "ultimaActividad", "order": "DESCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ultimaActividad",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "vehicle_stats",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "pctEnTiempo", "order": "ASCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "pctEnTiempo",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "vehicle_stats",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "ultimaActividad", "order": "DESCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ultimaActividad",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "compliance_alerts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "dismissed", "order": "ASCENDING" },
-        { "fieldPath": "nivel", "order": "ASCENDING" },
-        { "fieldPath": "pctEnTiempo", "order": "ASCENDING" }
+        {
+          "fieldPath": "dismissed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nivel",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "pctEnTiempo",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "compliance_alerts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "dismissed", "order": "ASCENDING" },
-        { "fieldPath": "empresa", "order": "ASCENDING" },
-        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "dismissed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nivel",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "pctEnTiempo",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "compliance_alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "dismissed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "empresa",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "compliance_alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "dismissed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "empresa",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "cargas_combustible",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "fecha", "order": "DESCENDING" },
-        { "fieldPath": "hora", "order": "DESCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "hora",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "cargas_combustible",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "vehiculoId", "order": "ASCENDING" },
-        { "fieldPath": "fecha", "order": "DESCENDING" },
-        { "fieldPath": "hora", "order": "DESCENDING" }
+        {
+          "fieldPath": "vehiculoId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "hora",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "licencias_personal",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "estado", "order": "ASCENDING" },
-        { "fieldPath": "creadoEn", "order": "ASCENDING" }
+        {
+          "fieldPath": "estado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "creadoEn",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "licencias_personal",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "fechaDesde", "order": "ASCENDING" },
-        { "fieldPath": "fechaHasta", "order": "ASCENDING" },
-        { "fieldPath": "estado", "order": "ASCENDING" }
+        {
+          "fieldPath": "fechaDesde",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fechaHasta",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "estado",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "gtfs_horarios",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "linea", "order": "ASCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "linea",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "gtfs_horarios",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "linea", "order": "ASCENDING" },
-        { "fieldPath": "agencyId", "order": "ASCENDING" }
+        {
+          "fieldPath": "linea",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "service_matrices",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "empresaId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "empresaId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "daily_shifts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "date", "order": "ASCENDING" },
-        { "fieldPath": "start", "order": "ASCENDING" }
+        {
+          "fieldPath": "date",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "start",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "daily_shifts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "date", "order": "ASCENDING" },
-        { "fieldPath": "vehicleId", "order": "ASCENDING" }
+        {
+          "fieldPath": "date",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "vehicleId",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "inspections",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "serviceDate", "order": "ASCENDING" },
-        { "fieldPath": "actualPassedAt", "order": "ASCENDING" }
+        {
+          "fieldPath": "serviceDate",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "actualPassedAt",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "inspections",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "serviceDate", "order": "ASCENDING" },
-        { "fieldPath": "lineId", "order": "ASCENDING" },
-        { "fieldPath": "actualPassedAt", "order": "ASCENDING" }
+        {
+          "fieldPath": "serviceDate",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lineId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "actualPassedAt",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "incidencias",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "coche_id", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "coche_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "incidencias",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "estado", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "estado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "shifts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "start", "order": "DESCENDING" }
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "start",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "shifts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "assignedTo", "order": "ASCENDING" },
-        { "fieldPath": "start", "order": "DESCENDING" }
+        {
+          "fieldPath": "assignedTo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "start",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "vehiculos",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "state", "order": "ASCENDING" },
-        { "fieldPath": "lastUpdated", "order": "DESCENDING" }
+        {
+          "fieldPath": "state",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lastUpdated",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "alertas_trafico",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "active", "order": "ASCENDING" },
-        { "fieldPath": "creado_en", "order": "DESCENDING" }
+        {
+          "fieldPath": "active",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "creado_en",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "desvios_activos",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "linea_id", "order": "ASCENDING" },
-        { "fieldPath": "expirado", "order": "ASCENDING" },
-        { "fieldPath": "expire_at", "order": "ASCENDING" }
+        {
+          "fieldPath": "linea_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "expirado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "expire_at",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "fichas_medicas",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "isEligible", "order": "ASCENDING" },
-        { "fieldPath": "venc_carne_salud", "order": "ASCENDING" }
+        {
+          "fieldPath": "isEligible",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "venc_carne_salud",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "eventos_desvio",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "coche_id", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "coche_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "eventos_desvio",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "resuelto", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "resuelto",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "pings",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "empresa", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "empresa",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "pings",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "timestamp", "order": "ASCENDING" },
-        { "fieldPath": "empresa", "order": "ASCENDING" }
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "empresa",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "alertas_regulacion",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "linea_id", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "linea_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "alertas_regulacion",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "leido", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "leido",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "alertas_regulacion",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "empresa_id", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "vehicle_events",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "vehicle_events",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "ASCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "vehicle_events",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "timestampGPS", "order": "DESCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestampGPS",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "vehicle_events",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "idBus", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "idBus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "vehicle_events",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "idBus", "order": "ASCENDING" },
-        { "fieldPath": "timestampGPS", "order": "DESCENDING" }
+        {
+          "fieldPath": "idBus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestampGPS",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "vehicle_events",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "expiresAt", "order": "ASCENDING" },
-        { "fieldPath": "timestampGPS", "order": "ASCENDING" }
+        {
+          "fieldPath": "idBus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestampGPS",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "vehicle_events",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "timestampGPS", "order": "ASCENDING" }
+        {
+          "fieldPath": "expiresAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestampGPS",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "vehicle_events",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "empresa", "order": "ASCENDING" },
-        { "fieldPath": "tipo", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "ASCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestampGPS",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "vehicle_events",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "tipo", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "ASCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "linea",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestampGPS",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "vehicle_events",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "empresa", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "ASCENDING" }
+        {
+          "fieldPath": "empresa",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tipo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "vehicle_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tipo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "vehicle_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "alertas_regulacion",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "empresa_id", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "ASCENDING" }
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "parametros_operativos_historial",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "key", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "key",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "delegaciones_inspector",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "mensajes_internos",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "toUserId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "toUserId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "desvios_reportados",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "estado", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "estado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "desvios_reportados",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "lineaCodigo", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "lineaCodigo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "disruptions",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "operadorId", "order": "ASCENDING" },
-        { "fieldPath": "estado", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "operadorId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "estado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "disruptions",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "estado", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "estado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "disruptions",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "operadorId", "order": "ASCENDING" },
-        { "fieldPath": "estado", "order": "ASCENDING" },
-        { "fieldPath": "resolvedAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "operadorId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "estado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "resolvedAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "gtfs_calendar",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "linea", "order": "ASCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "linea",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "gtfs_fares",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyIds", "order": "ASCENDING" },
-        { "fieldPath": "fareId", "order": "ASCENDING" }
+        {
+          "fieldPath": "agencyIds",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fareId",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "gtfs_timetable",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "linea", "order": "ASCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "linea",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "gtfs_timetable",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "linea", "order": "ASCENDING" },
-        { "fieldPath": "serviceType", "order": "ASCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "linea",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "serviceType",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "shapes_cross_operator",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "linea", "order": "ASCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "linea",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "shapes_cross_operator",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "sentido", "order": "ASCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sentido",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "shapes_cross_operator",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "linea", "order": "ASCENDING" },
-        { "fieldPath": "sentido", "order": "ASCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "linea",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sentido",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "corridor_overlap",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "sameEmpresa", "order": "ASCENDING" },
-        { "fieldPath": "pctAInB", "order": "ASCENDING" }
+        {
+          "fieldPath": "sameEmpresa",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "pctAInB",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "hrr_live",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agencyId", "order": "ASCENDING" },
-        { "fieldPath": "estado", "order": "DESCENDING" }
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "estado",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "etapa_stats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "agencyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "linea",
+          "order": "ASCENDING"
+        }
       ]
     }
   ],
