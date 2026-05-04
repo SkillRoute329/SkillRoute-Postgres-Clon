@@ -46,6 +46,7 @@ const ucotPortal_1 = require("./api/ucotPortal");
 const cartonesConsulta_1 = require("./api/cartonesConsulta");
 const listero_1 = require("./api/listero");
 const adminSeeds_1 = require("./api/adminSeeds");
+const autoStatsCollector_1 = require("./autoStatsCollector");
 const app = express();
 app.use(cors({ origin: true }));
 (0, autostats_1.registerAutostatsRoutes)(app);
@@ -837,7 +838,100 @@ app.post('/api/ai/orders/:id/reject', async (req, res) => {
         res.status(400).json({ error: (err === null || err === void 0 ? void 0 : err.message) || String(err) });
     }
 });
+// ─── RECOMPUTE SENTIDO (backfill 24h) ────────────────────────────────────────
+// Recalcula el campo `sentido` y `confianzaSentido` de vehicle_events recientes
+// usando la cascada nueva (destinoDesc + variante + GTFS terminals + bearing).
+// Útil para corregir la histórica donde el ~99% quedó null por las regex viejas.
+//
+// Uso: POST /recomputeSentido?hours=24[&limit=5000]
+//   - Vía Cloud Function directa: POST https://us-central1-<project>.cloudfunctions.net/intelligenceApi/recomputeSentido
+//   - Vía Hosting rewrite: POST https://<site>/api/recomputeSentido
+const recomputeSentidoHandler = async (req, res) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+    try {
+        const hours = Math.max(1, Math.min(72, Number((_a = req.query.hours) !== null && _a !== void 0 ? _a : 6)));
+        const limit = Math.max(1, Math.min(20000, Number((_b = req.query.limit) !== null && _b !== void 0 ? _b : 5000)));
+        const cutoff = new Date(Date.now() - hours * 3600 * 1000).toISOString();
+        const fsdb = getDb();
+        const snap = await fsdb.collection('vehicle_events')
+            .where('timestampGPS', '>=', cutoff)
+            .orderBy('timestampGPS', 'asc')
+            .limit(limit)
+            .get();
+        // Cache de contexto por `${agencyId}_${linea}` para evitar reads redundantes.
+        const ctxCache = new Map();
+        async function getCtx(agencyId, linea) {
+            const key = `${agencyId}_${linea}`;
+            let ctx = ctxCache.get(key);
+            if (!ctx) {
+                ctx = await (0, autoStatsCollector_1.loadSentidoContext)(agencyId, linea, fsdb);
+                ctxCache.set(key, ctx);
+            }
+            return ctx;
+        }
+        let updated = 0;
+        let sinCambio = 0;
+        let sinDestino = 0;
+        const conteoConfianza = { HIGH: 0, MEDIUM: 0, LOW: 0, ZERO: 0 };
+        let batch = fsdb.batch();
+        let pending = 0;
+        const FLUSH_EVERY = 400;
+        for (const docSnap of snap.docs) {
+            const d = docSnap.data();
+            if (!d.destinoDesc)
+                sinDestino++;
+            const linea = String((_c = d.linea) !== null && _c !== void 0 ? _c : '');
+            const agencyId = String((_d = d.agencyId) !== null && _d !== void 0 ? _d : '');
+            if (!linea) {
+                sinCambio++;
+                continue;
+            }
+            const ctx = await getCtx(agencyId, linea);
+            const result = (0, autoStatsCollector_1.detectarSentidoConContexto)((_e = d.destinoDesc) !== null && _e !== void 0 ? _e : null, (_f = d.variante) !== null && _f !== void 0 ? _f : null, typeof d.bearing === 'number' ? d.bearing : null, ctx);
+            conteoConfianza[result.confianza] = ((_g = conteoConfianza[result.confianza]) !== null && _g !== void 0 ? _g : 0) + 1;
+            const cambio = ((_h = result.sentido) !== null && _h !== void 0 ? _h : null) !== ((_j = d.sentido) !== null && _j !== void 0 ? _j : null)
+                || ((_k = result.confianza) !== null && _k !== void 0 ? _k : null) !== ((_l = d.confianzaSentido) !== null && _l !== void 0 ? _l : null);
+            if (cambio) {
+                batch.update(docSnap.ref, {
+                    sentido: result.sentido,
+                    confianzaSentido: result.confianza,
+                });
+                pending++;
+                updated++;
+                if (pending >= FLUSH_EVERY) {
+                    await batch.commit();
+                    batch = fsdb.batch();
+                    pending = 0;
+                }
+            }
+            else {
+                sinCambio++;
+            }
+        }
+        if (pending > 0)
+            await batch.commit();
+        res.json({
+            ok: true,
+            total: snap.size,
+            updated,
+            sinCambio,
+            sinDestinoDesc: sinDestino,
+            lineasCargadas: ctxCache.size,
+            confianza: conteoConfianza,
+            hours,
+            cutoff,
+        });
+    }
+    catch (err) {
+        console.error('[recomputeSentido] Error:', err);
+        res.status(500).json({ ok: false, error: (_m = err === null || err === void 0 ? void 0 : err.message) !== null && _m !== void 0 ? _m : String(err) });
+    }
+};
+app.post('/recomputeSentido', recomputeSentidoHandler);
+app.post('/api/recomputeSentido', recomputeSentidoHandler);
 // ─── EXPORT CLOUD FUNCTION ───────────────────────────────────────────────────
+// timeoutSeconds aumentado a 540 (max gen1) para soportar /recomputeSentido
+// con cargas de hasta 20k eventos y memory bumped por el cache de contexto.
 exports.intelligenceApi = functions
-    .runWith({ timeoutSeconds: 120, memory: '512MB' })
+    .runWith({ timeoutSeconds: 540, memory: '1GB' })
     .https.onRequest(app);

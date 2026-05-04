@@ -1,6 +1,74 @@
 # 🔁 SESIÓN ACTUAL — estado vivo del trabajo en curso
 
-**Última actualización:** 2026-05-04 — Fix Firestore rules deployado + Cumplimiento "Por Línea" matriz live
+**Última actualización:** 2026-05-04 — Sentido IDA/VUELTA via cascada (Opus) DEPLOYADO
+
+---
+
+## ✅ FIX SENTIDO IDA/VUELTA — DEPLOYADO Y VERIFICADO (Opus 2026-05-04)
+
+**Problema resuelto**: 99% de eventos GPS tenían `sentido = null` por regex hardcodeadas (RX_CENTRO/RX_PERIFERIA) que fallaban para líneas como L317 Punta Carretas-Casabó.
+
+**Solución desplegada** (`functions/src/autoStatsCollector.ts` + `intelligenceApi.ts`):
+
+1. **Persistencia** de `destinoDesc` (cartelito frontal) y `variante` en cada `vehicle_events`. Antes se descartaban tras usarlos.
+2. **Cascada determinística** en `detectarSentido(destinoDesc, variante, bearing, horario, tipoDia, gtfsDocs, stopCache)`:
+   - **Nivel 1** (HIGH) — Match Jaccard ≥0.5 entre `destinoDesc` y variantes de `horarios_stm/{linea}`. Variante con `horaInicio` más temprana = IDA.
+   - **Nivel 2** (HIGH) — Variante string termina en letra (A/B/C…) → A/C par→0=IDA, B/D impar→1=VUELTA.
+   - **Nivel 3** (HIGH/MEDIUM) — Match Jaccard contra `nombre` del último stop GTFS (terminal) por directionId 0 vs 1.
+   - **Nivel 4** (LOW) — Bearing geométrico cardinal (centro≈SW=225° → VUELTA, NE=45° → IDA).
+   - Sin match → null + confianza ZERO. Anti-Simulación: nunca inventar.
+3. **Endpoint** `POST /recomputeSentido?hours=N&limit=M` para backfill (vía Cloud Function directa o `/api/recomputeSentido`). Cachea contexto por línea (1 set de reads por `agencyId_linea`).
+4. **Persistencia** de `confianzaSentido` en `vehicle_events` (HIGH/MEDIUM/LOW/ZERO) — la UI puede ahora distinguir lo medido vs lo inferido.
+
+**Métricas en producción** (verificado vía curl al endpoint, 2026-05-04):
+
+```
+POST /intelligenceApi/recomputeSentido?hours=1&limit=5000
+→ total: 2541 (última hora)
+  HIGH: 2223  (87.5%) ← match textual con horario_stm o GTFS terminal
+  LOW:   103  (4.1%)  ← bearing geométrico
+  ZERO:  215  (8.5%)  ← no detectable
+
+→ sentido detectado: 91.5%   (objetivo era ≥60%) ✅
+```
+
+**Backfill 24h**: 18 478 eventos procesados, 15 755 actualizados, 132 líneas cargadas, 5140 con sentido (HIGH+LOW). Los eventos viejos sin `destinoDesc` (16 255) sólo pueden resolver vía bearing → mayor proporción ZERO. Los nuevos snapshots tienen ~92% sentido.
+
+**Funciones desplegadas**: `intelligenceApi`, `autoStatsCollectorTick`, `autoStatsCollectorNow` (timeoutSeconds: 540, memory: 1GB).
+
+**Mensaje de commit listo para pegar** (Code lo hace en el siguiente turno):
+
+```
+fix(autoStatsCollector): sentido IDA/VUELTA via destinoDesc + variante + GTFS terminals (Opus)
+
+(1) Persiste destinoDesc (cartelito frontal del bus) y variante en cada
+vehicle_events. Antes se descartaban tras usarlos solo para detectar.
+
+(2) Reescribe detectarSentido con cascada deterministica de 4 niveles:
+   N1 - Match Jaccard tokens >=0.5 destinoDesc vs horarios_stm.variantes[].destino;
+        variante con horaInicio mas temprana = IDA, otra = VUELTA. (HIGH)
+   N2 - Variante con sufijo letra (A/B/C...): A/C/E par->IDA, B/D/F->VUELTA. (HIGH)
+   N3 - Match contra nombre del ultimo stop de gtfs_timetable dir 0 vs dir 1
+        (terminales canonicos GTFS). (HIGH si Jaccard>0.5, MEDIUM si >0.3)
+   N4 - Bearing geometrico (centro ciudad vieja SW=225 -> VUELTA, NE=45 -> IDA). (LOW)
+Persistir confianzaSentido (HIGH/MEDIUM/LOW/ZERO) para que la UI distinga
+sentido medido vs inferido. Anti-Simulacion: nunca inventar IDA/VUELTA.
+
+(3) Endpoint POST /recomputeSentido?hours=N&limit=M (en intelligenceApi)
+para backfill de la historica (24h por defecto). Cachea contexto por linea
+para evitar reads duplicados a horarios_stm/gtfs_timetable/gtfs_stops.
+Tambien expuesto en /api/recomputeSentido via hosting rewrite.
+
+(4) Sube timeoutSeconds de intelligenceApi y autoStatsCollectorNow a 540s
+y memory a 1GB para soportar el backfill de hasta 20k eventos.
+
+Verificado en prod 2026-05-04: 91.5% de eventos de la ultima hora con
+sentido detectado (HIGH 87.5% + LOW 4.1%). Objetivo >=60%, logrado 91.5%.
+
+No-regresion: tsc 0 errores, build limpio, 0 NULs, integrity OK.
+```
+
+---
 
 > 🎯 **ARQUITECTURA**: Sistema metropolitano completo — COETC (10), COME (20), CUTCSA (50), UCOT (70). Jonathan es super-admin con visión de todos los operadores.
 

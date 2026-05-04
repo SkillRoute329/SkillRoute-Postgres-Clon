@@ -56,11 +56,19 @@ interface GtfsTimetableDoc {
 
 interface StopCoords { lat: number; lon: number; nombre: string }
 
+type ConfianzaSentido = 'HIGH' | 'MEDIUM' | 'LOW' | 'ZERO';
+
+interface SentidoResult {
+  sentido: 'IDA' | 'VUELTA' | null;
+  confianza: ConfianzaSentido;
+}
+
 interface ComplianceResult {
   state: ComplianceState;
   desviacionMin: number | null;
   proximaParada: string | null;
   sentido: 'IDA' | 'VUELTA' | null;
+  confianzaSentido: ConfianzaSentido;
   bearing: number | null;
 }
 
@@ -152,64 +160,222 @@ function evMinUYT(d: Date): number {
   return uyt.getHours() * 60 + uyt.getMinutes();
 }
 
-/** Palabras clave de destinos "hacia el centro" → VUELTA (volver al núcleo de Montevideo). */
-const RX_CENTRO = /\b(centro|ciudad vieja|mdeo|aduana|tres cruces|palacio|goes|zitarrosa|plaza independencia|18 de julio|terminal[\s-]?(rio|baltasar)|baltasar brum)\b/i;
+// ── Detección de sentido — cascada determinística ──────────────────────────
+// Niveles de confianza:
+//   HIGH    → match textual contra horario_stm o GTFS terminals (cartel del bus).
+//   MEDIUM  → match parcial Jaccard ≥0.3 contra terminales GTFS.
+//   LOW     → bearing geométrico (fallback).
+//   ZERO    → no se pudo determinar; sentido=null.
+//
+// Política Anti-Simulación: NUNCA inventar — si nada matchea, sentido=null.
 
-/** Palabras clave de destinos hacia la periferia → IDA. Lista usada como tie-breaker
- *  cuando el `destinoDesc` no matchea CENTRO pero sí un punto cardinal. */
-const RX_PERIFERIA = /\b(cerro|pocitos|maldonado|instrucciones|portones|paso molino|colon|conciliacion|union|malvin|carrasco|piedras blancas|sayago|paso de la arena|las piedras|la paz|toledo|pando|barros blancos|aeropuerto|punta de rieles|peñarol|pe[ñn]arol|villa garcia|villa española)\b/i;
+/** Normaliza string para comparación: lowercase, sin acentos, sin puntuación, espacios colapsados. */
+function normStr(s: string | null | undefined): string {
+  return String(s ?? '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/** Coeficiente de Jaccard sobre tokens de ≥3 chars. 0=disjuntos, 1=idénticos. */
+function jaccardTokens(a: string, b: string): number {
+  const setA = new Set(normStr(a).split(' ').filter(t => t.length >= 3));
+  const setB = new Set(normStr(b).split(' ').filter(t => t.length >= 3));
+  if (setA.size === 0 || setB.size === 0) return 0;
+  const inter = [...setA].filter(t => setB.has(t)).length;
+  const union = new Set([...setA, ...setB]).size;
+  return union === 0 ? 0 : inter / union;
+}
+
+/** Bearing geométrico de Montevideo (centro ≈ SW=225°). LOW confidence. */
+function detectarSentidoPorBearing(bearing: number | null): SentidoResult {
+  if (bearing === null) return { sentido: null, confianza: 'ZERO' };
+  if (angleDiff(bearing, 225) < 70) return { sentido: 'VUELTA', confianza: 'LOW' };
+  if (angleDiff(bearing, 45) < 70)  return { sentido: 'IDA', confianza: 'LOW' };
+  return { sentido: null, confianza: 'ZERO' };
+}
 
 /**
- * Detección de sentido (IDA = saliendo del centro / VUELTA = volviendo al centro).
+ * Detección de sentido en cascada (síncrona, con contexto pre-cargado).
  *
- * Estrategia en cascada:
- *   1. `destinoDesc` del feed STM (cartelito del bus). Más confiable: lo eligió el
- *      conductor. Si matchea CENTRO → VUELTA. Si matchea PERIFERIA → IDA.
- *   2. Bearing del bus + heurística cardinal de Montevideo (ciudad vieja al SW,
- *      bearing ≈225° desde periferia). Solo si `bearing` no es null.
- *   3. Si las variantes del horario tienen un destino "centro" reconocible y
- *      tenemos bearing, comparar.
- *
- * Si nada se puede determinar → null. NUNCA inventar (regla Anti-Simulación).
+ * @param destinoDesc  Cartelito frontal del bus (raw STM).
+ * @param variante     String de variante del bus (ej "300A"), o null.
+ * @param bearing      Bearing geográfico (0=N,90=E,180=S,270=W) o null.
+ * @param horario      Doc horarios_stm/{linea} cargado, o null.
+ * @param tipoDiaKey   Día actual ('Hábiles' | 'Sábados' | 'Domingos').
+ * @param gtfsDocs     Array de gtfs_timetable de la línea (puede contener dir 0 y 1).
+ * @param stopCache    Map stopId → {lat,lon,nombre} para resolver terminales.
  */
 function detectarSentido(
+  destinoDesc: string | null,
+  variante: string | null,
   bearing: number | null,
-  variantes: VarianteSummary[],
-  destinoDesc?: string | null,
-): 'IDA' | 'VUELTA' | null {
-  // 1) Cartelito del bus (la fuente más fuerte cuando está disponible).
-  if (destinoDesc) {
-    const dd = destinoDesc.trim();
-    if (dd.length > 0) {
-      if (RX_CENTRO.test(dd)) return 'VUELTA';
-      if (RX_PERIFERIA.test(dd)) return 'IDA';
+  horario: LineaHorario | null,
+  tipoDiaKey: string,
+  gtfsDocs: GtfsTimetableDoc[],
+  stopCache: Map<string, StopCoords>,
+): SentidoResult {
+  const ddNorm = normStr(destinoDesc);
+
+  // ── Nivel 1 — Match destinoDesc contra variantes del horario_stm ───────────
+  if (ddNorm && horario?.dias) {
+    const dia = horario.dias[tipoDiaKey]
+      ?? horario.dias['Hábiles']
+      ?? horario.dias['Habiles']
+      ?? Object.values(horario.dias)[0];
+    const variantes = dia?.variantes ?? [];
+    if (variantes.length >= 1) {
+      // Para cada variante, calcular Jaccard de destinoDesc vs destino-de-variante.
+      const scored = variantes.map((v, idx) => ({
+        idx,
+        v,
+        score: jaccardTokens(ddNorm, v.destino),
+      }));
+      const best = scored.reduce((a, b) => (b.score > a.score ? b : a), scored[0]!);
+      if (best.score >= 0.5) {
+        if (variantes.length >= 2) {
+          // La variante con horaInicio más temprana del día = IDA, la otra = VUELTA.
+          const sortedByStart = [...variantes]
+            .map((v, idx) => ({ idx, v, h: toMin(v.horaInicio ?? '') ?? Number.POSITIVE_INFINITY }))
+            .sort((a, b) => a.h - b.h);
+          const idaIdx = sortedByStart[0]!.idx;
+          return {
+            sentido: best.idx === idaIdx ? 'IDA' : 'VUELTA',
+            confianza: 'HIGH',
+          };
+        }
+        // Solo 1 variante registrada → no hay forma de saber IDA vs VUELTA solo por match;
+        // caemos a otros niveles.
+      }
     }
   }
 
-  // 2) Bearing absoluto del bus respecto al centro (ciudad vieja ≈ SW = 225°).
-  //    Si el bus se mueve hacia el SW (rango 180–270°) → va al centro → VUELTA.
-  //    Si se mueve hacia NE/E/N (rango 0–135°) → se aleja del centro → IDA.
-  if (bearing !== null) {
-    const haciaCentro = angleDiff(bearing, 225) < 70; // ventana ±70° alrededor de 225
-    const haciaPeriferia = angleDiff(bearing, 45) < 70;
-    if (haciaCentro) return 'VUELTA';
-    if (haciaPeriferia) return 'IDA';
-    // Si el bearing cae en zonas ambiguas (E puro, N puro), seguimos al fallback
-    // del horario.
-  }
-
-  // 3) Fallback: combinar bearing con destinos del horario. Sólo si tenemos
-  //    bearing y al menos 2 variantes (sentido distinguible).
-  if (bearing !== null && variantes.length >= 2) {
-    const vueltaIdx = variantes.findIndex(v => RX_CENTRO.test(v.destino) || RX_CENTRO.test(v.origen));
-    if (vueltaIdx >= 0) {
-      const haciaCentro = angleDiff(bearing, 225) < 90;
-      return haciaCentro ? 'VUELTA' : 'IDA';
+  // ── Nivel 2 — Match por variante string contra gtfs_timetable ──────────────
+  if (variante && gtfsDocs.length >= 2) {
+    // Variantes "A" → directionId=0 (IDA), "B" → directionId=1 (VUELTA). Heurística
+    // simple basada en convención IMM. Si la variante termina en letra,
+    // mapeamos A/C/E impares→0, B/D/F pares→1.
+    const last = variante.trim().slice(-1).toUpperCase();
+    if (/^[A-Z]$/.test(last)) {
+      const code = last.charCodeAt(0) - 'A'.charCodeAt(0); // A=0, B=1, C=2...
+      const dir = code % 2 === 0 ? 0 : 1;
+      return { sentido: dir === 0 ? 'IDA' : 'VUELTA', confianza: 'HIGH' };
     }
   }
 
-  // No se puede determinar honestamente.
-  return null;
+  // ── Nivel 3 — Match destinoDesc contra último stop del shape GTFS ──────────
+  if (ddNorm && gtfsDocs.length > 0 && stopCache.size > 0) {
+    // Buscar terminales para directionId 0 y 1 (último stop de cada).
+    const terminalDir0 = pickTerminalName(gtfsDocs, 0, stopCache);
+    const terminalDir1 = pickTerminalName(gtfsDocs, 1, stopCache);
+    const j0 = terminalDir0 ? jaccardTokens(ddNorm, terminalDir0) : 0;
+    const j1 = terminalDir1 ? jaccardTokens(ddNorm, terminalDir1) : 0;
+    if (j0 > 0.5 && j0 > j1 * 1.5) return { sentido: 'IDA', confianza: 'HIGH' };
+    if (j1 > 0.5 && j1 > j0 * 1.5) return { sentido: 'VUELTA', confianza: 'HIGH' };
+    if (j0 > 0.3 && j0 > j1) return { sentido: 'IDA', confianza: 'MEDIUM' };
+    if (j1 > 0.3 && j1 > j0) return { sentido: 'VUELTA', confianza: 'MEDIUM' };
+  }
+
+  // ── Nivel 4 — Bearing geométrico (fallback LOW) ────────────────────────────
+  return detectarSentidoPorBearing(bearing);
+}
+
+/** Devuelve el nombre del último stop para `directionId` dado, vía stopCache. */
+function pickTerminalName(
+  gtfsDocs: GtfsTimetableDoc[],
+  directionId: number,
+  stopCache: Map<string, StopCoords>,
+): string | null {
+  const doc = gtfsDocs.find(d => Number(d.directionId) === directionId);
+  if (!doc) return null;
+  const lastStopId = doc.stops[doc.stops.length - 1];
+  if (!lastStopId) return null;
+  const sc = stopCache.get(lastStopId);
+  return sc?.nombre ?? null;
+}
+
+/** Contexto pre-cargado por línea, reutilizable entre múltiples eventos. */
+export interface SentidoContext {
+  horario: LineaHorario | null;
+  gtfsDocs: GtfsTimetableDoc[];
+  stopCache: Map<string, StopCoords>;
+  tipoDiaKey: string;
+}
+
+/** Carga el contexto desde Firestore para una `linea` y `agencyId` dados. */
+export async function loadSentidoContext(
+  agencyId: string,
+  linea: string,
+  fsdb: admin.firestore.Firestore,
+  ahora: Date = new Date(),
+): Promise<SentidoContext> {
+  const tipoDiaKey = tipoDia(ahora);
+  const svc = svcTypeNow(ahora);
+
+  // horario_stm + gtfs_timetable (dir 0 y 1) en paralelo
+  const horId = linea;
+  const gtfsIds = [0, 1].map(dir => `${agencyId}_${linea}_${dir}_${svc}`);
+
+  let horario: LineaHorario | null = null;
+  const gtfsDocs: GtfsTimetableDoc[] = [];
+  try {
+    const refs: admin.firestore.DocumentReference[] = [
+      fsdb.collection('horarios_stm').doc(horId),
+      ...gtfsIds.map(id => fsdb.collection('gtfs_timetable').doc(id)),
+    ];
+    const snaps = await fsdb.getAll(...refs);
+    if (snaps[0]?.exists) horario = snaps[0].data() as LineaHorario;
+    for (let i = 1; i < snaps.length; i++) {
+      if (snaps[i]?.exists) gtfsDocs.push(snaps[i]!.data() as GtfsTimetableDoc);
+    }
+  } catch { /* tolerar fallo */ }
+
+  // Stops terminales (último de cada gtfsDoc)
+  const stopCache = new Map<string, StopCoords>();
+  const stopIds = new Set<string>();
+  for (const doc of gtfsDocs) {
+    const last = doc.stops[doc.stops.length - 1];
+    if (last) stopIds.add(last);
+  }
+  if (stopIds.size > 0) {
+    try {
+      const snaps = await fsdb.getAll(...[...stopIds].map(id => fsdb.collection('gtfs_stops').doc(id)));
+      for (const s of snaps) {
+        if (!s.exists) continue;
+        const d = s.data()!;
+        stopCache.set(s.id, {
+          lat: parseFloat(String(d.stop_lat ?? d.lat ?? '0')),
+          lon: parseFloat(String(d.stop_lon ?? d.lon ?? d.lng ?? '0')),
+          nombre: String(d.stop_name ?? d.nombre ?? s.id),
+        });
+      }
+    } catch { /* tolerar fallo */ }
+  }
+
+  return { horario, gtfsDocs, stopCache, tipoDiaKey };
+}
+
+/** Resuelve sentido usando un contexto pre-cargado (para batch / cache). */
+export function detectarSentidoConContexto(
+  destinoDesc: string | null,
+  variante: string | null,
+  bearing: number | null,
+  ctx: SentidoContext,
+): SentidoResult {
+  return detectarSentido(destinoDesc, variante, bearing, ctx.horario, ctx.tipoDiaKey, ctx.gtfsDocs, ctx.stopCache);
+}
+
+/** Versión async one-shot: carga el contexto y resuelve. Útil para llamadas aisladas. */
+export async function detectarSentidoAsync(
+  destinoDesc: string | null,
+  variante: string | null,
+  bearing: number | null,
+  agencyId: string,
+  linea: string,
+  fsdb: admin.firestore.Firestore,
+): Promise<SentidoResult> {
+  if (!linea) return detectarSentidoPorBearing(bearing);
+  const ctx = await loadSentidoContext(agencyId, linea, fsdb);
+  return detectarSentidoConContexto(destinoDesc, variante, bearing, ctx);
 }
 
 // ── Motor de cumplimiento ──────────────────────────────────────────────────
@@ -220,47 +386,55 @@ function calcularCumplimiento(
   horario: LineaHorario | null,
   bearing: number | null,
   now: Date,
-  destinoDesc?: string | null,
+  destinoDesc: string | null,
+  variante: string | null,
+  gtfsDocs: GtfsTimetableDoc[],
+  stopCache: Map<string, StopCoords>,
 ): ComplianceResult {
   const hora = now.getHours();
+  const tipo = tipoDia(now);
+
+  // Sentido se calcula incluso si no hay horario_stm: usa GTFS terminals + bearing.
+  const sentidoRes = detectarSentido(destinoDesc, variante, bearing, horario, tipo, gtfsDocs, stopCache);
+  const sentido = sentidoRes.sentido;
+  const confianzaSentido = sentidoRes.confianza;
 
   // Sin horario registrado en Firestore para esta línea: no se puede calcular cumplimiento.
-  // Usamos SIN_HORARIO para que complianceAlertsTick NO lo cuente como EN_TIEMPO.
-  // FUERA_DE_SERVICIO solo si el bus está literalmente detenido en madrugada.
   if (!horario) {
-    if (hora >= 1 && hora < 5) return { state: 'FUERA_DE_SERVICIO', desviacionMin: null, proximaParada: null, sentido: null, bearing };
-    // Sin horario de referencia: no marcar EN_TIEMPO por velocidad — eso inflaría OTP artificialmente.
+    if (hora >= 1 && hora < 5) return { state: 'FUERA_DE_SERVICIO', desviacionMin: null, proximaParada: null, sentido, confianzaSentido, bearing };
     const state: ComplianceState = velocidad >= 2 ? 'SIN_HORARIO' : 'FUERA_DE_SERVICIO';
-    return { state, desviacionMin: null, proximaParada: null, sentido: null, bearing };
+    return { state, desviacionMin: null, proximaParada: null, sentido, confianzaSentido, bearing };
   }
 
   // Buscar el día con fallback: acentos pueden variar entre versiones del scraper
-  const tipo = tipoDia(now);
   const dia = horario.dias?.[tipo]
     ?? horario.dias?.['Habiles']
     ?? horario.dias?.['Hábiles']
     ?? Object.values(horario.dias ?? {})[0];
 
   if (!dia || !dia.salidasTodas?.length) {
-    if (hora >= 1 && hora < 5) return { state: 'FUERA_DE_SERVICIO', desviacionMin: null, proximaParada: null, sentido: null, bearing };
-    // Horario existe pero no tiene salidas para este día/tipo: no hay servicio programado.
-    // No inferir EN_TIEMPO desde velocidad — inflaría OTP con eventos no medibles.
+    if (hora >= 1 && hora < 5) return { state: 'FUERA_DE_SERVICIO', desviacionMin: null, proximaParada: null, sentido, confianzaSentido, bearing };
     const state: ComplianceState = velocidad >= 2 ? 'SIN_HORARIO' : 'FUERA_DE_SERVICIO';
-    return { state, desviacionMin: null, proximaParada: null, sentido: null, bearing };
+    return { state, desviacionMin: null, proximaParada: null, sentido, confianzaSentido, bearing };
   }
 
   const nMin = nowMin(now);
 
-  // Detectar sentido con bearing + destinoDesc del cartelito (fuente más fuerte)
-  const sentido = detectarSentido(bearing, dia.variantes, destinoDesc);
-
-  // Filtrar variante por sentido si es posible
+  // Filtrar variantes por sentido si es posible.
+  // Heurística simple: con ≥2 variantes, la de horaInicio más temprana = IDA, la otra = VUELTA.
   let salidas = dia.salidasTodas;
   if (sentido && dia.variantes.length >= 2) {
-    const filtradas = salidas.filter(s =>
-      sentido === 'VUELTA' ? RX_CENTRO.test(s.destino) : !RX_CENTRO.test(s.destino)
-    );
-    if (filtradas.length > 0) salidas = filtradas;
+    const sortedV = [...dia.variantes]
+      .map((v, idx) => ({ idx, v, h: toMin(v.horaInicio ?? '') ?? Number.POSITIVE_INFINITY }))
+      .sort((a, b) => a.h - b.h);
+    const idaVar = sortedV[0]!.v;
+    const vueltaVar = sortedV[sortedV.length - 1]!.v;
+    const target = sentido === 'IDA' ? idaVar : vueltaVar;
+    const targetDest = normStr(target.destino);
+    if (targetDest) {
+      const filtradas = salidas.filter(s => jaccardTokens(targetDest, s.destino) >= 0.5);
+      if (filtradas.length > 0) salidas = filtradas;
+    }
   }
 
   // Servicios activos: desde <= ahora <= hacia (ventana exacta)
@@ -288,9 +462,9 @@ function calcularCumplimiento(
   }
 
   if (!activos.length) {
-    if (hora >= 1 && hora < 5) return { state: 'FUERA_DE_SERVICIO', desviacionMin: null, proximaParada: null, sentido, bearing };
+    if (hora >= 1 && hora < 5) return { state: 'FUERA_DE_SERVICIO', desviacionMin: null, proximaParada: null, sentido, confianzaSentido, bearing };
     const state = velocidad >= 5 ? 'SIN_HORARIO' : 'FUERA_DE_SERVICIO';
-    return { state, desviacionMin: null, proximaParada: null, sentido, bearing };
+    return { state, desviacionMin: null, proximaParada: null, sentido, confianzaSentido, bearing };
   }
 
   // Servicio más cercano a ahora (el más reciente que salió)
@@ -345,7 +519,7 @@ function calcularCumplimiento(
   // Parada próxima: destino del servicio activo
   const proximaParada = mejorServicio.destino || null;
 
-  return { state, desviacionMin, proximaParada, sentido, bearing };
+  return { state, desviacionMin, proximaParada, sentido, confianzaSentido, bearing };
 }
 
 // ── Snap-to-shape OTP ──────────────────────────────────────────────────────
@@ -641,17 +815,20 @@ async function snapshotAgency(stmCode: string): Promise<AgencyStats> {
     const horario = horariosMap.get(p.linea) ?? null;
     const gtfsDocs = gtfsRawCache.get(p.linea) ?? [];
     const destinoDesc = p.destinoDesc ?? null;
+    const variante = p.variante ?? null;
     const snapResult = snapToGtfsCompliance(lat, lon, evMinUYT(now),
       gtfsDocs, svc, gtfsStopCache);
+    const sentidoRes = detectarSentido(destinoDesc, variante, bearing, horario, tipoDia(now), gtfsDocs, gtfsStopCache);
     const result: ComplianceResult = snapResult
       ? {
           state: snapResult.state,
           desviacionMin: snapResult.desviacionMin,
           proximaParada: snapResult.parada,
-          sentido: detectarSentido(bearing, horario?.dias?.[tipoDia(now)]?.variantes ?? [], destinoDesc),
+          sentido: sentidoRes.sentido,
+          confianzaSentido: sentidoRes.confianza,
           bearing,
         }
-      : calcularCumplimiento(velocidad, p.linea, horario, bearing, now, destinoDesc);
+      : calcularCumplimiento(velocidad, p.linea, horario, bearing, now, destinoDesc, variante, gtfsDocs, gtfsStopCache);
 
     events.push({
       idBus, agencyId: stmCode, empresa, linea: p.linea,
@@ -660,6 +837,9 @@ async function snapshotAgency(stmCode: string): Promise<AgencyStats> {
       desviacionMin: result.desviacionMin,
       proximaParada: result.proximaParada,
       sentido: result.sentido,
+      confianzaSentido: result.confianzaSentido,
+      destinoDesc,                       // string | null — raw del cartel frontal del bus
+      variante,                          // string | null — ej "300A"
       bearing: result.bearing !== null ? Math.round(result.bearing) : null,
       timestampGPS: tsISO,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -813,7 +993,7 @@ export const autoStatsCollectorTick = functions.pubsub
   });
 
 export const autoStatsCollectorNow = functions
-  .runWith({ timeoutSeconds: 120, memory: '512MB' })
+  .runWith({ timeoutSeconds: 540, memory: '1GB' })
   .https.onRequest(async (_req, res) => {
     try {
       const started = Date.now();

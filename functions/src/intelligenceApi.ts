@@ -10,6 +10,7 @@ import { registerUcotPortalRoutes } from './api/ucotPortal';
 import { registerCartonesConsultaRoutes } from './api/cartonesConsulta';
 import { registerListeroRoutes } from './api/listero';
 import { registerAdminSeedRoutes } from './api/adminSeeds';
+import { detectarSentidoConContexto, loadSentidoContext, type SentidoContext } from './autoStatsCollector';
 
 const app = express();
 app.use(cors({ origin: true }));
@@ -873,8 +874,110 @@ app.post('/api/ai/orders/:id/reject', async (req, res) => {
   }
 });
 
+// ─── RECOMPUTE SENTIDO (backfill 24h) ────────────────────────────────────────
+// Recalcula el campo `sentido` y `confianzaSentido` de vehicle_events recientes
+// usando la cascada nueva (destinoDesc + variante + GTFS terminals + bearing).
+// Útil para corregir la histórica donde el ~99% quedó null por las regex viejas.
+//
+// Uso: POST /recomputeSentido?hours=24[&limit=5000]
+//   - Vía Cloud Function directa: POST https://us-central1-<project>.cloudfunctions.net/intelligenceApi/recomputeSentido
+//   - Vía Hosting rewrite: POST https://<site>/api/recomputeSentido
+const recomputeSentidoHandler: express.RequestHandler = async (req, res) => {
+  try {
+    const hours = Math.max(1, Math.min(72, Number(req.query.hours ?? 6)));
+    const limit = Math.max(1, Math.min(20000, Number(req.query.limit ?? 5000)));
+    const cutoff = new Date(Date.now() - hours * 3600 * 1000).toISOString();
+    const fsdb = getDb();
+
+    const snap = await fsdb.collection('vehicle_events')
+      .where('timestampGPS', '>=', cutoff)
+      .orderBy('timestampGPS', 'asc')
+      .limit(limit)
+      .get();
+
+    // Cache de contexto por `${agencyId}_${linea}` para evitar reads redundantes.
+    const ctxCache = new Map<string, SentidoContext>();
+    async function getCtx(agencyId: string, linea: string): Promise<SentidoContext> {
+      const key = `${agencyId}_${linea}`;
+      let ctx = ctxCache.get(key);
+      if (!ctx) {
+        ctx = await loadSentidoContext(agencyId, linea, fsdb);
+        ctxCache.set(key, ctx);
+      }
+      return ctx;
+    }
+
+    let updated = 0;
+    let sinCambio = 0;
+    let sinDestino = 0;
+    const conteoConfianza: Record<string, number> = { HIGH: 0, MEDIUM: 0, LOW: 0, ZERO: 0 };
+
+    let batch = fsdb.batch();
+    let pending = 0;
+    const FLUSH_EVERY = 400;
+
+    for (const docSnap of snap.docs) {
+      const d = docSnap.data() as Record<string, any>;
+      if (!d.destinoDesc) sinDestino++;
+
+      const linea = String(d.linea ?? '');
+      const agencyId = String(d.agencyId ?? '');
+      if (!linea) { sinCambio++; continue; }
+
+      const ctx = await getCtx(agencyId, linea);
+      const result = detectarSentidoConContexto(
+        d.destinoDesc ?? null,
+        d.variante ?? null,
+        typeof d.bearing === 'number' ? d.bearing : null,
+        ctx,
+      );
+
+      conteoConfianza[result.confianza] = (conteoConfianza[result.confianza] ?? 0) + 1;
+
+      const cambio = (result.sentido ?? null) !== (d.sentido ?? null)
+                  || (result.confianza ?? null) !== (d.confianzaSentido ?? null);
+      if (cambio) {
+        batch.update(docSnap.ref, {
+          sentido: result.sentido,
+          confianzaSentido: result.confianza,
+        });
+        pending++;
+        updated++;
+        if (pending >= FLUSH_EVERY) {
+          await batch.commit();
+          batch = fsdb.batch();
+          pending = 0;
+        }
+      } else {
+        sinCambio++;
+      }
+    }
+
+    if (pending > 0) await batch.commit();
+
+    res.json({
+      ok: true,
+      total: snap.size,
+      updated,
+      sinCambio,
+      sinDestinoDesc: sinDestino,
+      lineasCargadas: ctxCache.size,
+      confianza: conteoConfianza,
+      hours,
+      cutoff,
+    });
+  } catch (err: any) {
+    console.error('[recomputeSentido] Error:', err);
+    res.status(500).json({ ok: false, error: err?.message ?? String(err) });
+  }
+};
+app.post('/recomputeSentido', recomputeSentidoHandler);
+app.post('/api/recomputeSentido', recomputeSentidoHandler);
+
 // ─── EXPORT CLOUD FUNCTION ───────────────────────────────────────────────────
+// timeoutSeconds aumentado a 540 (max gen1) para soportar /recomputeSentido
+// con cargas de hasta 20k eventos y memory bumped por el cache de contexto.
 export const intelligenceApi = functions
-  .runWith({ timeoutSeconds: 120, memory: '512MB' })
+  .runWith({ timeoutSeconds: 540, memory: '1GB' })
   .https.onRequest(app);
 
