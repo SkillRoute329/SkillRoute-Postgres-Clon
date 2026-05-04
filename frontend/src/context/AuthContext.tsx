@@ -107,7 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 internalNumber: userData?.datos_empresa?.legajo || '----',
                 firstName: userData?.datos_personales?.nombre || finalUser.firstName,
                 lastName: userData?.datos_personales?.apellido || '',
-                role: userData?.rol || prevRole || 'USER',
+                role: (userData?.rol ?? userData?.role) || prevRole || 'USER',
               };
             } else if (lastErr) {
               throw lastErr;
