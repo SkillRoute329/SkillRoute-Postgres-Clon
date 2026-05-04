@@ -244,9 +244,25 @@ export default function CumplimientoPorLineaPro() {
       const sent = sRaw === 'IDA' || sRaw === 'VUELTA' ? sRaw : null;
       const conHorario = evs.filter(e => e.estadoCumplimiento !== 'SIN_HORARIO');
       const base = conHorario.length || evs.length;
-      const enT = conHorario.filter(e => e.estadoCumplimiento === 'EN_TIEMPO').length;
-      const atr = conHorario.filter(e => e.estadoCumplimiento === 'ATRASADO').length;
-      const adl = conHorario.filter(e => e.estadoCumplimiento === 'ADELANTADO').length;
+      // Política unificada (docs/POLITICA_OTP_UNIFICADA.md):
+      // EN_TIEMPO = estado backend O |desv| <= 4 min (TCRP 165 / IMM Uruguay).
+      // Coherente con auditoriaService.ts y SalidaTimelineModal.tsx.
+      const TOL_EN_TIEMPO_MIN = 4;
+      const inTime = (e: VehicleEvent) =>
+        e.estadoCumplimiento === 'EN_TIEMPO' ||
+        (typeof e.desviacionMin === 'number' && Math.abs(e.desviacionMin) <= TOL_EN_TIEMPO_MIN);
+
+      const enT = conHorario.filter(inTime).length;
+      // Atrasado estricto: estado === ATRASADO Y desv > +4 (no se solapa con enT)
+      const atr = conHorario.filter(e =>
+        e.estadoCumplimiento === 'ATRASADO' &&
+        (typeof e.desviacionMin !== 'number' || e.desviacionMin > TOL_EN_TIEMPO_MIN)
+      ).length;
+      // Adelantado estricto: estado === ADELANTADO Y desv < -4
+      const adl = conHorario.filter(e =>
+        e.estadoCumplimiento === 'ADELANTADO' &&
+        (typeof e.desviacionMin !== 'number' || e.desviacionMin < -TOL_EN_TIEMPO_MIN)
+      ).length;
       const sin = evs.length - conHorario.length;
       const coches = new Set(evs.map(e => e.idBus));
       lista.push({
