@@ -937,7 +937,7 @@ app.post('/api/recomputeSentido', recomputeSentidoHandler);
 // modo que getAuth().currentUser !== null y las reglas Firestore que requieren
 // isAuthenticated() pasen sin tener que abrir colecciones a `read: if true`.
 app.post('/api/auth/login', async (req, res) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y;
     try {
         // Acepta internalNumber, username o interno — compatibilidad con SW cacheado
         const internalNumber = String((_f = (_d = (_b = (_a = req.body) === null || _a === void 0 ? void 0 : _a.internalNumber) !== null && _b !== void 0 ? _b : (_c = req.body) === null || _c === void 0 ? void 0 : _c.username) !== null && _d !== void 0 ? _d : (_e = req.body) === null || _e === void 0 ? void 0 : _e.interno) !== null && _f !== void 0 ? _f : '').trim();
@@ -1007,10 +1007,18 @@ app.post('/api/auth/login', async (req, res) => {
             firestoreData = match.data;
             docPath = match.id;
         }
-        const data = firestoreData !== null && firestoreData !== void 0 ? firestoreData : {};
         const uid = firebaseUid !== null && firebaseUid !== void 0 ? firebaseUid : `emp_${internalNumber}`;
-        const role = String((_l = (_k = data.role) !== null && _k !== void 0 ? _k : data.rol) !== null && _l !== void 0 ? _l : 'USER').toUpperCase();
-        const agencyId = String((_m = data.agencyId) !== null && _m !== void 0 ? _m : '70');
+        // Cuando Firebase Auth verificó, firestoreData es null — leer users/{uid}
+        // para obtener role real (ej. superadmin) y agencyId.
+        if (firebaseUid && !firestoreData) {
+            const userSnap = await db.collection('users').doc(firebaseUid).get();
+            if (userSnap.exists)
+                firestoreData = userSnap.data();
+        }
+        const data = firestoreData !== null && firestoreData !== void 0 ? firestoreData : {};
+        // Normalizar a lowercase (ej. 'superadmin', 'admin', 'traffic', 'driver')
+        const role = String((_l = (_k = data.role) !== null && _k !== void 0 ? _k : data.rol) !== null && _l !== void 0 ? _l : 'user').toLowerCase();
+        const agencyId = String((_o = (_m = data.agencyId) !== null && _m !== void 0 ? _m : data.empresa) !== null && _o !== void 0 ? _o : '70');
         const claims = { role, agencyId, internalNumber };
         const customToken = await admin.auth().createCustomToken(uid, claims);
         // Asegurar que el documento `users/{uid}` exista con la forma esperada por
@@ -1018,12 +1026,12 @@ app.post('/api/auth/login', async (req, res) => {
         await db.collection('users').doc(uid).set({
             internalNumber,
             legajo: internalNumber,
-            rol: (_o = data.rol) !== null && _o !== void 0 ? _o : role,
+            rol: (_p = data.rol) !== null && _p !== void 0 ? _p : role,
             role,
             agencyId,
-            fullName: (_q = (_p = data.fullName) !== null && _p !== void 0 ? _p : data.nombre) !== null && _q !== void 0 ? _q : null,
-            nombre: (_r = data.nombre) !== null && _r !== void 0 ? _r : null,
-            apellido: (_s = data.apellido) !== null && _s !== void 0 ? _s : null,
+            fullName: (_r = (_q = data.fullName) !== null && _q !== void 0 ? _q : data.nombre) !== null && _r !== void 0 ? _r : null,
+            nombre: (_s = data.nombre) !== null && _s !== void 0 ? _s : null,
+            apellido: (_t = data.apellido) !== null && _t !== void 0 ? _t : null,
             sourceDoc: docPath,
             loginAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
@@ -1035,15 +1043,15 @@ app.post('/api/auth/login', async (req, res) => {
                 internalNumber,
                 role,
                 agencyId,
-                fullName: (_u = (_t = data.fullName) !== null && _t !== void 0 ? _t : data.nombre) !== null && _u !== void 0 ? _u : null,
-                firstName: (_v = data.nombre) !== null && _v !== void 0 ? _v : null,
-                lastName: (_w = data.apellido) !== null && _w !== void 0 ? _w : null,
+                fullName: (_v = (_u = data.fullName) !== null && _u !== void 0 ? _u : data.nombre) !== null && _v !== void 0 ? _v : null,
+                firstName: (_w = data.nombre) !== null && _w !== void 0 ? _w : null,
+                lastName: (_x = data.apellido) !== null && _x !== void 0 ? _x : null,
             },
         });
     }
     catch (err) {
         console.error('[auth/login] Error:', err);
-        res.status(500).json({ ok: false, error: (_x = err === null || err === void 0 ? void 0 : err.message) !== null && _x !== void 0 ? _x : String(err) });
+        res.status(500).json({ ok: false, error: (_y = err === null || err === void 0 ? void 0 : err.message) !== null && _y !== void 0 ? _y : String(err) });
     }
 });
 // ─── EXPORT CLOUD FUNCTION ───────────────────────────────────────────────────

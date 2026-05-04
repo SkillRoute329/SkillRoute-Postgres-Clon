@@ -1054,10 +1054,19 @@ app.post('/api/auth/login', async (req, res) => {
       docPath = match.id;
     }
 
-    const data = firestoreData ?? {};
     const uid = firebaseUid ?? `emp_${internalNumber}`;
-    const role = String(data.role ?? data.rol ?? 'USER').toUpperCase();
-    const agencyId = String(data.agencyId ?? '70');
+
+    // Cuando Firebase Auth verificó, firestoreData es null — leer users/{uid}
+    // para obtener role real (ej. superadmin) y agencyId.
+    if (firebaseUid && !firestoreData) {
+      const userSnap = await db.collection('users').doc(firebaseUid).get();
+      if (userSnap.exists) firestoreData = userSnap.data() as Record<string, any>;
+    }
+
+    const data = firestoreData ?? {};
+    // Normalizar a lowercase (ej. 'superadmin', 'admin', 'traffic', 'driver')
+    const role = String(data.role ?? data.rol ?? 'user').toLowerCase();
+    const agencyId = String(data.agencyId ?? data.empresa ?? '70');
 
     const claims: Record<string, any> = { role, agencyId, internalNumber };
     const customToken = await admin.auth().createCustomToken(uid, claims);
