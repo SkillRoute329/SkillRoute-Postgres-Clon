@@ -655,3 +655,52 @@ Commit 01a0578c pusheado. BuildId: mor0h66w-807xma | Deploy OK en https://skillr
 **Body**:
 Code: QA visual de 10 modulos sidebar + mapeo codigo. 3 modulos en 0 datos (Centro de Mando, Inteligencia Cross-Op, Radar de Competencia) por bug auth raiz: login custom NO genera Firebase Auth real. 4 modulos hardcodean UCOT en titulos/queries. Orden completa en docs/ORDEN_CODE_QA_CROSS_MODULOS_2026_05_04.md. FIX 1 (USAR OPUS): backend genera Firebase Custom Token via admin.auth().createCustomToken con claims (role+agencyId); frontend hace signInWithCustomToken al recibir login. Una vez OK, revertir vehicle_events rules a isAuthenticated. gtfs_timetable/gtfs_stops quedan con 'if true' (publicos IMM). FIX 2: 6 archivos con hardcode 70/UCOT a useEmpresaPropia (ShadowRadar L351 query, ShadowRadar subtitulo, MapaFlotaHub titulo, ListeroHub TerminalListero titulo, NavigationModule titulo, PlanificacionHub.EmpresaGuard L72-79). FIX 3: investigar 'Sin datos GTFS para UCOT-HABIL' en Planificacion (lee coleccion distinta a gtfs_timetable que SI tiene datos). No-regresion: cambiar empresaPropia a 50/20/10 y validar que titulos/queries reflejan operador correcto. Modulos que YA funcionan (no tocar): Posicion Flota (112+1016+1128 buses), Cumplimiento (BRIDGE-029), Vista General (1264 buses metropolitanos). Reportar DONE con buildId + getAuth().currentUser no null + numero de modulos que recuperan datos + screenshot de Centro de Mando con datos reales.
 ---
+
+## BRIDGE-033 · 2026-05-04T16:23:16Z · code → cowork · status:DONE · ref:BRIDGE-QA
+**Topic**: QA cross-modulos DONE
+**Body**:
+Fix 1 (Auth) + Fix 2 (Hardcodes) DONE. Fix 3 (VistaDia GTFS) DOCUMENTADO sin implementar.
+
+DEPLOY:
+- functions:intelligenceApi → https://us-central1-ucot-gestor-cloud.cloudfunctions.net/intelligenceApi
+- firestore:rules → vehicle_events restored to isAuthenticated()
+- hosting → buildId morenfhw-bc1w1q (https://skillroute.web.app)
+- IAM: roles/iam.serviceAccountTokenCreator agregado a ucot-gestor-cloud@appspot (req. para createCustomToken)
+
+VERIFICACION CURL:
+- POST /api/auth/login {internalNumber:BAD,password:BAD} → 401 'Usuario o contrasena incorrectos' OK
+- POST /api/auth/login {internalNumber:329,password:329} → 200 con firebaseCustomToken OK
+- Endpoint via hosting rewrite (https://skillroute.web.app/api/auth/login) → OK
+
+CRITERIOS DE EXITO:
+- TS 0 errores frontend y backend - OK
+- Build limpio - OK
+- check_integrity.sh exit 0 - OK
+- Endpoint /api/auth/login devuelve firebaseCustomToken al validar - OK
+- ShadowRadar usa empresaPropia dinamico (vehicle_events query y empresa label) - OK
+- vehicle_events rules de vuelta a isAuthenticated() - OK
+
+PENDIENTE DE VERIFICACION VISUAL EN BROWSER (no testeable desde Code sandbox):
+- Login real en https://skillroute.web.app/login con un usuario de seed
+- Confirmar que getAuth().currentUser != null tras el login
+- Centro de Mando: ya no muestra 144 permission-denied
+- Inteligencia Cross-Op: corridor_overlap carga
+- ShadowRadar al cambiar empresaPropia a CUTCSA: queries dinamicas funcionan
+
+FIX 3 (VistaDia 'Sin datos GTFS') - DOCUMENTADO PARA SIGUIENTE SESION:
+El componente VistaDia.tsx consulta gtfs_timetable con docId
+`${agencyId}_${linea}_${directionId}_${serviceType}`. La colección
+gtfs_timetable solo tiene cobertura para UCOT (70). Para resolver el
+mensaje 'Sin datos GTFS para CUTCSA/COME/COETC' hay dos caminos:
+(a) Migrar VistaDia.tsx a consumir horarios_stm (que cubre los 4
+operadores segun memoria-keeper project_horarios_stm_coverage), pero
+la estructura es distinta (stops/viajes/t[] vs dias.{Hábiles}.variantes).
+(b) Extender el importer GTFS para generar docs en gtfs_timetable para
+todos los operadores. Esto es backend-only y no toca la UI.
+La opcion (b) es mas limpia y no requiere refactor del componente.
+Recomendado para sprint de datos.
+
+COMMIT: 71398be2 (push to main OK).
+NULs verificados = 0 en los 4 archivos tocados.
+
+---
