@@ -244,19 +244,26 @@ export default function CentroMandoUnificado() {
             .sort((a, b) => a.otp - b.otp)
             .slice(0, 3);
 
-          // Vehículos de esta empresa
+          // Vehículos de esta empresa (OR string/number — type mismatch Firestore)
           let totalVehiculos = 0;
           let vehiculosActivos = 0;
           try {
-            const vQuery = query(
-              collection(db, 'vehiculos'),
-              where('agencyId', '==', empresa.id),
-            );
-            const vSnap = await getDocs(vQuery);
-            totalVehiculos = vSnap.size;
-            vehiculosActivos = vSnap.docs.filter((d) =>
-              isVehiculoActivo(d.data() as VehiculoDoc),
-            ).length;
+            const [vSnapNum, vSnapStr] = await Promise.all([
+              getDocs(query(collection(db, 'vehiculos'), where('agencyId', '==', empresa.id))),
+              getDocs(query(collection(db, 'vehiculos'), where('agencyId', '==', String(empresa.id)))),
+            ]);
+            const seenVehs = new Set<string>();
+            const allVehs: VehiculoDoc[] = [];
+            for (const snap of [vSnapNum, vSnapStr]) {
+              for (const d of snap.docs) {
+                if (!seenVehs.has(d.id)) {
+                  seenVehs.add(d.id);
+                  allVehs.push(d.data() as VehiculoDoc);
+                }
+              }
+            }
+            totalVehiculos = allVehs.length;
+            vehiculosActivos = allVehs.filter(isVehiculoActivo).length;
           } catch {
             // Vehículos no disponibles para esta empresa
           }
