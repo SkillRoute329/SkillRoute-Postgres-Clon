@@ -13,13 +13,9 @@
  * Competencia: corridor_overlap (DRO cross-operador por línea)
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import {
-  fetchComplianceRealtime,
   fetchVehicleHistory,
-  type ComplianceResponse,
-  type BusComplianceResult,
-  type RouteSummary,
   type VehicleSummary,
 } from '../../services/autoStatsService';
 import {
@@ -44,8 +40,9 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { collection, getDocs, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc as firestoreDoc, getDoc, getDocs, orderBy, limit, query, where } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 
 /* ─── Constantes ──────────────────────────────────────── */
 
@@ -89,64 +86,101 @@ interface OverlapDoc {
   sameEmpresa: boolean;
 }
 
-interface ComplianceAlert {
-  linea: string;
-  empresa: string;
-  empresaNombre: string;
-  pctEnTiempo: number;
-  totalEventos: number;
-  nivel: 'CRITICO' | 'BAJO';
+interface ConductorInfo {
+  interno: number;
+  nombre: string;
+  turno: string | null;
+  servicio: number | null;
+  pctAdelantado?: number;
+  pctAtrasado?: number;
+  totalEventos?: number;
 }
 
-/* ─── Algoritmo de diagnóstico ────────────────────────── */
+interface VehicleEventDoc {
+  idBus: string;
+  empresa: string;
+  linea: string;
+  sentido: string | null;
+  estadoCumplimiento: string;
+  desviacionMin: number | null;
+  proximaParada: string | null;
+  timestampGPS: string;
+  velocidad: number;
+}
 
-function diagnosticarLinea(buses: BusComplianceResult[]): Diagnosis {
-  const conDatos = buses.filter(
-    (b) => b.desviacionMin !== null && b.estadoCumplimiento !== 'FUERA_DE_SERVICIO'
-  );
+interface BusHistStat {
+  idBus: string;
+  empresa: string;
+  sentido: string | null;
+  totalEventos: number;
+  pctEnTiempo: number;
+  pctAtrasado: number;
+  pctAdelantado: number;
+  desviacionMedia: number | null;
+  ultimaParada: string | null;
+  ultimoTimestamp: string;
+  ultimaVelocidad: number;
+}
+
+interface LineaHistStat {
+  linea: string;
+  sentido: string | null;
+  buses: BusHistStat[];
+  totalEventos: number;
+  busesActivos: number;
+  pctEnTiempo: number;
+  pctAtrasado: number;
+  pctAdelantado: number;
+  diagnosis: Diagnosis;
+}
+
+/* ─── Algoritmo de diagnóstico (sobre histórico 7 días) ── */
+
+function diagnosticarLineaHist(buses: BusHistStat[]): Diagnosis {
+  // Solo analizar buses con al menos 5 registros — menos es ruido estadístico
+  const conDatos = buses.filter((b) => b.totalEventos >= 5);
 
   if (conDatos.length === 0) {
     return {
       tipo: 'SIN_DATOS',
-      mensaje: 'Sin datos GPS suficientes',
+      mensaje: 'Sin datos GPS suficientes (últimos 7 días)',
       cochesProblema: [],
       accionSugerida: '—',
     };
   }
 
-  const problematicos = conDatos.filter(
-    (b) => (b.desviacionMin ?? 0) > 5 || (b.desviacionMin ?? 0) < -3
-  );
+  // Un bus es "problemático" si más del 30 % de sus pasadas son fuera de horario
+  const problematicos = conDatos.filter((b) => b.pctAtrasado + b.pctAdelantado > 30);
   const pct = problematicos.length / conDatos.length;
 
   if (pct >= 0.7) {
     return {
       tipo: 'LINEA',
-      mensaje: 'Problema estructural — todos los coches afectados',
+      mensaje: `Desvío generalizado — ${problematicos.length} de ${conDatos.length} coches con >30% de pasadas fuera de horario en 7 días`,
       cochesProblema: problematicos.map((b) => b.idBus),
-      accionSugerida: 'Revisar etapas con IMM / ajustar tiempo de cartón',
+      accionSugerida: 'Patrón estructural de la línea. Verificar tránsito del corredor y revisar cartón con IMM.',
     };
   }
   if (pct >= 0.3) {
     return {
       tipo: 'MIXTO',
-      mensaje: 'Patrón mixto — línea y conductores específicos',
+      mensaje: `Desvío parcial — ${problematicos.length} de ${conDatos.length} coches con incumplimiento consistente`,
       cochesProblema: problematicos.map((b) => b.idBus),
-      accionSugerida: 'Investigar tramos congestionados y conductores marcados',
+      accionSugerida: 'Monitorear. Puede ser tráfico en tramo específico o coches puntuales.',
     };
   }
   if (problematicos.length > 0) {
     return {
       tipo: 'COCHE',
-      mensaje: `Problema de coche/conductor específico (${problematicos.length} de ${conDatos.length})`,
+      mensaje: `${problematicos.length} coche${problematicos.length > 1 ? 's' : ''} con desvío mayor al resto de la línea`,
       cochesProblema: problematicos.map((b) => b.idBus),
-      accionSugerida: 'Revisar con RRHH — los demás coches de la línea cumplen',
+      accionSugerida: 'Revisar con el operario — posible conducción irregular o demora justificada.',
     };
   }
 
   return {
     tipo: 'OK',
-    mensaje: 'Servicio dentro de parámetros normales',
+    mensaje: 'Todos los coches dentro del horario en los últimos 7 días',
     cochesProblema: [],
     accionSugerida: '—',
   };
@@ -165,19 +199,19 @@ function badgeDiagnosis(tipo: TipoDiagnosis) {
     case 'LINEA':
       return (
         <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-red-500/10 text-red-400">
-          Problema de línea
+          Desvío generalizado
         </span>
       );
     case 'COCHE':
       return (
         <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-orange-500/10 text-orange-400">
-          Problema de coche
+          Desvío inusual
         </span>
       );
     case 'MIXTO':
       return (
         <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-yellow-500/10 text-yellow-400">
-          Mixto
+          Desvío parcial
         </span>
       );
     case 'SIN_DATOS':
@@ -189,40 +223,6 @@ function badgeDiagnosis(tipo: TipoDiagnosis) {
   }
 }
 
-function badgeEstado(estado: BusComplianceResult['estadoCumplimiento']) {
-  switch (estado) {
-    case 'EN_TIEMPO':
-      return (
-        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-500/10 text-emerald-400">
-          En tiempo
-        </span>
-      );
-    case 'ATRASADO':
-      return (
-        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-red-500/10 text-red-400">
-          Atrasado
-        </span>
-      );
-    case 'ADELANTADO':
-      return (
-        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-orange-500/10 text-orange-400">
-          Adelantado
-        </span>
-      );
-    case 'SIN_HORARIO':
-      return (
-        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-slate-700 text-slate-400">
-          Sin horario
-        </span>
-      );
-    case 'FUERA_DE_SERVICIO':
-      return (
-        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-slate-800 text-slate-500">
-          Fuera de servicio
-        </span>
-      );
-  }
-}
 
 function desviacionLabel(desv: number | null): React.ReactNode {
   if (desv === null) return <span className="text-slate-500">—</span>;
@@ -275,14 +275,95 @@ function tiempoActualizado(timestamp: string): string {
   return `hace ${diff} min`;
 }
 
+function formatFechaHora(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('es-UY', {
+      timeZone: 'America/Montevideo',
+      day: '2-digit', month: '2-digit',
+      hour: '2-digit', minute: '2-digit',
+    });
+  } catch {
+    return '—';
+  }
+}
+
+function formatHoraUY(iso: string): string {
+  try {
+    return new Date(iso).toLocaleTimeString('es-UY', {
+      timeZone: 'America/Montevideo',
+      hour: '2-digit', minute: '2-digit',
+    });
+  } catch { return '—'; }
+}
+
+// Hora programada = hora real GPS menos la desviación detectada
+function computeHoraPrevista(timestampGPS: string, desviacionMin: number | null): string {
+  if (desviacionMin === null) return '—';
+  try {
+    const scheduled = new Date(new Date(timestampGPS).getTime() - desviacionMin * 60_000);
+    return scheduled.toLocaleTimeString('es-UY', {
+      timeZone: 'America/Montevideo',
+      hour: '2-digit', minute: '2-digit',
+    });
+  } catch { return '—'; }
+}
+
+// Semáforo de diferencia según tolerancia IMM ±4 min
+function diferenciaBadge(desv: number | null): React.ReactNode {
+  if (desv === null) return <span className="text-slate-500 text-xs">—</span>;
+  const abs = Math.abs(desv);
+  const signo = desv >= 0 ? '+' : '';
+  if (abs <= 4) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400">
+        <CheckCircle className="w-3 h-3" />{signo}{desv.toFixed(0)} min
+      </span>
+    );
+  }
+  if (abs <= 8) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-bold text-yellow-400">
+        <AlertTriangle className="w-3 h-3" />{signo}{desv.toFixed(0)} min
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-bold text-red-400">
+      <AlertTriangle className="w-3 h-3" />{signo}{desv.toFixed(0)} min
+    </span>
+  );
+}
+
+function badgeTendenciaConductor(info: ConductorInfo): React.ReactNode {
+  const { pctAdelantado = 0, pctAtrasado = 0, totalEventos = 0 } = info;
+  if (totalEventos < 20) return null;
+  if (pctAdelantado > 40) {
+    return (
+      <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 font-medium whitespace-nowrap">
+        ↑ Tiende adelantar
+      </span>
+    );
+  }
+  if (pctAtrasado > 40) {
+    return (
+      <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-medium whitespace-nowrap">
+        ↓ Tiende atrasar
+      </span>
+    );
+  }
+  return null;
+}
+
 /* ─── Sub-componente: Panel historial de coche ─────────── */
 
 interface PanelHistorialProps {
   idBus: string;
+  agencyId: string;
+  lineaContexto?: string;
   onCerrar: () => void;
 }
 
-function PanelHistorial({ idBus, onCerrar }: PanelHistorialProps) {
+function PanelHistorial({ idBus, agencyId, lineaContexto, onCerrar }: PanelHistorialProps) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<VehicleSummary | null>(null);
@@ -291,16 +372,26 @@ function PanelHistorial({ idBus, onCerrar }: PanelHistorialProps) {
     pctEnTiempo: number;
     eventos: number;
   }>>([]);
+  const [lineaKPIs, setLineaKPIs] = useState<{
+    pctEnTiempo: number;
+    pctAtrasado: number;
+    pctAdelantado: number;
+    desviacionMediaMin: number | null;
+    totalEventos: number;
+  } | null>(null);
 
   useEffect(() => {
     let cancelado = false;
     setCargando(true);
     setError(null);
 
-    fetchVehicleHistory(idBus, 7)
+    fetchVehicleHistory(idBus, 7, agencyId)
       .then((resp) => {
         if (cancelado) return;
         setSummary(resp.summary);
+
+        // Normaliza código de línea para comparación (elimina ceros a la izquierda)
+        const normLinea = (l: string) => String(l ?? '').trim().replace(/^0+/, '') || '0';
 
         const mapaLineas: Record<string, { total: number; enTiempo: number }> = {};
         for (const ev of resp.history) {
@@ -315,6 +406,35 @@ function PanelHistorial({ idBus, onCerrar }: PanelHistorialProps) {
         }));
         lineas.sort((a, b) => b.eventos - a.eventos);
         setLineasInfo(lineas);
+
+        // Si hay contexto de línea, calcular KPIs exclusivos de esa línea
+        if (lineaContexto) {
+          const filtrados = resp.history.filter(
+            ev => normLinea(ev.linea) === normLinea(lineaContexto)
+          );
+          if (filtrados.length > 0) {
+            const total = filtrados.length;
+            const enTiempo  = filtrados.filter(ev => ev.estadoCumplimiento === 'EN_TIEMPO').length;
+            const atrasado  = filtrados.filter(ev => ev.estadoCumplimiento === 'ATRASADO').length;
+            const adelantado = filtrados.filter(ev => ev.estadoCumplimiento === 'ADELANTADO').length;
+            const desvs = filtrados
+              .map(ev => (ev as { desviacionMin?: number | null }).desviacionMin ?? null)
+              .filter((v): v is number => v !== null);
+            const desviacionMediaMin = desvs.length > 0
+              ? Math.round((desvs.reduce((a, b) => a + b, 0) / desvs.length) * 10) / 10
+              : null;
+            setLineaKPIs({
+              pctEnTiempo:  Math.round((enTiempo  / total) * 100),
+              pctAtrasado:  Math.round((atrasado  / total) * 100),
+              pctAdelantado: Math.round((adelantado / total) * 100),
+              desviacionMediaMin,
+              totalEventos: total,
+            });
+          } else {
+            setLineaKPIs({ pctEnTiempo: 0, pctAtrasado: 0, pctAdelantado: 0, desviacionMediaMin: null, totalEventos: 0 });
+          }
+        }
+
         setCargando(false);
       })
       .catch(() => {
@@ -328,10 +448,16 @@ function PanelHistorial({ idBus, onCerrar }: PanelHistorialProps) {
   }, [idBus]);
 
   const conclusion = () => {
-    if (!summary) return null;
-    const { pctEnTiempo, desviacionMediaMin, lineasOperadas } = summary;
-    const nLineas = lineasOperadas?.length ?? lineasInfo.length;
-    const base = `Este coche tiene ${Math.round(pctEnTiempo)}% de cumplimiento en los últimos 7 días en ${nLineas} línea${nLineas !== 1 ? 's' : ''}.`;
+    const kpis = lineaContexto && lineaKPIs ? lineaKPIs : summary;
+    if (!kpis) return null;
+    const pctEnTiempo      = kpis.pctEnTiempo;
+    const desviacionMediaMin = kpis.desviacionMediaMin;
+    const base = lineaContexto
+      ? `Este coche tiene ${Math.round(pctEnTiempo)}% de cumplimiento en línea ${lineaContexto} en los últimos 7 días (${lineaKPIs?.totalEventos ?? 0} registros).`
+      : (() => {
+          const nLineas = (summary as VehicleSummary)?.lineasOperadas?.length ?? lineasInfo.length;
+          return `Este coche tiene ${Math.round(pctEnTiempo)}% de cumplimiento en los últimos 7 días en ${nLineas} línea${nLineas !== 1 ? 's' : ''}.`;
+        })();
 
     if (desviacionMediaMin !== null && desviacionMediaMin > 5) {
       return (
@@ -363,6 +489,11 @@ function PanelHistorial({ idBus, onCerrar }: PanelHistorialProps) {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-bold text-slate-200">
           Historial — Coche <span className="text-blue-400">{idBus}</span>
+          {lineaContexto && (
+            <span className="text-slate-400 font-normal ml-1">
+              en Línea <span className="text-blue-300">{lineaContexto}</span>
+            </span>
+          )}
           <span className="text-slate-500 font-normal ml-2">(últimos 7 días)</span>
         </h3>
         <button onClick={onCerrar} className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
@@ -378,36 +509,48 @@ function PanelHistorial({ idBus, onCerrar }: PanelHistorialProps) {
       )}
       {error && !cargando && <p className="text-red-400 text-sm">{error}</p>}
 
-      {!cargando && !error && summary && (
-        <>
+      {!cargando && !error && (lineaContexto ? lineaKPIs !== null : summary !== null) && (() => {
+        // Cuando hay contexto de línea y sin registros: mostrar estado vacío
+        if (lineaContexto && lineaKPIs?.totalEventos === 0) {
+          return (
+            <div className="flex items-center gap-2 text-slate-400 text-sm py-4 bg-slate-800/30 rounded-lg px-4">
+              <Clock className="w-4 h-4 shrink-0" />
+              Sin registros de la línea {lineaContexto} en los últimos 7 días para este coche.
+            </div>
+          );
+        }
+        const kpis = lineaContexto && lineaKPIs ? lineaKPIs : summary!;
+        const desv = kpis.desviacionMediaMin;
+        return (
+          <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             <div className="bg-slate-800/50 rounded-lg p-3 text-center">
               <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">En tiempo</p>
-              <p className="text-2xl font-black text-emerald-400">{Math.round(summary.pctEnTiempo)}%</p>
+              <p className="text-2xl font-black text-emerald-400">{Math.round(kpis.pctEnTiempo)}%</p>
             </div>
             <div className="bg-slate-800/50 rounded-lg p-3 text-center">
               <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Atrasado</p>
-              <p className="text-2xl font-black text-red-400">{Math.round(summary.pctAtrasado)}%</p>
+              <p className="text-2xl font-black text-red-400">{Math.round(kpis.pctAtrasado)}%</p>
             </div>
             <div className="bg-slate-800/50 rounded-lg p-3 text-center">
               <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Adelantado</p>
-              <p className="text-2xl font-black text-orange-400">{Math.round(summary.pctAdelantado)}%</p>
+              <p className="text-2xl font-black text-orange-400">{Math.round(kpis.pctAdelantado)}%</p>
             </div>
             <div className="bg-slate-800/50 rounded-lg p-3 text-center">
               <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Desv. media</p>
               <p className={`text-2xl font-black ${
-                summary.desviacionMediaMin === null ? 'text-slate-400' :
-                summary.desviacionMediaMin > 2 ? 'text-red-400' :
-                summary.desviacionMediaMin < -2 ? 'text-orange-400' : 'text-emerald-400'
+                desv === null ? 'text-slate-400' :
+                desv > 2 ? 'text-red-400' :
+                desv < -2 ? 'text-orange-400' : 'text-emerald-400'
               }`}>
-                {summary.desviacionMediaMin !== null
-                  ? `${summary.desviacionMediaMin > 0 ? '+' : ''}${summary.desviacionMediaMin.toFixed(1)} min`
+                {desv !== null
+                  ? `${desv > 0 ? '+' : ''}${desv.toFixed(1)} min`
                   : '—'}
               </p>
             </div>
           </div>
 
-          {lineasInfo.length > 0 && (
+          {lineasInfo.length > 0 && !lineaContexto && (
             <div className="mb-4">
               <p className="text-xs text-slate-500 uppercase tracking-widest mb-2">Líneas operadas</p>
               <div className="space-y-1.5">
@@ -435,21 +578,16 @@ function PanelHistorial({ idBus, onCerrar }: PanelHistorialProps) {
             {conclusion()}
           </div>
         </>
-      )}
+        );
+      })()}
     </div>
   );
 }
 
 /* ─── Sub-componente: Panel detalle de línea ───────────── */
 
-interface LineaConDiagnosis {
-  summary: RouteSummary;
-  buses: BusComplianceResult[];
-  diagnosis: Diagnosis;
-}
-
 interface PanelDetalleLineaProps {
-  linea: LineaConDiagnosis;
+  linea: LineaHistStat;
   agenciaId: string;
   onCerrar: () => void;
 }
@@ -457,7 +595,32 @@ interface PanelDetalleLineaProps {
 function PanelDetalleLinea({ linea, agenciaId, onCerrar }: PanelDetalleLineaProps) {
   const [cocheHistorial, setCocheHistorial] = useState<string | null>(null);
   const [competidores, setCompetidores] = useState<OverlapDoc[]>([]);
-  const { summary, buses, diagnosis } = linea;
+  const [destinoTexto, setDestinoTexto] = useState<string | null>(null);
+  const [conductoresPorCoche, setConductoresPorCoche] = useState<Record<string, ConductorInfo[]>>({});
+  const { linea: lineaCodigo, sentido, buses, diagnosis } = linea;
+
+  // Derivar texto de destino desde horarios_stm para mostrar origen→destino real
+  useEffect(() => {
+    let cancelado = false;
+    const CENTRO = /centro|ciudad vieja|mdeo|aduana|tres cruces|palacio|goes|zitarrosa/i;
+    getDoc(firestoreDoc(db, 'horarios_stm', lineaCodigo))
+      .then(snap => {
+        if (!snap.exists() || cancelado) return;
+        const data = snap.data();
+        const diaKey = Object.keys(data.dias ?? {})[0];
+        const variantes: Array<{ origen: string; destino: string }> = data.dias?.[diaKey]?.variantes ?? [];
+        if (!variantes.length) return;
+        if (sentido === 'VUELTA') {
+          const v = variantes.find(v => CENTRO.test(v.destino) || CENTRO.test(v.origen)) ?? variantes[0];
+          if (v) setDestinoTexto(`${v.origen} → ${v.destino}`);
+        } else {
+          const v = variantes.find(v => !CENTRO.test(v.destino) && !CENTRO.test(v.origen)) ?? variantes[1] ?? variantes[0];
+          if (v) setDestinoTexto(`${v.origen} → ${v.destino}`);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelado = true; };
+  }, [lineaCodigo, sentido]);
 
   // Cargar datos de competencia cross-operador para esta línea desde corridor_overlap
   useEffect(() => {
@@ -465,12 +628,12 @@ function PanelDetalleLinea({ linea, agenciaId, onCerrar }: PanelDetalleLineaProp
     Promise.all([
       getDocs(query(
         collection(db, 'corridor_overlap'),
-        where('lineaA', '==', summary.linea),
+        where('lineaA', '==', lineaCodigo),
         where('sameEmpresa', '==', false)
       )),
       getDocs(query(
         collection(db, 'corridor_overlap'),
-        where('lineaB', '==', summary.linea),
+        where('lineaB', '==', lineaCodigo),
         where('sameEmpresa', '==', false)
       )),
     ])
@@ -491,21 +654,93 @@ function PanelDetalleLinea({ linea, agenciaId, onCerrar }: PanelDetalleLineaProp
       })
       .catch(() => {/* corridor_overlap sin datos para esta línea */});
     return () => { cancelado = true; };
-  }, [summary.linea]);
+  }, [lineaCodigo]);
 
-  const busesOrdenados = [...buses].sort((a, b) => {
-    return (b.desviacionMin ?? 0) - (a.desviacionMin ?? 0);
-  });
+  // Conductores del día para UCOT — cruza distribuciones_diarias con conductor_stats
+  useEffect(() => {
+    if (agenciaId !== '70') return; // solo UCOT tiene distribuciones_diarias
+    let cancelado = false;
+    const fechaHoy = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+    const cochesIds = new Set(buses.map((b) => b.idBus));
+
+    getDocs(collection(db, `distribuciones_diarias/${fechaHoy}/registros`))
+      .then(async (snap) => {
+        if (cancelado) return;
+        const porCoche: Record<string, Array<{ interno: number; nombre: string; turno: string | null; servicio: number | null }>> = {};
+        for (const d of snap.docs) {
+          const data = d.data();
+          const coche = String(data.coche);
+          if (!cochesIds.has(coche)) continue;
+          if (!porCoche[coche]) porCoche[coche] = [];
+          porCoche[coche].push({
+            interno: Number(data.interno),
+            nombre: String(data.nombre ?? ''),
+            turno: data.turno ?? null,
+            servicio: data.servicio ?? null,
+          });
+        }
+        const internosUnicos = [...new Set(Object.values(porCoche).flat().map((c) => c.interno))];
+        const statsMap: Record<number, { pctAdelantado: number; pctAtrasado: number; totalEventos: number }> = {};
+        await Promise.all(
+          internosUnicos.map(async (interno) => {
+            try {
+              const s = await getDoc(firestoreDoc(db, 'conductor_stats', `70_${interno}`));
+              if (s.exists()) {
+                const d = s.data();
+                statsMap[interno] = {
+                  pctAdelantado: d.pctAdelantado ?? 0,
+                  pctAtrasado: d.pctAtrasado ?? 0,
+                  totalEventos: d.totalEventos ?? 0,
+                };
+              }
+            } catch { /* sin stats para este conductor */ }
+          })
+        );
+        if (cancelado) return;
+        const resultado: Record<string, ConductorInfo[]> = {};
+        for (const [coche, conductores] of Object.entries(porCoche)) {
+          resultado[coche] = conductores.map((c) => ({
+            ...c,
+            pctAdelantado: statsMap[c.interno]?.pctAdelantado,
+            pctAtrasado: statsMap[c.interno]?.pctAtrasado,
+            totalEventos: statsMap[c.interno]?.totalEventos,
+          }));
+        }
+        setConductoresPorCoche(resultado);
+      })
+      .catch(() => {});
+    return () => { cancelado = true; };
+  }, [agenciaId, buses]);
+
+  // Ordenar por % fuera de horario descendente — los más problemáticos arriba
+  const busesOrdenados = [...buses].sort(
+    (a, b) => (b.pctAtrasado + b.pctAdelantado) - (a.pctAtrasado + a.pctAdelantado)
+  );
 
   return (
     <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-5 mt-3">
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-base font-bold text-slate-200">
-            Línea <span className="text-blue-400">{summary.linea}</span>
-            <span className="text-slate-400 font-normal ml-2">— {summary.busesActivos} coches operando</span>
-          </h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-base font-bold text-slate-200">
+              Línea <span className="text-blue-400">{lineaCodigo}</span>
+            </h3>
+            {sentido === 'IDA' && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                → IDA
+              </span>
+            )}
+            {sentido === 'VUELTA' && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-orange-500/15 text-orange-300 border border-orange-500/30">
+                ← VUELTA
+              </span>
+            )}
+            <span className="text-slate-400 font-normal text-sm">— {linea.busesActivos} coches · {linea.totalEventos} registros 7 días</span>
+          </div>
+          {destinoTexto && (
+            <p className="text-xs text-slate-500 mt-0.5">{destinoTexto}</p>
+          )}
         </div>
         <button
           onClick={onCerrar}
@@ -597,49 +832,89 @@ function PanelDetalleLinea({ linea, agenciaId, onCerrar }: PanelDetalleLineaProp
         </div>
       )}
 
+      {/* Nota de fuente de datos */}
+      <div className="flex items-center gap-2 mb-3 px-1">
+        <Clock className="w-3.5 h-3.5 text-slate-500" />
+        <span className="text-xs text-slate-500">Estadísticas basadas en registros GPS de los últimos 7 días · clasificados según horario GTFS</span>
+      </div>
+
       {/* Tabla de coches */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-700/50">
+            <tr className="border-b border-slate-700/50 bg-slate-800/30">
               <th className="text-left py-2 px-3 text-xs text-slate-400 uppercase tracking-widest font-medium">Coche</th>
-              <th className="text-left py-2 px-3 text-xs text-slate-400 uppercase tracking-widest font-medium">Empresa</th>
-              <th className="text-left py-2 px-3 text-xs text-slate-400 uppercase tracking-widest font-medium">Estado</th>
-              <th className="text-left py-2 px-3 text-xs text-slate-400 uppercase tracking-widest font-medium">Desviación</th>
-              <th className="text-left py-2 px-3 text-xs text-slate-400 uppercase tracking-widest font-medium">Velocidad</th>
-              <th className="text-left py-2 px-3 text-xs text-slate-400 uppercase tracking-widest font-medium">Próx. parada</th>
+              <th className="text-left py-2 px-3 text-xs text-slate-400 uppercase tracking-widest font-medium">Conductor</th>
+              <th className="text-center py-2 px-3 text-xs text-slate-400 uppercase tracking-widest font-medium">Pasadas</th>
+              <th className="text-center py-2 px-3 text-xs text-slate-400 uppercase tracking-widest font-medium">En tiempo</th>
+              <th className="text-center py-2 px-3 text-xs text-slate-400 uppercase tracking-widest font-medium">Atrasado</th>
+              <th className="text-center py-2 px-3 text-xs text-slate-400 uppercase tracking-widest font-medium">Desvío medio</th>
+              <th className="text-left py-2 px-3 text-xs text-slate-400 uppercase tracking-widest font-medium">Última pasada</th>
               <th className="py-2 px-3"></th>
             </tr>
           </thead>
           <tbody>
             {busesOrdenados.map((bus) => {
               const esProblema = diagnosis.cochesProblema.includes(bus.idBus);
+              const pctFuera = bus.pctAtrasado + bus.pctAdelantado;
+              const rowBg = bus.totalEventos < 5 ? '' :
+                pctFuera <= 20 ? 'bg-emerald-500/3' :
+                pctFuera <= 40 ? 'bg-yellow-500/5' : 'bg-red-500/5';
               return (
                 <tr
                   key={bus.idBus}
-                  className={`border-b border-slate-800/50 ${
-                    esProblema
-                      ? diagnosis.tipo === 'COCHE' || diagnosis.tipo === 'MIXTO'
-                        ? 'bg-orange-500/5'
-                        : 'bg-red-500/5'
-                      : ''
-                  }`}
+                  className={`border-b border-slate-800/50 ${rowBg} ${esProblema ? 'border-l-2 border-l-orange-500/50' : ''}`}
                 >
                   <td className="py-2.5 px-3">
-                    <span className={`font-semibold ${esProblema ? 'text-orange-300' : 'text-slate-200'}`}>
+                    <span className={`font-bold text-sm ${esProblema ? 'text-orange-300' : 'text-slate-200'}`}>
                       {bus.idBus}
                     </span>
+                    <span className="text-xs text-slate-500 ml-1">{bus.empresa}</span>
                   </td>
-                  <td className="py-2.5 px-3 text-slate-400 text-xs">{bus.empresa}</td>
-                  <td className="py-2.5 px-3">{badgeEstado(bus.estadoCumplimiento)}</td>
-                  <td className="py-2.5 px-3">{desviacionLabel(bus.desviacionMin)}</td>
-                  <td className="py-2.5 px-3 text-slate-400 text-xs">
-                    {bus.velocidad > 0 ? `${Math.round(bus.velocidad)} km/h` : '—'}
+                  <td className="py-2.5 px-3">
+                    {conductoresPorCoche[bus.idBus]?.length > 0 ? (
+                      <div className="space-y-1">
+                        {conductoresPorCoche[bus.idBus].map((c, i) => (
+                          <div key={i} className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs text-slate-300 font-medium">{c.nombre}</span>
+                            {c.turno && (
+                              <span className="text-[10px] text-slate-500 bg-slate-800 px-1 rounded">{c.turno}</span>
+                            )}
+                            {badgeTendenciaConductor(c)}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-600 italic">
+                        {agenciaId === '70' ? 'Sin asignar hoy' : '—'}
+                      </span>
+                    )}
                   </td>
-                  <td className="py-2.5 px-3 text-slate-400 text-xs">
-                    {bus.proximaParadaControl?.name ?? '—'}
-                    {bus.distanciaParadaKm !== null && (
-                      <span className="text-slate-600 ml-1">({bus.distanciaParadaKm.toFixed(1)} km)</span>
+                  <td className="py-2.5 px-3 text-center">
+                    <span className={`text-sm font-semibold ${bus.totalEventos >= 5 ? 'text-slate-300' : 'text-slate-600'}`}>
+                      {bus.totalEventos}
+                    </span>
+                    {bus.totalEventos < 5 && (
+                      <span className="text-[10px] text-slate-600 block">insuf.</span>
+                    )}
+                  </td>
+                  <td className="py-2.5 px-3 text-center">
+                    <span className={`text-sm font-bold ${bus.pctEnTiempo >= 80 ? 'text-emerald-400' : bus.pctEnTiempo >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {bus.totalEventos >= 5 ? `${bus.pctEnTiempo}%` : '—'}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-3 text-center">
+                    <span className={`text-sm font-bold ${bus.pctAtrasado > 30 ? 'text-red-400' : bus.pctAtrasado > 15 ? 'text-yellow-400' : 'text-slate-500'}`}>
+                      {bus.totalEventos >= 5 ? `${bus.pctAtrasado}%` : '—'}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-3 text-center">
+                    {bus.totalEventos >= 5 ? desviacionLabel(bus.desviacionMedia) : <span className="text-slate-600">—</span>}
+                  </td>
+                  <td className="py-2.5 px-3 text-xs text-slate-400 whitespace-nowrap">
+                    <span className="font-mono">{formatFechaHora(bus.ultimoTimestamp)}</span>
+                    {bus.ultimaParada && (
+                      <span className="text-slate-500 ml-1 hidden xl:inline">· {bus.ultimaParada}</span>
                     )}
                   </td>
                   <td className="py-2.5 px-3">
@@ -647,7 +922,7 @@ function PanelDetalleLinea({ linea, agenciaId, onCerrar }: PanelDetalleLineaProp
                       onClick={() => setCocheHistorial(cocheHistorial === bus.idBus ? null : bus.idBus)}
                       className="text-xs text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap"
                     >
-                      {cocheHistorial === bus.idBus ? 'Ocultar' : 'Ver historial'}
+                      {cocheHistorial === bus.idBus ? 'Ocultar' : 'Historial'}
                     </button>
                   </td>
                 </tr>
@@ -660,6 +935,8 @@ function PanelDetalleLinea({ linea, agenciaId, onCerrar }: PanelDetalleLineaProp
       {cocheHistorial && (
         <PanelHistorial
           idBus={cocheHistorial}
+          agencyId={agenciaId}
+          lineaContexto={lineaCodigo}
           onCerrar={() => setCocheHistorial(null)}
         />
       )}
@@ -669,19 +946,21 @@ function PanelDetalleLinea({ linea, agenciaId, onCerrar }: PanelDetalleLineaProp
 
 /* ─── Componente principal ────────────────────────────── */
 
+const normLinea = (l: string) => String(l ?? '').trim().replace(/^0+/, '') || '0';
+
 export default function DiagnosticoCumplimiento() {
-  const [agenciaId, setAgenciaId] = useState<string>('70');
+  const { empresaPropia } = useEmpresaPropia();
+  const agenciaId = String(empresaPropia);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [datos, setDatos] = useState<ComplianceResponse | null>(null);
+  const [lineasHist, setLineasHist] = useState<LineaHistStat[]>([]);
   const [ultimaActualizacion, setUltimaActualizacion] = useState<string | null>(null);
   const [lineaSeleccionada, setLineaSeleccionada] = useState<string | null>(null);
   const [filtroLinea, setFiltroLinea] = useState('');
   const [filtroDiagnosis, setFiltroDiagnosis] = useState<TipoDiagnosis | 'TODOS'>('TODOS');
   const [segundosProxima, setSegundosProxima] = useState(AUTO_REFRESH_MS / 1000);
-  const [alertas, setAlertas] = useState<ComplianceAlert[]>([]);
 
-  /* ─── Fetch de datos ─────────────────────── */
+  /* ─── Fetch histórico desde vehicle_events ───────────── */
 
   const cargarDatos = useCallback(async (agId: string) => {
     setCargando(true);
@@ -689,15 +968,117 @@ export default function DiagnosticoCumplimiento() {
     setLineaSeleccionada(null);
 
     try {
-      const resp = await fetchComplianceRealtime(agId);
-      setDatos(resp);
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const snap = await getDocs(query(
+        collection(db, 'vehicle_events'),
+        where('agencyId', '==', agId),
+        where('timestampGPS', '>=', since),
+        orderBy('timestampGPS', 'desc'),
+        limit(5000)
+      ));
+
+      // Agrupar por linea+sentido → bus
+      const mapaLineas: Record<string, Record<string, VehicleEventDoc[]>> = {};
+      for (const d of snap.docs) {
+        const ev = d.data() as VehicleEventDoc;
+        if (ev.estadoCumplimiento === 'FUERA_DE_SERVICIO') continue;
+        const lineaNorm = normLinea(ev.linea ?? '');
+        if (!lineaNorm || lineaNorm === '0') continue;
+        const sentidoKey = ev.sentido ?? 'N';
+        const grupKey = `${lineaNorm}__${sentidoKey}`;
+        if (!mapaLineas[grupKey]) mapaLineas[grupKey] = {};
+        const busKey = ev.idBus;
+        if (!mapaLineas[grupKey][busKey]) mapaLineas[grupKey][busKey] = [];
+        mapaLineas[grupKey][busKey].push(ev);
+      }
+
+      // Construir LineaHistStat por grupo
+      const resultado: LineaHistStat[] = Object.entries(mapaLineas).map(([grupKey, busMapa]) => {
+        const [lineaCod, sentidoRaw] = grupKey.split('__');
+        const sentido = sentidoRaw === 'N' ? null : sentidoRaw as 'IDA' | 'VUELTA';
+
+        const buses: BusHistStat[] = Object.entries(busMapa).map(([idBus, eventos]) => {
+          const total = eventos.length;
+          const conHorario = eventos.filter(
+            e => e.estadoCumplimiento !== 'SIN_HORARIO'
+          );
+          const base = conHorario.length > 0 ? conHorario.length : total;
+          const enTiempo   = conHorario.filter(e => e.estadoCumplimiento === 'EN_TIEMPO').length;
+          const atrasado   = conHorario.filter(e => e.estadoCumplimiento === 'ATRASADO').length;
+          const adelantado = conHorario.filter(e => e.estadoCumplimiento === 'ADELANTADO').length;
+          const desvs = conHorario
+            .map(e => e.desviacionMin)
+            .filter((v): v is number => v !== null);
+          const desviacionMedia = desvs.length > 0
+            ? Math.round((desvs.reduce((a, b) => a + b, 0) / desvs.length) * 10) / 10
+            : null;
+          // Última pasada — eventos ya vienen ordenados por desc, el primero es el más reciente
+          const ultimo = eventos[0];
+          return {
+            idBus,
+            empresa: ultimo.empresa ?? '',
+            sentido,
+            totalEventos: total,
+            pctEnTiempo:   base > 0 ? Math.round((enTiempo   / base) * 100) : 0,
+            pctAtrasado:   base > 0 ? Math.round((atrasado   / base) * 100) : 0,
+            pctAdelantado: base > 0 ? Math.round((adelantado / base) * 100) : 0,
+            desviacionMedia,
+            ultimaParada: ultimo.proximaParada ?? null,
+            ultimoTimestamp: ultimo.timestampGPS,
+            ultimaVelocidad: ultimo.velocidad ?? 0,
+          };
+        });
+
+        const totalEventos = buses.reduce((s, b) => s + b.totalEventos, 0);
+        const busesConDatos = buses.filter(b => b.totalEventos >= 5);
+        const pctEnTiempo = busesConDatos.length > 0
+          ? Math.round(busesConDatos.reduce((s, b) => s + b.pctEnTiempo, 0) / busesConDatos.length)
+          : 0;
+        const pctAtrasado = busesConDatos.length > 0
+          ? Math.round(busesConDatos.reduce((s, b) => s + b.pctAtrasado, 0) / busesConDatos.length)
+          : 0;
+        const pctAdelantado = busesConDatos.length > 0
+          ? Math.round(busesConDatos.reduce((s, b) => s + b.pctAdelantado, 0) / busesConDatos.length)
+          : 0;
+
+        return {
+          linea: lineaCod,
+          sentido,
+          buses,
+          totalEventos,
+          busesActivos: buses.length,
+          pctEnTiempo,
+          pctAtrasado,
+          pctAdelantado,
+          diagnosis: diagnosticarLineaHist(buses),
+        };
+      });
+
+      resultado.sort((a, b) => {
+        const nA = parseInt(a.linea, 10) || 0;
+        const nB = parseInt(b.linea, 10) || 0;
+        if (nA !== nB) return nA - nB;
+        const ord = (s: string | null) => s === 'IDA' ? 0 : s === 'VUELTA' ? 1 : 2;
+        return ord(a.sentido) - ord(b.sentido);
+      });
+
+      setLineasHist(resultado);
       setUltimaActualizacion(new Date().toISOString());
-    } catch {
-      setError('Los datos en tiempo real no están disponibles. Verificar conexión con el backend.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('cargarDatos error:', err);
+      setError(`Error Firestore: ${msg}`);
     } finally {
       setCargando(false);
     }
   }, []);
+
+  // Reset de filtros cuando cambia el operador desde el hub
+  useEffect(() => {
+    setFiltroLinea('');
+    setFiltroDiagnosis('TODOS');
+    setLineaSeleccionada(null);
+  }, [agenciaId]);
 
   // Carga inicial y auto-refresh cada 2 minutos
   useEffect(() => {
@@ -715,65 +1096,36 @@ export default function DiagnosticoCumplimiento() {
     return () => clearInterval(tick);
   }, [ultimaActualizacion]);
 
-  // Listener en tiempo real de alertas de cumplimiento (colección poblada por complianceAlertsTick)
-  useEffect(() => {
-    const q = query(
-      collection(db, 'compliance_alerts'),
-      where('dismissed', '==', false),
-    );
-    return onSnapshot(q, (snap) => {
-      setAlertas(snap.docs.map((d) => d.data() as ComplianceAlert));
-    });
-  }, []);
 
   /* ─── Derivar datos para la UI ───────────── */
 
-  const lineasConDiagnosis: LineaConDiagnosis[] = datos
-    ? Object.values(datos.summary).map((summary) => {
-        const buses = datos.buses.filter((b) => b.linea === summary.linea);
-        const diagnosis = diagnosticarLinea(buses);
-        return { summary, buses, diagnosis };
-      })
-    : [];
-
-  lineasConDiagnosis.sort((a, b) => a.summary.pctCumplimiento - b.summary.pctCumplimiento);
-
   // Filtros de búsqueda aplicados
-  const lineasFiltradas = lineasConDiagnosis.filter((l) => {
+  const lineasFiltradas = lineasHist.filter((l) => {
     const matchLinea =
       filtroLinea === '' ||
-      l.summary.linea.toString().toLowerCase().includes(filtroLinea.toLowerCase().trim());
+      l.linea.toString().toLowerCase().includes(filtroLinea.toLowerCase().trim());
     const matchDiag = filtroDiagnosis === 'TODOS' || l.diagnosis.tipo === filtroDiagnosis;
     return matchLinea && matchDiag;
   });
 
-  // KPIs globales (sobre el total, no sobre filtradas)
-  const totalCoches = datos?.totalBuses ?? 0;
+  // KPIs globales
+  const totalCoches = [...new Set(lineasHist.flatMap(l => l.buses.map(b => b.idBus)))].length;
 
-  // Solo calcular OTP sobre líneas que tienen boletín cargado (al menos 1 evento con horario).
-  // Líneas con todos sus eventos en sinHorario no cuentan — asumir "100% en tiempo" sería un mock.
-  const lineasConBoletín = lineasConDiagnosis.filter(
-    (l) => l.summary.enTiempo + l.summary.atrasados + l.summary.adelantados > 0
-  );
+  const lineasConBoletín = lineasHist.filter(l => l.pctEnTiempo + l.pctAtrasado + l.pctAdelantado > 0);
   const pctGlobalEnTiempo: number | null =
     lineasConBoletín.length > 0
-      ? Math.round(
-          lineasConBoletín.reduce((acc, l) => acc + l.summary.pctCumplimiento, 0) /
-            lineasConBoletín.length
-        )
+      ? Math.round(lineasConBoletín.reduce((acc, l) => acc + l.pctEnTiempo, 0) / lineasConBoletín.length)
       : null;
 
-  const lineasConProblema = lineasConDiagnosis.filter(
+  const lineasConProblema = lineasHist.filter(
     (l) => l.diagnosis.tipo === 'LINEA' || l.diagnosis.tipo === 'COCHE'
   ).length;
 
   const cochesProblema = [
-    ...new Set(lineasConDiagnosis.flatMap((l) => l.diagnosis.cochesProblema)),
+    ...new Set(lineasHist.flatMap((l) => l.diagnosis.cochesProblema)),
   ].length;
 
-  const lineaDetalle = datos
-    ? lineasFiltradas.find((l) => l.summary.linea === lineaSeleccionada) ?? null
-    : null;
+  const hayDatos = lineasHist.length > 0;
 
   const empresaNombre = AGENCIAS.find((a) => a.id === agenciaId)?.nombre ?? agenciaId;
   const hayFiltros = filtroLinea !== '' || filtroDiagnosis !== 'TODOS';
@@ -809,7 +1161,7 @@ export default function DiagnosticoCumplimiento() {
     const kpis: [string, string][] = [
       ['Coches en servicio:', `${totalCoches}`],
       ['Promedio cumplimiento:', pctGlobalEnTiempo !== null ? `${pctGlobalEnTiempo}%` : '— (sin boletines)'],
-      ['Líneas con problema:', `${lineasConProblema} de ${lineasConDiagnosis.length}`],
+      ['Líneas con problema:', `${lineasConProblema} de ${lineasHist.length}`],
       ['Coches problemáticos:', `${cochesProblema}`],
     ];
     kpis.forEach(([label, valor], i) => {
@@ -825,12 +1177,12 @@ export default function DiagnosticoCumplimiento() {
     autoTable(doc, {
       startY: 84,
       head: [['Línea', 'Buses', 'En tiempo', 'Atrasados', 'Adelantados', 'Diagnóstico', 'Acción sugerida']],
-      body: lineasConDiagnosis.map((l) => [
-        `Línea ${l.summary.linea}`,
-        String(l.summary.busesActivos),
-        `${Math.round(l.summary.pctCumplimiento)}%`,
-        String(l.summary.atrasados),
-        String(l.summary.adelantados),
+      body: lineasHist.map((l) => [
+        `Línea ${l.linea}`,
+        String(l.busesActivos),
+        `${l.pctEnTiempo}%`,
+        `${l.pctAtrasado}%`,
+        `${l.pctAdelantado}%`,
         l.diagnosis.tipo === 'OK'    ? 'Normal'            :
         l.diagnosis.tipo === 'LINEA' ? 'Problema de línea' :
         l.diagnosis.tipo === 'COCHE' ? 'Problema de coche' :
@@ -881,13 +1233,13 @@ export default function DiagnosticoCumplimiento() {
       'Línea;Buses activos;% En tiempo;Atrasados;Adelantados;Diagnóstico;Coches problemáticos;Acción sugerida',
     ];
 
-    const filas = lineasConDiagnosis.map((l) =>
+    const filas = lineasHist.map((l) =>
       [
-        `Línea ${l.summary.linea}`,
-        l.summary.busesActivos,
-        `${Math.round(l.summary.pctCumplimiento)}%`,
-        l.summary.atrasados,
-        l.summary.adelantados,
+        `Línea ${l.linea}`,
+        l.busesActivos,
+        `${l.pctEnTiempo}%`,
+        `${l.pctAtrasado}%`,
+        `${l.pctAdelantado}%`,
         l.diagnosis.tipo === 'OK'    ? 'Normal'            :
         l.diagnosis.tipo === 'LINEA' ? 'Problema de línea' :
         l.diagnosis.tipo === 'COCHE' ? 'Problema de coche' :
@@ -923,32 +1275,11 @@ export default function DiagnosticoCumplimiento() {
               Diagnóstico de Cumplimiento de Servicio
             </h1>
             <p className="text-sm text-slate-400 mt-1">
-              Análisis automático en tiempo real — actualización cada 2 minutos
+              Estadísticas históricas 7 días · GPS vs horario GTFS — actualización cada 2 minutos
             </p>
           </div>
 
           <div className="flex flex-col sm:items-end gap-2 shrink-0">
-            {/* Tabs de empresa */}
-            <div className="flex gap-1 bg-slate-800/60 rounded-lg p-1 border border-slate-700/50">
-              {AGENCIAS.map((ag) => (
-                <button
-                  key={ag.id}
-                  onClick={() => {
-                    setAgenciaId(ag.id);
-                    setFiltroLinea('');
-                    setFiltroDiagnosis('TODOS');
-                  }}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                    agenciaId === ag.id
-                      ? 'bg-blue-600 text-white shadow'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {ag.nombre}
-                </button>
-              ))}
-            </div>
-
             {/* Controles */}
             <div className="flex items-center gap-2">
               {ultimaActualizacion && (
@@ -965,7 +1296,7 @@ export default function DiagnosticoCumplimiento() {
               )}
               <button
                 onClick={exportCSV}
-                disabled={cargando || lineasConDiagnosis.length === 0}
+                disabled={cargando || lineasHist.length === 0}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 hover:text-white hover:bg-emerald-600/30 hover:border-emerald-400 transition-all disabled:opacity-40"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -973,7 +1304,7 @@ export default function DiagnosticoCumplimiento() {
               </button>
               <button
                 onClick={exportPDF}
-                disabled={cargando || lineasConDiagnosis.length === 0}
+                disabled={cargando || lineasHist.length === 0}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600/20 border border-blue-500/40 text-blue-300 hover:text-white hover:bg-blue-600/30 hover:border-blue-400 transition-all disabled:opacity-40"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -1009,50 +1340,15 @@ export default function DiagnosticoCumplimiento() {
       )}
 
       {/* ── Carga inicial ── */}
-      {cargando && !datos && (
+      {cargando && !hayDatos && (
         <div className="flex flex-col items-center justify-center py-24 gap-4">
           <RefreshCw className="w-8 h-8 text-blue-400 animate-spin" />
-          <p className="text-slate-400 text-sm">Cargando datos de cumplimiento…</p>
+          <p className="text-slate-400 text-sm">Cargando historial de cumplimiento…</p>
         </div>
       )}
 
-      {/* ── Alertas de cumplimiento (pobladas por complianceAlertsTick cada 6h) ── */}
-      {alertas.filter((a) => a.empresa === agenciaId).length > 0 && (
-        <div className="mb-6 space-y-2">
-          {alertas
-            .filter((a) => a.empresa === agenciaId)
-            .sort((a, b) => a.pctEnTiempo - b.pctEnTiempo)
-            .map((alerta) => (
-              <div
-                key={`${alerta.empresa}_${alerta.linea}`}
-                className={`flex items-center gap-3 rounded-xl px-4 py-3 border text-sm ${
-                  alerta.nivel === 'CRITICO'
-                    ? 'bg-red-500/10 border-red-500/40'
-                    : 'bg-yellow-500/10 border-yellow-500/30'
-                }`}
-              >
-                <AlertTriangle className={`w-4 h-4 shrink-0 ${alerta.nivel === 'CRITICO' ? 'text-red-400' : 'text-yellow-400'}`} />
-                <span className="flex-1 text-slate-200">
-                  <span className="font-semibold">Línea {alerta.linea}</span>
-                  {' '}— cumplimiento{' '}
-                  <span className={`font-black ${alerta.nivel === 'CRITICO' ? 'text-red-400' : 'text-yellow-400'}`}>
-                    {alerta.pctEnTiempo}%
-                  </span>
-                  {' '}· {alerta.totalEventos} registros últimas 24h
-                </span>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border shrink-0 ${
-                  alerta.nivel === 'CRITICO'
-                    ? 'bg-red-500/20 border-red-500/50 text-red-300'
-                    : 'bg-yellow-500/20 border-yellow-500/50 text-yellow-300'
-                }`}>
-                  {alerta.nivel === 'CRITICO' ? 'Crítico' : 'Bajo'}
-                </span>
-              </div>
-            ))}
-        </div>
-      )}
 
-      {!cargando || datos ? (
+      {!cargando || hayDatos ? (
         <>
           {/* ── KPI Cards ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -1115,7 +1411,7 @@ export default function DiagnosticoCumplimiento() {
           </div>
 
           {/* ── Filtros de búsqueda ── */}
-          {datos && lineasConDiagnosis.length > 0 && (
+          {hayDatos && lineasHist.length > 0 && (
             <div className="flex flex-col sm:flex-row gap-3 mb-4 items-center">
               <div className="relative flex-1 max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
@@ -1153,96 +1449,126 @@ export default function DiagnosticoCumplimiento() {
               )}
               <span className="text-xs text-slate-500 ml-auto">
                 {hayFiltros
-                  ? `${lineasFiltradas.length} de ${lineasConDiagnosis.length} líneas`
-                  : `${lineasConDiagnosis.length} líneas activas`}
+                  ? `${lineasFiltradas.length} de ${lineasHist.length} líneas`
+                  : `${lineasHist.length} líneas activas`}
               </span>
             </div>
           )}
 
           {/* ── Tabla de líneas ── */}
-          {datos && lineasFiltradas.length > 0 && (
+          {hayDatos && lineasFiltradas.length > 0 && (
             <div className="bg-slate-900 border border-slate-700/50 rounded-xl overflow-hidden mb-4">
               <div className="px-6 py-4 border-b border-slate-800 flex items-center gap-2">
                 <Activity className="w-4 h-4 text-blue-400" />
-                <h2 className="text-sm font-bold text-slate-200">Estado por línea</h2>
-                <Zap className="w-3.5 h-3.5 text-yellow-400 ml-auto" />
-                <span className="text-xs text-slate-500">Ordenado por prioridad de atención</span>
+                <h2 className="text-sm font-bold text-slate-200">Estado por línea · últimos 7 días</h2>
+                <Zap className="w-3.5 h-3.5 text-slate-600 ml-auto" />
+                <span className="text-xs text-slate-500">Ordenado por número de línea · IDA y VUELTA agrupadas</span>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="bg-slate-800/50">
-                      <th className="text-left py-3 px-5 text-xs text-slate-400 uppercase tracking-widest font-medium">Línea</th>
+                      <th className="text-left py-3 px-5 text-xs text-slate-400 uppercase tracking-widest font-medium">Línea / Sentido</th>
                       <th className="text-center py-3 px-4 text-xs text-slate-400 uppercase tracking-widest font-medium">
                         <span className="flex items-center justify-center gap-1"><Bus className="w-3 h-3" /> Buses</span>
                       </th>
                       <th className="text-left py-3 px-4 text-xs text-slate-400 uppercase tracking-widest font-medium">En tiempo</th>
-                      <th className="text-center py-3 px-4 text-xs text-slate-400 uppercase tracking-widest font-medium">Atrasados</th>
-                      <th className="text-center py-3 px-4 text-xs text-slate-400 uppercase tracking-widest font-medium">Adelantados</th>
+                      <th className="text-center py-3 px-4 text-xs text-slate-400 uppercase tracking-widest font-medium">% Atrasado</th>
+                      <th className="text-center py-3 px-4 text-xs text-slate-400 uppercase tracking-widest font-medium">% Adelantado</th>
                       <th className="text-left py-3 px-4 text-xs text-slate-400 uppercase tracking-widest font-medium">Diagnóstico</th>
                       <th className="py-3 px-3 w-8"></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {lineasFiltradas.map((item) => {
-                      const { summary, diagnosis } = item;
-                      const seleccionada = lineaSeleccionada === summary.linea;
+                    {lineasFiltradas.map((item, idx) => {
+                      const key = `${item.linea}__${item.sentido ?? 'N'}`;
+                      const seleccionada = lineaSeleccionada === key;
+                      const nextItem = lineasFiltradas[idx + 1];
+                      const prevItem = lineasFiltradas[idx - 1];
+                      const esGrupo = nextItem?.linea === item.linea || prevItem?.linea === item.linea;
+                      const esInicioGrupo = esGrupo && prevItem?.linea !== item.linea;
 
                       return (
-                        <tr
-                          key={summary.linea}
-                          onClick={() => setLineaSeleccionada(seleccionada ? null : summary.linea)}
-                          className={`border-b border-slate-800/50 cursor-pointer transition-colors ${
-                            seleccionada
-                              ? 'bg-blue-900/20 border-l-2 border-l-blue-500'
-                              : 'hover:bg-slate-800/40'
-                          }`}
-                        >
-                          <td className="py-3.5 px-5">
-                            <span className="font-semibold text-slate-200">Línea {summary.linea}</span>
-                          </td>
-                          <td className="py-3.5 px-4 text-center">
-                            <span className="text-slate-300 font-semibold">{summary.busesActivos}</span>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <div className="flex items-center gap-2">
-                              <div className="w-20 bg-slate-800 rounded-full h-2 overflow-hidden">
-                                <div
-                                  className={`h-2 rounded-full transition-all ${
-                                    summary.pctCumplimiento >= 80 ? 'bg-emerald-500' :
-                                    summary.pctCumplimiento >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                                  }`}
-                                  style={{ width: `${summary.pctCumplimiento}%` }}
-                                />
+                        <Fragment key={key}>
+                          <tr
+                            onClick={() => setLineaSeleccionada(seleccionada ? null : key)}
+                            className={`border-b border-slate-800/50 cursor-pointer transition-colors ${
+                              seleccionada
+                                ? 'bg-blue-900/20 border-l-2 border-l-blue-500'
+                                : esGrupo
+                                  ? 'hover:bg-slate-800/40 bg-slate-800/10'
+                                  : 'hover:bg-slate-800/40'
+                            } ${esInicioGrupo ? 'border-t border-t-slate-700/60' : ''}`}
+                          >
+                            <td className="py-3.5 px-5">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-slate-200">Línea {item.linea}</span>
+                                {item.sentido === 'IDA' && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                                    → IDA
+                                  </span>
+                                )}
+                                {item.sentido === 'VUELTA' && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-orange-500/15 text-orange-300 border border-orange-500/30">
+                                    ← VUELTA
+                                  </span>
+                                )}
                               </div>
-                              <span className={`text-xs font-semibold ${
-                                summary.pctCumplimiento >= 80 ? 'text-emerald-400' :
-                                summary.pctCumplimiento >= 60 ? 'text-yellow-400' : 'text-red-400'
-                              }`}>
-                                {Math.round(summary.pctCumplimiento)}%
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <span className="text-slate-300 font-semibold">{item.busesActivos}</span>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 bg-slate-800 rounded-full h-2 overflow-hidden">
+                                  <div
+                                    className={`h-2 rounded-full transition-all ${
+                                      item.pctEnTiempo >= 80 ? 'bg-emerald-500' :
+                                      item.pctEnTiempo >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                                    }`}
+                                    style={{ width: `${item.pctEnTiempo}%` }}
+                                  />
+                                </div>
+                                <span className={`text-xs font-semibold ${
+                                  item.pctEnTiempo >= 80 ? 'text-emerald-400' :
+                                  item.pctEnTiempo >= 60 ? 'text-yellow-400' : 'text-red-400'
+                                }`}>
+                                  {item.pctEnTiempo}%
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <span className={`text-sm font-semibold ${item.pctAtrasado > 20 ? 'text-red-400' : 'text-slate-500'}`}>
+                                {item.pctAtrasado}%
                               </span>
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-4 text-center">
-                            <span className={`text-sm font-semibold ${summary.atrasados > 0 ? 'text-red-400' : 'text-slate-500'}`}>
-                              {summary.atrasados}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 text-center">
-                            <span className={`text-sm font-semibold ${summary.adelantados > 0 ? 'text-orange-400' : 'text-slate-500'}`}>
-                              {summary.adelantados}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4">{badgeDiagnosis(diagnosis.tipo)}</td>
-                          <td className="py-3.5 px-3">
-                            {seleccionada ? (
-                              <ChevronDown className="w-4 h-4 text-blue-400" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 text-slate-600" />
-                            )}
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <span className={`text-sm font-semibold ${item.pctAdelantado > 20 ? 'text-orange-400' : 'text-slate-500'}`}>
+                                {item.pctAdelantado}%
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4">{badgeDiagnosis(item.diagnosis.tipo)}</td>
+                            <td className="py-3.5 px-3">
+                              {seleccionada ? (
+                                <ChevronDown className="w-4 h-4 text-blue-400" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4 text-slate-600" />
+                              )}
+                            </td>
+                          </tr>
+                          {seleccionada && (
+                            <tr>
+                              <td colSpan={7} className="p-0 border-b border-blue-500/20">
+                                <PanelDetalleLinea
+                                  linea={item}
+                                  agenciaId={agenciaId}
+                                  onCerrar={() => setLineaSeleccionada(null)}
+                                />
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                       );
                     })}
                   </tbody>
@@ -1252,7 +1578,7 @@ export default function DiagnosticoCumplimiento() {
           )}
 
           {/* Estado vacío — filtros sin resultados */}
-          {datos && lineasFiltradas.length === 0 && lineasConDiagnosis.length > 0 && !cargando && (
+          {hayDatos && lineasFiltradas.length === 0 && lineasHist.length > 0 && !cargando && (
             <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-8 text-center mb-4">
               <Search className="w-10 h-10 text-slate-700 mx-auto mb-3" />
               <p className="text-slate-400 text-sm">Ninguna línea coincide con los filtros aplicados.</p>
@@ -1266,21 +1592,14 @@ export default function DiagnosticoCumplimiento() {
           )}
 
           {/* Estado vacío — sin datos */}
-          {datos && lineasConDiagnosis.length === 0 && !cargando && (
+          {!cargando && !hayDatos && (
             <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-12 text-center">
               <Bus className="w-12 h-12 text-slate-700 mx-auto mb-3" />
-              <p className="text-slate-400">No hay líneas activas en este momento para la empresa seleccionada.</p>
+              <p className="text-slate-400">No hay registros GPS en los últimos 7 días para esta empresa.</p>
+              <p className="text-xs text-slate-600 mt-2">Los datos se generan automáticamente cada 15 minutos desde los buses en servicio.</p>
             </div>
           )}
 
-          {/* ── Detalle de línea seleccionada ── */}
-          {lineaDetalle && (
-            <PanelDetalleLinea
-              linea={lineaDetalle}
-              agenciaId={agenciaId}
-              onCerrar={() => setLineaSeleccionada(null)}
-            />
-          )}
         </>
       ) : null}
     </div>

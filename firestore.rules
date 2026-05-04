@@ -421,6 +421,26 @@ service cloud.firestore {
       allow write: if isAdminNorm() || isDriver() || isTrafficOrAdmin();
     }
 
+    match /vehicle_events/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
+    }
+
+    match /bus_last_pos/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
+    }
+
+    match /etapa_stats/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
+    }
+
+    match /eventos_desvio/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
+    }
+
     match /lineas/{document=**} {
       allow read: if isAuthenticated();
       allow write: if isAdminNorm();
@@ -591,6 +611,27 @@ service cloud.firestore {
     //   Index requerido: empresaId ASC + createdAt DESC (firestore.indexes.json).
     // ============================================================
     match /service_matrices/{document=**} {
+      allow read: if isAdminNorm() || isTrafficOrAdmin();
+      allow write: if isAdminNorm();
+    }
+
+    // ============================================================
+    // COMBUSTIBLE — Registro de cargas por vehículo
+    // ============================================================
+    match /cargas_combustible/{document=**} {
+      allow read: if isAdminNorm() || isTrafficOrAdmin();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
+    }
+
+    // ============================================================
+    // LICENCIAS DEL PERSONAL — Ausencias, licencias médicas, compensatorios
+    // ============================================================
+    match /licencias_personal/{document=**} {
+      allow read: if isAdminNorm() || isTrafficOrAdmin();
+      allow write: if isAdminNorm() || isTrafficOrAdmin();
+    }
+
+    match /compensatorios_personal/{document=**} {
       allow read: if isAdminNorm() || isTrafficOrAdmin();
       allow write: if isAdminNorm();
     }

@@ -612,3 +612,82 @@ SkillRoute ahora opera 100% cross-operador desde el sidebar. Cualquier operador 
 
 - **Selector "TODAS" para super-admin**: Requiere diseño de UI comparativa — tarea para próxima sesión
 - **M6 otpEngine cross-operador**: Verificar si escribe para todas las empresas o solo UCOT
+
+---
+
+## 2026-05-03 — Sesión RRHH + Flota + Jornales + Config Salarial + Informe de Conducta
+
+**Duración:** ~2 sesiones consecutivas (contexto compactado entre ambas).
+
+**Features entregadas:**
+
+| Feature | Archivo(s) | Estado |
+|---|---|---|
+| Skill `/modelo` | `~/.claude/commands/modelo.md` | prod |
+| Fix multi-conductor en distribByCoche | `vehicleStatsTick.ts`, `conductorStatsTick.ts`, `build_vehicle_stats.py` | prod |
+| totalJornales en vehicle_stats | `vehicleStatsTick.ts` | prod (Firestore) |
+| Marca/tipo en vehicle_stats | `vehicleStatsTick.ts` + seed ucot_flota_marcas.json | prod (UCOT: 257 coches) |
+| Auto-registro GPS (auto_detected=true) | `vehicleStatsTick.ts` | prod |
+| Endpoint config-salarial GET/PUT | `functions/src/api/adminSeeds.ts` | prod |
+| Seed valores salariales 1/1/2026 | `scripts/seed_config_salarial.py` | prod (Firestore) |
+| Tab "Jornales" en AdminRRHH | `frontend/src/pages/admin/JornalesTab.tsx` | prod |
+| Tab "Config. Salarial" en AdminRRHH | `frontend/src/pages/admin/ConfigSalarialTab.tsx` | prod |
+| Marca en tabla RankingCoches | `frontend/src/pages/traffic/RankingCoches.tsx` | deploy pendiente verificación |
+| Conductores del período en panel detalle de coche | `RankingCoches.tsx` | deploy pendiente verificación |
+| Informe de Conducta Operativa (modal imprimible) | `JornalesTab.tsx` | deploy pendiente verificación |
+| VehicleStats + VehicleDiaStats interfaces ampliadas | `autoStatsService.ts` | prod |
+| vehicle-stats endpoint: +marca, tipo, totalJornales | `functions/src/api/autostats.ts` | deploy pendiente verificación |
+| EstadisticasRendimiento.tsx | ELIMINADO — duplicación de RankingCoches+JornalesTab | borrado |
+
+**Reglas de negocio incorporadas:**
+- 1 coche puede tener 1-3 conductores por día — cada uno cuenta 1 jornal
+- `conductor_stats.diasActivos` = total jornales acumulados (fuente de verdad para liquidación)
+- Informe de Conducta: texto automático según patrón (<5% atraso = normal / 5-15% = moderado / >15% = revisar)
+- IMM STM-Online NO devuelve modelo/marca en 15 campos — solo UCOT tiene catálogo propio
+
+**Datos en Firestore al cierre:**
+- `conductor_stats`: 68 conductores UCOT con historial diario (fecha, coche, turno, OTP%)
+- `vehicle_stats`: 1.615 buses (4 empresas); UCOT con marca, todos con conductoresDia[]
+- `vehicles`: 257 UCOT + auto-detectados (pendiente_confirmacion=true)
+- `config_salarial`: 2 docs (turnos_vigentes + descuentos inyectables con IRPF progresivo)
+
+**Decisiones:**
+- No crear EstadisticasRendimiento nueva: mejorar RankingCoches + JornalesTab existentes
+- Informe de Conducta como herramienta laboral: historial GPS = evidencia estadística objetiva ante sanciones
+- fetchFleetRanking (real-time) + fetchVehicleStats (enriquecido) se cargan en paralelo en RankingCoches
+
+**Quedó afuera:**
+- Verificación visual en prod (deploy estaba corriendo en background al cerrar sesión)
+- Módulo Mantenimiento conectado a vehicles con marca + auto-detectados
+- Catálogo flota COME/COETC/CUTCSA (necesita Excel/CSV externo, IMM no lo expone)
+
+---
+
+## 2026-05-04 — Sesión Fix DiagnosticoCumplimiento (datos históricos vehicle_events)
+
+**Duración:** ~2 horas (continuación de sesión anterior).
+
+**Root cause resuelto:** `fetchComplianceRealtime` devolvía la última posición GPS por bus (snapshot), NO estadísticas de cumplimiento. Reemplazado por query directa a `vehicle_events` con agregación histórica de 7 días.
+
+**Features entregadas:**
+
+| Cambio | Archivo | Estado |
+|---|---|---|
+| Reescritura `cargarDatos` — query `vehicle_events` (agencyId + timestampGPS últimos 7d, limit 5000) | `DiagnosticoCumplimiento.tsx` | ✅ deploy |
+| Nuevos tipos `VehicleEventDoc`, `BusHistStat`, `LineaHistStat` | `DiagnosticoCumplimiento.tsx` | ✅ |
+| Nueva función `diagnosticarLineaHist()` — pct atrasado+adelantado > 30% → problema | `DiagnosticoCumplimiento.tsx` | ✅ |
+| Tabla con columnas: PASADAS / EN TIEMPO / ATRASADO / DESVÍO MEDIO / ÚLTIMA PASADA | `DiagnosticoCumplimiento.tsx` | ✅ |
+| Regla explícita `match /vehicle_events/{document=**}` en Firestore rules | `firestore.rules` | ✅ deploy |
+| Index compuesto `agencyId ASC + timestampGPS DESC` verificado y deployado | `firestore.indexes.json` | ✅ deploy |
+
+**Verificación:**
+- Admin SDK: `vehicle_events` — 10 docs para agencyId='70' (bus 109, linea 300, ATRASADO)
+- TypeScript: 0 errores nuevos
+- Build: exitoso (hash 03:55)
+- Deploy hosting: ✅ (build 6e3763ee · 2026-05-04 03:55)
+- Verificación visual UI: PENDIENTE — browser automation bloqueada por perfil Chrome en uso (código 21). Requiere confirmación del usuario abriendo la URL.
+
+**Datos en Firestore:**
+- `vehicle_events`: TTL 7 días, escrito cada 15min por autoStatsCollector, agencyId presente en cada doc
+
+**URL a verificar:** https://skillroute.web.app/dashboard/traffic/diagnostico-cumplimiento → tab "Por Línea"
