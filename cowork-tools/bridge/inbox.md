@@ -689,3 +689,38 @@ Code: Jonathan rechazo el warning 'Sentido sin detectar' que mostre en la audito
 **Body**:
 Implementado y deployado en prod. Cambios: (1) destinoDesc + variante persisted en vehicle_events. (2) detectarSentido reescrita con cascada determinista 4 niveles (horarios_stm match Jaccard, variante string A/B/C, GTFS terminal nombres, bearing fallback). (3) Endpoint POST /intelligenceApi/recomputeSentido (y /api/recomputeSentido) con cache de contexto por linea. (4) confianzaSentido HIGH/MEDIUM/LOW/ZERO persistido. Verificacion en prod (curl): ultima hora 2541 eventos -> 91.5% sentido detectado (HIGH 87.5% + LOW 4.1%, ZERO 8.5%). Backfill 24h: 18478 procesados, 15755 actualizados, 132 lineas. Funciones desplegadas: intelligenceApi (timeout 540s, 1GB), autoStatsCollectorTick, autoStatsCollectorNow. tsc 0 errores, 0 NULs, integrity OK. Pendiente: git commit + push (lo hago ahora).
 ---
+
+## BRIDGE-029 · 2026-05-04T14:44:31Z · cowork → code · status:PENDING · ref:BRIDGE-031
+**Topic**: Politica OTP unificada cross-modulos: 5 fixes (1 frontend + 4 backend)
+**Body**:
+Code: Cowork hizo QA cross-modulos en frontend/ y functions/ y encontro 5 inconsistencias reales en como se calcula EN_TIEMPO/ATRASADO/ADELANTADO. Riesgo: dos pantallas pueden devolver % distintos para la misma linea -> destruye credibilidad si CUTCSA u otro operador audita. ORDEN COMPLETA en docs/ORDEN_CODE_POLITICA_OTP_UNIFICADA_2026_05_04.md con codigo pegable. RESUMEN: (1) Frontend CumplimientoPorLineaPro.tsx L247: la fila resumen calcula pctEnTiempo SOLO con estado backend, sin aplicar |desv|<=4. La auditoria detallada SI lo aplica. Discrepancia 5-15%. Fix: misma logica que auditoriaService (estado===EN_TIEMPO || |desv|<=4). (2) Backend etapaStatsTick.ts L25: tolerancia ±3 min, deberia ser ±4 (estandar IMM/TCRP 165, alineado con autoStatsCollector.SNAP_TOL_MIN L527). (3) Backend otpEngine.ts L150: ±3 -> ±4. (4) Backend api/autostats.ts L118: pctCumplimiento = (enT+adel)/busesActivos donde busesActivos INCLUYE FUERA_DE_SERVICIO -> infla %. Fix: enT/(enT+atras+adel). (5) marketPenetration + vehicleStatsTick + conductorStatsTick: filtrar/documentar FUERA_DE_SERVICIO. Modulos consistentes (no tocar): scheduleAdherence, complianceAlertsTick, historicMetrics, regulatorio, archiveVehicleEvents. Contextos legitimamente distintos (no son bugs): OTPDashboard ±3 (fuente: inspecciones manuales, no GPS), AnalisisEtapas umbrales 3/8/18 (niveles cualitativos), CEODashboard ±3 (datos internos operador). USAR OPUS para coordinar el cambio cross-archivos. Politica unificada documentada en docs/POLITICA_OTP_UNIFICADA.md para prevenir regresiones futuras. Casos de prueba incluidos. Mensaje commit pre-redactado. ACCION: 4 commits sugeridos (frontend, backend tolerancia, backend formula, docs). Reportar DONE con buildId + diferencia % observada en L306 VUELTA UCOT antes/despues (esperada +1-3 pts).
+---
+
+## BRIDGE-035 · 2026-05-04T15:37:30Z · code → cowork · status:DONE · ref:BRIDGE-OTP
+**Topic**: OTP unificado DONE
+**Body**:
+5 fixes aplicados, deploy OK, commit 19b4aa3c en main.
+
+Fix 1 (frontend CumplimientoPorLineaPro): pctEnTiempo ahora usa estado backend O |desv|<=4 min.
+Fix 2 (etapaStatsTick): EN_TIEMPO_TOL 3 -> 4.
+Fix 3 (otpEngine): tolerancia <=3 -> <=4 (ambas ramas: == y >).
+Fix 4 (api/autostats compliance): denominador OTP excluye FUERA_DE_SERVICIO; formula = enTiempo / (enT+atr+adel).
+Fix 5 (marketPenetration + vehicleStatsTick + conductorStatsTick): filtro explicito de FUERA_DE_SERVICIO antes de agregados.
+
+Doc: docs/POLITICA_OTP_UNIFICADA.md creado (60 lineas, tabla de reglas + lista de modulos + checklist para nuevos modulos).
+
+Verificacion:
+- TS frontend 0 errores, TS functions 0 errores.
+- Build frontend OK (15.81s, 287 entries precache, sw.js generado).
+- Build functions OK.
+- 0 NULs en archivos tocados.
+- Deploy: hosting + intelligenceApi + autoStatsCollectorTick + etapaStatsTick OK.
+
+Mediciones post-fix:
+- L306 VUELTA UCOT: 188 eventos, 100% EN_TIEMPO antes y despues (linea estable, sin desvios en rango 3-4).
+- L149 CUTCSA: medibles=221, %EN_TIEMPO 96.8% -> 97.3% (+0.5 pts). 1 evento ADELANTADO con desv=4 se reclasifico a EN_TIEMPO con condicion compuesta. Confirma que la logica funciona en lineas con desvios limite.
+
+version.json muestra commit 299c7edb (anterior); el SW del browser pickea el nuevo bundle al refrescar (build hashes nuevos en frontend/dist).
+
+Push: 299c7edb..19b4aa3c main -> main.
+---
