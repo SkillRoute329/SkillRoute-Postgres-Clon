@@ -994,54 +994,68 @@ app.post('/api/auth/login', async (req, res) => {
 
     const db = getDb();
 
-    // Buscar el usuario primero en `users` (legajo en docId padded), luego en
-    // `personal`, luego por campo internalNumber/legajo para tolerar otros docIds.
-    const candidates: Array<{ id: string; data: Record<string, any> }> = [];
-    const seen = new Set<string>();
-    const tryAdd = (id: string, data: Record<string, any> | undefined) => {
-      if (!data || seen.has(id)) return;
-      seen.add(id);
-      candidates.push({ id, data });
-    };
-
-    // Heurística: docId padded a 4 dígitos con prefijo P (ej. P0329 para "329")
-    const paddedId = `P${internalNumber.padStart(4, '0')}`;
-    for (const col of ['users', 'personal']) {
-      const direct = await db.collection(col).doc(paddedId).get();
-      if (direct.exists) tryAdd(`${col}/${direct.id}`, direct.data());
-      const direct2 = await db.collection(col).doc(internalNumber).get();
-      if (direct2.exists) tryAdd(`${col}/${direct2.id}`, direct2.data());
-    }
-    for (const col of ['users', 'personal']) {
-      for (const field of ['internalNumber', 'legajo']) {
-        const snap = await db.collection(col).where(field, '==', internalNumber).limit(2).get();
-        snap.docs.forEach((d) => tryAdd(`${col}/${d.id}`, d.data()));
+    // ── PASO 1: verificar contra Firebase Auth REST (para usuarios con cuenta Firebase) ──
+    // Usuarios existentes (ej. Jonathan) tienen cuenta en Firebase Auth con
+    // email formato legajo@ucot.internal. La verificamos antes que Firestore
+    // porque el Admin SDK no expone verifyPassword; la REST API sí.
+    const FIREBASE_API_KEY = 'AIzaSyDPviXHSMncZQ_l3oMwIRoPWAOXOHeVeL4';
+    const firebaseEmail = `${internalNumber}@ucot.internal`;
+    let firebaseUid: string | null = null;
+    let firebaseDisplayName: string | null = null;
+    try {
+      const fbResp = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: firebaseEmail, password, returnSecureToken: true }),
+        }
+      );
+      if (fbResp.ok) {
+        const fbJson = await fbResp.json() as { localId: string; displayName?: string };
+        firebaseUid = fbJson.localId;
+        firebaseDisplayName = fbJson.displayName ?? null;
       }
-    }
+    } catch (_) { /* Firebase Auth no disponible — continuar con Firestore */ }
 
-    if (candidates.length === 0) {
-      return res.status(401).json({ ok: false, error: 'Usuario o contraseña incorrectos' });
-    }
-
-    // Validar password. Si el usuario no tiene password almacenado, aceptamos el
-    // password por defecto del seeding (legajo == password) — gap conocido,
-    // pendiente de hashing real post-presentación.
-    const match = candidates.find(({ data }) => {
-      const stored = data.password ?? data.passwd ?? null;
-      if (typeof stored === 'string' && stored.length > 0) {
-        return stored === password;
+    // ── PASO 2: si Firebase Auth falló, verificar en Firestore ──
+    let firestoreData: Record<string, any> | null = null;
+    let docPath = '';
+    if (!firebaseUid) {
+      const candidates: Array<{ id: string; data: Record<string, any> }> = [];
+      const seen = new Set<string>();
+      const tryAdd = (id: string, data: Record<string, any> | undefined) => {
+        if (!data || seen.has(id)) return;
+        seen.add(id);
+        candidates.push({ id, data });
+      };
+      const paddedId = `P${internalNumber.padStart(4, '0')}`;
+      for (const col of ['users', 'personal']) {
+        const d1 = await db.collection(col).doc(paddedId).get();
+        if (d1.exists) tryAdd(`${col}/${d1.id}`, d1.data());
+        const d2 = await db.collection(col).doc(internalNumber).get();
+        if (d2.exists) tryAdd(`${col}/${d2.id}`, d2.data());
       }
-      // Fallback: aceptar el internalNumber como password (seed por defecto)
-      return password === internalNumber;
-    });
-
-    if (!match) {
-      return res.status(401).json({ ok: false, error: 'Usuario o contraseña incorrectos' });
+      for (const col of ['users', 'personal']) {
+        for (const field of ['internalNumber', 'legajo']) {
+          const snap = await db.collection(col).where(field, '==', internalNumber).limit(2).get();
+          snap.docs.forEach((d) => tryAdd(`${col}/${d.id}`, d.data()));
+        }
+      }
+      const match = candidates.find(({ data }) => {
+        const stored = data.password ?? data.passwd ?? null;
+        if (typeof stored === 'string' && stored.length > 0) return stored === password;
+        return password === internalNumber; // fallback seed
+      });
+      if (!match) {
+        return res.status(401).json({ ok: false, error: 'Usuario o contraseña incorrectos' });
+      }
+      firestoreData = match.data;
+      docPath = match.id;
     }
 
-    const data = match.data;
-    const docPath = match.id; // ej. "users/P0329"
-    const uid = `emp_${internalNumber}`;
+    const data = firestoreData ?? {};
+    const uid = firebaseUid ?? `emp_${internalNumber}`;
     const role = String(data.role ?? data.rol ?? 'USER').toUpperCase();
     const agencyId = String(data.agencyId ?? '70');
 
