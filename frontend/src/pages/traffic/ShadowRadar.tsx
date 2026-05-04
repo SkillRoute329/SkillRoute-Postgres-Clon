@@ -164,7 +164,7 @@ const ShadowRadar: React.FC = () => {
   });
   const [isScanning, setIsScanning] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  const { empresaPropia, setEmpresaPropia } = useEmpresaPropia();
+  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const { setSelectedLine } = useLiveData();
 
   // Buffer para tracking direccional
@@ -345,10 +345,11 @@ const ShadowRadar: React.FC = () => {
     // 3. vehicle_events (cron autoStatsCollector cada 5 min) — fuente GPS estable.
     //    Se guarda en un state propio para que no sea pisado por viajes_activos (vacío).
     //    El useMemo `ucotFlota` combina ambas fuentes con prioridad correcta.
+    //    agencyId es dinámico según el operador propio seleccionado.
     const since8min = new Date(Date.now() - 8 * 60 * 1000);
     const qVehicleEvents = query(
       collection(db, 'vehicle_events'),
-      where('agencyId', '==', '70'),
+      where('agencyId', '==', String(empresaPropia)),
       where('timestampGPS', '>=', since8min.toISOString()),
       orderBy('timestampGPS', 'desc'),
       limit(500),
@@ -377,7 +378,7 @@ const ShadowRadar: React.FC = () => {
           byBus.set(cocheId, {
             id: idStr,
             cocheId,
-            empresa: 'UCOT',
+            empresa: empresaCfg.label,
             codigoLinea: lineaVE,
             lat: data.lat,
             lng: data.lon,

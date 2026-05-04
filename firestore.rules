@@ -421,13 +421,12 @@ service cloud.firestore {
       allow write: if isAdminNorm() || isDriver() || isTrafficOrAdmin();
     }
 
-    // Datos GPS de buses tomados del feed público IMM/STM. NO contienen info
-    // sensible (sin datos personales, sin info comercial). Lectura pública para
-    // que el módulo de Cumplimiento por Línea funcione aun cuando el login
-    // custom de SkillRoute no haya generado un Firebase Auth session
-    // (gap conocido — refactor post-presentación: usar signInWithCustomToken).
+    // Datos GPS de buses tomados del feed público IMM/STM. Desde 2026-05-04 el
+    // login emite Firebase Custom Tokens via /api/auth/login, así que
+    // isAuthenticated() ya pasa para usuarios reales. Antes era `read: if true`
+    // como workaround temporal.
     match /vehicle_events/{document=**} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAdminNorm() || isTrafficOrAdmin();
     }
 

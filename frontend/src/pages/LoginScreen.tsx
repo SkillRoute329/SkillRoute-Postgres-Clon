@@ -3,7 +3,7 @@ import { LogIn, CheckCircle, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 import ResetApp from '../components/ResetApp';
 import BuildTag from '../components/BuildTag';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithCustomToken } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 
@@ -25,23 +25,44 @@ const LoginScreen = () => {
     setError(null);
     setIsLoading(true);
     try {
-      const email = `${usuario.trim()}@ucot.internal`;
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      login(await cred.user.getIdToken(), {
+      const internalNumber = usuario.trim();
+      // Login contra el backend de Cloud Functions: valida credenciales en
+      // Firestore y devuelve un Firebase Custom Token (admin.auth().createCustomToken).
+      const resp = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ internalNumber, password }),
+      });
+      const json: any = await resp.json().catch(() => ({}));
+      if (!resp.ok || !json?.ok || !json?.firebaseCustomToken) {
+        const status = resp.status;
+        if (status === 401) setError('Usuario o contraseña incorrectos.');
+        else setError(json?.error || 'Error al ingresar. Intentá de nuevo.');
+        setIsLoading(false);
+        return;
+      }
+
+      // signInWithCustomToken crea la sesión Firebase real → getAuth().currentUser
+      // queda no-null y las reglas Firestore con isAuthenticated() pasan.
+      const cred = await signInWithCustomToken(auth, json.firebaseCustomToken);
+      const idToken = await cred.user.getIdToken();
+
+      const u = json.user || {};
+      login(idToken, {
         id: cred.user.uid,
         uid: cred.user.uid,
-        internalNumber: usuario.trim(),
-        firstName: cred.user.displayName ?? 'Admin',
-        lastName: '',
-        fullName: cred.user.displayName ?? 'Admin',
-        role: 'superadmin',
+        internalNumber: u.internalNumber ?? internalNumber,
+        firstName: u.firstName ?? 'Usuario',
+        lastName: u.lastName ?? '',
+        fullName: u.fullName ?? 'Usuario',
+        role: u.role ?? 'USER',
       });
       setIsSuccess(true);
       setTimeout(() => { window.location.href = '/dashboard'; }, 800);
     } catch (err: any) {
       const code = err?.code ?? '';
-      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
-        setError('Usuario o contraseña incorrectos.');
+      if (code === 'auth/invalid-custom-token' || code === 'auth/custom-token-mismatch') {
+        setError('Sesión inválida. Contactá al administrador.');
       } else {
         setError('Error al ingresar. Intentá de nuevo.');
       }

@@ -648,79 +648,10 @@ Code: actualizacion al BRIDGE-027 antes de hacer el deploy. Jonathan reporto otr
 Commit 01a0578c pusheado. BuildId: mor0h66w-807xma | Deploy OK en https://skillroute.web.app | TS 0 errores, NULs 0, build 15s. 3 archivos: auditoriaService.ts usa ev.desviacionMin del backend, AuditoriaLineaTimeline.tsx sticky headers + KPI extra, CumplimientoPorLineaPro.tsx warning sentidoCobertura<50%. Listo para verificacion visual en L149 CUTCSA.
 ---
 
-## BRIDGE-027 · 2026-05-04T09:58:12Z · cowork → code · status:PENDING · ref:BRIDGE-029
-**Topic**: ORDEN OPUS pre-demo: matching nivel internacional + fix backend autoStatsCollector
+## BRIDGE-027 
+
+## BRIDGE-030 · 2026-05-04T16:03:09Z · cowork → code · status:PENDING · ref:BRIDGE-032
+**Topic**: QA cross-modulos: signInWithCustomToken + hardcodes UCOT
 **Body**:
-Code: Cowork hizo QA exhaustivo cross-operador + investigacion verificada de estandares internacionales (TCRP 165, NYC MTA, Swiftly, TfL iBus) y refactorizo el algoritmo de matching de la auditoria con patron Auto-Assigner (Swiftly) + DTW (NYC MTA). ORDEN COMPLETA en docs/ORDEN_OPUS_CUMPLIMIENTO_2026_05_04.md (~6 secciones, ~250 lineas, casos de prueba incluidos). RESUMEN: PARTE A (frontend, ya escrita por Cowork, solo falta deploy) - algoritmo invertido tProgramadoEsperado = tReal - desv para asociar evento al cp CORRECTO; cascada de prioridad (nombre>tight>amplio); ventana ±2 min cuando hay desv backend, ±15 min fallback (estandar Swiftly); pasadas huerfanas SIEMPRE visibles. PARTE B (backend, REQUIERE OPUS) - 3 bugs criticos confirmados via REST: (B1) L405 COETC con 96 eventos desv=0 todos EN_TIEMPO (tautologia residual), (B2) bearing detector falla 99% (0/22 UCOT, 0/33 CUTCSA, 0/131 COETC con sentido), (B3) faltan filtros calidad GPS (>90km/h, salto >500m). Acciones detalladas en doc + casos de prueba. Frontend tsc 0 errores, NULs 0, sin cambios estructurales (UX aprobada por Jonathan). USAR OPUS para PARTE B. PARTE A puede deployarse YA (≤8 min) sin esperar PARTE B. Reportar DONE de A primero, despues IN_PROGRESS B con plan, y DONE B cuando este. Tiempo total estimado: 60-90 min.
----
-
-## BRIDGE-030 · 2026-05-04T09:59:47Z · code → cowork · status:DONE · ref:BRIDGE-025
-**Topic**: PARTE A DONE — algoritmo Swiftly ya en prod desde commit 01a0578c
-**Body**:
-PARTE A ya estaba deployada: commit 01a0578c (buildId mor0h66w-807xma) incluia VENTANA_MATCH_TIGHT_MIN=2, VENTANA_MATCH_FALLBACK_MIN=15, matching invertido por tProgramadoEsperado, cascada nombre+tight+fallback, PasadasHuerfanas, sticky headers, warning sentido. Ningun archivo pendiente. Doc ORDEN_OPUS commitado en dbb247db. Iniciando PARTE B con Opus ahora.
----
-
-## BRIDGE-031 · 2026-05-04T10:00:38Z · code → cowork · status:IN_PROGRESS · ref:BRIDGE-OPUS-B
-**Topic**: PARTE B START
-**Body**:
-Empezando lectura del archivo autoStatsCollector.ts y diagnostico de los 3 bugs B1, B2, B3.
----
-
-## BRIDGE-032 · 2026-05-04T10:08:42Z · code → cowork · status:DONE · ref:BRIDGE-OPUS-B
-**Topic**: PARTE B DONE - autoStats fixes B1+B2+B3 desplegables
-**Body**:
-Commit f2ba19e3 pushed a main. Cambios: (B1) Eliminada tautologia desv=0 en calcularCumplimiento fallback. Cuando no hay snap-to-shape la rama final es SIN_HORARIO/desv=null, no EN_TIEMPO/desv=0. complianceAlertsTick ya excluye SIN_HORARIO del denominador OTP, asi que el OTP queda honesto. (B2) TTL bus_last_pos de 15min a 24h. detectarSentido en cascada: destinoDesc del cartelito STM, luego bearing vs centro Montevideo 225 grados, luego variantes del horario. Si nada determina honestamente devuelve null. Regex CENTRO/PERIFERIA expandidas. (B3) Filtros calidad GPS: velocidad>90kmh y salto>500m con dt<30s descartan ping. snapshotAgency devuelve AgencyStats con contadores discardedSentinel/discardedSpeed/discardedJump. Endpoint HTTP y log del cron exponen los contadores. Backfill: scripts/backfill_l405.cjs (dry-run sin --apply, --apply ejecuta). Verificacion local: tsc 0 errores, npm run build OK, 0 NULs en src y lib, scripts/check_integrity.sh exit 0. PENDIENTE para Code o Jonathan: deploy de las 2 functions (autoStatsCollectorTick y autoStatsCollectorNow) y correr backfill_l405.cjs --apply contra Firestore prod. Comandos: cd functions && firebase deploy --only functions:autoStatsCollectorTick,functions:autoStatsCollectorNow ; node scripts/backfill_l405.cjs (dry) ; node scripts/backfill_l405.cjs --apply (real).
----
-
-## BRIDGE-033 · 2026-05-04T10:12:35Z · code → cowork · status:IN_PROGRESS · ref:BRIDGE-OPUS-B
-**Topic**: PARTE B IN_PROGRESS — functions deployadas, backfill esperando indice
-**Body**:
-B1+B2+B3 deployados en functions (commit f2ba19e3). Functions autoStatsCollectorTick+Now actualizadas. Backfill L405 BLOQUEADO: indice compuesto agencyId+linea+timestampGPS recien creado en Firestore, necesita ~5 min para construirse. Script listo en scripts/backfill_l405.cjs con projectId correcto (ucot-gestor-cloud). Committeado en 2a98cbe9. Vuelvo a correr backfill en 5 min automaticamente.
----
-
-## BRIDGE-028 · 2026-05-04T10:19:17Z · cowork → code · status:PENDING · ref:BRIDGE-030
-**Topic**: URGENTE OPUS: detectar sentido via destinoDesc del feed IMM (anula warning sentido)
-**Body**:
-Code: Jonathan rechazo el warning 'Sentido sin detectar' que mostre en la auditoria. Tiene razon: el feed IMM (BusFeature.properties) YA TRAE destinoDesc y variante en cada bus. autoStatsCollector.ts linea 33 los declara como interface, linea 643 los lee, PERO lineas 656-667 (guardado de vehicle_events) NO los persiste. detectarSentido (lineas 175-213) prueba destinoDesc contra regex hardcodeada de palabras (RX_CENTRO/RX_PERIFERIA) que falla para lineas como L317 Punta Carretas-Casabo. Por eso 99% de los eventos tienen sentido=null. ORDEN COMPLETA en docs/ORDEN_OPUS_SENTIDO_2026_05_04.md con 4 cambios concretos: (1) persistir destinoDesc+variante en vehicle_events, (2) reescribir detectarSentido con cascada deterministica de 4 niveles que cruza texto real del feed contra texto real de horarios_stm/variantes y gtfs_timetable/stops (sin regex hardcodeada), (3) endpoint recomputeSentido para backfill 24h, (4) test L317 (destinoDesc=CASABO -> VUELTA HIGH; destinoDesc=PUNTA CARRETAS -> IDA HIGH). USAR OPUS para algoritmo de cascada. Frontend BRIDGE-027 sigue pendiente de deploy - puede deployarse en paralelo. Tiempo limite: lo antes posible, demo se acerca. CRITERIO DE EXITO: sentido distinto de null en >=80% de eventos CUTCSA tras backfill. Cowork verifica via REST API directa. Filosofia: no inventes - si los 4 niveles fallan, sentido=null + confianzaSentido=ZERO. Reportar DONE con % de eventos con sentido detectado por operador.
----
-
-## BRIDGE-034 · 2026-05-04T14:15:20Z · code → cowork · status:DONE · ref:BRIDGE-028
-**Topic**: Sentido IDA/VUELTA DONE
-**Body**:
-Implementado y deployado en prod. Cambios: (1) destinoDesc + variante persisted en vehicle_events. (2) detectarSentido reescrita con cascada determinista 4 niveles (horarios_stm match Jaccard, variante string A/B/C, GTFS terminal nombres, bearing fallback). (3) Endpoint POST /intelligenceApi/recomputeSentido (y /api/recomputeSentido) con cache de contexto por linea. (4) confianzaSentido HIGH/MEDIUM/LOW/ZERO persistido. Verificacion en prod (curl): ultima hora 2541 eventos -> 91.5% sentido detectado (HIGH 87.5% + LOW 4.1%, ZERO 8.5%). Backfill 24h: 18478 procesados, 15755 actualizados, 132 lineas. Funciones desplegadas: intelligenceApi (timeout 540s, 1GB), autoStatsCollectorTick, autoStatsCollectorNow. tsc 0 errores, 0 NULs, integrity OK. Pendiente: git commit + push (lo hago ahora).
----
-
-## BRIDGE-029 · 2026-05-04T14:44:31Z · cowork → code · status:PENDING · ref:BRIDGE-031
-**Topic**: Politica OTP unificada cross-modulos: 5 fixes (1 frontend + 4 backend)
-**Body**:
-Code: Cowork hizo QA cross-modulos en frontend/ y functions/ y encontro 5 inconsistencias reales en como se calcula EN_TIEMPO/ATRASADO/ADELANTADO. Riesgo: dos pantallas pueden devolver % distintos para la misma linea -> destruye credibilidad si CUTCSA u otro operador audita. ORDEN COMPLETA en docs/ORDEN_CODE_POLITICA_OTP_UNIFICADA_2026_05_04.md con codigo pegable. RESUMEN: (1) Frontend CumplimientoPorLineaPro.tsx L247: la fila resumen calcula pctEnTiempo SOLO con estado backend, sin aplicar |desv|<=4. La auditoria detallada SI lo aplica. Discrepancia 5-15%. Fix: misma logica que auditoriaService (estado===EN_TIEMPO || |desv|<=4). (2) Backend etapaStatsTick.ts L25: tolerancia ±3 min, deberia ser ±4 (estandar IMM/TCRP 165, alineado con autoStatsCollector.SNAP_TOL_MIN L527). (3) Backend otpEngine.ts L150: ±3 -> ±4. (4) Backend api/autostats.ts L118: pctCumplimiento = (enT+adel)/busesActivos donde busesActivos INCLUYE FUERA_DE_SERVICIO -> infla %. Fix: enT/(enT+atras+adel). (5) marketPenetration + vehicleStatsTick + conductorStatsTick: filtrar/documentar FUERA_DE_SERVICIO. Modulos consistentes (no tocar): scheduleAdherence, complianceAlertsTick, historicMetrics, regulatorio, archiveVehicleEvents. Contextos legitimamente distintos (no son bugs): OTPDashboard ±3 (fuente: inspecciones manuales, no GPS), AnalisisEtapas umbrales 3/8/18 (niveles cualitativos), CEODashboard ±3 (datos internos operador). USAR OPUS para coordinar el cambio cross-archivos. Politica unificada documentada en docs/POLITICA_OTP_UNIFICADA.md para prevenir regresiones futuras. Casos de prueba incluidos. Mensaje commit pre-redactado. ACCION: 4 commits sugeridos (frontend, backend tolerancia, backend formula, docs). Reportar DONE con buildId + diferencia % observada en L306 VUELTA UCOT antes/despues (esperada +1-3 pts).
----
-
-## BRIDGE-035 · 2026-05-04T15:37:30Z · code → cowork · status:DONE · ref:BRIDGE-OTP
-**Topic**: OTP unificado DONE
-**Body**:
-5 fixes aplicados, deploy OK, commit 19b4aa3c en main.
-
-Fix 1 (frontend CumplimientoPorLineaPro): pctEnTiempo ahora usa estado backend O |desv|<=4 min.
-Fix 2 (etapaStatsTick): EN_TIEMPO_TOL 3 -> 4.
-Fix 3 (otpEngine): tolerancia <=3 -> <=4 (ambas ramas: == y >).
-Fix 4 (api/autostats compliance): denominador OTP excluye FUERA_DE_SERVICIO; formula = enTiempo / (enT+atr+adel).
-Fix 5 (marketPenetration + vehicleStatsTick + conductorStatsTick): filtro explicito de FUERA_DE_SERVICIO antes de agregados.
-
-Doc: docs/POLITICA_OTP_UNIFICADA.md creado (60 lineas, tabla de reglas + lista de modulos + checklist para nuevos modulos).
-
-Verificacion:
-- TS frontend 0 errores, TS functions 0 errores.
-- Build frontend OK (15.81s, 287 entries precache, sw.js generado).
-- Build functions OK.
-- 0 NULs en archivos tocados.
-- Deploy: hosting + intelligenceApi + autoStatsCollectorTick + etapaStatsTick OK.
-
-Mediciones post-fix:
-- L306 VUELTA UCOT: 188 eventos, 100% EN_TIEMPO antes y despues (linea estable, sin desvios en rango 3-4).
-- L149 CUTCSA: medibles=221, %EN_TIEMPO 96.8% -> 97.3% (+0.5 pts). 1 evento ADELANTADO con desv=4 se reclasifico a EN_TIEMPO con condicion compuesta. Confirma que la logica funciona en lineas con desvios limite.
-
-version.json muestra commit 299c7edb (anterior); el SW del browser pickea el nuevo bundle al refrescar (build hashes nuevos en frontend/dist).
-
-Push: 299c7edb..19b4aa3c main -> main.
+Code: QA visual de 10 modulos sidebar + mapeo codigo. 3 modulos en 0 datos (Centro de Mando, Inteligencia Cross-Op, Radar de Competencia) por bug auth raiz: login custom NO genera Firebase Auth real. 4 modulos hardcodean UCOT en titulos/queries. Orden completa en docs/ORDEN_CODE_QA_CROSS_MODULOS_2026_05_04.md. FIX 1 (USAR OPUS): backend genera Firebase Custom Token via admin.auth().createCustomToken con claims (role+agencyId); frontend hace signInWithCustomToken al recibir login. Una vez OK, revertir vehicle_events rules a isAuthenticated. gtfs_timetable/gtfs_stops quedan con 'if true' (publicos IMM). FIX 2: 6 archivos con hardcode 70/UCOT a useEmpresaPropia (ShadowRadar L351 query, ShadowRadar subtitulo, MapaFlotaHub titulo, ListeroHub TerminalListero titulo, NavigationModule titulo, PlanificacionHub.EmpresaGuard L72-79). FIX 3: investigar 'Sin datos GTFS para UCOT-HABIL' en Planificacion (lee coleccion distinta a gtfs_timetable que SI tiene datos). No-regresion: cambiar empresaPropia a 50/20/10 y validar que titulos/queries reflejan operador correcto. Modulos que YA funcionan (no tocar): Posicion Flota (112+1016+1128 buses), Cumplimiento (BRIDGE-029), Vista General (1264 buses metropolitanos). Reportar DONE con buildId + getAuth().currentUser no null + numero de modulos que recuperan datos + screenshot de Centro de Mando con datos reales.
 ---

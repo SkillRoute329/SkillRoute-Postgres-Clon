@@ -929,6 +929,106 @@ const recomputeSentidoHandler = async (req, res) => {
 };
 app.post('/recomputeSentido', recomputeSentidoHandler);
 app.post('/api/recomputeSentido', recomputeSentidoHandler);
+// ─── AUTH: login con custom token (Firebase Admin SDK) ───────────────────────
+// El sistema heredado tiene usuarios en Firestore (`users` / `personal`) sin
+// cuenta en Firebase Auth. Este endpoint valida credenciales contra Firestore
+// y emite un Firebase Custom Token. El frontend luego llama
+// signInWithCustomToken(auth, token) para crear una sesión Firebase real, de
+// modo que getAuth().currentUser !== null y las reglas Firestore que requieren
+// isAuthenticated() pasen sin tener que abrir colecciones a `read: if true`.
+app.post('/api/auth/login', async (req, res) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
+    try {
+        const internalNumber = String((_b = (_a = req.body) === null || _a === void 0 ? void 0 : _a.internalNumber) !== null && _b !== void 0 ? _b : '').trim();
+        const password = String((_d = (_c = req.body) === null || _c === void 0 ? void 0 : _c.password) !== null && _d !== void 0 ? _d : '');
+        if (!internalNumber || !password) {
+            return res.status(400).json({ ok: false, error: 'internalNumber y password son requeridos' });
+        }
+        const db = getDb();
+        // Buscar el usuario primero en `users` (legajo en docId padded), luego en
+        // `personal`, luego por campo internalNumber/legajo para tolerar otros docIds.
+        const candidates = [];
+        const seen = new Set();
+        const tryAdd = (id, data) => {
+            if (!data || seen.has(id))
+                return;
+            seen.add(id);
+            candidates.push({ id, data });
+        };
+        // Heurística: docId padded a 4 dígitos con prefijo P (ej. P0329 para "329")
+        const paddedId = `P${internalNumber.padStart(4, '0')}`;
+        for (const col of ['users', 'personal']) {
+            const direct = await db.collection(col).doc(paddedId).get();
+            if (direct.exists)
+                tryAdd(`${col}/${direct.id}`, direct.data());
+            const direct2 = await db.collection(col).doc(internalNumber).get();
+            if (direct2.exists)
+                tryAdd(`${col}/${direct2.id}`, direct2.data());
+        }
+        for (const col of ['users', 'personal']) {
+            for (const field of ['internalNumber', 'legajo']) {
+                const snap = await db.collection(col).where(field, '==', internalNumber).limit(2).get();
+                snap.docs.forEach((d) => tryAdd(`${col}/${d.id}`, d.data()));
+            }
+        }
+        if (candidates.length === 0) {
+            return res.status(401).json({ ok: false, error: 'Usuario o contraseña incorrectos' });
+        }
+        // Validar password. Si el usuario no tiene password almacenado, aceptamos el
+        // password por defecto del seeding (legajo == password) — gap conocido,
+        // pendiente de hashing real post-presentación.
+        const match = candidates.find(({ data }) => {
+            var _a, _b;
+            const stored = (_b = (_a = data.password) !== null && _a !== void 0 ? _a : data.passwd) !== null && _b !== void 0 ? _b : null;
+            if (typeof stored === 'string' && stored.length > 0) {
+                return stored === password;
+            }
+            // Fallback: aceptar el internalNumber como password (seed por defecto)
+            return password === internalNumber;
+        });
+        if (!match) {
+            return res.status(401).json({ ok: false, error: 'Usuario o contraseña incorrectos' });
+        }
+        const data = match.data;
+        const docPath = match.id; // ej. "users/P0329"
+        const uid = `emp_${internalNumber}`;
+        const role = String((_f = (_e = data.role) !== null && _e !== void 0 ? _e : data.rol) !== null && _f !== void 0 ? _f : 'USER').toUpperCase();
+        const agencyId = String((_g = data.agencyId) !== null && _g !== void 0 ? _g : '70');
+        const claims = { role, agencyId, internalNumber };
+        const customToken = await admin.auth().createCustomToken(uid, claims);
+        // Asegurar que el documento `users/{uid}` exista con la forma esperada por
+        // el AuthContext (lee doc(db,'users',uid)). Mergeamos los datos sin pisar.
+        await db.collection('users').doc(uid).set({
+            internalNumber,
+            legajo: internalNumber,
+            rol: (_h = data.rol) !== null && _h !== void 0 ? _h : role,
+            role,
+            agencyId,
+            fullName: (_k = (_j = data.fullName) !== null && _j !== void 0 ? _j : data.nombre) !== null && _k !== void 0 ? _k : null,
+            nombre: (_l = data.nombre) !== null && _l !== void 0 ? _l : null,
+            apellido: (_m = data.apellido) !== null && _m !== void 0 ? _m : null,
+            sourceDoc: docPath,
+            loginAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        res.json({
+            ok: true,
+            firebaseCustomToken: customToken,
+            user: {
+                uid,
+                internalNumber,
+                role,
+                agencyId,
+                fullName: (_p = (_o = data.fullName) !== null && _o !== void 0 ? _o : data.nombre) !== null && _p !== void 0 ? _p : null,
+                firstName: (_q = data.nombre) !== null && _q !== void 0 ? _q : null,
+                lastName: (_r = data.apellido) !== null && _r !== void 0 ? _r : null,
+            },
+        });
+    }
+    catch (err) {
+        console.error('[auth/login] Error:', err);
+        res.status(500).json({ ok: false, error: (_s = err === null || err === void 0 ? void 0 : err.message) !== null && _s !== void 0 ? _s : String(err) });
+    }
+});
 // ─── EXPORT CLOUD FUNCTION ───────────────────────────────────────────────────
 // timeoutSeconds aumentado a 540 (max gen1) para soportar /recomputeSentido
 // con cargas de hasta 20k eventos y memory bumped por el cache de contexto.
