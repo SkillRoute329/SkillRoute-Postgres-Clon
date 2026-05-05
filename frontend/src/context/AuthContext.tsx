@@ -1,5 +1,5 @@
 import { auth } from '../config/firebase';
-import { onAuthStateChanged, setPersistence, browserLocalPersistence, getIdTokenResult } from 'firebase/auth';
+import { onAuthStateChanged, onIdTokenChanged, setPersistence, browserLocalPersistence, getIdTokenResult } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { type User } from '../services/api';
@@ -144,6 +144,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       unsubscribe();
       clearTimeout(timeoutId);
+    };
+  }, []);
+
+  // Renovación silenciosa: Firebase ID tokens duran 1h. Refrescamos a los 50 min
+  // para que Firestore y las API calls nunca vean un token expirado.
+  useEffect(() => {
+    const FIFTY_MIN = 50 * 60 * 1000;
+    const id = setInterval(async () => {
+      if (!auth.currentUser) return;
+      try {
+        const fresh = await auth.currentUser.getIdToken(/* forceRefresh */ true);
+        setToken(fresh);
+        localStorage.setItem('tf_token', fresh);
+        console.log('[AuthContext] Token renovado silenciosamente.');
+      } catch (err) {
+        console.warn('[AuthContext] Renovación silenciosa fallida:', err);
+      }
+    }, FIFTY_MIN);
+
+    // También escuchar renovaciones iniciadas por el SDK (ej: recarga de página)
+    const unsubToken = onIdTokenChanged(auth, async (fbUser) => {
+      if (!fbUser) return;
+      const fresh = await fbUser.getIdToken();
+      setToken(fresh);
+      localStorage.setItem('tf_token', fresh);
+    });
+
+    return () => {
+      clearInterval(id);
+      unsubToken();
     };
   }, []);
 
