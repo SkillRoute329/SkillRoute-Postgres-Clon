@@ -124,14 +124,18 @@ const AppMaintenance = () => {
                   status?.database?.status === 'READY' ? 'text-emerald-400' : 'text-red-400',
                 )}
               >
-                {status?.database?.status === 'READY' ? 'CONECTADO' : 'ERROR DE ENLACE'}
+                {status?.database?.status === 'READY' ? 'CONECTADO' : 'Sin conexión'}
               </p>
             </div>
           </div>
           <div className="space-y-3">
             <div className="flex justify-between text-xs">
               <span className="text-slate-500">Latencia FIRESTORE:</span>
-              <span className="text-white font-mono">{status?.database?.latency}ms</span>
+              <span className="text-white font-mono">
+                {status?.database?.latency != null
+                  ? `${status.database.latency}ms`
+                  : 'Sin datos'}
+              </span>
             </div>
             <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
               <div className="h-full bg-emerald-500 w-[95%] transition-all duration-1000"></div>
@@ -164,7 +168,9 @@ const AppMaintenance = () => {
                 Servidor / API
               </h3>
               <p className="text-white font-black">
-                {status?.environment?.platform?.toUpperCase()} v{status?.environment?.node}
+                {status?.environment?.platform
+                  ? `${status.environment.platform.toUpperCase()} v${status.environment.node ?? '—'}`
+                  : 'Sin datos'}
               </p>
             </div>
           </div>
