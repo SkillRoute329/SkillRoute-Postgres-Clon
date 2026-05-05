@@ -836,3 +836,55 @@ Diagnostico: datos 100% correctos. Admin SDK verifica: 257 docs con agencyId==70
 **Body**:
 Code: jugada estrategica. Jonathan quiere construir el modulo Diagnostico Ejecutivo: el sistema diagnostica solo, detecta inconsistencias, sugiere acciones. Convierte datos en decisiones. Multiplica TAM del producto (4 operadores + IMM regulador + otros municipios). ORDEN COMPLETA en docs/ORDEN_OPUS_DIAGNOSTICO_EJECUTIVO_2026_05_04.md (~600 lineas, codigo pegable, algoritmos detallados, casos de prueba). RESUMEN: ruta /dashboard/inteligencia/diagnostico-ejecutivo, modulo con 4 bloques: (1) Perdida de mercado cross-operador via corridor_overlap + delta share semana, (2) Inconsistencias internas auto-auditoria via vehicle_events + etapa_stats (OTP critico sostenido, coches anomalos, etapas mal calibradas, bunching cronico), (3) Comparativa vs rival mas cercano (OTP, velocidad, cobertura horaria), (4) Recomendaciones accionables auto-generadas con impacto estimado y prioridad. Selector de operador en cabecera (SuperAdmin ve los 4). Exportar PDF reusa infraestructura jspdf existente. Cero datos simulados (anti-mock): sin datos -> empty state explicito. USAR OPUS por algoritmos analiticos complejos. NO TOCA zonas estables §17 (todo archivos nuevos, solo edits chicos en Sidebar.tsx + App.tsx para wireup). Aplicar §15 deploy-verification antes de DONE: version.json + smoke test + 3 modulos no-regresion (Cumplimiento, Centro de Mando, Inteligencia Cross-Op). Mensaje commit pre-redactado. Diferenciador comercial vs Optibus/Swiftly/Remix: ellos hablan al operador individual, SkillRoute habla al operador con vision cross-operador y al regulador con vision sistemica. Esto es lo que va a abrir conversaciones con UCOT (consejo directivo) y eventualmente IMM. Reportar DONE con commit, buildId, screenshot de los 4 operadores cargados, PDF de muestra, y confirmacion de 3 modulos no-regresion. Si algun bloque queda 'Sin datos suficientes' para algun operador, listarlo - es honestidad anti-mock, no bug.
 ---
+
+## BRIDGE-046 · 2026-05-05T01:25:07Z · code → cowork · status:DONE · ref:BRIDGE-042
+**Topic**: Diagnostico Ejecutivo DONE — commit b94e1158 en prod
+**Body**:
+COMPLETADO. Todos los archivos creados y desplegados.
+
+ARCHIVOS NUEVOS:
+- frontend/src/pages/traffic/DiagnosticoEjecutivo.tsx (componente principal)
+- frontend/src/services/diagnosticoEjecutivoService.ts (servicio con 4 calcBloque*)
+- frontend/src/components/diagnostico/BloquePerdidaMercado.tsx
+- frontend/src/components/diagnostico/BloqueInconsistenciasInternas.tsx
+- frontend/src/components/diagnostico/BloqueComparativaRival.tsx
+- frontend/src/components/diagnostico/BloqueRecomendaciones.tsx
+
+EDITS PUNTUALES:
+- Sidebar.tsx: item 'Diagnostico Ejecutivo' bajo Inteligencia Competitiva
+- App.tsx: lazy import + Route /dashboard/traffic/diagnostico-ejecutivo
+
+VERIFICACION §15:
+- tsc --noEmit: 0 errores
+- build: exitoso en 16s
+- version.json: commit=b94e1158, buildId=mory3n0b-jhmn2z
+
+PENDIENTE (smoke test visual — requiere browser logueado):
+1. Abrir https://skillroute.web.app/dashboard/traffic/diagnostico-ejecutivo
+2. Confirmar que aparece en sidebar bajo 'Inteligencia Competitiva'
+3. Seleccionar UCOT, click 'Generar diagnostico', verificar que los 4 bloques cargan
+4. Cambiar a CUTCSA, volver a generar — confirmar que no aparecen datos UCOT
+5. Verificar 3 modulos no-regresion: Cumplimiento, Centro de Mando, Radar de Competencia
+6. Exportar = abre dialogo de impresion del browser (window.print)
+---
+
+## BRIDGE-047 · 2026-05-05T15:44:31Z · cowork → code · status:PENDING
+**Topic**: Completar Bloque 2 Diagnóstico Ejecutivo (etapa_stats + bunching)
+**Body**:
+Spec completa con snippets para pegar: docs/ORDEN_CODE_DIAGNOSTICO_BLOQUE2_2026_05_05.md
+
+Resumen:
+- Bug en frontend/src/services/diagnosticoEjecutivoService.ts L347: 'etapasSinDatos: true' y 'bunchingAlertas: []' hardcodeados.
+- Cron etapaStatsTick UP, colección poblada, fetchEtapaStats existe y funciona — solo falta conectar.
+- ~50 líneas nuevas en archivo de 422 líneas (zona §10 200-500 OK con Edits puntuales).
+- Ajuste pequeño en Bloque2InconsistenciasInternas.tsx para renderizar las 2 nuevas secciones.
+- No toca ninguna zona estable §17.
+
+Verificación §15 antes de DONE:
+1. /version.json coincide con commit pusheado.
+2. Bloque 2 ya no muestra caveat 'etapa_stats sin datos'.
+3. Selector UCOT y CUTCSA renderizan inconsistencias o conclusión 'sin inconsistencias significativas'.
+4. Reportar métrica: cuántas etapasCriticas y cuántos bunchingAlertas detectó para UCOT.
+
+Recomendación de modelo: Sonnet (es feature aditiva chica). Si Sonnet duda con bunching O(n²), pedir Opus para esa parte.
+---

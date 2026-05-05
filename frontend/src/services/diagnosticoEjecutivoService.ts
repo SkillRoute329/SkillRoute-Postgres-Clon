@@ -1,5 +1,6 @@
 import { collection, getDocs, query, where, limit, orderBy } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { fetchEtapaStats } from './etapaStatsService';
 
 // ── Tipos públicos ───────────────────────────────────────────────────────────
 
@@ -40,12 +41,31 @@ export interface CocheAnomalo {
   muestras: number;
 }
 
+export interface EtapaCritica {
+  linea: string;
+  directionId: number;
+  paradaIdx: number;
+  nombreParada: string;
+  pctEnTiempo: number;
+  totalEventos: number;
+}
+
+export interface BunchingAlerta {
+  linea: string;
+  sentido: string;
+  coche1: string;
+  coche2: string;
+  distanciaMetros: number;
+  duracionMin: number;
+  ts: string;
+}
+
 export interface Bloque2Result {
   sinDatos: boolean;
   otpCritico: LineaOTPCritico[];
   cochesAnomalos: CocheAnomalo[];
-  etapasSinDatos: boolean;
-  bunchingAlertas: string[];
+  etapasCriticas: EtapaCritica[];
+  bunchingAlertas: BunchingAlerta[];
   totalDetecciones: number;
   conclusion: string;
 }
@@ -334,17 +354,101 @@ async function calcBloque2(agencyId: string): Promise<Bloque2Result> {
   }
   cochesAnomalos.sort((a, b) => a.diferencia - b.diferencia).splice(5);
 
-  const totalDetecciones = otpCritico.length + cochesAnomalos.length;
+  // C) Etapas críticas — paradas con OTP < 60% en las líneas detectadas
+  const etapasCriticas: EtapaCritica[] = [];
+  for (const lcrit of otpCritico) {
+    const dirs = lcrit.sentido === 'IDA' ? [0] : lcrit.sentido === 'VUELTA' ? [1] : [0, 1];
+    for (const dir of dirs) {
+      try {
+        const ed = await fetchEtapaStats(agencyId, lcrit.linea, dir);
+        if (!ed) continue;
+        ed.paradas
+          .filter(p => p.total >= 10 && p.pctEnTiempo < 60)
+          .sort((a, b) => a.pctEnTiempo - b.pctEnTiempo)
+          .slice(0, 2)
+          .forEach(p => {
+            etapasCriticas.push({
+              linea: lcrit.linea,
+              directionId: dir,
+              paradaIdx: p.paradaIdx,
+              nombreParada: p.nombre || `Parada ${p.paradaIdx}`,
+              pctEnTiempo: p.pctEnTiempo,
+              totalEventos: p.total,
+            });
+          });
+      } catch (e) {
+        console.warn('[Bloque2] etapa_stats falló para', lcrit.linea, dir, e);
+      }
+    }
+  }
+  etapasCriticas.sort((a, b) => a.pctEnTiempo - b.pctEnTiempo).splice(8);
+
+  // D) Bunching — dos buses de la misma línea y sentido con eventos muy cercanos en tiempo
+  const bunchingAlertas: BunchingAlerta[] = [];
+  const eventosPorLineaSentido: Record<string, typeof eventos> = {};
+  eventos.forEach(e => {
+    if (!e.linea || !e.sentido || e.sentido === 'AMBOS') return;
+    const key = `${e.linea}__${e.sentido}`;
+    if (!eventosPorLineaSentido[key]) eventosPorLineaSentido[key] = [];
+    eventosPorLineaSentido[key].push(e);
+  });
+
+  function evToMs(e: { createdAt?: { toDate?: () => Date } | Date }): number {
+    if (!e.createdAt) return 0;
+    if (e.createdAt instanceof Date) return e.createdAt.getTime();
+    if (typeof (e.createdAt as any).toDate === 'function') return (e.createdAt as any).toDate().getTime();
+    return 0;
+  }
+
+  for (const [key, evs] of Object.entries(eventosPorLineaSentido)) {
+    if (bunchingAlertas.length >= 5) break;
+    if (evs.length < 4) continue;
+    const [linea, sentido] = key.split('__');
+    const porBus: Record<string, typeof evs> = {};
+    evs.forEach(e => {
+      const bid = String(e.idBus);
+      if (!porBus[bid]) porBus[bid] = [];
+      porBus[bid].push(e);
+    });
+    const ids = Object.keys(porBus);
+    for (let i = 0; i < ids.length && bunchingAlertas.length < 5; i++) {
+      for (let j = i + 1; j < ids.length && bunchingAlertas.length < 5; j++) {
+        for (const ea of porBus[ids[i]]) {
+          const taMs = evToMs(ea);
+          if (!taMs) continue;
+          const cercano = porBus[ids[j]].find(eb => {
+            const tbMs = evToMs(eb);
+            return tbMs > 0 && Math.abs(tbMs - taMs) < 3 * 60_000;
+          });
+          if (cercano) {
+            const diffMin = Math.round(Math.abs(evToMs(cercano) - taMs) / 60_000);
+            const tsIso = ea.createdAt instanceof Date
+              ? ea.createdAt.toISOString()
+              : typeof (ea.createdAt as any)?.toDate === 'function'
+              ? (ea.createdAt as any).toDate().toISOString()
+              : new Date().toISOString();
+            bunchingAlertas.push({ linea, sentido, coche1: ids[i], coche2: ids[j], distanciaMetros: 0, duracionMin: diffMin, ts: tsIso });
+            break;
+          }
+        }
+      }
+    }
+  }
+
   const empresa = EMPRESA_NOMBRES[agencyId] ?? agencyId;
+  const totalDetecciones = otpCritico.length + cochesAnomalos.length + etapasCriticas.length + bunchingAlertas.length;
 
-  let conclusion = totalDetecciones === 0
+  const partes: string[] = [];
+  if (otpCritico.length)      partes.push(`${otpCritico.length} línea${otpCritico.length > 1 ? 's' : ''} con OTP crítico`);
+  if (cochesAnomalos.length)  partes.push(`${cochesAnomalos.length} coche${cochesAnomalos.length > 1 ? 's' : ''} anómalo${cochesAnomalos.length > 1 ? 's' : ''}`);
+  if (etapasCriticas.length)  partes.push(`${etapasCriticas.length} parada${etapasCriticas.length > 1 ? 's' : ''} con baja puntualidad`);
+  if (bunchingAlertas.length) partes.push(`${bunchingAlertas.length} bunching detectado${bunchingAlertas.length > 1 ? 's' : ''}`);
+
+  const conclusion = totalDetecciones === 0
     ? `No se detectaron inconsistencias internas significativas en ${empresa}.`
-    : `Detectamos ${totalDetecciones} inconsistencia${totalDetecciones > 1 ? 's' : ''} internas: `
-      + (otpCritico.length > 0 ? `${otpCritico.length} línea${otpCritico.length > 1 ? 's' : ''} con OTP crítico` : '')
-      + (cochesAnomalos.length > 0 ? (otpCritico.length > 0 ? ', ' : '') + `${cochesAnomalos.length} coche${cochesAnomalos.length > 1 ? 's' : ''} anómalo${cochesAnomalos.length > 1 ? 's' : ''}` : '')
-      + '.';
+    : `Detectamos ${totalDetecciones} inconsistencia${totalDetecciones > 1 ? 's' : ''} internas en ${empresa}: ${partes.join(', ')}.`;
 
-  return { sinDatos: false, otpCritico, cochesAnomalos, etapasSinDatos: true, bunchingAlertas: [], totalDetecciones, conclusion };
+  return { sinDatos: false, otpCritico, cochesAnomalos, etapasCriticas, bunchingAlertas, totalDetecciones, conclusion };
 }
 
 // ── Bloque 3: Comparativa vs rival ──────────────────────────────────────────
