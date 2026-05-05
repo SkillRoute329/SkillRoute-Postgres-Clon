@@ -101,6 +101,36 @@ export default function BloqueInconsistenciasInternas({ data }: Props) {
         </div>
       )}
 
+      {/* Advertencia falla GPS */}
+      {data.cochesSospechosos.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-200">
+                Posible falla de GPS — revisar equipamiento
+              </p>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                {data.cochesSospechosos.length === 1
+                  ? 'El siguiente coche aparece en múltiples alertas de bunching. Si reporta posición estática o errática, puede tratarse de un problema del equipo.'
+                  : `Los siguientes ${data.cochesSospechosos.length} coches aparecen en múltiples alertas de bunching. Si reportan posición estática o errática, pueden tratarse de problemas de equipo.`}
+                {' '}Las alertas siguen mostradas tal cual — los datos no se filtran.
+              </p>
+              <ul className="mt-2 space-y-1">
+                {data.cochesSospechosos.map((c) => (
+                  <li key={c.idBus} className="text-xs text-amber-200 flex items-center gap-2">
+                    <span className="font-mono font-semibold">Coche #{c.idBus}</span>
+                    <span className="text-slate-400">
+                      · {c.totalAlertas} alertas · L{c.lineas.join(', L')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bunching */}
       {data.bunchingAlertas.length > 0 && (
         <div>

@@ -60,12 +60,20 @@ export interface BunchingAlerta {
   ts: string;
 }
 
+export interface CocheSospechosoGPS {
+  idBus: string;
+  totalAlertas: number;
+  lineas: string[];
+  motivo: 'mismo_coche_repetido';
+}
+
 export interface Bloque2Result {
   sinDatos: boolean;
   otpCritico: LineaOTPCritico[];
   cochesAnomalos: CocheAnomalo[];
   etapasCriticas: EtapaCritica[];
   bunchingAlertas: BunchingAlerta[];
+  cochesSospechosos: CocheSospechosoGPS[];
   totalDetecciones: number;
   conclusion: string;
 }
@@ -304,8 +312,8 @@ async function calcBloque2(agencyId: string): Promise<Bloque2Result> {
 
   if (eventos.length < 20) {
     return {
-      sinDatos: true, otpCritico: [], cochesAnomalos: [], etapasSinDatos: true,
-      bunchingAlertas: [], totalDetecciones: 0,
+      sinDatos: true, otpCritico: [], cochesAnomalos: [], etapasCriticas: [],
+      bunchingAlertas: [], cochesSospechosos: [], totalDetecciones: 0,
       conclusion: 'Sin datos suficientes para auditoría interna.',
     };
   }
@@ -435,6 +443,31 @@ async function calcBloque2(agencyId: string): Promise<Bloque2Result> {
     }
   }
 
+  // Análisis post-bunching: coches que aparecen en muchas alertas pueden
+  // tener falla de GPS. NO filtramos las alertas — sólo agregamos advertencia.
+  const conteoCoches = new Map<string, { count: number; lineas: Set<string> }>();
+  for (const b of bunchingAlertas) {
+    for (const c of [b.coche1, b.coche2]) {
+      if (!conteoCoches.has(c)) conteoCoches.set(c, { count: 0, lineas: new Set() });
+      const e = conteoCoches.get(c)!;
+      e.count++;
+      e.lineas.add(b.linea);
+    }
+  }
+
+  const cochesSospechosos: CocheSospechosoGPS[] = [];
+  for (const [idBus, info] of conteoCoches) {
+    if (info.count >= 3) {
+      cochesSospechosos.push({
+        idBus,
+        totalAlertas: info.count,
+        lineas: Array.from(info.lineas).sort(),
+        motivo: 'mismo_coche_repetido',
+      });
+    }
+  }
+  cochesSospechosos.sort((a, b) => b.totalAlertas - a.totalAlertas);
+
   const empresa = EMPRESA_NOMBRES[agencyId] ?? agencyId;
   const totalDetecciones = otpCritico.length + cochesAnomalos.length + etapasCriticas.length + bunchingAlertas.length;
 
@@ -448,7 +481,7 @@ async function calcBloque2(agencyId: string): Promise<Bloque2Result> {
     ? `No se detectaron inconsistencias internas significativas en ${empresa}.`
     : `Detectamos ${totalDetecciones} inconsistencia${totalDetecciones > 1 ? 's' : ''} internas en ${empresa}: ${partes.join(', ')}.`;
 
-  return { sinDatos: false, otpCritico, cochesAnomalos, etapasCriticas, bunchingAlertas, totalDetecciones, conclusion };
+  return { sinDatos: false, otpCritico, cochesAnomalos, etapasCriticas, bunchingAlertas, cochesSospechosos, totalDetecciones, conclusion };
 }
 
 // ── Bloque 3: Comparativa vs rival ──────────────────────────────────────────
