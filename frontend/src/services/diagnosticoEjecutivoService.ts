@@ -1,5 +1,5 @@
 import { collection, getDocs, query, where, limit, orderBy } from 'firebase/firestore';
-import { db } from './firestore';
+import { db } from '../config/firebase';
 
 // ── Tipos públicos ───────────────────────────────────────────────────────────
 
