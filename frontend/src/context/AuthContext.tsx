@@ -128,11 +128,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(finalUser);
           localStorage.setItem('tf_token', freshToken);
           localStorage.setItem('tf_user', JSON.stringify(finalUser));
-        } else if (!localStorage.getItem('tf_token')) {
-          // Solo limpiar si no hay un token de backend manual
-          console.log('💤 [AuthContext] No active session found.');
+        } else {
+          // Sesión Firebase muerta (refresh-token expirado o revocado).
+          // El tf_token cached es un ID token expirado, no sirve para
+          // signInWithCustomToken. Limpiamos todo y mandamos a /login para
+          // que el usuario re-autentique en lugar de dejar la app en limbo
+          // con queries permission-denied silenciosas.
+          console.log('💤 [AuthContext] No active session — redirigiendo a /login');
+          localStorage.removeItem('tf_token');
+          localStorage.removeItem('tf_user');
           setToken(null);
           setUser(null);
+          if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/public')) {
+            window.location.assign('/login');
+          }
         }
       } catch (error) {
         console.error('❌ [AuthContext] Critical Auth Error:', error);
