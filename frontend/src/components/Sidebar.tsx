@@ -91,6 +91,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       items: [
         { path: '/dashboard/traffic/ceo',                     label: 'Centro de Mando',       icon: TrendingUp },
         { path: '/dashboard/traffic/competitor-intelligence', label: 'Radar de Competencia',   icon: Radar      },
+        { path: '/dashboard/traffic/diagnostico-ejecutivo',   label: 'Diagnóstico Ejecutivo',  icon: ClipboardList },
         // Hub: Corredores + Market Share + Penetración + Analytics + Headway
         { path: '/dashboard/traffic/corridor-intelligence',   label: 'Inteligencia Cross-Op.', icon: Network    },
         // Hub: Mapa Corredores + Reproducción GPS

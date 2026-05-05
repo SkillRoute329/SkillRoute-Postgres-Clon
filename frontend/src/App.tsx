@@ -112,6 +112,7 @@ const Distribution = lazy(() => import('./pages/operations/Distribution'));
 const RotationMatrix = lazy(() => import('./pages/traffic/RotationMatrix'));
 const VehicleCheck = lazy(() => import('./pages/fleet/VehicleCheck'));
 const CompetitorIntelligencePage = lazy(() => import('./pages/traffic/CompetitorIntelligencePage'));
+const DiagnosticoEjecutivo = lazy(() => import('./pages/traffic/DiagnosticoEjecutivo'));
 const DigitalAgentsModule = lazy(() => import('./pages/traffic/DigitalAgentsModule'));
 const OTPDashboard = lazy(() => import('./pages/traffic/OTPDashboard'));
 const IncidentCommandCenter = lazy(() => import('./pages/traffic/IncidentCommandCenter'));
@@ -135,6 +136,7 @@ const DisponibilidadFlota = lazy(() => import('./pages/fleet/DisponibilidadFlota
 const PanelRendicionCuentas = lazy(() => import('./pages/admin/PanelRendicionCuentas'));
 const DiagnosticoCumplimiento = lazy(() => import('./pages/traffic/DiagnosticoCumplimiento'));
 const RankingCoches = lazy(() => import('./pages/traffic/RankingCoches'));
+const AnalisisEtapas = lazy(() => import('./pages/traffic/AnalisisEtapas'));
 // Hubs unificados (wrapper de tabs — no reemplazan los componentes originales)
 const CumplimientoHub      = lazy(() => import('./pages/traffic/CumplimientoHub'));
 const CorredoresHub        = lazy(() => import('./pages/traffic/CorredoresHub'));
@@ -314,6 +316,7 @@ function App() {
                     <Route path="traffic/live-map" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><LiveMapPage /></PrivateRoute>} />
                     <Route path="traffic/shadow-radar" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ShadowRadar /></PrivateRoute>} />
                     <Route path="traffic/competitor-intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CompetitorIntelligencePage /></PrivateRoute>} />
+                    <Route path="traffic/diagnostico-ejecutivo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><DiagnosticoEjecutivo /></PrivateRoute>} />
                     {/* Hub: Inteligencia de Corredores + Participación km en tabs */}
                     <Route path="traffic/corridor-intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorredoresHub /></PrivateRoute>} />
                     {/* Redirect: market-share ahora es tab del hub de corredores */}
@@ -344,6 +347,8 @@ function App() {
                     <Route path="admin/compliance" element={<Navigate to="/dashboard/admin/regulatorio" replace />} />
                     <Route path="talento" element={<TalentCenter />} />
 
+                    {/* Análisis por etapa — OTP parada a parada */}
+                    <Route path="traffic/etapas" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><AnalisisEtapas /></PrivateRoute>} />
                     {/* Hubs nuevos — rutas que no existían antes de la consolidación */}
                     <Route path="traffic/planificacion" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><PlanificacionHub /></PrivateRoute>} />
                     <Route path="traffic/financiero" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><FinancieroHub /></PrivateRoute>} />
