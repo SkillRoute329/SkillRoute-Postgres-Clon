@@ -5,7 +5,7 @@
  * - Compara el horario programado (ScheduleService) con los registros
  *   de inspecciones en Firestore (colección 'inspecciones').
  * - Cada registro de inspección contiene: lineaId, servicioId, horaReal (HH:MM).
- * - Se clasifica: PUNTUAL (±3 min), ADELANTADO (>3 min antes), DEMORADO (>3 min después).
+ * - Se clasifica: PUNTUAL (±4 min), ADELANTADO (>4 min antes), DEMORADO (>4 min después).
  *
  * Sin simulaciones. Sin datos hardcoded de estado. Sólo Firestore + ScheduleService.
  */
@@ -58,7 +58,7 @@ interface OTPLinea {
 
 /* ─── Helpers ─────────────────────────────────────────── */
 
-const TOLERANCIA_MIN = 3; // ±3 minutos = PUNTUAL
+const TOLERANCIA_MIN = 4; // ±4 minutos = PUNTUAL (POLITICA_OTP_UNIFICADA.md · IMM/TCRP 165)
 
 function horaToMin(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number);
@@ -105,7 +105,7 @@ const OTP_COLOR = (otp: number) => {
 
 export default function OTPDashboard() {
   const { otpHoy, otpSeries } = useLiveData();
-  const { empresaPropia, empresaCfg } = useEmpresaPropia();
+  const { empresaPropia, empresaCfg, setEmpresaPropia } = useEmpresaPropia();
   const [registros, setRegistros] = useState<OTPRegistro[]>([]);
   const [byLinea, setByLinea] = useState<OTPLinea[]>([]);
   const [loading, setLoading] = useState(true);
@@ -239,7 +239,7 @@ export default function OTPDashboard() {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [dias, refreshKey]);
+  }, [dias, refreshKey, empresaPropia]);
 
   // Cargar otp_summary del motor GPS (otpEngine — snap-to-stop real, cada 10 min)
   // Cross-operador: filtra por la empresa actualmente seleccionada
@@ -320,7 +320,7 @@ export default function OTPDashboard() {
               Tablero OTP — Puntualidad
             </h1>
             <p className="text-xs text-slate-500">
-              On-Time Performance · Tolerancia ±{TOLERANCIA_MIN} min · Fuente: Inspecciones reales
+              On-Time Performance · Tolerancia ±{TOLERANCIA_MIN} min · Empresa: <span className="text-blue-400 font-semibold">{empresaCfg.label}</span>
             </p>
           </div>
         </div>
@@ -348,6 +348,20 @@ export default function OTPDashboard() {
             Actualizar
           </button>
         </div>
+      </div>
+      {/* Selector de empresa */}
+      <div className="flex gap-1 bg-slate-800/60 rounded-lg p-1 border border-slate-700/50 w-fit -mt-2">
+        {([{ id: 70, nombre: 'UCOT' }, { id: 50, nombre: 'CUTCSA' }, { id: 20, nombre: 'COME' }, { id: 10, nombre: 'COETC' }] as const).map((ag) => (
+          <button
+            key={ag.id}
+            onClick={() => { setEmpresaPropia(ag.id); setRefreshKey(k => k + 1); }}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              empresaPropia === ag.id ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            {ag.nombre}
+          </button>
+        ))}
       </div>
 
       {/* Error */}

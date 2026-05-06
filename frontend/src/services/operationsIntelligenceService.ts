@@ -311,9 +311,9 @@ function gpsAgent(lineId: string, busesActivos: number): AgentStatus {
   };
 }
 
-async function fetchFromGPS(): Promise<{ byLine: Map<string, number> } | null> {
+async function fetchFromGPS(empresa: number = 70): Promise<{ byLine: Map<string, number> } | null> {
   try {
-    const buses = await fetchSTMPosiciones({ empresa: 70 });
+    const buses = await fetchSTMPosiciones({ empresa });
     if (buses.length === 0) return null;
     const byLine = new Map<string, number>();
     buses.forEach((b) => byLine.set(b.linea, (byLine.get(b.linea) ?? 0) + 1));
@@ -335,7 +335,7 @@ export async function fetchAllLineStatuses(agencyId = '70', lineIds?: string[]):
     return { lines, source: 'LIVE' };
   }
   const fallbackIds = lineIds ?? UCOT_LINEAS_REALES;
-  const gps = await fetchFromGPS();
+  const gps = await fetchFromGPS(Number(agencyId));
   if (gps) {
     const lines = fallbackIds.map((id) => gpsLine(id, gps.byLine.get(id) ?? 0));
     return { lines, source: 'LIVE' };
@@ -354,7 +354,7 @@ export async function fetchAllAgentStatuses(agencyId = '70', lineIds?: string[])
     return { agents, source: 'LIVE' };
   }
   const fallbackIds = lineIds ?? UCOT_LINEAS_REALES;
-  const gps = await fetchFromGPS();
+  const gps = await fetchFromGPS(Number(agencyId));
   if (gps) {
     const agents = fallbackIds.map((id) => gpsAgent(id, gps.byLine.get(id) ?? 0));
     return { agents, source: 'LIVE' };

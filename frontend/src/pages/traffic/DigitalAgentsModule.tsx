@@ -49,6 +49,7 @@ import { formatHoraMvd } from '../../utils/formatTimestamp';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { auth } from '../../config/firebase';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 // Fix #6 (2026-04-23): persistencia real de delegaciones al inspector humano.
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -272,6 +273,7 @@ function analizarServiciosActivos(servicios: MasterServicio[]): ServicioActivo[]
 // ── Componente Principal ────────────────────────────────────────────────────
 
 export default function DigitalAgentsModule() {
+  const { empresaPropia } = useEmpresaPropia();
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
   const [agent, setAgent] = useState<AgentState | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -424,7 +426,7 @@ export default function DigitalAgentsModule() {
       if (posicionesIMM.length === 0) {
         try {
           const { fetchSTMPosiciones } = await import('../../services/stmLiveService');
-          const stmBuses = await fetchSTMPosiciones({ empresa: 70, lineas: [baseId] });
+          const stmBuses = await fetchSTMPosiciones({ empresa: Number(empresaPropia ?? 70), lineas: [baseId] });
           if (stmBuses && stmBuses.length > 0) {
             posicionesIMM = stmBuses.map(b => ({
               lat: b.lat,
@@ -524,7 +526,7 @@ export default function DigitalAgentsModule() {
         lastUpdate: new Date(),
       });
     },
-    [generarRecomendaciones],
+    [generarRecomendaciones, empresaPropia],
   );
 
   const handleSelectLine = useCallback(

@@ -24,6 +24,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
+import { useEmpresaPropia } from '../../../hooks/useEmpresaPropia';
 import {
   createDisruption,
   transitionDisruption,
@@ -341,6 +342,16 @@ function CreateDisruptionModal({
   onCreated: () => void;
 }) {
   const { user } = useAuth();
+  const { empresaPropia } = useEmpresaPropia();
+  const empresaSlug = (() => {
+    switch (Number(empresaPropia)) {
+      case 70: return 'ucot';
+      case 50: return 'cutcsa';
+      case 20: return 'come';
+      case 10: return 'coetc';
+      default: return 'ucot';
+    }
+  })();
   const [tipo, setTipo] = useState<DisruptionType>('DESVIO_NO_PROGRAMADO');
   const [severidad, setSeveridad] = useState<DisruptionSeverity>('MODERATE');
   const [titulo, setTitulo] = useState('');
@@ -364,7 +375,7 @@ function CreateDisruptionModal({
           .split(',')
           .map((l) => l.trim())
           .filter(Boolean),
-        operadorId: 'ucot', // TODO multi-tenant
+        operadorId: empresaSlug,
         reportedBy: (user as any)?.uid ?? 'anonymous',
         reportedByName: user?.fullName ?? user?.email ?? undefined,
       });
