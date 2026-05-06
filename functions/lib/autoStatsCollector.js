@@ -871,8 +871,9 @@ async function updateEndpointHealth(results) {
     }
 }
 // ── Exports ────────────────────────────────────────────────────────────────
-exports.autoStatsCollectorTick = functions.pubsub
-    .schedule('every 15 minutes')
+exports.autoStatsCollectorTick = functions
+    .runWith({ timeoutSeconds: 540, memory: '1GB' })
+    .pubsub.schedule('every 15 minutes')
     .timeZone('America/Montevideo')
     .onRun(async () => {
     try {

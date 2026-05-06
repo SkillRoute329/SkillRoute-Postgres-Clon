@@ -125,6 +125,8 @@ function registerAdminSeedRoutes(app) {
                         estado_operativo: v.estado_operativo,
                         tipo: v.tipo,
                         activo: true,
+                        agencyId: 70,
+                        empresa: 70,
                         fuenteDatos: 'cartones_ucot_2026',
                         importadoEn: admin.firestore.FieldValue.serverTimestamp(),
                     };

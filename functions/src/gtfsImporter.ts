@@ -458,13 +458,17 @@ async function runImport(): Promise<ImportResult> {
         }
         logger.info('[GTFS] Tipos de servicio:', svcTypes.size, '| Trips con tiempos:', tripFullTimes.size);
 
-        // Orden canónico de paradas por ruta/dirección (del trip representativo)
+        // Orden canónico de paradas por ruta/dirección — elige la variante con MÁS paradas
+        // (evita que una variante secundaria corta, ej. 300a con 20 paradas, desplace la principal con 70+)
         const routeKeyToCanonical = new Map<string, string[]>();
         for (const [shapeId, stopIds] of shapeToStopIds) {
           const info = shapeToRoute.get(shapeId);
           if (!info) continue;
           const key = `${info.routeId}|${info.directionId}`;
-          if (!routeKeyToCanonical.has(key)) routeKeyToCanonical.set(key, stopIds);
+          const existing = routeKeyToCanonical.get(key);
+          if (!existing || stopIds.length > existing.length) {
+            routeKeyToCanonical.set(key, stopIds);
+          }
         }
 
         interface TGroup {
@@ -526,15 +530,43 @@ async function runImport(): Promise<ImportResult> {
             },
           });
         }
-        for (let i = 0; i < tDocs.length; i += BATCH_SIZE) {
+        // Validación de simetría: si una línea tiene dir0 y dir1 muy asimétricas → no persistir
+        const stopsByLineDir = new Map<string, { dir0?: number; dir1?: number }>();
+        for (const d of tDocs) {
+          const { agencyId, linea, directionId, stops } = d.data as { agencyId: string; linea: string; directionId: number; stops: string[] };
+          const lk = `${agencyId}|${linea}`;
+          const cur = stopsByLineDir.get(lk) ?? {};
+          if (directionId === 0) cur.dir0 = (stops as string[]).length;
+          else cur.dir1 = (stops as string[]).length;
+          stopsByLineDir.set(lk, cur);
+        }
+        const asimetricasSkip = new Set<string>();
+        for (const [lk, cnts] of stopsByLineDir) {
+          if (cnts.dir0 !== undefined && cnts.dir1 !== undefined) {
+            const ratio = Math.min(cnts.dir0, cnts.dir1) / Math.max(cnts.dir0, cnts.dir1);
+            if (ratio < 0.5) {
+              logger.warn(`[GTFS] Simetría insuficiente ${lk}: dir0=${cnts.dir0} dir1=${cnts.dir1} ratio=${ratio.toFixed(2)} — se omite para evitar variante truncada`);
+              asimetricasSkip.add(lk);
+            }
+          }
+        }
+        const tDocsValidados = tDocs.filter(d => {
+          const { agencyId, linea } = d.data as { agencyId: string; linea: string };
+          return !asimetricasSkip.has(`${agencyId}|${linea}`);
+        });
+        if (asimetricasSkip.size > 0) {
+          logger.warn(`[GTFS] ${asimetricasSkip.size} líneas omitidas por asimetría: ${[...asimetricasSkip].join(', ')}`);
+        }
+
+        for (let i = 0; i < tDocsValidados.length; i += BATCH_SIZE) {
           const batch = db.batch();
-          for (const d of tDocs.slice(i, i + BATCH_SIZE)) {
+          for (const d of tDocsValidados.slice(i, i + BATCH_SIZE)) {
             batch.set(db.collection(TIMETABLE_COL).doc(d.id), d.data);
           }
           await batch.commit();
-          logger.info(`[GTFS] Timetable batch ${Math.floor(i / BATCH_SIZE) + 1} → ${Math.min(i + BATCH_SIZE, tDocs.length)}`);
+          logger.info(`[GTFS] Timetable batch ${Math.floor(i / BATCH_SIZE) + 1} → ${Math.min(i + BATCH_SIZE, tDocsValidados.length)}`);
         }
-        timetableEscritos = tDocs.length;
+        timetableEscritos = tDocsValidados.length;
         logger.info('[GTFS] Timetable escritos:', timetableEscritos);
       }
     }

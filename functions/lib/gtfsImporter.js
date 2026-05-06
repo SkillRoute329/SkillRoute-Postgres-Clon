@@ -125,7 +125,7 @@ async function buildLineaAgencyMap() {
     return map;
 }
 async function runImport() {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9;
     const start = Date.now();
     const token = await (0, immTokenService_1.getImmToken)();
     if (!token)
@@ -416,15 +416,18 @@ async function runImport() {
                     }
                 }
                 logger.info('[GTFS] Tipos de servicio:', svcTypes.size, '| Trips con tiempos:', tripFullTimes.size);
-                // Orden canónico de paradas por ruta/dirección (del trip representativo)
+                // Orden canónico de paradas por ruta/dirección — elige la variante con MÁS paradas
+                // (evita que una variante secundaria corta, ej. 300a con 20 paradas, desplace la principal con 70+)
                 const routeKeyToCanonical = new Map();
                 for (const [shapeId, stopIds] of shapeToStopIds) {
                     const info = shapeToRoute.get(shapeId);
                     if (!info)
                         continue;
                     const key = `${info.routeId}|${info.directionId}`;
-                    if (!routeKeyToCanonical.has(key))
+                    const existing = routeKeyToCanonical.get(key);
+                    if (!existing || stopIds.length > existing.length) {
                         routeKeyToCanonical.set(key, stopIds);
+                    }
                 }
                 const groups = new Map();
                 for (const [tripId, times] of tripFullTimes) {
@@ -480,15 +483,44 @@ async function runImport() {
                         },
                     });
                 }
-                for (let i = 0; i < tDocs.length; i += BATCH_SIZE) {
+                // Validación de simetría: si una línea tiene dir0 y dir1 muy asimétricas → no persistir
+                const stopsByLineDir = new Map();
+                for (const d of tDocs) {
+                    const { agencyId, linea, directionId, stops } = d.data;
+                    const lk = `${agencyId}|${linea}`;
+                    const cur = (_w = stopsByLineDir.get(lk)) !== null && _w !== void 0 ? _w : {};
+                    if (directionId === 0)
+                        cur.dir0 = stops.length;
+                    else
+                        cur.dir1 = stops.length;
+                    stopsByLineDir.set(lk, cur);
+                }
+                const asimetricasSkip = new Set();
+                for (const [lk, cnts] of stopsByLineDir) {
+                    if (cnts.dir0 !== undefined && cnts.dir1 !== undefined) {
+                        const ratio = Math.min(cnts.dir0, cnts.dir1) / Math.max(cnts.dir0, cnts.dir1);
+                        if (ratio < 0.5) {
+                            logger.warn(`[GTFS] Simetría insuficiente ${lk}: dir0=${cnts.dir0} dir1=${cnts.dir1} ratio=${ratio.toFixed(2)} — se omite para evitar variante truncada`);
+                            asimetricasSkip.add(lk);
+                        }
+                    }
+                }
+                const tDocsValidados = tDocs.filter(d => {
+                    const { agencyId, linea } = d.data;
+                    return !asimetricasSkip.has(`${agencyId}|${linea}`);
+                });
+                if (asimetricasSkip.size > 0) {
+                    logger.warn(`[GTFS] ${asimetricasSkip.size} líneas omitidas por asimetría: ${[...asimetricasSkip].join(', ')}`);
+                }
+                for (let i = 0; i < tDocsValidados.length; i += BATCH_SIZE) {
                     const batch = db.batch();
-                    for (const d of tDocs.slice(i, i + BATCH_SIZE)) {
+                    for (const d of tDocsValidados.slice(i, i + BATCH_SIZE)) {
                         batch.set(db.collection(TIMETABLE_COL).doc(d.id), d.data);
                     }
                     await batch.commit();
-                    logger.info(`[GTFS] Timetable batch ${Math.floor(i / BATCH_SIZE) + 1} → ${Math.min(i + BATCH_SIZE, tDocs.length)}`);
+                    logger.info(`[GTFS] Timetable batch ${Math.floor(i / BATCH_SIZE) + 1} → ${Math.min(i + BATCH_SIZE, tDocsValidados.length)}`);
                 }
-                timetableEscritos = tDocs.length;
+                timetableEscritos = tDocsValidados.length;
                 logger.info('[GTFS] Timetable escritos:', timetableEscritos);
             }
         }
@@ -512,8 +544,8 @@ async function runImport() {
                         row.thursday === '1' || row.friday === '1',
                     sabado: row.saturday === '1',
                     domingo: row.sunday === '1',
-                    start: (_w = row.start_date) !== null && _w !== void 0 ? _w : '',
-                    end: (_x = row.end_date) !== null && _x !== void 0 ? _x : '',
+                    start: (_x = row.start_date) !== null && _x !== void 0 ? _x : '',
+                    end: (_y = row.end_date) !== null && _y !== void 0 ? _y : '',
                 });
             }
             // calendar_dates: exceptions (informativo — guardadas en el doc)
@@ -521,7 +553,7 @@ async function runImport() {
             if (calendarDatesTxt) {
                 for (const row of parseCsv(calendarDatesTxt)) {
                     if (row.date)
-                        exceptionDates.set(row.date, ((_y = exceptionDates.get(row.date)) !== null && _y !== void 0 ? _y : 0) + 1);
+                        exceptionDates.set(row.date, ((_z = exceptionDates.get(row.date)) !== null && _z !== void 0 ? _z : 0) + 1);
                 }
             }
             const calDocs = new Map();
@@ -529,8 +561,8 @@ async function runImport() {
                 const ri = routeMap.get(routeId);
                 if (!ri)
                     continue;
-                const agencyNumId = (_z = lineaAgencyMap.get(ri.shortName.toLowerCase())) !== null && _z !== void 0 ? _z : 0;
-                const empresa = agencyNumId ? ((_0 = AGENCY_NAMES[agencyNumId]) !== null && _0 !== void 0 ? _0 : `EMP_${agencyNumId}`) : 'STM';
+                const agencyNumId = (_0 = lineaAgencyMap.get(ri.shortName.toLowerCase())) !== null && _0 !== void 0 ? _0 : 0;
+                const empresa = agencyNumId ? ((_1 = AGENCY_NAMES[agencyNumId]) !== null && _1 !== void 0 ? _1 : `EMP_${agencyNumId}`) : 'STM';
                 const docId = `${agencyNumId}_${ri.shortName}`;
                 let tieneHabil = false, tieneSabado = false, tieneDomingo = false;
                 let vigenciaDesde = '', vigenciaHasta = '';
@@ -591,9 +623,9 @@ async function runImport() {
                     continue;
                 fareAttrs.set(row.fare_id, {
                     price: parseFloat(row.price) || 0,
-                    currency: (_1 = row.currency_type) !== null && _1 !== void 0 ? _1 : 'UYU',
-                    payMethod: parseInt((_2 = row.payment_method) !== null && _2 !== void 0 ? _2 : '0', 10),
-                    transfers: parseInt((_3 = row.transfers) !== null && _3 !== void 0 ? _3 : '-1', 10),
+                    currency: (_2 = row.currency_type) !== null && _2 !== void 0 ? _2 : 'UYU',
+                    payMethod: parseInt((_3 = row.payment_method) !== null && _3 !== void 0 ? _3 : '0', 10),
+                    transfers: parseInt((_4 = row.transfers) !== null && _4 !== void 0 ? _4 : '-1', 10),
                 });
             }
             const fareRoutes = new Map();
@@ -608,7 +640,7 @@ async function runImport() {
             }
             const fareDocs = [];
             for (const [fareId, attr] of fareAttrs.entries()) {
-                const routeIds = (_4 = fareRoutes.get(fareId)) !== null && _4 !== void 0 ? _4 : new Set();
+                const routeIds = (_5 = fareRoutes.get(fareId)) !== null && _5 !== void 0 ? _5 : new Set();
                 const lineas = [];
                 const agencyIdsSet = new Set();
                 const empresasSet = new Set();
@@ -617,10 +649,10 @@ async function runImport() {
                     if (!ri)
                         continue;
                     lineas.push(ri.shortName);
-                    const aid = (_5 = lineaAgencyMap.get(ri.shortName.toLowerCase())) !== null && _5 !== void 0 ? _5 : 0;
+                    const aid = (_6 = lineaAgencyMap.get(ri.shortName.toLowerCase())) !== null && _6 !== void 0 ? _6 : 0;
                     if (aid) {
                         agencyIdsSet.add(String(aid));
-                        empresasSet.add((_6 = AGENCY_NAMES[aid]) !== null && _6 !== void 0 ? _6 : `EMP_${aid}`);
+                        empresasSet.add((_7 = AGENCY_NAMES[aid]) !== null && _7 !== void 0 ? _7 : `EMP_${aid}`);
                     }
                 }
                 fareDocs.push({
@@ -666,8 +698,8 @@ async function runImport() {
                     id: row.stop_id,
                     data: {
                         stopId: row.stop_id,
-                        codigo: ((_7 = row.stop_code) !== null && _7 !== void 0 ? _7 : '').trim(),
-                        nombre: ((_8 = row.stop_name) !== null && _8 !== void 0 ? _8 : '').trim(),
+                        codigo: ((_8 = row.stop_code) !== null && _8 !== void 0 ? _8 : '').trim(),
+                        nombre: ((_9 = row.stop_name) !== null && _9 !== void 0 ? _9 : '').trim(),
                         lat, lng,
                         accesible: row.wheelchair_boarding === '1',
                         generadoEn, fuente: 'GTFS_OFICIAL',
