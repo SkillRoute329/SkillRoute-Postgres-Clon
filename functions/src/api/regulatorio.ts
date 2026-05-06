@@ -204,16 +204,20 @@ async function calcularOTP(
     } else if (estado === 'ADELANTADO') {
       medibles++;
       if (linea) lineasMedidas.add(linea);
+    } else if (estado === 'ATRASADO') {
+      // Caso explícito: atrasado es medible pero nunca en hora (POLITICA_OTP_UNIFICADA.md)
+      medibles++;
+      if (linea) lineasMedidas.add(linea);
     } else if (estado === 'SIN_HORARIO') {
       noMedibles++;
       if (linea) lineasFaltantes.add(linea);
     } else if (estado === 'FUERA_DE_SERVICIO') {
       noMedibles++;
     } else if (typeof desv === 'number' && !isNaN(desv)) {
-      // Fallback secundario: usar desviacionMin si no hay estadoCumplimiento
+      // Fallback secundario: usar desviacionMin si no hay estadoCumplimiento explícito
       medibles++;
       if (linea) lineasMedidas.add(linea);
-      if (Math.abs(desv) <= 5) enHora++;
+      if (Math.abs(desv) <= 4) enHora++;  // ±4 min = PUNTUAL (POLITICA_OTP_UNIFICADA.md · D-001)
     } else {
       noMedibles++;
       if (linea) lineasFaltantes.add(linea);
