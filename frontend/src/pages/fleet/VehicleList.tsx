@@ -110,21 +110,36 @@ const VehicleList = () => {
 
   const loadData = async () => {
     setLoading(true);
-    try {
-      console.log('[VehicleList] empresaPropia:', empresaPropia, typeof empresaPropia);
-      const [vData, uData, rData] = await Promise.all([
-        FleetService.getVehicles(empresaPropia ?? undefined),
-        UserService.getAll(),
-        FleetService.getRotationSchemes(),
+    console.log('[VehicleList] empresaPropia:', empresaPropia, typeof empresaPropia);
+
+    const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
+      Promise.race([
+        p,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error(`[VehicleList] ${label} timeout ${ms}ms`)), ms),
+        ),
       ]);
-      setVehicles(vData);
-      setAllUsers(uData.filter((u: any) => u.role === 'User'));
-      setRotationSchemes(rData);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
+
+    const [vRes, uRes, rRes] = await Promise.allSettled([
+      withTimeout(FleetService.getVehicles(empresaPropia ?? undefined), 8000, 'getVehicles'),
+      withTimeout(UserService.getAll(), 8000, 'getAll'),
+      withTimeout(FleetService.getRotationSchemes(), 8000, 'getRotationSchemes'),
+    ]);
+
+    if (vRes.status === 'fulfilled') setVehicles(vRes.value);
+    else { console.error('[VehicleList] getVehicles falló:', vRes.reason); setVehicles([]); }
+
+    if (uRes.status === 'fulfilled') {
+      setAllUsers((uRes.value as any[]).filter((u: any) => u.role === 'User'));
+    } else {
+      console.error('[VehicleList] UserService.getAll falló:', uRes.reason);
+      setAllUsers([]);
     }
+
+    if (rRes.status === 'fulfilled') setRotationSchemes(rRes.value);
+    else { console.error('[VehicleList] getRotationSchemes falló:', rRes.reason); setRotationSchemes([]); }
+
+    setLoading(false);
   };
 
   const loadVehicles = async () => {

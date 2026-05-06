@@ -116,6 +116,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // Firestore > claims JWT > localStorage > default
                 role: (userData?.rol ?? userData?.role) || claimsRole || prevRole || 'USER',
               };
+              // Seed empresaPropia desde el perfil Firestore para que el operador
+              // correcto quede activo al iniciar sesión (sin esperar selector manual).
+              const empresaCodigo = Number(userData?.empresa);
+              if ([10, 20, 50, 70].includes(empresaCodigo)) {
+                localStorage.setItem('skillroute.empresaPropia', String(empresaCodigo));
+                window.dispatchEvent(new CustomEvent('skillroute:empresaPropia-change', { detail: empresaCodigo }));
+              }
             } else if (lastErr) {
               throw lastErr;
             }
@@ -219,6 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     auth.signOut();
     localStorage.removeItem('tf_token');
     localStorage.removeItem('tf_user');
+    localStorage.removeItem('skillroute.empresaPropia'); // ← resetear al default (70 UCOT) en próximo login
     forgetDevice(); // ← olvida credenciales recordadas — cerrar sesión deshace el "Recordar"
     setToken(null);
     setUser(null);
