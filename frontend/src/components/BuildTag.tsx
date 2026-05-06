@@ -45,7 +45,14 @@ const BuildTag = () => {
           📡 {serverInfo ? serverInfo.version : 'Connecting...'}
         </span>
       </div>
-      <div className="text-slate-500">Built: {new Date(clientInfo.buildTime).toLocaleString()}</div>
+      <div className="text-slate-500">
+        {(() => {
+          if (!clientInfo.buildTime) return 'Built: —';
+          const d = new Date(clientInfo.buildTime);
+          if (isNaN(d.getTime())) return `Built: ${clientInfo.buildTime}`;
+          return `Built: ${d.toLocaleString()}`;
+        })()}
+      </div>
     </div>
   );
 };

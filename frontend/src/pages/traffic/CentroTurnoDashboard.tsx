@@ -9,9 +9,11 @@ import {
   updateDoc,
   doc,
   Timestamp,
+  getDocs,
 } from 'firebase/firestore';
 import { db, authReady } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { Link } from 'react-router-dom';
 import {
   Bus,
@@ -131,10 +133,35 @@ const KpiCard = ({ label, value, icon, color, loading, tooltip }: KpiCardProps) 
   );
 };
 
+// ─── Mapeo de vehiculo desde Firestore ────────────────────────────────────────
+// La colección 'vehicles' usa activo/estado_operativo, no el campo 'estado'.
+
+function mapVehiculo(id: string, data: Record<string, any>): Vehiculo {
+  let estado: Vehiculo['estado'] = 'inactivo';
+  // Soporte de 5 formatos de estado (ver bug #62 isVehiculoActivo)
+  const status = String(data.status ?? data.estado ?? data.estado_operativo ?? '').toLowerCase();
+  if (data.activo === true || status === 'activo' || status === 'active' || status === 'operational') {
+    estado = 'activo';
+  } else if (status === 'taller' || status === 'maintenance' || status === 'en_taller') {
+    estado = 'taller';
+  } else if (status === 'inactivo' || status === 'inactive' || status === 'stopped') {
+    estado = 'inactivo';
+  }
+  return {
+    id,
+    numero: String(data.numero ?? data.coche ?? data.interno ?? data.internalNumber ?? id),
+    linea: String(data.linea ?? ''),
+    estado,
+    ultimo_reporte: data.ultimo_reporte ?? data.lastReport ?? null,
+  };
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 const CentroTurnoDashboard = () => {
   useAuth(); // contexto de auth requerido
+  const { empresaPropia } = useEmpresaPropia();
+  const agencyId = empresaPropia ? String(empresaPropia) : null;
 
   const [horaRefresh, setHoraRefresh] = useState(horaActual());
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
@@ -156,44 +183,50 @@ const CentroTurnoDashboard = () => {
     setHoraRefresh(horaActual());
   }, []);
 
-  // ── Listener: vehicles / vehiculos ────────────────────────────────────────
+  // ── Listener: vehicles / vehiculos (filtrado por empresa) ────────────────
   useEffect(() => {
-    let unsub: (() => void) | null = null;
+    if (!agencyId) return;
     const setup = async () => {
       await authReady;
       setLoadingVehiculos(true);
-      const q = query(collection(db, 'vehicles'), orderBy('numero', 'asc'), limit(500));
-      unsub = onSnapshot(
-        q,
-        snap => {
-          setVehiculos(
-            snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<Vehiculo, 'id'>) })),
-          );
-          setLoadingVehiculos(false);
-        },
-        err => {
-          console.error('[CentroTurno] vehicles error:', err);
-          // fallback: intentar colección "vehiculos"
-          const q2 = query(collection(db, 'vehiculos'), orderBy('numero', 'asc'), limit(500));
-          unsub = onSnapshot(
-            q2,
-            snap => {
-              setVehiculos(
-                snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<Vehiculo, 'id'>) })),
-              );
-              setLoadingVehiculos(false);
-            },
-            err2 => {
-              console.error('[CentroTurno] vehiculos fallback error:', err2);
-              setLoadingVehiculos(false);
-            },
-          );
-        },
-      );
+      // Doble query string/number para tolerar inconsistencia de tipos (bug #58)
+      const buildQuery = (col: string) => [
+        query(collection(db, col), where('agencyId', '==', agencyId), limit(500)),
+        query(collection(db, col), where('agencyId', '==', Number(agencyId)), limit(500)),
+        query(collection(db, col), where('empresa', '==', agencyId), limit(500)),
+        query(collection(db, col), where('empresa', '==', Number(agencyId)), limit(500)),
+      ];
+
+      const aplicar = (snaps: Awaited<ReturnType<typeof getDocs>>[]) => {
+        const seen = new Set<string>();
+        const out: Vehiculo[] = [];
+        snaps.forEach(snap => {
+          snap.docs.forEach(d => {
+            if (seen.has(d.id)) return;
+            seen.add(d.id);
+            out.push(mapVehiculo(d.id, d.data() as Record<string, any>));
+          });
+        });
+        out.sort((a, b) => a.numero.localeCompare(b.numero));
+        setVehiculos(out);
+        setLoadingVehiculos(false);
+      };
+
+      try {
+        const snaps = await Promise.all(buildQuery('vehicles').map(q => getDocs(q)));
+        if (snaps.some(s => !s.empty)) {
+          aplicar(snaps);
+        } else {
+          const snaps2 = await Promise.all(buildQuery('vehiculos').map(q => getDocs(q)));
+          aplicar(snaps2);
+        }
+      } catch (err) {
+        console.error('[CentroTurno] vehicles error:', err);
+        setLoadingVehiculos(false);
+      }
     };
     void setup();
-    return () => { unsub?.(); };
-  }, []);
+  }, [agencyId]);
 
   // ── Listener: eventos_desvio (sin resolver) ───────────────────────────────
   useEffect(() => {
@@ -314,7 +347,7 @@ const CentroTurnoDashboard = () => {
     { label: 'Mapa en Vivo', to: '/dashboard/traffic/live-map', icon: <MapPin size={18} /> },
     { label: 'Puntualidad OTP', to: '/dashboard/traffic/otp', icon: <BarChart3 size={18} /> },
     { label: 'Monitoreo de Flota', to: '/dashboard/traffic/fleet-monitor', icon: <Bus size={18} /> },
-    { label: 'Centro de Desvíos', to: '/dashboard/traffic/desvios', icon: <Navigation size={18} /> },
+    { label: 'Centro de Desvíos', to: '/dashboard/traffic/centro-turno?tab=desvios', icon: <Navigation size={18} /> },
     { label: 'Centro de Incidencias', to: '/dashboard/traffic/incidents', icon: <Siren size={18} /> },
     { label: 'Distribución Diaria', to: '/dashboard/traffic/distribucion', icon: <Zap size={18} /> },
   ];

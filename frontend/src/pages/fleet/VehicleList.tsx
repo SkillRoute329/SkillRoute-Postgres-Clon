@@ -112,7 +112,7 @@ const VehicleList = () => {
     setLoading(true);
     try {
       const [vData, uData, rData] = await Promise.all([
-        FleetService.getVehicles(),
+        FleetService.getVehicles(empresaPropia ?? undefined),
         UserService.getAll(),
         FleetService.getRotationSchemes(),
       ]);
@@ -128,7 +128,7 @@ const VehicleList = () => {
 
   const loadVehicles = async () => {
     try {
-      const data = await FleetService.getVehicles();
+      const data = await FleetService.getVehicles(empresaPropia ?? undefined);
       setVehicles(data);
     } catch (error) {
       console.error(error);

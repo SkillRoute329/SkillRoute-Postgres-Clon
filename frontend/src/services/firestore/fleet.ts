@@ -38,10 +38,31 @@ function mapVehicle(id: string, data: Record<string, unknown>): Vehicle {
 }
 
 export const FleetService = {
-  async getVehicles(): Promise<Vehicle[]> {
-    const q = query(collection(db, COL), orderBy('internalNumber', 'asc'));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => mapVehicle(d.id, { ...d.data(), id: d.id }));
+  async getVehicles(agencyId?: string | number): Promise<Vehicle[]> {
+    if (agencyId == null) {
+      const q = query(collection(db, COL), orderBy('internalNumber', 'asc'));
+      const snap = await getDocs(q);
+      return snap.docs.map((d) => mapVehicle(d.id, { ...d.data(), id: d.id }));
+    }
+    // Doble query string/number para tolerar inconsistencia de tipos en Firestore
+    const aid = String(agencyId);
+    const queries = [
+      query(collection(db, COL), where('agencyId', '==', aid)),
+      query(collection(db, COL), where('agencyId', '==', Number(aid))),
+      query(collection(db, COL), where('empresa', '==', aid)),
+      query(collection(db, COL), where('empresa', '==', Number(aid))),
+    ];
+    const snaps = await Promise.all(queries.map(q => getDocs(q)));
+    const seen = new Set<string>();
+    const out: Vehicle[] = [];
+    snaps.forEach(snap => {
+      snap.docs.forEach(d => {
+        if (seen.has(d.id)) return;
+        seen.add(d.id);
+        out.push(mapVehicle(d.id, { ...d.data(), id: d.id }));
+      });
+    });
+    return out.sort((a, b) => String(a.internalNumber).localeCompare(String(b.internalNumber)));
   },
 
   subscribeVehicles(callback: (vehicles: Vehicle[]) => void) {
