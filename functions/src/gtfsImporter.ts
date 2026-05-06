@@ -542,13 +542,16 @@ async function runImport(): Promise<ImportResult> {
           stopsByLineDir.set(lk, cur);
         }
         // dirDocsMalos: docs individuales con variante truncada — skip escritura + borrar old doc
+        // Criterio: dirección corta con < 12 paradas Y ratio < 0.5 respecto a la otra.
+        // Umbral absoluto de 12 evita eliminar direcciones legítimamente más cortas (ej. L46 dir0=17).
+        const MIN_STOPS_DIR = 12;
         const dirDocsMalos = new Set<string>();
         for (const [lk, cnts] of stopsByLineDir) {
           if (cnts.dir0 !== undefined && cnts.dir1 !== undefined) {
-            const ratio = Math.min(cnts.dir0, cnts.dir1) / Math.max(cnts.dir0, cnts.dir1);
-            if (ratio < 0.5) {
+            const shorter = Math.min(cnts.dir0, cnts.dir1);
+            const ratio = shorter / Math.max(cnts.dir0, cnts.dir1);
+            if (shorter < MIN_STOPS_DIR && ratio < 0.5) {
               const [aid, lin] = lk.split('|');
-              // Marcar solo la dirección corta como mala (la larga se escribe normalmente)
               if (cnts.dir0 < cnts.dir1) {
                 logger.warn(`[GTFS] Dir truncada ${lk} dir=0: ${cnts.dir0} paradas vs ${cnts.dir1} (ratio ${ratio.toFixed(2)}) — se elimina doc`);
                 for (const svc of ['HABIL', 'SABADO', 'DOMINGO']) dirDocsMalos.add(`${aid}_${lin}_0_${svc}`);
@@ -556,6 +559,8 @@ async function runImport(): Promise<ImportResult> {
                 logger.warn(`[GTFS] Dir truncada ${lk} dir=1: ${cnts.dir1} paradas vs ${cnts.dir0} (ratio ${ratio.toFixed(2)}) — se elimina doc`);
                 for (const svc of ['HABIL', 'SABADO', 'DOMINGO']) dirDocsMalos.add(`${aid}_${lin}_1_${svc}`);
               }
+            } else if (shorter < MIN_STOPS_DIR || ratio < 0.5) {
+              logger.warn(`[GTFS] Asimetría moderada ${lk}: dir0=${cnts.dir0} dir1=${cnts.dir1} ratio=${ratio.toFixed(2)} — se conserva ambas dirs`);
             }
           }
         }
