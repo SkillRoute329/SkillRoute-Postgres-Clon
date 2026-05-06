@@ -483,7 +483,8 @@ async function runImport() {
                         },
                     });
                 }
-                // Validación de simetría: si una línea tiene dir0 y dir1 muy asimétricas → no persistir
+                // Validación de simetría: dirección con muy pocas paradas respecto a la otra → truncada
+                // Estrategia: escribir la dirección buena, BORRAR la mala del Firestore previo
                 const stopsByLineDir = new Map();
                 for (const d of tDocs) {
                     const { agencyId, linea, directionId, stops } = d.data;
@@ -495,23 +496,40 @@ async function runImport() {
                         cur.dir1 = stops.length;
                     stopsByLineDir.set(lk, cur);
                 }
-                const asimetricasSkip = new Set();
+                // dirDocsMalos: docs individuales con variante truncada — skip escritura + borrar old doc
+                const dirDocsMalos = new Set();
                 for (const [lk, cnts] of stopsByLineDir) {
                     if (cnts.dir0 !== undefined && cnts.dir1 !== undefined) {
                         const ratio = Math.min(cnts.dir0, cnts.dir1) / Math.max(cnts.dir0, cnts.dir1);
                         if (ratio < 0.5) {
-                            logger.warn(`[GTFS] Simetría insuficiente ${lk}: dir0=${cnts.dir0} dir1=${cnts.dir1} ratio=${ratio.toFixed(2)} — se omite para evitar variante truncada`);
-                            asimetricasSkip.add(lk);
+                            const [aid, lin] = lk.split('|');
+                            // Marcar solo la dirección corta como mala (la larga se escribe normalmente)
+                            if (cnts.dir0 < cnts.dir1) {
+                                logger.warn(`[GTFS] Dir truncada ${lk} dir=0: ${cnts.dir0} paradas vs ${cnts.dir1} (ratio ${ratio.toFixed(2)}) — se elimina doc`);
+                                for (const svc of ['HABIL', 'SABADO', 'DOMINGO'])
+                                    dirDocsMalos.add(`${aid}_${lin}_0_${svc}`);
+                            }
+                            else {
+                                logger.warn(`[GTFS] Dir truncada ${lk} dir=1: ${cnts.dir1} paradas vs ${cnts.dir0} (ratio ${ratio.toFixed(2)}) — se elimina doc`);
+                                for (const svc of ['HABIL', 'SABADO', 'DOMINGO'])
+                                    dirDocsMalos.add(`${aid}_${lin}_1_${svc}`);
+                            }
                         }
                     }
                 }
-                const tDocsValidados = tDocs.filter(d => {
-                    const { agencyId, linea } = d.data;
-                    return !asimetricasSkip.has(`${agencyId}|${linea}`);
-                });
-                if (asimetricasSkip.size > 0) {
-                    logger.warn(`[GTFS] ${asimetricasSkip.size} líneas omitidas por asimetría: ${[...asimetricasSkip].join(', ')}`);
+                // Eliminar docs malos pre-existentes en Firestore (en batches)
+                if (dirDocsMalos.size > 0) {
+                    const deleteIds = [...dirDocsMalos];
+                    for (let i = 0; i < deleteIds.length; i += BATCH_SIZE) {
+                        const batch = db.batch();
+                        for (const docId of deleteIds.slice(i, i + BATCH_SIZE)) {
+                            batch.delete(db.collection(TIMETABLE_COL).doc(docId));
+                        }
+                        await batch.commit();
+                    }
+                    logger.warn(`[GTFS] Eliminados ${dirDocsMalos.size} docs de direcciones truncadas: ${deleteIds.join(', ')}`);
                 }
+                const tDocsValidados = tDocs.filter(d => !dirDocsMalos.has(d.id));
                 for (let i = 0; i < tDocsValidados.length; i += BATCH_SIZE) {
                     const batch = db.batch();
                     for (const d of tDocsValidados.slice(i, i + BATCH_SIZE)) {
