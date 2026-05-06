@@ -1,5 +1,6 @@
 import { auth } from '../config/firebase';
-import { onAuthStateChanged, onIdTokenChanged, setPersistence, browserLocalPersistence, getIdTokenResult } from 'firebase/auth';
+import { onAuthStateChanged, onIdTokenChanged, setPersistence, browserLocalPersistence, getIdTokenResult, signInWithCustomToken } from 'firebase/auth';
+import { recallCredentials, forgetDevice } from '../services/rememberDevice';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { type User } from '../services/api';
@@ -129,11 +130,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.setItem('tf_token', freshToken);
           localStorage.setItem('tf_user', JSON.stringify(finalUser));
         } else {
-          // Sesión Firebase muerta (refresh-token expirado o revocado).
-          // El tf_token cached es un ID token expirado, no sirve para
-          // signInWithCustomToken. Limpiamos todo y mandamos a /login para
-          // que el usuario re-autentique en lugar de dejar la app en limbo
-          // con queries permission-denied silenciosas.
+          // Sesión Firebase muerta — intentar auto-relogin si el usuario marcó "Recordar este dispositivo".
+          const creds = await recallCredentials();
+          if (creds) {
+            try {
+              console.log('🔄 [AuthContext] Auto-relogin con credenciales recordadas...');
+              const resp = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ internalNumber: creds.internalNumber, password: creds.password }),
+              });
+              const json = await resp.json().catch(() => ({}));
+              if (resp.ok && (json as { firebaseCustomToken?: string })?.firebaseCustomToken) {
+                await signInWithCustomToken(auth, (json as { firebaseCustomToken: string }).firebaseCustomToken);
+                // onAuthStateChanged re-dispara con firebaseUser !== null y la rama de arriba popula el estado.
+                console.log('✅ [AuthContext] Auto-relogin OK.');
+                return; // Salir sin redirigir
+              }
+              console.warn('[AuthContext] Auto-relogin falló:', (json as { error?: string })?.error || `http_${resp.status}`);
+            } catch (err) {
+              console.warn('[AuthContext] Auto-relogin error:', err);
+            }
+            // Si falló, olvidar el dispositivo para no entrar en loop
+            forgetDevice();
+          }
+
+          // Sin credenciales recordadas o auto-relogin fallido → flujo normal
           console.log('💤 [AuthContext] No active session — redirigiendo a /login');
           localStorage.removeItem('tf_token');
           localStorage.removeItem('tf_user');
@@ -197,6 +219,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     auth.signOut();
     localStorage.removeItem('tf_token');
     localStorage.removeItem('tf_user');
+    forgetDevice(); // ← olvida credenciales recordadas — cerrar sesión deshace el "Recordar"
     setToken(null);
     setUser(null);
     window.location.assign('/login');

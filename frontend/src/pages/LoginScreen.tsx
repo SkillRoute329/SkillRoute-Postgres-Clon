@@ -6,11 +6,13 @@ import BuildTag from '../components/BuildTag';
 import { signInWithCustomToken } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
+import { rememberCredentials, forgetDevice, hasRememberedCredentials } from '../services/rememberDevice';
 
 const LoginScreen = () => {
   const { login } = useAuth();
   const [showReset, setShowReset] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [recordarDispositivo, setRecordarDispositivo] = useState<boolean>(hasRememberedCredentials());
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [usuario, setUsuario] = useState('');
@@ -57,6 +59,11 @@ const LoginScreen = () => {
         fullName: u.fullName ?? 'Usuario',
         role: u.role ?? 'USER',
       });
+      if (recordarDispositivo) {
+        await rememberCredentials(internalNumber, password);
+      } else {
+        forgetDevice();
+      }
       setIsSuccess(true);
       setTimeout(() => { window.location.href = '/dashboard'; }, 800);
     } catch (err: any) {
@@ -182,6 +189,22 @@ const LoginScreen = () => {
                 className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors text-sm"
               />
             </div>
+
+            <label className="flex items-center gap-2 mt-3 mb-1 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={recordarDispositivo}
+                onChange={(e) => setRecordarDispositivo(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+              <span className="text-sm text-slate-400">
+                Recordar este dispositivo
+              </span>
+            </label>
+            <p className="text-[11px] text-slate-500 leading-snug mb-3">
+              Mantiene la sesión sin pedir credenciales de nuevo. Solo activá esto en
+              un equipo personal de uso exclusivo.
+            </p>
 
             <button
               type="submit"
