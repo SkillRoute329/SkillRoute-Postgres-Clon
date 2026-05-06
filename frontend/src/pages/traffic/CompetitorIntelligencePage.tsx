@@ -24,6 +24,7 @@ import {
 import { GtfsSchedulePanel } from '../../components/competition/GtfsSchedulePanel';
 import { collection, getDocs, query, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 
 interface OverlapRecord {
   agencyA: string; lineaA: string; empresaA: string;
@@ -245,7 +246,17 @@ export default function CompetitorIntelligencePage() {
   const [totalBuses, setTotalBuses] = useState(0);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
   const [loadingLineas, setLoadingLineas] = useState(true);
+  const { empresaPropia } = useEmpresaPropia();
+  const empresaPropiaNum = Number(empresaPropia ?? 70);
+  const empresaPropiaStr = String(empresaPropiaNum);
   const [empresaSel, setEmpresaSel] = useState<number>(70);
+  // Sincronizar empresaSel con empresaPropia cuando el hook resuelve
+  useEffect(() => {
+    if (empresaPropia && empresaSel === empresaPropiaNum && Number(empresaPropia) !== 70) {
+      setEmpresaSel(Number(empresaPropia));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresaPropia]);
   const empresaNombre = EMPRESAS_STM.find(e => e.codigo === empresaSel)?.nombre ?? 'propia';
   const [activeTab, setActiveTab] = useState<'intelligence' | 'hrr'>('intelligence');
   const [lineasComp, setLineasComp] = useState<LineaCompetidor[]>([]);
@@ -397,7 +408,7 @@ export default function CompetitorIntelligencePage() {
   };
 
   useEffect(() => {
-    if (empresaSel !== 70) void cargarLineasCompetidor(empresaSel);
+    if (empresaSel !== empresaPropiaNum) void cargarLineasCompetidor(empresaSel);
   }, [empresaSel]); // eslint-disable-line
 
   // ─── Solapamiento DRO para línea seleccionada ──────────────────
@@ -523,7 +534,7 @@ export default function CompetitorIntelligencePage() {
                 <Bus className="w-3.5 h-3.5 text-slate-500" />
                 <span className="text-xs text-slate-400">
                   <span className="text-white font-bold">
-                    {empresaSel === 70 ? totalBuses : totalBusesComp}
+                    {empresaSel === empresaPropiaNum ? totalBuses : totalBusesComp}
                   </span> buses {EMPRESAS_STM.find((e) => e.codigo === empresaSel)?.nombre} activos
                 </span>
               </div>
@@ -531,7 +542,7 @@ export default function CompetitorIntelligencePage() {
                 <TrendingUp className="w-3.5 h-3.5 text-slate-500" />
                 <span className="text-xs text-slate-400">
                   <span className="text-white font-bold">
-                    {empresaSel === 70 ? lineas.length : lineasComp.length}
+                    {empresaSel === empresaPropiaNum ? lineas.length : lineasComp.length}
                   </span> líneas
                 </span>
               </div>
@@ -591,7 +602,7 @@ export default function CompetitorIntelligencePage() {
 
         {/* ── Tab Inteligencia (contenido original) ────────────────────────── */}
         <div className={activeTab === 'hrr' ? 'hidden' : 'flex-1 overflow-y-auto p-4'}>
-          {empresaSel !== 70 ? (
+          {empresaSel !== empresaPropiaNum ? (
             /* ── Líneas de empresa competidora (Firestore) ── */
             loadingComp ? (
               <div className="grid grid-cols-2 gap-3">
@@ -714,17 +725,17 @@ export default function CompetitorIntelligencePage() {
           <div className="flex-none px-5 py-4 border-b border-slate-800/60 flex items-center justify-between">
             <div>
               <h2 className="font-bold text-white text-lg">
-                {empresaSel !== 70
+                {empresaSel !== empresaPropiaNum
                   ? `${EMPRESAS_STM.find((e) => e.codigo === empresaSel)?.nombre} — Línea ${selectedLinea}`
                   : `Análisis — Línea ${selectedLinea}`}
               </h2>
-              {empresaSel !== 70 && selectedCompLinea && (
+              {empresaSel !== empresaPropiaNum && selectedCompLinea && (
                 <p className="text-[10px] text-slate-500 mt-0.5">
                   {selectedCompLinea.busesActivosUltimoSnapshot} buses ·{' '}
                   {selectedCompLinea.activa ? 'En servicio' : 'Sin actividad'}
                 </p>
               )}
-              {empresaSel === 70 && detailData?.timestamp && (
+              {empresaSel === empresaPropiaNum && detailData?.timestamp && (
                 <p className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
                   <Clock className="w-2.5 h-2.5" />
                   {new Date(detailData.timestamp).toLocaleTimeString('es-UY')}
@@ -734,7 +745,7 @@ export default function CompetitorIntelligencePage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
-                  if (empresaSel !== 70 && selectedCompLinea)
+                  if (empresaSel !== empresaPropiaNum && selectedCompLinea)
                     void cargarOverlaps(String(empresaSel), selectedCompLinea.numeroLineaTexto);
                   else if (selectedLinea)
                     void cargarDetalle(selectedLinea);
@@ -762,7 +773,7 @@ export default function CompetitorIntelligencePage() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {empresaSel !== 70 ? (
+            {empresaSel !== empresaPropiaNum ? (
               /* ── Panel análisis corredor para empresa competidora ── */
               loadingOverlaps ? (
                 <div className="space-y-3">
@@ -789,7 +800,7 @@ export default function CompetitorIntelligencePage() {
                     <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2">
                       Corredores compartidos con {empresaNombre}
                     </p>
-                    {compOverlaps.filter((o) => o.agencyA === '70' || o.agencyB === '70').length === 0 ? (
+                    {compOverlaps.filter((o) => o.agencyA === empresaPropiaStr || o.agencyB === empresaPropiaStr).length === 0 ? (
                       <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-center">
                         <Shield className="w-7 h-7 text-emerald-500 mx-auto mb-1.5" />
                         <p className="text-emerald-300 text-sm font-medium">Sin solapamiento con {empresaNombre}</p>
@@ -798,7 +809,7 @@ export default function CompetitorIntelligencePage() {
                     ) : (
                       <div className="space-y-2">
                         {compOverlaps
-                          .filter((o) => o.agencyA === '70' || o.agencyB === '70')
+                          .filter((o) => o.agencyA === empresaPropiaStr || o.agencyB === empresaPropiaStr)
                           .slice(0, 12)
                           .map((o, i) => {
                             const isA = o.agencyA === String(empresaSel);
@@ -934,7 +945,7 @@ export default function CompetitorIntelligencePage() {
                     ) : (
                       <div className="space-y-1.5">
                         {compOverlaps.slice(0, 8).map((o, i) => {
-                          const isA = o.agencyA === '70';
+                          const isA = o.agencyA === empresaPropiaStr;
                           const rivalAgency = isA ? o.agencyB : o.agencyA;
                           const rivalLinea  = isA ? o.lineaB  : o.lineaA;
                           const rivalEmp    = isA ? o.empresaB : o.empresaA;

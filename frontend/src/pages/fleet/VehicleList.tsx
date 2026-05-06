@@ -111,6 +111,7 @@ const VehicleList = () => {
   const loadData = async () => {
     setLoading(true);
     try {
+      console.log('[VehicleList] empresaPropia:', empresaPropia, typeof empresaPropia);
       const [vData, uData, rData] = await Promise.all([
         FleetService.getVehicles(empresaPropia ?? undefined),
         UserService.getAll(),

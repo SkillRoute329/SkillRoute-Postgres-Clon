@@ -28,10 +28,8 @@ const generateFleetSeed = () => {
         usb: typeIdx >= 2,
         wifi: typeIdx >= 3,
       },
-      lastInspection: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split('T')[0],
-      kmTotal: Math.floor(50000 + Math.random() * 400000),
+      lastInspection: null,    // pendiente de carga real desde Excel UCOT
+      kmTotal: null,           // pendiente de carga real
     });
   }
   return vehicles;
@@ -51,7 +49,7 @@ const generateServicesSeed = () => {
 
     for (let i = 0; i < servicesPerLine; i++) {
       const startHour = 4 + Math.floor((i * 18) / servicesPerLine);
-      const startMin = Math.floor(Math.random() * 60);
+      const startMin = (i * 7) % 60;  // determinista, distribuido uniformemente
       services.push({
         id: `svc_${serviceCounter}`,
         serviceNumber: String(serviceCounter),

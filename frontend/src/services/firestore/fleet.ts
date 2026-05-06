@@ -44,7 +44,6 @@ export const FleetService = {
       const snap = await getDocs(q);
       return snap.docs.map((d) => mapVehicle(d.id, { ...d.data(), id: d.id }));
     }
-    // Doble query string/number para tolerar inconsistencia de tipos en Firestore
     const aid = String(agencyId);
     const queries = [
       query(collection(db, COL), where('agencyId', '==', aid)),
@@ -52,17 +51,31 @@ export const FleetService = {
       query(collection(db, COL), where('empresa', '==', aid)),
       query(collection(db, COL), where('empresa', '==', Number(aid))),
     ];
-    const snaps = await Promise.all(queries.map(q => getDocs(q)));
+    const snaps = await Promise.all(queries.map((q) => getDocs(q)));
     const seen = new Set<string>();
     const out: Vehicle[] = [];
-    snaps.forEach(snap => {
-      snap.docs.forEach(d => {
+    snaps.forEach((snap) => {
+      snap.docs.forEach((d) => {
         if (seen.has(d.id)) return;
         seen.add(d.id);
         out.push(mapVehicle(d.id, { ...d.data(), id: d.id }));
       });
     });
-    return out.sort((a, b) => String(a.internalNumber).localeCompare(String(b.internalNumber)));
+
+    // Fallback: si los docs no tienen agencyId/empresa, cargar todo (log para diagnóstico)
+    if (out.length === 0) {
+      console.warn(
+        `[FleetService] getVehicles(${aid}) → 0 docs con filtro agencyId/empresa. ` +
+        `Probable mismatch de nombre de campo. Cargando todos los docs como fallback.`,
+      );
+      const qAll = query(collection(db, COL), orderBy('internalNumber', 'asc'));
+      const snapAll = await getDocs(qAll);
+      return snapAll.docs.map((d) => mapVehicle(d.id, { ...d.data(), id: d.id }));
+    }
+
+    return out.sort((a, b) =>
+      String(a.internalNumber).localeCompare(String(b.internalNumber)),
+    );
   },
 
   subscribeVehicles(callback: (vehicles: Vehicle[]) => void) {

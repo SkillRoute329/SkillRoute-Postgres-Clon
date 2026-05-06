@@ -21,7 +21,7 @@ export interface CompetidorDetectado {
   distanciaKm: number;
   tiempoAlcance: string; // ej: "2.5 minutos"
   velocidad: number; // km/h
-  ocupacionEstimada: number; // %
+  ocupacionEstimada: number | null; // % — null cuando IMM no publica ocupación
   amenaza: 'CRITICA' | 'ALTA' | 'MEDIA' | 'BAJA';
 }
 
@@ -196,7 +196,7 @@ export function detectarCompetidores(
           distanciaKm: Math.round(distancia * 100) / 100,
           tiempoAlcance: calcularTiempoAlcance(distancia, busOtro.velocidad),
           velocidad: busOtro.velocidad,
-          ocupacionEstimada: 65 + Math.random() * 30, // Simulado
+          ocupacionEstimada: null, // IMM GPS no publica ocupación de pasajeros
           amenaza: clasificarAmenaza(distancia),
         });
       }
@@ -383,9 +383,9 @@ export function analizarCompetenciaCompleta(
 
     metricas: {
       puntualidad_promedio: frecuencia.cumplimiento,
-      ocupacion_promedio: 72,
-      velocidad_promedio: 32,
-      tiempo_respuesta_datos: Math.random() * 300, // ms
+      ocupacion_promedio: null,       // pendiente de fuente real (boletaje/STM Card)
+      velocidad_promedio: null,       // pendiente de cálculo desde GPS
+      tiempo_respuesta_datos: null,   // medir contra endpoint real si se necesita
     },
   };
 }
@@ -449,7 +449,7 @@ export async function obtenerAnalisisDelBridge(
             distanciaKm: a.maxAmenaza?.distanciaKm || 0,
             tiempoAlcance: `${a.maxAmenaza?.distanciaKm || 0} km`,
             velocidad: 30,
-            ocupacionEstimada: 70,
+            ocupacionEstimada: null,
             amenaza: 'MEDIA',
           })) || [],
         invasores: [],
