@@ -152,6 +152,8 @@ const GestionPersonalHub   = lazy(() => import('./pages/admin/GestionPersonalHub
 const InspectoresHub       = lazy(() => import('./pages/admin/InspectoresHub'));
 const SistemaAdminHub      = lazy(() => import('./pages/admin/SistemaAdminHub'));
 const RegulatorioHub       = lazy(() => import('./pages/admin/RegulatorioHub'));
+// Sprint 3 (2026-05-07): Vista Regulador — Cumplimiento del Sistema Metropolitano
+const RegulatorComplianceView = lazy(() => import('./pages/regulatorio/RegulatorComplianceView'));
 // Sprint 1 (2026-04-25): Pricing público — accesible sin auth
 const PricingPage = lazy(() => import('./pages/public/PricingPage'));
 const OnboardingPage = lazy(() => import('./pages/public/OnboardingPage'));
@@ -354,6 +356,13 @@ function App() {
                     <Route path="traffic/financiero" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><FinancieroHub /></PrivateRoute>} />
                     <Route path="admin/sistema" element={<PrivateRoute roles={['ADMIN']}><SistemaAdminHub /></PrivateRoute>} />
                     <Route path="admin/regulatorio" element={<PrivateRoute roles={['ADMIN','SUPERADMIN']}><RegulatorioHub /></PrivateRoute>} />
+                    <Route path="admin/regulatorio/cumplimiento" element={
+                      <PrivateRoute roles={['ADMIN','SUPERADMIN']}>
+                        <Suspense fallback={<PageLoader />}>
+                          <RegulatorComplianceView />
+                        </Suspense>
+                      </PrivateRoute>
+                    } />
 
                     {/* User Routes — require login */}
                     <Route path="create-shift" element={<PrivateRoute><CreateShift /></PrivateRoute>} />

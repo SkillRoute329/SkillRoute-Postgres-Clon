@@ -39,6 +39,7 @@ import {
   Network,
   PieChart,
   Navigation,
+  CheckSquare,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
@@ -131,6 +132,8 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         { path: '/dashboard/admin/sistema',              label: 'Sistema y Configuración', icon: ShieldCheck},
         // Hub: Cumplimiento MTOP + Cross-Op + Rendición + Audit Log
         { path: '/dashboard/admin/regulatorio',          label: 'Reportes Regulatorios',   icon: Shield     },
+        // Sprint 3 (2026-05-07): Vista Regulador cross-operador
+        { path: '/dashboard/admin/regulatorio/cumplimiento', label: 'Cumplimiento del Sistema', icon: CheckSquare },
         // Centro de Mando Unificado — solo SUPERADMIN (guard en la página)
         { path: '/dashboard/super-admin/centro-mando',   label: 'Centro de Mando (SA)',    icon: ShieldAlert},
         // Gantt Red Metropolitana — solo SUPERADMIN

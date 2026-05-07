@@ -10,6 +10,7 @@ import { registerUcotPortalRoutes } from './api/ucotPortal';
 import { registerCartonesConsultaRoutes } from './api/cartonesConsulta';
 import { registerListeroRoutes } from './api/listero';
 import { registerAdminSeedRoutes } from './api/adminSeeds';
+import { registerComplianceReguladorRoutes } from './api/complianceRegulador';
 import { detectarSentidoConContexto, loadSentidoContext, type SentidoContext } from './autoStatsCollector';
 
 const app = express();
@@ -20,6 +21,7 @@ registerUcotPortalRoutes(app);
 registerCartonesConsultaRoutes(app);
 registerListeroRoutes(app);
 registerAdminSeedRoutes(app);
+registerComplianceReguladorRoutes(app);
 
 // Acceso diferido a Firestore para evitar errores de inicialización top-level
 const getDb = () => admin.firestore();
