@@ -1108,7 +1108,7 @@ export default function CEODashboardV7() {
                     : null
                 }
                 suffix="%"
-                description={`${estadoServicios.puntuales} de ${estadoServicios.conAtraso} servicios con desvío ≤3 min hoy. Métrica estándar UITP.`}
+                description={`${estadoServicios.puntuales} de ${estadoServicios.conAtraso} servicios con desvío ±4 min hoy. TCRP 165 / IMM.`}
                 link="/dashboard/traffic/diagnostico-cumplimiento"
                 linkLabel="Ver detalle de puntualidad"
                 severity={otpSeverity}

@@ -1,0 +1,33 @@
+{
+  "name": "matching-engine",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SkillRoute matching-engine — snap-to-shape + bayesian sentido detection + trip matching",
+  "engines": { "node": ">=20" },
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "firebase-admin": "^13.7.0",
+    "@turf/along": "^6.5.0",
+    "@turf/bearing": "^6.5.0",
+    "@turf/distance": "^6.5.0",
+    "@turf/helpers": "^6.5.0",
+    "@turf/length": "^6.5.0",
+    "@turf/nearest-point-on-line": "^6.5.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/geojson": "^7946.0.14",
+    "@types/node": "^20.17.30",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.3"
+  }
+}

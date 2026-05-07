@@ -105,16 +105,26 @@ function PanelOperacional() {
               { label: 'Sin conductor', value: resumen.turnosSinConductor, icon: Users, color: resumen.turnosSinConductor > 0 ? 'text-amber-400' : 'text-slate-500', sub: `${resumen.conductoresReservaLibres} reservas libres` },
               { label: 'Vehículos en taller', value: resumen.vehiculosEnTaller, icon: Bus, color: resumen.vehiculosEnTaller > 0 ? 'text-orange-400' : 'text-slate-500', sub: `${resumen.conductoresAusentes} ausentes hoy` },
               { label: 'Riesgo ingresos', value: `USD ${resumen.impactoIngresosRiesgoUSD}`, icon: TrendingDown, color: resumen.impactoIngresosRiesgoUSD > 0 ? 'text-red-400' : 'text-slate-500', sub: resumen.lineasEnRiesgoIMM.length > 0 ? `L${resumen.lineasEnRiesgoIMM.join(', ')} en riesgo IMM` : 'Sin riesgo IMM' },
-            ].map(({ label, value, icon: Icon, color, sub }) => (
-              <div key={label} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon className={`w-4 h-4 flex-none ${color}`} />
-                  <span className="text-[10px] text-slate-500 uppercase tracking-wide">{label}</span>
+            ].map(({ label, value, icon: Icon, color, sub }) => {
+              const sinDatos = value === 0 || value === '—';
+              return (
+                <div key={label} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon className={`w-4 h-4 flex-none ${color}`} />
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wide">{label}</span>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <p className={`text-2xl font-black ${color}`}>{value}</p>
+                    {sinDatos && (
+                      <span className="mb-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-500/15 text-amber-400 leading-none">
+                        Pendiente seed
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-600 mt-1">{sub}</p>
                 </div>
-                <p className={`text-2xl font-black ${color}`}>{value}</p>
-                <p className="text-[10px] text-slate-600 mt-1">{sub}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-sm text-slate-500">

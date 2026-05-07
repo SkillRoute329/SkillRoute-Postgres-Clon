@@ -1,0 +1,48 @@
+steps:
+  # Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/ucot-gestor-cloud/matching-engine:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/ucot-gestor-cloud/matching-engine:latest'
+      - '.'
+    dir: 'services/matching-engine'
+
+  # Push image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/ucot-gestor-cloud/matching-engine:$COMMIT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/ucot-gestor-cloud/matching-engine:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'matching-engine'
+      - '--image=gcr.io/ucot-gestor-cloud/matching-engine:$COMMIT_SHA'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--min-instances=1'
+      - '--max-instances=10'
+      - '--cpu=1'
+      - '--memory=1Gi'
+      - '--concurrency=80'
+      - '--timeout=30s'
+      - '--no-allow-unauthenticated'
+      - '--set-env-vars=NODE_ENV=production,GCP_PROJECT=ucot-gestor-cloud'
+
+images:
+  - 'gcr.io/ucot-gestor-cloud/matching-engine:$COMMIT_SHA'
+  - 'gcr.io/ucot-gestor-cloud/matching-engine:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
