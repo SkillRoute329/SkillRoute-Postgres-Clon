@@ -641,6 +641,39 @@ service cloud.firestore {
     }
 
     // ============================================================
+    // COMPLIANCE AGGREGATES — Sprint 2 SPEC §2.6
+    // Lectura: cualquier usuario autenticado (datos anonimizados por línea)
+    // Escritura: solo Cloud Functions (cron aggregation-engine)
+    // ============================================================
+    match /compliance_aggregates/{aggregateId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /compliance_aggregates/{aggregateId}/by_coche/{cocheId} {
+      allow read: if isAuthenticated()
+                  && (isAdminNorm() || isTrafficOrAdmin());
+      allow write: if false;
+    }
+
+    match /compliance_aggregates/{aggregateId}/by_conductor/{conductorId} {
+      allow read: if isAuthenticated()
+                  && isAdminNorm()
+                  && request.auth.token.agencyId == aggregateId.split('_')[0];
+      allow write: if false;
+    }
+
+    match /compliance_aggregates/{aggregateId}/by_parada/{stopSeq} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /compliance_aggregates/{aggregateId}/by_hora/{hora} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ============================================================
     // REGLA DEFAULT — Lectura permitida para autenticados, escritura protegida
     // ============================================================
     match /{document=**} {

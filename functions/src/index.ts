@@ -946,6 +946,11 @@ export { conductorStatsTick } from './conductorStatsTick';
 // enriquece UCOT con distribuciones cuando existen, escribe vehicle_stats/{agencyId_idBus}.
 export { vehicleStatsTick } from './vehicleStatsTick';
 
+// ─── Etapa Stats — OTP por parada a lo largo del recorrido ───────────────────
+// Cron cada 30 min: lee vehicle_events recientes, snap GPS → parada GTFS más cercana,
+// agrega desviación acumulada por parada en `etapa_stats/{agencyId}_{linea}_{directionId}`.
+export { etapaStatsTick } from './etapaStatsTick';
+
 // ─── Motor de Consecuencias — grafo de dependencias operativas ────────────────
 // HTTP POST /consequencePreview — simula cascada de efectos de un evento operativo.
 // Triggers automáticos — se disparan cuando cambia Firestore (sin intervención del usuario).
@@ -957,3 +962,9 @@ export {
   onVehicleStatusChanged,
   onOTPUpdated,
 } from './consequenceTriggers';
+
+// ─── Aggregation Engine — compliance_aggregates (Sprint 2) ───────────────────
+// Cron 03:00 UY diario: lee vehicle_events_v2, calcula 12 métricas por
+// (agencyId, linea, sentido, día), escribe compliance_aggregates.
+// HTTP manual: aggregationEngineNow?date=YYYY-MM-DD
+export { aggregationEngineCron, aggregationEngineNow } from './aggregation';

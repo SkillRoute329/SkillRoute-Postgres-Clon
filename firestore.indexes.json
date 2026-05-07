@@ -973,6 +973,60 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "vehicle_events_v2",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "timestampGPS", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "compliance_aggregates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "periodo", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "compliance_aggregates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "linea", "order": "ASCENDING" },
+        { "fieldPath": "periodo", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "compliance_aggregates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "linea", "order": "ASCENDING" },
+        { "fieldPath": "sentido", "order": "ASCENDING" },
+        { "fieldPath": "granularidad", "order": "ASCENDING" },
+        { "fieldPath": "periodo", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "compliance_aggregates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "regionId", "order": "ASCENDING" },
+        { "fieldPath": "granularidad", "order": "ASCENDING" },
+        { "fieldPath": "periodo", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "compliance_aggregates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agencyId", "order": "ASCENDING" },
+        { "fieldPath": "granularidad", "order": "ASCENDING" },
+        { "fieldPath": "periodo", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [
