@@ -117,7 +117,7 @@ function PanelOperacional() {
               { label: 'Cobertura flota', value: resumen.turnosTotal > 0 ? `${resumen.coberturaFlota}%` : '—', icon: Activity, color: resumen.turnosTotal === 0 ? 'text-slate-500' : resumen.coberturaFlota >= 90 ? 'text-emerald-400' : resumen.coberturaFlota >= 75 ? 'text-amber-400' : 'text-red-400', sub: resumen.turnosTotal > 0 ? `${resumen.turnosCubiertos}/${resumen.turnosTotal} turnos` : 'Sin turnos programados' },
               { label: 'Sin conductor', value: resumen.turnosSinConductor, icon: Users, color: resumen.turnosSinConductor > 0 ? 'text-amber-400' : 'text-slate-500', sub: `${resumen.conductoresReservaLibres} reservas libres` },
               { label: 'Vehículos en taller', value: resumen.vehiculosEnTaller, icon: Bus, color: resumen.vehiculosEnTaller > 0 ? 'text-orange-400' : 'text-slate-500', sub: `${resumen.conductoresAusentes} ausentes hoy` },
-              { label: 'Riesgo ingresos', value: `USD ${resumen.impactoIngresosRiesgoUSD}`, icon: TrendingDown, color: resumen.impactoIngresosRiesgoUSD > 0 ? 'text-red-400' : 'text-slate-500', sub: resumen.lineasEnRiesgoIMM.length > 0 ? `L${resumen.lineasEnRiesgoIMM.join(', ')} en riesgo IMM` : 'Sin riesgo IMM' },
+              { label: 'Riesgo ingresos', value: resumen.impactoIngresosRiesgoUSD > 0 ? `USD ${resumen.impactoIngresosRiesgoUSD}` : 'Sin alertas hoy', icon: TrendingDown, color: resumen.impactoIngresosRiesgoUSD > 0 ? 'text-red-400' : 'text-emerald-400', sub: resumen.lineasEnRiesgoIMM.length > 0 ? `L${resumen.lineasEnRiesgoIMM.join(', ')} en riesgo IMM` : 'Sin alertas de riesgo de ingresos' },
             ].map(({ label, value, icon: Icon, color, sub }) => {
               const sinDatos = value === 0 || value === '—';
               return (

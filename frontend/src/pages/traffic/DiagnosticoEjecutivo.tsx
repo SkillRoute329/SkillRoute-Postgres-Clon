@@ -203,6 +203,10 @@ export default function DiagnosticoEjecutivo() {
       {/* 4 Bloques */}
       {(diagnostico || loading) && (
         <div className="grid gap-5">
+          <BloqueCard bloque={BLOQUES[3]} loading={loading} error={false}>
+            {diagnostico && <BloqueRecomendaciones data={diagnostico.bloque4} />}
+          </BloqueCard>
+
           <BloqueCard bloque={BLOQUES[0]} loading={loading} error={false}>
             {diagnostico && <BloquePerdidaMercado data={diagnostico.bloque1} />}
           </BloqueCard>
@@ -213,10 +217,6 @@ export default function DiagnosticoEjecutivo() {
 
           <BloqueCard bloque={BLOQUES[2]} loading={loading} error={false}>
             {diagnostico && <BloqueComparativaRival data={diagnostico.bloque3} />}
-          </BloqueCard>
-
-          <BloqueCard bloque={BLOQUES[3]} loading={loading} error={false}>
-            {diagnostico && <BloqueRecomendaciones data={diagnostico.bloque4} />}
           </BloqueCard>
         </div>
       )}

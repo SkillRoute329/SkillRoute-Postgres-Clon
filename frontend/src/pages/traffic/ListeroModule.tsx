@@ -386,7 +386,7 @@ export default function ListeroModule() {
         <div className="flex-none px-5 py-2 border-b border-slate-800 bg-slate-900/40">
           <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
             {[
-              { label: 'Cobertura flota', value: `${resumen.coberturaFlota}%`, color: resumen.coberturaFlota >= 90 ? 'text-emerald-400' : resumen.coberturaFlota >= 75 ? 'text-amber-400' : 'text-red-400' },
+              { label: 'Cobertura flota', value: resumen.turnosTotal > 0 ? `${resumen.coberturaFlota}%` : '—', color: resumen.turnosTotal === 0 ? 'text-slate-500' : resumen.coberturaFlota >= 90 ? 'text-emerald-400' : resumen.coberturaFlota >= 75 ? 'text-amber-400' : 'text-red-400' },
               { label: 'Turnos cubiertos', value: `${resumen.turnosCubiertos}/${resumen.turnosTotal}`, color: 'text-white' },
               { label: 'Sin conductor', value: resumen.turnosSinConductor, color: resumen.turnosSinConductor > 0 ? 'text-amber-400' : 'text-slate-500' },
               { label: 'Conductores libres', value: resumen.conductoresDisponibles, color: 'text-sky-400' },
