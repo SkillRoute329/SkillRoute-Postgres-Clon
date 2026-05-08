@@ -4,11 +4,11 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { collection, query, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { LocationUpdate, ServiceStatusChange, InspectorAlert, FleetCheckCompleted, UserConnected } from '../services/socketService';
-// Zod #73 (2026-04-23): validación de shape para hooks real-time
-import { safeParseOrLog, ViajeActivoSchema } from '../schemas';
+// Zod #73/#66 (2026-04-23): validación de shape para hooks real-time
+import { safeParseOrLog, ViajeActivoSchema, AlertaRegulacionSchema } from '../schemas';
 
 export function useLocationUpdates() {
   const [locations, setLocations] = useState<Map<string, LocationUpdate>>(new Map());
@@ -51,7 +51,7 @@ export function useLocationUpdates() {
         });
         return newMap;
       });
-    });
+    }, () => {});
 
     return () => unsubscribe();
   }, []);
@@ -90,7 +90,7 @@ export function useServiceStatusUpdates() {
         });
         return newMap;
       });
-    });
+    }, () => {});
 
     return () => unsubscribe();
   }, []);
@@ -101,11 +101,6 @@ export function useServiceStatusUpdates() {
 
   return { services: Object.fromEntries(services), lastUpdate, getStatus };
 }
-
-// Zod #66 (2026-04-23): validación de shape en el boundary Firestore → hook.
-// Si Firestore devuelve un doc con shape inesperado, safeParseOrLog loggea
-// + omite el doc en lugar de romper la UI.
-import { safeParseOrLog, AlertaRegulacionSchema } from '../schemas';
 
 export function useInspectorAlerts() {
   const [alerts, setAlerts] = useState<InspectorAlert[]>([]);
@@ -150,7 +145,7 @@ export function useInspectorAlerts() {
         } catch (e) {}
       }
       setCriticalAlerts(newCriticals);
-    });
+    }, () => {});
 
     return () => unsubscribe();
   }, [criticalAlerts.length]);
@@ -189,7 +184,7 @@ export function useFleetChecks() {
         });
         return newMap;
       });
-    });
+    }, () => {});
 
     return () => unsubscribe();
   }, []);
@@ -218,13 +213,21 @@ export function useSocketLatency() {
   const [latency, setLatency] = useState<number | null>(null);
   const [isCheckingLatency, setIsCheckingLatency] = useState(false);
 
-  const checkLatency = useCallback(() => {
+  const checkLatency = useCallback(async () => {
     setIsCheckingLatency(true);
-    setLatency(Math.floor(Math.random() * 60) + 10);
-    setIsCheckingLatency(false);
+    const t0 = Date.now();
+    try {
+      await getDoc(doc(db, 'system', 'current_kpis'));
+      setLatency(Date.now() - t0);
+    } catch {
+      setLatency(null);
+    } finally {
+      setIsCheckingLatency(false);
+    }
   }, []);
 
   useEffect(() => {
+    checkLatency();
     const interval = setInterval(checkLatency, 30000);
     return () => clearInterval(interval);
   }, [checkLatency]);

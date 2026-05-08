@@ -674,6 +674,26 @@ service cloud.firestore {
     }
 
     // ============================================================
+    // Colecciones sin regla explícita previa — evita permission-denied
+    // en onSnapshot antes de que el catch-all evalúe el token
+    // ============================================================
+    match /coaches/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+    match /vehicles/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+    match /fleet_checks/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminNorm();
+    }
+    match /_healthcheck/{document=**} {
+      allow read, write: if isAdminNorm();
+    }
+
+    // ============================================================
     // REGLA DEFAULT — Lectura permitida para autenticados, escritura protegida
     // ============================================================
     match /{document=**} {

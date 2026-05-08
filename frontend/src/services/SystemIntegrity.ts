@@ -23,16 +23,9 @@ export const SystemIntegrity = {
       const configRef = doc(db, 'system', 'global_config');
       const snap = await getDoc(configRef);
 
-      // If config doesn't exist, auto-create it (Self-Healing)
       if (!snap.exists()) {
-        console.log('⚠️ [SystemIntegrity] No cleanup config found. Initializing...');
-        await setDoc(configRef, {
-          requiredVersion: 1,
-          forceCleanupIteration: 0,
-          maintenanceMode: false,
-          message: 'System Normal',
-        });
-        return; // Nothing to enforce yet
+        console.log('⚠️ [SystemIntegrity] No cleanup config found. Skipping init.');
+        return;
       }
 
       const remote = snap.data();
