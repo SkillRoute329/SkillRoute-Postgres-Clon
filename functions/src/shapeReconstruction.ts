@@ -36,12 +36,12 @@ const db = admin.firestore();
 
 const COLLECTION = 'shapes_cross_operator';
 const SOURCE_COLLECTION = 'vehicle_events';
-const LOOKBACK_HOURS = 72;
+const LOOKBACK_HOURS = 168; // 7 días — restaurar cobertura de corridor_overlap tras incidente AUD-012
 const MIN_POINTS_FOR_SHAPE = 6;
 const MIN_LENGTH_METERS = 1500;
 const DOUGLAS_PEUCKER_TOLERANCE_M = 15;
 const MAX_GAP_BETWEEN_PINGS_MS = 15 * 60 * 1000;
-const MAX_PINGS_PER_AGENCY = 25000;
+const MAX_PINGS_PER_AGENCY = 150000; // aumentado de 25k para cubrir todas las líneas activas
 const BATCH_SIZE = 400;
 
 const AGENCY_NAMES: Record<string, string> = {
