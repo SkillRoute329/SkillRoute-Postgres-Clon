@@ -221,21 +221,27 @@ export async function computeDroMatrix(
   for (const doc of snap.docs) {
     const d = doc.data();
     if (!Array.isArray(d.points) || d.points.length < 2) continue;
+    // Usar solo shapes GTFS_OFICIAL (gtfsImporter) — son las más fiables y deduplicadas
+    // por (agency, linea, sentido). Las shapes de shapeReconstruction y shapeBuilder
+    // duplican la colección y no aportan calidad mayor; con ~1579 docs totales el
+    // cálculo supera el timeout 540s; con solo GTFS son ~560 docs → ~156k pares → <60s.
+    if ((d.fuente as string | undefined) !== 'GTFS_OFICIAL') continue;
     // Normalizar: gtfsImporter guarda {lat, lng} pero Point usa {lat, lon}
     const pts: Point[] = (d.points as any[]).map(p => ({ lat: p.lat, lon: p.lon ?? p.lng ?? 0 }));
     // gtfsImporter no persiste campo 'key' en docData — usar doc.id como fuente canónica
     const shapeKey = (d.key as string | undefined) ?? doc.id;
+    if (!d.sentido || !d.agencyId || !d.linea) continue;
     shapes.push({
       key: shapeKey,
       agencyId: d.agencyId,
-      empresa: d.empresa,
+      empresa: d.empresa ?? '',
       linea: d.linea,
       sentido: d.sentido as Sentido,
       points: pts,
       lengthMeters: d.lengthMeters ?? 0,
     });
   }
-  console.log(`[droMatrix] shapes read: ${shapes.length}`);
+  console.log(`[droMatrix] shapes GTFS_OFICIAL: ${shapes.length}`);
 
   // Pre-resamplear todas las shapes una vez (evita recalcular n veces).
   const resampled = new Map<string, Sample[]>();
@@ -251,6 +257,8 @@ export async function computeDroMatrix(
     if (samplesA.length === 0) continue;
     for (const b of shapes) {
       if (a.key === b.key) continue;
+      // DIRECTRIZ: nunca comparar IDA vs VUELTA — no son competencia aunque compartan calle
+      if (a.sentido !== b.sentido) continue;
       pairsEvaluated++;
       const covered = countCoveredSamples(samplesA, b.points);
       if (covered === 0) continue;

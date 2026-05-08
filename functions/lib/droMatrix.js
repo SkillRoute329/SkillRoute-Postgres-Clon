@@ -190,7 +190,7 @@ function countCoveredSamples(samplesA, pointsB) {
 }
 // ─── Orquestación ──────────────────────────────────────────────────────────
 async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
-    var _a, _b;
+    var _a, _b, _c;
     const t0 = Date.now();
     const snap = await db.collection(SHAPES_COLLECTION).get();
     const shapes = [];
@@ -198,21 +198,29 @@ async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
         const d = doc.data();
         if (!Array.isArray(d.points) || d.points.length < 2)
             continue;
+        // Usar solo shapes GTFS_OFICIAL (gtfsImporter) — son las más fiables y deduplicadas
+        // por (agency, linea, sentido). Las shapes de shapeReconstruction y shapeBuilder
+        // duplican la colección y no aportan calidad mayor; con ~1579 docs totales el
+        // cálculo supera el timeout 540s; con solo GTFS son ~560 docs → ~156k pares → <60s.
+        if (d.fuente !== 'GTFS_OFICIAL')
+            continue;
         // Normalizar: gtfsImporter guarda {lat, lng} pero Point usa {lat, lon}
         const pts = d.points.map(p => { var _a, _b; return ({ lat: p.lat, lon: (_b = (_a = p.lon) !== null && _a !== void 0 ? _a : p.lng) !== null && _b !== void 0 ? _b : 0 }); });
         // gtfsImporter no persiste campo 'key' en docData — usar doc.id como fuente canónica
         const shapeKey = (_a = d.key) !== null && _a !== void 0 ? _a : doc.id;
+        if (!d.sentido || !d.agencyId || !d.linea)
+            continue;
         shapes.push({
             key: shapeKey,
             agencyId: d.agencyId,
-            empresa: d.empresa,
+            empresa: (_b = d.empresa) !== null && _b !== void 0 ? _b : '',
             linea: d.linea,
             sentido: d.sentido,
             points: pts,
-            lengthMeters: (_b = d.lengthMeters) !== null && _b !== void 0 ? _b : 0,
+            lengthMeters: (_c = d.lengthMeters) !== null && _c !== void 0 ? _c : 0,
         });
     }
-    console.log(`[droMatrix] shapes read: ${shapes.length}`);
+    console.log(`[droMatrix] shapes GTFS_OFICIAL: ${shapes.length}`);
     // Pre-resamplear todas las shapes una vez (evita recalcular n veces).
     const resampled = new Map();
     for (const s of shapes) {
@@ -226,6 +234,9 @@ async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
             continue;
         for (const b of shapes) {
             if (a.key === b.key)
+                continue;
+            // DIRECTRIZ: nunca comparar IDA vs VUELTA — no son competencia aunque compartan calle
+            if (a.sentido !== b.sentido)
                 continue;
             pairsEvaluated++;
             const covered = countCoveredSamples(samplesA, b.points);
