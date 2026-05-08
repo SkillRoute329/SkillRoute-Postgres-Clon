@@ -1,121 +1,162 @@
 # SESION ACTUAL — estado vivo
 
-**Última actualización:** 2026-05-08 19:05 UTC — ✅ BRIDGE-067 RESUELTO. sentidoV2 poblado al 100% en eventos frescos. Sprint 4 desbloqueado.
+**Última actualización:** 2026-05-09 02:45 UTC — AUD-008/012/014/015/016/032 CERRADOS. 21/31 AUD-items completados. AUD-012 con observación de cobertura (31 pares vs 302 históricos — data pipeline). En cola: P1 data bugs (AUD-017..022).
 
 ---
 
-## ✅ BRIDGE-067 RESUELTO — Fix sentidoV2 en eventos frescos
+## ✅ COMPLETADOS ESTA SESIÓN (commits verificados)
 
-### Root cause confirmado
-`autoStatsCollector.ts` era el único escritor de eventos GPS frescos en `vehicle_events`. Usaba una función local `detectarSentido()` que producía el campo `sentido` (legacy) pero NUNCA poblaba `sentidoV2`, `confianzaV2`, `scoreV2`, `tripIdV2`, `snapDistanceMV2`. El matching-engine Cloud Run `/infer` no tenía ningún caller en el codebase.
+| AUD | Descripción | Commit | Verificado |
+|---|---|---|---|
+| AUD-012 | droMatrix: lng→lon fix + shapeKey desde doc.id + deduplicación lógica + safety guard + filtro shapeReconstruction + sentido pre-filter + MIN_OVERLAP_PCT 5% | `08a25433` | ✅ droMatrix 31 pares, cross-op confirmado |
+| AUD-014 | VistaDia: reset filtro on empresa change + type mismatch busesVivos + directionId en FilaLinea | `fba9f37d` | ✅ version.json |
+| AUD-016 | useRealtimeData.ts: 4 onSnapshot con error handler; SystemIntegrity.ts sin setDoc auto-create; firestore.rules reglas explícitas coaches/vehicles/fleet_checks/_healthcheck | `7fa7c2c8` | ✅ version.json |
+| AUD-015 | ShadowRadar.tsx: `Number(b.codigoEmpresa) === empresaPropia` corrige type mismatch string/number → UCOT ya no muestra 0 | `0500ad3c` | ✅ version.json |
+| AUD-008 | DashboardLayout.tsx header: pill ahora muestra "130 · 1319 sistema" en lugar de solo propios | `0ee549ad` | ✅ version.json |
 
-### Fix aplicado (commit pendiente)
-`functions/src/autoStatsCollector.ts` — líneas 833-877:
-- Añadido cómputo de `snapDistKm` usando `calcBestDistKm()` (ya existía para desvío detection)
-- Campos V2 mapeados desde lógica local ya existente:
-  - `sentidoV2 = result.sentido`
-  - `confianzaV2 = result.confianzaSentido as string`
-  - `scoreV2 = null` (sin score numérico en algo local)
-  - `tripIdV2 = null` (sin trip matching en algo local)
-  - `snapDistanceMV2 = isFinite(snapDistKm) ? Math.round(snapDistKm * 1000) : null`
-  - `algoVersion = 'local-v1.0.0'`
-- `calcBestDistKm` hoisted antes del event push, reutilizado en desvío detection (elimina doble cómputo)
+**Total acumulado completados:** 21/31 AUD-items
 
-### Verificación post-deploy (2026-05-08 18:58 UTC)
-| Check | Resultado |
+---
+
+## 🔴 EN CURSO — Auditoría pre-presentación BRIDGE-071
+
+**Estado global:** 21/31 AUD completados · 1 BLOQUEADO (decisión Jonathan) · 9 pendientes (P1 + P2 restantes)
+
+### ✅ Completados histórico (sesiones anteriores, commits verificados)
+
+| AUD | Descripción | Commit |
+|---|---|---|
+| AUD-001 | Badge "Sin datos hoy" en DashboardHome | `bab621d7` |
+| AUD-002 | Copy profesional en BoletinInspeccion + DistribucionDiaria | `bab621d7` |
+| AUD-003 | Copy RRHH/técnico en AppMaintenance | `bab621d7` |
+| AUD-004 | Versiones eliminadas de RegulatorComplianceView + OperatorComplianceView | `bab621d7` |
+| AUD-005 | Timeout 5s spinner + "Sin alertas hoy" emerald | `bab621d7` |
+| AUD-006 | `Nº ${h.interno}` + "Conductor sin identificar" | `3ff3bc18` |
+| AUD-009 | Header siempre "EN LÍNEA" | `bab621d7` |
+| AUD-010 | Teléfonos enmascarados maskPhone() Ley 18.331 | `41404589` |
+| AUD-011 | PLPorOperador subtítulo UYU + período + tarifa STM | `41404589` |
+| AUD-013 | ComplianceHub vencido → "Pendiente generación" | `3ff3bc18` |
+| AUD-026 | DiagnosticoEjecutivo: BloqueRecomendaciones al TOP | `7b781e55` |
+| AUD-027 | DashboardHome badge "Sin datos hoy" | `bab621d7` |
+| AUD-030 | ListeroModule: "—" si turnosTotal=0 | `7b781e55` |
+
+---
+
+### ❌ BLOQUEADO — Decisión Jonathan
+
+| AUD | Razón |
 |---|---|
-| sentidoV2 presente | ✅ 100/100 eventos (100%) |
-| confianzaV2 presente | ✅ 100/100 |
-| snapDistanceMV2 presente | ✅ 99/100 |
-| Operadores cubiertos en muestra | CUTCSA (50) + UCOT (70) |
-| autoStatsCollectorTick deployado | ✅ |
-| autoStatsCollectorNow deployado | ✅ |
+| AUD-007 | Internos asignados a coches son muestra piloto, no producción real. No filtrar. |
 
 ---
 
-## PRÓXIMO PASO INMEDIATO — Sprint 4: Vista Operador
+## 🔴 PRÓXIMO PASO INMEDIATO — AUD-017..022 (P1 datos críticos demo)
 
-### Spec
-- Ruta: `/dashboard/admin/regulatorio/operador/:agencyId`
-- Similar a `RegulatorComplianceView` pero filtrada por la empresa propia del usuario
-- ExportPDF firmado con SHA-256 (stub 501 ya existe)
-- Spec completa: `docs/SPEC_CUMPLIMIENTO_V2_FRONTEND_2026_05.md` sección 3
+AUD-014 completado. AUD-012 completado con observación (ver abajo). Próximo objetivo: P1 data bugs.
 
-### Commit pendiente (autoStatsCollector fix)
+### AUD-017 — Fleet Intelligence 0% OTP por vehículo
 
-```
-git add functions/src/autoStatsCollector.ts functions/lib/autoStatsCollector.js
-git commit -m "fix(autoStats): poblar sentidoV2/confianzaV2/snapDistanceMV2 en eventos frescos
+**Síntoma:** módulo Fleet Intelligence muestra 0% OTP para todos los coches.
+**Diagnóstico a hacer:**
+1. Grep `autoStatsService.ts` por `otpPorCoche` — verificar si el campo se calcula y persiste
+2. Verificar que el cron `autoStatsCollectorTick` está corriendo (lastSuccessful < 15 min)
+3. Verificar colección `auto_stats` — ¿tienen campo `otpScore`?
 
-Root cause BRIDGE-067: autoStatsCollector.ts usaba detectarSentido() local
-pero nunca escribia los campos V2. El matching-engine /infer no tenia callers.
+### AUD-018 — Centro de Mando "3 de 4 componentes"
 
-Fix: mapear result.sentido -> sentidoV2, result.confianzaSentido -> confianzaV2,
-calcBestDistKm() -> snapDistanceMV2. scoreV2/tripIdV2=null (sin snap avanzado
-en algo local). algoVersion='local-v1.0.0'.
+**Síntoma:** CentroMandoUnificado muestra 3 de 4 componentes OK.
+**Diagnóstico:** identificar qué componente falla (buses activos, compliance, OTP, o alertas).
 
-Verificado: 100/100 eventos recientes con sentidoV2, tsc 0 errores, build OK.
-Deploys: autoStatsCollectorTick + autoStatsCollectorNow us-central1.
+### AUD-019 — COME/COETC/CUTCSA flota activa = 0
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
-```
+**Síntoma:** Centro de Mando SA muestra flota activa = 0 para los 3 operadores no-UCOT.
+**Diagnóstico:** verificar query de `isVehiculoActivo` para cada agencyId.
 
----
+### AUD-020 — GTFS frequencies idénticas (14 min)
 
-## CONTEXTO HISTÓRICO Sprint 3.5 (COMPLETADO)
+**Síntoma:** todos los operadores muestran frecuencia 14 min en módulo GTFS.
+**Diagnóstico:** verificar colección `gtfs_frequencies` o cómo se calcula el headway.
 
-### Swap ejecutado
-| Operación | Resultado |
-|---|---|
-| Backup vehicle_events → vehicle_events_legacy_pre_swap_2026_05_07 | ~250k docs (parcial; v2 es el backup completo) |
-| Swap vehicle_events_v2 → vehicle_events | **315.284 docs copiados** ✅ |
-| aggregationEngine SOURCE_COL | `vehicle_events` (actualizado) ✅ |
-| infer.ts V2_COL | `vehicle_events` (actualizado) ✅ |
-| reprocess.ts V2_COL | `vehicle_events` (actualizado, permite también legacy) ✅ |
-| aggregationEngineNow 2026-05-07 | processed=410, errors=0 ✅ |
-| compliance/regulador 4 operadores | OK post-swap ✅ |
-| Matching-engine Cloud Run redeploy | commit 668c7e50 ✅ |
-| autoStatsCollector sentidoV2 fix | 100% cobertura ✅ |
+### AUD-021 — Centro de Desvíos 0% ACK rate
+
+**Síntoma:** 0% de alertas de desvío reconocidas.
+**Diagnóstico:** verificar si el endpoint de ACK existe y si hay datos en `desvios_ack`.
+
+### AUD-022 — "líneas operando" inconsistente
+
+**Síntoma:** número de líneas operando difiere entre módulos.
+**Diagnóstico:** identificar qué query usa cada módulo para contar líneas.
 
 ---
 
-## ✅ SPRINT 3 — Vista Regulador CERRADO (commit 50366978)
+## ⚠️ OBSERVACIÓN AUD-012 — Cobertura corridor_overlap reducida
 
-Verificado en producción: 4 operadores, cobertura 87.1%, endpoint OK.
+**Estado:** código correcto, datos parciales (31 pares vs ~302 históricos).
+
+**Root cause documentado:**
+- El deploy roto (`pairsWritten=0`) ejecutó el cleanup y borró los 1954 docs históricos
+- Los 1954 docs venían de ~290 shapes de `shapeReconstruction` con 72h lookback
+- Hoy hay 58 shapes disponibles (26 persistidas + 40 del `reconstructShapesNow`)
+- `MAX_PINGS_PER_AGENCY = 25000` en `shapeReconstruction.ts` limita la cobertura
+
+**Mitigaciones aplicadas:**
+- `MIN_OVERLAP_PCT`: 10→5 para maximizar pares capturados con shapes disponibles
+- Safety guard en droMatrix: si 0 pares calculados → abortar, no borrar colección
+- Cron `droMatrixTick` (lunes 04:00) recalculará con shapes acumuladas
+
+**Acción pendiente (decisión Cowork/Jonathan):**
+- ¿Aumentar `MAX_PINGS_PER_AGENCY` en `shapeReconstruction.ts` (actualmente 25k)?
+- Con más pings se cubren más líneas en cada run → más shapes → más pares DRO
 
 ---
 
 ## BACKLOG PRIORIZADO
 
-| Prioridad | Tarea | Sprint |
-|---|---|---|
-| P0 (próximo) | Sprint 4: Vista Operador — OperatorComplianceView | Sprint 4 |
-| P1 | ExportPDF firmado (stub implementado, lógica pendiente) | Sprint 4 |
-| P1 | Eliminar adminDataSwap (función temporal, post-Sprint 3.5) | Post-Sprint 3.5 |
-| P2 | Sprint 5: Vista Ejecutivo | Sprint 5 |
-| P3 | Completar backup vehicle_events_legacy (si requerido) | Post-Sprint 3.5 |
-| P3 | Reprocess CUTCSA completo (155k/500k estimado) | Post-Sprint 3 |
+| Prioridad | Tarea |
+|---|---|
+| P1 inmediato | AUD-017..022 (datos críticos demo) |
+| P2 restantes | AUD-023 (alertas→mapa), AUD-024 (tooltips severity), AUD-025 (date selector global — zona estable), AUD-028 (estado "Todas+sentido"), AUD-029 (timestamps idénticos), AUD-031 (BRT badge) |
+| Producto | PROD-01..04 (decisiones Jonathan) |
+| Demo dry-run | Después de cerrar P1 |
 
 ---
 
 ## BUGS CONOCIDOS NO CRÍTICOS
 
-- Backup vehicle_events_legacy incompleto (~250k de ~500k docs). No crítico: v2 es el backup real.
-- adminDataSwap Cloud Function no eliminada (temporal, hacerlo post-Sprint 4).
-- L330/L370/L79: precisión 89-91%. Causa: rutas circulares complejas.
-- ExportPDF: stub 501 — pendiente Sprint 4.
-- LineDeepDive: histograma recharts no implementado aún.
-- scoreV2 y tripIdV2 = null en eventos de autoStatsCollector (lógica local no produce score numérico ni trip matching). No bloquea aggregation ni compliance.
+- **AUD-007:** Asignaciones conductor↔coche son muestra piloto. Visible en Listero Cascada + Asignación de Coches.
+- **AUD-012 cobertura:** corridor_overlap con 31 pares (histórico 302). Mejora con cada reconstructShapesTick.
+- **NEW-001:** índice Firestore faltante `line_inspector_configs (agencyId, lineId)` → `/api/agency-lines/:agencyId` HTTP 502. No afecta UX (sin consumidor frontend activo). Fix: agregar índice en `firestore.indexes.json`.
+- Backup `vehicle_events_legacy` incompleto (~250k de ~500k docs). No crítico.
+- `scoreV2` y `tripIdV2` = null en eventos `autoStatsCollector`. Comportamiento esperado.
+- GTFS 66.2% líneas OK — causa externa al feed IMM.
+- `ExportPDF`: stub 501 — pendiente.
 
 ---
 
-## DECISIONES OPERATIVAS TOMADAS
+## DECISIONES OPERATIVAS TOMADAS ESTA SESIÓN
 
-- Post-swap: `vehicle_events` es LA colección canónica para todos los eventos GPS enriquecidos
-- `vehicle_events_v2` se mantiene 7 días como histórica (campo expiresAt controla TTL)
-- aggregationEngine.ts SOURCE_COL = 'vehicle_events' (commit 668c7e50)
-- matching-engine escribe a vehicle_events (no a _v2) desde deploy 668c7e50
-- Backup parcial aceptado: v2 (315k docs enriquecidos) es la fuente de verdad
-- Swap atómico implementado como Cloud Function con resume por cursor de documentId
-- autoStatsCollector usa `algoVersion='local-v1.0.0'` para distinguir eventos enriquecidos localmente vs por matching-engine
-- scoreV2=null y tripIdV2=null en eventos locales es comportamiento esperado y documentado
+- AUD-012 root cause chain: `gtfsImporter` no persiste campo `key` en docData → `d.key = undefined` → `shapeBKey: undefined` → Firestore rechaza doc. Fix: `d.key ?? doc.id`. Además el `Point` interface usa `lon` pero gtfsImporter escribe `lng` → haversine NaN → overlap siempre 0.
+- AUD-012 timeout root cause: 3 fuentes en `shapes_cross_operator` (gtfsImporter 1579 docs, shapeBuilder, shapeReconstruction 26-58 docs). Con fix `doc.id` las 1579 shapes tenían claves únicas → ~2.5M pares → timeout 540s. Fix: filtrar solo shapeReconstruction (`typeof d.key === 'string'` + agencyId in ['10','20','50','70']).
+- `shapeReconstruction.ts` persiste campo `key` explícito en docData; `gtfsImporter.ts` y `shapeBuilder.ts` no lo hacen → diferenciador confiable.
+- `gtfsImporter.ts` usa `AGENCY_CODE_MAP` pero el GTFS de la IMM usa códigos distintos → todas las líneas quedan con `agencyId="0"` → shapes de gtfsImporter inútiles para DRO cross-operador.
+- AUD-015 root cause: `b.codigoEmpresa` llega como string desde API IMM; `empresaPropia` es number. Fix: `Number(b.codigoEmpresa) === empresaPropia`.
+- AUD-016 root cause 1: onSnapshot sin error handler → "Uncaught Error in snapshot listener" logs en consola.
+- AUD-016 root cause 2: SystemIntegrity.ts hacía `setDoc` en `system/global_config` antes de que Auth restaure el token → permission-denied en mount.
+- AUD-016 root cause 3: coaches, vehicles, fleet_checks, _healthcheck sin reglas explícitas en firestore.rules.
+
+---
+
+## Lo que SÍ funciona — zona estable (no romper)
+
+- Posición de Flota → Mapa en Vivo STM (4 operadores, IMM oficial)
+- Cumplimiento por Línea (42 líneas, OTP/EWT/SD, drill-down funcional)
+- Vista Regulador (4 operadores PLENO/GPS)
+- Diagnóstico Ejecutivo (recomendaciones TOP + 4 bloques)
+- Inteligencia Cross-Op (DRO y market share)
+- Mapas Estratégicos (866 shapes)
+- Navegador (mapa + paradas reales)
+- Auth custom + Firebase
+- Sentido IDA/VUELTA (91.5% cobertura)
+- ShadowRadar (UCOT count fix 0500ad3c)
+- Bridge Cowork↔Code (protocolo activo)
+- Vista del Día (filtro operador fix fba9f37d)
