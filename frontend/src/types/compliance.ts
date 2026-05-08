@@ -101,3 +101,44 @@ export const OPERATOR_IDS = ['70', '50', '20', '10'] as const;
 
 // Tipo de badge de cumplimiento (asimétrico por diseño)
 export type CumplimientoBadge = 'PLENO' | 'GPS';
+
+// ── Sprint 4: Vista Operador ──────────────────────────────────────────────
+
+export type LineEstado = 'OK' | 'OK_PROVISIONAL' | 'INSUFICIENTE' | 'COBERTURA_BAJA';
+
+export interface LineMetricSummary {
+  value: number | null;
+  n: number;
+  badge: MetricBadge;
+}
+
+export interface LineResult {
+  linea: string;
+  sentido: string;
+  totalEventsObserved: number;
+  totalTripsScheduled: number;
+  globalCoverageGps: number;
+  isHighFreq: boolean;
+  estado: LineEstado;
+  metrics: {
+    otp: LineMetricSummary | null;
+    ewt: LineMetricSummary | null;
+    serviceDelivered: LineMetricSummary | null;
+    srs: LineMetricSummary | null;
+  };
+}
+
+export interface OperatorData {
+  meta: {
+    agencyId: string;
+    agencyName: string;
+    period: { desde: string; hasta: string; granularidad: string };
+    generatedAt: string;
+    source: string;
+  };
+  coverage: {
+    operatorGps: number;
+    totalEvents: number;
+  };
+  lines: LineResult[];
+}

@@ -154,6 +154,8 @@ const SistemaAdminHub      = lazy(() => import('./pages/admin/SistemaAdminHub'))
 const RegulatorioHub       = lazy(() => import('./pages/admin/RegulatorioHub'));
 // Sprint 3 (2026-05-07): Vista Regulador — Cumplimiento del Sistema Metropolitano
 const RegulatorComplianceView = lazy(() => import('./pages/regulatorio/RegulatorComplianceView'));
+// Sprint 4 (2026-05-08): Vista Operador — Cumplimiento por línea
+const OperatorComplianceView = lazy(() => import('./pages/traffic/OperatorComplianceView'));
 // Sprint 1 (2026-04-25): Pricing público — accesible sin auth
 const PricingPage = lazy(() => import('./pages/public/PricingPage'));
 const OnboardingPage = lazy(() => import('./pages/public/OnboardingPage'));
@@ -360,6 +362,13 @@ function App() {
                       <PrivateRoute roles={['ADMIN','SUPERADMIN']}>
                         <Suspense fallback={<PageLoader />}>
                           <RegulatorComplianceView />
+                        </Suspense>
+                      </PrivateRoute>
+                    } />
+                    <Route path="traffic/cumplimiento" element={
+                      <PrivateRoute roles={['TRAFFIC','ADMIN','SUPERADMIN']}>
+                        <Suspense fallback={<PageLoader />}>
+                          <OperatorComplianceView />
                         </Suspense>
                       </PrivateRoute>
                     } />

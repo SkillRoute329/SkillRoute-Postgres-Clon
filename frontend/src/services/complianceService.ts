@@ -1,7 +1,7 @@
-// Servicio de cumplimiento — consulta /api/compliance/regulador
-// SPEC_CUMPLIMIENTO_V2_FRONTEND_2026_05.md §2.7
+// Servicio de cumplimiento — consulta /api/compliance/regulador y /api/compliance/operador
+// SPEC_CUMPLIMIENTO_V2_FRONTEND_2026_05.md §2.7, §3
 
-import { RegulatoryData, Granularidad } from '../types/compliance';
+import { RegulatoryData, OperatorData, Granularidad } from '../types/compliance';
 
 const API_BASE = '/api';
 
@@ -39,6 +39,32 @@ export async function fetchRegulatoryData(
   }
 
   return res.json() as Promise<RegulatoryData>;
+}
+
+export async function fetchOperatorData(
+  token: string,
+  agencyId: string,
+  from: Date,
+  to: Date,
+  granularity: Granularidad,
+): Promise<OperatorData> {
+  const params = new URLSearchParams({
+    agencyId,
+    desde: fmtDate(from),
+    hasta: fmtDate(to),
+    granularidad: granularidadParam(granularity),
+  });
+
+  const res = await fetch(`${API_BASE}/compliance/operador?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`compliance/operador ${res.status}: ${body}`);
+  }
+
+  return res.json() as Promise<OperatorData>;
 }
 
 export async function exportRegulatoryPDF(

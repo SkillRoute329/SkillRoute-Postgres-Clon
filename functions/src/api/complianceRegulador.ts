@@ -190,11 +190,119 @@ export function registerComplianceReguladorRoutes(app: Express): void {
     }
   });
 
-  // ── POST /api/compliance/regulador/export — stub Sprint 3 ────────────────
+  // ── POST /api/compliance/regulador/export — stub ─────────────────────────
   app.post('/api/compliance/regulador/export', async (_req, res) => {
-    // Stub — generación de PDF implementada en Sprint 4
     return res.status(501).json({
-      error: 'Exportación PDF pendiente de implementación (Sprint 4)',
+      error: 'Exportación PDF pendiente de implementación',
+      stub: true,
+    });
+  });
+
+  // ── GET /api/compliance/operador — Sprint 4: Vista Operador ───────────────
+  // Devuelve métricas por línea para un operador específico.
+  // Params: agencyId (requerido), desde, hasta, granularidad
+  app.get('/api/compliance/operador', async (req, res) => {
+    try {
+      const agencyId  = String(req.query.agencyId  ?? '');
+      const desde     = String(req.query.desde     ?? '');
+      const hasta     = String(req.query.hasta     ?? '');
+      const granParam = String(req.query.granularidad ?? 'diaria');
+      const gran      = parsedGranularidad(granParam);
+
+      if (!agencyId || !AGENCY_NAMES[agencyId]) {
+        return res.status(400).json({ error: 'agencyId inválido. Valores válidos: 70, 50, 20, 10' });
+      }
+
+      const docs = await queryDocs(agencyId, gran, desde, hasta);
+
+      // Cobertura global del operador
+      const totalEvents = docs.reduce((s, d) => s + (d.totalEventsObserved ?? 0), 0);
+      const operatorGps = totalEvents > 0
+        ? docs.reduce((s, d) => s + (d.globalCoverageGps ?? 0) * (d.totalEventsObserved ?? 0), 0) / totalEvents
+        : 0;
+
+      // Agrupar por (linea, sentido)
+      const groups = new Map<string, AggregateDoc[]>();
+      for (const doc of docs) {
+        const key = `${doc.linea}__${doc.sentido}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(doc);
+      }
+
+      const ORDER: Record<string, number> = {
+        INSUFICIENTE: 0, COBERTURA_BAJA: 1, OK_PROVISIONAL: 2, OK: 3,
+      };
+
+      const lines = Array.from(groups.entries()).map(([key, grpDocs]) => {
+        const [linea, sentido] = key.split('__') as [string, string];
+        const n      = grpDocs.reduce((s, d) => s + (d.totalEventsObserved ?? 0), 0);
+        const trips  = grpDocs.reduce((s, d) => s + (d.totalTripsScheduled ?? 0), 0);
+        const covGps = n > 0
+          ? grpDocs.reduce((s, d) => s + (d.globalCoverageGps ?? 0) * (d.totalEventsObserved ?? 0), 0) / n
+          : 0;
+        const isHighFreq = grpDocs.some(d => d.isHighFreq);
+
+        const otp = weightedAvg(grpDocs, 'otp_low_freq');
+        const ewt = weightedAvg(grpDocs, 'ewt_high_freq');
+        const sd  = weightedAvg(grpDocs, 'service_delivered');
+        const srs = weightedAvg(grpDocs, 'service_reliability_score');
+
+        let estado: string;
+        if (n < 30) {
+          estado = 'INSUFICIENTE';
+        } else if (covGps < 70) {
+          estado = 'COBERTURA_BAJA';
+        } else {
+          const primary = isHighFreq ? ewt : otp;
+          estado = primary.badge === 'OK' ? 'OK'
+                 : primary.badge === 'IC_VISIBLE' ? 'OK_PROVISIONAL'
+                 : 'INSUFICIENTE';
+        }
+
+        return {
+          linea,
+          sentido,
+          totalEventsObserved: n,
+          totalTripsScheduled: trips,
+          globalCoverageGps: Math.round(covGps * 10) / 10,
+          isHighFreq,
+          estado,
+          metrics: {
+            otp: otp.value != null ? otp : null,
+            ewt: ewt.value != null ? ewt : null,
+            serviceDelivered: sd.value != null ? sd : null,
+            srs: srs.value != null ? srs : null,
+          },
+        };
+      });
+
+      // Alertas primero, luego OK_PROVISIONAL, luego OK
+      lines.sort((a, b) => (ORDER[a.estado] ?? 0) - (ORDER[b.estado] ?? 0));
+
+      return res.json({
+        meta: {
+          agencyId,
+          agencyName: AGENCY_NAMES[agencyId],
+          period: { desde, hasta, granularidad: granParam },
+          generatedAt: new Date().toISOString(),
+          source: 'GPS oficial IMM (POST stm-online) + GTFS oficial',
+        },
+        coverage: {
+          operatorGps: Math.round(operatorGps * 10) / 10,
+          totalEvents,
+        },
+        lines,
+      });
+    } catch (err: any) {
+      console.error('[compliance/operador] Error:', err);
+      return res.status(500).json({ error: err?.message ?? String(err) });
+    }
+  });
+
+  // ── POST /api/compliance/operador/export — stub Sprint 4 ─────────────────
+  app.post('/api/compliance/operador/export', async (_req, res) => {
+    return res.status(501).json({
+      error: 'Exportación PDF pendiente de implementación',
       stub: true,
     });
   });
