@@ -221,13 +221,15 @@ export async function computeDroMatrix(
   for (const doc of snap.docs) {
     const d = doc.data();
     if (!Array.isArray(d.points) || d.points.length < 2) continue;
+    // Normalizar: gtfsImporter guarda {lat, lng} pero Point usa {lat, lon}
+    const pts: Point[] = (d.points as any[]).map(p => ({ lat: p.lat, lon: p.lon ?? p.lng ?? 0 }));
     shapes.push({
       key: d.key,
       agencyId: d.agencyId,
       empresa: d.empresa,
       linea: d.linea,
       sentido: d.sentido as Sentido,
-      points: d.points as Point[],
+      points: pts,
       lengthMeters: d.lengthMeters ?? 0,
     });
   }
@@ -287,6 +289,12 @@ export async function computeDroMatrix(
   }
   const dedupedOverlaps = Array.from(dedupedMap.values());
   console.log(`[droMatrix] raw overlaps=${overlaps.length} deduped=${dedupedOverlaps.length}`);
+
+  // Guard: si el cálculo producjo 0 pares, algo salió mal — no borrar colección
+  if (dedupedOverlaps.length === 0) {
+    console.warn('[droMatrix] 0 pares deduplicados — abortando para no borrar colección existente');
+    return { shapesRead: shapes.length, pairsEvaluated, pairsWritten: 0, durationMs: Date.now() - t0, topOverlaps: [] };
+  }
 
   // Limpiar docs previos (claves con variante del build anterior)
   const existingSnap = await db.collection(OVERLAP_COLLECTION).get();
