@@ -38,6 +38,7 @@ function PanelOperacional() {
   const [resumen, setResumen] = useState<ResumenDiario | null>(null);
   const [alertas, setAlertas] = useState<Array<{ id: string; urgencia: string; titulo: string; mensaje: string }>>([]);
   const [loading, setLoading] = useState(true);
+  const [timedOut, setTimedOut] = useState(false);
 
   const TIPO_LABEL: Record<string, string> = {
     RIVAL_PISANDO_TURNO: '⚠️ Rival pisando turno',
@@ -63,6 +64,12 @@ function PanelOperacional() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alertasVivas]);
+
+  useEffect(() => {
+    if (!loading) { setTimedOut(false); return; }
+    const t = setTimeout(() => setTimedOut(true), 5000);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   useEffect(() => {
     const fecha = new Date().toISOString().split('T')[0];
@@ -94,9 +101,15 @@ function PanelOperacional() {
       {/* KPIs Operacionales */}
       <div>
         <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Situación del día</h2>
-        {loading ? (
+        {loading && !timedOut ? (
           <div className="flex items-center gap-2 text-slate-500 text-sm">
             <RefreshCw className="w-4 h-4 animate-spin" /> Cargando estado operacional…
+          </div>
+        ) : timedOut ? (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-sm text-slate-500 flex items-center gap-3">
+            <AlertTriangle className="w-4 h-4 text-amber-500 flex-none" />
+            Resumen operativo no disponible ·{' '}
+            <button className="text-indigo-400 underline" onClick={() => window.location.reload()}>Reintentar</button>
           </div>
         ) : resumen ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -116,8 +129,8 @@ function PanelOperacional() {
                   <div className="flex items-end gap-2">
                     <p className={`text-2xl font-black ${color}`}>{value}</p>
                     {sinDatos && (
-                      <span className="mb-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-500/15 text-amber-400 leading-none">
-                        Pendiente seed
+                      <span className="mb-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-700/60 text-slate-500 leading-none" title="Aún no se generó el resumen operativo del día">
+                        Sin datos hoy
                       </span>
                     )}
                   </div>

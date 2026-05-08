@@ -122,10 +122,8 @@ const SystemStatus = () => {
                 className={`absolute inset-0 rounded-full animate-ping opacity-20 ${latency > 1000 ? 'bg-yellow-500' : 'bg-emerald-500'}`}
               ></div>
             </div>
-            <span
-              className={`text-[10px] font-bold ${latency > 1000 ? 'text-yellow-400' : 'text-emerald-400'}`}
-            >
-              {latency > 1000 ? 'LENTO' : 'EN LÍNEA'}
+            <span className="text-[10px] font-bold text-emerald-400">
+              EN LÍNEA
             </span>
           </>
         )}

@@ -226,7 +226,7 @@ export default function BoletinInspeccion() {
       {error && (
         <div className="p-4 rounded-xl border border-red-600/40 bg-red-950/20 text-red-400 text-sm mb-5">
           {error.includes('encontrada') || error.includes('404')
-            ? `No hay boletín ${temporada} para línea ${linea}${direccion}. Cargá los datos desde Admin → Seed.`
+            ? `Sin boletín cargado para línea ${linea}${direccion} (temporada ${temporada}). Solicitá al equipo de planificación que cargue el archivo oficial.`
             : error}
         </div>
       )}

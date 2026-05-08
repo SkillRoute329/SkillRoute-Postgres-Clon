@@ -78,7 +78,7 @@ function ModalMetodologia({ onClose }: { onClose: () => void }) {
           ))}
         </div>
         <p className="text-xs text-slate-600 mt-4">
-          Fuente: GPS oficial IMM (POST stm-online) + GTFS oficial. aggregation-engine SkillRoute v1.
+          Fuente: GPS oficial IMM (POST stm-online) + GTFS oficial.
         </p>
       </div>
     </div>
@@ -304,7 +304,7 @@ export default function OperatorComplianceView() {
         {!loading && data && (
           <p className="text-xs text-slate-700 text-center">
             Generado: {new Date(data.meta.generatedAt).toLocaleString('es-UY')} ·
-            matching-engine v1.0.0 · aggregation-engine v1
+            Motor de análisis SkillRoute v1
           </p>
         )}
       </div>

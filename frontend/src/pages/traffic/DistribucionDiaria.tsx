@@ -195,7 +195,7 @@ export default function DistribucionDiaria() {
       {error && (
         <div className="mb-4 p-4 rounded-xl border border-red-600/40 bg-red-950/20 text-red-400 text-sm">
           {error === 'Fecha no encontrada'
-            ? `No hay rotación cargada para ${fecha}. Cargá los datos desde Admin → Seed.`
+            ? `Sin rotación publicada para ${fecha}. La rotación se publica al cierre del día anterior por el listero.`
             : error}
         </div>
       )}

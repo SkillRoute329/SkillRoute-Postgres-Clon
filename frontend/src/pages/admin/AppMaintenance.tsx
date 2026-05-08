@@ -288,8 +288,7 @@ const AppMaintenance = () => {
               </p>
               <p className="text-slate-500 text-xs text-justify">
                 La integridad referencial está activa. Cada usuario importado en RRHH es
-                inmediatamente visible en la gestión de turnos gracias al trigger síncrono de
-                Prisma.
+                inmediatamente visible en la gestión de turnos gracias a la sincronización inmediata entre módulos de RRHH y operación.
               </p>
             </div>
           </div>
@@ -299,11 +298,11 @@ const AppMaintenance = () => {
           <Globe className="w-16 h-16 text-primary-500 mb-4 animate-pulse-slow" />
           <h4 className="text-lg font-black text-white">Estado de la Red PWA</h4>
           <p className="text-slate-400 text-sm mt-2 max-w-xs">
-            La aplicación detecta automáticamente la pérdida de señal y activa el Modo Túnel local
+            La aplicación detecta automáticamente la pérdida de señal y activa el modo sin conexión local
             para garantizar que no se pierdan datos de RRHH.
           </p>
           <div className="mt-6 px-6 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full font-black text-[10px] uppercase tracking-widest">
-            Protocolo de Sincronización OK
+            Conexión activa con servidor central
           </div>
         </div>
       </div>
