@@ -57,6 +57,7 @@ interface ViajeGantt {
 interface FilaLinea {
   clave: string;         // "${linea}_${directionId}"
   linea: string;
+  directionId: number;
   sentido: 'IDA' | 'VUELTA';
   viajes: ViajeGantt[];
   busesVivos: number;    // buses GPS en esta línea (sin filtrar por sentido — proxy)
@@ -160,8 +161,8 @@ export default function VistaDia() {
     return () => clearInterval(id);
   }, []);
 
-  // Resetear paginación cuando cambia empresa o fecha
-  useEffect(() => { setPagina(0); }, [empresaPropia, fecha]);
+  // Resetear paginación y filtro cuando cambia empresa o fecha
+  useEffect(() => { setPagina(0); setFiltro('todos'); }, [empresaPropia, fecha]);
 
   // ── Carga de datos ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -256,7 +257,7 @@ export default function VistaDia() {
     // Buses GPS vivos por linea (sin filtrar por sentido — proxy suficiente)
     const busesVivosLinea = new Map<string, number>();
     busesVivos
-      .filter(b => b.empresaId === empresaPropia)
+      .filter(b => Number(b.empresaId) === empresaPropia)
       .forEach(b => { busesVivosLinea.set(b.linea, (busesVivosLinea.get(b.linea) ?? 0) + 1); });
 
     return gtfsFilas.map(fila => {
@@ -286,6 +287,7 @@ export default function VistaDia() {
       return {
         clave:        `${fila.linea}_${fila.directionId}`,
         linea:        fila.linea,
+        directionId:  fila.directionId,
         sentido:      fila.sentido,
         viajes,
         busesVivos:   vivosEnLinea,
@@ -296,7 +298,7 @@ export default function VistaDia() {
     }).sort((a, b) =>
       a.linea.localeCompare(b.linea, 'es', { numeric: true }) ||
       a.directionId - b.directionId,
-    ) as (FilaLinea & { directionId: number })[];
+    );
   }, [gtfsFilas, shifts, lineasConActividad, busesVivos, empresaPropia, fecha]);
 
   // ── Filtrar + paginar ────────────────────────────────────────────────────────
