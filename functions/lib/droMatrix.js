@@ -72,7 +72,7 @@ const OVERLAP_COLLECTION = 'corridor_overlap';
 const RESAMPLE_INTERVAL_M = 50;
 const MAX_LATERAL_M = 35;
 const MAX_BEARING_DIFF_DEG = 60;
-const MIN_OVERLAP_PCT = 10;
+const MIN_OVERLAP_PCT = 5;
 const BATCH_SIZE = 400;
 // ─── Helpers geométricos ───────────────────────────────────────────────────
 function haversineM(lat1, lon1, lat2, lon2) {
