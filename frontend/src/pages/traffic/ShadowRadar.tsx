@@ -244,7 +244,7 @@ const ShadowRadar: React.FC = () => {
           destino: b.destinoDesc || '',
         };
         
-        if (b.codigoEmpresa === empresaPropia) {
+        if (Number(b.codigoEmpresa) === empresaPropia) {
           listUcotExt.push(v);
         } else {
           listRival.push(v);
