@@ -223,8 +223,10 @@ export async function computeDroMatrix(
     if (!Array.isArray(d.points) || d.points.length < 2) continue;
     // Normalizar: gtfsImporter guarda {lat, lng} pero Point usa {lat, lon}
     const pts: Point[] = (d.points as any[]).map(p => ({ lat: p.lat, lon: p.lon ?? p.lng ?? 0 }));
+    // gtfsImporter no persiste campo 'key' en docData — usar doc.id como fuente canónica
+    const shapeKey = (d.key as string | undefined) ?? doc.id;
     shapes.push({
-      key: d.key,
+      key: shapeKey,
       agencyId: d.agencyId,
       empresa: d.empresa,
       linea: d.linea,

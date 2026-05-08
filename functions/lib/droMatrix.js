@@ -190,7 +190,7 @@ function countCoveredSamples(samplesA, pointsB) {
 }
 // ─── Orquestación ──────────────────────────────────────────────────────────
 async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
-    var _a;
+    var _a, _b;
     const t0 = Date.now();
     const snap = await db.collection(SHAPES_COLLECTION).get();
     const shapes = [];
@@ -200,14 +200,16 @@ async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
             continue;
         // Normalizar: gtfsImporter guarda {lat, lng} pero Point usa {lat, lon}
         const pts = d.points.map(p => { var _a, _b; return ({ lat: p.lat, lon: (_b = (_a = p.lon) !== null && _a !== void 0 ? _a : p.lng) !== null && _b !== void 0 ? _b : 0 }); });
+        // gtfsImporter no persiste campo 'key' en docData — usar doc.id como fuente canónica
+        const shapeKey = (_a = d.key) !== null && _a !== void 0 ? _a : doc.id;
         shapes.push({
-            key: d.key,
+            key: shapeKey,
             agencyId: d.agencyId,
             empresa: d.empresa,
             linea: d.linea,
             sentido: d.sentido,
             points: pts,
-            lengthMeters: (_a = d.lengthMeters) !== null && _a !== void 0 ? _a : 0,
+            lengthMeters: (_b = d.lengthMeters) !== null && _b !== void 0 ? _b : 0,
         });
     }
     console.log(`[droMatrix] shapes read: ${shapes.length}`);
