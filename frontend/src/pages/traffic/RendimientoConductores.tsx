@@ -334,7 +334,7 @@ export default function RendimientoConductores() {
                                           {tieneCondutor && (
                                             <td className="py-1 pr-3 text-slate-300">
                                               {h.nombre
-                                                ? <span>{h.nombre} <span className="text-slate-500">#{h.interno}</span></span>
+                                                ? <span>{h.nombre} <span className="text-slate-500">Nº {h.interno}</span></span>
                                                 : <span className="text-slate-600 italic">—</span>
                                               }
                                             </td>

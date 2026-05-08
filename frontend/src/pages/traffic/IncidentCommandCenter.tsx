@@ -346,7 +346,7 @@ export default function IncidentCommandCenter() {
                             <span className="text-slate-300">
                               {inc.reportedBy.name && inc.reportedBy.name !== inc.reportedBy.uid
                                 ? inc.reportedBy.name
-                                : `Conductor #${inc.reportedBy.uid.slice(0, 6)}`}
+                                : 'Conductor sin identificar'}
                             </span>
                           </span>
                         )}

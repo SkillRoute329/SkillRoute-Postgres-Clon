@@ -278,14 +278,14 @@ export default function ComplianceHub() {
             const colorEstado = {
               al_dia: 'bg-green-100 text-green-800 border-green-200',
               proximo: 'bg-amber-100 text-amber-800 border-amber-200',
-              vencido: 'bg-red-100 text-red-800 border-red-200',
+              vencido: 'bg-amber-100 text-amber-800 border-amber-200',
               no_aplica: 'bg-slate-100 text-slate-600 border-slate-200',
             }[reporte.estado];
 
             const iconoEstado = {
               al_dia: <CheckCircle2 className="w-4 h-4 text-green-600" />,
               proximo: <Clock className="w-4 h-4 text-amber-600" />,
-              vencido: <AlertCircle className="w-4 h-4 text-red-600" />,
+              vencido: <Clock className="w-4 h-4 text-amber-600" />,
               no_aplica: <FileText className="w-4 h-4 text-slate-400" />,
             }[reporte.estado];
 
@@ -297,7 +297,7 @@ export default function ComplianceHub() {
                     ? 'Hoy vence'
                     : `${reporte.diasRestantes}d restantes`
                   : 'Próximo',
-              vencido: 'VENCIDO',
+              vencido: 'Pendiente generación',
               no_aplica: 'No aplica',
             }[reporte.estado];
 
