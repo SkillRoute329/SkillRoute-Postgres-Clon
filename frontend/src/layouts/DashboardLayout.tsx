@@ -27,10 +27,18 @@ const LiveIndicators = () => {
   const { fleetKPIs, busesLoading, alertasCriticas, otpHoy, selectedLine, setSelectedLine } = useLiveData();
   return (
     <div className="hidden md:flex items-center gap-2 text-[11px] font-bold">
-      <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700/60 rounded-full px-3 py-1" title="Buses propios en línea ahora">
+      <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700/60 rounded-full px-3 py-1" title="Buses propios · total sistema">
         <Bus className={`w-3 h-3 ${busesLoading ? 'text-slate-500 animate-pulse' : 'text-emerald-400'}`} />
-        <span className="text-slate-200">{busesLoading ? '···' : fleetKPIs.totalPropios}</span>
-        <span className="text-slate-500">buses</span>
+        {busesLoading ? (
+          <span className="text-slate-500">···</span>
+        ) : (
+          <>
+            <span className="text-emerald-400">{fleetKPIs.totalPropios}</span>
+            <span className="text-slate-500">·</span>
+            <span className="text-slate-400">{fleetKPIs.totalPropios + fleetKPIs.totalRivales}</span>
+            <span className="text-slate-500">sistema</span>
+          </>
+        )}
       </div>
 
       {alertasCriticas > 0 && (
