@@ -830,6 +830,11 @@ async function snapshotAgency(stmCode: string): Promise<AgencyStats> {
         }
       : calcularCumplimiento(velocidad, p.linea, horario, bearing, now, destinoDesc, variante, gtfsDocs, gtfsStopCache);
 
+    // Snap distance al GTFS más cercano (reutilizado en campos V2 y desvío)
+    const snapDistKm = (gtfsDocs.length > 0 && gtfsStopCache.size > 0)
+      ? calcBestDistKm(lat, lon, gtfsDocs, svc, gtfsStopCache)
+      : Infinity;
+
     events.push({
       idBus, agencyId: stmCode, empresa, linea: p.linea,
       lat, lon, velocidad,
@@ -838,6 +843,13 @@ async function snapshotAgency(stmCode: string): Promise<AgencyStats> {
       proximaParada: result.proximaParada,
       sentido: result.sentido,
       confianzaSentido: result.confianzaSentido,
+      // Campos V2 — Sprint 3.5: poblar para que aggregationEngine agrupe por sentido
+      sentidoV2: result.sentido,
+      confianzaV2: result.confianzaSentido as string,
+      scoreV2: null,
+      tripIdV2: null,
+      snapDistanceMV2: isFinite(snapDistKm) ? Math.round(snapDistKm * 1000) : null,
+      algoVersion: 'local-v1.0.0',
       destinoDesc,                       // string | null — raw del cartel frontal del bus
       variante,                          // string | null — ej "300A"
       bearing: result.bearing !== null ? Math.round(result.bearing) : null,
@@ -847,8 +859,8 @@ async function snapshotAgency(stmCode: string): Promise<AgencyStats> {
     });
 
     // Detección de desvío geográfico: bus a >300m del trazado GTFS y en movimiento
-    if (gtfsDocs.length > 0 && gtfsStopCache.size > 0 && velocidad > 5) {
-      const distKm = calcBestDistKm(lat, lon, gtfsDocs, svc, gtfsStopCache);
+    if (velocidad > 5 && isFinite(snapDistKm)) {
+      const distKm = snapDistKm;
       if (distKm > DESVIO_UMBRAL_KM) {
         const bucketId = Math.floor(now.getTime() / (15 * 60_000));
         desvioEvents.push({

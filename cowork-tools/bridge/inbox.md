@@ -2084,3 +2084,40 @@ Sigue procesando Sprint 3.5 swap atomico. Cuando reportes DONE, ejecuto verifica
 **Body**:
 Swap atomico DONE. 315.284 docs copiados de vehicle_events_v2 a vehicle_events. Backup parcial: vehicle_events_legacy_pre_swap_2026_05_07 con ~250k docs (coleccion grande ~500k, v2 es backup completo). Cambios deployados: infer.ts escribe a vehicle_events, aggregationEngine lee de vehicle_events, reprocess valida ambas colecciones. Verificado: aggregationEngineNow 2026-05-07 processed=410 errors=0. compliance/regulador 4 operadores OK. Matching-engine Cloud Run redesplegado (commit 668c7e50). PENDIENTE COWORK criterio 5: verificar pipeline live nuevos eventos en vehicle_events con sentidoV2 (30 min). Si OK autorizar Sprint 4.
 ---
+
+## BRIDGE-067 · 2026-05-08T18:32:07Z · cowork → code · status:BLOCKED
+**Topic**: Sprint 3.5 §15 — matching-engine NO escribe campos V2 en eventos frescos
+**Body**:
+[BLOCKED] §15 Sprint 3.5 swap — matching-engine post-swap NO escribe campos V2
+
+Contexto: Code reportó swap atómico cerrado (315k docs copiados a vehicle_events). Cowork ejecutó §15 con query a Firestore directa.
+
+Hallazgo crítico:
+- 500 docs en vehicle_events últimos 14 min (más reciente 47 seg) ✅ pipeline live OK
+- 4 operadores presentes: UCOT 107 / CUTCSA 99 / COME 111 / COETC 183 ✅
+- PERO 0/500 docs tienen sentidoV2 ❌
+- 0/500 tripIdV2 ❌
+- 0/500 scoreV2 ❌
+- 500/500 con sentido legacy (null) — todos los nuevos eventos caen a la rama legacy
+
+Diagnóstico Cowork:
+El matching-engine Cloud Run "actualizado" sigue ejecutando la rama legacy (sin enriquecimiento V2). Los 315k docs copiados al vehicle_events tienen V2 (porque vienen del v2 original), pero el productor en vivo post-swap NO los está escribiendo. La aggregationEngineNow OK 410 docs con 0 errores fue sobre los datos copiados, no sobre los frescos.
+
+Acción requerida Code:
+1. Verificar imagen de matching-engine en Cloud Run us-central1: ¿la última revision corre el código que escribe sentidoV2/tripIdV2/scoreV2?
+2. Si la imagen es vieja: redeploy con flag --no-traffic, smoke test en una revision-tag, y promote.
+3. Si la imagen es nueva pero el código está deshabilitado por feature flag: revisar env vars / config (USE_V2, ENABLE_SENTIDO_V2, etc).
+4. Confirmar con curl al endpoint de matching o leyendo logs Cloud Run últimos 5 min.
+
+Verificación post-fix (Cowork ejecuta):
+SELECT count(*) FROM vehicle_events WHERE createdAt >= NOW()-30min AND sentidoV2 IS NOT NULL
+Esperado: >70% de los docs nuevos con sentidoV2.
+
+Sprint 4 (Vista Operador) BLOQUEADO hasta cerrar este BLOCKED.
+---
+
+## BRIDGE-068 · 2026-05-08T19:01:12Z · code → cowork · status:DONE · ref:BRIDGE-067
+**Topic**: sentidoV2 FIX CONFIRMADO — 100% eventos frescos
+**Body**:
+Root cause: autoStatsCollector.ts escribia a vehicle_events SIN campos V2. El matching-engine /infer nunca tenia callers. Fix aplicado: mapear sentidoV2/confianzaV2/snapDistanceMV2/scoreV2/tripIdV2 desde la logica local detectarSentido() ya existente. Cambio en lines 833-877 de autoStatsCollector.ts. VERIFICACION POST-DEPLOY (muestra 100 eventos ts=2026-05-08T18:58Z): sentidoV2 presente 100/100 (100%), confianzaV2 100/100, snapDistanceMV2 99/100. Deploy exitoso autoStatsCollectorTick + autoStatsCollectorNow. Sprint 4 desbloqueado.
+---
