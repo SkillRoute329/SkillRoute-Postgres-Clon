@@ -221,16 +221,16 @@ export async function computeDroMatrix(
   for (const doc of snap.docs) {
     const d = doc.data();
     if (!Array.isArray(d.points) || d.points.length < 2) continue;
-    // Usar solo shapes GTFS_OFICIAL (gtfsImporter) — son las más fiables y deduplicadas
-    // por (agency, linea, sentido). Las shapes de shapeReconstruction y shapeBuilder
-    // duplican la colección y no aportan calidad mayor; con ~1579 docs totales el
-    // cálculo supera el timeout 540s; con solo GTFS son ~560 docs → ~156k pares → <60s.
-    if ((d.fuente as string | undefined) !== 'GTFS_OFICIAL') continue;
-    // Normalizar: gtfsImporter guarda {lat, lng} pero Point usa {lat, lon}
+    // Usar solo shapes de shapeReconstruction — identificables porque persisten
+    // campo 'key' explícito en docData y tienen agencyId correcto (10/20/50/70).
+    // gtfsImporter NO persiste 'key' y usa agencyId="0" porque el GTFS de la IMM
+    // usa códigos de agencia distintos al mapa interno → pares DRO inútiles.
+    if (typeof d.key !== 'string') continue;
+    if (!['10','20','50','70'].includes(d.agencyId)) continue;
+    // Normalizar: shapeReconstruction guarda {lat, lon} — already correct; gtfsImporter usa lng
     const pts: Point[] = (d.points as any[]).map(p => ({ lat: p.lat, lon: p.lon ?? p.lng ?? 0 }));
-    // gtfsImporter no persiste campo 'key' en docData — usar doc.id como fuente canónica
-    const shapeKey = (d.key as string | undefined) ?? doc.id;
-    if (!d.sentido || !d.agencyId || !d.linea) continue;
+    const shapeKey = d.key as string;
+    if (!d.sentido || !d.linea) continue;
     shapes.push({
       key: shapeKey,
       agencyId: d.agencyId,
@@ -241,7 +241,7 @@ export async function computeDroMatrix(
       lengthMeters: d.lengthMeters ?? 0,
     });
   }
-  console.log(`[droMatrix] shapes GTFS_OFICIAL: ${shapes.length}`);
+  console.log(`[droMatrix] shapes shapeReconstruction con agencyId conocido: ${shapes.length}`);
 
   // Pre-resamplear todas las shapes una vez (evita recalcular n veces).
   const resampled = new Map<string, Sample[]>();
