@@ -274,10 +274,43 @@ export async function computeDroMatrix(
     }
   }
 
+  // Deduplicar: múltiples variantes de la misma línea generan N pares para el
+  // mismo par lógico (lineaA-sentidoA vs lineaB-sentidoB). Nos quedamos con el
+  // que tiene mayor pctAInB y usamos una clave sin variante como doc ID.
+  const dedupedMap = new Map<string, OverlapDoc>();
+  for (const o of overlaps) {
+    const logicalKey = `${o.agencyA}-${o.lineaA}-${o.sentidoA}__${o.agencyB}-${o.lineaB}-${o.sentidoB}`;
+    const existing = dedupedMap.get(logicalKey);
+    if (!existing || o.pctAInB > existing.pctAInB) {
+      dedupedMap.set(logicalKey, { ...o, key: logicalKey });
+    }
+  }
+  const dedupedOverlaps = Array.from(dedupedMap.values());
+  console.log(`[droMatrix] raw overlaps=${overlaps.length} deduped=${dedupedOverlaps.length}`);
+
+  // Limpiar docs previos (claves con variante del build anterior)
+  const existingSnap = await db.collection(OVERLAP_COLLECTION).get();
+  const existingKeys = new Set(dedupedMap.keys());
+  let delBatch = db.batch();
+  let delOps = 0;
+  for (const doc of existingSnap.docs) {
+    if (!existingKeys.has(doc.id)) {
+      delBatch.delete(doc.ref);
+      delOps++;
+      if (delOps >= BATCH_SIZE) {
+        await delBatch.commit();
+        delBatch = db.batch();
+        delOps = 0;
+      }
+    }
+  }
+  if (delOps > 0) await delBatch.commit();
+  console.log(`[droMatrix] deleted stale docs=${existingSnap.size - existingKeys.size}`);
+
   // Persistencia en batches
   let batch = db.batch();
   let ops = 0;
-  for (const o of overlaps) {
+  for (const o of dedupedOverlaps) {
     batch.set(db.collection(OVERLAP_COLLECTION).doc(o.key), o);
     ops++;
     if (ops >= BATCH_SIZE) {
@@ -288,17 +321,17 @@ export async function computeDroMatrix(
   }
   if (ops > 0) await batch.commit();
 
-  const top = [...overlaps]
+  const top = [...dedupedOverlaps]
     .sort((x, y) => y.pctAInB - x.pctAInB)
     .slice(0, 10)
     .map(o => ({ keyA: o.shapeAKey, keyB: o.shapeBKey, pctAInB: o.pctAInB, sharedKm: o.sharedKm }));
 
   const durationMs = Date.now() - t0;
-  console.log(`[droMatrix] written=${overlaps.length} evaluated=${pairsEvaluated} durationMs=${durationMs}`);
+  console.log(`[droMatrix] written=${dedupedOverlaps.length} evaluated=${pairsEvaluated} durationMs=${durationMs}`);
   return {
     shapesRead: shapes.length,
     pairsEvaluated,
-    pairsWritten: overlaps.length,
+    pairsWritten: dedupedOverlaps.length,
     durationMs,
     topOverlaps: top,
   };
