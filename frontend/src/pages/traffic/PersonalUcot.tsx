@@ -60,6 +60,10 @@ const ROLES_DISPONIBLES = [
   'maniobrista', 'listero', 'tráfico', 'tecnologia',
 ];
 
+function maskPhone(tel: string): string {
+  const c = tel.replace(/\D/g, '');
+  return c.length < 7 ? '***' : `${c.slice(0, 3)}***${c.slice(-4)}`;
+}
 function empleadoInterno(e: Empleado): string {
   return e.interno ?? e.internalNumber ?? '';
 }
@@ -263,7 +267,7 @@ export default function PersonalUcot() {
                         {e.telefono ? (
                           <span className="flex items-center gap-1 text-xs text-slate-400">
                             <Phone className="w-3 h-3" />
-                            {e.telefono}
+                            {maskPhone(e.telefono)}
                           </span>
                         ) : (
                           <span className="text-slate-700 text-xs">—</span>
@@ -312,7 +316,7 @@ export default function PersonalUcot() {
                 {seleccionado.telefono && (
                   <div className="flex justify-between">
                     <span className="text-slate-500">Teléfono</span>
-                    <span className="text-white">{seleccionado.telefono}</span>
+                    <span className="text-white" title="Datos protegidos — Ley 18.331">{maskPhone(seleccionado.telefono)}</span>
                   </div>
                 )}
                 <div className="flex justify-between">

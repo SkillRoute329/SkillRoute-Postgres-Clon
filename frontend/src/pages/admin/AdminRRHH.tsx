@@ -173,6 +173,10 @@ const ROLES_LIST = [
 function empInterno(e: Empleado) { return e.internalNumber ?? e.interno ?? ''; }
 function empNombre(e: Empleado) { return e.fullName ?? ([e.nombre, e.apellido].filter(Boolean).join(' ') || e.id); }
 function empRol(e: Empleado) { return e.rol ?? e.role ?? ''; }
+function maskPhone(tel: string): string {
+  const c = tel.replace(/\D/g, '');
+  return c.length < 7 ? '***' : `${c.slice(0, 3)}***${c.slice(-4)}`;
+}
 
 // ─── TAB: PERSONAL (691 empleados reales) ────────────────────────────────────
 const UsersTab = () => {
@@ -410,7 +414,7 @@ const UsersTab = () => {
                     <td className="px-4 py-3 hidden lg:table-cell">
                       {e.telefono ? (
                         <span className="flex items-center gap-1 text-xs text-slate-400">
-                          <Phone className="w-3 h-3" />{e.telefono}
+                          <Phone className="w-3 h-3" />{maskPhone(e.telefono)}
                         </span>
                       ) : (
                         <span className="text-slate-700 text-xs">—</span>
