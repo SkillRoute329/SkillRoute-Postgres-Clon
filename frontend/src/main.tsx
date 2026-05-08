@@ -13,8 +13,10 @@ import { defineCustomElements } from '@ionic/pwa-elements/loader';
 
 defineCustomElements(window);
 
-(window as any).genesis = () => import('./utils/seedDatabase').then((m) => m.runGenesisProtocol());
-console.log("🤖 [GENESIS] Protocol ready. Type 'window.genesis()' to seed data.");
+if (import.meta.env.MODE !== 'production') {
+  (window as any).genesis = () => import('./utils/seedDatabase').then((m) => m.runGenesisProtocol());
+  console.log("[dev] genesis() disponible para seed de datos.");
+}
 
 // Monitoring: arranca lazy. Si VITE_SENTRY_DSN está configurado, se
 // inicializa Sentry; si no, fallback transparente a console.error.

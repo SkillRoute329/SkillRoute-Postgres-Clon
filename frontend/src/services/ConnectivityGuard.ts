@@ -25,7 +25,7 @@ export const ConnectivityGuard = {
    * Runs before the app mounts to determine the network environment.
    */
   async performHealthCheck(): Promise<{ status: ConnectivityStatus; message: string }> {
-    console.log('🛡️ ConnectivityGuard: Initiating Boot Check...');
+    if (import.meta.env.MODE !== 'production') console.log('[ConnectivityGuard] boot check start');
 
     // 1. Basic Internet Check
     if (!navigator.onLine) {

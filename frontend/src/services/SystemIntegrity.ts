@@ -17,7 +17,7 @@ export const SystemIntegrity = {
    */
   checkAndEnforce: async () => {
     try {
-      console.log('🛡️ [SystemIntegrity] Connecting to Cloud Command...');
+      if (import.meta.env.MODE !== 'production') console.log('[SystemIntegrity] checkAndEnforce start');
 
       // 1. Read Remote Config
       const configRef = doc(db, 'system', 'global_config');
