@@ -9,7 +9,7 @@ import { GpsEvent, InferResult, InferError, Sentido } from '../types';
 
 const router = Router();
 
-const V2_COL = 'vehicle_events_v2';
+const V2_COL = 'vehicle_events'; // Sprint 3.5: post-swap, vehicle_events es la colección canónica
 const WINDOW_SIZE_DEFAULT = 6;
 const MIN_CONFIDENCE_DEFAULT = 0.6;
 

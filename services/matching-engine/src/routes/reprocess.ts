@@ -7,9 +7,9 @@ import { GpsEvent, InferResult, Sentido } from '../types';
 
 const router = Router();
 
-const V1_COL = 'vehicle_events';
-const V2_COL = 'vehicle_events_v2';
-const JOBS_COL = 'system/reprocess_jobs';
+const V1_COL = 'vehicle_events'; // fuente de lectura (datos históricos pre-swap)
+const V2_COL = 'vehicle_events'; // Sprint 3.5: destino = colección canónica post-swap
+const JOBS_COL = 'reprocess_jobs';
 const BATCH_SIZE = 500;
 
 function buildInputHash(event: GpsEvent): string {
@@ -30,7 +30,7 @@ async function runReprocess(
   linea: string | null,
   writeTarget: string
 ): Promise<void> {
-  const jobRef = db.doc(`system/reprocess_jobs/${jobId}`);
+  const jobRef = db.doc(`reprocess_jobs/${jobId}`);
 
   try {
     let query: FirebaseFirestore.Query = db.collection(V1_COL)
@@ -63,47 +63,55 @@ async function runReprocess(
 
       for (const docSnap of snap.docs) {
         const d = docSnap.data();
-        const event: GpsEvent = {
-          idBus: String(d.idBus ?? ''),
-          agencyId: String(d.agencyId ?? ''),
-          linea: String(d.linea ?? ''),
-          lat: typeof d.lat === 'number' ? d.lat : 0,
-          lng: typeof d.lon === 'number' ? d.lon : (typeof d.lng === 'number' ? d.lng : 0),
-          bearing: typeof d.bearing === 'number' ? d.bearing : null,
-          velocidad: typeof d.velocidad === 'number' ? d.velocidad : 0,
-          destinoDesc: d.destinoDesc ?? null,
-          variante: d.variante ?? null,
-          timestampGPS: d.timestampGPS ?? now.toISOString(),
-        };
+        try {
+          const rawLat = typeof d.lat === 'number' ? d.lat : parseFloat(String(d.lat ?? ''));
+          const rawLng = typeof d.lon === 'number' ? d.lon : (typeof d.lng === 'number' ? d.lng : parseFloat(String(d.lon ?? d.lng ?? '')));
+          if (!isFinite(rawLat) || !isFinite(rawLng)) continue; // coordenadas inválidas → skip
 
-        if (!event.agencyId || !event.linea) continue;
+          const event: GpsEvent = {
+            idBus: String(d.idBus ?? ''),
+            agencyId: String(d.agencyId ?? ''),
+            linea: String(d.linea ?? ''),
+            lat: rawLat,
+            lng: rawLng,
+            bearing: typeof d.bearing === 'number' && isFinite(d.bearing) ? d.bearing : null,
+            velocidad: typeof d.velocidad === 'number' ? d.velocidad : 0,
+            destinoDesc: d.destinoDesc ?? null,
+            variante: d.variante ?? null,
+            timestampGPS: d.timestampGPS ?? now.toISOString(),
+          };
 
-        const shapes = await getShapesForLinea(event.agencyId, event.linea);
-        const window = (windowByBus.get(event.idBus) ?? []).slice(-6);
-        const senseResult = inferirSentido(event, shapes, window);
+          if (!event.agencyId || !event.linea) continue;
 
-        const docRef = db.collection(writeTarget).doc(docSnap.id);
-        writeBatch.set(docRef, {
-          ...d,
-          sentidoV2: senseResult.sentido,
-          confianzaV2: senseResult.confianza,
-          scoreV2: senseResult.score,
-          tripIdV2: null, // trip matching en batch sería muy costoso; se hace on-demand
-          snapDistanceMV2: senseResult.snapDistanceM,
-          algoVersion: ALGO_VERSION,
-          inputHash: buildInputHash(event),
-          reprocessedAt: now,
-          expiresAt,
-        }, { merge: true });
+          const shapes = await getShapesForLinea(event.agencyId, event.linea);
+          const window = (windowByBus.get(event.idBus) ?? []).slice(-6);
+          const senseResult = inferirSentido(event, shapes, window);
 
-        // Actualizar ventana
-        const enriched = { ...event, sentidoV2: senseResult.sentido };
-        const busWindow = windowByBus.get(event.idBus) ?? [];
-        busWindow.push(enriched);
-        if (busWindow.length > 6) busWindow.splice(0, busWindow.length - 6);
-        windowByBus.set(event.idBus, busWindow);
+          const docRef = db.collection(writeTarget).doc(docSnap.id);
+          writeBatch.set(docRef, {
+            ...d,
+            sentidoV2: senseResult.sentido,
+            confianzaV2: senseResult.confianza,
+            scoreV2: senseResult.score,
+            tripIdV2: null,
+            snapDistanceMV2: senseResult.snapDistanceM,
+            algoVersion: ALGO_VERSION,
+            inputHash: buildInputHash(event),
+            reprocessedAt: now,
+            expiresAt,
+          }, { merge: true });
 
-        processedDocs++;
+          // Actualizar ventana
+          const enriched = { ...event, sentidoV2: senseResult.sentido };
+          const busWindow = windowByBus.get(event.idBus) ?? [];
+          busWindow.push(enriched);
+          if (busWindow.length > 6) busWindow.splice(0, busWindow.length - 6);
+          windowByBus.set(event.idBus, busWindow);
+
+          processedDocs++;
+        } catch (docErr) {
+          console.warn(`[reprocess] Skip doc ${docSnap.id}:`, docErr instanceof Error ? docErr.message : String(docErr));
+        }
       }
 
       await writeBatch.commit();
@@ -137,9 +145,11 @@ router.post('/', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'from y to son requeridos (ISO 8601)' });
   }
 
+  // Sprint 3.5: post-swap, vehicle_events es el destino canónico; vehicle_events_v2 como legacy 7 días
   const target = writeTarget ?? V2_COL;
-  if (target !== V2_COL) {
-    return res.status(400).json({ error: `writeTarget debe ser ${V2_COL}` });
+  const ALLOWED_TARGETS = ['vehicle_events', 'vehicle_events_v2'];
+  if (!ALLOWED_TARGETS.includes(target)) {
+    return res.status(400).json({ error: `writeTarget debe ser uno de: ${ALLOWED_TARGETS.join(', ')}` });
   }
 
   const jobId = makeJobId();
@@ -150,7 +160,7 @@ router.post('/', async (req: Request, res: Response) => {
   const estimatedDocs = Math.round(durationH * 10000 * (agencyId ? 1 : 4));
 
   // Guardar job en Firestore
-  await db.doc(`system/reprocess_jobs/${jobId}`).set({
+  await db.doc(`reprocess_jobs/${jobId}`).set({
     jobId, agencyId: agencyId ?? null, linea: linea ?? null,
     from, to, writeTarget: target,
     status: 'QUEUED', processedDocs: 0, estimatedDocs,
@@ -176,7 +186,7 @@ router.post('/', async (req: Request, res: Response) => {
 // GET /reprocess/status/:jobId — polling de progreso
 router.get('/status/:jobId', async (req: Request, res: Response) => {
   const { jobId } = req.params;
-  const snap = await db.doc(`system/reprocess_jobs/${jobId}`).get();
+  const snap = await db.doc(`reprocess_jobs/${jobId}`).get();
   if (!snap.exists) return res.status(404).json({ error: 'Job no encontrado' });
   return res.json(snap.data());
 });

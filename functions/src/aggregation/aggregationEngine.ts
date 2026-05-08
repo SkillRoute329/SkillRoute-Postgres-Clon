@@ -8,7 +8,7 @@ import { MetricValue } from './aplicarPoliticaMinimos';
 
 const db = admin.firestore();
 const ALGO_VERSION = 'matching-v1.0.0';
-const SOURCE_COL = 'vehicle_events_v2';
+const SOURCE_COL = 'vehicle_events'; // Sprint 3.5: post-swap, vehicle_events es la colección canónica
 const TARGET_COL = 'compliance_aggregates';
 const AGENCIES = ['70', '50', '20', '10'];
 const BATCH_READ = 2000;
