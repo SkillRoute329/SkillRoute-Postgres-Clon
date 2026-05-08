@@ -309,16 +309,18 @@ export default function OperatorComplianceView() {
         )}
       </div>
 
-      {/* ── Drill-down: AuditoriaLineaTimeline ──────────────────────────── */}
+      {/* ── Drill-down: AuditoriaLineaTimeline (full-screen takeover) ────── */}
       {drillDown && (
-        <Suspense fallback={null}>
-          <AuditoriaLineaTimeline
-            agencyId={agencyId}
-            linea={drillDown.linea}
-            operadorNombre={operatorName}
-            onCerrar={() => setDrillDown(null)}
-          />
-        </Suspense>
+        <div className="fixed inset-0 z-50 bg-slate-950 overflow-y-auto">
+          <Suspense fallback={null}>
+            <AuditoriaLineaTimeline
+              agencyId={agencyId}
+              linea={drillDown.linea}
+              operadorNombre={operatorName}
+              onCerrar={() => setDrillDown(null)}
+            />
+          </Suspense>
+        </div>
       )}
 
       {/* ── Modal metodología ────────────────────────────────────────────── */}
