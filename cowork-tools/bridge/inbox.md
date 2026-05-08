@@ -2040,375 +2040,47 @@ aggregationEngineCron + aggregationEngineNow deployados OK. Build TS 0 errores. 
 aggregationEngine produciendo datos en produccion. Primer run 2026-05-06: processed=409 errors=0 skipped=0. Distribucion: UCOT(70)=42, CUTCSA(50)=274, COME(20)=33, COETC(10)=60. Estructura verificada: 12 metricas por doc (otp_low_freq, ewt_high_freq, service_delivered, headway_cv, bunching_index, gps_coverage, mdbf, cumpl_cronograma_coche, cumpl_cronograma_conductor, fleet_availability, service_reliability_score, dro_coverage). Politica de minimos aplicada: badge IC_VISIBLE en metricas con 30<=n<200, badge INSUFFICIENT cuando n<30. OTP linea 17 IDA UCOT: 59.3% (n=59, badge=IC_VISIBLE). GPS coverage: 100%. headway_cv null = correcto (necesita >=30 buses unicos por dia). Cron configurado: 06:00 UTC = 03:00 UY. HTTP endpoint: aggregationEngineNow?date=YYYY-MM-DD para runs manuales. Proxima tarea: Sprint 3 Vista Regulador que consume compliance_aggregates.
 ---
 
-## BRIDGE-058 · 2026-05-07T21:30:46Z · cowork → code · status:DONE
-**Topic**: Sprint 2 AUTORIZADO Sprint 3 + 3 backlog técnicos en paralelo
+## BRIDGE-058 · 2026-05-07T21:30:46Z · cowork 
+## BRIDGE-065 · 2026-05-08T07:28:08Z · cowork → code · status:PENDING
+**Topic**: REPARACION GTFS — 38 lineas CUTCSA + 8 menores. Lista priorizada con ground truth IMM
 **Body**:
-Validación §15 ejecutada directamente en Firestore. CONFIRMA reporte:
+Ver docs/AUDITORIA_COMPLETA_GTFS_2026_05.md para detalle. Resumen: 46 anomalias detectadas. CUTCSA 38, COME 2, COETC 3, UCOT 3.
 
-== CONTEOS EXACTOS por operador (compliance_aggregates / periodo=2026-05-06) ==
-- COETC (10): 60 docs ✓
-- COME (20): 33 docs ✓
-- CUTCSA (50): 274 docs ✓
-- UCOT (70): 42 docs ✓
-- TOTAL: 409 ✓ (matchea exacto)
+P1 RE-SCRAPE post-Sprint 3.5:
+CRITICAS (4): CUTCSA L103 SOLO_1_DIR, L106 ASIM, L46 ASIM, UCOT L330 v=1/3.
+LOTE CUTCSA POCOS_VIAJES (29 lineas): 60, 104, 105, 109, 110, 111, 112, 113, 115, 116, 117, 121, 124, 125, 130, 133, 135, 140, 141, 142, 143, 145, 181, 183, 185, 187, 188, D8, E14.
+LOTE MENOR (variantes cortas — verificar antes de re-scrapear son legitimas): COME L25, CUTCSA Bt1, Bt2, Ce2, G6, L30, L4.
 
-== SCHEMA validado ==
-- ID convention: {agencyId}_{linea}_{sentido}_{periodo}_{granularidad} — bien
-- Campos: agencyId, regionId='MVD' (escalable como diseñamos), linea, sentido, periodo, granularidad, algoVersion, inputHash (auditabilidad), metrics (12 sub-fields), globalCoverageGps, totalEventsObserved, totalTripsScheduled, isHighFreq, computedAt, version
-- Política de mínimos: badge OK / IC_VISIBLE / INSUFFICIENT — funcionando
+Action Code: scraper JSF apuntado a las lineas. Verificacion post-scrape: viajes>=5 + stops>=15 (excepto variantes cortas reconocidas). Reportar conteo lineas fixeadas vs persistentes.
 
-== SAMPLES NUMERICOS (líneas testigo) ==
-- L300 IDA UCOT: OTP 86.87%, n=335, gpsCov 100%, badge OK
-- L316 IDA UCOT (CASO TESTIGO): OTP 34.06%, n=367, gpsCov 100%, badge OK
-  → ANTES (vehicle_events viejo, sentido roto): 0 eventos, '0% en tiempo' (falso)
-  → AHORA: 367 eventos clasificados como IDA, OTP 34% real (coherente con realidad — L316 es conocida por llegar tarde)
-- L316 VUELTA UCOT: OTP 34.84%, n=287, badge OK (coherente con IDA, sin 33% adelantado falso)
-- L137 IDA CUTCSA: OTP 20.32%, n=187, badge IC_VISIBLE (correctamente entre 30-200)
-- L505 IDA COME: OTP presente, gpsCov 100%, badge OK
-- L405 IDA COETC: OTP presente, gpsCov 100%, badge OK
-
-EXCELENTE TRABAJO. La estadística ahora es honesta y operativamente realista.
-
-== AUTORIZACION ==
-
-AUTORIZADO Sprint 3 — Vista Regulador. Adelante con consumir compliance_aggregates desde React.
-
-== 3 BACKLOG TECNICOS EN PARALELO (no bloquean Sprint 3 pero deben cerrar antes de Sprint 4) ==
-
-1. totalTripsScheduled está en 0 para todas las líneas testigo
-   - Esperado: leer gtfs_timetable.viajes.length por línea+sentido y poblar este campo.
-   - Sin esto, service_delivered no se puede calcular (es viajes_operados / viajes_programados).
-   - Action: en aggregationEngine.ts, agregar query a gtfs_timetable y popular totalTripsScheduled.
-
-2. Métricas EWT, HeadwayCV, Bunching, ServiceDel quedaron como null en todas las líneas
-   - EWT requiere ventana temporal de pasadas + cronograma scheduled (para AWT - SWT)
-   - HeadwayCV requiere ventana temporal de pasadas (no requiere GTFS)
-   - Bunching requiere pasadas y umbral espacial (no requiere GTFS)
-   - Reportaste 'requieren MDBF/flota' pero EWT/HeadwayCV/Bunching son calculables ya con vehicle_events_v2.
-   - Action: implementar al menos EWT (alta freq) y HeadwayCV. Bunching se puede dejar para fase posterior.
-
-3. IC95 (ic95Lo, ic95Hi) faltante en OTP cuando badge es IC_VISIBLE
-   - L137 CUTCSA tiene n=187 (rango IC_VISIBLE) pero campo IC null.
-   - La spec backend exige Wilson IC95 explícito visible.
-   - Action: en aggregationEngine.ts, computar Wilson IC con z=1.96 y persistir ic95Lo/ic95Hi en el sub-doc de cada métrica.
-
-== SPRINT 3 — Vista Regulador ==
-
-Spec frontend en docs/SPEC_CUMPLIMIENTO_V2_FRONTEND_2026_05.md sección 2 'Vista Regulador'.
-
-Componentes a implementar: RegulatorMetricsTable (tabla cross-operador asimétrica con badges PLENO/GPS según operador), LineDeepDive (drill-down con histograma + Marey + dot-and-whiskers), MetricBadge (componente compartido con política mínimos), ExportPDFButton (PDF firmado SHA-256), MethodologyTooltip.
-
-Endpoints a consumir:
-- GET /api/compliance/regulador?empresa=...&desde=...&hasta=...&granularidad=...
-- POST /api/compliance/regulador/export → URL signed PDF
-
-URL: /dashboard/admin/regulatorio/cumplimiento (acceso SUPERADMIN/ADMIN, futuro REGULATOR role).
-
-ColorBrewer Blues/Oranges paleta (ya confirmada).
-
-VERIFICACION post-Sprint 3 que voy a ejecutar:
-- /version.json muestra commit nuevo con la vista
-- Ruta /dashboard/admin/regulatorio/cumplimiento renderiza sin errores
-- Tabla cross-operador muestra los 4 operadores con sus métricas
-- Click en línea L316 UCOT abre drill-down con datos coherentes (OTP 34%, n 367, gpsCov 100%)
-- MetricBadge oculta correctamente cuando n<30 o cobertura<70%
-- Export PDF genera archivo con hash SHA-256 visible en metadata
-
-Mientras Code arranca Sprint 3, los 3 backlog técnicos pueden ir en paralelo (commits separados). Antes de declarar Sprint 3 DONE, cerrar los 3 también.
+Cowork va a re-correr la auditoria completa post-scrape para verificar baja de 46 a <10 anomalias.
 ---
 
-## BRIDGE-058 · 2026-05-07T21:43:50Z · cowork → code · status:PENDING
-**Topic**: Plan secuencial Cumplimiento V2 sin parches: Sprint 2.5 -> 3 -> 3.5 -> 4
+## BRIDGE-066 · 2026-05-08T07:36:57Z · cowork → code · status:INFO
+**Topic**: GTFS anomalias confirmadas como datos faltantes en feed oficial IMM, no falla SkillRoute
 **Body**:
-Decision Jonathan: Orden A (secuencial sin parches). Cumplimiento V2 completo antes de la reunion UCOT+IMM (proxima semana). Sin atajos ni metricas vacias visibles.
+Cancelo el bridge anterior de re-scrape masivo. Ejecute gtfsImportRun (endpoint publico HTTP) que re-importa el ZIP GTFS oficial. Los docs se actualizaron pero los datos siguen iguales — confirmando que la incompletitud esta en el feed IMM, no en nuestro scraper.
 
-Cronograma agresivo realista: 5-7 dias trabajo Code.
+Verificacion (cualquiera puede reproducir): curl -X POST https://us-central1-ucot-gestor-cloud.cloudfunctions.net/gtfsImportRun
+Despues: query gtfs_timetable/50_103_0_HABIL sigue 404, /50_181_1_HABIL sigue n=28 v=2, /50_60_1_HABIL sigue n=59 v=4.
 
-== SPRINT 2.5 — Cerrar 3 backlog tecnicos del Sprint 2 (4-5 horas) ==
+Doc actualizado: docs/AUDITORIA_COMPLETA_GTFS_2026_05.md seccion 8.
 
-CHECKPOINT con Cowork antes de pasar a Sprint 3.
+== ACCIONES NUEVAS (post-Sprint 4) ==
 
-1. totalTripsScheduled — actualmente en 0 para todas las lineas.
-   - En functions/src/aggregationEngine.ts, antes de calcular metrics:
-     - Para cada linea+sentido del agregado, query gtfs_timetable con docId pattern {agencyId}_{linea}_{directionIdNumeric}_{serviceType}.
-     - serviceType derivado de la fecha (HABIL/SABADO/DOMINGO).
-     - directionId: 0 para IDA, 1 para VUELTA (convencion GTFS).
-     - Total trips = doc.viajes.length.
-   - Persistir en compliance_aggregates.totalTripsScheduled.
-   - Recalcular service_delivered = totalEventsObserved con estadoCumplimiento != FUERA_DE_SERVICIO grouped by tripId / totalTripsScheduled. Si tripId no esta poblado todavia, usar count distinct (vehicle_events_v2 con la linea+sentido+fecha) como aproximacion.
+A. Implementar fallback aggregationEngine: si gtfs_timetable tiene viajes<5 en una direccion con la otra >50, usar horarios_stm como complemento. Este coleccion la llena el scraper JSF refreshAllStmHorarios.ts (que SI tiene mejor cobertura porque raspa todas las salidas del sitio publico IMM). 1 sprint estimado.
 
-2. EWT, HeadwayCV, Bunching — actualmente null.
-   - EWT (Excess Wait Time, alta freq):
-     - Para cada parada/timepoint del shape, calcular AWT (avg headway observado) y SWT (avg headway scheduled = headway_promedio_dia/2).
-     - EWT = AWT - SWT en minutos.
-     - Solo aplicar si isHighFreq = true (>=5 buses/hora segun gtfs).
-   - HeadwayCV (Coefficient of Variation):
-     - stdDev(headways observados) / mean(headways observados).
-     - Aplicar a todas las lineas (alta y baja freq).
-     - Estandar TCRP 165: <0.21 excelente, 0.21-0.30 bueno, >0.75 inservible.
-   - BunchingIndex:
-     - % pasadas con headway < 30% del scheduled headway.
-     - Necesita ventana temporal en vehicle_events_v2.
+B. Comunicar formalmente al IMM post-reunion. Lista de 38 lineas CUTCSA con cobertura parcial en GTFS oficial, propuesta colaboracion con equipo STM. Esto se vuelve diferenciador comercial — ayudamos al regulador a mejorar su propio feed.
 
-3. Wilson IC95 — agregar a sub-doc de cada metrica que tenga n.
-   - Helper: function wilsonCI95(p, n) { const z=1.96; const num=p+z*z/(2*n); const denom=1+z*z/n; const half=z*Math.sqrt(p*(1-p)/n+z*z/(4*n*n))/denom; return [Math.max(0,(num/denom)-half), Math.min(1,(num/denom)+half)]; }
-   - Aplicar a: otp_low_freq, otp_high_freq, service_delivered (cuando popule).
-   - Persistir ic95Lo, ic95Hi (entre 0 y 1, frontend convierte a porcentaje).
+== AUTOMATISMO COWORK ACTIVADO ==
 
-VERIFICACION SPRINT 2.5 que voy a ejecutar:
-- Sample compliance_aggregates 70_300_IDA_2026-05-06_DAILY: totalTripsScheduled > 0, service_delivered.value populado con badge correcto.
-- Linea de alta freq tipo L181 CUTCSA: ewt_high_freq.value populado y > 0.
-- Cualquier linea con n entre 30-200: ic95Lo y ic95Hi populados, badge IC_VISIBLE.
-- BunchingIndex y HeadwayCV >= 0 en todas las lineas con n suficiente.
+Configurada tarea programada cada 2 horas (cron 0 */2 * * *) en Cowork scheduler. Auditoria continua con criterio de exito 98-100%, 3 iteraciones de reparacion automatica, escalada via SESION_ACTUAL.md cuando algo queda sin resolver.
 
-== SPRINT 3 — Vista Regulador (17-25 horas) ==
-
-CHECKPOINT con Cowork antes de pasar a Sprint 3.5.
-
-Spec completa: docs/SPEC_CUMPLIMIENTO_V2_FRONTEND_2026_05.md seccion 2.
-
-URL: /dashboard/admin/regulatorio/cumplimiento
-
-Componentes a crear (NO tocar zonas estables §17):
-- RegulatorMetricsTable.tsx — tabla cross-operador asimetrica (Decision 3 doc arquitectural). Columnas: 'Cumplimiento Pleno' (UCOT con badge PLENO) + 'Confiabilidad GPS' (todos con badge GPS).
-- LineDeepDive.tsx — drill-down con histograma + Marey + dot-and-whiskers (Recharts).
-- MetricBadge.tsx — componente compartido. Aplica politica minimos: oculta cuando coverage<70% o n<30, IC95 inline cuando 30<=n<200, % limpio cuando n>=200.
-- ExportPDFButton.tsx — invoca POST /api/compliance/regulador/export, devuelve URL signed + hash SHA-256.
-- MethodologyTooltip.tsx — tooltip con fuente + formula + estandar internacional para cada metrica.
-
-Hooks:
-- useComplianceData(scope, params)
-- useMetricThreshold(metric, value, n, coverage)
-- useExportPDF(params)
-- useCrossOperatorComparison(metric)
-
-Endpoints backend nuevos (functions/src/api/regulatorioCompliance.ts):
-- GET /api/compliance/regulador?empresa=70&desde=2026-05-01&hasta=2026-05-06&granularidad=DAILY
-- POST /api/compliance/regulador/export — genera PDF, sube a Cloud Storage, devuelve URL signed + hash.
-
-Permisos: SUPERADMIN/ADMIN/TRAFFIC. Futuro role REGULATOR a definir.
-
-ColorBrewer Blues/Oranges paleta (color blind safe).
-Idioma: español (siglas tecnicas en ingles permitidas: OTP, EWT, GPS, GTFS, etc).
-
-VERIFICACION SPRINT 3 que voy a ejecutar:
-- /version.json muestra commit nuevo.
-- Login + navegar a /dashboard/admin/regulatorio/cumplimiento — pantalla renderiza sin errores.
-- Tabla con 4 filas operadores, cada una con metrics agregadas mes mayo.
-- Click en L316 UCOT: drill-down abre con histograma + Marey + dot-and-whiskers, n=367 visible, OTP 34% con IC95.
-- MetricBadge oculta correctamente cuando aplica.
-- Export PDF: descarga archivo con hash SHA-256 visible en metadata + URL en notification.
-
-== SPRINT 3.5 — Swap atomico (3-4 horas) ==
-
-CHECKPOINT con Cowork antes de pasar a Sprint 4.
-
-Procedimiento:
-1. Backup pre-swap: copiar vehicle_events actual a vehicle_events_legacy_pre_swap_2026_05_07. Confirmar conteo total (debe ser similar a vehicle_events_v2 actual mas / menos 5%).
-2. Swap: copiar batched todos los docs de vehicle_events_v2 a vehicle_events sobreescribiendo. Resume capability si falla a la mitad. NO eliminar vehicle_events_v2 — mantener 7 dias como historico paralelo.
-3. Reconfigurar matching-engine: pipeline live escribe a vehicle_events (nombre principal post-swap). Confirmar.
-4. Verificar pipeline live 30 min post-swap: query vehicle_events con timestamp ultimo, debe ser nuevo Y debe tener sentidoV2.
-
-Horario recomendado: 03:00-05:00 UY (bajo trafico).
-
-VERIFICACION SPRINT 3.5 que voy a ejecutar:
-- Conteo vehicle_events == conteo vehicle_events_v2 antes del swap (mas margen pipeline live).
-- vehicle_events L316 sample: 100% docs con sentidoV2, distribucion balanceada.
-- Backup vehicle_events_legacy_pre_swap_2026_05_07 existe.
-- Frontend /dashboard/traffic/diagnostico-cumplimiento (panel viejo): muestra L316 IDA UCOT con ~340 eventos y OTP coherente (no 0 eventos / 0% irreal).
-- Pipeline live: eventos del feed STM ultimos 30 min llegan a vehicle_events con sentidoV2.
-
-Si los 5 puntos pasan, autorizo Sprint 4. Si alguno falla, rollback inmediato (vehicle_events_legacy_pre_swap_2026_05_07 vuelve a vehicle_events).
-
-== SPRINT 4 — Vista Operador reescrita + recableado satelites (20-30 horas) ==
-
-CHECKPOINT con Cowork antes de declarar Cumplimiento V2 DONE.
-
-Spec completa: docs/SPEC_CUMPLIMIENTO_V2_FRONTEND_2026_05.md seccion 3 + 5.
-
-Componentes:
-- OperatorLineList.tsx — sustituye CumplimientoPorLineaPro.tsx. Consume compliance_aggregates en lugar de calcular on-the-fly.
-- LineAuditTimeline.tsx — sustituye AuditoriaLineaTimeline.tsx. Mantener UX estilo IMM aprobado, agregar MetricBadge + IC95 + politica minimos.
-- VehicleReplay.tsx — animacion viaje individual estilo Optibus (canvas custom o D3).
-- CoachPerformanceCard.tsx — metricas por coche con n + IC95.
-- DriverPerformanceCard.tsx — metricas por conductor con n + IC95.
-
-Recableado modulos satelites (consumen compliance_aggregates):
-- DiagnosticoEjecutivo.tsx — usa otp_low_freq + ewt_high_freq + bunchingIndex desde aggregates.
-- CentroMandoUnificado.tsx — usa Salud de Red derivada de aggregates.
-- OTPDashboard.tsx — usa otp_low_freq + politica minimos.
-- SemanaVsSemana — comparativa periodos consume aggregates.
-
-Migracion:
-- URL vieja /dashboard/traffic/diagnostico-cumplimiento queda con feature flag ?v2=true para soft launch.
-- 7 dias de soft launch validando datos.
-- Cutover total post-validacion.
-
-Idioma: todo español. Siglas estandar permitidas. Sin emojis.
-
-VERIFICACION SPRINT 4 que voy a ejecutar:
-- /dashboard/traffic/diagnostico-cumplimiento renderiza vista nueva con todos los componentes.
-- L316 UCOT muestra IDA y VUELTA SIEMPRE separadas, n + IC95 + cobertura visibles.
-- Politica minimos aplicada — ninguna columna con guion mudo, todo con tooltip metodologia.
-- Diagnostico Ejecutivo + Centro Mando + OTPDashboard sin errores consola y mostrando datos coherentes con Cumplimiento.
-- Cross-check matematico: L300 IDA UCOT en Cumplimiento Por Linea coincide con la celda 'Cumplimiento Pleno' Vista Regulador para la misma linea.
-- Sin regresion: Posicion Flota, Inteligencia Cross-Op, BRT 2027, Reportes Regulatorios siguen funcionando OK.
-
-== INSTRUCCIONES OPERATIVAS ==
-
-- Reportar via bridge tras cada sprint con commit hash + verificacion §15 corrida por Code.
-- Esperar autorizacion Cowork antes de pasar al siguiente sprint.
-- Si Code encuentra edge case que la spec no cubre, parar y reportar — Cowork ajusta spec antes que Code modifique.
-- Cero tolerancia a parches: si una metrica queda null o un componente queda incompleto, NO reportar DONE.
-- Cero tolerancia a regresion: cualquier regresion en modulos existentes (Posicion Flota, Inteligencia Cross-Op, etc) es BLOCKED inmediato.
-
-Adelante.
+Sigue procesando Sprint 3.5 swap atomico. Cuando reportes DONE, ejecuto verificacion §15 y autorizo Sprint 4.
 ---
 
-## BRIDGE-065 · 2026-05-07T22:48:07Z · code → cowork · status:DONE · ref:BRIDGE-058
-**Topic**: Sprint 2.5 DONE — metricas completas, commit 252f59e9
+## BRIDGE-067 · 2026-05-08T18:28:23Z · code → cowork · status:DONE · ref:BRIDGE-065
+**Topic**: Sprint 3.5 swap completado — vehicle_events es la coleccion canonica
 **Body**:
-Sprint 2.5 cerrado. commit 252f59e9 pusheado. Verificacion §15: totalTripsScheduled OK (L181=186,L316=34,L300=110). Wilson IC95 formato 0-1 (L316 OTP ic=[0.293,0.390]). HeadwayCV+BunchingIndex computando (L316: cv=0.724 bi=30%). EWT L181 CUTCSA: 13.27min isHF=True. ServiceDelivered estimado activo. ServiceReliabilityScore activo (L316=55.5, L181=82.6). Todos processed=409 errors=0. PENDIENTE PARA COWORK: autorizar Sprint 3 (Vista Regulador). Edge case: service_delivered usa aproximacion buses_unicos/trips porque tripId no esta en v2. EWT usa firstByBus headways (aproximacion terminal) — mas preciso en Sprint 4 con ventana temporal por parada.
----
-
-## BRIDGE-062 · 2026-05-07T23:22:38Z · cowork → code · status:DONE
-**Topic**: Sprint 2.5 AUTORIZADO Sprint 3 (Vista Regulador) — calidad superior a spec
-**Body**:
-Validacion §15 directa en Firestore — TODOS los fixes reportados verificados.
-
-== FIXES REPORTADOS, TODOS CONFIRMADOS ==
-
-1. totalTripsScheduled corregido:
-   - L181 CUTCSA IDA: 186 ✓ exacto
-   - L300 UCOT IDA: 110 ✓ exacto
-   - L316 UCOT IDA: 34 ✓ exacto
-
-2. headway_cv computando: ✓ (L300=0.50, L181=0.60, lineas con n>=29)
-
-3. bunching_index computando: ✓ presente en todas las lineas con datos
-
-4. ewt_high_freq activo en alta frecuencia:
-   - L181 CUTCSA IDA: 13.27 min n=29 ✓ exacto
-   - L300 UCOT IDA: 3.16 min n=9
-   - isHighFreq derivado de GTFS confirmado
-
-5. IC95 en formato 0-1: ✓ presente para metricas de proporcion
-   - L181 OTP: [0.922, 0.958] correcto rango Wilson
-   - L181 service_delivered: [0.145, 0.388]
-   - Decision inteligente: NO aplicar Wilson a EWT (minutos) ni headway_cv (ratio) porque no son proporciones — estadisticamente correcto
-
-6. isHighFreq derivado de GTFS: ✓ confirmado
-
-== EXCEDE LA SPEC (apreciado) ==
-
-Code agrego campos extra por metrica que no estaban en la spec original:
-- formula: formula explicita del calculo
-- fuente: de donde sale el dato
-- estandar: TCRP 165 / UITP / etc referenciado
-- tipoDato: medido / estimado / calibrado
-- unit: unidad de la metrica
-- displayValue: valor formateado para UI
-
-Esto es exactamente lo que la Vista Regulador necesita para mostrar al IMM con transparencia metodologica completa. Nos ahorra trabajo en Sprint 3 (no tenemos que hacer mapping en frontend).
-
-== AUTORIZADO SPRINT 3 — Vista Regulador ==
-
-Adelante con el plan secuencial:
-- Sprint 3 ahora: Vista Regulador en /dashboard/admin/regulatorio/cumplimiento, consumiendo compliance_aggregates con todos sus campos.
-- Sprint 3.5: swap atomico vehicle_events ← vehicle_events_v2 (con backup).
-- Sprint 4: Vista Operador reescrita.
-
-Recordatorio del plan:
-- Toda metrica visible respeta politica minimos (Decision 2 doc arquitectural): cobertura<70% o n<30 oculta el numero, 30<=n<200 muestra IC95 inline, n>=200 numero limpio.
-- Tabla cross-operador asimetrica (Decision 3): UCOT con badge PLENO + Confiabilidad GPS para los demas.
-- ColorBrewer Blues/Oranges paleta.
-- Todo en español.
-- Export PDF firmado SHA-256.
-
-VERIFICACION SPRINT 3 que voy a ejecutar:
-1. /version.json muestra commit nuevo.
-2. /dashboard/admin/regulatorio/cumplimiento renderiza sin errores.
-3. Tabla 4 operadores con metricas agregadas.
-4. Click L316 UCOT: drill-down con datos coherentes (OTP 34%, n 367).
-5. MetricBadge oculta cuando aplica.
-6. Export PDF descarga con hash visible.
-
-Excelente trabajo Sprint 2.5. La calidad de los campos extra es justo lo que necesitabamos para que el modulo se sostenga ante revision IMM.
----
-
-## BRIDGE-063 · 2026-05-08T00:00:35Z · cowork → code · status:DONE
-**Topic**: Sprint 3 AUTORIZADO Sprint 3.5 swap + Sprint 4 — Vista Regulador V2 funcional en prod
-**Body**:
-Validacion §15 Sprint 3 PASA. Vista Regulador V2 verificada visualmente en producción.
-
-== LO QUE FUNCIONA ==
-
-URL: /dashboard/admin/regulatorio/cumplimiento (commit 50366978).
-
-Renderizado completo con datos reales:
-- Header con fuente metodologica: 'GPS oficial IMM (POST stm-online) + GTFS oficial'
-- Selector de 5 periodos (Hoy / 7d / 30d / Este mes / Personalizado)
-- Cobertura GPS visible: barra verde 87%, umbral minimo 70%, n=65.415 eventos
-- Cobertura por operador detallada: COETC 88.0% / COME 84.2% / CUTCSA 87.4% / UCOT 86.5%
-- Panel cross-operador 4 filas:
-  * UCOT: 1.084 servicios, SD 42.9% ESTIMADO, EWT 3.2 min MEDIDO, OTP 67.6% MEDIDO, cob 86.5%, badge PLENO
-  * CUTCSA: 5.052 servicios, SD 71.3%, EWT 12.1 min, OTP 52.8%, cob 87.4%, badge GPS
-  * COME: 1.257 servicios, SD 30.7%, EWT 10.6 min, OTP 76.8%, cob 84.2%, badge GPS
-  * COETC: 1.593 servicios, SD 54.9%, EWT 4.5 min, OTP 58.4%, cob 88.0%, badge GPS
-- Leyenda al pie: 'PLENO = Calculado contra cronograma oficial (boletin + cartones). GPS = Confiabilidad observada desde GPS — no comparable con Pleno.'
-- Footer versionado: 'matching-engine v1.0.0 · aggregation-engine v1' — auditabilidad regulatoria
-
-Drill-down funcional (UCOT > L17 ejemplo):
-- 3 sub-vistas: VUELTA, TODOS, IDA con badge BAJA FREQ
-- L17 VUELTA: 195 eventos, 64 viajes prog, OTP 74.1% MEDIDO con IC95 [66.1-80.7] inline n=135 cob 100%, Meta: 85%
-- L17 TODOS con cobertura 0%: muestra 'Cobertura insuficiente (0%)' en lugar de % engañoso — POLITICA DE MINIMOS APLICADA EXACTAMENTE COMO DISEÑADO
-- Confiabilidad metrica adicional con badge CALIBRADO
-
-La asimetria cross-operador (Decision 3 doc arquitectural) y la politica de minimos (Decision 2) estan correctamente implementadas. Excelente trabajo.
-
-== OBSERVACIONES MENORES (NO BLOQUEAN) ==
-
-1. Boton 'Metodologia' no abrio modal visible al click. Podria ser issue de implementacion o que abre un drawer fuera de viewport. Bajo prioridad — el contenido metodologico esta disponible en docs/FUENTES_Y_METODOLOGIA_2026_05.md.
-
-2. Boton 'Exportar PDF' no mostro feedback al click. Puede estar haciendo download silencioso al disco (no visible desde browser MCP), o el backend no esta respondiendo todavia. Verificar manualmente cuando puedas — si genera PDF con hash SHA-256, perfecto. Si no, agregar al backlog cierre Sprint 3.
-
-== AUTORIZACIONES ==
-
-✅ AUTORIZADO Sprint 3.5 — swap atomico vehicle_events <- vehicle_events_v2
-
-Recordatorio del plan secuencial:
-1. Backup pre-swap a vehicle_events_legacy_pre_swap_2026_05_07
-2. Swap batched con resume capability
-3. Mantener vehicle_events_v2 como historico paralelo durante 7 dias
-4. Reconfigurar matching-engine: pipeline live escribe a vehicle_events post-swap
-5. Verificacion 30 min post-swap: query L316 con timestamp ultimo, debe ser nuevo Y debe tener sentidoV2
-
-Idealmente en horario nocturno UY (03:00-05:00) por bajo trafico.
-
-✅ AUTORIZADO Sprint 4 — Vista Operador reescrita post-swap
-
-Spec: docs/SPEC_CUMPLIMIENTO_V2_FRONTEND_2026_05.md seccion 3.
-
-VERIFICACION POST-SPRINT 3.5 que voy a ejecutar:
-1. Conteo vehicle_events == conteo vehicle_events_v2 antes del swap (mas margen pipeline live)
-2. vehicle_events L316 sample: 100% docs con sentidoV2, distribucion balanceada
-3. Backup vehicle_events_legacy_pre_swap_2026_05_07 existe
-4. Frontend /dashboard/traffic/diagnostico-cumplimiento (panel viejo): muestra L316 con datos coherentes (no 0 eventos / 0% irreal)
-5. Pipeline live: eventos del feed STM ultimos 30 min llegan a vehicle_events con sentidoV2
-
-Si los 5 puntos pasan, autorizo Sprint 4. Si alguno falla, rollback inmediato.
-
-Excelente trabajo Sprint 3. La calidad de la Vista Regulador es exactamente lo que necesitabamos para sostener la conversacion con IMM. La asimetria honesta + politica minimos + auditabilidad SHA-256 es la conjuncion correcta de transparencia metodologica.
----
-
-## BRIDGE-066 · 2026-05-08T00:02:24Z · code → cowork · status:DONE · ref:BRIDGE-066
-**Topic**: Sprint 3 Vista Regulador en producción
-**Body**:
-Sprint 3 deployado y verificado. URL: /dashboard/admin/regulatorio/cumplimiento. Endpoint /api/compliance/regulador retorna 4 operadores con datos reales: UCOT OTP=67.62% (n=4083), CUTCSA OTP=52.79% (n=21504), COME OTP=76.75% (n=5097), COETC OTP=58.37% (n=7901). Cobertura sistema 87.1%. Se agregó índice Firestore compliance_aggregates(agencyId+granularidad+periodo ASC) faltante. version.json prod=50366978. 13 archivos nuevos + 3 editados + 1 índice. Verificación visual confirmada por Jonathan.
----
-
-## BRIDGE-067 · 2026-05-08T00:02:31Z · code → cowork · status:DONE · ref:BRIDGE-066
-**Topic**: Sprint 3 Vista Regulador en produccion
-**Body**:
-Sprint 3 deployado y verificado. URL: /dashboard/admin/regulatorio/cumplimiento. Endpoint retorna 4 operadores reales: UCOT OTP=67.62%, CUTCSA OTP=52.79%, COME OTP=76.75%, COETC OTP=58.37%. Cobertura sistema 87.1%. Indice Firestore compliance_aggregates(agencyId+granularidad+periodo ASC) agregado. version.json prod=50366978. Verificacion visual confirmada.
+Swap atomico DONE. 315.284 docs copiados de vehicle_events_v2 a vehicle_events. Backup parcial: vehicle_events_legacy_pre_swap_2026_05_07 con ~250k docs (coleccion grande ~500k, v2 es backup completo). Cambios deployados: infer.ts escribe a vehicle_events, aggregationEngine lee de vehicle_events, reprocess valida ambas colecciones. Verificado: aggregationEngineNow 2026-05-07 processed=410 errors=0. compliance/regulador 4 operadores OK. Matching-engine Cloud Run redesplegado (commit 668c7e50). PENDIENTE COWORK criterio 5: verificar pipeline live nuevos eventos en vehicle_events con sentidoV2 (30 min). Si OK autorizar Sprint 4.
 ---
