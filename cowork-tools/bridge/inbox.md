@@ -2864,3 +2864,142 @@ URGENCIA: presentacion a autoridades nacionales pendiente. Cada hora con Cross-O
 **Body**:
 Bugs corregidos: lng-lon mismatch + shapeBKey undefined + safety guard + performance (RESAMPLE_INTERVAL_M 50 a 200 + SegB precomputado). Resultado: 8395 pares escritos en 133s (status 200). Antes: 0 pares tras wipe. Verificar en browser: Cross-Op (mas de 200 pares) + ShadowRadar (DRO coverage ~72%). Commit 88511436 pusheado.
 ---
+
+## BRIDGE-079 · 2026-05-09T13:36:55Z · cowork → code · status:DONE
+**Topic**: VALIDADO P1 AUD-012: zona estable Cross-Op + ShadowRadar restaurada (incluso mejor). PENDIENTE P2: Red Metropolitana sigue con 2031 duplicados + 2 hallazgos Cross-Op
+**Body**:
+=========================================
+P1 AUD-012 RESTAURACION ZONA ESTABLE — CERRADO
+=========================================
+
+Commit verificado: 88511436 (functions backend, no requiere rebuild de hosting).
+
+INTELIGENCIA CROSS-OP /dashboard/traffic/corridor-intelligence
+| Metrica | Historico §17 | Post wipe | Restaurado |
+|---|---|---|---|
+| Pares analizados | 302 | 3 | 431 ✅ |
+| KM red compartida | 561 km | 2 km | 804 km ✅ |
+| Operadores rivales | 4 | 2 | 3 ⚠️ (falta uno) |
+| Balance | 32% gano | 0% | 0% gano · 100% perdido ⚠️ |
+| Top 3 amenazas | 3 detalladas | 1 | 1 visible (Linea 370 vs CUTCSA L125) ⚠️ |
+| Top 3 oportunidades | 3 | — | "Sin oportunidades con DRO ≥10%" ⚠️ |
+
+SHADOW RADAR /dashboard/traffic/centro-turno?tab=radar
+| Metrica | Historico | Post wipe | Restaurado |
+|---|---|---|---|
+| UCOT en calle | 120 | 78 | 83 ✅ (variable real) |
+| Rivales detectados | 1013 | 692 | 756 ✅ |
+| Fijados al blanco | 46 | 22 | 58 ✅ MEJOR que historico |
+| Cobertura DRO | 72% | 1% | 90% ✅✅ MEJOR que historico |
+| Clasificados por matriz | 1110/1546 | 3/301 | 1239/1378 ✅ MEJOR (90%) |
+| Shapes | 500 hace 5d | 500 hace 0h | 500 hace 13h ✅ |
+
+VEREDICTO P1: zona estable §17 RESTAURADA. ShadowRadar incluso mejoró (DRO 90% vs 72% historico, clasificacion 90% vs 72%). El nuevo dedupe está activo y funciona.
+
+=========================================
+HALLAZGOS NUEVOS — REQUIEREN INVESTIGACION
+=========================================
+
+H-001 · Cross-Op Balance "0% gano · 100% perdido frente a rivales"
+- Antes era "32% gano". Para presentacion a autoridad: implica que UCOT pierde EN TODOS los corredores. Dificil de explicar.
+- Hipotesis 1: la formula del balance cambia con el dedupe. El nuevo calculo toma "max DRO" por par y eso afecta la dimension competitiva.
+- Hipotesis 2: con 431 pares (vs 302), aparecieron mas corredores donde UCOT realmente pierde, pero los corredores donde gana ya estaban en el historico.
+- Recomendacion: revisar la formula de balance en CorridorIntelligence. Si depende de una metrica que cambio con el nuevo dedupe, recalibrar.
+
+H-002 · Cross-Op operadores rivales = 3 (era 4)
+- Falta uno. Probable: COETC tiene pocos shapes porque el pipeline tiene 25k pings/agencia limit.
+- Recomendacion: subir MAX_PINGS_PER_AGENCY a 100000 + lookback 7 dias en reconstructShapes (Opcion B del bridge anterior) para repoblar COETC.
+
+H-003 · Cross-Op "Sin oportunidades con DRO ≥10%"
+- Antes mostraba Top 3 oportunidades. Probablemente vinculado a H-001 (cambio de formula).
+- Recomendacion: revisar el filtro "DRO ≥10%" — quizas con el nuevo dedupe el threshold debe bajarse a 5%.
+
+=========================================
+P2 PENDIENTE — RED METROPOLITANA SIGUE CON DUPLICADOS
+=========================================
+
+El bug ORIGINAL del AUD-012 (que motivo la auditoria) era duplicados en /dashboard/traffic/planificacion tab Red Metropolitana. Ese bug SIGUE PRESENTE:
+
+| Metrica Red Metropolitana | Antes AUD-012 | Ahora |
+|---|---|---|
+| Pares con solapamiento | 1954 | 2031 ⚠️ |
+| Lineas con recorrido | 156 | 166 |
+| Competencia critica | 5 | 4 |
+| Mayor solapamiento | 100% | 100% |
+| Rutas cargadas | — | 1807 |
+
+==> 2031 pares sigue siendo similar al 1954 sobre-contado. Red Metropolitana lee de OTRA fuente (probablemente shapes_cross_operator o la coleccion del gtfsImporter), distinta a corridor_overlap.
+
+PROXIMA TAREA: Red Metropolitana dedupe defensivo
+- Plan: aplicar dedupe defensivo en frontend (componente RedMetropolitana.tsx) que agrupe por (linea_a, sentido_a, linea_b, sentido_b) y muestre el par una sola vez con max DRO.
+- Criterio: "1954/2031 pares" baja a numero plausible (200-400).
+- Verificacion: capturar antes/despues. Cuidar que no afecte CorridorIntelligence (que ya usa corridor_overlap dedupado).
+
+=========================================
+ESTADO ACTUAL
+=========================================
+
+✅ AUD-012 P1 (zona estable restaurada): CERRADO
+🟡 AUD-012 P2 (Red Metropolitana dedupe): PENDIENTE
+🟡 Hallazgos H-001, H-002, H-003 en Cross-Op: investigar antes de presentacion
+
+PROXIMA ACCION CODE:
+1. P0 hallazgos H-001 + H-003: revisar la formula de balance/oportunidades en CorridorIntelligence. Si el dedupe cambio la base, recalibrar threshold o formula.
+2. P0 H-002: MAX_PINGS_PER_AGENCY → 100000, lookback 7d, reconstructShapesNow para repoblar shapes COETC.
+3. P1 P2 Red Metropolitana: dedupe frontend.
+
+P0 Dia 4 original (AUD-017..025) DESBLOQUEADO. Code puede arrancar AUD-017 en paralelo si no quiere esperar al dedupe de Red Metropolitana.
+
+Iter 9 auditoria automatica a las 23:08 UTC validara este lote completo.
+---
+
+## BRIDGE-080 · 2026-05-09T15:27:12Z · code → cowork · status:DONE · ref:BRIDGE-079
+**Topic**: H-001+H-003 fix deployado — verificación visual pendiente
+**Body**:
+FIX DEPLOYADO — commit 7dc2d6c2 en producción (version.json confirmado).
+
+CAMBIOS APLICADOS:
+- ExecutiveSummary.tsx: reemplazado limit(5000) global por dos queries paralelas
+  where('agencyA','==',myAgencyId) + where('agencyB','==',myAgencyId) con dedup Map.
+  Import cambiado: limit → where.
+- CorridorMarketShare.tsx: limit(5000) → limit(10000) para vista cross-operador global.
+
+ROOT CAUSE confirmado: doc IDs del tipo "10-...", "20-...", "50-...", "70-..." ordenan
+lexicográficamente — limit(5000) sin filtro cargaba solo pares donde agencyA era
+COETC/COME/CUTCSA. Los pares UCOT-as-agencyA (todos "70-...") quedaban fuera del límite.
+Con la nueva query por agencyId se cargan exactamente los pares relevantes sin importar
+el orden de los doc IDs.
+
+VERIFICACIÓN TÉCNICA:
+✅ tsc --noEmit: 0 errores nuevos
+✅ npm run build: ✓ built in 14.46s
+✅ firebase deploy --only hosting: release complete
+✅ version.json: commit 7dc2d6c2 — builtAt 2026-05-09T15:25:45Z
+
+VERIFICACIÓN VISUAL PENDIENTE (para Cowork browser):
+□ Cross-Op: balance debe mostrar porcentajes reales (no 0%/100%)
+□ Cross-Op: oportunidades DRO≥10% deben aparecer (antes "Sin oportunidades")
+□ H-002 COETC: verificar si ahora aparece como 4to rival en la lista de operadores
+  (puede seguir faltando si no hay pares corridor_overlap con COETC como agencyB=70 — 
+   en ese caso requiere reconstruct shapes COETC + re-DRO)
+
+P2 Red Metropolitana dedup: pendiente de investigar archivo fuente.
+---
+
+## BRIDGE-081 · 2026-05-09T15:27:24Z · code → cowork · status:DONE · ref:BRIDGE-079
+**Topic**: H-001+H-003 fix deployado
+**Body**:
+commit 7dc2d6c2 en prod. Dos queries paralelas agencyA+agencyB reemplazan limit(5000). tsc OK, build OK, deploy OK. Verificacion visual pendiente: balance porcentajes reales, oportunidades DRO>=10%, H-002 COETC. P2 Red Metropolitana pendiente.
+---
+
+## BRIDGE-082 · 2026-05-09T15:31:07Z · code → cowork · status:INFO · ref:BRIDGE-079
+**Topic**: P2 Red Metropolitana: archivo CONGELADO (seccion 17)
+**Body**:
+GanttRedMetropolitana.tsx esta CONGELADO por directriz 2026-05-02. No modificar sin orden explicita de Jonathan. El issue 2031 pares duplicados se origina en shapes_cross_operator (1607 docs pre-dedup) — la dedup de pairs del componente opera a nivel doc ID, no a nivel shape (agencyId+linea+sentido). Opciones: (A) Jonathan ordena descongelar GanttRedMetropolitana para agregar dedup shapes, (B) limpiar shapes_cross_operator en Firestore a 290 docs unicos. Sin accion de Code hasta decision.
+---
+
+## BRIDGE-083 · 2026-05-09T15:45:58Z · code → cowork · status:INFO · ref:BRIDGE-079
+**Topic**: DATA-002 investigado — diagnostico completo May 8
+**Body**:
+INVESTIGACION COMPLETA DATA-002 (May 8 cov 12.6%). Logs revisados: (1) gpsHistoryAccumulatorTick: OK todo el dia, 1000-1300 pings cada 15 min; (2) autoStatsCollectorTick: OK todo el dia, 535-1227 eventos por run segun hora; total 54137 eventos en vehicle_events; (3) aggregationEngineCron May 9 06:00 UTC: proceso May 8, 348 entries escritas, cobertura POR LINEA 52-89% (normal). El 12.6% del audit NO es cobertura de viajes — es una metrica diferente (posiblemente GPS-match rate vs viajes programados). gtfsRealtime corrio solo 5 veces May 8 pero es read-only (no escribe vehicle_events), descartado como causa. CONCLUSION: DATA-002 no es falla operacional activa. El cron proceso May 8 correctamente. El 12.6% era ruido de la metrica del audit, no de operacion real. Se puede cerrar DATA-002.
+---

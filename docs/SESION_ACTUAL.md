@@ -1,5 +1,23 @@
 # SESION ACTUAL — estado vivo
 
+## NOTA AUDITORIA AUTOMATICA — 2026-05-09 15:14 UTC (iter 17)
+
+Sin alarma — progreso incremental respecto iter 16:
+
+- **Sistema operativo, 0 regresiones**. Build prod `fba9f37d` (sin cambios), HEAD avanzó a `67fceb4f` (+2 commits vs iter 16: `88511436` fix droMatrix corridor_overlap restore + `67fceb4f` docs STOP-AND-FIX) → **16 commits droMatrix pendientes deploy** (era 14, +2). Pipeline live 841 buses 4 ops 118 líneas (UY 12:03 transición almuerzo, IMM feed 842 features delta -1 normal). autoStatsCollector UP, lastSuccess 14:55Z (8 min), 0 fallos.
+- **Reparación May 9 (acción 1)**: `aggregationEngineNow?date=2026-05-09` ejecutado vía fire-and-forget (curl --max-time 3, Cloud Function continuó server-side). Cobertura 68.5% → **68.9%** (+0.4 pts), eventos **9 106 → 11 858** (+2 752). UCOT 798→1117 ev / 73.4→74.7, CUTCSA 5948→7509 ev / 66.0→66.0, COME 868→1280 ev / 72.4→73.1, COETC 1492→1952 ev / 73.7→74.2.
+- **Cobertura sistema 7d**: 57.2% → **57.4%** (+0.2 pts). Total eventos 7d: 200 292 → 203 044.
+- **Cobertura 7d por operador (delta vs iter 16):** UCOT +0.5, CUTCSA +0.1, COME +0.3, COETC +0.3.
+- **DATA-002 sin cambio (7ª iter sin progreso)**: May 8 cov 12.6% / 54 137 events idéntico iter11–17. Acción agotada (§16). Escalación a Jonathan/Code se mantiene (BRIDGE-080 sugerido iter 13).
+- **Vista Operador L300 IDA UCOT**: OTP 87.67% n=527 cov=99.6% — **idéntico iter 14/15/16/17**, coherente ✅.
+- **PATTERN-001 5ª evidencia**: cron `aggregationEngineCron` 06 UTC no procesa eventos posteriores. 5 iters consecutivas con backfill manual. Recomendación firme: aumentar frecuencia cron a cada 2 h o trigger onWrite.
+- **Bridge actualizado**: BRIDGE-079 cerrado (P1 AUD-012 corridor_overlap restaurado a 8 395 pares — Code 13:28Z, Cowork validó zona estable Cross-Op + ShadowRadar 13:36Z). **Pendiente Code**: P2 Red Metropolitana dedupe (2 031 duplicados) + 3 hallazgos H-001/2/3 Cross-Op pre-presentación nacional + deploy 16 commits droMatrix.
+- **NEW-001 latente** (9ª iter); AUD-012-P2 + H-001/2/3 documentados como hallazgos persistentes.
+
+Detalle completo en `docs/AUDIT_LOG/ejecucion-2026-05-09-15-03.md`.
+
+---
+
 ## NOTA AUDITORIA AUTOMATICA — 2026-05-09 13:17 UTC (iter 16)
 
 Sin alarma — progreso incremental respecto iter 15:
@@ -108,13 +126,14 @@ Detalle completo en `docs/AUDIT_LOG/ejecucion-2026-05-09-03-02.md`.
 
 ---
 
-**Última actualización:** 2026-05-09 13:30 UTC — STOP-AND-FIX AUD-012 CERRADO. corridor_overlap restaurado a **8395 pares** (vs 0 post-wipe). droMatrix optimizado (133s, era 538s timeout). Verificar Cross-Op + ShadowRadar en browser (Cowork). En cola: P1 data bugs (AUD-017..022) cuando verificación browser confirme OK.
+**Última actualización:** 2026-05-09 15:47 UTC — Code ejecutó órdenes BRIDGE-079. H-001+H-003 fix deployado (commit 7dc2d6c2). PATTERN-001 resuelto con nuevo cron (commit 9ed9e94e). DATA-002 investigado y cerrado (no es falla activa). P2 BLOQUEADO (GanttRedMetropolitana CONGELADO). H-002 COETC pendiente verificación visual.
 
 ### 🔴 PRÓXIMO PASO INMEDIATO (para Cowork — verificación browser)
-1. Abrir Cross-Op (CorridorIntelligencePage): confirmar que muestra >200 pares con km compartidos reales (antes: 3 pares)
-2. Abrir ShadowRadar: confirmar DRO coverage cercano a 72% histórico (antes post-wipe: 1%)
-3. Si OK: reportar via bridge ref BRIDGE-079 con capturas de métricas
-4. Si no OK: escalar a Code vía bridge con detalle de qué muestra
+1. **H-001 + H-003**: Abrir Cross-Op (CorridorIntelligencePage) → confirmar que balance muestra porcentajes reales (antes: "0% ganado / 100% perdido") y que aparecen oportunidades DRO ≥ 10% (antes: "Sin oportunidades")
+2. **H-002 COETC**: En la misma vista, verificar si aparecen 4 operadores rivales (antes: solo 3, faltaba COETC). Si COETC sigue faltando, escalar a Code con bridge para rerun `reconstructShapesNow` + DRO.
+3. **ShadowRadar**: Confirmar DRO coverage cercano al 72% histórico (ya verificado por Cowork en BRIDGE-079, pero confirmar que el fix H-001 no rompió nada)
+4. **P2 Red Metropolitana**: Archivo CONGELADO por §17. Pendiente decisión Jonathan: descongelar o limpiar shapes_cross_operator en Firestore. Sin acción de Code hasta orden.
+5. Si todo OK: avanzar a AUD-017..022 (P1 data bugs)
 
 ---
 
@@ -123,6 +142,8 @@ Detalle completo en `docs/AUDIT_LOG/ejecucion-2026-05-09-03-02.md`.
 | AUD | Descripción | Commit | Verificado |
 |---|---|---|---|
 | AUD-012 | droMatrix: lng→lon + shapeKey fallback + safety guard + STOP-AND-FIX (RESAMPLE 200m + SegB precomputado + bbox 0.02°) → 8395 pares, 133s | `88511436` | ✅ logs función status 200, written=8395 · verificación visual pendiente Cowork |
+| H-001+H-003 | Cross-Op balance y oportunidades: dos queries paralelas agencyA+agencyB en ExecutiveSummary (reemplaza limit(5000) que cortaba UCOT-as-agencyA por orden lexicográfico). CorridorMarketShare: limit 5000→10000 | `7dc2d6c2` | ✅ deploy prod verified (version.json 7dc2d6c2 15:25:45Z) · verificación visual pendiente Cowork |
+| PATTERN-001 | aggregationEngineMidDayCron 18:00 UTC (15:00 UY): procesa el día actual con datos parciales, elimina backfill manual recurrente. Deployed como nueva Cloud Function | `9ed9e94e` | ✅ firebase deploy OK + gcloud list ACTIVE |
 | AUD-014 | VistaDia: reset filtro on empresa change + type mismatch busesVivos + directionId en FilaLinea | `fba9f37d` | ✅ version.json |
 | AUD-016 | useRealtimeData.ts: 4 onSnapshot con error handler; SystemIntegrity.ts sin setDoc auto-create; firestore.rules reglas explícitas coaches/vehicles/fleet_checks/_healthcheck | `7fa7c2c8` | ✅ version.json |
 | AUD-015 | ShadowRadar.tsx: `Number(b.codigoEmpresa) === empresaPropia` corrige type mismatch string/number → UCOT ya no muestra 0 | `0500ad3c` | ✅ version.json |
