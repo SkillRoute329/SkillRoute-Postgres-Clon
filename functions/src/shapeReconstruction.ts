@@ -41,7 +41,7 @@ const MIN_POINTS_FOR_SHAPE = 6;
 const MIN_LENGTH_METERS = 1500;
 const DOUGLAS_PEUCKER_TOLERANCE_M = 15;
 const MAX_GAP_BETWEEN_PINGS_MS = 15 * 60 * 1000;
-const MAX_PINGS_PER_AGENCY = 150000; // aumentado de 25k para cubrir todas las líneas activas
+const MAX_PINGS_PER_AGENCY = 50000; // aumentado de 25k (150k causó timeout en CUTCSA)
 const BATCH_SIZE = 400;
 
 const AGENCY_NAMES: Record<string, string> = {
