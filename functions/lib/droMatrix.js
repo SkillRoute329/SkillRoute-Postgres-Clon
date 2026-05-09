@@ -190,7 +190,7 @@ function countCoveredSamples(samplesA, pointsB) {
 }
 // ─── Orquestación ──────────────────────────────────────────────────────────
 async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
-    var _a, _b;
+    var _a, _b, _c;
     const t0 = Date.now();
     const snap = await db.collection(SHAPES_COLLECTION).get();
     const shapes = [];
@@ -198,30 +198,29 @@ async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
         const d = doc.data();
         if (!Array.isArray(d.points) || d.points.length < 2)
             continue;
-        // Usar solo shapes de shapeReconstruction — identificables porque persisten
-        // campo 'key' explícito en docData y tienen agencyId correcto (10/20/50/70).
-        // gtfsImporter NO persiste 'key' y usa agencyId="0" porque el GTFS de la IMM
-        // usa códigos de agencia distintos al mapa interno → pares DRO inútiles.
-        if (typeof d.key !== 'string')
+        // Usar shapes con agencyId conocido (10/20/50/70).
+        // Incluye: shapeReconstruction (campo key presente), shapeBuilder (sin campo key, doc.id=70_300_0),
+        // gtfsImporter docs con agencyId resuelto vía lineaAgencyMap (minoría, ej 70_300_IDA).
+        // Excluye: gtfsImporter docs con agencyId="0" (GTFS usa códigos distintos al mapa interno).
+        if (!['10', '20', '50', '70'].includes(String((_a = d.agencyId) !== null && _a !== void 0 ? _a : '')))
             continue;
-        if (!['10', '20', '50', '70'].includes(d.agencyId))
-            continue;
-        // Normalizar: shapeReconstruction guarda {lat, lon} — already correct; gtfsImporter usa lng
+        // Normalizar: shapeReconstruction guarda {lat, lon}; shapeBuilder y gtfsImporter usan {lat, lng}
         const pts = d.points.map(p => { var _a, _b; return ({ lat: p.lat, lon: (_b = (_a = p.lon) !== null && _a !== void 0 ? _a : p.lng) !== null && _b !== void 0 ? _b : 0 }); });
-        const shapeKey = d.key;
+        // Usar campo key explícito si existe (shapeReconstruction); sino doc.id (shapeBuilder/gtfsImporter)
+        const shapeKey = (typeof d.key === 'string') ? d.key : doc.id;
         if (!d.sentido || !d.linea)
             continue;
         shapes.push({
             key: shapeKey,
             agencyId: d.agencyId,
-            empresa: (_a = d.empresa) !== null && _a !== void 0 ? _a : '',
+            empresa: (_b = d.empresa) !== null && _b !== void 0 ? _b : '',
             linea: d.linea,
             sentido: d.sentido,
             points: pts,
-            lengthMeters: (_b = d.lengthMeters) !== null && _b !== void 0 ? _b : 0,
+            lengthMeters: (_c = d.lengthMeters) !== null && _c !== void 0 ? _c : 0,
         });
     }
-    console.log(`[droMatrix] shapes shapeReconstruction con agencyId conocido: ${shapes.length}`);
+    console.log(`[droMatrix] shapes con agencyId conocido (todas fuentes): ${shapes.length}`);
     // Pre-resamplear todas las shapes una vez (evita recalcular n veces).
     const resampled = new Map();
     for (const s of shapes) {
