@@ -54,7 +54,8 @@ const CorridorMarketShare = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const snap = await getDocs(query(collection(db, 'corridor_overlap'), limit(5000)));
+        // 10k cubre los ~8k pares actuales; limit(5000) cortaba los pares "70-..." de UCOT
+        const snap = await getDocs(query(collection(db, 'corridor_overlap'), limit(10000)));
         setDocs(snap.docs.map(d => d.data() as OverlapDoc));
       } catch (err) {
         console.error('corridor_overlap load error:', err);
@@ -270,8 +271,8 @@ const CorridorMarketShare = () => {
                 {OPERADORES.map(opB => {
                   if (opA.agencyId === opB.agencyId) {
                     const intraKm = docs
-                      .filter(d => d.agencyA === opA.agencyId && d.sameEmpresa)
-                      .reduce((s, d) => s + d.sharedKm, 0);
+                      .filter(d => (d.agencyA === opA.agencyId || d.agencyB === opA.agencyId) && d.sameEmpresa)
+                      .reduce((s, d) => s + d.sharedKm / 2, 0); // /2 para no duplicar A↔B
                     return (
                       <td key={opB.agencyId} className="py-3 px-4 text-center">
                         {intraKm > 0

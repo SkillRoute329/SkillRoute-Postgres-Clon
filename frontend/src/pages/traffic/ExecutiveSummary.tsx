@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, query, limit } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import {
   TrendingUp,
@@ -106,9 +106,19 @@ export default function ExecutiveSummary() {
     setLoading(true);
     setError(null);
     try {
-      const snap = await getDocs(query(collection(db, 'corridor_overlap'), limit(5000)));
-      const docs: OverlapDoc[] = snap.docs.map((d) => d.data() as OverlapDoc);
-      setOverlaps(docs);
+      // Dos queries paralelas por agencyId — evita que limit(5000) corte los pares
+      // "70-..." (UCOT como agencyA) que caen al final del sort por doc ID.
+      // Sin este fix: 0 pares como agencyA → balance "0% gané / 100% perdido".
+      const [snapA, snapB] = await Promise.all([
+        getDocs(query(collection(db, 'corridor_overlap'), where('agencyA', '==', myAgencyId))),
+        getDocs(query(collection(db, 'corridor_overlap'), where('agencyB', '==', myAgencyId))),
+      ]);
+      const dedup = new Map<string, OverlapDoc>();
+      [...snapA.docs, ...snapB.docs].forEach((d) => {
+        const o = d.data() as OverlapDoc;
+        if (!dedup.has(o.key)) dedup.set(o.key, o);
+      });
+      setOverlaps(Array.from(dedup.values()));
       setLastRefresh(new Date());
     } catch (e) {
       setError('No se pudo cargar la colección corridor_overlap.');
@@ -187,9 +197,11 @@ export default function ExecutiveSummary() {
         : 0;
 
       // Ganado = propio cubre más al rival que el rival lo cubre a mí
+      // Mirror debe coincidir en líneas Y en sentido (IDA vs IDA, VUELTA vs VUELTA)
       const ganados = asA.filter((o) => {
         const mirror = asB.find(
-          (b) => b.lineaA === o.lineaB && b.lineaB === o.lineaA,
+          (b) => b.lineaA === o.lineaB && b.lineaB === o.lineaA &&
+                 b.sentidoA === o.sentidoB && b.sentidoB === o.sentidoA,
         );
         const rivalDro = mirror ? mirror.pctAInB : 0;
         return o.pctAInB > rivalDro;
@@ -197,7 +209,8 @@ export default function ExecutiveSummary() {
 
       const perdidos = asA.filter((o) => {
         const mirror = asB.find(
-          (b) => b.lineaA === o.lineaB && b.lineaB === o.lineaA,
+          (b) => b.lineaA === o.lineaB && b.lineaB === o.lineaA &&
+                 b.sentidoA === o.sentidoB && b.sentidoB === o.sentidoA,
         );
         const rivalDro = mirror ? mirror.pctAInB : 0;
         return o.pctAInB < rivalDro;
