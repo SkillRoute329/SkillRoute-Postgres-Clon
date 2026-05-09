@@ -38,7 +38,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.auditLogQuery = exports.auditLogServiceMatrices = exports.auditLogServiceDefinitions = exports.auditLogReglasRotacion = exports.auditLogUsers = exports.auditLogVehiculos = exports.auditLogVehicles = exports.auditLogLineas = exports.auditLogLineasUcot = exports.auditLogParametrosOperativosHistorial = exports.auditLogParametrosOperativos = exports.computeServiceDeliveryCron = exports.computeServiceDeliveryNow = exports.penetrationHistoric = exports.computePenetrationCron = exports.computePenetrationNow = exports.computeAdherenceCron = exports.computeAdherenceNow = exports.refreshAllStmHorariosTick = exports.refreshAllStmHorariosNow = exports.autoStatsCollectorNow = exports.autoStatsCollectorTick = exports.refreshCompetidoresNow = exports.refreshCompetidoresTick = exports.refreshHorariosUcotNow = exports.refreshHorariosUcotTick = exports.intelligenceApi = exports.stmHorariosProxy = exports.parseBulkTicketsStorage = exports.stmOnlineProxy = exports.testIngestaIMM = exports.ingestaIMMTick = exports.onAlertaRegulacion = exports.limpiarPingsRivales = exports.rivalPingIngestion = exports.shadowDispatcherTick = exports.alertaSoCBajo = exports.alertasVencimientosDocumentales = exports.expirarDesvios = exports.gpsWebhookV2 = exports.gpsWebhook = exports.discoverVariants = exports.syncVariantRoutes = exports.geoserverProxy = exports.seedUCOTData = exports.syncParadasSTMCron = exports.syncParadasSTM = exports.syncUCOTLinesCron = exports.syncUCOTLines = exports.montevideoProxy = void 0;
 exports.onVehicleStatusChanged = exports.onShiftAssigned = exports.onAbsenceCreated = exports.consequencePreview = exports.etapaStatsTick = exports.vehicleStatsTick = exports.conductorStatsTick = exports.seatKmSnapshotQuery = exports.seatKmCalculatorNow = exports.seatKmCalculatorCron = exports.hrrData = exports.hrrQueryNow = exports.hrrTick = exports.computeOtpNow = exports.otpTick = exports.gtfsDebug = exports.gtfsImportRun = exports.gtfsImportTick = exports.immBusesLive = exports.immParadasList = exports.refreshParadasTick = exports.seedParadas = exports.immEta = exports.seedVariantes = exports.refreshVariantesTick = exports.immAuthorize = exports.immOAuthCallback = exports.complianceAlertsTick = exports.shapeBuilderRun = exports.shapeBuilderTick = exports.gpsHistoryAccumulatorTick = exports.netexEndpoint = exports.systemHealth = exports.siriRealtime = exports.gtfsStatic = exports.regulatorio = exports.refreshGtfsRtAlerts = exports.gtfsRealtime = exports.onIncidenciaCreated = exports.acknowledgeAlerta = exports.onAlertaCreated = exports.historicBunching = exports.historicOtp = exports.recomputeDroMatrixNow = exports.droMatrixTick = exports.reconstructShapesNow = exports.reconstructShapesTick = exports.listVehicleArchives = exports.archiveVehicleEventsNow = exports.archiveVehicleEventsTick = void 0;
-exports.onOTPUpdated = void 0;
+exports.adminDataSwap = exports.aggregationEngineNow = exports.aggregationEngineCron = exports.onOTPUpdated = void 0;
 const functions = __importStar(require("firebase-functions/v1"));
 const admin = __importStar(require("firebase-admin"));
 const axios_1 = __importDefault(require("axios"));
@@ -891,3 +891,15 @@ Object.defineProperty(exports, "onAbsenceCreated", { enumerable: true, get: func
 Object.defineProperty(exports, "onShiftAssigned", { enumerable: true, get: function () { return consequenceTriggers_1.onShiftAssigned; } });
 Object.defineProperty(exports, "onVehicleStatusChanged", { enumerable: true, get: function () { return consequenceTriggers_1.onVehicleStatusChanged; } });
 Object.defineProperty(exports, "onOTPUpdated", { enumerable: true, get: function () { return consequenceTriggers_1.onOTPUpdated; } });
+// ─── Aggregation Engine — compliance_aggregates (Sprint 2) ───────────────────
+// Cron 03:00 UY diario: lee vehicle_events_v2, calcula 12 métricas por
+// (agencyId, linea, sentido, día), escribe compliance_aggregates.
+// HTTP manual: aggregationEngineNow?date=YYYY-MM-DD
+var aggregation_1 = require("./aggregation");
+Object.defineProperty(exports, "aggregationEngineCron", { enumerable: true, get: function () { return aggregation_1.aggregationEngineCron; } });
+Object.defineProperty(exports, "aggregationEngineNow", { enumerable: true, get: function () { return aggregation_1.aggregationEngineNow; } });
+// ─── Admin Data Swap — temporal Sprint 3.5 ───────────────────────────────────
+// Backup vehicle_events → legacy + swap vehicle_events_v2 → vehicle_events.
+// ELIMINAR después de verificar Sprint 3.5.
+var adminDataSwap_1 = require("./adminDataSwap");
+Object.defineProperty(exports, "adminDataSwap", { enumerable: true, get: function () { return adminDataSwap_1.adminDataSwap; } });

@@ -46,6 +46,7 @@ const ucotPortal_1 = require("./api/ucotPortal");
 const cartonesConsulta_1 = require("./api/cartonesConsulta");
 const listero_1 = require("./api/listero");
 const adminSeeds_1 = require("./api/adminSeeds");
+const complianceRegulador_1 = require("./api/complianceRegulador");
 const autoStatsCollector_1 = require("./autoStatsCollector");
 const app = express();
 app.use(cors({ origin: true }));
@@ -54,6 +55,7 @@ app.use(cors({ origin: true }));
 (0, cartonesConsulta_1.registerCartonesConsultaRoutes)(app);
 (0, listero_1.registerListeroRoutes)(app);
 (0, adminSeeds_1.registerAdminSeedRoutes)(app);
+(0, complianceRegulador_1.registerComplianceReguladorRoutes)(app);
 // Acceso diferido a Firestore para evitar errores de inicialización top-level
 const getDb = () => admin.firestore();
 let fleetCache = null;

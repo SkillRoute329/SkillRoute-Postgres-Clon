@@ -69,7 +69,7 @@ const db = admin.firestore();
 // ─── Constantes ────────────────────────────────────────────────────────────
 const SHAPES_COLLECTION = 'shapes_cross_operator';
 const OVERLAP_COLLECTION = 'corridor_overlap';
-const RESAMPLE_INTERVAL_M = 50;
+const RESAMPLE_INTERVAL_M = 200; // 50→200: inner loop O(n²) con 290 shapes → timeout 540s; 200m = 5-10x menos ops, preciso para threshold 35m
 const MAX_LATERAL_M = 35;
 const MAX_BEARING_DIFF_DEG = 60;
 const MIN_OVERLAP_PCT = 5;
@@ -99,14 +99,15 @@ function bearingDiff(a, b) {
     const d = Math.abs(a - b) % 360;
     return d > 180 ? 360 - d : d;
 }
-/** Distancia perpendicular punto→segmento en metros (equirectangular local). */
-function perpDistM(p, a, b) {
-    const latRef = ((a.lat + b.lat + p.lat) / 3) * (Math.PI / 180);
+/** Distancia perpendicular punto→segmento en metros (equirectangular local).
+ *  Toma lat/lon como scalars para evitar alocación de objeto en el inner loop. */
+function perpDistM(pLat, pLon, a, b) {
+    const latRef = ((a.lat + b.lat + pLat) / 3) * (Math.PI / 180);
     const sx = 111320 * Math.cos(latRef);
     const sy = 111320;
     const ax = a.lon * sx, ay = a.lat * sy;
     const bx = b.lon * sx, by = b.lat * sy;
-    const px = p.lon * sx, py = p.lat * sy;
+    const px = pLon * sx, py = pLat * sy;
     const dx = bx - ax, dy = by - ay;
     const lenSq = dx * dx + dy * dy;
     if (lenSq === 0)
@@ -114,6 +115,14 @@ function perpDistM(p, a, b) {
     const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
     const cx = ax + t * dx, cy = ay + t * dy;
     return Math.hypot(px - cx, py - cy);
+}
+/** Convierte puntos de B en segmentos con bearing precomputado (una vez por shape, no por par). */
+function makeSegsB(pts) {
+    const segs = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+        segs.push({ a: pts[i], b: pts[i + 1], bearing: bearingDeg(pts[i], pts[i + 1]) });
+    }
+    return segs;
 }
 // ─── Resampleo ─────────────────────────────────────────────────────────────
 /**
@@ -162,22 +171,21 @@ function resamplePolyline(points, intervalM) {
  *   (b) |bearingA − bearingB| ≤ MAX_BEARING_DIFF_DEG (mismo sentido)
  * Retorna cuántas muestras de A pasaron ambos filtros.
  */
-function countCoveredSamples(samplesA, pointsB) {
-    if (samplesA.length === 0 || pointsB.length < 2)
+/** Acepta SegB[] (con bearing precomputado) para eliminar trig del inner loop. */
+function countCoveredSamples(samplesA, segsB) {
+    if (samplesA.length === 0 || segsB.length === 0)
         return 0;
     let covered = 0;
     for (const sa of samplesA) {
         let bestDist = Infinity;
         let bestBearing = 0;
-        for (let i = 0; i < pointsB.length - 1; i++) {
-            const segA = pointsB[i];
-            const segB = pointsB[i + 1];
-            const d = perpDistM({ lat: sa.lat, lon: sa.lon }, segA, segB);
+        for (const seg of segsB) {
+            const d = perpDistM(sa.lat, sa.lon, seg.a, seg.b); // sin alocación de objeto
             if (d < bestDist) {
                 bestDist = d;
-                bestBearing = bearingDeg(segA, segB);
+                bestBearing = seg.bearing; // precomputado: sin trig en inner loop
                 if (bestDist < 1)
-                    break; // ya es casi coincidente
+                    break;
             }
         }
         if (bestDist > MAX_LATERAL_M)
@@ -190,7 +198,7 @@ function countCoveredSamples(samplesA, pointsB) {
 }
 // ─── Orquestación ──────────────────────────────────────────────────────────
 async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
-    var _a, _b;
+    var _a, _b, _c, _d;
     const t0 = Date.now();
     // Filtrar en Firestore — solo agencias conocidas. Evita leer los ~1400 docs agencyId=0
     // de gtfsImporter que no aportan al DRO cross-operador (usa códigos GTFS distintos).
@@ -239,10 +247,22 @@ async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
     for (const s of dedupedShapes) {
         resampled.set(s.key, resamplePolyline(s.points, RESAMPLE_INTERVAL_M));
     }
+    // Pre-calcular versión Point[] de cada shape resampleada, usada como B en el inner loop.
+    // CRÍTICO: usar raw b.points (500-1000 pts) causaba 6B ops y timeout 540s.
+    // Con resampled B (~40 pts a 200m interval): 30x speedup por par.
+    const resampledPts = new Map();
+    for (const [key, samples] of resampled.entries()) {
+        resampledPts.set(key, samples.map(s => ({ lat: s.lat, lon: s.lon })));
+    }
+    // Precomputar segmentos con bearing para cada shape B (una vez, no por par).
+    // Elimina trig (sin/cos/atan2) del inner loop — queda solo perpDistM (operaciones lineales).
+    const segsMap = new Map();
+    for (const s of dedupedShapes) {
+        segsMap.set(s.key, makeSegsB((_c = resampledPts.get(s.key)) !== null && _c !== void 0 ? _c : []));
+    }
     // Pre-calcular bounding boxes para pre-filtro O(1) por par.
-    // Margen de 0.1° ≈ 11km — si los bounding boxes no se solapan con ese margen,
-    // no puede haber overlap ≥ MIN_OVERLAP_PCT (rutas de Mvd son <30km).
-    const BBOX_MARGIN = 0.1; // grados
+    // Margen 0.02° ≈ 2.2km (antes 0.1°=11km que no eliminaba nada en Montevideo).
+    const BBOX_MARGIN = 0.02; // grados
     const bboxes = new Map();
     for (const s of dedupedShapes) {
         const lats = s.points.map(p => p.lat);
@@ -276,7 +296,7 @@ async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
                 continue;
             }
             pairsEvaluated++;
-            const covered = countCoveredSamples(samplesA, b.points);
+            const covered = countCoveredSamples(samplesA, (_d = segsMap.get(b.key)) !== null && _d !== void 0 ? _d : []);
             if (covered === 0)
                 continue;
             const pctAInB = (covered / samplesA.length) * 100;
