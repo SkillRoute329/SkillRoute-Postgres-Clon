@@ -20,6 +20,25 @@ export const aggregationEngineCron = functions
     return null;
   });
 
+// Cron intra-día 15:00 UY (= 18:00 UTC) — procesa el día actual con datos parciales.
+// PATTERN-001: el cron nocturno solo procesa ayer; este cierra el gap durante el día.
+export const aggregationEngineMidDayCron = functions
+  .runWith({ timeoutSeconds: 540, memory: '1GB' })
+  .pubsub.schedule('0 18 * * *')
+  .timeZone('UTC')
+  .onRun(async () => {
+    const uyNow = new Date(Date.now() - 3 * 3600000);
+    const today = uyNow.toISOString().slice(0, 10);
+    try {
+      const result = await runAggregation(today);
+      console.log('[AggregationEngine] MidDay completado:', JSON.stringify(result));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[AggregationEngine] MidDay error:', msg);
+    }
+    return null;
+  });
+
 // HTTP trigger para ejecución manual / testing
 export const aggregationEngineNow = functions
   .runWith({ timeoutSeconds: 540, memory: '1GB' })

@@ -967,7 +967,7 @@ export {
 // Cron 03:00 UY diario: lee vehicle_events_v2, calcula 12 métricas por
 // (agencyId, linea, sentido, día), escribe compliance_aggregates.
 // HTTP manual: aggregationEngineNow?date=YYYY-MM-DD
-export { aggregationEngineCron, aggregationEngineNow } from './aggregation';
+export { aggregationEngineCron, aggregationEngineMidDayCron, aggregationEngineNow } from './aggregation';
 
 // ─── Admin Data Swap — temporal Sprint 3.5 ───────────────────────────────────
 // Backup vehicle_events → legacy + swap vehicle_events_v2 → vehicle_events.

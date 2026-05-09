@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.aggregationEngineNow = exports.aggregationEngineCron = void 0;
+exports.aggregationEngineNow = exports.aggregationEngineMidDayCron = exports.aggregationEngineCron = void 0;
 // Export del trigger Cloud Scheduler para aggregation-engine
 // SPEC_CUMPLIMIENTO_V2_BACKEND_2026_05.md §3.1
 const functions = __importStar(require("firebase-functions/v1"));
@@ -52,6 +52,25 @@ exports.aggregationEngineCron = functions
     catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error('[AggregationEngine] Error fatal:', msg);
+    }
+    return null;
+});
+// Cron intra-día 15:00 UY (= 18:00 UTC) — procesa el día actual con datos parciales.
+// PATTERN-001: el cron nocturno solo procesa ayer; este cierra el gap durante el día.
+exports.aggregationEngineMidDayCron = functions
+    .runWith({ timeoutSeconds: 540, memory: '1GB' })
+    .pubsub.schedule('0 18 * * *')
+    .timeZone('UTC')
+    .onRun(async () => {
+    const uyNow = new Date(Date.now() - 3 * 3600000);
+    const today = uyNow.toISOString().slice(0, 10);
+    try {
+        const result = await (0, aggregationEngine_1.runAggregation)(today);
+        console.log('[AggregationEngine] MidDay completado:', JSON.stringify(result));
+    }
+    catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[AggregationEngine] MidDay error:', msg);
     }
     return null;
 });
