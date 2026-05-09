@@ -190,34 +190,34 @@ function countCoveredSamples(samplesA, pointsB) {
 }
 // ─── Orquestación ──────────────────────────────────────────────────────────
 async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
-    var _a, _b, _c;
+    var _a, _b;
     const t0 = Date.now();
-    const snap = await db.collection(SHAPES_COLLECTION).get();
+    // Filtrar en Firestore — solo agencias conocidas. Evita leer los ~1400 docs agencyId=0
+    // de gtfsImporter que no aportan al DRO cross-operador (usa códigos GTFS distintos).
+    // Requiere índice en agencyId (campo simple — no necesita compuesto).
+    const KNOWN_AGENCIES = ['10', '20', '50', '70'];
+    const snap = await db.collection(SHAPES_COLLECTION)
+        .where('agencyId', 'in', KNOWN_AGENCIES)
+        .get();
     const shapes = [];
     for (const doc of snap.docs) {
         const d = doc.data();
         if (!Array.isArray(d.points) || d.points.length < 2)
             continue;
-        // Usar shapes con agencyId conocido (10/20/50/70).
-        // Incluye: shapeReconstruction (campo key presente), shapeBuilder (sin campo key, doc.id=70_300_0),
-        // gtfsImporter docs con agencyId resuelto vía lineaAgencyMap (minoría, ej 70_300_IDA).
-        // Excluye: gtfsImporter docs con agencyId="0" (GTFS usa códigos distintos al mapa interno).
-        if (!['10', '20', '50', '70'].includes(String((_a = d.agencyId) !== null && _a !== void 0 ? _a : '')))
+        if (!d.sentido || !d.linea)
             continue;
         // Normalizar: shapeReconstruction guarda {lat, lon}; shapeBuilder y gtfsImporter usan {lat, lng}
         const pts = d.points.map(p => { var _a, _b; return ({ lat: p.lat, lon: (_b = (_a = p.lon) !== null && _a !== void 0 ? _a : p.lng) !== null && _b !== void 0 ? _b : 0 }); });
         // Usar campo key explícito si existe (shapeReconstruction); sino doc.id (shapeBuilder/gtfsImporter)
         const shapeKey = (typeof d.key === 'string') ? d.key : doc.id;
-        if (!d.sentido || !d.linea)
-            continue;
         shapes.push({
             key: shapeKey,
             agencyId: d.agencyId,
-            empresa: (_b = d.empresa) !== null && _b !== void 0 ? _b : '',
+            empresa: (_a = d.empresa) !== null && _a !== void 0 ? _a : '',
             linea: d.linea,
             sentido: d.sentido,
             points: pts,
-            lengthMeters: (_c = d.lengthMeters) !== null && _c !== void 0 ? _c : 0,
+            lengthMeters: (_b = d.lengthMeters) !== null && _b !== void 0 ? _b : 0,
         });
     }
     console.log(`[droMatrix] shapes pre-dedup: ${shapes.length}`);
