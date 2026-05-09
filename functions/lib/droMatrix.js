@@ -220,19 +220,32 @@ async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
             lengthMeters: (_c = d.lengthMeters) !== null && _c !== void 0 ? _c : 0,
         });
     }
-    console.log(`[droMatrix] shapes con agencyId conocido (todas fuentes): ${shapes.length}`);
-    // Pre-resamplear todas las shapes una vez (evita recalcular n veces).
-    const resampled = new Map();
+    console.log(`[droMatrix] shapes pre-dedup: ${shapes.length}`);
+    // Dedup de shapes: mantener UNA por (agencyId, linea, sentido) — la de mayor lengthMeters
+    // (mejor cobertura de recorrido). Sin esto, múltiples variantes y fuentes generan
+    // N² pares por par lógico y el cálculo supera el timeout 540s.
+    const shapeDedup = new Map();
     for (const s of shapes) {
+        const logKey = `${s.agencyId}|${s.linea}|${s.sentido}`;
+        const existing = shapeDedup.get(logKey);
+        if (!existing || s.lengthMeters > existing.lengthMeters) {
+            shapeDedup.set(logKey, s);
+        }
+    }
+    const dedupedShapes = Array.from(shapeDedup.values());
+    console.log(`[droMatrix] shapes post-dedup (una por linea-sentido): ${dedupedShapes.length}`);
+    // Pre-resamplear todas las shapes deduplicadas una vez (evita recalcular n veces).
+    const resampled = new Map();
+    for (const s of dedupedShapes) {
         resampled.set(s.key, resamplePolyline(s.points, RESAMPLE_INTERVAL_M));
     }
     const overlaps = [];
     let pairsEvaluated = 0;
-    for (const a of shapes) {
+    for (const a of dedupedShapes) {
         const samplesA = resampled.get(a.key);
         if (samplesA.length === 0)
             continue;
-        for (const b of shapes) {
+        for (const b of dedupedShapes) {
             if (a.key === b.key)
                 continue;
             // DIRECTRIZ: nunca comparar IDA vs VUELTA — no son competencia aunque compartan calle
@@ -282,7 +295,7 @@ async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
     // Guard: si el cálculo producjo 0 pares, algo salió mal — no borrar colección
     if (dedupedOverlaps.length === 0) {
         console.warn('[droMatrix] 0 pares deduplicados — abortando para no borrar colección existente');
-        return { shapesRead: shapes.length, pairsEvaluated, pairsWritten: 0, durationMs: Date.now() - t0, topOverlaps: [] };
+        return { shapesRead: dedupedShapes.length, pairsEvaluated, pairsWritten: 0, durationMs: Date.now() - t0, topOverlaps: [] };
     }
     // Limpiar docs previos (claves con variante del build anterior)
     const existingSnap = await db.collection(OVERLAP_COLLECTION).get();
@@ -324,7 +337,7 @@ async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
     const durationMs = Date.now() - t0;
     console.log(`[droMatrix] written=${dedupedOverlaps.length} evaluated=${pairsEvaluated} durationMs=${durationMs}`);
     return {
-        shapesRead: shapes.length,
+        shapesRead: dedupedShapes.length,
         pairsEvaluated,
         pairsWritten: dedupedOverlaps.length,
         durationMs,
