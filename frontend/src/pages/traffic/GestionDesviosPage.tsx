@@ -223,11 +223,11 @@ const GestionDesviosPage = () => {
           <p className="text-xs text-slate-500 mt-1">alertas enviadas al conductor</p>
         </div>
         <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-4">
-          <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Tasa de ACK</p>
-          <p className={`text-3xl font-black ${ackRate >= 70 ? 'text-emerald-400' : ackRate >= 40 ? 'text-amber-400' : 'text-red-400'}`}>
-            {ackRate}%
+          <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Confirmación de recibo</p>
+          <p className="text-lg font-bold text-slate-500 mt-1">Pendiente</p>
+          <p className="text-xs text-slate-600 mt-1" title="La confirmación de recibo requiere integración con la app móvil del conductor (APK SkillRoute). Disponible en la siguiente versión.">
+            Integración móvil en desarrollo
           </p>
-          <p className="text-xs text-slate-500 mt-1">conductores que confirmaron recibo</p>
         </div>
       </div>
 

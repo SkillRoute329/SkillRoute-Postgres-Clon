@@ -198,9 +198,16 @@ export default function FlotaInteligente() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${OTP_BG(otp)} ${OTP_COLOR(otp)}`}>
-                          {otp}%
-                        </span>
+                        {v.pctSinHorario > 80 ? (
+                          <span className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-slate-700/60 text-slate-500"
+                            title="Sin referencia horaria GTFS para calcular OTP">
+                            Sin ref.
+                          </span>
+                        ) : (
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${OTP_BG(otp)} ${OTP_COLOR(otp)}`}>
+                            {otp}%
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className="flex items-center justify-end gap-1 text-slate-300">

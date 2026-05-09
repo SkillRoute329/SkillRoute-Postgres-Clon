@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense } from 'react';
-import { Users, Route, RefreshCw } from 'lucide-react';
+import { Users, Route, RefreshCw, Info } from 'lucide-react';
 
 const TerminalListero  = lazy(() => import('./TerminalListero'));
 const ListeroModule    = lazy(() => import('./ListeroModule'));
@@ -38,6 +38,18 @@ export default function ListeroHub() {
             );
           })}
         </div>
+      </div>
+      {/* Banner de transparencia — modelo operativo en desarrollo */}
+      <div
+        className="bg-slate-800/60 border-b border-slate-700/60 text-slate-400 text-xs px-6 py-2.5 flex items-start gap-2.5"
+        title="Estamos modelando la operativa real UCOT (turnos 1°/2°/3°/nocturno, rotación correlativa de servicios, paralización IMM). El detalle del rediseño está en el documento referenciado."
+      >
+        <Info className="w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-500" />
+        <span>
+          Vista del día actual. La rotación semanal de turnos y la matriz de coches × conductores fijos están en el módulo de{' '}
+          <span className="text-slate-300 font-medium">Listero Operativo</span>{' '}
+          (en desarrollo).
+        </span>
       </div>
       <div className="flex-1">
         <Suspense fallback={<Loader />}>
