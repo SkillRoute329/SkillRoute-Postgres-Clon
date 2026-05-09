@@ -239,18 +239,42 @@ async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
     for (const s of dedupedShapes) {
         resampled.set(s.key, resamplePolyline(s.points, RESAMPLE_INTERVAL_M));
     }
+    // Pre-calcular bounding boxes para pre-filtro O(1) por par.
+    // Margen de 0.1° ≈ 11km — si los bounding boxes no se solapan con ese margen,
+    // no puede haber overlap ≥ MIN_OVERLAP_PCT (rutas de Mvd son <30km).
+    const BBOX_MARGIN = 0.1; // grados
+    const bboxes = new Map();
+    for (const s of dedupedShapes) {
+        const lats = s.points.map(p => p.lat);
+        const lons = s.points.map(p => p.lon);
+        bboxes.set(s.key, {
+            minLat: Math.min(...lats) - BBOX_MARGIN,
+            maxLat: Math.max(...lats) + BBOX_MARGIN,
+            minLon: Math.min(...lons) - BBOX_MARGIN,
+            maxLon: Math.max(...lons) + BBOX_MARGIN,
+        });
+    }
     const overlaps = [];
     let pairsEvaluated = 0;
+    let pairsSkippedBbox = 0;
     for (const a of dedupedShapes) {
         const samplesA = resampled.get(a.key);
         if (samplesA.length === 0)
             continue;
+        const bboxA = bboxes.get(a.key);
         for (const b of dedupedShapes) {
             if (a.key === b.key)
                 continue;
             // DIRECTRIZ: nunca comparar IDA vs VUELTA — no son competencia aunque compartan calle
             if (a.sentido !== b.sentido)
                 continue;
+            // Pre-filtro bounding box: si no hay solapamiento geográfico posible, skip O(1)
+            const bboxB = bboxes.get(b.key);
+            if (bboxA.maxLat < bboxB.minLat || bboxA.minLat > bboxB.maxLat ||
+                bboxA.maxLon < bboxB.minLon || bboxA.minLon > bboxB.maxLon) {
+                pairsSkippedBbox++;
+                continue;
+            }
             pairsEvaluated++;
             const covered = countCoveredSamples(samplesA, b.points);
             if (covered === 0)
@@ -335,7 +359,7 @@ async function computeDroMatrix(minOverlapPct = MIN_OVERLAP_PCT) {
         .slice(0, 10)
         .map(o => ({ keyA: o.shapeAKey, keyB: o.shapeBKey, pctAInB: o.pctAInB, sharedKm: o.sharedKm }));
     const durationMs = Date.now() - t0;
-    console.log(`[droMatrix] written=${dedupedOverlaps.length} evaluated=${pairsEvaluated} durationMs=${durationMs}`);
+    console.log(`[droMatrix] written=${dedupedOverlaps.length} evaluated=${pairsEvaluated} bbox_skipped=${pairsSkippedBbox} durationMs=${durationMs}`);
     return {
         shapesRead: dedupedShapes.length,
         pairsEvaluated,
