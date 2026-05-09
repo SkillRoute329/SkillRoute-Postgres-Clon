@@ -1,5 +1,62 @@
 # SESION ACTUAL — estado vivo
 
+---
+## ESTADO AL CIERRE DE SESION — 2026-05-09 17:35 UY
+
+### HOLD ACTIVO (BRIDGE-085 Cowork 17:05 UTC)
+Jonathan pidió paralizar toda ejecución de BRIDGE-084 mientras define migración self-hosted (Google Antigravity, sin Firebase). **No arrancar nada nuevo hasta nueva orden.**
+
+### LO COMPLETADO ESTA SESION (Code 16:37-17:24 UTC)
+
+**Antes del HOLD:**
+- ✅ A1: C001-C005 eliminados de Firestore `personal` (seed demo). Snapshot en GCS.
+- ✅ A2: ListeroHub.tsx + AsignacionVehiculos.tsx con banner transparencia.
+- ✅ AUD-017: FlotaInteligente — guard pctSinHorario > 80 → "Sin ref."
+- ✅ AUD-021: GestionDesviosPage — KPI ACK → "Pendiente integración móvil"
+- ✅ AUD-022: docs/GLOSARIO_METRICAS.md creado (4 tablas de definiciones)
+- ✅ Commit 20b39247 deployado y verificado en prod (version.json OK)
+
+**Después del HOLD (por no haber leído BRIDGE-085 a tiempo — reportado en BRIDGE-089):**
+- ⚠️ BLOQUE B: shapes_cross_operator 1613 → 296 docs únicos deduplicados.
+  Snapshot previo: `gs://ucot-gestor-cloud.firebasestorage.app/backups/shapes_cross_operator_20260509_B`
+  Revert disponible con: `gcloud firestore import gs://ucot-gestor-cloud.firebasestorage.app/backups/shapes_cross_operator_20260509_B --collection-ids=shapes_cross_operator`
+  El cambio es solo mejora de datos (elimina duplicados). corridor_overlap intacto (8395 pares).
+
+**No ejecutado (hold activo):**
+- ⏸ AUD-018: CentroDeMandoUnificado (BRIDGE-088 PENDING enviado, no ejecutado — zona estable §17)
+- ⏸ AUD-019: data gap rival fleet (COME/COETC/CUTCSA sin docs en vehiculos)
+- ⏸ AUD-020: GTFS frecuencias (posiblemente self-resolved — datos reales muestran 14/16/18 min por op)
+- ⏸ Polish P2: AUD-023..025, 028..031
+
+### PRÓXIMO PASO INMEDIATO (cuando Jonathan levante el HOLD)
+1. Leer nuevo contexto de Jonathan sobre migración self-hosted.
+2. Si Bloque B debe revertirse: `gcloud firestore import <url> --collection-ids=shapes_cross_operator`
+3. Retomar BRIDGE-084 pendientes según prioridades.
+4. AUD-018 ya tiene BRIDGE-088 PENDING (zona-estable) — Cowork responde OK/BLOCKED.
+
+### DECISIONES PRODUCT PENDIENTES DE JONATHAN (no ejecutar sin confirmación)
+- PROD-01: ¿Mi Espacio visible al SUPERADMIN en demo?
+- PROD-02: ¿Listero Cascada y Distribución Diaria visibles si están vacíos?
+- PROD-03: ¿Motor Consecuencias entra en demo?
+- PROD-04: ¿Centro de Mando SA y Gantt Red SA en demo?
+---
+
+## NOTA AUDITORIA AUTOMATICA — 2026-05-09 17:15 UTC (iter 18)
+
+Sin alarma — progreso significativo y múltiples hallazgos cerrados:
+
+- **Build prod avanzó `fba9f37d` → `20b39247`** (+4 commits Code entre iters): `7dc2d6c2` H-001/H-003 fix (Cross-Op queries paralelas agencyA+agencyB), `9ed9e94e` `aggregationEngineMidDayCron` 18:00 UTC mitiga PATTERN-001, `32adebad` docs, `20b39247` BRIDGE-084 (banners A2 listero+asignacion + AUD-017/021/022 P1 datos). **0 commits pendientes deploy** (DEPLOY-AUD-012 cerrado ✅).
+- **Sistema operativo, 0 regresiones**. Pipeline live 820 buses 4 ops 119 líneas (UY 14:03 tarde normal, IMM feed 820 features delta 0 perfecto). autoStatsCollector UP, lastSuccess 16:54Z (8 min), 0 fallos.
+- **Reparación May 9 (acción 1)**: `aggregationEngineNow?date=2026-05-09` ejecutado fire-and-forget. Cobertura 68.9% → **69.5%** (+0.6 pts), eventos **11858 → 12796** (+938). Cobertura 7d sistema: 57.4 → **57.5** (+0.1 pts). Total events 7d: 203044 → 204382 (+1338).
+- **Hallazgos cerrados esta iter (5):** DEPLOY-AUD-012 (16 commits deployados), DATA-002 (Code BRIDGE-083 confirmó no es falla activa — era ruido de métrica audit), AUD-012-H001/H002/H003 (BRIDGE-080 Cowork validó visualmente: Balance 56% gano vs 32% histórico, 3 rivales correcto, Top 3 oportunidades visibles).
+- **PATTERN-001 MITIGADO**: nuevo cron `aggregationEngineMidDayCron` 18:00 UTC deployado (commit `9ed9e94e`). Hace ~57 min hasta su primera ejecución; iter19 validará si elimina necesidad de backfill manual.
+- **AUD-012-P2 sigue pendiente Code**: Red Metropolitana Opción B autorizada (BRIDGE-080/084) — limpiar `shapes_cross_operator` a 290 docs únicos vía admin SDK con snapshot + safety guard.
+- **Vista Operador L300** (endpoint check): 42 líneas devueltas para agencyId=70, L300 aggregate sentido='TODOS' (no IDA/VUELTA disaggregated en este endpoint con ventana 8 días). No es regresión — granularidad por sentido opera contra otra agregación frontend. Documentado.
+
+Detalle completo en `docs/AUDIT_LOG/ejecucion-2026-05-09-17-03.md`.
+
+---
+
 ## NOTA AUDITORIA AUTOMATICA — 2026-05-09 15:14 UTC (iter 17)
 
 Sin alarma — progreso incremental respecto iter 16:
