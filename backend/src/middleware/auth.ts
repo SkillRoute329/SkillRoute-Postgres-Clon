@@ -1,40 +1,49 @@
 /**
  * Middleware de autenticación y autorización
+ *
+ * FASE 1 (2026-05-10): Eliminado el ESCAPE BRIDGE a Firebase Admin.
+ * El sistema ahora valida exclusivamente JWT locales firmados con
+ * Config.JWT_SECRET (regla -3 OWASP A07: Auth Failures).
+ *
+ * Si necesitás re-habilitar autenticación Firebase puntualmente, NO la
+ * agregues como fallback aquí — montá un endpoint dedicado /api/auth/import-firebase-token
+ * que migre el user a la tabla `users` y emita un JWT local. Eso mantiene
+ * un único path de autenticación auditable.
  */
 
 import { Response, NextFunction } from 'express';
-import { auth } from '../config/firebase';
 import { AuthRequest, AppError } from '../types/index';
 import { Config } from '../config/constants';
 import logger from '../config/logger';
 
+import { validateToken } from '../services/authService';
+
 /**
- * Verificar que el request tenga un token de Firebase válido
+ * Verificar que el request tenga un JWT local válido.
  */
 export const verifyAuth = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const token = req.headers.authorization?.split(' ')[1];
 
   if (!token) {
-    const error = new AppError(401, 'No token provided (Firebase ID Token required)');
+    const error = new AppError(401, 'No token provided (Local JWT Token required)');
     return res.status(error.statusCode).json({ error: error.message });
   }
 
   try {
-    // Validar criptográficamente el Token de Firebase
-    const decodedToken = await auth.verifyIdToken(token);
-    
-    // Inyectar usuario en el request compatible con la lógica del backend
+    // SOBERANÍA TOTAL: validar localmente la firma del JWT (HS256, sin Firebase, sin internet).
+    const decodedUser = validateToken(token);
+
     req.user = {
-      id: decodedToken.uid,
-      internalNumber: decodedToken.internalNumber || 'unverified',
-      fullName: decodedToken.name || decodedToken.email || 'Firebase User',
-      role: (decodedToken.role as string) || Config.Roles.USER,
+      id: decodedUser.id,
+      internalNumber: decodedUser.internalNumber || decodedUser.id,
+      fullName: decodedUser.fullName || 'Usuario Soberano',
+      role: (decodedUser.role || Config.Roles.USER) as any,
     };
-    
+
     next();
   } catch (err) {
-    logger.error('[AUTH] Invalid Firebase token', { error: String(err) });
-    const error = new AppError(401, 'Invalid or expired Firebase token');
+    logger.warn('[AUTH] Token rechazado', { error: String(err) });
+    const error = new AppError(401, 'Token inválido o caducado');
     return res.status(error.statusCode).json({ error: error.message });
   }
 };

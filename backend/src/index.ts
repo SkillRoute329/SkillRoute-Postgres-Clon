@@ -181,6 +181,34 @@ const server = httpServer.listen(Number(PORT), '0.0.0.0', () => {
   AIService.prewarm('CODER');
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// FASE 1 (2026-05-10): Resiliencia global de errores no atrapados.
+// Sin estos handlers, una unhandledRejection en cualquier controller mata
+// el proceso entero. Los logueamos y seguimos vivos. Esto es CRITICAL para
+// no regresión post-FASE-1, donde tokens válidos ahora pasan al middleware
+// de auth y entran a controllers Firestore que pueden colgarse.
+// ═══════════════════════════════════════════════════════════════════════════
+process.on('unhandledRejection', (reason: unknown, promise) => {
+  logger.error('[UNHANDLED REJECTION] El backend NO se cae, pero hay un bug que arreglar', {
+    reason: reason instanceof Error ? { message: reason.message, stack: reason.stack } : String(reason),
+    promise: String(promise),
+  });
+});
+
+process.on('uncaughtException', (err: Error) => {
+  logger.error('[UNCAUGHT EXCEPTION] El backend NO se cae, pero hay un bug crítico', {
+    message: err.message,
+    stack: err.stack,
+  });
+  // Excepción: errores fatales del runtime sí ameritan exit (después de log).
+  // Pero los errores de async/await en controllers se quedan como rejection,
+  // y esos sí los toleramos arriba.
+  if (err.message && err.message.match(/^(EADDRINUSE|EACCES)/)) {
+    logger.error('[UNCAUGHT EXCEPTION FATAL] error de bind, cerrando');
+    process.exit(1);
+  }
+});
+
 // Graceful shutdown
 process.on('SIGTERM', () => {
   logger.warn('SIGTERM signal received: closing HTTP server');

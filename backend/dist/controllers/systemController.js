@@ -1,20 +1,49 @@
 "use strict";
 /**
  * Controladores para endpoints del sistema
+ * (FASE 0 piloto: vehicleCount migrado de Firestore a Postgres)
  */
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.systemDoctor = systemDoctor;
 exports.healthCheck = healthCheck;
 exports.getVersion = getVersion;
-const firebase_1 = require("../config/firebase");
+const database_1 = __importDefault(require("../config/database"));
+const firebase_1 = require("../config/database");
 const constants_1 = require("../config/constants");
+const logger_1 = __importDefault(require("../config/logger"));
 /**
  * GET /api/doctor - Diagnóstico del sistema
+ *
+ * Política de datos (regla -2 NO SIMULACIÓN):
+ *  - vehicleCount: PostgreSQL local (tabla `vehiculos`) — fuente soberana.
+ *  - cartonCount:  Firestore (`cartones_completados`) — migración pendiente FASE 2;
+ *                  si Firestore es inalcanzable se loggea WARN y se devuelve 0.
+ *
+ * No regresión (regla -1): el shape de la respuesta se mantiene idéntico
+ * al previo a la migración FASE 0 (campos `vehicleCount` y `cartonCount`
+ * dentro de `data.database`).
  */
 async function systemDoctor(_req, res) {
     try {
-        const vehicleCount = (await firebase_1.db.collection(constants_1.Config.Collections.VEHICLES).get()).size;
-        const cartonCount = (await firebase_1.db.collection(constants_1.Config.Collections.CARTONES).get()).size;
+        // Vehículos — Postgres soberano (migrado de Firestore en FASE 0)
+        const vRow = await database_1.default('vehiculos').count({ count: '*' }).first();
+        const vehicleCount = parseInt((vRow && vRow.count) || '0', 10);
+        // Cartones — Firestore (TODO FASE 2). Tolerante a fallos.
+        let cartonCount = 0;
+        try {
+            const snap = await firebase_1.db.collection(constants_1.Config.Collections.CARTONES).get();
+            cartonCount = snap.size;
+        }
+        catch (firebaseErr) {
+            const msg = firebaseErr instanceof Error ? firebaseErr.message : String(firebaseErr);
+            logger_1.default.warn('[doctor] Firestore inalcanzable para cartones, devolviendo 0', {
+                error: msg,
+                action: 'pendiente migración FASE 2 a Postgres',
+            });
+        }
         const response = {
             ok: true,
             data: {
@@ -32,10 +61,14 @@ async function systemDoctor(_req, res) {
         res.json(response);
     }
     catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        const code = error && error.code;
+        logger_1.default.error('[doctor] SICK — Postgres inalcanzable', { error: msg, code });
         const response = {
             ok: false,
             error: 'SICK',
             timestamp: new Date().toISOString(),
+            details: { message: msg, code },
         };
         res.status(500).json(response);
     }
