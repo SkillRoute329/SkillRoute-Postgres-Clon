@@ -1,6 +1,10 @@
 /**
  * cascadeEngineService — Motor de reactividad operativa UCOT
  *
+ * FASE 2.5 (2026-05-10): Migrado de Firestore a PostgreSQL local.
+ * Las alertas se persisten en `alertas_operativas` (schema_fase2.sql) y se
+ * emiten en tiempo real por Socket.io a los clientes conectados.
+ *
  * Cada evento operativo (ausencia conductor, vehículo a taller, gap GPS)
  * dispara una cadena automática:
  *
@@ -9,23 +13,26 @@
  * El largador / inspector reciben la alerta en tiempo real y confirman
  * la acción sugerida. El sistema nunca actúa sin confirmación humana —
  * solo propone y alerta.
+ *
+ * Nota arquitectural:
+ *   - Para reactividad cross-instancia (varios backends detrás de un LB),
+ *     reemplazar emit-socket directo por Postgres LISTEN/NOTIFY o Redis pub/sub.
+ *     Hoy con una sola instancia el emit directo basta.
  */
 
 import { Server } from 'socket.io';
-import * as admin from 'firebase-admin';
-import { db } from '../config/firebase';
+import sqlDb from '../config/database';
 import logger from '../config/logger';
+import { v4 as uuidv4 } from 'uuid';
 import {
   marcarAusencia,
-  asignarReserva,
   marcarVehiculoEnTaller,
   getResumenDiario,
   TurnoDia,
-  ConductorDia,
 } from './listeroService';
 import { fetchBusesLive, EMPRESA_CODES } from './immRealtimeService';
 
-// ─── Tipos de alerta ──────────────────────────────────────────────────────────
+// ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export type TipoAlerta =
   | 'ausencia_conductor'
@@ -52,11 +59,55 @@ export interface AlertaOperativa {
   mensaje: string;
   accionSugerida: string | null;
   datosExtra: Record<string, unknown>;
-  atendida: boolean;
-  atendidaPor: string | null;
-  horaAtendida: string | null;
+  atendida?: boolean;
+  atendidaPor?: string | null;
+  horaAtendida?: string | null;
   impactoIngresosUSD: number | null;
-  createdAt: admin.firestore.Timestamp | null;
+  // FASE 2: Date | null (antes admin.firestore.Timestamp)
+  createdAt: Date | null;
+}
+
+interface AlertaRow {
+  id: string;
+  agency_id: string | null;
+  fecha: string;
+  tipo: TipoAlerta;
+  urgencia: UrgenciaAlerta;
+  linea_id: string | null;
+  conductor_id: string | null;
+  vehiculo_id: string | null;
+  turno_id: string | null;
+  titulo: string;
+  mensaje: string;
+  accion_sugerida: string | null;
+  datos_extra: Record<string, unknown> | null;
+  atendida: boolean;
+  atendida_por: string | null;
+  hora_atendida: string | null;
+  impacto_ingresos_usd: string | number | null;
+  created_at: Date;
+}
+
+function rowToAlerta(r: AlertaRow): AlertaOperativa {
+  return {
+    id: r.id,
+    fecha: typeof r.fecha === 'string' ? r.fecha : (r.fecha as any).toISOString?.().slice(0, 10) ?? r.fecha,
+    tipo: r.tipo,
+    urgencia: r.urgencia,
+    lineaId: r.linea_id,
+    conductorId: r.conductor_id,
+    vehiculoId: r.vehiculo_id,
+    turnoId: r.turno_id,
+    titulo: r.titulo,
+    mensaje: r.mensaje,
+    accionSugerida: r.accion_sugerida,
+    datosExtra: (r.datos_extra ?? {}) as Record<string, unknown>,
+    atendida: r.atendida,
+    atendidaPor: r.atendida_por,
+    horaAtendida: r.hora_atendida,
+    impactoIngresosUSD: r.impacto_ingresos_usd != null ? Number(r.impacto_ingresos_usd) : null,
+    createdAt: r.created_at ?? null,
+  };
 }
 
 // ─── Singleton de la instancia Socket.io ─────────────────────────────────────
@@ -75,25 +126,50 @@ function emitAlerta(alerta: AlertaOperativa): void {
 }
 
 function emitResumenActualizado(resumen: unknown): void {
-  if (_io) {
-    _io.emit('resumen-diario-actualizado', resumen);
-  }
+  if (_io) _io.emit('resumen-diario-actualizado', resumen);
 }
 
 // ─── Crear y persistir alerta ─────────────────────────────────────────────────
 
-async function crearAlerta(alerta: Omit<AlertaOperativa, 'id' | 'createdAt'>): Promise<string> {
-  const ref = db.collection('alertas_operativas').doc();
-  const full: AlertaOperativa = {
-    ...alerta,
-    atendida: false,
-    atendidaPor: null,
-    horaAtendida: null,
-    createdAt: admin.firestore.FieldValue.serverTimestamp() as admin.firestore.Timestamp,
-  };
-  await ref.set(full);
-  emitAlerta({ ...full, id: ref.id });
-  return ref.id;
+async function crearAlerta(
+  alerta: Omit<AlertaOperativa, 'id' | 'createdAt'>,
+): Promise<string> {
+  try {
+    const id = uuidv4();
+    const row = {
+      id,
+      fecha: alerta.fecha,
+      tipo: alerta.tipo,
+      urgencia: alerta.urgencia,
+      linea_id: alerta.lineaId,
+      conductor_id: alerta.conductorId,
+      vehiculo_id: alerta.vehiculoId,
+      turno_id: alerta.turnoId,
+      titulo: alerta.titulo,
+      mensaje: alerta.mensaje,
+      accion_sugerida: alerta.accionSugerida,
+      datos_extra: JSON.stringify(alerta.datosExtra ?? {}),
+      atendida: false,
+      atendida_por: null,
+      hora_atendida: null,
+      impacto_ingresos_usd: alerta.impactoIngresosUSD,
+    };
+    await sqlDb('alertas_operativas').insert(row);
+
+    const persisted: AlertaOperativa = {
+      ...alerta,
+      id,
+      atendida: false,
+      atendidaPor: null,
+      horaAtendida: null,
+      createdAt: new Date(),
+    };
+    emitAlerta(persisted);
+    return id;
+  } catch (error) {
+    logger.error('[CASCADE] Error persistiendo alerta', { error: String(error), tipo: alerta.tipo });
+    throw error;
+  }
 }
 
 // ─── CASCADA 1: Ausencia de conductor ────────────────────────────────────────
@@ -125,7 +201,6 @@ export async function procesarAusenciaConductor(
       importancia >= 5 ? 'critica' : importancia >= 4 ? 'alta' : importancia >= 3 ? 'media' : 'baja';
 
     if (reservasDisponibles.length > 0) {
-      // Hay reserva disponible → alerta MEDIA con sugerencia
       const reserva = reservasDisponibles[0];
       await crearAlerta({
         fecha,
@@ -148,7 +223,6 @@ export async function procesarAusenciaConductor(
         impactoIngresosUSD: turno.impactoIngresosEstimado,
       });
     } else {
-      // Sin reserva → alerta según importancia de la línea
       const esCritica = importancia >= 4;
       await crearAlerta({
         fecha,
@@ -158,7 +232,7 @@ export async function procesarAusenciaConductor(
         conductorId,
         vehiculoId: turno.vehiculoId,
         turnoId: turno.id ?? null,
-        titulo: `${esCritica ? '⚠️ RIESGO IMM' : 'Sin cobertura'} — L${turno.lineaId} ${turno.horaSalida}`,
+        titulo: `${esCritica ? 'RIESGO IMM' : 'Sin cobertura'} — L${turno.lineaId} ${turno.horaSalida}`,
         mensaje: `${conductorNombre} ausente. Coche ${turno.vehiculoInterno} sin conductor para salida ${turno.horaSalida}. Sin reservas disponibles. ${esCritica ? 'Gap de frecuencia probable — riesgo de infracción IMM.' : ''}`,
         accionSugerida: esCritica
           ? 'Contactar al Jefe de Tráfico inmediatamente. Evaluar redistribución de servicios.'
@@ -174,7 +248,6 @@ export async function procesarAusenciaConductor(
     }
   }
 
-  // Verificar si la cobertura total cayó por debajo del umbral crítico (< 80%)
   const resumen = await getResumenDiario(fecha);
   emitResumenActualizado(resumen);
 
@@ -187,7 +260,7 @@ export async function procesarAusenciaConductor(
       conductorId: null,
       vehiculoId: null,
       turnoId: null,
-      titulo: `⚠️ Cobertura de flota crítica: ${resumen.coberturaFlota}%`,
+      titulo: `Cobertura de flota crítica: ${resumen.coberturaFlota}%`,
       mensaje: `La cobertura operativa cayó al ${resumen.coberturaFlota}%. ${resumen.turnosSinConductor} servicios sin cobertura. Impacto estimado: USD ${resumen.impactoIngresosRiesgoUSD}. Líneas en riesgo IMM: ${resumen.lineasEnRiesgoIMM.join(', ') || 'ninguna aún'}.`,
       accionSugerida: 'Reunión urgente con Jefe de Tráfico. Activar protocolo de emergencia operativa.',
       datosExtra: resumen as unknown as Record<string, unknown>,
@@ -219,7 +292,7 @@ export async function procesarVehiculoEnTaller(
     const urgencia: UrgenciaAlerta = importancia >= 4 ? 'alta' : 'media';
 
     if (vehiculosReservaDisponibles.length > 0) {
-      const reemplzo = vehiculosReservaDisponibles[0];
+      const reemplazo = vehiculosReservaDisponibles[0];
       await crearAlerta({
         fecha,
         tipo: 'vehiculo_en_taller',
@@ -229,14 +302,14 @@ export async function procesarVehiculoEnTaller(
         vehiculoId,
         turnoId: turno.id ?? null,
         titulo: `Coche ${vehiculoInterno} a taller — reemplazo disponible`,
-        mensaje: `Coche ${vehiculoInterno} enviado a taller (${motivo}). Afecta L${turno.lineaId} salida ${turno.horaSalida}. Coche de reserva disponible: interno ${reemplzo.interno}.`,
-        accionSugerida: `Reasignar a coche ${reemplzo.interno}. El conductor ${turno.conductorNombre ?? ''} puede continuar con el vehículo de reserva.`,
+        mensaje: `Coche ${vehiculoInterno} enviado a taller (${motivo}). Afecta L${turno.lineaId} salida ${turno.horaSalida}. Coche de reserva disponible: interno ${reemplazo.interno}.`,
+        accionSugerida: `Reasignar a coche ${reemplazo.interno}. El conductor ${turno.conductorNombre ?? ''} puede continuar con el vehículo de reserva.`,
         datosExtra: {
           vehiculoAveriado: vehiculoInterno,
           motivoBaja: motivo,
-          reemplazoCocheInterno: reemplzo.interno,
-          reemplazoCocheId: reemplzo.id,
-          tipoReemplazo: reemplzo.tipo,
+          reemplazoCocheInterno: reemplazo.interno,
+          reemplazoCocheId: reemplazo.id,
+          tipoReemplazo: reemplazo.tipo,
         },
         impactoIngresosUSD: null,
       });
@@ -249,7 +322,7 @@ export async function procesarVehiculoEnTaller(
         conductorId: turno.conductorId,
         vehiculoId,
         turnoId: turno.id ?? null,
-        titulo: `${urgencia === 'alta' ? '⚠️ ' : ''}Coche ${vehiculoInterno} a taller — sin reemplazo`,
+        titulo: `${urgencia === 'alta' ? '[CRÍTICO] ' : ''}Coche ${vehiculoInterno} a taller — sin reemplazo`,
         mensaje: `Coche ${vehiculoInterno} enviado a taller (${motivo}). Sin vehículos de reserva disponibles. L${turno.lineaId} salida ${turno.horaSalida} en riesgo.`,
         accionSugerida: 'Verificar taller para liberación urgente. Evaluar redistribución de servicios en la línea.',
         datosExtra: {
@@ -268,8 +341,7 @@ export async function procesarVehiculoEnTaller(
 
 // ─── CASCADA 3: Monitoreo GPS — gap de frecuencia y bunching ──────────────────
 
-const UMBRAL_GAP_MIN = 1.5; // gap > 1.5x la frecuencia programada → alerta
-const UMBRAL_BUNCHING_KM = 0.8; // dos buses < 0.8km → bunching
+const UMBRAL_BUNCHING_KM = 0.8;
 
 interface BusPos {
   interno: string;
@@ -294,7 +366,6 @@ export async function analizarFrecuenciasGPS(fecha: string): Promise<void> {
     const features = geoJson?.features ?? [];
     if (features.length === 0) return;
 
-    // Agrupar por línea
     const porLinea = new Map<string, BusPos[]>();
     for (const f of features) {
       const props = f.properties;
@@ -310,13 +381,11 @@ export async function analizarFrecuenciasGPS(fecha: string): Promise<void> {
       });
     }
 
-    // Alertas ya emitidas en esta corrida (evitar duplicados)
     const alertasEmitidas = new Set<string>();
 
     for (const [lineaId, buses] of porLinea.entries()) {
       if (buses.length < 2) continue;
 
-      // Detectar bunching: dos buses muy juntos
       for (let i = 0; i < buses.length; i++) {
         for (let j = i + 1; j < buses.length; j++) {
           const dist = distanciaKm(buses[i].lat, buses[i].lng, buses[j].lat, buses[j].lng);
@@ -325,17 +394,15 @@ export async function analizarFrecuenciasGPS(fecha: string): Promise<void> {
           if (dist < UMBRAL_BUNCHING_KM && !alertasEmitidas.has(key)) {
             alertasEmitidas.add(key);
 
-            // Verificar si ya hay alerta reciente de este tipo en Firestore (últimas 2h)
+            // Verificar si ya hay alerta reciente de este tipo en Postgres (últimas 2h)
             const hace2h = new Date(Date.now() - 2 * 60 * 60 * 1000);
-            const existente = await db
-              .collection('alertas_operativas')
-              .where('tipo', '==', 'bunching')
-              .where('lineaId', '==', lineaId)
-              .where('createdAt', '>', hace2h)
-              .limit(1)
-              .get();
+            const existente = await sqlDb('alertas_operativas')
+              .where('tipo', 'bunching')
+              .where('linea_id', lineaId)
+              .where('created_at', '>', hace2h)
+              .first();
 
-            if (!existente.empty) continue;
+            if (existente) continue;
 
             await crearAlerta({
               fecha,
@@ -370,43 +437,47 @@ export async function analizarFrecuenciasGPS(fecha: string): Promise<void> {
 
 // ─── Marcar alerta como atendida ──────────────────────────────────────────────
 
-export async function atenderAlerta(
-  alertaId: string,
-  atendidaPor: string,
-): Promise<void> {
-  const hora = new Date().toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' });
-  await db.collection('alertas_operativas').doc(alertaId).update({
-    atendida: true,
-    atendidaPor,
-    horaAtendida: hora,
-  });
-  if (_io) {
-    _io.emit('alerta-atendida', { alertaId, atendidaPor, hora });
+export async function atenderAlerta(alertaId: string, atendidaPor: string): Promise<void> {
+  try {
+    const hora = new Date().toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' });
+    await sqlDb('alertas_operativas').where('id', alertaId).update({
+      atendida: true,
+      atendida_por: atendidaPor,
+      hora_atendida: hora,
+    });
+    if (_io) _io.emit('alerta-atendida', { alertaId, atendidaPor, hora });
+    logger.info(`[CASCADE] Alerta ${alertaId} atendida por ${atendidaPor}`);
+  } catch (error) {
+    logger.error(`[CASCADE] Error atenderAlerta(${alertaId})`, { error: String(error) });
+    throw error;
   }
-  logger.info(`[CASCADE] Alerta ${alertaId} atendida por ${atendidaPor}`);
 }
 
 // ─── Obtener alertas activas ──────────────────────────────────────────────────
 
 export async function getAlertasActivas(fecha: string): Promise<AlertaOperativa[]> {
-  const snap = await db
-    .collection('alertas_operativas')
-    .where('fecha', '==', fecha)
-    .where('atendida', '==', false)
-    .orderBy('createdAt', 'desc')
-    .limit(50)
-    .get();
-
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as AlertaOperativa));
+  try {
+    const rows = await sqlDb<AlertaRow>('alertas_operativas')
+      .where('fecha', fecha)
+      .where('atendida', false)
+      .orderBy('created_at', 'desc')
+      .limit(50);
+    return rows.map(rowToAlerta);
+  } catch (error) {
+    logger.error(`[CASCADE] Error getAlertasActivas(${fecha})`, { error: String(error) });
+    return [];
+  }
 }
 
 export async function getHistorialAlertas(fecha: string): Promise<AlertaOperativa[]> {
-  const snap = await db
-    .collection('alertas_operativas')
-    .where('fecha', '==', fecha)
-    .orderBy('createdAt', 'desc')
-    .limit(100)
-    .get();
-
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as AlertaOperativa));
+  try {
+    const rows = await sqlDb<AlertaRow>('alertas_operativas')
+      .where('fecha', fecha)
+      .orderBy('created_at', 'desc')
+      .limit(100);
+    return rows.map(rowToAlerta);
+  } catch (error) {
+    logger.error(`[CASCADE] Error getHistorialAlertas(${fecha})`, { error: String(error) });
+    return [];
+  }
 }

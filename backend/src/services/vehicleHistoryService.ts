@@ -1,19 +1,26 @@
 /**
  * vehicleHistoryService.ts
- * Almacena y consulta el historial de coches por ID de bus.
  *
- * Colección Firestore: vehicle_events
- * Documento: { idBus, agencyId, empresa, linea, lat, lon, velocidad,
- *              estadoCumplimiento, desviacionMin, timestampGPS, createdAt }
+ * FASE 2.4 (2026-05-10): Migrado de Firestore (`vehicle_events`, `system_status`)
+ * a PostgreSQL local. Tablas en `schema_fase2.sql`. TTL 30 días gestionado por
+ * la columna `expires_at` + función `vehicle_events_purge()`.
  *
- * TTL automático: 30 días (configurable vía campo ttl en Firestore rules/indexes).
+ * Política de datos (regla -2):
+ *   - Eventos persistidos provienen de scheduleComplianceEngine (datos GPS reales).
+ *   - Si la DB no responde, las funciones de lectura devuelven [] (no inventar).
+ *
+ * Escalabilidad (regla -4):
+ *   - vehicle_events tiene índices por id_bus, agency_id, linea, geom GIST.
+ *   - Inserts en batch (BATCH_SIZE=400). Limit explícito en todas las queries.
+ *   - Cuando la tabla supere los 50M registros, particionar por mes (ver
+ *     local-skillroute-postgres-mgmt/SKILL.md operación 5).
  */
 
-import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { logger } from '../config/logger';
+import sqlDb from '../config/database';
+import logger from '../config/logger';
 import type { BusComplianceResult } from './scheduleComplianceEngine';
 
-const COLLECTION = 'vehicle_events';
+const TABLE = 'vehicle_events';
 const TTL_DAYS = 30;
 
 export interface VehicleEvent {
@@ -29,8 +36,9 @@ export interface VehicleEvent {
   tripId: string | null;
   proximaParada: string | null;
   timestampGPS: string;
-  createdAt: FirebaseFirestore.FieldValue;
-  expiresAt: Date;
+  // FASE 2: createdAt y expiresAt son Date | string del lado Postgres
+  createdAt: Date | string;
+  expiresAt: Date | string;
 }
 
 export interface VehicleHistorySummary {
@@ -48,39 +56,77 @@ export interface VehicleHistorySummary {
   desviacionMediaMin: number | null;
 }
 
-/** Guarda un batch de eventos de cumplimiento en Firestore */
+interface EventRow {
+  id_bus: string;
+  agency_id: string;
+  empresa: string;
+  linea: string;
+  lat: number;
+  lon: number;
+  velocidad: number;
+  estado_cumplimiento: string;
+  desviacion_min: number | null;
+  trip_id: string | null;
+  proxima_parada: string | null;
+  timestamp_gps: Date | string;
+  created_at: Date;
+  expires_at: Date;
+}
+
+function rowToEvent(r: EventRow): VehicleEvent {
+  return {
+    idBus: r.id_bus,
+    agencyId: r.agency_id,
+    empresa: r.empresa,
+    linea: r.linea,
+    lat: r.lat,
+    lon: r.lon,
+    velocidad: r.velocidad,
+    estadoCumplimiento: r.estado_cumplimiento,
+    desviacionMin: r.desviacion_min,
+    tripId: r.trip_id,
+    proximaParada: r.proxima_parada,
+    timestampGPS:
+      typeof r.timestamp_gps === 'string'
+        ? r.timestamp_gps
+        : r.timestamp_gps.toISOString(),
+    createdAt: r.created_at,
+    expiresAt: r.expires_at,
+  };
+}
+
+/** Guarda un batch de eventos de cumplimiento en Postgres (batches de 400) */
 export async function saveComplianceSnapshot(results: BusComplianceResult[]): Promise<void> {
   if (results.length === 0) return;
-  const db = getFirestore();
-  const col = db.collection(COLLECTION);
   const expiresAt = new Date(Date.now() + TTL_DAYS * 24 * 60 * 60 * 1000);
 
   const BATCH_SIZE = 400;
-  for (let i = 0; i < results.length; i += BATCH_SIZE) {
-    const batch = db.batch();
-    results.slice(i, i + BATCH_SIZE).forEach(r => {
-      const doc = col.doc();
-      const event: VehicleEvent = {
-        idBus: r.idBus,
-        agencyId: r.agencyId,
+  try {
+    for (let i = 0; i < results.length; i += BATCH_SIZE) {
+      const batch = results.slice(i, i + BATCH_SIZE).map((r) => ({
+        id_bus: r.idBus,
+        agency_id: r.agencyId,
         empresa: r.empresa,
         linea: r.linea,
         lat: r.lat,
         lon: r.lon,
+        // PostGIS geom: ST_SetSRID(ST_MakePoint(lon, lat), 4326)
+        geom: sqlDb.raw('ST_SetSRID(ST_MakePoint(?, ?), 4326)', [r.lon, r.lat]),
         velocidad: r.velocidad,
-        estadoCumplimiento: r.estadoCumplimiento,
-        desviacionMin: r.desviacionMin,
-        tripId: r.tripActivo?.trip_id ?? null,
-        proximaParada: r.proximaParadaControl?.name ?? null,
-        timestampGPS: r.timestampGPS,
-        createdAt: FieldValue.serverTimestamp(),
-        expiresAt,
-      };
-      batch.set(doc, event);
-    });
-    await batch.commit();
+        estado_cumplimiento: r.estadoCumplimiento,
+        desviacion_min: r.desviacionMin,
+        trip_id: r.tripActivo?.trip_id ?? null,
+        proxima_parada: r.proximaParadaControl?.name ?? null,
+        timestamp_gps: r.timestampGPS,
+        expires_at: expiresAt,
+      }));
+      await sqlDb(TABLE).insert(batch);
+    }
+    logger.info(`[VehicleHistory] Guardados ${results.length} eventos en Postgres`);
+  } catch (error) {
+    logger.error('[VehicleHistory] Error guardando snapshot de compliance', { error: String(error) });
+    // No re-throw — esto es telemetría, no debe romper el pipeline GPS.
   }
-  logger.info(`[VehicleHistory] Guardados ${results.length} eventos`);
 }
 
 /** Historial de un coche específico (últimos N días) */
@@ -88,42 +134,55 @@ export async function getVehicleHistory(
   idBus: string,
   days = 7,
 ): Promise<VehicleEvent[]> {
-  const db = getFirestore();
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-  const snap = await db
-    .collection(COLLECTION)
-    .where('idBus', '==', idBus)
-    .where('createdAt', '>=', Timestamp.fromDate(since))
-    .orderBy('createdAt', 'desc')
-    .limit(500)
-    .get();
-  return snap.docs.map(d => d.data() as VehicleEvent);
+  try {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const rows = await sqlDb<EventRow>(TABLE)
+      .where('id_bus', idBus)
+      .where('created_at', '>=', since)
+      .orderBy('created_at', 'desc')
+      .limit(500);
+    return rows.map(rowToEvent);
+  } catch (error) {
+    logger.error(`[VehicleHistory] Error getVehicleHistory(${idBus})`, { error: String(error) });
+    return [];
+  }
 }
 
 /** Resumen estadístico de un coche */
-export async function getVehicleSummary(idBus: string, days = 30): Promise<VehicleHistorySummary | null> {
+export async function getVehicleSummary(
+  idBus: string,
+  days = 30,
+): Promise<VehicleHistorySummary | null> {
   const events = await getVehicleHistory(idBus, days);
   if (events.length === 0) return null;
 
   const empresa = events[0].empresa;
-  const lineas = [...new Set(events.map(e => e.linea))];
-  const velocidades = events.map(e => e.velocidad).filter(v => v > 0);
-  const velMedia = velocidades.length > 0
-    ? Math.round(velocidades.reduce((a, b) => a + b, 0) / velocidades.length)
-    : 0;
+  const lineas = [...new Set(events.map((e) => e.linea))];
+  const velocidades = events.map((e) => e.velocidad).filter((v) => v > 0);
+  const velMedia =
+    velocidades.length > 0
+      ? Math.round(velocidades.reduce((a, b) => a + b, 0) / velocidades.length)
+      : 0;
 
-  const enTiempo = events.filter(e => e.estadoCumplimiento === 'EN_TIEMPO').length;
-  const atrasado = events.filter(e => e.estadoCumplimiento === 'ATRASADO').length;
-  const adelantado = events.filter(e => e.estadoCumplimiento === 'ADELANTADO').length;
-  const sinHorario = events.filter(e => e.estadoCumplimiento === 'SIN_HORARIO' || e.estadoCumplimiento === 'FUERA_DE_SERVICIO').length;
+  const enTiempo = events.filter((e) => e.estadoCumplimiento === 'EN_TIEMPO').length;
+  const atrasado = events.filter((e) => e.estadoCumplimiento === 'ATRASADO').length;
+  const adelantado = events.filter((e) => e.estadoCumplimiento === 'ADELANTADO').length;
+  const sinHorario = events.filter(
+    (e) =>
+      e.estadoCumplimiento === 'SIN_HORARIO' ||
+      e.estadoCumplimiento === 'FUERA_DE_SERVICIO',
+  ).length;
 
   const conSchedule = enTiempo + atrasado + adelantado;
-  const desviaciones = events.map(e => e.desviacionMin).filter((d): d is number => d !== null);
-  const desvMedia = desviaciones.length > 0
-    ? Math.round(desviaciones.reduce((a, b) => a + b, 0) / desviaciones.length)
-    : null;
+  const desviaciones = events
+    .map((e) => e.desviacionMin)
+    .filter((d): d is number => d !== null);
+  const desvMedia =
+    desviaciones.length > 0
+      ? Math.round(desviaciones.reduce((a, b) => a + b, 0) / desviaciones.length)
+      : null;
 
-  const timestamps = events.map(e => e.timestampGPS).sort();
+  const timestamps = events.map((e) => e.timestampGPS).sort();
 
   return {
     idBus,
@@ -141,79 +200,114 @@ export async function getVehicleSummary(idBus: string, days = 30): Promise<Vehic
   };
 }
 
-/** Buses activos en tiempo real agrupados por línea (desde últimos 3 min) */
-export async function getActiveBusesSnapshot(agencyId: string): Promise<
-  Array<{ idBus: string; linea: string; velocidad: number; estadoCumplimiento: string; lat: number; lon: number }>
+/** Buses activos en tiempo real agrupados por línea (últimos 3 min) */
+export async function getActiveBusesSnapshot(
+  agencyId: string,
+): Promise<
+  Array<{
+    idBus: string;
+    linea: string;
+    velocidad: number;
+    estadoCumplimiento: string;
+    lat: number;
+    lon: number;
+  }>
 > {
-  const db = getFirestore();
-  const since = new Date(Date.now() - 3 * 60 * 1000);
-  const snap = await db
-    .collection(COLLECTION)
-    .where('agencyId', '==', agencyId)
-    .where('createdAt', '>=', Timestamp.fromDate(since))
-    .orderBy('createdAt', 'desc')
-    .limit(200)
-    .get();
+  try {
+    const since = new Date(Date.now() - 3 * 60 * 1000);
+    const rows = await sqlDb<EventRow>(TABLE)
+      .where('agency_id', agencyId)
+      .where('created_at', '>=', since)
+      .orderBy('created_at', 'desc')
+      .limit(200);
 
-  const seen = new Set<string>();
-  const buses: ReturnType<typeof getActiveBusesSnapshot> extends Promise<infer T> ? T : never = [];
-  snap.docs.forEach(d => {
-    const e = d.data() as VehicleEvent;
-    if (!seen.has(e.idBus)) {
-      seen.add(e.idBus);
-      (buses as any[]).push({ idBus: e.idBus, linea: e.linea, velocidad: e.velocidad, estadoCumplimiento: e.estadoCumplimiento, lat: e.lat, lon: e.lon });
+    const seen = new Set<string>();
+    const buses: Array<{
+      idBus: string;
+      linea: string;
+      velocidad: number;
+      estadoCumplimiento: string;
+      lat: number;
+      lon: number;
+    }> = [];
+    for (const r of rows) {
+      if (seen.has(r.id_bus)) continue;
+      seen.add(r.id_bus);
+      buses.push({
+        idBus: r.id_bus,
+        linea: r.linea,
+        velocidad: r.velocidad,
+        estadoCumplimiento: r.estado_cumplimiento,
+        lat: r.lat,
+        lon: r.lon,
+      });
     }
-  });
-  return buses as any;
+    return buses;
+  } catch (error) {
+    logger.error(`[VehicleHistory] Error getActiveBusesSnapshot(${agencyId})`, { error: String(error) });
+    return [];
+  }
 }
 
 export interface BusSnapshot {
-  idBus: string; linea: string; velocidad: number;
-  estadoCumplimiento: string; lat: number; lon: number;
-  desviacionMin: number | null; timestampGPS: string;
+  idBus: string;
+  linea: string;
+  velocidad: number;
+  estadoCumplimiento: string;
+  lat: number;
+  lon: number;
+  desviacionMin: number | null;
+  timestampGPS: string;
 }
 
-/**
- * Último snapshot conocido de Firestore (fallback cuando GPS está caído).
- * Extiende la ventana automáticamente: 24h → 48h → 7 días → 30 días.
- */
+/** Último snapshot conocido de Postgres (fallback cuando GPS está caído). */
 export async function getLastKnownBusesSnapshot(
   agencyId: string,
   hoursBack = 24,
 ): Promise<{ buses: BusSnapshot[]; dataTimestamp: string | null; hoursBack: number }> {
-  const db = getFirestore();
-  const windows = [hoursBack, 48, 7 * 24, 30 * 24].filter(h => h >= hoursBack);
+  const windows = [hoursBack, 48, 7 * 24, 30 * 24].filter((h) => h >= hoursBack);
 
   for (const hours of windows) {
-    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
-    const snap = await db
-      .collection(COLLECTION)
-      .where('agencyId', '==', agencyId)
-      .where('createdAt', '>=', Timestamp.fromDate(since))
-      .orderBy('createdAt', 'desc')
-      .limit(500)
-      .get();
+    try {
+      const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+      const rows = await sqlDb<EventRow>(TABLE)
+        .where('agency_id', agencyId)
+        .where('created_at', '>=', since)
+        .orderBy('created_at', 'desc')
+        .limit(500);
 
-    if (snap.empty) continue;
+      if (rows.length === 0) continue;
 
-    const seen = new Set<string>();
-    const buses: BusSnapshot[] = [];
-    let latestTs: string | null = null;
+      const seen = new Set<string>();
+      const buses: BusSnapshot[] = [];
+      let latestTs: string | null = null;
 
-    snap.docs.forEach(d => {
-      const e = d.data() as VehicleEvent;
-      if (!seen.has(e.idBus)) {
-        seen.add(e.idBus);
+      for (const r of rows) {
+        if (seen.has(r.id_bus)) continue;
+        seen.add(r.id_bus);
+        const tsStr =
+          typeof r.timestamp_gps === 'string'
+            ? r.timestamp_gps
+            : r.timestamp_gps.toISOString();
         buses.push({
-          idBus: e.idBus, linea: e.linea, velocidad: e.velocidad,
-          estadoCumplimiento: e.estadoCumplimiento, lat: e.lat, lon: e.lon,
-          desviacionMin: e.desviacionMin, timestampGPS: e.timestampGPS,
+          idBus: r.id_bus,
+          linea: r.linea,
+          velocidad: r.velocidad,
+          estadoCumplimiento: r.estado_cumplimiento,
+          lat: r.lat,
+          lon: r.lon,
+          desviacionMin: r.desviacion_min,
+          timestampGPS: tsStr,
         });
-        if (!latestTs || e.timestampGPS > latestTs) latestTs = e.timestampGPS;
+        if (!latestTs || tsStr > latestTs) latestTs = tsStr;
       }
-    });
 
-    if (buses.length > 0) return { buses, dataTimestamp: latestTs, hoursBack: hours };
+      if (buses.length > 0) {
+        return { buses, dataTimestamp: latestTs, hoursBack: hours };
+      }
+    } catch (error) {
+      logger.error(`[VehicleHistory] Error getLastKnownBusesSnapshot ventana=${hours}h`, { error: String(error) });
+    }
   }
 
   return { buses: [], dataTimestamp: null, hoursBack };
@@ -232,65 +326,91 @@ export interface LineSummary {
   ultimaActividad: string | null;
 }
 
-/** Resumen agregado por línea para los últimos N días (siempre disponible, independiente de GPS). */
+/** Resumen agregado por línea para los últimos N días */
 export async function getLineSummaryHistory(
   agencyId: string,
   days = 7,
 ): Promise<LineSummary[]> {
-  const db = getFirestore();
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-  const snap = await db
-    .collection(COLLECTION)
-    .where('agencyId', '==', agencyId)
-    .where('createdAt', '>=', Timestamp.fromDate(since))
-    .orderBy('createdAt', 'desc')
-    .limit(5000)
-    .get();
+  try {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const rows = await sqlDb<EventRow>(TABLE)
+      .where('agency_id', agencyId)
+      .where('created_at', '>=', since)
+      .orderBy('created_at', 'desc')
+      .limit(5000);
 
-  const byLine: Record<string, {
-    buses: Set<string>; eventos: number;
-    enTiempo: number; atrasado: number; adelantado: number; sinHorario: number;
-    desviaciones: number[]; velocidades: number[]; ultimaActividad: string | null;
-  }> = {};
+    const byLine: Record<
+      string,
+      {
+        buses: Set<string>;
+        eventos: number;
+        enTiempo: number;
+        atrasado: number;
+        adelantado: number;
+        sinHorario: number;
+        desviaciones: number[];
+        velocidades: number[];
+        ultimaActividad: string | null;
+      }
+    > = {};
 
-  snap.docs.forEach(d => {
-    const e = d.data() as VehicleEvent;
-    if (!byLine[e.linea]) {
-      byLine[e.linea] = { buses: new Set(), eventos: 0, enTiempo: 0, atrasado: 0, adelantado: 0, sinHorario: 0, desviaciones: [], velocidades: [], ultimaActividad: null };
+    for (const r of rows) {
+      if (!byLine[r.linea]) {
+        byLine[r.linea] = {
+          buses: new Set(),
+          eventos: 0,
+          enTiempo: 0,
+          atrasado: 0,
+          adelantado: 0,
+          sinHorario: 0,
+          desviaciones: [],
+          velocidades: [],
+          ultimaActividad: null,
+        };
+      }
+      const l = byLine[r.linea];
+      l.buses.add(r.id_bus);
+      l.eventos++;
+      const ts =
+        typeof r.timestamp_gps === 'string' ? r.timestamp_gps : r.timestamp_gps.toISOString();
+      if (r.estado_cumplimiento === 'EN_TIEMPO') l.enTiempo++;
+      else if (r.estado_cumplimiento === 'ATRASADO') l.atrasado++;
+      else if (r.estado_cumplimiento === 'ADELANTADO') l.adelantado++;
+      else l.sinHorario++;
+      if (r.desviacion_min != null) l.desviaciones.push(r.desviacion_min);
+      if (r.velocidad > 0) l.velocidades.push(r.velocidad);
+      if (!l.ultimaActividad || ts > l.ultimaActividad) l.ultimaActividad = ts;
     }
-    const l = byLine[e.linea];
-    l.buses.add(e.idBus);
-    l.eventos++;
-    if (e.estadoCumplimiento === 'EN_TIEMPO') l.enTiempo++;
-    else if (e.estadoCumplimiento === 'ATRASADO') l.atrasado++;
-    else if (e.estadoCumplimiento === 'ADELANTADO') l.adelantado++;
-    else l.sinHorario++;
-    if (e.desviacionMin != null) l.desviaciones.push(e.desviacionMin);
-    if (e.velocidad > 0) l.velocidades.push(e.velocidad);
-    if (!l.ultimaActividad || e.timestampGPS > l.ultimaActividad) l.ultimaActividad = e.timestampGPS;
-  });
 
-  return Object.entries(byLine).map(([linea, l]) => {
-    const conSchedule = l.enTiempo + l.atrasado + l.adelantado;
-    const desv = l.desviaciones.length > 0
-      ? Math.round(l.desviaciones.reduce((a, b) => a + b, 0) / l.desviaciones.length)
-      : null;
-    const vel = l.velocidades.length > 0
-      ? Math.round(l.velocidades.reduce((a, b) => a + b, 0) / l.velocidades.length)
-      : 0;
-    return {
-      linea,
-      totalEventos: l.eventos,
-      busesUnicos: l.buses.size,
-      pctEnTiempo: conSchedule > 0 ? Math.round((l.enTiempo / conSchedule) * 100) : 0,
-      pctAtrasado: conSchedule > 0 ? Math.round((l.atrasado / conSchedule) * 100) : 0,
-      pctAdelantado: conSchedule > 0 ? Math.round((l.adelantado / conSchedule) * 100) : 0,
-      pctSinHorario: l.eventos > 0 ? Math.round((l.sinHorario / l.eventos) * 100) : 0,
-      desviacionMediaMin: desv,
-      velocidadMedia: vel,
-      ultimaActividad: l.ultimaActividad,
-    };
-  }).sort((a, b) => b.totalEventos - a.totalEventos);
+    return Object.entries(byLine)
+      .map(([linea, l]) => {
+        const conSchedule = l.enTiempo + l.atrasado + l.adelantado;
+        const desv =
+          l.desviaciones.length > 0
+            ? Math.round(l.desviaciones.reduce((a, b) => a + b, 0) / l.desviaciones.length)
+            : null;
+        const vel =
+          l.velocidades.length > 0
+            ? Math.round(l.velocidades.reduce((a, b) => a + b, 0) / l.velocidades.length)
+            : 0;
+        return {
+          linea,
+          totalEventos: l.eventos,
+          busesUnicos: l.buses.size,
+          pctEnTiempo: conSchedule > 0 ? Math.round((l.enTiempo / conSchedule) * 100) : 0,
+          pctAtrasado: conSchedule > 0 ? Math.round((l.atrasado / conSchedule) * 100) : 0,
+          pctAdelantado: conSchedule > 0 ? Math.round((l.adelantado / conSchedule) * 100) : 0,
+          pctSinHorario: l.eventos > 0 ? Math.round((l.sinHorario / l.eventos) * 100) : 0,
+          desviacionMediaMin: desv,
+          velocidadMedia: vel,
+          ultimaActividad: l.ultimaActividad,
+        } as LineSummary;
+      })
+      .sort((a, b) => b.totalEventos - a.totalEventos);
+  } catch (error) {
+    logger.error(`[VehicleHistory] Error getLineSummaryHistory(${agencyId})`, { error: String(error) });
+    return [];
+  }
 }
 
 export interface StmEndpointHealth {
@@ -302,21 +422,69 @@ export interface StmEndpointHealth {
   lastSuccessfulCollection: string | null;
 }
 
-/** Lee el estado del endpoint GPS desde Firestore (escrito por autoStatsCollector) */
+/** Lee el estado del endpoint GPS desde tabla system_status */
 export async function getEndpointHealth(): Promise<StmEndpointHealth> {
-  const db = getFirestore();
-  const doc = await db.collection('system_status').doc('stm_gps').get();
-  if (!doc.exists) {
-    return { status: 'UNKNOWN', lastCheck: null, downSince: null, upSince: null, consecutiveFailures: 0, lastSuccessfulCollection: null };
+  try {
+    const row = await sqlDb<{ value_jsonb: Record<string, unknown> }>('system_status')
+      .where('key', 'stm_gps')
+      .first();
+
+    if (!row) {
+      return {
+        status: 'UNKNOWN',
+        lastCheck: null,
+        downSince: null,
+        upSince: null,
+        consecutiveFailures: 0,
+        lastSuccessfulCollection: null,
+      };
+    }
+    const d = row.value_jsonb as Record<string, any>;
+    const toISO = (v: any): string | null => {
+      if (!v) return null;
+      if (typeof v === 'string') return v;
+      if (v instanceof Date) return v.toISOString();
+      if (v?.toDate) return v.toDate().toISOString();
+      return null;
+    };
+    return {
+      status: (d.status as StmEndpointHealth['status']) ?? 'UNKNOWN',
+      lastCheck: toISO(d.lastCheck),
+      downSince: toISO(d.downSince),
+      upSince: toISO(d.upSince),
+      consecutiveFailures: d.consecutiveFailures ?? 0,
+      lastSuccessfulCollection: toISO(d.lastSuccessfulCollection),
+    };
+  } catch (error) {
+    logger.error('[VehicleHistory] Error getEndpointHealth', { error: String(error) });
+    return {
+      status: 'UNKNOWN',
+      lastCheck: null,
+      downSince: null,
+      upSince: null,
+      consecutiveFailures: 0,
+      lastSuccessfulCollection: null,
+    };
   }
-  const d = doc.data()!;
-  const toISO = (v: any) => v?.toDate?.()?.toISOString?.() ?? null;
-  return {
-    status: d.status ?? 'UNKNOWN',
-    lastCheck: toISO(d.lastCheck),
-    downSince: toISO(d.downSince),
-    upSince: toISO(d.upSince),
-    consecutiveFailures: d.consecutiveFailures ?? 0,
-    lastSuccessfulCollection: toISO(d.lastSuccessfulCollection),
-  };
+}
+
+/** Helper para que autoStatsCollector u otros writers actualicen el health */
+export async function setEndpointHealth(
+  key: string,
+  value: Partial<StmEndpointHealth>,
+): Promise<void> {
+  try {
+    await sqlDb('system_status')
+      .insert({
+        key,
+        value_jsonb: JSON.stringify(value),
+      })
+      .onConflict('key')
+      .merge({
+        value_jsonb: JSON.stringify(value),
+        updated_at: new Date(),
+      });
+  } catch (error) {
+    logger.error(`[VehicleHistory] Error setEndpointHealth(${key})`, { error: String(error) });
+  }
 }

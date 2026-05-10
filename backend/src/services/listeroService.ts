@@ -1,20 +1,26 @@
 /**
  * listeroService — Motor de programación diaria de UCOT
  *
+ * FASE 2.3 (2026-05-10): Migrado de Firestore a PostgreSQL local.
+ * Tablas: turnos_dia, personal, vehiculos, alertas_operativas (schema_fase2.sql).
+ *
  * Flujo real:
  *   Listero arma turnos_dia (conductor + vehículo + línea + horario)
  *   → Conductor se presenta o falta
  *   → Si falta: cascadeEngine busca reserva + genera alertas
  *   → Largador confirma sustitución o cancela el servicio
  *   → KPIs se actualizan en tiempo real
+ *
+ * Política de datos (regla -2): toda salida desde tablas Postgres reales,
+ * nunca placeholders. Si la tabla está vacía devuelve [].
  */
 
-import * as admin from 'firebase-admin';
-import { db } from '../config/firebase';
+import sqlDb from '../config/database';
 import { AppError } from '../types/index';
 import logger from '../config/logger';
+import { v4 as uuidv4 } from 'uuid';
 
-// ─── Tipos ───────────────────────────────────────────────────────────────────
+// ─── Tipos (preservar API pública para no romper imports en otros módulos) ───
 
 export type EstadoTurno =
   | 'programado'
@@ -37,29 +43,30 @@ export type EstadoConductorHoy =
 
 export interface TurnoDia {
   id?: string;
-  fecha: string; // YYYY-MM-DD
+  fecha: string;
   conductorId: string | null;
   conductorNombre: string | null;
-  conductorInterno: string | null; // número de socio UCOT
+  conductorInterno: string | null;
   vehiculoId: string;
-  vehiculoInterno: string; // número interno del coche (ej: "142")
-  lineaId: string; // '300', '17', etc.
+  vehiculoInterno: string;
+  lineaId: string;
   varianteKey: string | null;
   turno: TurnoNombre;
-  horaSalida: string; // 'HH:MM'
-  horaLlegadaEstimada: string; // 'HH:MM'
-  terminal: string; // terminal de salida
+  horaSalida: string;
+  horaLlegadaEstimada: string;
+  terminal: string;
   estado: EstadoTurno;
   reservaActivada: boolean;
   conductorReservaId: string | null;
   conductorReservaNombre: string | null;
-  importanciaLinea: number; // 1-5 (5 = crítica, riesgo regulatorio alto)
-  impactoIngresosEstimado: number | null; // USD si se cancela el servicio
+  importanciaLinea: number;
+  impactoIngresosEstimado: number | null;
   observaciones: string | null;
   firmaConductor: boolean;
   horaFirma: string | null;
-  createdAt: admin.firestore.Timestamp | null;
-  updatedAt: admin.firestore.Timestamp | null;
+  // FASE 2: ambos timestamps son Date | null (antes admin.firestore.Timestamp).
+  createdAt: Date | null;
+  updatedAt: Date | null;
 }
 
 export interface ConductorDia {
@@ -71,7 +78,7 @@ export interface ConductorDia {
   turnoAsignado: TurnoNombre | null;
   lineaAsignada: string | null;
   vehiculoAsignado: string | null;
-  horaUltimoServicio: string | null; // para validar descanso OIT (min 9h)
+  horaUltimoServicio: string | null;
   esConductorReserva: boolean;
   telefono: string | null;
 }
@@ -84,7 +91,7 @@ export interface VehiculoDia {
   estadoHoy: 'disponible' | 'en_servicio' | 'en_taller' | 'reserva' | 'baja';
   lineaAsignada: string | null;
   conductorAsignado: string | null;
-  bateriaActual: number | null; // % solo eléctricos
+  bateriaActual: number | null;
   kilometrajeHoy: number | null;
   ultimaInspeccion: string | null;
   motivoBaja: string | null;
@@ -101,16 +108,16 @@ export interface ResumenDiario {
   conductoresReservaLibres: number;
   vehiculosDisponibles: number;
   vehiculosEnTaller: number;
-  coberturaFlota: number; // % flota activa vs programada
+  coberturaFlota: number;
   alertasActivas: number;
   impactoIngresosRiesgoUSD: number;
-  lineasEnRiesgoIMM: string[]; // líneas que pueden tener gap regulatorio
+  lineasEnRiesgoIMM: string[];
 }
 
 // ─── Importancia de línea (para priorizar reservas) ──────────────────────────
 
 const IMPORTANCIA_LINEA: Record<string, number> = {
-  '300': 5, // alta frecuencia, máximo solapamiento competidores
+  '300': 5,
   '306': 5,
   '329': 4,
   '330': 4,
@@ -123,7 +130,6 @@ const IMPORTANCIA_LINEA: Record<string, number> = {
   default: 2,
 };
 
-// Estimación de pasajeros por servicio (viaje completo) por línea
 const PASAJEROS_POR_SERVICIO: Record<string, number> = {
   '300': 45,
   '306': 40,
@@ -137,7 +143,7 @@ const PASAJEROS_POR_SERVICIO: Record<string, number> = {
   default: 20,
 };
 
-const TARIFA_PROMEDIO_UYU = 38; // tarifa STM 2024
+const TARIFA_PROMEDIO_UYU = 38;
 const TIPO_CAMBIO_USD = 40;
 
 function calcularImpactoIngresosUSD(lineaId: string): number {
@@ -155,89 +161,227 @@ function horaAMinutos(hhmm: string): number {
 function minutosDescansoEntre(horaFin: string, horaInicio: string): number {
   const fin = horaAMinutos(horaFin);
   const ini = horaAMinutos(horaInicio);
-  // Si fin > ini, ya pasó la medianoche
   return ini >= fin ? ini - fin : 24 * 60 - fin + ini;
+}
+
+// ─── Mappers DB ↔ DTO ────────────────────────────────────────────────────────
+
+interface TurnoRow {
+  id: string;
+  agency_id: string | null;
+  fecha: string;
+  conductor_id: string | null;
+  conductor_nombre: string | null;
+  conductor_interno: string | null;
+  vehiculo_id: string;
+  vehiculo_interno: string;
+  linea_id: string;
+  variante_key: string | null;
+  turno: TurnoNombre;
+  hora_salida: string;
+  hora_llegada_estimada: string;
+  terminal: string;
+  estado: EstadoTurno;
+  reserva_activada: boolean;
+  conductor_reserva_id: string | null;
+  conductor_reserva_nombre: string | null;
+  importancia_linea: number;
+  impacto_ingresos_estimado: string | number | null;
+  observaciones: string | null;
+  firma_conductor: boolean;
+  hora_firma: string | null;
+  data_jsonb: Record<string, unknown> | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+function rowToTurno(r: TurnoRow): TurnoDia {
+  return {
+    id: r.id,
+    fecha: typeof r.fecha === 'string' ? r.fecha : (r.fecha as any).toISOString?.().slice(0, 10) ?? r.fecha,
+    conductorId: r.conductor_id,
+    conductorNombre: r.conductor_nombre,
+    conductorInterno: r.conductor_interno,
+    vehiculoId: r.vehiculo_id,
+    vehiculoInterno: r.vehiculo_interno,
+    lineaId: r.linea_id,
+    varianteKey: r.variante_key,
+    turno: r.turno,
+    horaSalida: r.hora_salida,
+    horaLlegadaEstimada: r.hora_llegada_estimada,
+    terminal: r.terminal,
+    estado: r.estado,
+    reservaActivada: r.reserva_activada,
+    conductorReservaId: r.conductor_reserva_id,
+    conductorReservaNombre: r.conductor_reserva_nombre,
+    importanciaLinea: r.importancia_linea,
+    impactoIngresosEstimado: r.impacto_ingresos_estimado != null ? Number(r.impacto_ingresos_estimado) : null,
+    observaciones: r.observaciones,
+    firmaConductor: r.firma_conductor,
+    horaFirma: r.hora_firma,
+    createdAt: r.created_at ?? null,
+    updatedAt: r.updated_at ?? null,
+  };
+}
+
+interface PersonalRow {
+  id: string;
+  agency_id: string | null;
+  internal_number: string | null;
+  full_name: string | null;
+  role: string | null;
+  estado_hoy: EstadoConductorHoy | null;
+  hora_ultimo_servicio: string | null;
+  es_conductor_reserva: boolean;
+  telefono: string | null;
+  data_jsonb: Record<string, unknown> | null;
+}
+
+function rowToConductor(r: PersonalRow, turno?: TurnoDia): ConductorDia {
+  return {
+    id: r.id,
+    internalNumber: r.internal_number ?? '',
+    fullName: r.full_name ?? '',
+    rol: r.role ?? 'conductor',
+    estadoHoy: (r.estado_hoy ?? 'disponible') as EstadoConductorHoy,
+    turnoAsignado: turno ? turno.turno : null,
+    lineaAsignada: turno ? turno.lineaId : null,
+    vehiculoAsignado: turno ? turno.vehiculoInterno : null,
+    horaUltimoServicio: r.hora_ultimo_servicio,
+    esConductorReserva: r.es_conductor_reserva ?? false,
+    telefono: r.telefono,
+  };
+}
+
+interface VehiculoRow {
+  id: string;
+  agency_id: string | null;
+  internal_number: string | null;
+  plate: string | null;
+  data_jsonb: Record<string, unknown> | null;
+}
+
+function rowToVehiculoDia(r: VehiculoRow): VehiculoDia {
+  const d = (r.data_jsonb ?? {}) as Record<string, any>;
+  return {
+    id: r.id,
+    interno: r.internal_number ?? d.interno ?? r.id,
+    patente: r.plate ?? d.patente ?? null,
+    tipo: (d.tipo ?? 'diesel') as VehiculoDia['tipo'],
+    estadoHoy: (d.estadoHoy ?? 'disponible') as VehiculoDia['estadoHoy'],
+    lineaAsignada: d.lineaAsignada ?? null,
+    conductorAsignado: d.conductorAsignado ?? null,
+    bateriaActual: d.bateriaActual ?? null,
+    kilometrajeHoy: d.kilometrajeHoy ?? null,
+    ultimaInspeccion: d.lastCheckDate ?? d.ultimaInspeccion ?? null,
+    motivoBaja: d.motivoBaja ?? null,
+  };
 }
 
 // ─── CRUD Turnos ─────────────────────────────────────────────────────────────
 
 export async function getTurnosByFecha(fecha: string): Promise<TurnoDia[]> {
-  const snap = await db
-    .collection('turnos_dia')
-    .where('fecha', '==', fecha)
-    .orderBy('horaSalida', 'asc')
-    .get();
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as TurnoDia));
+  try {
+    const rows = await sqlDb<TurnoRow>('turnos_dia')
+      .where('fecha', fecha)
+      .orderBy('hora_salida', 'asc');
+    return rows.map(rowToTurno);
+  } catch (error) {
+    logger.error(`[LISTERO] Error getTurnosByFecha(${fecha})`, { error: String(error) });
+    throw new AppError(500, 'Error al obtener turnos');
+  }
 }
 
-export async function createTurno(turno: Omit<TurnoDia, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-  const ref = db.collection('turnos_dia').doc();
-  await ref.set({
-    ...turno,
-    estado: turno.estado ?? 'programado',
-    reservaActivada: false,
-    conductorReservaId: null,
-    conductorReservaNombre: null,
-    firmaConductor: false,
-    horaFirma: null,
-    importanciaLinea: turno.importanciaLinea ?? (IMPORTANCIA_LINEA[turno.lineaId] ?? 2),
-    impactoIngresosEstimado: calcularImpactoIngresosUSD(turno.lineaId),
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-  logger.info(`[LISTERO] Turno creado ${ref.id} — L${turno.lineaId} coche ${turno.vehiculoInterno} ${turno.horaSalida}`);
-  return ref.id;
+export async function createTurno(
+  turno: Omit<TurnoDia, 'id' | 'createdAt' | 'updatedAt'>,
+): Promise<string> {
+  try {
+    const id = uuidv4();
+    await sqlDb('turnos_dia').insert({
+      id,
+      fecha: turno.fecha,
+      conductor_id: turno.conductorId,
+      conductor_nombre: turno.conductorNombre,
+      conductor_interno: turno.conductorInterno,
+      vehiculo_id: turno.vehiculoId,
+      vehiculo_interno: turno.vehiculoInterno,
+      linea_id: turno.lineaId,
+      variante_key: turno.varianteKey,
+      turno: turno.turno,
+      hora_salida: turno.horaSalida,
+      hora_llegada_estimada: turno.horaLlegadaEstimada,
+      terminal: turno.terminal,
+      estado: turno.estado ?? 'programado',
+      reserva_activada: false,
+      conductor_reserva_id: null,
+      conductor_reserva_nombre: null,
+      firma_conductor: false,
+      hora_firma: null,
+      importancia_linea: turno.importanciaLinea ?? (IMPORTANCIA_LINEA[turno.lineaId] ?? 2),
+      impacto_ingresos_estimado: calcularImpactoIngresosUSD(turno.lineaId),
+      observaciones: turno.observaciones,
+      data_jsonb: JSON.stringify({}),
+    });
+    logger.info(`[LISTERO] Turno creado ${id} — L${turno.lineaId} coche ${turno.vehiculoInterno} ${turno.horaSalida}`);
+    return id;
+  } catch (error) {
+    logger.error('[LISTERO] Error createTurno', { error: String(error) });
+    throw new AppError(500, 'Error al crear turno');
+  }
 }
 
-export async function updateTurno(
-  turnoId: string,
-  cambios: Partial<TurnoDia>,
-): Promise<void> {
-  await db.collection('turnos_dia').doc(turnoId).update({
-    ...cambios,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+export async function updateTurno(turnoId: string, cambios: Partial<TurnoDia>): Promise<void> {
+  try {
+    const dbCambios: Record<string, unknown> = {};
+    if (cambios.estado !== undefined) dbCambios.estado = cambios.estado;
+    if (cambios.reservaActivada !== undefined) dbCambios.reserva_activada = cambios.reservaActivada;
+    if (cambios.conductorReservaId !== undefined) dbCambios.conductor_reserva_id = cambios.conductorReservaId;
+    if (cambios.conductorReservaNombre !== undefined) dbCambios.conductor_reserva_nombre = cambios.conductorReservaNombre;
+    if (cambios.firmaConductor !== undefined) dbCambios.firma_conductor = cambios.firmaConductor;
+    if (cambios.horaFirma !== undefined) dbCambios.hora_firma = cambios.horaFirma;
+    if (cambios.observaciones !== undefined) dbCambios.observaciones = cambios.observaciones;
+
+    if (Object.keys(dbCambios).length > 0) {
+      await sqlDb('turnos_dia').where('id', turnoId).update(dbCambios);
+    }
+  } catch (error) {
+    logger.error(`[LISTERO] Error updateTurno(${turnoId})`, { error: String(error) });
+    throw new AppError(500, 'Error al actualizar turno');
+  }
 }
 
 export async function deleteTurno(turnoId: string): Promise<void> {
-  await db.collection('turnos_dia').doc(turnoId).delete();
+  try {
+    await sqlDb('turnos_dia').where('id', turnoId).delete();
+  } catch (error) {
+    logger.error(`[LISTERO] Error deleteTurno(${turnoId})`, { error: String(error) });
+    throw new AppError(500, 'Error al eliminar turno');
+  }
 }
 
 // ─── Conductores del día ──────────────────────────────────────────────────────
 
 export async function getConductoresDia(fecha: string): Promise<ConductorDia[]> {
-  // Leer personal + sus turnos del día para derivar estado
-  const [personalSnap, turnosSnap] = await Promise.all([
-    db.collection('personal').get(),
-    db.collection('turnos_dia').where('fecha', '==', fecha).get(),
-  ]);
+  try {
+    const [personalRows, turnosRows] = await Promise.all([
+      sqlDb<PersonalRow>('personal').select('*'),
+      sqlDb<TurnoRow>('turnos_dia').where('fecha', fecha),
+    ]);
 
-  const turnosPorConductor = new Map<string, TurnoDia>();
-  turnosSnap.docs.forEach((d) => {
-    const t = d.data() as TurnoDia;
-    if (t.conductorId) turnosPorConductor.set(t.conductorId, { id: d.id, ...t });
-    if (t.conductorReservaId) turnosPorConductor.set(t.conductorReservaId, { id: d.id, ...t });
-  });
+    const turnosPorConductor = new Map<string, TurnoDia>();
+    for (const r of turnosRows) {
+      const t = rowToTurno(r);
+      if (t.conductorId) turnosPorConductor.set(t.conductorId, t);
+      if (t.conductorReservaId) turnosPorConductor.set(t.conductorReservaId, t);
+    }
 
-  return personalSnap.docs
-    .map((d) => {
-      const data = d.data();
-      const turno = turnosPorConductor.get(d.id);
-      return {
-        id: d.id,
-        internalNumber: data.internalNumber ?? data.interno ?? '',
-        fullName: data.fullName ?? data.nombre ?? '',
-        rol: data.role ?? data.rol ?? 'conductor',
-        estadoHoy: (data.estadoHoy ?? 'disponible') as EstadoConductorHoy,
-        turnoAsignado: turno ? turno.turno : null,
-        lineaAsignada: turno ? turno.lineaId : null,
-        vehiculoAsignado: turno ? turno.vehiculoInterno : null,
-        horaUltimoServicio: data.horaUltimoServicio ?? null,
-        esConductorReserva: data.esConductorReserva ?? false,
-        telefono: data.telefono ?? null,
-      } as ConductorDia;
-    })
-    .filter((c) => /conductor|driver|chofer|micrero|guarda/i.test(c.rol));
+    return personalRows
+      .map((p) => rowToConductor(p, turnosPorConductor.get(p.id)))
+      .filter((c) => /conductor|driver|chofer|micrero|guarda/i.test(c.rol));
+  } catch (error) {
+    logger.error(`[LISTERO] Error getConductoresDia(${fecha})`, { error: String(error) });
+    throw new AppError(500, 'Error al obtener conductores del día');
+  }
 }
 
 // ─── Marcar ausencia (dispara cascada) ───────────────────────────────────────
@@ -248,38 +392,33 @@ export async function marcarAusencia(
   motivo: string,
   registradoPor: string,
 ): Promise<{ turnosAfectados: TurnoDia[]; reservasDisponibles: ConductorDia[] }> {
-  // Actualizar estado del conductor en personal
-  await db.collection('personal').doc(conductorId).update({
-    estadoHoy: 'ausente',
-    motivoAusencia: motivo,
-    ausenciaRegistradaPor: registradoPor,
-    ausenciaFecha: fecha,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-
-  // Buscar turnos asignados a este conductor hoy
-  const turnosSnap = await db
-    .collection('turnos_dia')
-    .where('fecha', '==', fecha)
-    .where('conductorId', '==', conductorId)
-    .get();
-
-  const turnosAfectados: TurnoDia[] = [];
-  for (const doc of turnosSnap.docs) {
-    const turno = { id: doc.id, ...doc.data() } as TurnoDia;
-    await doc.ref.update({
-      estado: 'sin_conductor',
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  try {
+    await sqlDb('personal').where('id', conductorId).update({
+      estado_hoy: 'ausente',
+      motivo_ausencia: motivo,
+      ausencia_registrada_por: registradoPor,
+      ausencia_fecha: fecha,
     });
-    turnosAfectados.push({ ...turno, estado: 'sin_conductor' });
+
+    const turnosRows = await sqlDb<TurnoRow>('turnos_dia')
+      .where('fecha', fecha)
+      .where('conductor_id', conductorId);
+
+    const turnosAfectados: TurnoDia[] = [];
+    for (const r of turnosRows) {
+      await sqlDb('turnos_dia').where('id', r.id).update({ estado: 'sin_conductor' });
+      turnosAfectados.push({ ...rowToTurno(r), estado: 'sin_conductor' });
+    }
+
+    const reservasDisponibles = await buscarReservasDisponibles(fecha, turnosAfectados);
+
+    logger.warn(`[LISTERO] Ausencia registrada: conductor ${conductorId} — ${turnosAfectados.length} turnos sin cobertura`);
+
+    return { turnosAfectados, reservasDisponibles };
+  } catch (error) {
+    logger.error(`[LISTERO] Error marcarAusencia(${conductorId})`, { error: String(error) });
+    throw new AppError(500, 'Error al registrar ausencia');
   }
-
-  // Buscar conductores de reserva disponibles
-  const reservasDisponibles = await buscarReservasDisponibles(fecha, turnosAfectados);
-
-  logger.warn(`[LISTERO] Ausencia registrada: conductor ${conductorId} — ${turnosAfectados.length} turnos sin cobertura`);
-
-  return { turnosAfectados, reservasDisponibles };
 }
 
 // ─── Buscar conductores de reserva ───────────────────────────────────────────
@@ -291,13 +430,11 @@ export async function buscarReservasDisponibles(
   const conductoresDia = await getConductoresDia(fecha);
 
   return conductoresDia.filter((c) => {
-    // Solo disponibles o reserva explícita
     if (c.estadoHoy !== 'disponible' && c.estadoHoy !== 'reserva') return false;
-    // Verificar descanso OIT: mínimo 9 horas (540 min) desde último servicio
     if (c.horaUltimoServicio && turnosAfectados.length > 0) {
       const primerTurno = turnosAfectados[0];
       const descanso = minutosDescansoEntre(c.horaUltimoServicio, primerTurno.horaSalida);
-      if (descanso < 540) return false; // menos de 9 horas
+      if (descanso < 540) return false;
     }
     return true;
   });
@@ -311,21 +448,23 @@ export async function asignarReserva(
   conductorReservaNombre: string,
   asignadoPor: string,
 ): Promise<void> {
-  await db.collection('turnos_dia').doc(turnoId).update({
-    estado: 'cubierto_reserva',
-    reservaActivada: true,
-    conductorReservaId,
-    conductorReservaNombre,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+  try {
+    await sqlDb('turnos_dia').where('id', turnoId).update({
+      estado: 'cubierto_reserva',
+      reserva_activada: true,
+      conductor_reserva_id: conductorReservaId,
+      conductor_reserva_nombre: conductorReservaNombre,
+    });
 
-  // Actualizar estado del conductor reserva
-  await db.collection('personal').doc(conductorReservaId).update({
-    estadoHoy: 'en_servicio',
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+    await sqlDb('personal').where('id', conductorReservaId).update({
+      estado_hoy: 'en_servicio',
+    });
 
-  logger.info(`[LISTERO] Reserva activada: turno ${turnoId} → conductor ${conductorReservaId} por ${asignadoPor}`);
+    logger.info(`[LISTERO] Reserva activada: turno ${turnoId} → conductor ${conductorReservaId} por ${asignadoPor}`);
+  } catch (error) {
+    logger.error(`[LISTERO] Error asignarReserva(${turnoId})`, { error: String(error) });
+    throw new AppError(500, 'Error al asignar reserva');
+  }
 }
 
 // ─── Marcar vehículo en taller ────────────────────────────────────────────────
@@ -336,69 +475,61 @@ export async function marcarVehiculoEnTaller(
   registradoPor: string,
   fecha: string,
 ): Promise<{ turnosAfectados: TurnoDia[]; vehiculosReservaDisponibles: VehiculoDia[] }> {
-  await db.collection('vehicles').doc(vehiculoId).update({
-    estadoHoy: 'en_taller',
-    motivoBaja: motivo,
-    bajaRegistradaPor: registradoPor,
-    bajaFecha: fecha,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+  try {
+    // Update del data_jsonb del vehículo (tabla `vehiculos` ya existente).
+    await sqlDb('vehiculos')
+      .where('id', vehiculoId)
+      .update({
+        data_jsonb: sqlDb.raw('data_jsonb || ?', [
+          JSON.stringify({
+            estadoHoy: 'en_taller',
+            motivoBaja: motivo,
+            bajaRegistradaPor: registradoPor,
+            bajaFecha: fecha,
+          }),
+        ]),
+      });
 
-  const turnosSnap = await db
-    .collection('turnos_dia')
-    .where('fecha', '==', fecha)
-    .where('vehiculoId', '==', vehiculoId)
-    .get();
+    const turnosRows = await sqlDb<TurnoRow>('turnos_dia')
+      .where('fecha', fecha)
+      .where('vehiculo_id', vehiculoId);
 
-  const turnosAfectados: TurnoDia[] = [];
-  for (const doc of turnosSnap.docs) {
-    await doc.ref.update({
-      estado: 'sin_conductor', // reutilizamos el estado para "sin vehículo"
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    turnosAfectados.push({ id: doc.id, ...doc.data() } as TurnoDia);
+    const turnosAfectados: TurnoDia[] = [];
+    for (const r of turnosRows) {
+      await sqlDb('turnos_dia').where('id', r.id).update({ estado: 'sin_conductor' });
+      turnosAfectados.push({ ...rowToTurno(r), estado: 'sin_conductor' });
+    }
+
+    const vehiculosReservaDisponibles = await buscarVehiculosReserva(fecha);
+
+    logger.warn(`[LISTERO] Vehículo ${vehiculoId} a taller — ${turnosAfectados.length} turnos afectados`);
+
+    return { turnosAfectados, vehiculosReservaDisponibles };
+  } catch (error) {
+    logger.error(`[LISTERO] Error marcarVehiculoEnTaller(${vehiculoId})`, { error: String(error) });
+    throw new AppError(500, 'Error al marcar vehículo en taller');
   }
-
-  const vehiculosReservaDisponibles = await buscarVehiculosReserva(fecha);
-
-  logger.warn(`[LISTERO] Vehículo ${vehiculoId} enviado a taller — ${turnosAfectados.length} turnos afectados`);
-
-  return { turnosAfectados, vehiculosReservaDisponibles };
 }
 
 // ─── Buscar vehículos de reserva ──────────────────────────────────────────────
 
 export async function buscarVehiculosReserva(fecha: string): Promise<VehiculoDia[]> {
-  const turnosSnap = await db
-    .collection('turnos_dia')
-    .where('fecha', '==', fecha)
-    .get();
+  try {
+    const turnosRows = await sqlDb<TurnoRow>('turnos_dia').where('fecha', fecha).select('vehiculo_id');
+    const vehiculosEnUso = new Set(turnosRows.map((r) => r.vehiculo_id));
 
-  const vehiculosEnUso = new Set(turnosSnap.docs.map((d) => d.data().vehiculoId));
+    const todos = await sqlDb<VehiculoRow>('vehiculos').select('*');
 
-  const vehiculosSnap = await db
-    .collection('vehicles')
-    .where('estadoHoy', 'in', ['disponible', 'reserva'])
-    .get();
-
-  return vehiculosSnap.docs
-    .filter((d) => !vehiculosEnUso.has(d.id))
-    .map((d) => {
-      const data = d.data();
-      return {
-        id: d.id,
-        interno: data.internalNumber ?? data.interno ?? d.id,
-        patente: data.patente ?? null,
-        tipo: data.tipo ?? 'diesel',
-        estadoHoy: data.estadoHoy ?? 'disponible',
-        lineaAsignada: null,
-        conductorAsignado: null,
-        bateriaActual: data.bateriaActual ?? null,
-        kilometrajeHoy: data.kilometrajeHoy ?? null,
-        ultimaInspeccion: data.lastCheckDate ?? null,
-        motivoBaja: null,
-      } as VehiculoDia;
-    });
+    return todos
+      .filter((v) => {
+        const estado = ((v.data_jsonb ?? {}) as any).estadoHoy ?? 'disponible';
+        return (estado === 'disponible' || estado === 'reserva') && !vehiculosEnUso.has(v.id);
+      })
+      .map(rowToVehiculoDia);
+  } catch (error) {
+    logger.error(`[LISTERO] Error buscarVehiculosReserva(${fecha})`, { error: String(error) });
+    throw new AppError(500, 'Error al buscar vehículos de reserva');
+  }
 }
 
 // ─── Firma de conductor (cartón digital) ─────────────────────────────────────
@@ -408,86 +539,106 @@ export async function registrarFirma(
   conductorId: string,
   horaFirma: string,
 ): Promise<void> {
-  const turnoRef = db.collection('turnos_dia').doc(turnoId);
-  const turnoSnap = await turnoRef.get();
+  try {
+    const turnoRow = await sqlDb<TurnoRow>('turnos_dia').where('id', turnoId).first();
+    if (!turnoRow) throw new AppError(404, 'Turno no encontrado');
 
-  if (!turnoSnap.exists) throw new AppError(404, 'Turno no encontrado');
+    if (turnoRow.conductor_id !== conductorId && turnoRow.conductor_reserva_id !== conductorId) {
+      throw new AppError(403, 'El conductor no está asignado a este turno');
+    }
 
-  const turno = turnoSnap.data() as TurnoDia;
-  if (turno.conductorId !== conductorId && turno.conductorReservaId !== conductorId) {
-    throw new AppError(403, 'El conductor no está asignado a este turno');
+    await sqlDb('turnos_dia').where('id', turnoId).update({
+      firma_conductor: true,
+      hora_firma: horaFirma,
+      estado: 'activo',
+    });
+
+    logger.info(`[LISTERO] Firma registrada: turno ${turnoId} conductor ${conductorId} a las ${horaFirma}`);
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    logger.error(`[LISTERO] Error registrarFirma(${turnoId})`, { error: String(error) });
+    throw new AppError(500, 'Error al registrar firma');
   }
-
-  await turnoRef.update({
-    firmaConductor: true,
-    horaFirma,
-    estado: 'activo',
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-
-  logger.info(`[LISTERO] Firma registrada: turno ${turnoId} conductor ${conductorId} a las ${horaFirma}`);
 }
 
 // ─── Resumen del día ──────────────────────────────────────────────────────────
 
 export async function getResumenDiario(fecha: string): Promise<ResumenDiario> {
-  const [turnos, conductores, alertasSnap, vehiculosSnap] = await Promise.all([
-    getTurnosByFecha(fecha),
-    getConductoresDia(fecha),
-    db.collection('alertas_operativas').where('fecha', '==', fecha).where('atendida', '==', false).get(),
-    db.collection('vehicles').get(),
-  ]);
+  try {
+    const [turnos, conductores, alertasCountRow, vehiculosRows] = await Promise.all([
+      getTurnosByFecha(fecha),
+      getConductoresDia(fecha),
+      sqlDb('alertas_operativas')
+        .where('fecha', fecha)
+        .where('atendida', false)
+        .count<{ count: string }>({ count: '*' })
+        .first(),
+      sqlDb<VehiculoRow>('vehiculos').select('*'),
+    ]);
 
-  const turnosSinConductor = turnos.filter((t) =>
-    t.estado === 'sin_conductor' || t.estado === 'cancelado',
-  );
+    const turnosSinConductor = turnos.filter(
+      (t) => t.estado === 'sin_conductor' || t.estado === 'cancelado',
+    );
 
-  const impactoTotal = turnosSinConductor.reduce(
-    (acc, t) => acc + (t.impactoIngresosEstimado ?? 0),
-    0,
-  );
+    const impactoTotal = turnosSinConductor.reduce(
+      (acc, t) => acc + (t.impactoIngresosEstimado ?? 0),
+      0,
+    );
 
-  const lineasEnRiesgo = [
-    ...new Set(
-      turnosSinConductor
-        .filter((t) => t.importanciaLinea >= 4)
-        .map((t) => t.lineaId),
-    ),
-  ];
+    const lineasEnRiesgo = [
+      ...new Set(
+        turnosSinConductor.filter((t) => t.importanciaLinea >= 4).map((t) => t.lineaId),
+      ),
+    ];
 
-  const vehiculos = vehiculosSnap.docs.map((d) => d.data());
-  const vehiculosEnTaller = vehiculos.filter((v) => v.estadoHoy === 'en_taller').length;
-  const vehiculosDisponibles = vehiculos.filter((v) =>
-    v.estadoHoy === 'disponible' || v.estadoHoy === 'en_servicio',
-  ).length;
+    const vehiculosEstadoHoy = vehiculosRows.map((r) => {
+      const d = (r.data_jsonb ?? {}) as any;
+      return d.estadoHoy ?? 'disponible';
+    });
 
-  const coberturaFlota =
-    turnos.length > 0
-      ? Math.round(
-          (turnos.filter((t) => t.estado !== 'sin_conductor' && t.estado !== 'cancelado').length /
-            turnos.length) *
-            100,
-        )
-      : 100;
+    const vehiculosEnTaller = vehiculosEstadoHoy.filter((e) => e === 'en_taller').length;
+    const vehiculosDisponibles = vehiculosEstadoHoy.filter(
+      (e) => e === 'disponible' || e === 'en_servicio',
+    ).length;
 
-  return {
-    fecha,
-    turnosTotal: turnos.length,
-    turnosCubiertos: turnos.filter(
-      (t) => t.estado === 'activo' || t.estado === 'cubierto_reserva' || t.estado === 'completado',
-    ).length,
-    turnosSinConductor: turnosSinConductor.length,
-    turnosCanceladosTotal: turnos.filter((t) => t.estado === 'cancelado').length,
-    conductoresDisponibles: conductores.filter((c) => c.estadoHoy === 'disponible').length,
-    conductoresAusentes: conductores.filter((c) => c.estadoHoy === 'ausente').length,
-    conductoresReservaLibres: conductores.filter(
-      (c) => c.estadoHoy === 'reserva' || (c.estadoHoy === 'disponible' && c.esConductorReserva),
-    ).length,
-    vehiculosDisponibles,
-    vehiculosEnTaller,
-    coberturaFlota,
-    alertasActivas: alertasSnap.size,
-    impactoIngresosRiesgoUSD: impactoTotal,
-    lineasEnRiesgoIMM: lineasEnRiesgo,
-  };
+    const coberturaFlota =
+      turnos.length > 0
+        ? Math.round(
+            (turnos.filter(
+              (t) => t.estado !== 'sin_conductor' && t.estado !== 'cancelado',
+            ).length /
+              turnos.length) *
+              100,
+          )
+        : 100;
+
+    const alertasActivas = parseInt((alertasCountRow?.count as string) ?? '0', 10);
+
+    return {
+      fecha,
+      turnosTotal: turnos.length,
+      turnosCubiertos: turnos.filter(
+        (t) =>
+          t.estado === 'activo' ||
+          t.estado === 'cubierto_reserva' ||
+          t.estado === 'completado',
+      ).length,
+      turnosSinConductor: turnosSinConductor.length,
+      turnosCanceladosTotal: turnos.filter((t) => t.estado === 'cancelado').length,
+      conductoresDisponibles: conductores.filter((c) => c.estadoHoy === 'disponible').length,
+      conductoresAusentes: conductores.filter((c) => c.estadoHoy === 'ausente').length,
+      conductoresReservaLibres: conductores.filter(
+        (c) => c.estadoHoy === 'reserva' || (c.estadoHoy === 'disponible' && c.esConductorReserva),
+      ).length,
+      vehiculosDisponibles,
+      vehiculosEnTaller,
+      coberturaFlota,
+      alertasActivas,
+      impactoIngresosRiesgoUSD: impactoTotal,
+      lineasEnRiesgoIMM: lineasEnRiesgo,
+    };
+  } catch (error) {
+    logger.error(`[LISTERO] Error getResumenDiario(${fecha})`, { error: String(error) });
+    throw new AppError(500, 'Error al generar resumen diario');
+  }
 }
