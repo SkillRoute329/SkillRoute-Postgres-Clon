@@ -252,7 +252,7 @@ export async function analyzeComplianceForAgency(agencyId: string): Promise<BusC
       if (!stop.lat || !stop.lon) continue;
       const stopMin = toMin(stop.arrival);
       if (stopMin < nowMin - 10) continue; // ya pasada hace más de 10 min
-      const dist = distKm(busLat, busLon, stop.lat, stop.lon);
+      const dist = distKm(lat, lon, stop.lat, stop.lon);
       if (dist < minDistKm) {
         minDistKm = dist;
         proximaParada = stop;
@@ -282,8 +282,8 @@ export async function analyzeComplianceForAgency(agencyId: string): Promise<BusC
       linea: routeShort,
       empresa: agData.agency_name,
       agencyId,
-      lat: busLat,
-      lon: busLon,
+      lat,
+      lon,
       velocidad: p.velocidad ?? 0,
       timestampGPS: now.toISOString(),
       tripActivo,

@@ -282,6 +282,51 @@ export function useLiveBusesByLine(
       }
     }
 
+    // ── 4) SOBERANIA: Proxy Directo IMM local 🚀 ─────────────────────────────
+    try {
+      const token = localStorage.getItem('tf_token');
+      const res = await fetch('/api/stm/live-buses', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const outerJson = await res.json();
+      if (outerJson.success && outerJson.data?.features) {
+        outerJson.data.features.forEach((feat: any) => {
+          const p = feat.properties;
+          if (!p || !p.codigoEmpresa || !p.linea) return;
+          
+          // Filtros
+          const numericAgency = Number(p.codigoEmpresa);
+          if (agencyId !== -1 && numericAgency !== agencyId) return;
+          if (!matchLinea(p.linea, codigoLinea)) return;
+          
+          const coords = feat.geometry?.coordinates;
+          if (!coords || coords.length < 2) return;
+
+          const id = `imm-${p.codigoBus}`;
+          // Evitar duplicados
+          if (seenIds.has(id)) return;
+          seenIds.add(id);
+
+          lista.push({
+            id,
+            cocheId: String(p.codigoBus),
+            empresa: AGENCY_NAME[numericAgency] || `EMP_${numericAgency}`,
+            agencyId: numericAgency,
+            codigoLinea: String(p.linea),
+            lat: coords[1], // Latitud
+            lng: coords[0], // Longitud
+            heading: null,
+            velocidad: typeof p.velocidad === 'number' ? p.velocidad : null,
+            fuente: 'competidores', // Usar fuente 'competidores' para mostrar en mapa
+            updatedAtMs: ahora,
+            hacieCuantoMin: 0,
+          });
+        });
+      }
+    } catch (err) {
+      console.warn('[useLiveBusesByLine] Error recuperando telemetry local IMM', err);
+    }
+
     if (cancelRef.current) return;
     setBuses(lista);
     setUltimaActualizacion(new Date());

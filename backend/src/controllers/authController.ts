@@ -2,14 +2,14 @@
  * Controladores para autenticación
  */
 
-import { Response } from 'express';
+import { Response, NextFunction } from 'express';
 import { AuthRequest, ApiResponse } from '../types/index';
 import { authenticateUser } from '../services/authService';
 
 /**
  * POST /api/auth/login
  */
-export async function login(req: AuthRequest, res: Response): Promise<void> {
+export async function login(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { internalNumber, password } = req.body;
 
@@ -26,8 +26,8 @@ export async function login(req: AuthRequest, res: Response): Promise<void> {
 
     res.json(response);
   } catch (error) {
-    // El error será capturado por el error handler middleware
-    throw error;
+    // Pasar el error al middleware de error global para no tumbar node
+    next(error);
   }
 }
 

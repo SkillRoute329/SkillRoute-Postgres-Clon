@@ -38,6 +38,7 @@ Ejemplos:
 "Adelantá el 55 que está corto con el de atrás" → TACTICAL
 "Cuántos coches tenemos en servicio?" → READ
 "Dame el estado del interno 300" → READ
+"Con quién compite la línea 300?" → READ
 "Hola, qué podés hacer?" → CHAT
 "Gracias" → CHAT`;
 
@@ -47,7 +48,10 @@ REGLAS:
 - Respondés en español rioplatense, tono directo, ejecutivo y breve.
 - Tu misión es OPTIMIZAR LA FRECUENCIA y DEFENDER LA LÍNEA de la competencia.
 - Identificá SIEMPRE los coches por su NÚMERO INTERNO (coche). Ejemplo: "El coche 142 de UCOT va pegado al 110 interno 234 de CUTCSA".
-- Antes de proponer nada, consultá la REALIDAD: 'get_active_positions' (GPS) y 'get_competition_report' (competencia).
+- Antes de proponer nada, consultá la REALIDAD: 'get_active_positions' (GPS) de los coches en vivo. 
+- Si necesitás saber la COMPETENCIA DIRECTA y EXACTA de una línea con TODAS las demás del sistema, USÁ SIEMPRE 'analyze_gtfs_route_overlaps'.
+- PRESENTACIÓN PREMIUM: Al presentar competencia, USÁ SIEMPRE tablas Markdown con "N° LÍNEA RIVAL | Empresa | % Solapamiento | Zona de Conflicto". 
+- OBLIGATORIO: Nombrar explícitamente el NÚMERO EXACTO de la línea rival en negritas. Explicá de forma gerencial la ZONA crítica en base a los 'principales_puntos_coincidencia'.
 - Podés filtrar 'get_active_positions' por linea_id para ver quiénes están en el recorrido (UCOT y rivales).
 - Podés PROPONER acciones con 'suggest_hold_vehicle' o 'suggest_advance_vehicle'. Estas NO ejecutan — crean una sugerencia que el inspector humano aprueba.
 - Basá tus sugerencias en DATOS: "El interno 300 viene con 4 min de atraso y el coche 1024 de CUTCSA le viene sacando gente, propongo adelantar".
@@ -56,13 +60,18 @@ REGLAS:
 
 CONTEXTO UCOT: cooperativa Montevideo. Competencia: CUTCSA (ID 50), COETC (ID 60), COME (ID 20).`;
 
-const READ_SYSTEM = `Eres el Asistente de Inteligencia Táctica (A.I.T) de UCOT, con acceso a datos en tiempo real de la Intendencia de Montevideo (STM).
+const READ_SYSTEM = `Eres el Asistente de Inteligencia Táctica (A.I.T) de UCOT, con acceso soberano a la INFRAESTRUCTURA LOCAL SQL y datos en tiempo real de la Intendencia (STM).
 
 REGLAS:
 - Respondés en español rioplatense, breve y directo.
+- Posees CONSCIENCIA ABSOLUTA de la malla física de paradas mapeada en PostgreSQL. Si te preguntan por "¿Cuántas paradas hay?" o la malla física local, INVOCÁS 'get_gtfs_infrastructure_stats' inmediatamente para dar la cifra real.
+- Si el usuario pregunta por la COMPETENCIA DIRECTA, PORCENTAJES DE SOLAPAMIENTO o CON QUÉ LÍNEAS CRUZA una ruta determinada, INVOCAS INMEDIATAMENTE 'analyze_gtfs_route_overlaps' con el número de línea. Esta tool te da la verdad exacta de las otras empresas en base a la base de datos SQL.
+- PRESENTACIÓN PREMIUM: Al presentar la competencia, NO pegues texto plano. Usá tablas Markdown elegantemente formateadas con columnas: "N° LÍNEA RIVAL | Empresa | % Solapamiento | Puntos de Cruce". 
+- CRÍTICO: Debés mencionar OBLIGATORIAMENTE y DESTACAR EN NEGRITAS el número exacto de la línea competidora (ej: **Línea 103**). No te limites a la empresa, da el NÚMERO de línea exacto siempre.
+- Agrega un pequeño análisis estratégico: Destaca cuál es el "Corredor en Conflicto" basado en las 'zonas_donde_compiten' devueltas por la tool, explicando por qué compiten en esa ZONA específica (ej: "Comparten recorrido crítico en [Punto A] y [Punto B]").
 - Si te preguntan "¿qué coches hay?" o "¿dónde está la competencia?", usá 'get_active_positions' filtrando por la línea y empresa_id (0 para ver todas).
 - Identificá los coches por su NÚMERO INTERNO (coche) y empresa.
-- Invocás las tools de lectura para responder con datos reales. Nunca inventás números.
+- Invocás las tools de lectura para responder con datos reales. Nunca inventás números y formateás las respuestas SIEMPRE como informes tácticos ejecutivos.
 - Si la tool no trae datos, lo decís explícitamente: "No tengo señal de GPS para esa unidad ahora mismo".
 - NO proponés acciones — este rol es solo de consulta y monitoreo.`;
 
@@ -94,6 +103,24 @@ export interface OrchestratorResult {
 /** Router: clasifica la intención con gemma3:4b. Fallback a TACTICAL si falla. */
 export async function routeIntent(userMessage: string): Promise<{ intent: Intent; latencyMs: number }> {
   const t0 = Date.now();
+  const normalized = userMessage.toLowerCase().trim();
+
+  // == HEURÍSTICA DE RESCATE (Seguridad Absoluta para modelos pequeños) ==
+  // Si el usuario habla de competencia, porcentajes o paradas, FORZAMOS a READ
+  // sin importar lo que el modelo de 0.5B alucine.
+  if (
+    normalized.includes('competencia') || 
+    normalized.includes('compite') || 
+    normalized.includes('cruza') || 
+    normalized.includes('solapa') ||
+    normalized.includes('porcentaje') ||
+    normalized.includes('cuántas paradas') ||
+    normalized.includes('cuantas paradas')
+  ) {
+    logger.info('[Router] Forzando INTENT=READ vía Heurística (Palabras Clave detectadas)');
+    return { intent: 'READ', latencyMs: Date.now() - t0 };
+  }
+
   try {
     const res = await AIService.chat(
       'FAST',
@@ -101,7 +128,7 @@ export async function routeIntent(userMessage: string): Promise<{ intent: Intent
         { role: 'system', content: ROUTER_PROMPT },
         { role: 'user', content: userMessage },
       ],
-      { temperature: 0, maxTokens: 10, timeoutMs: 10000 },
+      { temperature: 0, maxTokens: 10, timeoutMs: 120000 },
     );
     const raw = res.message.content.trim().toUpperCase();
     const match = raw.match(/\b(TACTICAL|READ|CHAT)\b/);
@@ -131,7 +158,8 @@ function configForIntent(intent: Intent): RouteConfig {
       // → menos tokens en contexto que TACTICAL, sin riesgo de write accidental).
       return { task: 'HEAVY', systemPrompt: READ_SYSTEM, tools: READ_TOOL_SPECS, temperature: 0.2, maxTokens: 500 };
     case 'CHAT':
-      return { task: 'FAST', systemPrompt: CHAT_SYSTEM, tools: undefined, temperature: 0.4, maxTokens: 300 };
+      // Le equipamos también las tools de lectura en CHAT como contingencia máxima
+      return { task: 'HEAVY', systemPrompt: CHAT_SYSTEM, tools: READ_TOOL_SPECS, temperature: 0.4, maxTokens: 500 };
   }
 }
 
@@ -160,7 +188,7 @@ export async function runCopilot(
     rounds++;
     const res = await AIService.chat(cfg.task, messages, {
       tools: cfg.tools,
-      timeoutMs: 60000,
+      timeoutMs: 120000,
       temperature: cfg.temperature,
       maxTokens: cfg.maxTokens,
     });

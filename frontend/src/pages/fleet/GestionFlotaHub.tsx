@@ -6,7 +6,7 @@ const DisponibilidadFlota  = lazy(() => import('./DisponibilidadFlota'));
 const MaintenanceDashboard = lazy(() => import('../admin/MaintenanceDashboard'));
 const VehicleCheck         = lazy(() => import('./VehicleCheck'));
 const RoadAlertsPage       = lazy(() => import('../alerts/RoadAlertsPage'));
-const CombustibleModule       = lazy(() => import('./CombustibleModule'));
+const CombustibleModule       = VehicleList;
 const MantenimientoPredictivo = lazy(() => import('./MantenimientoPredictivo'));
 
 const TABS = [

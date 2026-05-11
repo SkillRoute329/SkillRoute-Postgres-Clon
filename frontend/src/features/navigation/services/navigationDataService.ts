@@ -27,6 +27,9 @@ import {
 } from '../data/crossOpShapesInjector';
 import type { ParadaUcot, PuntoLatLng } from '../../../types/lineasUcot';
 import { LINE_ARCHETYPES } from '../../../data/lineTemplates';
+import api from '../../../services/api';
+
+const ABSOLUTE_API_URL = 'http://localhost:3000/api';
 
 const AGENCY_NAME: Record<number, string> = {
   10: 'COETC',
@@ -368,7 +371,51 @@ async function firestoreLineaData(agencyId: number, codigo: string): Promise<Lin
  * Prioridad: shapes_cross_operator (Firestore GTFS) > crossOpShapesInjector (JSON) > ucotShapesInjector > linesService legacy.
  */
 export async function getNavigationLineas(agencyId: number): Promise<LineaUCOTResumen[]> {
-  // Fuente 1: shapes_cross_operator Firestore (GTFS oficial, actualizado semanalmente)
+  // SOBERANIA TOTAL: Fuente 1: Backend SQL local (Exacto y Seguro)
+  try {
+    const token = localStorage.getItem('tf_token');
+    const resRaw = await fetch(`${ABSOLUTE_API_URL}/gtfs/lines?agencyId=${agencyId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (resRaw.ok) {
+      const resData = await resRaw.json();
+      const lines = resData.data || [];
+      if (lines.length > 0) {
+        const sqlResult: LineaUCOTResumen[] = [];
+        for (const l of lines) {
+          const baseCod = String(l.codigo).trim();
+          const name = l.nombre || `${baseCod}`;
+          const nameParts = name.split(/[-–—]/);
+          const origen = nameParts[0]?.trim();
+          const destino = nameParts[nameParts.length - 1]?.trim();
+
+          sqlResult.push({
+            id: `${baseCod}a`,
+            codigo: `${baseCod}a`,
+            nombre: name,
+            empresa: AGENCY_NAME[agencyId] || '',
+            sentido: 'IDA',
+            origen,
+            destino
+          });
+          sqlResult.push({
+            id: `${baseCod}b`,
+            codigo: `${baseCod}b`,
+            nombre: name,
+            empresa: AGENCY_NAME[agencyId] || '',
+            sentido: 'VUELTA',
+            origen: destino, // Flip labels for visual convenience
+            destino: origen
+          });
+        }
+        return sqlResult;
+      }
+    }
+  } catch (err) {
+    console.warn('[NavigationDataService] Failed fetching lines via absolute fetch:', err);
+  }
+
+  // Fuente 2: shapes_cross_operator Firestore (Legacy)
   const desdeFirestore = await firestoreLineas(agencyId);
   if (desdeFirestore.length > 0) return desdeFirestore;
 
@@ -409,7 +456,42 @@ export async function getNavigationLineaData(
   agencyId: number,
   codigo: string,
 ): Promise<LineaUCOT | null> {
-  // 1. shapes_cross_operator Firestore (GTFS oficial)
+  // SOBERANIA TOTAL: Fuente 1: Local Backend SQL via Direct Absolute Call
+  try {
+    const baseCodigo = String(codigo).replace(/[ab]$/i, '').trim();
+    const sentidoStr: 'IDA' | 'VUELTA' = String(codigo).toLowerCase().endsWith('b') ? 'VUELTA' : 'IDA';
+    const directionId = sentidoStr === 'VUELTA' ? 1 : 0;
+
+    const token = localStorage.getItem('tf_token');
+    const resRaw = await fetch(`${ABSOLUTE_API_URL}/gtfs/geometry?agencyId=${agencyId}&linea=${baseCodigo}&directionId=${directionId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (resRaw.ok) {
+      const resData = await resRaw.json();
+      const data = resData.data;
+      if (data && data.recorrido && data.recorrido.length >= 2) {
+        console.warn('[DEBUG NAV DATA] Loaded PostgreSQL geometry via Direct Pipe:', baseCodigo);
+        const ahora = new Date();
+        return {
+          codigo,
+          numeroAPI: baseCodigo,
+          nombre: `${baseCodigo} · ${sentidoStr}`,
+          empresa: AGENCY_NAME[agencyId] || '',
+          sentido: sentidoStr as SentidoLinea,
+          recorrido: data.recorrido,
+          paradas: data.paradas,
+          desviosFijos: [],
+          desviosTemporales: [],
+          ultimaActualizacion: mockTimestamp(ahora),
+        } as unknown as LineaUCOT;
+      }
+    }
+  } catch (err) {
+    console.warn('[NavigationDataService] SQL Geometry ABSOLUTE FETCH ERROR:', err);
+  }
+
+  // 2. shapes_cross_operator Firestore (GTFS oficial legacy)
   const desdeFirestore = await firestoreLineaData(agencyId, codigo);
   if (desdeFirestore) return desdeFirestore;
 

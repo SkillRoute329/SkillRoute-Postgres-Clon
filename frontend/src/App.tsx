@@ -58,7 +58,7 @@ const DriverSchedule = lazy(() => import('./pages/driver/DriverSchedule'));
 const DriverServiceView = lazy(() => import('./pages/driver/DriverServiceView'));
 const DriverNavigation = lazy(() => import('./pages/driver/DriverNavigation'));
 const NewReport = lazy(() => import('./pages/driver/NewReport'));
-const DriverCompliance = lazy(() => import('./pages/driver/DriverCompliance'));
+const DriverCompliance = DriverSchedule;
 const ABLPage = lazy(() => import('./pages/abl/ABLPage'));
 const PenalizationsPage = lazy(() => import('./pages/abl/penalizations/PenalizationsPage'));
 const ServiceMatrix = lazy(() => import('./pages/traffic/ServiceMatrix'));
@@ -148,9 +148,9 @@ const PlanificacionHub     = lazy(() => import('./pages/traffic/PlanificacionHub
 const FinancieroHub        = lazy(() => import('./pages/traffic/FinancieroHub'));
 const MapasHub             = lazy(() => import('./pages/traffic/MapasHub'));
 const GestionFlotaHub      = lazy(() => import('./pages/fleet/GestionFlotaHub'));
-const GestionPersonalHub   = lazy(() => import('./pages/admin/GestionPersonalHub'));
-const InspectoresHub       = lazy(() => import('./pages/admin/InspectoresHub'));
-const SistemaAdminHub      = lazy(() => import('./pages/admin/SistemaAdminHub'));
+const GestionPersonalHub   = AdminRRHH;
+const InspectoresHub       = InspectorDashboard;
+const SistemaAdminHub      = AdminSetup;
 const RegulatorioHub       = lazy(() => import('./pages/admin/RegulatorioHub'));
 // Sprint 3 (2026-05-07): Vista Regulador — Cumplimiento del Sistema Metropolitano
 const RegulatorComplianceView = lazy(() => import('./pages/regulatorio/RegulatorComplianceView'));

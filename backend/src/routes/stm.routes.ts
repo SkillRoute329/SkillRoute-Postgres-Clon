@@ -18,6 +18,23 @@ const router = Router();
 // Todas requieren autenticación
 router.use(requireAuth);
 
+import immRealtimeService from '../services/immRealtimeService';
+
+/**
+ * GET /api/stm/live-buses
+ * SOBERANO: Proxy directo al endpoint real de la IMM.
+ * Devuelve GeoJSON de TODOS los buses en vivo cruzando Montevideo.
+ */
+router.get('/live-buses', async (req, res) => {
+  try {
+    const data = await immRealtimeService.fetchBusesLive("-1"); // "-1" = TODAS
+    res.json({ success: true, data });
+  } catch (err: any) {
+    logger.error(`[stm/live-buses] Error: ${err?.message}`);
+    res.status(502).json({ success: false, error: 'Error recuperando telemetry IMM.' });
+  }
+});
+
 /**
  * GET /api/stm/lineas
  * Obtiene todas las líneas del STM (datos públicos)

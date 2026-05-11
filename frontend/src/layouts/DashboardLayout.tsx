@@ -9,6 +9,8 @@ import RoadAlertsWidget from '../components/RoadAlertsWidget';
 import RouteErrorBoundary from '../components/RouteErrorBoundary';
 import DriverAlertOverlay from '../components/DriverAlertOverlay';
 import { useAuth } from '../context/AuthContext';
+import AiCopilotChat from '../components/AiCopilotChat';
+import { Sparkles } from 'lucide-react';
 
 
 const SimulationBanner = () => {
@@ -156,8 +158,10 @@ const SystemStatus = () => {
 
 const DashboardLayoutInner = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [mostrarCopiloto, setMostrarCopiloto] = useState(false);
   const { user } = useAuth();
   const location = useLocation();
+  const { selectedLine } = useLiveData();
 
   return (
     <div className="flex h-screen w-full max-w-[100vw] bg-slate-900 overflow-hidden relative">
@@ -200,6 +204,20 @@ const DashboardLayoutInner = () => {
           <LiveIndicators />
 
           <div className="flex items-center gap-4">
+            {/* Copiloto IA Global */}
+            <button
+              onClick={() => setMostrarCopiloto(!mostrarCopiloto)}
+              title="Activar Copiloto Táctico (IA)"
+              className={clsx(
+                "flex items-center justify-center min-h-[44px] min-w-[44px] p-2.5 rounded-full border-2 transition-all duration-300 touch-manipulation",
+                mostrarCopiloto 
+                  ? "border-indigo-400 bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]"
+                  : "border-indigo-500/40 bg-slate-800 text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-400"
+              )}
+            >
+              <Sparkles size={18} className={clsx(mostrarCopiloto ? "animate-spin" : "animate-pulse")} />
+            </button>
+
             {/* Health Check Widget */}
             <SystemStatus />
             <div className="w-px h-6 bg-slate-700 mx-2 hidden sm:block"></div>
@@ -246,6 +264,39 @@ const DashboardLayoutInner = () => {
           </div>
         </div>
 
+
+        {/* ── PANEL LATERAL IA SOBERANA GLOBAL ── */}
+        {mostrarCopiloto && (
+          <div 
+            className="absolute top-0 right-0 bottom-0 w-full sm:w-[420px] z-[2000] bg-slate-900 border-l border-slate-700 shadow-2xl transform transition-all animate-in slide-in-from-right duration-300 flex flex-col"
+            style={{ height: '100%' }}
+          >
+            <div className="relative h-full flex flex-col">
+              {/* Botón Cerrar Panel flotante o cabecera */}
+              <div className="absolute -left-10 top-6 z-50">
+                <button 
+                  onClick={() => setMostrarCopiloto(false)}
+                  className="bg-slate-800 text-slate-300 hover:text-white p-2 rounded-l-xl border border-slate-700 border-r-0 shadow-2xl transition-colors"
+                  title="Cerrar Copiloto"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <AiCopilotChat 
+                className="flex-1 rounded-none border-0" 
+                placeholder="Consultá sobre coches, líneas, conductores o estadísticas generales..."
+                initialContext={{
+                  linea: selectedLine || 'Sistema Completo',
+                  destino: 'Análisis Global',
+                  rivales: ['CUTCSA', 'COME', 'COETC', 'UCOT'],
+                  puntosCarga: ['Red General STM'],
+                  estrategia: 'Asistencia de inteligencia integral para la operación.'
+                }}
+              />
+            </div>
+          </div>
+        )}
 
       </main>
 

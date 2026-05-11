@@ -13,6 +13,7 @@ import { getAllVehicles, getVehicleById } from './fleetService';
 import type { ToolSpec } from './aiService';
 import { createSuggestion } from './aiOrdersService';
 import { analizarCompetenciaLinea } from './stmPublicDataScraper';
+import { gtfsService } from './gtfsService';
 import axios from 'axios';
 import logger from '../config/logger';
 
@@ -91,18 +92,64 @@ export const READ_TOOL_SPECS: ToolSpec[] = [
       },
     },
   },
+  // ELIMINADO POR OBSOLETO Y LIMITADO SOLO A UCOT:
+  // {
+  //   type: 'function',
+  //   function: {
+  //     name: 'get_competition_report',
+  //     description:
+  //       'Genera un análisis profundo de competencia para una línea específica. Compara paradas, frecuencias y detecta "amenazas" de otras empresas (CUTCSA, COETC, COME) que coinciden en el recorrido. Usar cuando el inspector dice "el 300 viene muy cargado" o "la competencia nos está sacando gente".',
+  //     parameters: {
+  //       type: 'object',
+  //       properties: {
+  //         line_id: {
+  //           type: 'string',
+  //           description: 'Número de línea a analizar (ej: "300", "370", "173")',
+  //         },
+  //       },
+  //       required: ['line_id'],
+  //     },
+  //   },
+  // },
   {
     type: 'function',
     function: {
-      name: 'get_competition_report',
+      name: 'get_gtfs_infrastructure_stats',
       description:
-        'Genera un análisis profundo de competencia para una línea específica. Compara paradas, frecuencias y detecta "amenazas" de otras empresas (CUTCSA, COETC, COME) que coinciden en el recorrido. Usar cuando el inspector dice "el 300 viene muy cargado" o "la competencia nos está sacando gente".',
+        'Devuelve estadísticas soberanas sobre la infraestructura cargada en la base de datos SQL local. Incluye el total de paradas físicas mapeadas y el total de líneas (routes) configuradas. Usar cuando el inspector pregunte "¿Cuántas paradas hay?", "¿Qué infraestructura tenemos cargada?", o quiera verificar el estado del núcleo de datos.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_stop_schedule_intel',
+      description:
+        'Consulta el Oráculo de horarios teóricos para una parada específica utilizando los calendarios oficiales SQL. Devuelve los próximos ómnibus que pasarán por allí hoy.',
+      parameters: {
+        type: 'object',
+        properties: {
+          stop_id: {
+            type: 'string',
+            description: 'ID de la parada (ej: "3413")',
+          },
+        },
+        required: ['stop_id'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'analyze_gtfs_route_overlaps',
+      description:
+        'Analiza el solapamiento real y exacto en la base de datos soberana SQL entre la línea consultada y todas las demás líneas del sistema STM (competencia directa). Devuelve porcentaje de coincidencia de recorrido y empresas rivales. Usar para responder preguntas como "¿Con qué líneas compite la 300?", "¿Qué porcentaje compartimos con X?", "Análisis de solapamiento de la línea 76".',
       parameters: {
         type: 'object',
         properties: {
           line_id: {
             type: 'string',
-            description: 'Número de línea a analizar (ej: "300", "370", "173")',
+            description: 'Número corto de la línea objetivo (ej: "300", "76")',
           },
         },
         required: ['line_id'],
@@ -352,6 +399,72 @@ const handlers: Record<string, ToolHandler> = {
       summary: order.summary,
       note: 'Pendiente de aprobación del inspector humano.',
     };
+  },
+
+  async get_gtfs_infrastructure_stats() {
+    try {
+      const stats = await gtfsService.getStats();
+      return {
+        status: 'online',
+        database: 'PostgreSQL (Local)',
+        total_paradas: stats.stops,
+        total_lineas_configuradas: stats.routes,
+        timestamp: new Date().toISOString(),
+        note: 'Estos datos provienen de la sincronización local directa con la base de datos soberana de la empresa.'
+      };
+    } catch (err) {
+      return { error: 'No se pudo leer estadísticas de base de datos local.', detail: String(err) };
+    }
+  },
+
+  async get_stop_schedule_intel(args) {
+    const stopId = String(args.stop_id || '').trim();
+    if (!stopId) return { error: 'stop_id es requerido' };
+    try {
+      const departures = await gtfsService.getNextDepartures(stopId, 5);
+      return {
+        stop_id: stopId,
+        next_scheduled_departures: departures,
+        count: departures.length,
+        note: 'Horarios oficiales teóricos cruzados con el calendario de hoy.'
+      };
+    } catch (err) {
+      return { error: `Error al consultar oráculo de horarios para la parada ${stopId}`, detail: String(err) };
+    }
+  },
+
+  async analyze_gtfs_route_overlaps(args) {
+    const lineId = String(args.line_id || '').trim();
+    if (!lineId) return { error: 'line_id es requerido' };
+    
+    try {
+      const analysis = await gtfsService.getCompetitiveOverlaps(lineId);
+      
+      if (!analysis || analysis.length === 0) {
+        return {
+          status: 'no_data',
+          message: `No se encontraron recorridos o cruces para la línea ${lineId} en la base GTFS.`
+        };
+      }
+
+      const totalStopsOnLine = analysis[0]?.target_total_stops || 0;
+
+      return {
+        linea_consultada: lineId,
+        total_paradas_linea: totalStopsOnLine,
+        rivales_detectados_top: analysis.map((r: any) => ({
+          numero_linea_rival: r.rival_route, // Campo explícito para que no lo omita
+          nombre_recorrido: r.rival_name,
+          empresa: r.inferred_company,
+          paradas_compartidas: r.shared_count,
+          porcentaje_solapamiento: r.overlap_percentage + '%',
+          zonas_donde_compiten: r.principales_puntos_coincidencia
+        })),
+        resumen_estrategico: `La línea ${lineId} comparte infraestructura con al menos ${analysis.length} rutas rivales. Su mayor competidor por cobertura de paradas es la línea ${analysis[0].rival_route} con un ${analysis[0].overlap_percentage}% de solapamiento.`
+      };
+    } catch (err) {
+      return { error: `Fallo el análisis de solapamiento SQL para ${lineId}`, detail: String(err) };
+    }
   },
 };
 

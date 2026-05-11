@@ -28,44 +28,54 @@ const LoginScreen = () => {
     setIsLoading(true);
     try {
       const internalNumber = usuario.trim();
-      // Login contra el backend de Cloud Functions: valida credenciales en
-      // Firestore y devuelve un Firebase Custom Token (admin.auth().createCustomToken).
+      // Login directo contra el servidor local soberano
       const resp = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ internalNumber, password }),
       });
-      const json: any = await resp.json().catch(() => ({}));
-      if (!resp.ok || !json?.ok || !json?.firebaseCustomToken) {
+      
+      const outerJson: any = await resp.json().catch(() => ({}));
+      
+      // En el backend nuevo la data viene envuelta en outerJson.data
+      const data = outerJson?.data || {};
+      const success = outerJson?.ok && data?.token;
+
+      if (!resp.ok || !success) {
         const status = resp.status;
         if (status === 401) setError('Usuario o contraseña incorrectos.');
-        else setError(json?.error || 'Error al ingresar. Intentá de nuevo.');
+        else setError(outerJson?.message || outerJson?.error || 'Error de acceso local. Verificá datos.');
         setIsLoading(false);
         return;
       }
 
-      // signInWithCustomToken crea la sesión Firebase real → getAuth().currentUser
-      // queda no-null y las reglas Firestore con isAuthenticated() pasan.
-      const cred = await signInWithCustomToken(auth, json.firebaseCustomToken);
-      const idToken = await cred.user.getIdToken();
+      // SOBERANIA ACTIVA: Usamos el Token Nativo emitido por nuestro PC
+      const nativeToken = data.token;
+      const userData = data.user || {};
+      
+      // Mapear estructura user a lo que espera la App
+      const localUser = {
+        id: userData.id,
+        uid: userData.id,
+        internalNumber: userData.internalNumber || internalNumber,
+        firstName: userData.fullName?.split(' ')[0] || 'Usuario',
+        lastName: '',
+        fullName: userData.fullName || 'Usuario',
+        role: userData.role || 'USER',
+        agencyId: userData.agencyId
+      };
 
-      const u = json.user || {};
-      login(idToken, {
-        id: cred.user.uid,
-        uid: cred.user.uid,
-        internalNumber: u.internalNumber ?? internalNumber,
-        firstName: u.firstName ?? 'Usuario',
-        lastName: u.lastName ?? '',
-        fullName: u.fullName ?? 'Usuario',
-        role: u.role ?? 'USER',
-      });
+      // Inyectar estado en el Context local (guarda en LocalStorage nativo)
+      login(nativeToken, localUser);
+
       if (recordarDispositivo) {
         await rememberCredentials(internalNumber, password);
       } else {
         forgetDevice();
       }
+
       setIsSuccess(true);
-      setTimeout(() => { window.location.href = '/dashboard'; }, 800);
+      setTimeout(() => { window.location.href = '/dashboard'; }, 600);
     } catch (err: any) {
       const code = err?.code ?? '';
       if (code === 'auth/invalid-custom-token' || code === 'auth/custom-token-mismatch') {

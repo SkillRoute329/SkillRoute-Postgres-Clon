@@ -28,6 +28,7 @@ import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { useEmpresaPropia, EMPRESAS_OPCIONES } from '../../hooks/useEmpresaPropia';
 import { useLiveData } from '../../context/LiveDataContext';
+import api from '../../services/api';
 import { Calendar, AlertTriangle, Bus, ChevronDown, ArrowRight, ArrowLeft } from 'lucide-react';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -174,63 +175,61 @@ export default function VistaDia() {
 
     const run = async () => {
       try {
-        // 1. GTFS: una query, trae TODAS las filas (linea + directionId) para este agencyId + serviceType
-        const snap = await getDocs(
-          query(
-            collection(db, 'gtfs_timetable'),
-            where('agencyId', '==', agencyId),
-            where('serviceType', '==', svcType),
-          ),
-        );
-
-        const filas: GtfsFila[] = snap.docs.map(d => {
-          const data = d.data();
-          const dirId: number = data.directionId ?? 0;
-          return {
-            id:          d.id,
-            linea:       data.linea ?? data.routeShortName ?? '',
-            sentido:     (data.sentido as 'IDA' | 'VUELTA') ?? (dirId === 0 ? 'IDA' : 'VUELTA'),
-            directionId: dirId,
-            serviceType: data.serviceType ?? svcType,
-            viajes:      Array.isArray(data.viajes) ? data.viajes : [],
-          };
-        });
-
-        // 2. daily_shifts (solo UCOT — otras empresas no tienen asignaciones internas)
-        const shiftsMap = new Map<string, { vehicleId?: string; driverName?: string }>();
-        if (empresaPropia === 70) {
-          const sSnap = await getDocs(
-            query(collection(db, 'daily_shifts'), where('date', '==', fecha)),
-          );
-          sSnap.docs.forEach(d => {
-            const data = d.data();
-            const linea: string = data.line ?? data.lineaId ?? '';
-            if (linea) {
-              shiftsMap.set(linea, {
-                vehicleId:  data.vehicleId,
-                driverName: data.driverName ?? data.conductorNombre,
-              });
-            }
-          });
+        // 1. GTFS: Una llamada ultra-rápida al PostgreSQL local
+        const res = await api.get(`/gtfs/timetable?serviceType=${svcType}&agencyId=${agencyId}`);
+        
+        // SUPER DEBUG: Logging actual response geometry directly to devtools
+        console.warn('[VistaDia DEBUG] API Response Full:', res);
+        const filas: GtfsFila[] = res.data?.data || [];
+        console.warn('[VistaDia DEBUG] Mapped Filas length:', filas.length);
+        if (filas.length > 0) {
+          console.warn('[VistaDia DEBUG] Row Sample:', filas[0]);
+        } else {
+          console.error('[VistaDia DEBUG] CRITICAL: The data came back empty from local backend proxy!');
         }
 
-        // 3. vehicle_events del día — solo para saber qué líneas tuvieron actividad
-        //    NO se usa para comparar tiempos (causa falsos 400 min)
-        const startOfDay = new Date(fecha + 'T04:00:00');
-        const evSnap = await getDocs(
-          query(
-            collection(db, 'vehicle_events'),
-            where('agencyId', '==', agencyId),
-            where('createdAt', '>=', Timestamp.fromDate(startOfDay)),
-            orderBy('createdAt', 'asc'),
-            limit(500),
-          ),
-        );
+        // 2. daily_shifts (solo UCOT)
+        const shiftsMap = new Map<string, { vehicleId?: string; driverName?: string }>();
+        try {
+          if (empresaPropia === 70) {
+            const sSnap = await getDocs(
+              query(collection(db, 'daily_shifts'), where('date', '==', fecha)),
+            );
+            sSnap.docs.forEach(d => {
+              const data = d.data();
+              const linea: string = data.line ?? data.lineaId ?? '';
+              if (linea) {
+                shiftsMap.set(linea, {
+                  vehicleId:  data.vehicleId,
+                  driverName: data.driverName ?? data.conductorNombre,
+                });
+              }
+            });
+          }
+        } catch (shiftErr) {
+          console.warn('[VistaDia] Omitiendo daily_shifts por error o permisos:', shiftErr);
+        }
+
+        // 3. vehicle_events del día
         const actividad = new Set<string>();
-        evSnap.docs.forEach(d => {
-          const linea: string = d.data().linea ?? '';
-          if (linea) actividad.add(linea);
-        });
+        try {
+          const startOfDay = new Date(fecha + 'T04:00:00');
+          const evSnap = await getDocs(
+            query(
+              collection(db, 'vehicle_events'),
+              where('agencyId', '==', agencyId),
+              where('createdAt', '>=', Timestamp.fromDate(startOfDay)),
+              orderBy('createdAt', 'asc'),
+              limit(500),
+            ),
+          );
+          evSnap.docs.forEach(d => {
+            const linea: string = d.data().linea ?? '';
+            if (linea) actividad.add(linea);
+          });
+        } catch (evErr) {
+          console.warn('[VistaDia] Omitiendo vehicle_events por error o permisos:', evErr);
+        }
 
         if (!cancelled) {
           setGtfsFilas(filas);
@@ -238,7 +237,7 @@ export default function VistaDia() {
           setActividad(actividad);
         }
       } catch (err) {
-        console.error('[VistaDia] error:', err);
+        console.error('[VistaDia] Error crítico fetching initial data:', err);
       } finally {
         if (!cancelled) setLoading(false);
       }

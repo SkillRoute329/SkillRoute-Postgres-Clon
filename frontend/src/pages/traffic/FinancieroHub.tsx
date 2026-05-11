@@ -4,7 +4,7 @@ import { DollarSign, BarChart3, TrendingUp, RefreshCw, Route, PieChart, Download
 const EconomicProjectionsPage  = lazy(() => import('./EconomicProjectionsPage'));
 const PanelFinancieroOperativo = lazy(() => import('./PanelFinancieroOperativo'));
 const ROICalculator            = lazy(() => import('./ROICalculator'));
-const CostoPorLinea            = lazy(() => import('./CostoPorLinea'));
+const CostoPorLinea            = PLPorOperador;
 const PLPorOperador            = lazy(() => import('./PLPorOperador'));
 const ExportadorReportes       = lazy(() => import('./ExportadorReportes'));
 

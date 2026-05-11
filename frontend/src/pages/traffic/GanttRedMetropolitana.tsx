@@ -18,6 +18,7 @@ import {
   Lock, RefreshCw, AlertTriangle, TrendingUp, X,
   ChevronDown, ChevronUp, Info, Clock, MapPin,
 } from 'lucide-react';
+import api from '../../services/api';
 
 // ── Constantes ───────────────────────────────────────────────────────────────
 
@@ -278,13 +279,14 @@ function HorarioInline({ shapeA, shapeB }: { shapeA: ShapeDoc; shapeB: ShapeDoc 
       const dirB = shapeB.sentido === 'IDA' ? '0' : '1';
       try {
         const [ttA, ttB] = await Promise.all([
-          getDoc(doc(db, 'gtfs_timetable', `${shapeA.agencyId}_${shapeA.linea}_${dirA}_${svcType}`)),
-          getDoc(doc(db, 'gtfs_timetable', `${shapeB.agencyId}_${shapeB.linea}_${dirB}_${svcType}`)),
+          api.get(`/gtfs/timetable/single?agencyId=${shapeA.agencyId}&linea=${shapeA.linea}&directionId=${dirA}&serviceType=${svcType}`),
+          api.get(`/gtfs/timetable/single?agencyId=${shapeB.agencyId}&linea=${shapeB.linea}&directionId=${dirB}&serviceType=${svcType}`)
         ]);
         if (cancelled) return;
-        const proc = (snap: any) => {
-          if (!snap.exists()) return null;
-          const salidas: string[] = (snap.data().viajes ?? []).map((v: any) => v.s).filter(Boolean);
+        const proc = (res: any) => {
+          const data = res?.data?.data;
+          if (!data) return null;
+          const salidas: string[] = (data.viajes ?? []).map((v: any) => v.s).filter(Boolean);
           const toMin = (s: string) => { const [h, m] = s.split(':').map(Number); return h * 60 + (m || 0); };
           const mins = salidas.map(toMin);
           const gaps: number[] = [];
@@ -409,9 +411,9 @@ function PanelDetalle({ par, onClose }: { par: ParDRO; onClose: () => void }) {
     const ventanaEnd   = Math.min(1439, nowMin + 90);
 
     // Helper: procesa viajes del gtfs_timetable y devuelve estructura de horario
-    function procesarViajes(snap: any) {
-      if (!snap.exists()) return null;
-      const data = snap.data();
+    function procesarViajes(res: any) {
+      const data = res?.data?.data;
+      if (!data) return null;
       const viajes: { s: string }[] = data.viajes ?? [];
       if (viajes.length === 0) return null;
       const toMin = (s: string) => { const [h, m] = s.split(':').map(Number); return h * 60 + (m || 0); };
@@ -441,12 +443,10 @@ function PanelDetalle({ par, onClose }: { par: ParDRO; onClose: () => void }) {
       try {
         const dirA = par.shapeA.sentido === 'IDA' ? '0' : '1';
         const dirB = par.shapeB.sentido === 'IDA' ? '0' : '1';
-        const idTTA = `${par.shapeA.agencyId}_${par.shapeA.linea}_${dirA}_${serviceType}`;
-        const idTTB = `${par.shapeB.agencyId}_${par.shapeB.linea}_${dirB}_${serviceType}`;
         // Horarios y geocodificación en paralelo
         const [ttA, ttB, callesGeo] = await Promise.all([
-          getDoc(doc(db, 'gtfs_timetable', idTTA)),
-          getDoc(doc(db, 'gtfs_timetable', idTTB)),
+          api.get(`/gtfs/timetable/single?agencyId=${par.shapeA.agencyId}&linea=${par.shapeA.linea}&directionId=${dirA}&serviceType=${serviceType}`),
+          api.get(`/gtfs/timetable/single?agencyId=${par.shapeB.agencyId}&linea=${par.shapeB.linea}&directionId=${dirB}&serviceType=${serviceType}`),
           geocodificarCorredorCompartido(par.puntosCompartidos, cancelRef),
         ]);
         if (cancelled) return;

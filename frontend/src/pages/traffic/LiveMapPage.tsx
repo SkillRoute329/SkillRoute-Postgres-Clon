@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -20,8 +20,18 @@ import {
   type BusSTM,
 } from '../../services/stmLiveService';
 import 'leaflet.heat';
-import { Bus, RefreshCw, AlertTriangle, WifiOff, Layers, Filter, X, Flame, Building2 } from 'lucide-react';
+import { Bus, RefreshCw, AlertTriangle, WifiOff, Layers, Filter, X, Flame, Building2, MapPin, Bot, Sparkles } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
+// import AiCopilotChat from '../../components/AiCopilotChat';
+
+// ─── Definición de Parada local ───────────────────────────────────────────────
+interface GTFSStop {
+  stop_id: string;
+  stop_name: string;
+  stop_lat: number;
+  stop_lon: number;
+  stop_code?: string;
+}
 
 // ─── Fix Leaflet default icons broken by Vite ────────────────────────────────
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -170,11 +180,112 @@ const STYLE_INACTIVO = {
   badgeText: 'text-slate-500',
 };
 
+// ─── Oráculo Local: Pop-up Inteligente de Paradas ────────────────────────────
+
+interface StopDeparture {
+  arrivalTime: string;
+  route: string;
+  routeName: string;
+  destination: string;
+}
+
+function StopPopupContent({ stopId, stopName, stopCode }: { stopId: string; stopName: string; stopCode?: string }) {
+  const [deps, setDeps] = useState<StopDeparture[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [reqError, setReqError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadDepartures() {
+      setLoading(true);
+      setReqError(null);
+      try {
+        const token = localStorage.getItem('tf_token');
+        const res = await fetch(`/api/gtfs/stops/${stopId}/departures`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (!res.ok) {
+          throw new Error(`Error HTTP: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        if (isMounted) {
+          if (data.success) {
+            setDeps(data.data);
+          } else {
+            throw new Error(data.error || 'Error en respuesta de servidor');
+          }
+        }
+      } catch (err: any) {
+        console.error('[Oráculo] Error fetching:', err);
+        if (isMounted) setReqError(err.message || 'Fallo de conexión');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadDepartures();
+    return () => { isMounted = false; };
+  }, [stopId]);
+
+  return (
+    <div className="min-w-[190px] font-sans text-slate-900">
+      <div className="font-bold text-[13px] leading-tight text-slate-800 mb-0.5">{stopName}</div>
+      <div className="text-[10px] text-slate-500 mb-2 font-medium">Parada Oficial ID: {stopId} {stopCode ? `(${stopCode})` : ''}</div>
+      
+      <div className="border-t border-slate-100 pt-2">
+        <div className="text-[9px] font-bold text-indigo-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+          <div className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+          </div>
+          Próximos Horarios (Teóricos)
+        </div>
+        
+        {loading ? (
+          <div className="py-2 flex items-center justify-center gap-2 text-[11px] text-slate-500 italic bg-slate-50 rounded border border-dashed border-slate-200">
+            <RefreshCw size={11} className="animate-spin text-indigo-400" />
+            Consultando Oráculo...
+          </div>
+        ) : reqError ? (
+          <div className="py-2 text-center text-[11px] text-red-600 bg-red-50 rounded border border-red-100 flex flex-col gap-0.5">
+            <span className="font-bold">Error de Servidor</span>
+            <span className="text-[9px] text-red-400 opacity-80">{reqError}</span>
+          </div>
+        ) : deps.length === 0 ? (
+          <div className="py-2 text-center text-[11px] text-slate-400 bg-slate-50 rounded border border-slate-100">
+            Fin de servicios programados por hoy.
+          </div>
+        ) : (
+          <div className="max-h-[160px] overflow-y-auto space-y-1.5 pr-0.5 custom-scrollbar">
+            {deps.map((d, idx) => (
+              <div key={idx} className="flex justify-between items-center bg-white p-1.5 rounded shadow-sm border border-slate-100 transition-colors hover:bg-indigo-50/30">
+                <div className="flex items-center gap-1.5 overflow-hidden">
+                  <div className="bg-slate-800 text-white font-black px-1.5 py-0.5 rounded-[4px] text-[10px] shrink-0 shadow-[inset_0_-1px_0_rgba(0,0,0,0.2)]">
+                    {d.route}
+                  </div>
+                  <div className="text-[10px] text-slate-700 font-semibold truncate leading-tight" title={d.destination}>
+                    {d.destination}
+                  </div>
+                </div>
+                <div className="font-bold text-indigo-600 text-[11px] bg-indigo-50 px-1.5 py-0.5 rounded tabular-nums">
+                  {d.arrivalTime.substring(0, 5)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function LiveMapPage() {
   const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const [buses, setBuses] = useState<BusSTM[]>([]);
+  const [paradas, setParadas] = useState<GTFSStop[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ultimaActualizacion, setUltimaActualizacion] = useState<Date | null>(null);
@@ -182,7 +293,24 @@ export default function LiveMapPage() {
   const [lineaFiltro, setLineaFiltro] = useState('');
   const [soloSolapamiento, setSoloSolapamiento] = useState(false);
   const [mostrarHeatmap, setMostrarHeatmap] = useState(false);
+  const [mostrarParadas, setMostrarParadas] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const cargarParadas = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('tf_token');
+      const res = await fetch('/api/gtfs/stops', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setParadas(data.data);
+        console.log(`[GTFS] ${data.data.length} paradas cargadas del servidor soberano.`);
+      }
+    } catch (err) {
+      console.warn('[LiveMap] Error cargando paradas soberanas', err);
+    }
+  }, []);
 
   const cargarBuses = useCallback(async () => {
     try {
@@ -199,12 +327,13 @@ export default function LiveMapPage() {
   }, []);
 
   useEffect(() => {
+    cargarParadas(); // Carga inicial de catálogo
     cargarBuses();
     intervalRef.current = setInterval(cargarBuses, 7000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [cargarBuses]);
+  }, [cargarBuses, cargarParadas]);
 
   // ── Mock Heatmap Data (Densidad de Abordajes y Cuellos de botella) ──────────
   // Representan puntos críticos en Montevideo (8 de Octubre, Tres Cruces, etc.)
@@ -395,6 +524,22 @@ export default function LiveMapPage() {
           Densidad Abordajes
         </button>
 
+        {/* Toggle Paradas Soberanas */}
+        <button
+          onClick={() => setMostrarParadas((p) => !p)}
+          title="Mostrar Paradas Oficiales GTFS"
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer border-2 transition-colors ${
+            mostrarParadas
+              ? 'border-indigo-500 bg-indigo-500/20 text-indigo-400'
+              : 'border-slate-700 bg-transparent text-slate-600'
+          }`}
+        >
+          <MapPin size={12} />
+          Paradas ({paradas.length})
+        </button>
+
+
+
         {/* Refrescar manual */}
         <button
           onClick={cargarBuses}
@@ -430,6 +575,20 @@ export default function LiveMapPage() {
 
           <AutoCenter buses={buses} />
           {mostrarHeatmap && <HeatmapLayer points={heatmapData} />}
+
+          {/* CAPA DE PARADAS SOBERANAS (4.9k items) */}
+          {mostrarParadas && paradas.map((p) => (
+            <CircleMarker
+              key={p.stop_id}
+              center={[p.stop_lat, p.stop_lon]}
+              radius={3}
+              pathOptions={{ color: '#6366f1', fillColor: '#a5b4fc', fillOpacity: 0.8, weight: 1 }}
+            >
+              <Popup>
+                <StopPopupContent stopId={p.stop_id} stopName={p.stop_name} stopCode={p.stop_code} />
+              </Popup>
+            </CircleMarker>
+          ))}
 
           {busesFinales.map((bus) => {
             const solapado = soloSolapamiento
@@ -480,6 +639,8 @@ export default function LiveMapPage() {
             );
           })}
         </MapContainer>
+
+
       </div>
 
       {/* ── Leyenda ───────────────────────────────────────────────────────── */}
@@ -503,6 +664,10 @@ export default function LiveMapPage() {
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
         .leaflet-container { background: #1e293b !important; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
       `}</style>
     </div>
   );

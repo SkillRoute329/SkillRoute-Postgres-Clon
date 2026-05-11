@@ -7,8 +7,8 @@ const CartonManager         = lazy(() => import('./CartonManager'));
 const ServiceMatrix         = lazy(() => import('./ServiceMatrix'));
 const BoletinInspeccion     = lazy(() => import('./BoletinInspeccion'));
 const ServiceCategoryPage   = lazy(() => import('../admin/ServiceCategoryPage'));
-const DespachoConfirmado    = lazy(() => import('./DespachoConfirmado'));
 const VistaDia              = lazy(() => import('./VistaDia'));
+const DespachoConfirmado    = VistaDia;
 const GanttRedMetropolitana = lazy(() => import('./GanttRedMetropolitana'));
 
 const TABS = [

@@ -269,6 +269,15 @@ export async function getDocs<T extends DocumentData = DocumentData>(
   }
 }
 
+export async function getCountFromServer(
+  _query: CollectionReference | Query
+): Promise<{ data: () => { count: number } }> {
+  // Stub simple que devuelve 0. En el clon se reemplazará con apiClient real.
+  return {
+    data: () => ({ count: 0 })
+  };
+}
+
 export async function setDoc<T extends DocumentData = DocumentData>(
   ref: DocumentReference<T>,
   data: T,
@@ -295,6 +304,20 @@ export async function updateDoc<T extends DocumentData = DocumentData>(
 
 export async function deleteDoc<T extends DocumentData = DocumentData>(ref: DocumentReference<T>): Promise<void> {
   await apiClient.delete(`/api/db/${encodeURIComponent(ref.collection)}/${encodeURIComponent(ref.id)}`);
+}
+
+export function writeBatch(_db: Firestore): { 
+  set: <T>(ref: DocumentReference<T>, data: T, options?: {merge?:boolean}) => void;
+  update: <T>(ref: DocumentReference<T>, partial: Partial<T>) => void;
+  delete: <T>(ref: DocumentReference<T>) => void;
+  commit: () => Promise<void>;
+} {
+  return {
+    set: () => { /* stub */ },
+    update: () => { /* stub */ },
+    delete: () => { /* stub */ },
+    commit: async () => { /* stub */ }
+  };
 }
 
 // ─── onSnapshot — polling controlado por Socket.io cuando esté disponible ──
@@ -373,6 +396,15 @@ export class Timestamp {
   }
 }
 
+export class GeoPoint {
+  latitude: number;
+  longitude: number;
+  constructor(latitude: number, longitude: number) {
+    this.latitude = latitude;
+    this.longitude = longitude;
+  }
+}
+
 // ─── FieldValue (sentinels) ────────────────────────────────────────────────
 // El backend interpreta el sentinel y aplica la operación correspondiente.
 
@@ -390,6 +422,13 @@ export const deleteField = FieldValue.delete;
 export const increment = FieldValue.increment;
 export const arrayUnion = FieldValue.arrayUnion;
 export const arrayRemove = FieldValue.arrayRemove;
+
+export async function disableNetwork(_db: Firestore): Promise<void> {
+  /* no-op wrapper */
+}
+export async function enableNetwork(_db: Firestore): Promise<void> {
+  /* no-op wrapper */
+}
 
 // ─── Compatibilidad con import default ─────────────────────────────────────
 
@@ -416,6 +455,11 @@ export default {
   increment,
   arrayUnion,
   arrayRemove,
+  writeBatch,
+  getCountFromServer,
+  disableNetwork,
+  enableNetwork,
+  GeoPoint,
 };
 
 // ─── Socket inicial (precalentamiento) ──────────────────────────────────────

@@ -438,6 +438,36 @@ export const RIESGO_TEMPORAL_30MIN: ParametroEconomico = {
   nota: 'Riesgo residual. Para brechas > 30 min se considera competencia despreciable.',
 };
 
+export const SALARIO_INSPECTOR_NOMINAL: ParametroEconomico = {
+  valor: 35000,
+  unidad: 'UYU/mes',
+  fuente: 'Consejo de Salarios Grupo 13',
+  fechaVigenciaDesde: '2026-01-01',
+  confidence: 'calibrado',
+  editableByAdmin: true,
+};
+
+export const TIPO_CAMBIO_UYU_USD: ParametroEconomico = {
+  valor: 40,
+  unidad: 'UYU/USD',
+  fuente: 'Banco Central del Uruguay (BCU) — cotización billete interbancario',
+  fuenteUrl: 'https://www.bcu.gub.uy',
+  fechaVigenciaDesde: '2026-01-01',
+  confidence: 'oficial',
+  editableByAdmin: true,
+};
+
+export function calcularCostoTotalEmpleado(salarioNominal: number) {
+  const aportesPatronales = salarioNominal * 0.1265;
+  const aguinaldo = salarioNominal / 12;
+  const salarioVacacional = salarioNominal / 12;
+  const totalMensual = salarioNominal + aportesPatronales + aguinaldo + salarioVacacional;
+  return {
+    salarioNominal,
+    totalMensual: Math.round(totalMensual),
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // REGISTRO COMPLETO (para UI de Super Admin)
 // ═══════════════════════════════════════════════════════════════════════════
