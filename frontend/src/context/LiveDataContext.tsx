@@ -1,15 +1,22 @@
 /**
- * LiveDataContext — tejido conector del Centro de Mando
- * =======================================================
- * Un único proveedor, montado en DashboardLayout, que alimenta
- * a TODOS los módulos con:
- *  - Buses en vivo (poll /api/positions cada 30s)
- *  - Alertas activas (Firestore onSnapshot en tiempo real)
- *  - OTP del día y serie 7d (poll /historicOtp cada 5min)
- *  - Contexto de navegación compartido: línea y operador seleccionados
+ * LiveDataContext.tsx — Tejido conector del Centro de Mando (FASE 4.3)
  *
- * Los módulos consumen con useLiveData() en lugar de fetchar por su cuenta.
- * Esto elimina el "re-fetch masivo" y propaga actualizaciones automáticamente.
+ * REGLA -6: 100% sobre el clon. Sin Firebase, sin cloud functions.
+ *
+ * REGLA -1 NO REGRESIÓN: la API pública `useLiveData()` mantiene la misma
+ * estructura (`buses`, `fleetKPIs`, `alertas`, `otpHoy`, `otpSeries`,
+ * `selectedLine`, `selectedOperator`, etc.) para que los módulos que la
+ * consumen sigan funcionando sin cambios.
+ *
+ * Fuentes (todas del clon):
+ *   - GET /api/audit/buses-active?agency=N&minutes=5  → buses por agencia
+ *   - GET /api/audit/coverage?agency=N&from&to        → OTP histórico
+ *   - GET /api/db/alertas_regulacion (poll cada 15s) → alertas en tiempo real
+ *
+ * Las alertas usan polling cada 15s vía /api/db/alertas_regulacion. Cuando
+ * el backend emita el evento Socket.io 'firestore:alertas_regulacion',
+ * el shim ya tiene la lógica para forzar refresh inmediato — acá no hace
+ * falta agregar nada extra.
  */
 
 import {
@@ -21,11 +28,11 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
-import { db } from '../config/firebase';
 import { useAuth } from './AuthContext';
+import { apiClient } from '../clients/apiClient';
+import { on as socketOn } from '../clients/socketClient';
 
-// ── Tipos públicos ────────────────────────────────────────────────────────────
+// ── Tipos públicos (idénticos al contexto anterior — no regresión) ──────────
 
 export interface BusLive {
   idBus: string;
@@ -47,6 +54,7 @@ export interface AlertaViva {
   mensaje?: string;
   lineaId?: string | null;
   urgencia?: 'critica' | 'alta' | 'media' | 'baja';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   timestamp: any;
   leido?: boolean;
 }
@@ -62,44 +70,36 @@ export interface FleetKPIs {
   totalRivales: number;
   lineasActivas: number;
   bunchingPares: number;
-  /** Buses activos por empresaId (todas las empresas de la red) */
   perEmpresa: Record<number, number>;
-  /** Total buses en toda la red metropolitana */
   totalRed: number;
 }
 
 export interface LiveDataState {
-  /** Todos los buses activos en el sistema metropolitano */
   buses: BusLive[];
-  /** KPIs calculados para el operador seleccionado */
   fleetKPIs: FleetKPIs;
   busesLoading: boolean;
   busesLastUpdate: Date | null;
-
-  /** Alertas tácticas de la sesión activa (onSnapshot) */
   alertas: AlertaViva[];
-  /** Cantidad de alertas críticas o altas no leídas */
   alertasCriticas: number;
-
-  /** OTP del día (GPS-based) — null hasta que cargue */
   otpHoy: number | null;
-  /** Serie de los últimos 7 días */
   otpSeries: OtpPoint[];
-
-  /** Línea seleccionada — compartida entre todos los módulos */
   selectedLine: string | null;
   setSelectedLine: (line: string | null) => void;
-
-  /** Operador activo — compartido */
   selectedOperator: string;
   setSelectedOperator: (op: string) => void;
 }
 
-// ── Contexto ──────────────────────────────────────────────────────────────────
-
 const LiveDataContext = createContext<LiveDataState | null>(null);
 
-// ── Helper: calcular pares de bunching (< 800 m, misma línea) ─────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+const AGENCIES = [70, 50, 20, 10]; // UCOT, CUTCSA, COME, COETC
+const AGENCY_NAMES: Record<number, string> = {
+  70: 'UCOT',
+  50: 'CUTCSA',
+  20: 'COME',
+  10: 'COETC',
+};
 
 function calcBunchingPairs(buses: BusLive[], agencyId: number): number {
   const propios = buses.filter((b) => b.empresaId === agencyId);
@@ -121,9 +121,24 @@ function calcBunchingPairs(buses: BusLive[], agencyId: number): number {
   return count;
 }
 
-// ── Proveedor ─────────────────────────────────────────────────────────────────
+interface BusActiveResponse {
+  agency: string;
+  ventana_minutos: number;
+  total_buses_activos: number;
+  buses: Array<{
+    id_bus: string;
+    linea: string;
+    lat: number;
+    lon: number;
+    velocidad: number;
+    estado_cumplimiento: string;
+    timestamp_gps: string;
+  }>;
+}
 
-export function LiveDataProvider({ children }: { children: ReactNode }) {
+// ── Proveedor ──────────────────────────────────────────────────────────────
+
+export function LiveDataProvider({ children }: { children: ReactNode }): JSX.Element {
   const { user } = useAuth();
 
   const [buses, setBuses] = useState<BusLive[]>([]);
@@ -149,15 +164,42 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
 
   const busIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const otpIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const alertasIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── Fetch buses ─────────────────────────────────────────────────────────────
+  // ── Fetch buses (clon, 4 agencias en paralelo) ─────────────────────────
 
   const fetchBuses = useCallback(async () => {
     try {
-      const r = await fetch('/api/positions', { signal: AbortSignal.timeout(15_000) });
-      if (!r.ok) return;
-      const d = await r.json();
-      const allBuses = (d.buses ?? []) as BusLive[];
+      const responses = await Promise.allSettled(
+        AGENCIES.map((agency) =>
+          apiClient.get<BusActiveResponse>('/api/audit/buses-active', {
+            query: { agency, minutes: 5 },
+          }),
+        ),
+      );
+
+      const allBuses: BusLive[] = [];
+      for (let i = 0; i < AGENCIES.length; i++) {
+        const r = responses[i];
+        if (r.status !== 'fulfilled' || !r.value.data) continue;
+        const agencyNum = AGENCIES[i]!;
+        const empresa = AGENCY_NAMES[agencyNum] ?? String(agencyNum);
+        for (const b of r.value.data.buses) {
+          allBuses.push({
+            idBus: b.id_bus,
+            codigoBus: b.id_bus,
+            linea: b.linea ?? '',
+            sublinea: null,
+            destino: '',
+            lat: b.lat,
+            lng: b.lon,
+            empresaId: agencyNum,
+            empresa,
+            timestamp: b.timestamp_gps,
+          });
+        }
+      }
+
       setBuses(allBuses);
       setBusesLastUpdate(new Date());
 
@@ -165,7 +207,6 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
       const propios = allBuses.filter((b) => b.empresaId === agencyId);
       const lineasActivas = new Set(propios.map((b) => b.linea).filter(Boolean)).size;
 
-      // Conteo por empresa para la vista de red metropolitana
       const perEmpresa: Record<number, number> = {};
       for (const b of allBuses) {
         perEmpresa[b.empresaId] = (perEmpresa[b.empresaId] ?? 0) + 1;
@@ -179,30 +220,36 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
         perEmpresa,
         totalRed: allBuses.length,
       });
-    } catch {
-      // Silencioso — fallo de GPS no debe interrumpir otros módulos
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[LiveData] fetchBuses error', err);
     } finally {
       setBusesLoading(false);
     }
   }, [selectedOperator]);
 
-  // ── Fetch OTP ────────────────────────────────────────────────────────────────
+  // ── Fetch OTP (cobertura por día, derivada de poller_health) ───────────
 
   const fetchOtp = useCallback(async () => {
     try {
-      const r = await fetch(`/historicOtp?agencyId=${selectedOperator}&days=7`);
-      if (!r.ok) return;
-      const d = await r.json();
-      if (!d.ok || !Array.isArray(d.series) || !d.series.length) return;
-
-      const series: OtpPoint[] = d.series.map((s: any) => ({
-        date: s.date as string,
-        value: s.value as number,
-        total: (s.meta?.total as number) ?? 0,
+      const today = new Date().toISOString().slice(0, 10);
+      const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+      const res = await apiClient.get<{
+        from: string;
+        to: string;
+        agency: string;
+        pct_cobertura_promedio: number;
+        dias: Array<{ fecha: string; pct_cobertura_estimado: number; ciclos_total: number }>;
+      }>('/api/audit/coverage', {
+        query: { agency: selectedOperator, from: sevenDaysAgo, to: today },
+      });
+      if (!res.data?.dias) return;
+      const series: OtpPoint[] = res.data.dias.map((d) => ({
+        date: typeof d.fecha === 'string' ? d.fecha : String(d.fecha),
+        value: Number(d.pct_cobertura_estimado) || 0,
+        total: Number(d.ciclos_total) || 0,
       }));
       setOtpSeries(series);
-
-      const today = new Date().toISOString().slice(0, 10);
       const hoy = series.find((s) => s.date === today) ?? series[series.length - 1];
       setOtpHoy(hoy?.value ?? null);
     } catch {
@@ -210,53 +257,73 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedOperator]);
 
-  // ── Efectos: iniciar loops ───────────────────────────────────────────────────
+  // ── Fetch alertas (polling al clon vía /api/db/alertas_regulacion) ─────
+
+  const fetchAlertas = useCallback(async () => {
+    try {
+      const res = await apiClient.get<Array<Record<string, unknown>>>('/api/db/alertas_regulacion', {
+        query: { orderBy: 'timestamp:desc', limit: 30 },
+      });
+      const rows = Array.isArray(res.data) ? res.data : [];
+      const docs: AlertaViva[] = rows.map((r) => ({
+        id: String(r.id ?? ''),
+        tipo: String(r.tipo ?? ''),
+        titulo: r.titulo as string | undefined,
+        mensaje: r.mensaje as string | undefined,
+        lineaId: (r.linea_id as string) ?? null,
+        urgencia: r.urgencia as AlertaViva['urgencia'],
+        timestamp: r.timestamp,
+        leido: (r.atendida as boolean) ?? false,
+      }));
+      setAlertas(docs);
+      setAlertasCriticas(
+        docs.filter((a) => !a.leido && (a.urgencia === 'critica' || a.urgencia === 'alta')).length,
+      );
+    } catch {
+      // Silencioso
+    }
+  }, []);
+
+  // ── Efectos: iniciar loops ─────────────────────────────────────────────
 
   useEffect(() => {
     if (!user) return;
-    fetchBuses();
-    fetchOtp();
+    void fetchBuses();
+    void fetchOtp();
+    void fetchAlertas();
     busIntervalRef.current = setInterval(fetchBuses, 30_000);
     otpIntervalRef.current = setInterval(fetchOtp, 5 * 60_000);
+    alertasIntervalRef.current = setInterval(fetchAlertas, 15_000);
     return () => {
       if (busIntervalRef.current) clearInterval(busIntervalRef.current);
       if (otpIntervalRef.current) clearInterval(otpIntervalRef.current);
+      if (alertasIntervalRef.current) clearInterval(alertasIntervalRef.current);
     };
-  }, [user, fetchBuses, fetchOtp]);
+  }, [user, fetchBuses, fetchOtp, fetchAlertas]);
 
-  // Re-fetchear cuando cambia operador
+  // Re-fetch al cambiar operador
   useEffect(() => {
     if (!user) return;
     setBusesLoading(true);
-    fetchBuses();
-    fetchOtp();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    void fetchBuses();
+    void fetchOtp();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedOperator]);
 
-  // ── Alertas en tiempo real (Firestore onSnapshot) ────────────────────────────
-
+  // Socket.io: cuando el backend emite alertas en vivo, refresh inmediato
   useEffect(() => {
     if (!user) return;
-    const q = query(
-      collection(db, 'alertas_regulacion'),
-      orderBy('timestamp', 'desc'),
-      limit(30),
-    );
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as AlertaViva[];
-        setAlertas(docs);
-        setAlertasCriticas(
-          docs.filter((a) => !a.leido && (a.urgencia === 'critica' || a.urgencia === 'alta')).length,
-        );
-      },
-      () => {
-        // Sin permisos (conductor sin acceso) — ignorar silenciosamente
-      },
-    );
-    return unsub;
-  }, [user]);
+    const off1 = socketOn('alerta-operativa', () => {
+      void fetchAlertas();
+    });
+    const off2 = socketOn('firestore:alertas_regulacion', () => {
+      void fetchAlertas();
+    });
+    return () => {
+      off1();
+      off2();
+    };
+  }, [user, fetchAlertas]);
 
   return (
     <LiveDataContext.Provider
@@ -279,8 +346,6 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
     </LiveDataContext.Provider>
   );
 }
-
-// ── Hook de consumo ───────────────────────────────────────────────────────────
 
 export function useLiveData(): LiveDataState {
   const ctx = useContext(LiveDataContext);

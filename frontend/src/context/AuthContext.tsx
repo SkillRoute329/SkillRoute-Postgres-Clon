@@ -1,10 +1,30 @@
-import { auth } from '../config/firebase';
-import { onAuthStateChanged, onIdTokenChanged, setPersistence, browserLocalPersistence, getIdTokenResult, signInWithCustomToken } from 'firebase/auth';
-import { recallCredentials, forgetDevice } from '../services/rememberDevice';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
-import { type User } from '../services/api';
+/**
+ * AuthContext.tsx — Context de autenticación 100% soberano (FASE 4.3)
+ *
+ * REGLA -6: opera EXCLUSIVAMENTE contra el clon. No queda código de
+ * Firebase real en este archivo.
+ *
+ * REGLA -1 NO REGRESIÓN: mantiene EXACTAMENTE la misma API pública del
+ * AuthContext anterior (`useAuth()` → `{user, token, isAuthenticated,
+ * isLoading, login, logout}`) para que los 100+ componentes que la consumen
+ * sigan funcionando sin cambios.
+ *
+ * Flujo:
+ *   1. Al montar, recuperar JWT y user de localStorage si existen.
+ *   2. Si no hay sesión local, intentar auto-relogin con credenciales
+ *      recordadas (recallCredentials del rememberDevice service).
+ *   3. Login externo se inyecta vía `login(token, user)`.
+ *   4. Logout limpia JWT, user, empresa activa y credenciales recordadas.
+ *   5. Renovación silenciosa: cada 50 min llama `/api/auth/refresh` si el
+ *      backend lo expone; si no existe, el token actual sigue siendo válido
+ *      hasta su expiración natural (8h por config).
+ */
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { recallCredentials, forgetDevice } from '../services/rememberDevice';
+import { type User } from '../services/api';
+import { apiClient, setAuthToken } from '../clients/apiClient';
+import { refreshSocketAuth } from '../clients/socketClient';
 
 interface AuthContextType {
   user: User | null;
@@ -17,228 +37,179 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Constantes para los keys de localStorage. Mantengo `tf_token` / `tf_user`
+// idénticos al sistema anterior para que sesiones activas sobrevivan al
+// upgrade del frontend (no regresión).
+const TOKEN_KEY = 'tf_token';
+const USER_KEY = 'tf_user';
+const EMPRESA_KEY = 'skillroute.empresaPropia';
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const [, payloadB64] = token.split('.');
+    if (!payloadB64) return null;
+    const json = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function persistSession(token: string, user: User): void {
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  setAuthToken(token);
+  // Empresa activa por defecto desde el JWT/user (UCOT=70 si no aplica).
+  const agencyId = (user as User & { agencyId?: string | number }).agencyId;
+  if (agencyId && [10, 20, 50, 70].includes(Number(agencyId))) {
+    localStorage.setItem(EMPRESA_KEY, String(agencyId));
+    window.dispatchEvent(new CustomEvent('skillroute:empresaPropia-change', { detail: Number(agencyId) }));
+  }
+}
+
+function clearSession(): void {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(EMPRESA_KEY);
+  setAuthToken(null);
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    // PERSISTENCE BRIDGE: Restore manual tokens (Backend 2.0)
-    // Restaurar cache inmediatamente para que el header no muestre "----" mientras Firebase resuelve
-    const storedToken = localStorage.getItem('tf_token');
-    const storedUser = localStorage.getItem('tf_user');
-    if (storedToken && storedUser) {
-      try {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-      } catch (_e) {
-        localStorage.removeItem('tf_token');
-        localStorage.removeItem('tf_user');
-      }
-    }
-
-    // Timeout de seguridad: si onAuthStateChanged no dispara en 10s
-    // (red lenta, SDK no inicializado, IndexedDB corrupto), liberar la pantalla de carga
-    // para que el usuario no quede bloqueado eternamente.
-    const timeoutId = setTimeout(() => {
-      console.warn('[AuthContext] onAuthStateChanged timeout (10s) — liberando pantalla de carga');
-      setInitializing(false);
-    }, 10000);
-
-    console.log('[AuthContext] Inicializando listener de autenticación.');
-
-    setPersistence(auth, browserLocalPersistence).catch((err) =>
-      console.error('Persistence Error:', err),
-    );
-
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      clearTimeout(timeoutId); // Firebase respondió — cancelar el timeout de seguridad
-      try {
-        if (firebaseUser) {
-          console.log('✅ [AuthContext] Firebase Session Restored:', firebaseUser.email);
-          // forceRefresh=true garantiza que los claims seteados con setCustomUserClaims
-          // (permanentes en la cuenta Firebase) estén en el token, incluso tras recarga.
-          const freshToken = await firebaseUser.getIdToken(true);
-          const tokenResult = await getIdTokenResult(firebaseUser, true);
-          const claimsRole = tokenResult.claims?.role as string | undefined;
-
-          // Intentar recuperar rol previo de localStorage para no degradarlo
-          const storedPrev = localStorage.getItem('tf_user');
-          const prevRole = storedPrev ? (JSON.parse(storedPrev) as User)?.role : null;
-
-          let finalUser: User = {
-            id: firebaseUser.uid,
-            uid: firebaseUser.uid,
-            internalNumber: '----',
-            firstName: firebaseUser.displayName?.split(' ')[0] || 'Usuario',
-            lastName: '',
-            fullName: firebaseUser.displayName || 'Usuario Sistema',
-            // Prioridad: claims JWT (set por backend) > localStorage > default
-            role: claimsRole || prevRole || 'USER',
-            email: firebaseUser.email || undefined,
-          };
-
-          /**
-           * Workaround conocido de Firebase: onAuthStateChanged se dispara
-           * apenas hay token, pero el SDK Firestore puede tardar unos
-           * milisegundos en propagar la auth a sus listeners. Si llamamos
-           * getDoc inmediatamente, devuelve permission-denied aunque las
-           * rules permiten read. Solución: retry con backoff exponencial
-           * si vemos permission-denied. Max 3 intentos = ~700ms total.
-           */
-          try {
-            const userDocRef = doc(db, 'users', firebaseUser.uid);
-            let userSnap: Awaited<ReturnType<typeof getDoc>> | null = null;
-            let lastErr: unknown = null;
-            for (let attempt = 0; attempt < 3; attempt++) {
-              try {
-                userSnap = await getDoc(userDocRef);
-                break;
-              } catch (err) {
-                lastErr = err;
-                const code = (err as { code?: string })?.code ?? '';
-                if (code === 'permission-denied' && attempt < 2) {
-                  // Backoff: 100ms, 250ms (suma <400ms en peor caso)
-                  await new Promise((r) => setTimeout(r, 100 + attempt * 150));
-                  continue;
-                }
-                throw err;
-              }
-            }
-
-            if (userSnap?.exists()) {
-              const userData = userSnap.data() as Record<string, any>;
-              finalUser = {
-                ...finalUser,
-                internalNumber: userData?.datos_empresa?.legajo || '----',
-                firstName: userData?.datos_personales?.nombre || finalUser.firstName,
-                lastName: userData?.datos_personales?.apellido || '',
-                // Firestore > claims JWT > localStorage > default
-                role: (userData?.rol ?? userData?.role) || claimsRole || prevRole || 'USER',
-              };
-              // Seed empresaPropia desde el perfil Firestore para que el operador
-              // correcto quede activo al iniciar sesión (sin esperar selector manual).
-              const empresaCodigo = Number(userData?.empresa);
-              if ([10, 20, 50, 70].includes(empresaCodigo)) {
-                localStorage.setItem('skillroute.empresaPropia', String(empresaCodigo));
-                window.dispatchEvent(new CustomEvent('skillroute:empresaPropia-change', { detail: empresaCodigo }));
-              }
-            } else if (lastErr) {
-              throw lastErr;
-            }
-          } catch (dbError) {
-            // Mantener warn para no romper login si Firestore tarda mucho.
-            // El localStorage cache (tf_user) cubre el rol mientras tanto.
-            console.warn('[AuthContext] DB Profile no disponible tras retries; usando cache local:', dbError);
+    let cancelled = false;
+    const bootstrap = async (): Promise<void> => {
+      // 1. Restaurar sesión local si existe.
+      const storedToken = localStorage.getItem(TOKEN_KEY);
+      const storedUser = localStorage.getItem(USER_KEY);
+      if (storedToken && storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser) as User;
+          if (!cancelled) {
+            setToken(storedToken);
+            setUser(parsed);
+            setAuthToken(storedToken);
           }
+          // eslint-disable-next-line no-console
+          console.info('[AuthContext] Sesión local restaurada para', parsed.email ?? parsed.id ?? '(?)');
+        } catch {
+          clearSession();
+        }
+      }
 
-          setToken(freshToken);
-          setUser(finalUser);
-          localStorage.setItem('tf_token', freshToken);
-          localStorage.setItem('tf_user', JSON.stringify(finalUser));
-        } else {
-          // Sesión Firebase muerta — intentar auto-relogin si el usuario marcó "Recordar este dispositivo".
+      // 2. Sin sesión: intentar auto-relogin con credenciales recordadas.
+      if (!storedToken) {
+        try {
           const creds = await recallCredentials();
           if (creds) {
-            try {
-              console.log('🔄 [AuthContext] Auto-relogin con credenciales recordadas...');
-              const resp = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ internalNumber: creds.internalNumber, password: creds.password }),
-              });
-              const json = await resp.json().catch(() => ({}));
-              if (resp.ok && (json as { firebaseCustomToken?: string })?.firebaseCustomToken) {
-                await signInWithCustomToken(auth, (json as { firebaseCustomToken: string }).firebaseCustomToken);
-                // onAuthStateChanged re-dispara con firebaseUser !== null y la rama de arriba popula el estado.
-                console.log('✅ [AuthContext] Auto-relogin OK.');
-                return; // Salir sin redirigir
-              }
-              console.warn('[AuthContext] Auto-relogin falló:', (json as { error?: string })?.error || `http_${resp.status}`);
-            } catch (err) {
-              console.warn('[AuthContext] Auto-relogin error:', err);
+            const resp = await apiClient.post<{ token: string; user: Record<string, unknown> }>(
+              '/api/auth/login',
+              { internalNumber: creds.internalNumber, password: creds.password },
+              { anon: true },
+            );
+            const newToken = resp.data?.token;
+            const newUser = (resp.data?.user ?? {}) as Record<string, unknown>;
+            if (newToken && !cancelled) {
+              const u: User = {
+                id: String(newUser.id ?? ''),
+                uid: String(newUser.id ?? ''),
+                internalNumber: String(newUser.internalNumber ?? '----'),
+                firstName: (newUser.fullName as string)?.split(' ')[0] ?? 'Usuario',
+                lastName: '',
+                fullName: (newUser.fullName as string) ?? 'Usuario Sistema',
+                role: (newUser.role as string) ?? 'USER',
+                email: (newUser.email as string) ?? undefined,
+              } as User;
+              setToken(newToken);
+              setUser(u);
+              persistSession(newToken, u);
+              refreshSocketAuth();
+              // eslint-disable-next-line no-console
+              console.info('[AuthContext] Auto-relogin exitoso para', u.internalNumber);
+            } else {
+              forgetDevice();
             }
-            // Si falló, olvidar el dispositivo para no entrar en loop
-            forgetDevice();
           }
-
-          // Sin credenciales recordadas o auto-relogin fallido → flujo normal
-          console.log('💤 [AuthContext] No active session — redirigiendo a /login');
-          localStorage.removeItem('tf_token');
-          localStorage.removeItem('tf_user');
-          setToken(null);
-          setUser(null);
-          if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/public')) {
-            window.location.assign('/login');
-          }
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn('[AuthContext] Auto-relogin falló:', err);
+          forgetDevice();
         }
-      } catch (error) {
-        console.error('❌ [AuthContext] Critical Auth Error:', error);
-      } finally {
-        setInitializing(false);
       }
-    });
 
+      if (!cancelled) setInitializing(false);
+    };
+
+    void bootstrap();
     return () => {
-      unsubscribe();
-      clearTimeout(timeoutId);
+      cancelled = true;
     };
   }, []);
 
-  // Renovación silenciosa: Firebase ID tokens duran 1h. Refrescamos a los 50 min
-  // para que Firestore y las API calls nunca vean un token expirado.
+  // Renovación silenciosa cada 50 min via /api/auth/refresh (si el backend
+  // lo expone). Si no, el token de 8h sigue siendo válido y el usuario solo
+  // necesita re-loguear cuando expire.
   useEffect(() => {
+    if (!token) return;
     const FIFTY_MIN = 50 * 60 * 1000;
-    const id = setInterval(async () => {
-      if (!auth.currentUser) return;
+    const interval = setInterval(async () => {
       try {
-        const fresh = await auth.currentUser.getIdToken(/* forceRefresh */ true);
-        setToken(fresh);
-        localStorage.setItem('tf_token', fresh);
-        console.log('[AuthContext] Token renovado silenciosamente.');
-      } catch (err) {
-        console.warn('[AuthContext] Renovación silenciosa fallida:', err);
+        const res = await apiClient.post<{ token: string }>('/api/auth/refresh');
+        const fresh = res.data?.token;
+        if (fresh) {
+          setToken(fresh);
+          localStorage.setItem(TOKEN_KEY, fresh);
+          setAuthToken(fresh);
+          // eslint-disable-next-line no-console
+          console.info('[AuthContext] Token renovado silenciosamente.');
+        }
+      } catch (err: unknown) {
+        // Si el endpoint /api/auth/refresh no existe (404), no es regresión —
+        // el token sigue siendo válido hasta su expiración natural.
+        // eslint-disable-next-line no-console
+        console.debug('[AuthContext] /api/auth/refresh no disponible:', err);
       }
     }, FIFTY_MIN);
+    return () => clearInterval(interval);
+  }, [token]);
 
-    // También escuchar renovaciones iniciadas por el SDK (ej: recarga de página)
-    const unsubToken = onIdTokenChanged(auth, async (fbUser) => {
-      if (!fbUser) return;
-      const fresh = await fbUser.getIdToken();
-      setToken(fresh);
-      localStorage.setItem('tf_token', fresh);
-    });
-
-    return () => {
-      clearInterval(id);
-      unsubToken();
-    };
-  }, []);
-
-  const login = (newToken: string, newUser: User) => {
+  const login = (newToken: string, newUser: User): void => {
     setToken(newToken);
     setUser(newUser);
-    localStorage.setItem('tf_token', newToken);
-    localStorage.setItem('tf_user', JSON.stringify(newUser));
+    persistSession(newToken, newUser);
+    refreshSocketAuth();
   };
 
-  const logout = () => {
-    auth.signOut();
-    localStorage.removeItem('tf_token');
-    localStorage.removeItem('tf_user');
-    localStorage.removeItem('skillroute.empresaPropia'); // ← resetear al default (70 UCOT) en próximo login
-    forgetDevice(); // ← olvida credenciales recordadas — cerrar sesión deshace el "Recordar"
+  const logout = (): void => {
+    clearSession();
+    forgetDevice();
     setToken(null);
     setUser(null);
+    refreshSocketAuth();
     window.location.assign('/login');
   };
+
+  // Decode token para uso futuro (claims) — no expone, solo se valida.
+  useEffect(() => {
+    if (!token) return;
+    const payload = decodeJwtPayload(token);
+    if (!payload) {
+      // Token corrupto: limpiar.
+      clearSession();
+      setToken(null);
+      setUser(null);
+    }
+  }, [token]);
 
   if (initializing) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-950 text-white">
         <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4"></div>
         <h2 className="text-xl font-bold tracking-tight">Iniciando SkillRoute...</h2>
-        <p className="text-slate-500 text-sm mt-2">Verificando credenciales seguras</p>
+        <p className="text-slate-500 text-sm mt-2">Verificando credenciales locales</p>
       </div>
     );
   }
@@ -259,7 +230,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');

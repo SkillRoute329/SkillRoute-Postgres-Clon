@@ -26,6 +26,7 @@ import listeroRoutes from './listero.routes';
 import autoStatsRoutes from './autoStats.routes';
 import gtfsRoutes from './gtfs.routes';
 import auditRoutes from './audit.routes';
+import dbBridgeRoutes from './dbBridge.routes';
 
 const router = Router();
 
@@ -190,5 +191,16 @@ router.use('/autostats', autoStatsRoutes);
  * GET /api/audit/eta-snapshot   — ETAs más recientes calculados
  */
 router.use('/audit', auditRoutes);
+
+/**
+ * FASE 4 — Bridge REST genérico para el shim Firestore del frontend.
+ * GET    /api/db                       — lista de colecciones permitidas
+ * GET    /api/db/:collection           — list (where, orderBy, limit, offset)
+ * GET    /api/db/:collection/:id       — getDoc
+ * POST   /api/db/:collection           — addDoc / setDoc nuevo
+ * PUT    /api/db/:collection/:id       — setDoc / updateDoc (upsert)
+ * DELETE /api/db/:collection/:id       — deleteDoc
+ */
+router.use('/db', dbBridgeRoutes);
 
 export default router;

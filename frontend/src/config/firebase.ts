@@ -1,75 +1,74 @@
-import { initializeApp } from 'firebase/app';
-import { getStorage } from 'firebase/storage';
-import { getMessaging, isSupported } from 'firebase/messaging';
-import {
-  getAuth,
-  setPersistence,
-  browserLocalPersistence,
-  connectAuthEmulator,
-  onAuthStateChanged,
-} from 'firebase/auth';
-import {
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
-  connectFirestoreEmulator,
-} from 'firebase/firestore';
+/**
+ * config/firebase.ts — Adaptador transparente del clon (FASE 4.3)
+ *
+ * Este archivo NO inicializa Firebase real. Reemplaza el SDK original con
+ * shims que apuntan al backend del clon. Los exports `db`, `auth`, `storage`,
+ * `app`, `authReady`, `getAppMessaging` se mantienen idénticos en API para
+ * que los 148 archivos que importan de aquí sigan funcionando sin cambios.
+ *
+ * Cuando un archivo se migra a importar de los clientes nuevos
+ * (`../clients/apiClient`, `../clients/socketClient`) directamente, deja de
+ * usar este archivo. Cuando ya nadie lo importe, lo borramos en FASE 4.9.
+ *
+ * REGLA -6 (CLON vs ORIGINAL): este archivo opera 100% contra el clon. No
+ * hay UN solo byte que vaya al original cloud.
+ *
+ * REGLA -1 NO REGRESIÓN: API pública preservada — los archivos que importan
+ * `db, auth, storage, authReady, getAppMessaging` desde acá siguen viendo
+ * los mismos nombres, los mismos tipos a grandes rasgos, y el código del
+ * frontend sigue compilando.
+ */
 
-const firebaseConfig = {
-  apiKey: 'AIzaSyDPviXHSMncZQ_l3oMwIRoPWAOXOHeVeL4',
-  authDomain: 'ucot-gestor-cloud.firebaseapp.com',
-  projectId: 'ucot-gestor-cloud',
-  storageBucket: 'ucot-gestor-cloud.firebasestorage.app',
-  messagingSenderId: '231108889084',
-  appId: '1:231108889084:web:45f28a7a143a19995f0a79',
-  measurementId: 'G-SBF5S0ZG2D',
+import { getFirestore } from './firestoreShim';
+import { getAuth } from './firebaseAuthShim';
+import {
+  initializeApp,
+  getStorage,
+  getMessaging,
+  isSupported,
+  type FirebaseAppShim,
+} from './firebaseStubsShim';
+
+// ─── App ───────────────────────────────────────────────────────────────────
+
+const _config = {
+  // No son credenciales activas: el SDK real ya no se usa. Mantenemos los
+  // metadatos para compatibilidad con código que lee `app.options`.
+  projectId: 'skillroute-clon-local',
+  authDomain: 'localhost',
+  storageBucket: 'minio-local',
+  messagingSenderId: '0',
+  appId: 'clon-local',
 };
 
-const app = initializeApp(firebaseConfig);
+const _app: FirebaseAppShim = initializeApp(_config);
 
-// INEXCUSABLE: en local siempre usar emulador (E2E y dev local).
-const useEmulator = false; // Forzado a Cloud para uso inmediato del usuario.
+export default _app;
 
-export const db = initializeFirestore(
-  app,
-  useEmulator
-    ? { experimentalAutoDetectLongPolling: true }
-    : {
-        experimentalAutoDetectLongPolling: true,
-        localCache: persistentLocalCache({
-          tabManager: persistentMultipleTabManager(),
-         }),
-      },
-);
+// ─── DB (Firestore shim) ───────────────────────────────────────────────────
 
-if (useEmulator) {
-  connectFirestoreEmulator(db, '127.0.0.1', 8080);
-  console.log('[Firebase] Conectado a Firestore emulador 127.0.0.1:8080');
-}
+export const db = getFirestore();
 
-export const auth = getAuth(app);
-if (useEmulator) {
-  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
-}
-setPersistence(auth, browserLocalPersistence);
+// ─── Auth (shim apuntando al clon) ─────────────────────────────────────────
 
-// Resuelve una sola vez cuando el SDK de auth determina el estado inicial (user o null).
-// Más fiable que authStateReady() en cold start con persistentMultipleTabManager.
-export const authReady = new Promise<void>((resolve) => {
-  const unsub = onAuthStateChanged(auth, () => {
-    unsub();
-    resolve();
-  });
-});
+export const auth = getAuth(_app);
 
-export const storage = getStorage(app);
+// ─── Storage (stub mínimo, FASE 5 lo migra a MinIO) ────────────────────────
 
-export const getAppMessaging = async () => {
+export const storage = getStorage(_app);
+
+// ─── Messaging (stub mínimo, FASE 6 lo migra a web-push propio) ────────────
+
+export const getAppMessaging = async (): Promise<ReturnType<typeof getMessaging> | null> => {
   const supported = await isSupported();
-  if (supported) {
-    return getMessaging(app);
-  }
-  return null;
+  if (!supported) return null;
+  return getMessaging(_app);
 };
 
-export default app;
+// ─── authReady — Promise que resuelve cuando el shim está listo ────────────
+//
+// En el shim, la sesión local se restaura de localStorage al instante. Por
+// tanto `authReady` resuelve inmediatamente. Compatibilidad de tipos
+// preservada para que el código que la espera no se cuelgue.
+
+export const authReady: Promise<void> = Promise.resolve();

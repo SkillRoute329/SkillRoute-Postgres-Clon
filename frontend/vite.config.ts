@@ -4,6 +4,25 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import https from 'node:https';
+import path from 'node:path';
+
+// FASE 4 (2026-05-11): aliases que redirigen `firebase/*` al shim del clon.
+// Esto evita tocar 148 archivos del frontend que importan firebase directo —
+// detrás del alias, todas las operaciones van al backend Postgres del clon
+// vía `/api/db/*` y JWT propio.
+//
+// Cuando un archivo se migra real (FASE 4.4+) y deja de importar 'firebase/*',
+// deja de pasar por estos aliases. Cuando el último archivo migra, eliminamos
+// los aliases y los archivos shim — el código queda sin Firebase real.
+const FIREBASE_SHIM_ALIASES = {
+  'firebase/firestore': path.resolve(__dirname, 'src/config/firestoreShim.ts'),
+  'firebase/firestore/lite': path.resolve(__dirname, 'src/config/firestoreShim.ts'),
+  'firebase/auth': path.resolve(__dirname, 'src/config/firebaseAuthShim.ts'),
+  'firebase/app': path.resolve(__dirname, 'src/config/firebaseStubsShim.ts'),
+  'firebase/storage': path.resolve(__dirname, 'src/config/firebaseStubsShim.ts'),
+  'firebase/messaging': path.resolve(__dirname, 'src/config/firebaseStubsShim.ts'),
+  'firebase/analytics': path.resolve(__dirname, 'src/config/firebaseStubsShim.ts'),
+};
 
 const CACHE_BUST = Date.now();
 
@@ -108,8 +127,14 @@ export default defineConfig({
       },
     }),
   ],
+  resolve: {
+    alias: FIREBASE_SHIM_ALIASES,
+  },
   optimizeDeps: {
-    include: ['recharts', 'victory-vendor'],
+    include: ['recharts'],
+    // Excluir paquetes firebase: el alias arriba los redirige al shim, no
+    // queremos que Vite pre-bundle el SDK real.
+    exclude: ['firebase', 'firebase/firestore', 'firebase/auth', 'firebase/storage', 'firebase/app', 'firebase/messaging', 'firebase/analytics'],
   },
   server: {
     host: '127.0.0.1',
@@ -120,6 +145,11 @@ export default defineConfig({
       usePolling: true,
     },
     proxy: {
+      '/api/gtfs': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true,
+        secure: false,
+      },
       '/api/auth': {
         target: 'http://127.0.0.1:3000',
         changeOrigin: true,
