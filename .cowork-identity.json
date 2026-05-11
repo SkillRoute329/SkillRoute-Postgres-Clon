@@ -1,0 +1,55 @@
+{
+  "instance_role": "CLON_SOBERANO",
+  "instance_label": "SkillRoute / TransformaFacil 2.0 — copia local independiente",
+  "device_owner": "jonathanlaluz@gmail.com",
+  "device_user": "Usuario",
+  "device_os": "Windows",
+  "branch_principal": "feat/soberania-auth-fase-0-1",
+  "stack": {
+    "database": "PostgreSQL 15 nativo localhost:5432, base skillroute_master",
+    "auth": "JWT HS256 firmado con JWT_SECRET local (no Firebase)",
+    "ai": "Ollama qwen2.5 en 127.0.0.1:11434",
+    "storage": "MinIO local en C:\\SkillRoute_Master\\data\\minio",
+    "push": "Web Push + VAPID propias (no FCM Admin)"
+  },
+  "differentiation": {
+    "is_clone": true,
+    "diverges_from_original": true,
+    "original_runs_on": "Firebase / Firestore / Cloud Functions / Firebase Auth / Cloud Storage",
+    "original_repo_location": "no inventariado en este equipo — vive en otro lado o como deploy productivo",
+    "syncs_with_original": false,
+    "rationale": "El original opera en cloud con dependencias de servicios externos. Este clon ejecuta el mismo dominio de negocio (UCOT/IMM transporte público) pero corre 100% en hardware del usuario por soberanía de datos y reducción de costos GCP."
+  },
+  "rules_applied": [
+    "REGLA -6 distincion clon vs original (recordar siempre)",
+    "REGLA -5 ejecucion via Antigravity (Cowork verifica)",
+    "REGLA -4 escalabilidad garantizada",
+    "REGLA -3 estandares internacionales (OWASP, ISO, UITP, GTFS)",
+    "REGLA -2 no simulacion / datos reales",
+    "REGLA -1 no regresion",
+    "REGLA #0 Sonnet por defecto"
+  ],
+  "phases_completed": [
+    "FASE 0 piloto: doctor migrado a Postgres",
+    "FASE 1: JWT_SECRET real + cierre fallback Firebase + handlers globales",
+    "FASE 2: cartonService, fleetService, listeroService, vehicleHistoryService, cascadeEngineService migrados (schema_fase2.sql aplicado)",
+    "FASE 2.7: importacion historica del original cloud (~1.38M docs aplicados a Postgres, 17 colecciones mapeadas, schema_fase2_extended.sql aplicado, 1 error menor en users). vehicleCount paso de 6 seeds a 922 reales."
+  ],
+  "phases_order_confirmed_2026_05_10": "2.7 -> 3.5 -> 4 -> 5 -> 6 -> 7",
+  "phases_pending": [
+    "FASE 3.5: poller backend autonomo IMM->Postgres (24/7, no depende de cliente abierto). CRITICO para soberania de KPIs.",
+    "FASE 4: frontend (~20 archivos React siguen con firebase) -> apuntar a backend clon via REST + Socket.io",
+    "FASE 5: storage Firebase Storage -> MinIO",
+    "FASE 6: push notifications -> web-push propio",
+    "FASE 7: limpieza final (uninstall firebase y firebase-admin, borrar firestore.rules, functions/, redirect-public/)",
+    "FASE 3 (multi-instancia): Socket.io con Redis adapter — POSTPUESTA hasta que haya carga real que justifique multi-instancia"
+  ],
+  "last_audit_date": "2026-05-10",
+  "last_audit_summary_file": "C:\\Users\\Usuario\\Desktop\\PROGRESO_MIGRACION_FASE_0_1_2.md",
+  "warnings_for_next_session": [
+    "ESTE REPO NO ES EL ORIGINAL. Cualquier cambio aqui no afecta al cloud productivo.",
+    "Los datos operacionales (cartones historicos, conductores reales, turnos pasados) siguen en Firestore del original. La tabla `personal` tiene 3 seeds demo, no datos productivos.",
+    "Si un endpoint devuelve [] vacio o vehicleCount=6, NO es bug — es que los datos siguen en Firestore. Migrar es FASE 2.7.",
+    "FASE 3.5 (poller autonomo) es CRITICA y va antes de FASE 4 frontend. Sin poller, los KPIs estadisticos quedan falseados porque la ingesta GPS depende de tener sesion abierta — no es aceptable."
+  ]
+}

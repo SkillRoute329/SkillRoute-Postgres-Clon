@@ -40,7 +40,17 @@ functions/.env.*
 *serviceAccountKey*.json
 *firebase-adminsdk*.json
 *service-account*.json
+*firebase-admin*.json
 credentials.json
+# Carpeta del agente local con keys/secrets — nunca commitear
+agent/secrets/
+**/agent/secrets/
+
+# === Datos del ORIGINAL CLOUD descargados para FASE 2.7 ===
+# Pueden contener PII de conductores reales. Solo viven en disco local del clon.
+# REGLA -6: nunca empujar estos al repo del clon.
+data_imports/firestore_export/
+**/data_imports/firestore_export/
 
 # === Python ===
 .venv/
