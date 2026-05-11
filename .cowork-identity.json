@@ -33,11 +33,11 @@
     "FASE 0 piloto: doctor migrado a Postgres",
     "FASE 1: JWT_SECRET real + cierre fallback Firebase + handlers globales",
     "FASE 2: cartonService, fleetService, listeroService, vehicleHistoryService, cascadeEngineService migrados (schema_fase2.sql aplicado)",
-    "FASE 2.7: importacion historica del original cloud (~1.38M docs aplicados a Postgres, 17 colecciones mapeadas, schema_fase2_extended.sql aplicado, 1 error menor en users). vehicleCount paso de 6 seeds a 922 reales."
+    "FASE 2.7: importacion historica del original cloud (~1.38M docs aplicados a Postgres, 17 colecciones mapeadas, schema_fase2_extended.sql aplicado, 1 error menor en users). vehicleCount paso de 6 seeds a 922 reales.",
+    "FASE 3.5: poller backend autonomo IMM->Postgres operativo 24/7. Captura GPS cada 10s para 4 agencias STM (UCOT, CUTCSA, COME, COETC). Persistencia automatica en vehicle_events, bus_last_pos, bus_eta_predictions, poller_health. Tasa: ~85 eventos/s, ~7M eventos/dia. Endpoints /api/audit/* para reporte IMM. Cubre el requisito de continuidad temporal sin huecos de la auditoria proxima."
   ],
   "phases_order_confirmed_2026_05_10": "2.7 -> 3.5 -> 4 -> 5 -> 6 -> 7",
   "phases_pending": [
-    "FASE 3.5: poller backend autonomo IMM->Postgres (24/7, no depende de cliente abierto). CRITICO para soberania de KPIs.",
     "FASE 4: frontend (~20 archivos React siguen con firebase) -> apuntar a backend clon via REST + Socket.io",
     "FASE 5: storage Firebase Storage -> MinIO",
     "FASE 6: push notifications -> web-push propio",

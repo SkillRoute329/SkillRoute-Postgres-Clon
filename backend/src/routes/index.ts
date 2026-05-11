@@ -24,6 +24,8 @@ import stmRoutes from './stm.routes';
 import aiRoutes from './ai.routes';
 import listeroRoutes from './listero.routes';
 import autoStatsRoutes from './autoStats.routes';
+import gtfsRoutes from './gtfs.routes';
+import auditRoutes from './audit.routes';
 
 const router = Router();
 
@@ -54,6 +56,14 @@ router.get('/health', systemController.healthCheck);
 router.get('/version', systemController.getVersion);
 
 // ─── PROTEGIDAS (requieren autenticación) ─────────────────────────────────
+
+/**
+ * GTFS Soberano (Nuevo!)
+ * GET /api/gtfs/stops
+ * GET /api/gtfs/stops/:stopId/departures
+ * Este módulo tiene prioridad absoluta para evitar colisiones.
+ */
+router.use('/gtfs', gtfsRoutes);
 
 /**
  * GET /api/auth/me
@@ -171,5 +181,14 @@ router.use('/listero', listeroRoutes);
  * GET /api/autostats/vehicle/:idBus
  */
 router.use('/autostats', autoStatsRoutes);
+
+/**
+ * FASE 3.5 — Auditoría del poller autónomo para reporte IMM.
+ * GET /api/audit/poller-stats   — métricas en vivo del poller
+ * GET /api/audit/coverage       — % cobertura temporal por día/agencia
+ * GET /api/audit/buses-active   — buses con reporte GPS en ventana de N min
+ * GET /api/audit/eta-snapshot   — ETAs más recientes calculados
+ */
+router.use('/audit', auditRoutes);
 
 export default router;

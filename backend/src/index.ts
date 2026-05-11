@@ -22,6 +22,7 @@ import routes from './routes/index';
 import { initializeSocket } from './services/realtimeService';
 import { AIService } from './services/aiService';
 import { setSocketServer } from './services/cascadeEngineService';
+import { startPoller, stopPoller } from './services/pollerService';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INICIALIZACIÓN
@@ -179,6 +180,17 @@ const server = httpServer.listen(Number(PORT), '0.0.0.0', () => {
   AIService.prewarm('HEAVY');
   AIService.prewarm('FAST');
   AIService.prewarm('CODER');
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // FASE 3.5 — Arrancar poller autónomo IMM → Postgres.
+  // Controlado por env POLLER_ENABLED. Si falla, no afecta el resto del
+  // backend: el setInterval interno se reintenta solo.
+  // ═══════════════════════════════════════════════════════════════════════
+  try {
+    startPoller();
+  } catch (err) {
+    logger.error('[Poller] error arrancando, el backend sigue arriba igual', { err: String(err) });
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -209,9 +221,11 @@ process.on('uncaughtException', (err: Error) => {
   }
 });
 
-// Graceful shutdown
+// Graceful shutdown — el poller se detiene antes del HTTP server
+// para asegurar que no quede un ciclo a medio escribir en Postgres.
 process.on('SIGTERM', () => {
-  logger.warn('SIGTERM signal received: closing HTTP server');
+  logger.warn('SIGTERM signal received: stopping poller + closing HTTP server');
+  try { stopPoller(); } catch (e) { logger.error('[Poller] stop error', { err: String(e) }); }
   server.close(() => {
     logger.info('HTTP server closed');
     process.exit(0);
@@ -219,7 +233,8 @@ process.on('SIGTERM', () => {
 });
 
 process.on('SIGINT', () => {
-  logger.warn('SIGINT signal received: closing HTTP server');
+  logger.warn('SIGINT signal received: stopping poller + closing HTTP server');
+  try { stopPoller(); } catch (e) { logger.error('[Poller] stop error', { err: String(e) }); }
   server.close(() => {
     logger.info('HTTP server closed');
     process.exit(0);
