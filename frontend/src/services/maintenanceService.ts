@@ -12,20 +12,7 @@
  *   await maintenanceService.crearOrden({ cocheId: '115', tipo: 'preventivo', ... });
  */
 
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  addDoc,
-  updateDoc,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
-  Timestamp,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -48,8 +35,8 @@ export interface OrdenMantenimiento {
   nivelBateriaPct?: number;
   ciclosCarga?: number;
   temperaturaMotor?: number;
-  createdAt?: Timestamp;
-  updatedAt?: Timestamp;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AlertaMantenimiento {
@@ -86,32 +73,32 @@ class MaintenanceServiceClass {
   // ── CRUD básico ──────────────────────────────────────────────────────────────
 
   async getPendientes(): Promise<OrdenMantenimiento[]> {
-    const q = query(
-      collection(db, this.COL),
-      where('estado', 'in', ['pendiente', 'en_proceso']),
-      orderBy('fechaProgramada'),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as OrdenMantenimiento);
+    const raw = await apiClient.get(`/api/db/${this.COL}`, {
+      query: { where: 'estado:pendiente', orderBy: 'fechaProgramada:asc', limit: 1000 },
+    }) as any[];
+    const arr1 = Array.isArray(raw) ? raw : [];
+    const raw2 = await apiClient.get(`/api/db/${this.COL}`, {
+      query: { where: 'estado:en_proceso', orderBy: 'fechaProgramada:asc', limit: 1000 },
+    }) as any[];
+    const arr2 = Array.isArray(raw2) ? raw2 : [];
+    return [...arr1, ...arr2] as OrdenMantenimiento[];
   }
 
   async getPorVehiculo(cocheId: string): Promise<OrdenMantenimiento[]> {
-    const q = query(
-      collection(db, this.COL),
-      where('cocheId', '==', cocheId),
-      orderBy('fechaProgramada', 'desc'),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as OrdenMantenimiento);
+    const raw = await apiClient.get(`/api/db/${this.COL}`, {
+      query: { where: `cocheId:${cocheId}`, orderBy: 'fechaProgramada:desc', limit: 500 },
+    }) as any[];
+    return Array.isArray(raw) ? raw : [];
   }
 
   async crearOrden(orden: Omit<OrdenMantenimiento, 'id'>): Promise<string> {
-    const ref = await addDoc(collection(db, this.COL), {
+    const now = new Date().toISOString();
+    const result = await apiClient.post(`/api/db/${this.COL}`, {
       ...orden,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    return ref.id;
+      createdAt: now,
+      updatedAt: now,
+    }) as { id: string };
+    return result.id;
   }
 
   async actualizarEstado(
@@ -119,11 +106,11 @@ class MaintenanceServiceClass {
     estado: OrdenMantenimiento['estado'],
     extras?: Partial<OrdenMantenimiento>,
   ): Promise<void> {
-    await updateDoc(doc(db, this.COL, ordenId), {
+    await apiClient.put(`/api/db/${this.COL}/` + encodeURIComponent(ordenId), {
       estado,
       ...(estado === 'completado' ? { fechaCompletado: new Date().toISOString() } : {}),
       ...extras,
-      updatedAt: serverTimestamp(),
+      updatedAt: new Date().toISOString(),
     });
   }
 
@@ -206,15 +193,11 @@ class MaintenanceServiceClass {
 
     for (const v of vehiculos) {
       // Verificar si ya tiene pendiente
-      const existentes = await getDocs(
-        query(
-          collection(db, this.COL),
-          where('cocheId', '==', v.id),
-          where('estado', '==', 'pendiente'),
-        ),
-      );
+      const existentes = await apiClient.get(`/api/db/${this.COL}`, {
+        query: { where: `cocheId:${v.id},estado:pendiente`, limit: 1 },
+      }) as any[];
 
-      if (existentes.size > 0) {
+      if (Array.isArray(existentes) && existentes.length > 0) {
         omitidos++;
         continue;
       }

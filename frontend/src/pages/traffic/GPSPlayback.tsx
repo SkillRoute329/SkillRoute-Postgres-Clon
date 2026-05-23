@@ -66,11 +66,13 @@ export default function GPSPlayback() {
   const [playing, setPlaying] = useState(false);
 
   // Cargar lista de buses activos al cambiar empresa
+  // FASE 5.14 (2026-05-13): pasamos agencyId numerico (string), antes pasaba
+  // empresaCfg.label que disparaba scan completo de vehicle_events.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const buses = await getBusesActivosUltimas24h(empresaCfg.label);
+        const buses = await getBusesActivosUltimas24h(String(empresaPropia));
         if (!cancelled) {
           setBusesDisponibles(buses);
           if (buses.length > 0 && !idBus) {
@@ -96,7 +98,7 @@ export default function GPSPlayback() {
     try {
       const hasta = new Date();
       const desde = new Date(hasta.getTime() - rangoHs * 3600 * 1000);
-      const r = await getTrayectoria(idBus, desde, hasta);
+      const r = await getTrayectoria(idBus, desde, hasta, String(empresaPropia));
       setTrayectoria(r);
       setPingIdx(0);
       setPlaying(false);

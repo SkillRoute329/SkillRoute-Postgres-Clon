@@ -94,8 +94,15 @@ async function updateBusLastPos(results: BusComplianceResult[]): Promise<number>
   let updated = 0;
   for (const r of results) {
     try {
+      // FASE 5.14 (2026-05-13): id_bus DEBE incluir agency_id como prefijo,
+      // porque CUTCSA, UCOT, COME, COETC pueden tener buses con el mismo
+      // codigoBus (ej. cada uno tiene un bus 46). Sin prefijo, el UPSERT por
+      // id_bus colisiona entre operadores y se pierden registros. El formato
+      // estandar es `${agency_id}_${codigoBus}`.
+      const rawId = String(r.idBus);
+      const id = rawId.startsWith(`${r.agencyId}_`) ? rawId : `${r.agencyId}_${rawId}`;
       const row = {
-        id_bus: r.idBus,
+        id_bus: id,
         agency_id: r.agencyId,
         linea: r.linea,
         lat: r.lat,
@@ -104,19 +111,25 @@ async function updateBusLastPos(results: BusComplianceResult[]): Promise<number>
         velocidad: r.velocidad,
         estado_cumplimiento: r.estadoCumplimiento,
         timestamp_gps: r.timestampGPS,
+        // FASE 5.14: destino + sentido top-level (ademas de data_jsonb).
+        destino: r.destino ?? null,
+        sentido: r.sentido ?? null,
         data_jsonb: JSON.stringify({
           empresa: r.empresa,
+          codigoBus: rawId,
           tripId: r.tripActivo?.trip_id ?? null,
           proximaParada: r.proximaParadaControl?.name ?? null,
           desviacionMin: r.desviacionMin,
           distanciaParadaKm: r.distanciaParadaKm,
           minutosParaProximaParada: r.minutosParaProximaParada,
+          destino: r.destino ?? null,
+          sentido: r.sentido ?? null,
         }),
       };
       await sqlDb('bus_last_pos')
         .insert(row)
         .onConflict('id_bus')
-        .merge(['agency_id', 'linea', 'lat', 'lon', 'geom', 'velocidad', 'estado_cumplimiento', 'timestamp_gps', 'data_jsonb']);
+        .merge(['agency_id', 'linea', 'lat', 'lon', 'geom', 'velocidad', 'estado_cumplimiento', 'timestamp_gps', 'destino', 'sentido', 'data_jsonb']);
       updated++;
     } catch (e) {
       logger.warn(`[Poller] error actualizando bus_last_pos para ${r.idBus}`, { err: String(e) });
@@ -143,8 +156,14 @@ async function updateEtaPredictions(results: BusComplianceResult[]): Promise<num
       const etaTs = new Date(Date.now() + etaSeconds * 1000);
       const distanceMeters = r.distanciaParadaKm != null ? Math.round(r.distanciaParadaKm * 1000) : null;
 
+      // FASE 5.14 (2026-05-13): id_bus prefijado con agency_id para evitar
+      // colisión cuando dos operadores tienen mismo codigoBus (mismo bug que
+      // bus_last_pos). Sin prefijo, el ETA UCOT pisa al ETA CUTCSA para la
+      // misma parada.
+      const rawId = String(r.idBus);
+      const id = rawId.startsWith(`${r.agencyId}_`) ? rawId : `${r.agencyId}_${rawId}`;
       const row = {
-        id_bus: r.idBus,
+        id_bus: id,
         stop_id: String(stopId),
         agency_id: r.agencyId,
         linea: r.linea,

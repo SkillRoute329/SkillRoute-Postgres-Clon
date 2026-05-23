@@ -10,6 +10,8 @@
  * Genera reportes automáticos para agentes de tránsito
  */
 
+import { haversineKm as geoHaversineKm } from '../../utils/geomath';
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -80,10 +82,10 @@ export interface ReporteInteligenciaCompetitiva {
 
   // Métricas de calidad
   metricas: {
-    puntualidad_promedio: number; // %
-    ocupacion_promedio: number; // %
-    velocidad_promedio: number; // km/h
-    tiempo_respuesta_datos: number; // ms
+    puntualidad_promedio: number | null; // % — null si no hay fuente real
+    ocupacion_promedio: number | null; // % — IMM no publica ocupación
+    velocidad_promedio: number | null; // km/h
+    tiempo_respuesta_datos: number | null; // ms
   };
 }
 
@@ -104,18 +106,9 @@ const FRECUENCIAS_PROGRAMADAS: Record<string, number> = {
 /**
  * Calcula distancia en km entre dos puntos (Haversine)
  */
+// FASE 5.16: delega en utils/geomath (fuente única). API local intacta.
 function distanciaHaversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371; // Radio tierra en km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  return geoHaversineKm(lat1, lng1, lat2, lng2);
 }
 
 /**
@@ -459,11 +452,13 @@ export async function obtenerAnalisisDelBridge(
       alertas: [],
       recomendaciones: [],
 
+      // FASE 5.17 (auditoría): antes devolvía 92/72/32 INVENTADOS. Sin una
+      // fuente real, se devuelve null (no se fabrican KPIs para IMM).
       metricas: {
-        puntualidad_promedio: 92,
-        ocupacion_promedio: 72,
-        velocidad_promedio: 32,
-        tiempo_respuesta_datos: 150,
+        puntualidad_promedio: null,
+        ocupacion_promedio: null,
+        velocidad_promedio: null,
+        tiempo_respuesta_datos: null,
       },
     };
   } catch (error) {

@@ -16,8 +16,7 @@
  *   const feed = await gtfsExporter.generarFeed();
  */
 
-import { getDocs, collection } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 import type { LineaUCOT } from '../types/transformafacil';
 
 // ─── Tipos GTFS ───────────────────────────────────────────────────────────────
@@ -263,11 +262,11 @@ class GTFSExporterService {
     const shapes: GTFSShape[] = [];
 
     try {
-      const snap = await getDocs(collection(db, 'lineas_ucot'));
-      if (snap.size > 0) {
-        snap.docs.forEach((doc) => {
-          const data = doc.data() as Partial<LineaUCOT>;
-          const routeId = doc.id;
+      const lineasResult = await apiClient.get('/api/db/lineas_ucot', { query: { limit: 5000 } }) as Partial<LineaUCOT>[];
+      const lineasArr = Array.isArray(lineasResult) ? lineasResult : [];
+      if (lineasArr.length > 0) {
+        lineasArr.forEach((data) => {
+          const routeId = (data as any).id as string;
 
           routes.push({
             route_id: routeId,

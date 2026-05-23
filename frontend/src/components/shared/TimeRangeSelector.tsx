@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { Calendar } from 'lucide-react';
-import { Granularidad, PeriodRange } from '../../types/compliance';
+import type { Granularidad, PeriodRange } from '../../types/compliance';
 
 type Preset = 'hoy' | '7d' | '30d' | 'mes_actual' | 'personalizado';
 

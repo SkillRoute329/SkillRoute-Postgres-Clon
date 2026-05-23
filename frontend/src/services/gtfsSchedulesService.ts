@@ -1,5 +1,5 @@
 /**
- * gtfsSchedulesService — lee horarios oficiales GTFS desde Firestore.
+ * gtfsSchedulesService — lee horarios oficiales GTFS desde el backend local.
  *
  * Fuente: colección `gtfs_horarios` importada por gtfsImporter (semanal).
  * Los docs tienen docId: `{agencyId}_{routeShortName}_{directionId}`.
@@ -8,8 +8,7 @@
  * CompetitorIntelligencePage y ShadowRadar.
  */
 
-import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 export interface HorarioGTFS {
   id: string;
@@ -48,16 +47,12 @@ export async function getHorariosByEmpresa(agencyId: string): Promise<HorarioGTF
   if (cached) return cached;
 
   try {
-    const q = query(
-      collection(db, COLLECTION),
-      where('agencyId', '==', agencyId),
-      orderBy('linea'),
-      limit(500),
-    );
-    const snap = await getDocs(q);
-    const result = snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<HorarioGTFS, 'id'>) }));
-    cacheSet(cacheKey, result);
-    return result;
+    const result = await apiClient.get(`/api/db/${COLLECTION}`, {
+      query: { where: `agencyId:${agencyId}`, orderBy: 'linea:asc', limit: 500 },
+    }) as HorarioGTFS[];
+    const data = Array.isArray(result) ? result : [];
+    cacheSet(cacheKey, data);
+    return data;
   } catch {
     return [];
   }
@@ -73,13 +68,15 @@ export async function getHorariosByLinea(
   if (cached) return cached;
 
   try {
-    const constraints = [where('linea', '==', linea)];
-    if (agencyId) constraints.push(where('agencyId', '==', agencyId));
-    const q = query(collection(db, COLLECTION), ...constraints, limit(10));
-    const snap = await getDocs(q);
-    const result = snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<HorarioGTFS, 'id'>) }));
-    cacheSet(cacheKey, result);
-    return result;
+    const whereClause = agencyId
+      ? `linea:${linea},agencyId:${agencyId}`
+      : `linea:${linea}`;
+    const result = await apiClient.get(`/api/db/${COLLECTION}`, {
+      query: { where: whereClause, limit: 10 },
+    }) as HorarioGTFS[];
+    const data = Array.isArray(result) ? result : [];
+    cacheSet(cacheKey, data);
+    return data;
   } catch {
     return [];
   }

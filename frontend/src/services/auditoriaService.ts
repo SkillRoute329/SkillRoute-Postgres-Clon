@@ -12,12 +12,10 @@
  *   3. Para cada control point: matching con eventos GPS reales (qué coche
  *      pasó, cuándo, con qué desviación).
  *
- * Cero datos simulados — solo lee lo que ya está en Firestore.
+ * Cero datos simulados — solo lee lo que ya está en el backend.
  */
-import {
-  collection, doc, getDoc, getDocs, query, where, orderBy, limit,
-} from 'firebase/firestore';
-import { db, authReady } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
+import { distanciaMetros } from '../utils/geomath';
 
 /* ─── Tipos públicos ──────────────────────────────────── */
 
@@ -113,8 +111,6 @@ export function endOfDayMvdISO(ymd: string): string {
 export function svcTypeForYmd(ymd: string): 'HABIL' | 'SABADO' | 'DOMINGO' {
   // Forzar interpretación local UY
   const d = new Date(`${ymd}T12:00:00-03:00`);
-  const dow = d.getUTCDay() === 0 ? 0 : d.getDay();
-  // Mejor: determinar día de semana en zona UY robusto
   const local = new Date(d.getTime() - 3 * 3600_000);
   const dowUY = local.getUTCDay();
   if (dowUY === 0) return 'DOMINGO';
@@ -139,7 +135,7 @@ function normLineaCode(l: string): string {
   return String(l ?? '').trim().replace(/^0+/, '') || '0';
 }
 
-/* ─── Firestore: schemas locales ──────────────────────── */
+/* ─── Schemas locales ──────────────────────────────────── */
 
 interface GtfsTimetableDoc {
   linea: string;
@@ -172,6 +168,9 @@ interface VehicleEventDoc {
   desviacionMin: number | null;
   proximaParada: string | null;
   timestampGPS: string;
+  // FASE 5.14 (2026-05-13): lat/lon para match espacial al control point.
+  lat?: number;
+  lon?: number;
 }
 
 /* ─── Carga del horario GTFS ──────────────────────────── */
@@ -183,30 +182,26 @@ async function loadTimetable(
   svcType: 'HABIL' | 'SABADO' | 'DOMINGO',
 ): Promise<GtfsTimetableDoc | null> {
   const id = `${agencyId}_${linea}_${directionId}_${svcType}`;
-  const snap = await getDoc(doc(db, 'gtfs_timetable', id));
-  if (!snap.exists()) return null;
-  return snap.data() as GtfsTimetableDoc;
+  // FASE 5.14 (2026-05-13): apiClient devuelve `{ ok, data, ... }` envelope.
+  // El código original casteaba directo a `GtfsTimetableDoc`, leyendo siempre
+  // stops/viajes = undefined → "Sin horario GTFS" aunque el backend respondiera
+  // OK. Ahora extraemos `.data` explícitamente.
+  const resp = await apiClient.get<GtfsTimetableDoc>('/api/db/gtfs_timetable/' + encodeURIComponent(id));
+  return resp?.data ?? null;
 }
 
 async function loadStops(stopIds: string[]): Promise<Map<string, GtfsStopDoc>> {
-  // Firestore tiene límite de 30 por `in` pero usamos getDoc en paralelo (más simple).
   const out = new Map<string, GtfsStopDoc>();
-  const batches: string[][] = [];
   const seen = new Set<string>();
-  for (const s of stopIds) {
-    if (seen.has(s)) continue;
-    seen.add(s);
-    if (batches.length === 0 || batches[batches.length - 1].length >= 50) batches.push([]);
-    batches[batches.length - 1].push(s);
-  }
-  for (const batch of batches) {
-    const snaps = await Promise.all(
-      batch.map(s => getDoc(doc(db, 'gtfs_stops', s)).catch(() => null)),
-    );
-    snaps.forEach((s, i) => {
-      if (s && s.exists()) out.set(batch[i], s.data() as GtfsStopDoc);
-    });
-  }
+  const unique = stopIds.filter(s => { if (seen.has(s)) return false; seen.add(s); return true; });
+  const results = await Promise.all(
+    unique.map(s =>
+      apiClient.get<GtfsStopDoc>('/api/db/gtfs_stops/' + encodeURIComponent(s)).catch(() => null),
+    ),
+  );
+  results.forEach((resp, i) => {
+    if (resp?.data) out.set(unique[i], resp.data);
+  });
   return out;
 }
 
@@ -223,17 +218,20 @@ async function loadEvents(
 ): Promise<VehicleEventDoc[]> {
   const since = startOfDayMvdISO(fecha);
   const until = endOfDayMvdISO(fecha);
-  const snap = await getDocs(query(
-    collection(db, 'vehicle_events'),
-    where('agencyId', '==', agencyId),
-    where('timestampGPS', '>=', since),
-    where('timestampGPS', '<=', until),
-    orderBy('timestampGPS', 'desc'),
-    limit(8000),
-  ));
+  // FASE 5.14: apiClient devuelve envelope; antes castea a `as any[]` y
+  // Array.isArray() era siempre false → 0 eventos cargados → la auditoría
+  // mostraba sólo "huerfanas" o vacía. Extraemos `.data` explícitamente.
+  const resp = await apiClient.get<VehicleEventDoc[]>('/api/db/vehicle_events', {
+    query: {
+      where: `agencyId:${agencyId},timestampGPS>=${since},timestampGPS<=${until}`,
+      orderBy: 'timestampGPS:desc',
+      limit: 8000,
+    },
+  });
+  const arr = Array.isArray(resp?.data) ? resp.data : [];
   const out: VehicleEventDoc[] = [];
-  for (const d of snap.docs) {
-    const ev = d.data() as VehicleEventDoc;
+  for (const d of arr) {
+    const ev = d as VehicleEventDoc;
     if (ev.estadoCumplimiento === 'FUERA_DE_SERVICIO') continue;
     if (normLineaCode(ev.linea) !== normLineaCode(linea)) continue;
     out.push(ev);
@@ -244,19 +242,33 @@ async function loadEvents(
 /* ─── Algoritmo de matching GPS ↔ control point ───────── */
 
 /**
- * Para cada control point del viaje, encuentra los eventos GPS
- * "candidatos": misma línea, en una ventana ±VENTANA_MATCH_MIN del
- * tiempo programado, cuya `proximaParada` coincida (fuzzy) con el
- * nombre del stop O cuyo timestamp esté en la ventana exacta.
+ * FASE 5.14 (2026-05-13) — matching espacio-temporal.
  *
- * Para evitar contar dos veces el mismo evento, se elige el control
- * point más cercano en tiempo y el evento se "consume" para ese punto.
+ * Antes: solo match temporal (|t_real - t_programado| < 12 min). Un bus
+ * con 15 min de atraso NUNCA matcheaba su control point real → columnas
+ * COCHES / PASADAS quedaban en "—" para muchas salidas.
+ *
+ * Ahora: combinamos dos señales:
+ *   - Espacial (Haversine): el GPS del evento está a <400 m del control
+ *     point. Si pasa el filtro espacial, el match es confiable aunque el
+ *     tiempo difiera 30 min.
+ *   - Temporal: ventana amplia (30 min) para no perder atrasos grandes.
+ *
+ * Score = distancia_metros + |delta_minutos| * 100 (1 min = 100 m de
+ * penalty equivalente). El menor score gana.
  */
+const VENTANA_MATCH_MIN_AMPLIA = 30;
+const DIST_MATCH_METROS = 400;
+
+// FASE 5.16: delega en utils/geomath (fuente única). API local intacta.
+function haversineM(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+  return distanciaMetros(a, b);
+}
+
 function asociarPasadas(
   controlPoints: ControlPoint[],
   eventosSentido: VehicleEventDoc[],
 ): { conPasadas: ControlPointConPasadas[]; consumidos: Set<string> } {
-  // Pre-cómputo: minuto UY de cada evento + key estable (ts+idBus)
   const eventosEnriquecidos = eventosSentido.map((ev, i) => ({
     ...ev,
     tReal: isoToMinUY(ev.timestampGPS),
@@ -266,56 +278,56 @@ function asociarPasadas(
   const consumidos = new Set<string>();
   const conPasadas: ControlPointConPasadas[] = [];
 
-  // Normalizador de nombres para comparación tolerante
-  const norm = (s: string | null | undefined) =>
-    String(s ?? '').toLowerCase()
-      .normalize('NFD').replace(/[̀-ͯ]/g, '')
-      .replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
-
   for (const cp of controlPoints) {
-    const nombreNorm = norm(cp.nombre);
+    const cpHasGeo = isFinite(cp.lat) && isFinite(cp.lng) && cp.lat !== 0 && cp.lng !== 0;
+
+    // 1) Candidatos: espacio O tiempo. Cualquiera califica.
     const candidatos = eventosEnriquecidos
-      .filter(e => !consumidos.has(e.key))
-      .filter(e => {
+      .filter((e) => !consumidos.has(e.key))
+      .map((e) => {
         const dt = Math.abs(e.tReal - cp.tProgramado);
-        if (dt > VENTANA_MATCH_MIN) return false;
-        // Bonus: nombre coincide (más confiable). Si no coincide, igual aceptar
-        // por proximidad temporal — el detector de proximaParada del backend
-        // puede no haber asignado el stop correcto.
-        return true;
+        let distMetros = Infinity;
+        if (cpHasGeo && typeof e.lat === 'number' && typeof e.lon === 'number' && e.lat !== 0 && e.lon !== 0) {
+          distMetros = haversineM({ lat: e.lat, lon: e.lon }, { lat: cp.lat, lon: cp.lng });
+        }
+        // Calificar: cerca espacialmente Y dentro de ventana grande, O cerca temporalmente
+        const okEspacial = distMetros <= DIST_MATCH_METROS && dt <= VENTANA_MATCH_MIN_AMPLIA;
+        const okTemporal = dt <= VENTANA_MATCH_MIN;
+        return { ev: e, dt, distMetros, ok: okEspacial || okTemporal };
       })
-      .sort((a, b) => Math.abs(a.tReal - cp.tProgramado) - Math.abs(b.tReal - cp.tProgramado));
+      .filter((c) => c.ok)
+      // Score combinado: 1 min = 100 m de penalty equivalente
+      .sort((a, b) => {
+        const sa = (isFinite(a.distMetros) ? a.distMetros : 1500) + a.dt * 100;
+        const sb = (isFinite(b.distMetros) ? b.distMetros : 1500) + b.dt * 100;
+        return sa - sb;
+      });
 
     const pasadas: PasadaGPS[] = [];
-    // Permitir hasta 1 pasada por bus por control point en este viaje
     const busesYaContados = new Set<string>();
     for (const c of candidatos) {
-      if (busesYaContados.has(c.idBus)) continue;
-      // CRÍTICO (fix 2026-05-04): usar la desviación que ya calculó el backend
-      // (snap-to-shape geográfico contra la parada más cercana real). Mi cálculo
-      // manual `tReal - tProgramado` asignaba desv falsamente porque matchea por
-      // tiempo a un control point que puede no ser geográficamente correcto, y eso
-      // generaba inconsistencia con el % de la fila resumen del listado.
-      const desvBackend = (c as VehicleEventDoc).desviacionMin;
-      const desv = (typeof desvBackend === 'number' && isFinite(desvBackend))
-        ? desvBackend
-        : (c.tReal - cp.tProgramado);
+      if (busesYaContados.has(c.ev.idBus)) continue;
+      // Desviación: si el backend ya la computó, usar esa. Si no, derivar de tiempo.
+      const desvBackend = (c.ev as VehicleEventDoc).desviacionMin;
+      const desv =
+        typeof desvBackend === 'number' && isFinite(desvBackend)
+          ? desvBackend
+          : c.ev.tReal - cp.tProgramado;
       pasadas.push({
-        idBus: c.idBus,
-        tReal: c.tReal,
+        idBus: c.ev.idBus,
+        tReal: c.ev.tReal,
         desv,
-        estado: c.estadoCumplimiento,
-        timestampGPS: c.timestampGPS,
-        proximaParada: c.proximaParada,
+        estado: c.ev.estadoCumplimiento,
+        timestampGPS: c.ev.timestampGPS,
+        proximaParada: c.ev.proximaParada,
       });
-      busesYaContados.add(c.idBus);
-      consumidos.add(c.key);
-      // Limitar a 8 pasadas por punto para no saturar la UI
+      busesYaContados.add(c.ev.idBus);
+      consumidos.add(c.ev.key);
       if (pasadas.length >= 8) break;
     }
 
-    const enT = pasadas.filter(p =>
-      p.estado === 'EN_TIEMPO' || Math.abs(p.desv) <= TOL_EN_TIEMPO_MIN,
+    const enT = pasadas.filter(
+      (p) => p.estado === 'EN_TIEMPO' || Math.abs(p.desv) <= TOL_EN_TIEMPO_MIN,
     ).length;
     conPasadas.push({
       ...cp,
@@ -335,7 +347,6 @@ export async function fetchAuditoriaLineaSentido(
   directionId: 0 | 1,
   fecha: string,
 ): Promise<AuditoriaLineaSentido | null> {
-  await authReady;
   const svcType = svcTypeForYmd(fecha);
   const tt = await loadTimetable(agencyId, linea, directionId, svcType);
   if (!tt || !tt.stops?.length || !tt.viajes?.length) return null;
@@ -343,16 +354,18 @@ export async function fetchAuditoriaLineaSentido(
   const stopMap = await loadStops(tt.stops);
   const eventos = await loadEvents(agencyId, linea, fecha);
 
-  // Filtrar eventos cuyo sentido coincida o sea desconocido
   const sentidoEsperado: 'IDA' | 'VUELTA' = directionId === 0 ? 'IDA' : 'VUELTA';
+  // FASE 5.14 (2026-05-13): vehicle_events no persiste todavia el campo
+  // `sentido` (queda undefined). Antes el filtro descartaba todo el que no
+  // fuera 'IDA' o null estricto → grid de auditoria con coches/pasadas
+  // en "—". Aceptamos null y undefined (== null) y todo aquel cuyo sentido
+  // sea el esperado. Cuando se persista `sentido` en vehicle_events, los
+  // eventos VUELTA quedaran fuera del grid IDA automaticamente.
   const eventosSentido = eventos.filter(e =>
-    e.sentido === sentidoEsperado || e.sentido === null,
+    e.sentido === sentidoEsperado || e.sentido == null,
   );
 
-  // Construir las salidas a partir de los viajes del horario
   const salidas: Salida[] = [];
-  // Para no contar doble, vamos a llevar consumidos a nivel línea+sentido
-  // (cada viaje toma sus eventos)
   const eventosDisponibles = [...eventosSentido];
 
   for (const viaje of tt.viajes) {
@@ -379,24 +392,18 @@ export async function fetchAuditoriaLineaSentido(
     const tInicio = controlPoints[0].tProgramado;
     const tFin = controlPoints[controlPoints.length - 1].tProgramado;
 
-    // Matching de pasadas para este viaje
     const { conPasadas, consumidos } = asociarPasadas(controlPoints, eventosDisponibles);
-    // Quitar consumidos de la pool global para que no se repitan en otros viajes
     for (let i = eventosDisponibles.length - 1; i >= 0; i--) {
       const ev = eventosDisponibles[i];
-      const key = `${ev.idBus}__${ev.timestampGPS}__${i}`;
-      // Heurística: si los consumidos contienen ANY key con mismo ts+idBus, marcamos consumido
-      // (no podemos rehacer keys idénticos; mejor: si quedó dentro de la ventana del viaje, marcar)
       if (ev.timestampGPS) {
         const tReal = isoToMinUY(ev.timestampGPS);
         if (tReal >= tInicio - VENTANA_MATCH_MIN && tReal <= tFin + VENTANA_MATCH_MIN) {
-          // Verificamos si fue consumido (forma más robusta: si alguna pasada incluye ese ts+idBus)
           const fueUsado = conPasadas.some(cp => cp.pasadas.some(p =>
             p.idBus === ev.idBus && p.timestampGPS === ev.timestampGPS));
           if (fueUsado) eventosDisponibles.splice(i, 1);
         }
       }
-      void key; void consumidos;
+      void consumidos;
     }
 
     const cochesSet = new Set<string>();
@@ -422,7 +429,6 @@ export async function fetchAuditoriaLineaSentido(
     });
   }
 
-  // Pasadas huérfanas: eventos que no entraron a ningún viaje
   const pasadasHuerfanas: PasadaGPS[] = eventosDisponibles.map(ev => ({
     idBus: ev.idBus,
     tReal: isoToMinUY(ev.timestampGPS),
@@ -432,7 +438,6 @@ export async function fetchAuditoriaLineaSentido(
     proximaParada: ev.proximaParada,
   }));
 
-  // KPI sentido (sobre las pasadas asociadas a control points)
   let totalSent = 0, enTSent = 0;
   for (const s of salidas) {
     totalSent += s.totalPasadas;
@@ -440,17 +445,11 @@ export async function fetchAuditoriaLineaSentido(
   }
   const pctEnTiempoSentido = totalSent > 0 ? Math.round((enTSent / totalSent) * 100) : 0;
 
-  // KPI línea COMPLETA (referencia, igual que la fila resumen del listado).
-  // Incluye TODOS los eventos del día para esta línea+sentido, sin importar
-  // si matchearon a un control point o no.
   const conHorario = eventosSentido.filter(e => e.estadoCumplimiento !== 'SIN_HORARIO');
   const enTLinea = conHorario.filter(e => e.estadoCumplimiento === 'EN_TIEMPO').length;
   const baseLinea = conHorario.length;
   const pctEnTiempoLineaCompleta = baseLinea > 0 ? Math.round((enTLinea / baseLinea) * 100) : 0;
 
-  // Métrica diagnóstica: % de eventos con sentido detectado por el backend.
-  // Si es bajo, los datos IDA/VUELTA están duplicados (mismos eventos null
-  // aparecen en ambas tabs) y la UI debe avisarlo al usuario.
   const conSentidoDetectado = eventosSentido.filter(e =>
     e.sentido === 'IDA' || e.sentido === 'VUELTA',
   ).length;

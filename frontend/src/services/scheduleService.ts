@@ -10,8 +10,7 @@
  * - Si UCOT sale 5 min ANTES que la competencia → puede captar pasajeros
  * - Si UCOT sale 5 min DESPUÉS → pierde pasajeros en las primeras paradas
  */
-import { doc, getDoc, setDoc, collection, getDocs, serverTimestamp } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 import type { HorarioSalida, ScheduleEntry, SentidoLinea } from '../types/lineasUcot';
 
 const COL_SCHEDULES = 'horarios_lineas';
@@ -1030,28 +1029,26 @@ export const ScheduleService = {
    * Persiste horarios en Firestore (para edición desde admin).
    */
   async saveScheduleToFirestore(entry: ScheduleEntry): Promise<void> {
-    await setDoc(
-      doc(db, COL_SCHEDULES, entry.variantCode),
-      { ...entry, lastUpdated: serverTimestamp() },
-      { merge: true },
+    await apiClient.put(
+      `/api/db/${COL_SCHEDULES}/` + encodeURIComponent(entry.variantCode),
+      { ...entry, lastUpdated: new Date().toISOString() },
     );
   },
 
   /**
-   * Carga horarios desde Firestore (si fueron editados por admin).
+   * Carga horarios desde el backend (si fueron editados por admin).
    */
   async loadScheduleFromFirestore(variantCode: string): Promise<ScheduleEntry | null> {
-    const snap = await getDoc(doc(db, COL_SCHEDULES, variantCode));
-    if (!snap.exists()) return null;
-    return snap.data() as ScheduleEntry;
+    const data = await apiClient.get(`/api/db/${COL_SCHEDULES}/` + encodeURIComponent(variantCode)) as ScheduleEntry | null;
+    return data ?? null;
   },
 
   /**
-   * Lista todos los horarios disponibles en Firestore.
+   * Lista todos los horarios disponibles en el backend.
    */
   async listAllSchedules(): Promise<ScheduleEntry[]> {
-    const snap = await getDocs(collection(db, COL_SCHEDULES));
-    return snap.docs.map((d) => d.data() as ScheduleEntry);
+    const raw = await apiClient.get(`/api/db/${COL_SCHEDULES}`, { query: { limit: 5000 } }) as ScheduleEntry[];
+    return Array.isArray(raw) ? raw : [];
   },
 };
 

@@ -1,8 +1,7 @@
 /**
- * Colección logs_incidencias: incidencias reportadas por el chofer (ej. Reportar Incidente – Prioridad Alta).
+ * Colección logs_incidencias: incidencias reportadas por el chofer.
  */
-import { collection, addDoc, query, getDocs, orderBy, limit } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
 
 const COL = 'logs_incidencias';
 
@@ -17,11 +16,11 @@ export interface LogIncidenciaEntry {
 
 export const LogsIncidenciasService = {
   async add(entry: Omit<LogIncidenciaEntry, 'createdAt'>): Promise<string> {
-    const ref = await addDoc(collection(db, COL), {
+    const res = await apiClient.post<{ id: string }>(`/api/db/${COL}`, {
       ...entry,
       createdAt: new Date().toISOString(),
     });
-    return ref.id;
+    return res.data?.id ?? String(Date.now());
   },
 
   async createPrioridadAlta(params: {
@@ -37,8 +36,9 @@ export const LogsIncidenciasService = {
   },
 
   async getRecent(limitCount = 50): Promise<LogIncidenciaEntry[]> {
-    const q = query(collection(db, COL), orderBy('createdAt', 'desc'), limit(limitCount));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as unknown as LogIncidenciaEntry);
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { orderBy: 'created_at:desc', limit: limitCount },
+    });
+    return Array.isArray(res.data) ? (res.data as unknown as LogIncidenciaEntry[]) : [];
   },
 };

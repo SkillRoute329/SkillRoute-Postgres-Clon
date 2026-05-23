@@ -124,16 +124,24 @@ export async function getActiveTrips(req: Request, res: Response) {
   }
 }
 
-/** GET /api/autostats/vehicle/:idBus — historial de un coche */
+/**
+ * GET /api/autostats/vehicle/:idBus?days=7&agency_id=70
+ *
+ * FASE 5.14 (2026-05-13): agency_id pasa a ser obligatorio en la práctica para
+ * evitar que el historial mezcle eventos de operadores con el mismo codigoBus
+ * (ej. UCOT 46 y CUTCSA 46). Si el cliente no lo manda, el servicio infiere
+ * del prefijo de id_bus cuando viene como `${agency}_${codigo}`.
+ */
 export async function getVehicleHistoryHandler(req: Request, res: Response) {
   const { idBus } = req.params;
   const days = parseInt(req.query.days as string) || 7;
+  const agencyId = (req.query.agency_id as string) || undefined;
   try {
     const [history, summary] = await Promise.all([
-      getVehicleHistory(idBus, days),
-      getVehicleSummary(idBus, days),
+      getVehicleHistory(idBus, days, agencyId),
+      getVehicleSummary(idBus, days, agencyId),
     ]);
-    res.json({ ok: true, idBus, days, summary, history });
+    res.json({ ok: true, idBus, days, agencyId: agencyId ?? null, summary, history });
   } catch (err: any) {
     logger.error('[AutoStats] vehicle history error:', err);
     res.status(500).json({ ok: false, error: err.message });

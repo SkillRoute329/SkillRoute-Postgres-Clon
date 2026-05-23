@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { useNavigate } from 'react-router-dom';
 import { CartonService } from '../../services/api';
-import { FileText, Search, Eye, Pencil, Loader2, Clock, Bus, Building2 } from 'lucide-react';
+import { FileText, Search, Eye, Loader2, Clock, Bus, Building2 } from 'lucide-react';
 
 type CartonItem = { id: string; linea: string; coche?: string; tipoServicio?: string; primeraSalida?: string; ultimaLlegada?: string; totalParadas?: number; [key: string]: unknown };
 
@@ -68,16 +68,6 @@ export default function CartonManager() {
 
   const handleVer = (item: CartonItem) => {
     const q = (item as CartonItem & { source?: string }).source === 'fisico' ? '?fisico=1' : '';
-    navigate(
-      `/dashboard/traffic/cartons/detail/${encodeURIComponent(item.linea)}/${encodeURIComponent(item.id)}${q}`,
-    );
-  };
-
-  const handleEditar = (item: CartonItem) => {
-    const q =
-      (item as CartonItem & { source?: string }).source === 'fisico'
-        ? '?fisico=1&mode=edit'
-        : '?mode=edit';
     navigate(
       `/dashboard/traffic/cartons/detail/${encodeURIComponent(item.linea)}/${encodeURIComponent(item.id)}${q}`,
     );
@@ -162,16 +152,11 @@ export default function CartonManager() {
                     className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium"
                   >
                     <Eye className="w-4 h-4" />
-                    Ver
+                    Ver detalle
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleEditar(item)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-500 text-white font-medium"
-                  >
-                    <Pencil className="w-4 h-4" />
-                    Editar
-                  </button>
+                  {/* FASE 5.19: se eliminó "Editar" — el cartón es dato
+                      oficial scrapeado; editarlo a mano corrompería la
+                      procedencia y el botón sólo llevaba a "próximamente". */}
                 </div>
               </li>
             ))}

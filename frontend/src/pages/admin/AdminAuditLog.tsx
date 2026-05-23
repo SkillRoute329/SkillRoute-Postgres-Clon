@@ -19,7 +19,7 @@ import {
   Timestamp,
   doc,
   getDoc,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import * as XLSX from 'xlsx';

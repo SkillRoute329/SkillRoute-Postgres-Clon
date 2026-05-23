@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../config/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs } from '../config/firestoreShim';
 import ControlPointForm from './ControlPointForm';
 import { Activity } from 'lucide-react';
 

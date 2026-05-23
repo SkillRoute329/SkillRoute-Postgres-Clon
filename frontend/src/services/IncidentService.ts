@@ -1,10 +1,9 @@
-import { db } from '../config/firebase';
-import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { apiClient } from '../clients/apiClient';
 
 export type IncidentType = 'MECANICA' | 'ACCIDENTE' | 'EVASION' | 'DEMORA';
 
 export const IncidentService = {
-  // Transactional Create: Incident Doc + Vehicle Status Update
+  // Transactional Create: Incident Doc + Vehicle Status Update (sequential calls replacing writeBatch)
   reportIncident: async (
     vehicleId: string,
     type: IncidentType,
@@ -12,10 +11,6 @@ export const IncidentService = {
     reporterName: string,
   ) => {
     try {
-      const batch = writeBatch(db);
-
-      // 1. Create Incident Document (Auto-ID)
-      const incidentRef = doc(collection(db, 'incidencias'));
       const statusMap: Record<IncidentType, string> = {
         MECANICA: 'EN_TALLER',
         ACCIDENTE: 'FUERA_DE_SERVICIO',
@@ -23,39 +18,35 @@ export const IncidentService = {
         DEMORA: 'ACTIVO', // Delay keeps it active but late
       };
 
-      batch.set(incidentRef, {
+      // 1. Create Incident Document
+      const incidentResult = await apiClient.post('/api/db/incidencias', {
         vehicleId,
         type,
         status: 'ABIERTO',
         priority: 'ALTA',
-        createdAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
         reportedBy: {
           uid: reporterId,
           name: reporterName,
         },
         description: `Reporte rápido desde Dispatch Panel: ${type}`,
-      });
+      }) as { id: string };
 
       // 2. Update Vehicle Status
-      const vehicleRef = doc(db, 'vehiculos', vehicleId);
       const newStatus = statusMap[type];
-
-      // Only update status if it changes the operational state
       if (newStatus !== 'ACTIVO') {
-        batch.update(vehicleRef, {
+        await apiClient.put('/api/db/vehiculos/' + encodeURIComponent(vehicleId), {
           state: newStatus,
           statusMessage: `Incidencia: ${type}`,
-          lastUpdated: serverTimestamp(),
+          lastUpdated: new Date().toISOString(),
         });
       } else {
-        // Just log valid last contact
-        batch.update(vehicleRef, {
-          lastUpdated: serverTimestamp(),
+        await apiClient.put('/api/db/vehiculos/' + encodeURIComponent(vehicleId), {
+          lastUpdated: new Date().toISOString(),
         });
       }
 
-      await batch.commit();
-      return { success: true, id: incidentRef.id };
+      return { success: true, id: incidentResult.id };
     } catch (error) {
       console.error('Error reporting dispatch incident:', error);
       throw error;

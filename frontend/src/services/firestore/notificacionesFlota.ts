@@ -1,8 +1,8 @@
 /**
  * Colección notificaciones_flota: notificaciones al chofer (ej. "Servicio Suspendido").
  */
-import { collection, addDoc, query, where, getDocs, limit, onSnapshot } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 
 const COL = 'notificaciones_flota';
 
@@ -19,12 +19,12 @@ export interface NotificacionFlotaEntry {
 
 export const NotificacionesFlotaService = {
   async create(entry: Omit<NotificacionFlotaEntry, 'createdAt'>): Promise<string> {
-    const ref = await addDoc(collection(db, COL), {
+    const res = await apiClient.post<{ id: string }>(`/api/db/${COL}`, {
       ...entry,
       leida: false,
       createdAt: new Date().toISOString(),
     });
-    return ref.id;
+    return res.data?.id ?? String(Date.now());
   },
 
   async notifyServicioSuspendido(params: {
@@ -44,23 +44,22 @@ export const NotificacionesFlotaService = {
   },
 
   async getByDriver(driverId: string, limitCount = 20): Promise<NotificacionFlotaEntry[]> {
-    const q = query(collection(db, COL), where('driverId', '==', driverId), limit(limitCount * 2));
-    const snap = await getDocs(q);
-    const list = snap.docs.map(
-      (d) => ({ id: d.id, ...d.data() }) as unknown as NotificacionFlotaEntry,
-    );
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { where: `driverId:${driverId}`, limit: limitCount * 2 },
+    });
+    const list = Array.isArray(res.data)
+      ? (res.data as unknown as NotificacionFlotaEntry[])
+      : [];
     list.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
     return list.slice(0, limitCount);
   },
 
-  subscribeByDriver(driverId: string, callback: (items: NotificacionFlotaEntry[]) => void) {
-    const q = query(collection(db, COL), where('driverId', '==', driverId), limit(50));
-    return onSnapshot(q, (snap) => {
-      const list = snap.docs.map(
-        (d) => ({ id: d.id, ...d.data() }) as unknown as NotificacionFlotaEntry,
-      );
-      list.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
-      callback(list.slice(0, 30));
-    });
+  // FASE 5.35 (2026-05-22): bus socket en lugar de polling 10s.
+  subscribeByDriver(driverId: string, callback: (items: NotificacionFlotaEntry[]) => void): () => void {
+    return subscribeViaBus<NotificacionFlotaEntry[]>(
+      COL,
+      () => this.getByDriver(driverId, 30),
+      callback,
+    );
   },
 };

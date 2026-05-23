@@ -1,15 +1,4 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  addDoc,
-  setDoc,
-  deleteDoc,
-  query,
-  limit,
-  orderBy,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
 
 const PATH_MAP: Record<string, string> = {
   fleet: 'vehiculos',
@@ -21,35 +10,34 @@ const PATH_MAP: Record<string, string> = {
 export const UniversalService = {
   async list(apiPath: string, page = 1, pageSize = 50): Promise<{ data: unknown[] }> {
     const col = PATH_MAP[apiPath] ?? apiPath;
-    const q = query(collection(db, col), orderBy('internalNumber', 'asc'), limit(pageSize * page));
-    const snap = await getDocs(q);
-    const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    return { data };
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${col}`, {
+      query: { orderBy: 'internal_number:asc', limit: pageSize * page },
+    });
+    return { data: Array.isArray(res.data) ? res.data : [] };
   },
 
   async create(apiPath: string, rawData: Record<string, unknown>) {
     const col = PATH_MAP[apiPath] ?? apiPath;
-    const ref = await addDoc(collection(db, col), rawData);
-    return { id: ref.id, ...rawData };
+    const res = await apiClient.post<{ id: string }>(`/api/db/${col}`, rawData);
+    return { id: res.data?.id ?? String(Date.now()), ...rawData };
   },
 
   async update(apiPath: string, id: string, rawData: Record<string, unknown>) {
     const col = PATH_MAP[apiPath] ?? apiPath;
-    await setDoc(doc(db, col, id), rawData, { merge: true });
+    await apiClient.put(`/api/db/${col}/${encodeURIComponent(id)}`, rawData);
     return { id, ...rawData };
   },
 
   async delete(apiPath: string, id: string) {
     const col = PATH_MAP[apiPath] ?? apiPath;
-    await deleteDoc(doc(db, col, id));
+    await apiClient.delete(`/api/db/${col}/${encodeURIComponent(id)}`);
   },
 
   async import(apiPath: string, jsonData: unknown[]): Promise<{ count: number }> {
     const col = PATH_MAP[apiPath] ?? apiPath;
-    const colRef = collection(db, col);
     let count = 0;
     for (const item of Array.isArray(jsonData) ? jsonData : []) {
-      await addDoc(colRef, item as Record<string, unknown>);
+      await apiClient.post(`/api/db/${col}`, item as Record<string, unknown>);
       count++;
     }
     return { count };

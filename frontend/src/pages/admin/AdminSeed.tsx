@@ -4,7 +4,7 @@
  * Solo visible para ADMIN / SUPERADMIN.
  */
 import { useState } from 'react';
-import { getAuth } from 'firebase/auth';
+import { getAuth } from '../../config/firebaseAuthShim';
 import { CheckCircle2, AlertTriangle, Loader2, Database, Bus, FileText, Users, CalendarDays, PlayCircle, CloudUpload, Clock } from 'lucide-react';
 
 // Llama a un endpoint de la API con token Firebase del usuario actual

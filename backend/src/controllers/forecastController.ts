@@ -22,16 +22,23 @@ export const forecastController = {
 
       const pronostico = await forecastService.pronosticarIngresos(lineaId);
 
+      // FASE 5.1 (2026-05-13): guard contra escenarios vacío (graceful fallback
+      // del service cuando no hay datos históricos en Postgres). Antes el reduce
+      // sin initial value tiraba "Reduce of empty array" → HTTP 500.
+      const escenarios = pronostico.escenarios ?? [];
+      const mejorEscenario = escenarios.length > 0
+        ? escenarios.reduce((max, e) => e.impacto > max.impacto ? e : max)
+        : null;
+      const peorEscenario = escenarios.length > 0
+        ? escenarios.reduce((min, e) => e.impacto < min.impacto ? e : min)
+        : null;
+
       res.json({
         success: true,
         data: {
           pronostico,
-          mejorEscenario: pronostico.escenarios.reduce((max, e) =>
-            e.impacto > max.impacto ? e : max
-          ),
-          peorEscenario: pronostico.escenarios.reduce((min, e) =>
-            e.impacto < min.impacto ? e : min
-          )
+          mejorEscenario,
+          peorEscenario,
         }
       });
     } catch (error) {

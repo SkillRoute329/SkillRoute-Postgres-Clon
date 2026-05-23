@@ -1,95 +1,61 @@
-import {
-  collection,
-  query,
-  orderBy,
-  where,
-  onSnapshot,
-  addDoc,
-  serverTimestamp,
-  doc,
-  getDoc,
-  deleteDoc,
-} from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 
 const COL = 'service_matrices';
-const STORAGE_PREFIX = 'matrices';
 
 export const ServiceMatrixService = {
   /**
    * Suscribe al historial de matrices filtrando por empresa.
    * Si empresaId es null/undefined, trae todas (comportamiento legacy para SuperAdmin sin empresa seleccionada).
+   * FASE 5.35 (2026-05-22): bus socket en lugar de polling 10s.
    */
   subscribeToHistory(
     callback: (history: unknown[]) => void,
     empresaId?: number | null,
-  ) {
-    const base = collection(db, COL);
-    const q =
-      empresaId != null
-        ? query(base, where('empresaId', '==', empresaId), orderBy('createdAt', 'desc'))
-        : query(base, orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
+  ): () => void {
+    const fetchFn = async (): Promise<unknown[]> => {
+      const query: Record<string, unknown> = { orderBy: 'created_at:desc', limit: 5000 };
+      if (empresaId != null) query.where = `empresaId:${empresaId}`;
+      const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, { query });
+      return Array.isArray(res.data) ? res.data : [];
+    };
+    return subscribeViaBus<unknown[]>(COL, fetchFn, callback);
   },
 
   /**
-   * Sube el archivo a Firebase Storage (matrices/) con uploadBytesResumable y registra el documento en Firestore (service_matrices).
-   * Solo debe invocarse para usuarios SuperAdmin (validación en UI o reglas).
+   * Sube el archivo al backend y registra el documento en service_matrices.
+   * El archivo se envía como multipart/form-data al endpoint /api/db/service_matrices/upload.
+   * Solo debe invocarse para usuarios SuperAdmin (validación en UI).
    */
   async uploadMatrix(
     file: File,
     opts?: { uploadedBy?: string; area?: string; empresaId?: number },
   ): Promise<{ id: string; fileUrl: string; fileName: string; storagePath: string }> {
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = `${STORAGE_PREFIX}/${Date.now()}_${safeName}`;
-    const storageRef = ref(storage, storagePath);
+    const formData = new FormData();
+    formData.append('file', file);
+    if (opts?.uploadedBy) formData.append('uploadedBy', opts.uploadedBy);
+    if (opts?.area) formData.append('area', opts.area);
+    if (opts?.empresaId != null) formData.append('empresaId', String(opts.empresaId));
 
-    await new Promise<void>((resolve, reject) => {
-      const task = uploadBytesResumable(storageRef, file);
-      task.on(
-        'state_changed',
-        () => {},
-        (err) => reject(err),
-        () => resolve(),
-      );
-    });
-    const fileUrl = await getDownloadURL(storageRef);
+    // POST multipart to backend upload endpoint
+    const res = await apiClient.post<{ id: string; fileUrl: string; fileName: string; storagePath: string }>(
+      `/api/db/${COL}/upload`,
+      formData,
+    );
 
-    const docRef = await addDoc(collection(db, COL), {
-      fileUrl,
-      fileName: file.name,
-      storagePath,
-      uploadedAt: serverTimestamp(),
-      createdAt: serverTimestamp(),
-      version: 1,
-      uploadedBy: opts?.uploadedBy ?? null,
-      area: opts?.area ?? 'Gral',
-      empresaId: opts?.empresaId ?? null,
-    });
-
-    return { id: docRef.id, fileUrl, fileName: file.name, storagePath };
+    return {
+      id: res.data?.id ?? String(Date.now()),
+      fileUrl: res.data?.fileUrl ?? '',
+      fileName: res.data?.fileName ?? file.name,
+      storagePath: res.data?.storagePath ?? '',
+    };
   },
 
   /**
-   * Elimina el documento en Firestore y el archivo físico en Storage.
+   * Elimina el documento en el backend y el archivo físico asociado.
    * Solo debe invocarse para usuarios SuperAdmin (validación en UI).
    */
   async deleteMatrix(id: string): Promise<void> {
-    const docRef = doc(db, COL, id);
-    const snap = await getDoc(docRef);
-    if (!snap.exists()) return;
-    const data = snap.data();
-    const storagePath = data?.storagePath as string | undefined;
-    await deleteDoc(docRef);
-    if (storagePath) {
-      try {
-        await deleteObject(ref(storage, storagePath));
-      } catch (e) {
-        console.warn('Storage delete failed (file may already be gone):', e);
-      }
-    }
+    await apiClient.delete(`/api/db/${COL}/${encodeURIComponent(id)}`);
   },
 };

@@ -4,7 +4,7 @@
 
 import { useState, lazy, Suspense } from 'react';
 import { RefreshCw, Download, Info, ChevronRight } from 'lucide-react';
-import { Granularidad, PeriodRange, OperatorSummary, OPERATOR_NAMES } from '../../types/compliance';
+import { type Granularidad, type PeriodRange, type OperatorSummary, OPERATOR_NAMES } from '../../types/compliance';
 import { useComplianceData } from '../../hooks/useComplianceData';
 import DataQualityIndicator from '../../components/shared/DataQualityIndicator';
 import TimeRangeSelector from '../../components/shared/TimeRangeSelector';
@@ -161,9 +161,9 @@ export default function RegulatorComplianceView() {
                 Actualizar
               </button>
               <button
-                disabled
-                title="Exportación PDF disponible próximamente"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600/50 border border-blue-600/30 text-blue-300/70 text-xs font-semibold transition-all disabled:cursor-not-allowed"
+                onClick={() => window.print()}
+                title="Exportar este informe a PDF (Guardar como PDF)"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 border border-blue-600/30 text-white text-xs font-semibold transition-all"
               >
                 <Download className="w-3.5 h-3.5" />
                 Exportar PDF

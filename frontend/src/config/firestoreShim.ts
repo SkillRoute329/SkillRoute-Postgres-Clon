@@ -182,10 +182,30 @@ function buildBackendQuery<T>(q: Query<T> | CollectionReference<T>): Record<stri
   if ((q as Query<T>).__type === 'query') {
     const Q = q as Query<T>;
     if (Q.filters.length > 0) {
-      // Backend acepta where=field:value,field2:value2 (solo == por ahora).
+      // Backend acepta where=field:value,field2>=value,etc.
+      const backendOps = new Set(['==', '!=', '<', '<=', '>', '>=']);
       params.where = Q.filters
-        .filter((f) => f.op === '==')
-        .map((f) => `${f.field}:${String(f.value)}`)
+        .filter((f) => backendOps.has(f.op))
+        .map((f) => {
+          // Backend soporta ":" o "=" para igualdad. Usamos ":" por compatibilidad histórica.
+          const op = f.op === '==' ? ':' : f.op;
+          let valStr = String(f.value);
+          
+          if (f.value instanceof Date) {
+            valStr = f.value.toISOString();
+          } else if (f.value && typeof f.value === 'object') {
+            // Smart fallback for Timestamps and objects
+            if (typeof (f.value as any).toDate === 'function') {
+              valStr = (f.value as any).toDate().toISOString();
+            } else if ('seconds' in (f.value as any)) {
+              valStr = new Date((f.value as any).seconds * 1000).toISOString();
+            } else if (typeof (f.value as any).toISOString === 'function') {
+              valStr = (f.value as any).toISOString();
+            }
+          }
+          
+          return `${f.field}${op}${valStr}`;
+        })
         .join(',');
     }
     if (Q.ordering) params.orderBy = `${Q.ordering.col}:${Q.ordering.dir}`;
@@ -270,12 +290,21 @@ export async function getDocs<T extends DocumentData = DocumentData>(
 }
 
 export async function getCountFromServer(
-  _query: CollectionReference | Query
+  query: CollectionReference | Query
 ): Promise<{ data: () => { count: number } }> {
-  // Stub simple que devuelve 0. En el clon se reemplazará con apiClient real.
-  return {
-    data: () => ({ count: 0 })
-  };
+  // FASE 5.27 (2026-05-19) — Antes este stub devolvía siempre 0, lo que
+  // mataba CrossOpCoverage entera (todo en 0/0%). Ahora consulta el endpoint
+  // real con los filtros que vinieran en el Query y cuenta el array. Si la
+  // colección no está en whitelist, getDocs cae a [] y devolvemos 0 sin
+  // romper la pantalla.
+  try {
+    const snap = await getDocs(query as CollectionReference | Query);
+    return { data: () => ({ count: snap.size }) };
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[firestoreShim] getCountFromServer error, devolviendo 0', e);
+    return { data: () => ({ count: 0 }) };
+  }
 }
 
 export async function setDoc<T extends DocumentData = DocumentData>(
@@ -388,6 +417,9 @@ export class Timestamp {
   static fromDate(date: Date): Timestamp {
     return new Timestamp(Math.floor(date.getTime() / 1000));
   }
+  static fromMillis(milliseconds: number): Timestamp {
+    return new Timestamp(Math.floor(milliseconds / 1000), (milliseconds % 1000) * 1e6);
+  }
   toDate(): Date {
     return new Date(this.seconds * 1000);
   }
@@ -416,7 +448,7 @@ export const FieldValue = {
   arrayRemove: (...items: unknown[]): { __sentinel: 'arrayRemove'; items: unknown[] } => ({ __sentinel: 'arrayRemove', items }),
 };
 
-// Alias compatibles con import { serverTimestamp } from 'firebase/firestore'
+// Alias compatibles con la API Firestore clásica (serverTimestamp, etc.)
 export const serverTimestamp = FieldValue.serverTimestamp;
 export const deleteField = FieldValue.delete;
 export const increment = FieldValue.increment;

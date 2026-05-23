@@ -1,19 +1,9 @@
 /**
  * Estado dinámico del servicio (Cerebro Operativo CEO).
  * Fuente de verdad de asignación: servicioId como clave primaria.
- * UNIFICACIÓN: un solo estado por servicio por fecha; no duplicar con service_definitions/cartones_completados.
  */
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  setDoc,
-  query,
-  where,
-  onSnapshot,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 
 const COL = 'servicio_estado';
 
@@ -28,7 +18,6 @@ export interface ServicioEstadoRecord {
   linea?: string;
   servicio?: string;
   horaInicio?: string;
-  /** Minutos de atraso en punto de control (sin GPS simulado). Fuente: inspección / registro real. */
   atrasoMinutos?: number;
   historial?: Array<{ choferId: string; cocheId: string; at: string }>;
   lat?: number;
@@ -59,31 +48,29 @@ export const ServicioEstadoService = {
   },
 
   async getByDate(date: string): Promise<ServicioEstadoRecord[]> {
-    const q = query(collection(db, COL), where('date', '==', date));
-    const snap = await getDocs(q);
-    const list = snap.docs.map((d) =>
-      mapDoc(d.id, { ...d.data(), servicioId: d.data().servicioId ?? d.id }),
-    );
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { where: `date:${date}`, limit: 5000 },
+    });
+    const list = Array.isArray(res.data)
+      ? res.data.map((d) => mapDoc((d.id as string) ?? '', { ...d, servicioId: d.servicioId ?? d.id }))
+      : [];
     list.sort((a, b) => (a.servicioId || '').localeCompare(b.servicioId || ''));
     return list;
   },
 
   async getByServicioId(servicioId: string, date: string): Promise<ServicioEstadoRecord | null> {
     const id = ServicioEstadoService.docId(servicioId, date);
-    const snap = await getDoc(doc(db, COL, id));
-    if (!snap.exists()) return null;
-    return mapDoc(snap.id, { ...snap.data(), servicioId: snap.data()?.servicioId ?? servicioId });
+    try {
+      const res = await apiClient.get<Record<string, unknown>>(`/api/db/${COL}/${encodeURIComponent(id)}`);
+      return res.data
+        ? mapDoc(id, { ...res.data, servicioId: res.data?.servicioId ?? servicioId })
+        : null;
+    } catch { return null; }
   },
 
-  subscribeByDate(date: string, callback: (records: ServicioEstadoRecord[]) => void) {
-    const q = query(collection(db, COL), where('date', '==', date));
-    return onSnapshot(q, (snap) => {
-      const list = snap.docs.map((d) =>
-        mapDoc(d.id, { ...d.data(), servicioId: d.data().servicioId ?? d.id }),
-      );
-      list.sort((a, b) => (a.servicioId || '').localeCompare(b.servicioId || ''));
-      callback(list);
-    });
+  // FASE 5.35 (2026-05-22): bus socket en lugar de polling 10s.
+  subscribeByDate(date: string, callback: (records: ServicioEstadoRecord[]) => void): () => void {
+    return subscribeViaBus<ServicioEstadoRecord[]>(COL, () => this.getByDate(date), callback);
   },
 
   async setState(
@@ -103,9 +90,8 @@ export const ServicioEstadoService = {
     >,
   ): Promise<ServicioEstadoRecord> {
     const id = ServicioEstadoService.docId(servicioId, date);
-    const ref = doc(db, COL, id);
-    const existing = await getDoc(ref).then((s) => (s.exists() ? s.data() : null));
-    const historial = (existing?.historial as ServicioEstadoRecord['historial']) ?? [];
+    const existing = await this.getByServicioId(servicioId, date);
+    const historial: ServicioEstadoRecord['historial'] = existing?.historial ?? [];
     if (patch.choferActual && patch.cocheActual) {
       historial.push({
         choferId: patch.choferActual,
@@ -125,11 +111,11 @@ export const ServicioEstadoService = {
       atrasoMinutos:
         patch.atrasoMinutos !== undefined
           ? patch.atrasoMinutos
-          : (existing?.atrasoMinutos as number | undefined),
+          : existing?.atrasoMinutos,
       historial: historial.slice(-50),
       updatedAt: new Date().toISOString(),
     };
-    await setDoc(ref, payload, { merge: true });
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(id)}`, payload);
     return payload as unknown as ServicioEstadoRecord;
   },
 

@@ -28,7 +28,7 @@ import {
   getDocs,
   query,
   limit,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import * as XLSX from 'xlsx';

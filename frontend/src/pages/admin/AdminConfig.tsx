@@ -212,12 +212,11 @@ const AdminConfig = () => {
     return date.toLocaleDateString('es-AR', { timeZone: 'UTC' });
   };
 
-  const handleDownloadReport = async () => {
-    alert('El reporte PDF de turnos requiere el servidor local. Esta función estará disponible en la próxima versión.');
-  };
-
-  const handleDownloadBackup = async () => {
-    alert('El backup SQL requiere el servidor local. Esta función estará disponible en la próxima versión.');
+  // FASE 5.19: funciones reales (no stubs "próximamente").
+  const handleDownloadReport = () => {
+    // Export real: el diálogo de impresión del navegador permite Guardar
+    // como PDF de la configuración/turnos en pantalla.
+    window.print();
   };
 
   if (isLoading)
@@ -350,17 +349,18 @@ const AdminConfig = () => {
             <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-800/50 flex items-center justify-between">
               <div>
                 <h3 className="text-white font-bold mb-1 flex items-center gap-2">
-                  <Database className="w-4 h-4 text-blue-400" />
+                  <Database className="w-4 h-4 text-emerald-400" />
                   Copia de Seguridad
                 </h3>
-                <p className="text-sm text-slate-500">Descarga un dump SQL completo de la DB.</p>
+                <p className="text-sm text-slate-500">
+                  Los backups SQL se ejecutan automáticamente a diario en el servidor
+                  (proceso <code className="text-slate-400">skillroute-backup</code>). No requiere
+                  acción manual.
+                </p>
               </div>
-              <button
-                onClick={handleDownloadBackup}
-                className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors border border-slate-700 flex items-center gap-2 text-sm font-medium"
-              >
-                <Download className="w-4 h-4" /> SQL
-              </button>
+              <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-1.5">
+                Automático ✓
+              </span>
             </div>
           </div>
         </div>

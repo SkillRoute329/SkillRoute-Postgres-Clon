@@ -1,5 +1,5 @@
-import { collection, doc, getDocs, setDoc, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 import type { AssignmentConflict } from './types';
 
 const COL = 'assignment_conflicts';
@@ -26,29 +26,26 @@ function mapConflict(id: string, data: Record<string, unknown>): AssignmentConfl
 
 export const AssignmentConflictService = {
   async getOpen(): Promise<AssignmentConflict[]> {
-    const q = query(collection(db, COL), where('status', '==', 'open'));
-    const snap = await getDocs(q);
-    const list = snap.docs.map((d) => mapConflict(d.id, { ...d.data(), id: d.id }));
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { where: 'status:open', limit: 5000 },
+    });
+    const list = Array.isArray(res.data)
+      ? res.data.map((d) => mapConflict((d.id as string) ?? '', { ...d }))
+      : [];
     list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     return list;
   },
 
-  subscribe(callback: (conflicts: AssignmentConflict[]) => void) {
-    const q = query(collection(db, COL), where('status', '==', 'open'));
-    return onSnapshot(q, (snap) => {
-      const list = snap.docs.map((d) => mapConflict(d.id, { ...d.data(), id: d.id }));
-      list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-      callback(list);
-    });
+  // FASE 5.35 (2026-05-22): bus socket en lugar de polling 10s.
+  subscribe(callback: (conflicts: AssignmentConflict[]) => void): () => void {
+    return subscribeViaBus<AssignmentConflict[]>(COL, () => this.getOpen(), callback);
   },
 
   async markResolved(id: string) {
-    const ref = doc(db, COL, id);
-    await setDoc(
-      ref,
-      { status: 'resolved', resolvedAt: new Date().toISOString() },
-      { merge: true },
-    );
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(id)}`, {
+      status: 'resolved',
+      resolvedAt: new Date().toISOString(),
+    });
   },
 
   /** Registra notificación de atraso/incidencia para inspector (sin conflicto de asignación). */
@@ -59,8 +56,7 @@ export const AssignmentConflictService = {
     vehicleInternalNumber?: string;
   }) {
     const id = `notif_${params.serviceId}_${Date.now()}`;
-    const ref = doc(db, COL, id);
-    await setDoc(ref, {
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(id)}`, {
       type: 'Notificación Inspector',
       serviceId: params.serviceId,
       message: params.message,

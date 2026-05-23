@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const MyBalance = () => {
   const { user: currentUser } = useAuth();
@@ -82,6 +84,53 @@ const MyBalance = () => {
     }
   };
 
+  // FASE 5.27 (2026-05-19) — Cableado del botón "Descargar PDF" que estaba
+  // sin onClick. Genera un PDF con los datos REALES del balance del usuario
+  // logueado usando jsPDF (ya en deps).
+  const handleDownloadPDF = () => {
+    try {
+      const doc = new jsPDF();
+      const nombre = (currentUser as { fullName?: string; internalNumber?: string })?.fullName
+        ?? (currentUser as { internalNumber?: string })?.internalNumber
+        ?? 'Usuario';
+      const fechaStr = new Date().toLocaleDateString('es-UY');
+      doc.setFontSize(16);
+      doc.text(`Mi Balance — ${nombre}`, 14, 18);
+      doc.setFontSize(10);
+      doc.setTextColor(120);
+      doc.text(`Emitido: ${fechaStr}`, 14, 25);
+      doc.setTextColor(0);
+      doc.setFontSize(11);
+      doc.text(`Balance total: $ ${stats.totalBalance.toLocaleString('es-UY')}`, 14, 36);
+      doc.text(`Asignados: $ ${stats.assignedAmount.toLocaleString('es-UY')}`, 14, 43);
+      doc.text(`Cedidos:   $ ${stats.cededAmount.toLocaleString('es-UY')}`, 14, 50);
+      doc.text(`Turnos: ${stats.totalShifts} (completados ${stats.completedShifts})`, 14, 57);
+      autoTable(doc, {
+        startY: 65,
+        head: [['Fecha', 'Servicio', 'Línea', 'Coche', 'Tipo', 'Monto']],
+        body: displayShifts.map((s) => {
+          const mine =
+            String(s.assignedTo) === String(currentUser?.id) ||
+            String(s.assignedTo) === String(currentUser?.internalNumber);
+          return [
+            String(s.date ?? ''),
+            String(s.serviceNumber ?? ''),
+            String(s.line ?? ''),
+            String(s.carNumber ?? ''),
+            mine ? 'Asignado' : 'Cedido',
+            '$ ' + Number(s.totalValue ?? 0).toLocaleString('es-UY'),
+          ];
+        }),
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [30, 41, 59] },
+      });
+      const safe = nombre.replace(/[^\w-]+/g, '_');
+      doc.save(`MiBalance_${safe}_${fechaStr.replace(/\//g, '-')}.pdf`);
+    } catch (e) {
+      alert('No se pudo generar el PDF: ' + String(e).slice(0, 200));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -105,7 +154,10 @@ const MyBalance = () => {
               {error}
             </div>
           )}
-          <button className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl border border-slate-700 transition-all text-sm font-medium">
+          <button
+            onClick={handleDownloadPDF}
+            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl border border-slate-700 transition-all text-sm font-medium"
+          >
             <Download className="w-4 h-4" /> Descargar PDF
           </button>
         </div>
@@ -184,6 +236,13 @@ const MyBalance = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
+              {displayShifts.length === 0 && !loading && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-10 text-center text-slate-500 text-sm">
+                    Aún no tenés turnos registrados. Cuando tomes o cedas un turno desde el módulo Listero, aparecerá acá con su valor.
+                  </td>
+                </tr>
+              )}
               {displayShifts.map((shift) => {
                 // currentUser from useAuth()
                 const isAssignedToMe =

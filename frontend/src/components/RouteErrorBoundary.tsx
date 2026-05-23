@@ -67,8 +67,30 @@ export default class RouteErrorBoundary extends Component<Props, State> {
       this.state.error?.name === 'ChunkLoadError';
 
     if (isChunkError) {
-      window.location.reload();
-      return null;
+      // FASE 5.26: recarga ACOTADA. Antes era window.location.reload() sin
+      // tope → si el chunk seguía fallando (caché vieja del cliente Vite
+      // tras muchos cambios), recargaba infinitamente ("la página se
+      // actualiza constantemente"). Ahora máx 2 intentos; luego se muestra
+      // el error real en vez de quedar en bucle.
+      let intentos = 0;
+      try {
+        intentos = parseInt(sessionStorage.getItem('route_chunk_retries') || '0', 10) || 0;
+      } catch {
+        /* sessionStorage no disponible: no reintentar para no loopear */
+        intentos = 99;
+      }
+      if (intentos < 2) {
+        try {
+          sessionStorage.setItem('route_chunk_retries', String(intentos + 1));
+        } catch {
+          /* noop */
+        }
+        const url = new URL(window.location.href);
+        url.searchParams.set('cb', Date.now().toString());
+        window.location.replace(url.toString());
+        return null;
+      }
+      // Tope alcanzado: cae al render del error (no más recargas).
     }
 
     return (

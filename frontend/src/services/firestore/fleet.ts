@@ -1,16 +1,5 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  setDoc,
-  addDoc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 import type { Vehicle } from './types';
 import { ServicioEstadoService } from './servicioEstado';
 import { MantenimientoLogsService } from './mantenimientoLogs';
@@ -40,37 +29,46 @@ function mapVehicle(id: string, data: Record<string, unknown>): Vehicle {
 export const FleetService = {
   async getVehicles(agencyId?: string | number): Promise<Vehicle[]> {
     if (agencyId == null) {
-      const q = query(collection(db, COL), orderBy('internalNumber', 'asc'));
-      const snap = await getDocs(q);
-      return snap.docs.map((d) => mapVehicle(d.id, { ...d.data(), id: d.id }));
+      const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+        query: { orderBy: 'internal_number:asc', limit: 5000 },
+      });
+      return Array.isArray(res.data)
+        ? res.data.map((d) => mapVehicle((d.id as string) ?? '', { ...d }))
+        : [];
     }
     const aid = String(agencyId);
-    const queries = [
-      query(collection(db, COL), where('agencyId', '==', aid)),
-      query(collection(db, COL), where('agencyId', '==', Number(aid))),
-      query(collection(db, COL), where('empresa', '==', aid)),
-      query(collection(db, COL), where('empresa', '==', Number(aid))),
-    ];
-    const snaps = await Promise.all(queries.map((q) => getDocs(q)));
+    // Try both agencyId and empresa filters; merge results deduped
+    const [res1, res2, res3, res4] = await Promise.allSettled([
+      apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, { query: { where: `agencyId:${aid}`, limit: 5000 } }),
+      apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, { query: { where: `agencyId:${agencyId}`, limit: 5000 } }),
+      apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, { query: { where: `empresa:${aid}`, limit: 5000 } }),
+      apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, { query: { where: `empresa:${agencyId}`, limit: 5000 } }),
+    ]);
+
     const seen = new Set<string>();
     const out: Vehicle[] = [];
-    snaps.forEach((snap) => {
-      snap.docs.forEach((d) => {
-        if (seen.has(d.id)) return;
-        seen.add(d.id);
-        out.push(mapVehicle(d.id, { ...d.data(), id: d.id }));
-      });
-    });
+    for (const result of [res1, res2, res3, res4]) {
+      if (result.status === 'fulfilled' && Array.isArray(result.value.data)) {
+        result.value.data.forEach((d) => {
+          const id = (d.id as string) ?? '';
+          if (seen.has(id)) return;
+          seen.add(id);
+          out.push(mapVehicle(id, { ...d }));
+        });
+      }
+    }
 
-    // Fallback: si los docs no tienen agencyId/empresa, cargar todo (log para diagnóstico)
     if (out.length === 0) {
       console.warn(
         `[FleetService] getVehicles(${aid}) → 0 docs con filtro agencyId/empresa. ` +
         `Probable mismatch de nombre de campo. Cargando todos los docs como fallback.`,
       );
-      const qAll = query(collection(db, COL), orderBy('internalNumber', 'asc'));
-      const snapAll = await getDocs(qAll);
-      return snapAll.docs.map((d) => mapVehicle(d.id, { ...d.data(), id: d.id }));
+      const resAll = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+        query: { orderBy: 'internal_number:asc', limit: 5000 },
+      });
+      return Array.isArray(resAll.data)
+        ? resAll.data.map((d) => mapVehicle((d.id as string) ?? '', { ...d }))
+        : [];
     }
 
     return out.sort((a, b) =>
@@ -78,31 +76,36 @@ export const FleetService = {
     );
   },
 
-  subscribeVehicles(callback: (vehicles: Vehicle[]) => void) {
-    const q = query(collection(db, COL), orderBy('internalNumber', 'asc'));
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map((d) => mapVehicle(d.id, { ...d.data(), id: d.id })));
-    });
+  // FASE 5.34 (2026-05-22): bus socket en lugar de polling 10s.
+  subscribeVehicles(callback: (vehicles: Vehicle[]) => void): () => void {
+    return subscribeViaBus<Vehicle[]>(
+      COL,
+      () => this.getVehicles(),
+      callback,
+      { alsoListen: ['bus:db:coaches:any', 'bus:db:fleet:any'] },
+    );
   },
 
-  async getVehicleById(id: number | string) {
-    const snap = await getDoc(doc(db, COL, String(id)));
-    if (!snap.exists()) return null;
-    return mapVehicle(snap.id, { ...snap.data(), id: snap.id });
+  async getVehicleById(id: number | string): Promise<Vehicle | null> {
+    try {
+      const res = await apiClient.get<Record<string, unknown>>(`/api/db/${COL}/${encodeURIComponent(String(id))}`);
+      return res.data ? mapVehicle(String(id), { ...res.data, id: String(id) }) : null;
+    } catch { return null; }
   },
 
   async createVehicle(data: Record<string, unknown>) {
-    const ref = await addDoc(collection(db, COL), data);
-    return { id: ref.id, ...data };
+    const res = await apiClient.post<{ id: string }>(`/api/db/${COL}`, data);
+    return { id: res.data?.id ?? String(Date.now()), ...data };
   },
 
   async updateVehicle(id: number | string, data: Record<string, unknown>) {
-    const ref = doc(db, COL, String(id));
-    await setDoc(ref, data, { merge: true });
     const idStr = String(id);
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(idStr)}`, data);
+
     if (data.status === 'MAINTENANCE' || data.status === 'Taller') {
       const today = new Date().toISOString().split('T')[0];
-      const vehicle = await getDoc(ref).then((d) => (d.exists() ? d.data() : null));
+      const vehicleRes = await apiClient.get<Record<string, unknown>>(`/api/db/${COL}/${encodeURIComponent(idStr)}`);
+      const vehicle = vehicleRes.data;
       const internalNumber = (vehicle?.internalNumber ?? vehicle?.id ?? id) as string;
 
       const estados = await ServicioEstadoService.getByDate(today);
@@ -139,14 +142,15 @@ export const FleetService = {
         });
       }
 
-      const shiftsRef = collection(db, SHIFTS_COL);
-      const q = query(shiftsRef, where('date', '==', today), where('vehicleId', '==', idStr));
-      const snap = await getDocs(q);
-      for (const d of snap.docs) {
-        const s = d.data();
-        await addDoc(collection(db, CONFLICTS_COL), {
+      // Register conflicts for affected shifts
+      const shiftsRes = await apiClient.get<Record<string, unknown>[]>(`/api/db/${SHIFTS_COL}`, {
+        query: { where: `date:${today},vehicleId:${idStr}`, limit: 500 },
+      });
+      const shifts = Array.isArray(shiftsRes.data) ? shiftsRes.data : [];
+      for (const s of shifts) {
+        await apiClient.post(`/api/db/${CONFLICTS_COL}`, {
           type: 'Conflicto de Asignación',
-          shiftId: d.id,
+          shiftId: s.id,
           serviceId: s.serviceId,
           vehicleId: idStr,
           vehicleInternalNumber: internalNumber,
@@ -164,31 +168,41 @@ export const FleetService = {
   },
 
   async getVehicleHistory(vehicleId: number | string): Promise<unknown[]> {
-    const ref = collection(db, COL, String(vehicleId), 'history');
-    const snap = await getDocs(ref);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    // Subcollection vehiculos/{vehicleId}/history → tabla vehiculos_history
+    // TODO: confirmar tabla subcollection
+    try {
+      const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/vehiculos_history`, {
+        query: { where: `vehicleId:${String(vehicleId)}`, limit: 5000 },
+      });
+      return Array.isArray(res.data) ? res.data : [];
+    } catch { return []; }
   },
 
   async getRotationSchemes(): Promise<unknown[]> {
     try {
-      const snap = await getDocs(collection(db, ROTATION_COL));
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${ROTATION_COL}`, { query: { limit: 5000 } });
+      return Array.isArray(res.data) ? res.data : [];
     } catch {
       return [];
     }
   },
 
   async getLastInspection(vehicleId: string): Promise<unknown> {
-    const ref = collection(db, COL, vehicleId, 'inspections');
-    const q = query(ref, orderBy('date', 'desc'));
-    const snap = await getDocs(q);
-    const first = snap.docs[0];
-    return first ? { id: first.id, ...first.data() } : null;
+    // Subcollection vehiculos/{vehicleId}/inspections → tabla vehiculos_inspections
+    // TODO: confirmar tabla subcollection
+    try {
+      const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/vehiculos_inspections`, {
+        query: { where: `vehicleId:${vehicleId}`, orderBy: 'date:desc', limit: 1 },
+      });
+      const docs = Array.isArray(res.data) ? res.data : [];
+      return docs.length > 0 ? docs[0] : null;
+    } catch { return null; }
   },
 
   async createInspection(data: { vehicleId: string; [k: string]: unknown }) {
-    const ref = collection(db, COL, data.vehicleId as string, 'inspections');
-    const docRef = await addDoc(ref, data);
-    return { id: docRef.id, ...data };
+    // Subcollection vehiculos/{vehicleId}/inspections → tabla vehiculos_inspections
+    // TODO: confirmar tabla subcollection
+    const res = await apiClient.post<{ id: string }>(`/api/db/vehiculos_inspections`, data);
+    return { id: res.data?.id ?? String(Date.now()), ...data };
   },
 };

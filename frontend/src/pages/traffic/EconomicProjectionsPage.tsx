@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, Timestamp } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { ScheduleService } from '../../services/scheduleService';
 import {

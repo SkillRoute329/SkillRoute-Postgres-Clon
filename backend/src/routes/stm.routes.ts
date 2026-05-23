@@ -7,6 +7,8 @@ import {
 } from '../services/stmHorariosScraperService';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { logger } from '../config/logger';
+import { ucotIntranetService } from '../services/ucotIntranetService';
+import { crossModuleCorrelationService } from '../services/crossModuleCorrelationService';
 
 const router = Router();
 
@@ -186,5 +188,59 @@ router.get(
     }
   }
 );
+
+
+
+/**
+ * GET /api/stm/ucot/active-schedules
+ * Retorna el mapeo dinámico Coche -> Servicio/Cartón del día leyéndolo de los JSON descargados.
+ */
+router.get('/ucot/active-schedules', async (_req, res) => {
+  try {
+    const mapping = ucotIntranetService.getActiveSchedules();
+    const status = ucotIntranetService.getSyncStatus();
+    res.json({ success: true, mapping, status });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || 'Error recuperando cartones activos.' });
+  }
+});
+
+/**
+ * POST /api/stm/ucot/sync-cartones
+ * Ejecuta el Puppeteer Scraper ucot_fleet_downloader.js para refrescar cartones en background.
+ */
+router.post('/ucot/sync-cartones', async (_req, res) => {
+  try {
+    const triggerResult = ucotIntranetService.triggerDownloader();
+    res.json(triggerResult);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || 'Error ejecutando motor de descarga.' });
+  }
+});
+
+/**
+ * GET /api/stm/correlation/operational-financial/:linea
+ * Cruce Crítico Inter-Módulos: Ventas (Validaciones) + Demoras GPS + Competidores.
+ * Calcula fuga económica y genera sugerencias estratégicas reales para ganar terreno.
+ */
+router.get('/correlation/operational-financial/:linea', async (req, res) => {
+  try {
+    const { linea } = req.params;
+    const agencyId = (req.query.agencyId as string) || '70'; // default UCOT
+    const sentido = ((req.query.sentido as string)?.toUpperCase() === 'VUELTA') ? 'VUELTA' : 'IDA';
+    const days = parseInt((req.query.days as string) || '14', 10);
+    
+    if (!linea) {
+      res.status(400).json({ success: false, error: 'Falta parámetro linea.' });
+      return;
+    }
+
+    const analysis = await crossModuleCorrelationService.analyzeOperationalFinancialCorrelation(linea, agencyId, sentido, days);
+    res.json({ success: true, data: analysis });
+  } catch (err: any) {
+    logger.error(`[stm/correlation] Error crítico: ${err?.message}`);
+    res.status(500).json({ success: false, error: 'Error procesando correlación operativa financiera.' });
+  }
+});
 
 export default router;

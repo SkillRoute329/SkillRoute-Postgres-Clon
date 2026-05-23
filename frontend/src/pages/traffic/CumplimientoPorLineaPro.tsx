@@ -21,7 +21,7 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import {
   collection, getDocs, limit, orderBy, query, where,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import {
   RefreshCw, ChevronLeft, AlertTriangle, CheckCircle, Clock,
   MapPin, Bus, Search, Calendar, ArrowRight, ArrowLeft, TrendingDown,
@@ -137,6 +137,25 @@ function ultimosDias(n: number): string[] {
 }
 
 /* ─── Helpers visuales ────────────────────────────────── */
+
+function BarraClimaRuta({ enTiempo, adelantado, atrasado }: { enTiempo: number; adelantado: number; atrasado: number }) {
+  const total = enTiempo + adelantado + atrasado;
+  if (total === 0) return <div className="w-full h-2 bg-slate-800 rounded-full" />;
+  return (
+    <div className="w-full max-w-[240px]">
+      <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden flex border border-slate-700/30 relative group shadow-inner">
+        <div className="bg-emerald-500 h-full transition-all hover:brightness-110 cursor-help" style={{ width: `${enTiempo}%` }} title={`En Tiempo: ${enTiempo}%`} />
+        <div className="bg-orange-500 h-full transition-all hover:brightness-110 cursor-help" style={{ width: `${adelantado}%` }} title={`Adelantado: ${adelantado}%`} />
+        <div className="bg-red-500 h-full transition-all hover:brightness-110 cursor-help" style={{ width: `${atrasado}%` }} title={`Atrasado: ${atrasado}%`} />
+      </div>
+      <div className="flex justify-between text-[9px] text-slate-500 font-mono font-semibold mt-1 px-0.5 tracking-tight">
+        <span className={enTiempo > 0 ? "text-emerald-400" : ""}>{enTiempo}% Ok</span>
+        <span className={adelantado > 0 ? "text-orange-400" : ""}>{adelantado}% Adel</span>
+        <span className={atrasado > 0 ? "text-red-400" : ""}>{atrasado}% Atr</span>
+      </div>
+    </div>
+  );
+}
 
 function badgeDesv(desv: number | null): React.ReactNode {
   if (desv === null) {
@@ -290,6 +309,44 @@ export default function CumplimientoPorLineaPro() {
     const q = filtroLinea.trim().toLowerCase();
     return resumenLineas.filter(l => l.linea.toLowerCase().includes(q));
   }, [resumenLineas, filtroLinea]);
+
+  // TOP de Alertas Críticas en caliente desde resumenes / eventos
+  const topLineasCriticas = useMemo(() => {
+    return [...resumenLineas]
+      .filter(l => (l.pctEnTiempo > 0 || l.pctAtrasado > 0) && l.pctEnTiempo < 65 && l.totalEventos >= 15)
+      .sort((a, b) => a.pctEnTiempo - b.pctEnTiempo)
+      .slice(0, 3);
+  }, [resumenLineas]);
+
+  const topCochesDesvio = useMemo(() => {
+    const busStats: Record<string, { total: number; conH: number; enT: number; atr: number; adl: number; lineas: Set<string> }> = {};
+    for (const ev of eventos) {
+      const b = busStats[ev.idBus] ||= { total: 0, conH: 0, enT: 0, atr: 0, adl: 0, lineas: new Set() };
+      b.total++;
+      b.lineas.add(ev.linea);
+      if (ev.estadoCumplimiento !== 'SIN_HORARIO') {
+        b.conH++;
+        if (ev.estadoCumplimiento === 'EN_TIEMPO') b.enT++;
+        else if (ev.estadoCumplimiento === 'ATRASADO') b.atr++;
+        else if (ev.estadoCumplimiento === 'ADELANTADO') b.adl++;
+      }
+    }
+    return Object.entries(busStats)
+      .map(([idBus, s]) => {
+        const base = s.conH || s.total;
+        return {
+          idBus,
+          totalEventos: s.total,
+          lineas: [...s.lineas],
+          pctEnTiempo: Math.round((s.enT / base) * 100),
+          pctAtrasado: Math.round((s.atr / base) * 100),
+          pctAdelantado: Math.round((s.adl / base) * 100),
+        };
+      })
+      .filter(b => b.totalEventos >= 10 && b.pctEnTiempo < 60)
+      .sort((a, b) => a.pctEnTiempo - b.pctEnTiempo)
+      .slice(0, 3);
+  }, [eventos]);
 
   /* ── Matriz para la línea seleccionada ─────────────── */
 
@@ -522,8 +579,90 @@ export default function CumplimientoPorLineaPro() {
       {!cargando && !error && (
         <>
           {!lineaSeleccionada ? (
-            <ListaLineas
-              lineas={lineasFiltradas}
+            <>
+              {/* ── Tablero de Alertas Directas (Mando Ejecutivo) ── */}
+              {(topLineasCriticas.length > 0 || topCochesDesvio.length > 0) && (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                  {/* Panel Izquierdo: Líneas Críticas */}
+                  {topLineasCriticas.length > 0 && (
+                    <div className="bg-gradient-to-br from-red-950/25 to-slate-900 border border-red-900/30 rounded-xl p-5 shadow-xl relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-3xl pointer-events-none" />
+                      <div className="flex items-center gap-2.5 mb-4 border-b border-red-900/20 pb-3">
+                        <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                          <AlertTriangle className="w-4 h-4 text-red-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-red-200">Foco Crítico de Líneas (Tránsito / IMM)</h3>
+                          <p className="text-[11px] text-red-400/70 leading-tight">Fallas de puntualidad agregadas hoy — revisar corredor o cartón</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2.5">
+                        {topLineasCriticas.map((l, idx) => (
+                          <div key={idx} className="bg-slate-950/30 border border-red-950/40 rounded-lg p-3 flex items-center justify-between gap-4 hover:bg-slate-950/50 transition-colors">
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-black text-white text-lg tracking-tight">L.{l.linea}</span>
+                                {l.sentido && (
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                                    l.sentido === 'IDA' ? 'bg-blue-500/10 text-blue-300 border-blue-500/20' : 'bg-orange-500/10 text-orange-300 border-orange-500/20'
+                                  }`}>{l.sentido}</span>
+                                )}
+                              </div>
+                              <span className="text-[9px] text-slate-500">{l.cochesActivos} coches activos</span>
+                            </div>
+                            <div className="flex-1 flex justify-center min-w-[140px]">
+                              <BarraClimaRuta enTiempo={l.pctEnTiempo} adelantado={l.pctAdelantado} atrasado={l.pctAtrasado} />
+                            </div>
+                            <div className="text-right border-l border-slate-800 pl-4 min-w-[95px]">
+                              <span className="text-[10px] font-black text-red-400 uppercase tracking-wider block">Revisar IMM</span>
+                              <span className="text-[9px] text-slate-400 font-medium">Acción sugerida</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Panel Derecho: Prevención Coches */}
+                  {topCochesDesvio.length > 0 && (
+                    <div className="bg-gradient-to-br from-orange-950/20 to-slate-900 border border-orange-900/30 rounded-xl p-5 shadow-xl relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-3xl pointer-events-none" />
+                      <div className="flex items-center gap-2.5 mb-4 border-b border-orange-900/20 pb-3">
+                        <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                          <Bus className="w-4 h-4 text-orange-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-orange-200">Foco Prevención Coches (Operaciones)</h3>
+                          <p className="text-[11px] text-orange-400/70 leading-tight">Coches con desvío excesivo en sus tramos de hoy</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2.5">
+                        {topCochesDesvio.map((b, idx) => (
+                          <div key={idx} className="bg-slate-950/30 border border-orange-950/40 rounded-lg p-3 flex items-center justify-between gap-4 hover:bg-slate-950/50 transition-colors">
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-black text-orange-300 text-base tracking-tight">Coche {b.idBus}</span>
+                                <span className="text-[9px] font-bold text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">L.{b.lineas[0] || '—'}</span>
+                              </div>
+                              <span className="text-[9px] text-slate-500">{b.totalEventos} pases hoy</span>
+                            </div>
+                            <div className="flex-1 flex justify-center min-w-[140px]">
+                              <BarraClimaRuta enTiempo={b.pctEnTiempo} adelantado={b.pctAdelantado} atrasado={b.pctAtrasado} />
+                            </div>
+                            <div className="text-right border-l border-slate-800 pl-4 min-w-[95px]">
+                              <span className="text-[10px] font-black text-orange-400 uppercase tracking-wider block">Charlar Chofer</span>
+                              <span className="text-[9px] text-slate-400 font-medium">Acción sugerida</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <ListaLineas
+                lineas={lineasFiltradas}
               filtro={filtroLinea}
               onFiltro={setFiltroLinea}
               onSeleccionar={(l, s) => {
@@ -535,6 +674,7 @@ export default function CumplimientoPorLineaPro() {
               onAuditoria={(l) => setAuditoriaLinea(l)}
               vacio={resumenLineas.length === 0}
             />
+          </>
           ) : (
             <MatrizPuntosControl
               linea={lineaSeleccionada}
@@ -617,9 +757,7 @@ function ListaLineas({ lineas, filtro, onFiltro, onSeleccionar, onAuditoria, vac
                 <th className="text-left py-2.5 px-3 text-xs uppercase tracking-widest text-slate-300 font-bold">Sent.</th>
                 <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-300 font-bold">Coches</th>
                 <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-300 font-bold">Eventos</th>
-                <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-300 font-bold">% En tiempo</th>
-                <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-300 font-bold">% Atras.</th>
-                <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-300 font-bold">% Adel.</th>
+                <th className="text-left py-2.5 px-4 text-xs uppercase tracking-widest text-slate-300 font-bold w-[250px]">Clima de Cumplimiento (OTP)</th>
                 <th className="text-center py-2.5 px-3 text-xs uppercase tracking-widest text-slate-300 font-bold">Sin Hor.</th>
                 <th className="py-2.5 px-3 bg-slate-900"></th>
               </tr>
@@ -635,18 +773,8 @@ function ListaLineas({ lineas, filtro, onFiltro, onSeleccionar, onAuditoria, vac
                   </td>
                   <td className="py-2.5 px-3 text-center text-slate-200">{l.cochesActivos}</td>
                   <td className="py-2.5 px-3 text-center text-slate-300">{l.totalEventos}</td>
-                  <td className={`py-2.5 px-3 text-center font-bold ${
-                    l.pctEnTiempo >= 80 ? 'text-emerald-400' :
-                    l.pctEnTiempo >= 60 ? 'text-yellow-400' :
-                    l.pctEnTiempo > 0 ? 'text-red-400' : 'text-slate-600'
-                  }`}>
-                    {l.pctEnTiempo > 0 || l.pctAtrasado > 0 || l.pctAdelantado > 0 ? `${l.pctEnTiempo}%` : '—'}
-                  </td>
-                  <td className={`py-2.5 px-3 text-center ${l.pctAtrasado > 30 ? 'text-red-400 font-bold' : 'text-slate-400'}`}>
-                    {l.pctAtrasado > 0 ? `${l.pctAtrasado}%` : '—'}
-                  </td>
-                  <td className={`py-2.5 px-3 text-center ${l.pctAdelantado > 30 ? 'text-orange-400 font-bold' : 'text-slate-400'}`}>
-                    {l.pctAdelantado > 0 ? `${l.pctAdelantado}%` : '—'}
+                  <td className="py-2.5 px-3">
+                    <BarraClimaRuta enTiempo={l.pctEnTiempo} adelantado={l.pctAdelantado} atrasado={l.pctAtrasado} />
                   </td>
                   <td className="py-2.5 px-3 text-center text-slate-500 text-xs">
                     {l.pctSinHorario}%
@@ -801,11 +929,17 @@ function MatrizPuntosControl({ linea, sentidoMatriz, setSentidoMatriz, matriz, d
                             {c.pctEnTiempo}% en tiempo
                           </span>
                           {c.desviacionMedia !== null && (
+                            // FASE 5.14: label literal en lugar de "+N min" ambiguo.
                             <span className={`text-[9px] ${
                               Math.abs(c.desviacionMedia) <= 2 ? 'text-emerald-500' :
-                              c.desviacionMedia > 0 ? 'text-red-400' : 'text-orange-400'
+                              c.desviacionMedia > 5 ? 'text-red-400' :
+                              c.desviacionMedia < -1 ? 'text-amber-400' : 'text-emerald-500'
                             }`}>
-                              {c.desviacionMedia > 0 ? '+' : ''}{c.desviacionMedia} min prom.
+                              {c.desviacionMedia > 5
+                                ? `Atrasado ${Math.round(c.desviacionMedia)} min`
+                                : c.desviacionMedia < -1
+                                  ? `Adelantado ${Math.round(Math.abs(c.desviacionMedia))} min`
+                                  : 'En tiempo'}
                             </span>
                           )}
                         </div>

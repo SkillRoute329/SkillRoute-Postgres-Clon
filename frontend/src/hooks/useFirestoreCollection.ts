@@ -1,45 +1,52 @@
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, QueryConstraint } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 /**
- * useFirestoreCollection - Real-time subscription hook
- * @param collectionName Firestore collection path
- * @param constraints Optional query constraints (where, limit, etc.)
- * @param sortBy Optional sort field (default: createdAt desc if field exists)
+ * useFirestoreCollection - Polling-based collection hook (migrated from Firestore onSnapshot).
+ * TODO FASE 4.5: Socket.io for real-time updates per collection.
+ * @param collectionName REST collection path (maps to /api/db/<collectionName>)
+ * @param constraints Ignored — constraints must now be passed via `queryParams`
+ * @param queryParams Optional REST query parameters { where, orderBy, limit }
  */
 export const useFirestoreCollection = <T = any>(
   collectionName: string,
-  constraints: QueryConstraint[] = [],
+  constraints: any[] = [],
+  queryParams?: Record<string, string | number>,
 ) => {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<any>(null);
 
   useEffect(() => {
+    let active = true;
     setLoading(true);
-    const ref = collection(db, collectionName);
-    const q = query(ref, ...constraints);
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const items = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as T[];
+    const fetch = async () => {
+      try {
+        const raw = await apiClient.get(`/api/db/${collectionName}`, {
+          query: { limit: 500, ...queryParams },
+        }) as any[];
+        if (!active) return;
+        const items = (Array.isArray(raw) ? raw : []) as T[];
         setData(items);
         setLoading(false);
-      },
-      (err) => {
+        setError(null);
+      } catch (err) {
+        if (!active) return;
         console.error(`[useFirestoreCollection] Error in ${collectionName}:`, err);
         setError(err);
         setLoading(false);
-      },
-    );
+      }
+    };
 
-    return () => unsubscribe();
-  }, [collectionName]); // Dependencies? Constraints might need deep equal check or memoization by user
+    fetch();
+    // TODO FASE 4.5: Socket.io per-collection real-time
+    const interval = setInterval(fetch, 10000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [collectionName]); // queryParams intentionally omitted to match original behavior
 
   return { data, loading, error };
 };

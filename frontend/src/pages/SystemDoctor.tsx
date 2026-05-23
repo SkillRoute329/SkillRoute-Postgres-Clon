@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getAuth } from 'firebase/auth';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { getAuth } from '../config/firebaseAuthShim';
+import { getFirestore, collection, getDocs } from '../config/firestoreShim';
 
 const SystemDoctor = () => {
   const [checks, setChecks] = useState<any>({

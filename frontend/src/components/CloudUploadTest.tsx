@@ -59,10 +59,9 @@ export const CloudUploadTest: React.FC = () => {
 
   return (
     <div className="p-5 border-2 border-dashed border-gray-300 rounded-xl text-center m-5">
-      <h3 className="text-lg font-bold">☁️ Prueba de Capacidad: Storage Directo</h3>
+      <h3 className="text-lg font-bold">Prueba de Capacidad: Storage Soberano</h3>
       <p className="text-sm text-gray-500 mt-2">
-        Sube una imagen para verificar la conexión directa con el bucket <b>ucot-gestor-cloud</b>.
-        Esto salta el servidor backend completamente.
+        Sube una imagen para verificar la conexión con el almacenamiento del servidor propio.
       </p>
 
       <div className="mt-4">

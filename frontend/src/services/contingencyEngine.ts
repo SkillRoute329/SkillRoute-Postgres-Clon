@@ -3,8 +3,7 @@
  * handleServiceInterruption(cocheId): listar servicios afectados, coches libres, choferes retén, sugerir por Punto de Control.
  * (La creación de conflictos en Firestore la hace FleetService.updateVehicle al marcar status MAINTENANCE.)
  */
-import { getDocs, query, collection, where } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 import { getMasterServicios, getMasterPuntosControl } from '../data/ucotMaster';
 import { validateAssignment } from '../utils/syndicateRules';
 import { FeriadosService } from './feriadosService';
@@ -55,14 +54,11 @@ export async function handleServiceInterruption(
   const serviciosAfectados: ServiceInterruptionResult['serviciosAfectados'] = [];
 
   try {
-    const q = query(
-      collection(db, SHIFTS_COL),
-      where('date', '==', date),
-      where('vehicleId', '==', String(cocheId)),
-    );
-    const snap = await getDocs(q);
-    snap.docs.forEach((d) => {
-      const s = d.data();
+    const shifts = await apiClient.get(`/api/db/${SHIFTS_COL}`, {
+      query: { where: `date:${date},vehicleId:${String(cocheId)}`, limit: 500 },
+    }) as any[];
+    const shiftsArr = Array.isArray(shifts) ? shifts : [];
+    shiftsArr.forEach((s: any) => {
       const serviceId = s.serviceId as string;
       const master = serviciosMaster.find(
         (m) => m.servicioId === serviceId || m.serviceNumber === serviceId,
@@ -71,7 +67,7 @@ export async function handleServiceInterruption(
         servicioId: serviceId ?? 'PENDIENTE',
         linea: master?.linea ?? (s.linea as string) ?? 'PENDIENTE',
         horaInicio: master?.horaInicioReferencia ?? (s.start as string),
-        shiftId: d.id,
+        shiftId: s.id,
       });
     });
   } catch {

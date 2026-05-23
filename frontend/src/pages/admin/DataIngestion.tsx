@@ -20,8 +20,8 @@ import type { ParsedData, ServiceData } from '../../utils/ExcelParserV2';
 import DigitalCarton, { type ServiceDefinitionData } from '../../components/DigitalCarton';
 
 // Firebase
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from '../../config/firebaseStubsShim';
+import { addDoc, collection, serverTimestamp } from '../../config/firestoreShim';
 import { db, storage } from '../../config/firebase';
 import { toast } from 'react-hot-toast';
 import shp from 'shpjs';

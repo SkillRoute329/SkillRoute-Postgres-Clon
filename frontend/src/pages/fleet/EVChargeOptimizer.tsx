@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { collection, getDocs, where, query } from 'firebase/firestore';
+import { collection, getDocs, where, query } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import {
   Zap,

@@ -1,45 +1,48 @@
 "use strict";
 /**
  * Middleware de autenticación y autorización
+ *
+ * FASE 1 (2026-05-10): Eliminado el ESCAPE BRIDGE a Firebase Admin.
+ * El sistema ahora valida exclusivamente JWT locales firmados con
+ * Config.JWT_SECRET (regla -3 OWASP A07: Auth Failures).
+ *
+ * Si necesitás re-habilitar autenticación Firebase puntualmente, NO la
+ * agregues como fallback aquí — montá un endpoint dedicado /api/auth/import-firebase-token
+ * que migre el user a la tabla `users` y emita un JWT local. Eso mantiene
+ * un único path de autenticación auditable.
  */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.requireAuth = exports.requireRole = exports.requireAdmin = exports.verifyAuth = void 0;
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const index_1 = require("../types/index");
 const constants_1 = require("../config/constants");
 const logger_1 = __importDefault(require("../config/logger"));
+const authService_1 = require("../services/authService");
 /**
- * Verificar que el request tenga un token válido
+ * Verificar que el request tenga un JWT local válido.
  */
-const verifyAuth = (req, res, next) => {
+const verifyAuth = async (req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
-        // En desarrollo, permitir acceso anónimo como desarrollador
-        if (constants_1.Config.NODE_ENV === 'development') {
-            logger_1.default.warn('[AUTH] Missing token in development - allowing as ANONYMOUS');
-            req.user = {
-                id: 'dev-user',
-                internalNumber: '0000',
-                fullName: 'Developer God',
-                role: 'SuperAdmin',
-            };
-            return next();
-        }
-        // En producción, rechazar
-        const error = new index_1.AppError(401, 'No token provided');
+        const error = new index_1.AppError(401, 'No token provided (Local JWT Token required)');
         return res.status(error.statusCode).json({ error: error.message });
     }
     try {
-        const decoded = jsonwebtoken_1.default.verify(token, constants_1.Config.JWT_SECRET);
-        req.user = decoded;
+        // SOBERANÍA TOTAL: validar localmente la firma del JWT (HS256, sin Firebase, sin internet).
+        const decodedUser = (0, authService_1.validateToken)(token);
+        req.user = {
+            id: decodedUser.id,
+            internalNumber: decodedUser.internalNumber || decodedUser.id,
+            fullName: decodedUser.fullName || 'Usuario Soberano',
+            role: (decodedUser.role || constants_1.Config.Roles.USER),
+        };
         next();
     }
     catch (err) {
-        logger_1.default.error('[AUTH] Invalid token', { error: String(err) });
-        const error = new index_1.AppError(403, 'Invalid or expired token');
+        logger_1.default.warn('[AUTH] Token rechazado', { error: String(err) });
+        const error = new index_1.AppError(401, 'Token inválido o caducado');
         return res.status(error.statusCode).json({ error: error.message });
     }
 };
@@ -70,8 +73,18 @@ const requireRole = (...requiredRoles) => {
             const error = new index_1.AppError(401, 'Authentication required');
             return res.status(error.statusCode).json({ error: error.message });
         }
-        if (!requiredRoles.includes(req.user.role)) {
-            logger_1.default.warn(`[AUTH] Insufficient permissions: user ${req.user.id} needs [${requiredRoles.join(', ')}] but has ${req.user.role}`);
+        // FASE 5.1 (2026-05-13): SUPERADMIN es superset universal — pasa cualquier
+        // requireRole. Antes este check no consideraba SUPERADMIN y devolvía 403
+        // para todas las rutas con requireRole('admin','manager'), rompiendo
+        // dashboard ejecutivo, competition, forecast, etc.
+        const role = req.user.role;
+        const isSuperAdmin = role === constants_1.Config.Roles.SUPER_ADMIN || role === 'SUPERADMIN' || role === 'superadmin';
+        if (isSuperAdmin) {
+            next();
+            return;
+        }
+        if (!requiredRoles.includes(role)) {
+            logger_1.default.warn(`[AUTH] Insufficient permissions: user ${req.user.id} needs [${requiredRoles.join(', ')}] but has ${role}`);
             const error = new index_1.AppError(403, `Role required: ${requiredRoles.join(' or ')}`);
             return res.status(error.statusCode).json({ error: error.message });
         }

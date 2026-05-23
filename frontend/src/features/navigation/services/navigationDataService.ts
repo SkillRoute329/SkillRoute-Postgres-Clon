@@ -8,8 +8,9 @@
  *   4. linesService legacy — Firestore lineas_ucot como último recurso.
  */
 
-import { collection, getDocs, query, where, orderBy, limit, getDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, limit, getDoc, doc } from '../../../config/firestoreShim';
 import { db } from '../../../config/firebase';
+import { getToken } from '../../../utils/tokenStore';
 import type { LineaUCOT, SentidoLinea } from '../../../types/lineasUcot';
 import {
   getLineasByAgency,
@@ -26,10 +27,11 @@ import {
   listCrossOpLineasInyectadas,
 } from '../data/crossOpShapesInjector';
 import type { ParadaUcot, PuntoLatLng } from '../../../types/lineasUcot';
+import { distanciaMetros } from '../../../utils/geomath';
 import { LINE_ARCHETYPES } from '../../../data/lineTemplates';
 import api from '../../../services/api';
 
-const ABSOLUTE_API_URL = 'http://localhost:3000/api';
+const ABSOLUTE_API_URL = '/api';
 
 const AGENCY_NAME: Record<number, string> = {
   10: 'COETC',
@@ -93,16 +95,9 @@ function inyectadaToResumen(
 
 // ─── Helpers (usados por linesService legacy fallback) ───────────────────────
 
+// FASE 5.16: delega en utils/geomath (fuente única). API local intacta.
 function haversineMetros(p1: PuntoLatLng, p2: PuntoLatLng): number {
-  const R = 6371000;
-  const dLat = ((p2.lat - p1.lat) * Math.PI) / 180;
-  const dLng = ((p2.lng - p1.lng) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((p1.lat * Math.PI) / 180) *
-      Math.cos((p2.lat * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return distanciaMetros(p1, p2);
 }
 
 function distribuirParadasSobreShape(
@@ -373,7 +368,7 @@ async function firestoreLineaData(agencyId: number, codigo: string): Promise<Lin
 export async function getNavigationLineas(agencyId: number): Promise<LineaUCOTResumen[]> {
   // SOBERANIA TOTAL: Fuente 1: Backend SQL local (Exacto y Seguro)
   try {
-    const token = localStorage.getItem('tf_token');
+    const token = getToken();
     const resRaw = await fetch(`${ABSOLUTE_API_URL}/gtfs/lines?agencyId=${agencyId}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -462,7 +457,7 @@ export async function getNavigationLineaData(
     const sentidoStr: 'IDA' | 'VUELTA' = String(codigo).toLowerCase().endsWith('b') ? 'VUELTA' : 'IDA';
     const directionId = sentidoStr === 'VUELTA' ? 1 : 0;
 
-    const token = localStorage.getItem('tf_token');
+    const token = getToken();
     const resRaw = await fetch(`${ABSOLUTE_API_URL}/gtfs/geometry?agencyId=${agencyId}&linea=${baseCodigo}&directionId=${directionId}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });

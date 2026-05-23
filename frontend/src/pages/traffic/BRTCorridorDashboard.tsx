@@ -11,7 +11,8 @@
  * - Buses biarticulados 170-220 pax — propiedad del Estado (ASM)
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { apiClient } from '../../clients/apiClient';
 import { MapContainer, TileLayer, Polyline, Marker, Popup, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -55,24 +56,17 @@ const BRT_META = {
   pago18Jul: '10-11 min Tres Cruces → Pza. Independencia',
 };
 
-// Segmento compartido 18 de Julio: Tres Cruces → Plaza Independencia
-// Coordenadas verificadas sobre Av. 18 de Julio, Montevideo
-const TRAMO_18_JULIO: [number, number][] = [
-  [-34.8963, -56.1503], // Tres Cruces (terminal / Bulevar Artigas)
-  [-34.8985, -56.1516], // 18 Jul / Bulevar Artigas - curva de entrada
-  [-34.9008, -56.1538], // 18 Jul / Bulevar Artigas inicio
-  [-34.9025, -56.1565], // 18 Jul / Plaza de los Treinta y Tres (Ejido)
-  [-34.9040, -56.1635], // 18 Jul / Cbte. Galarza
-  [-34.9050, -56.1720], // 18 Jul / Colonia
-  [-34.9057, -56.1778], // Explanada Municipal (Yi)
-  [-34.9061, -56.1840], // Plaza Fabini (Mercedes)
-  [-34.9063, -56.1893], // 18 Jul / Convención
-  [-34.9065, -56.1972], // Plaza Independencia
-];
+// FASE 5.21: ELIMINADAS las coordenadas de trazado dibujadas a mano
+// (TRAMO_18_JULIO y los `trayecto` de cada corredor). El trazado ahora es
+// el shape GTFS oficial IMM de la línea troncal de referencia, traído por
+// /api/comando/shape-linea/:linea — sin geometría fabricada.
 
 const CORREDORES = [
   {
     id: 'A',
+    // Línea troncal real cuyo shape GTFS oficial IMM representa el corredor
+    // (sustituye el trazado dibujado a mano que pasaba sobre edificios).
+    lineaRef: '316',
     nombre: 'Línea A — 8 de Octubre',
     subtitulo: 'Zonamérica → Camino Maldonado → Av. 8 de Octubre → Tres Cruces → 18 de Julio → Pza. Independencia',
     color: '#ef4444',
@@ -97,34 +91,6 @@ const CORREDORES = [
       { nombre: 'Explanada Municipal', lat: -34.9057, lng: -56.1778, tipo: 'intermedia' },
       { nombre: 'Plaza Independencia', lat: -34.9065, lng: -56.1972, tipo: 'terminal' },
     ],
-    // Trayecto Línea A: Zonamérica → 8 de Octubre → Tres Cruces → 18 de Julio
-    // Coordenadas trazadas sobre calles reales de Montevideo (OpenStreetMap)
-    trayecto: [
-      [-34.8552, -55.9628] as [number, number], // Zonamérica
-      [-34.8572, -55.9660] as [number, number], // Camino Maldonado km 15.5
-      [-34.8600, -55.9718] as [number, number], // Camino Maldonado km 15
-      [-34.8618, -55.9802] as [number, number], // Camino Maldonado km 14
-      [-34.8645, -55.9878] as [number, number], // 8 Oct km 12.5
-      [-34.8668, -55.9950] as [number, number], // 8 Oct / Pan de Azúcar
-      [-34.8688, -55.9990] as [number, number], // Belloni
-      [-34.8712, -56.0050] as [number, number], // 8 Oct km 10
-      [-34.8738, -56.0135] as [number, number], // 8 Oct km 9
-      [-34.8762, -56.0218] as [number, number], // 8 Oct km 8
-      [-34.8780, -56.0315] as [number, number], // 8 Oct km 7
-      [-34.8800, -56.0440] as [number, number], // 8 Oct / Av. Italia (nodo intercambio)
-      [-34.8815, -56.0558] as [number, number], // 8 Oct km 5.5
-      [-34.8828, -56.0630] as [number, number], // 8 Oct km 5
-      [-34.8843, -56.0728] as [number, number], // Propios
-      [-34.8858, -56.0845] as [number, number], // 8 Oct km 3.5
-      [-34.8868, -56.0938] as [number, number], // 8 Oct km 3
-      [-34.8886, -56.0998] as [number, number], // Dr. Luis Morquio
-      [-34.8905, -56.1112] as [number, number], // 8 Oct km 2
-      [-34.8920, -56.1228] as [number, number], // 8 Oct / Garibaldi
-      [-34.8932, -56.1320] as [number, number], // 8 Oct km 1
-      [-34.8948, -56.1418] as [number, number], // 8 Oct / Bulevar Artigas aprox
-      [-34.8963, -56.1503] as [number, number], // Tres Cruces
-      ...TRAMO_18_JULIO,
-    ],
     lineasUCOTAfectadas: [
       { linea: '316', nombre: 'Cno. Maldonado Km16 - Pocitos', overlap: 'TOTAL', km: 18, estrategia: 'Alimentadora norte ↔ nodo Belloni' },
       { linea: '300', nombre: 'Instrucciones - Plaza Zitarrosa', overlap: 'PARCIAL', km: 9, estrategia: 'Alimentadora Instrucciones → Tres Cruces' },
@@ -136,6 +102,7 @@ const CORREDORES = [
   },
   {
     id: 'B',
+    lineaRef: '329',
     nombre: 'Línea B — Giannattasio / Av. Italia',
     subtitulo: 'El Pinar → Ruta Interbalnearia / Giannattasio → Av. Italia → Tres Cruces → 18 de Julio → Pza. Independencia',
     color: '#3b82f6',
@@ -159,44 +126,6 @@ const CORREDORES = [
       { nombre: 'Plaza de los 33 / Ejido', lat: -34.9025, lng: -56.1565, tipo: 'intermedia' },
       { nombre: 'Plaza Fabini', lat: -34.9061, lng: -56.1840, tipo: 'intermedia' },
       { nombre: 'Plaza Independencia', lat: -34.9065, lng: -56.1972, tipo: 'terminal' },
-    ],
-    // Trayecto Línea B: El Pinar → Giannattasio → Av. Italia → 8 Oct → Tres Cruces → 18 Jul
-    // Nota: Línea B usa carril exclusivo en Av. Italia con 5 pasos a desnivel
-    trayecto: [
-      [-34.8042, -55.9285] as [number, number], // El Pinar
-      [-34.8080, -55.9322] as [number, number], // Ruta Interbalnearia km 27
-      [-34.8112, -55.9368] as [number, number], // cerca Neptunia
-      [-34.8138, -55.9415] as [number, number], // Neptunia
-      [-34.8165, -55.9455] as [number, number], // Giannattasio km 25
-      [-34.8192, -55.9498] as [number, number], // Giannattasio km 24
-      [-34.8228, -55.9548] as [number, number], // Shangrilá
-      [-34.8265, -55.9595] as [number, number], // Giannattasio km 22
-      [-34.8300, -55.9645] as [number, number], // Ciudad de la Costa norte
-      [-34.8338, -55.9685] as [number, number], // Ciudad de la Costa central
-      [-34.8365, -55.9715] as [number, number], // Ciudad de la Costa sur
-      [-34.8400, -55.9760] as [number, number], // Giannattasio / salida Ciudad Costa
-      [-34.8438, -55.9832] as [number, number], // ingresando Montevideo
-      [-34.8478, -55.9892] as [number, number], // Av. Italia km 14
-      [-34.8508, -55.9953] as [number, number], // Av. Italia / Giannattasio (nodo)
-      [-34.8545, -56.0025] as [number, number], // Av. Italia km 13
-      [-34.8578, -56.0092] as [number, number], // Av. Italia km 12.5
-      [-34.8612, -56.0158] as [number, number], // Av. Italia km 12
-      [-34.8648, -56.0230] as [number, number], // Av. Italia km 11
-      [-34.8680, -56.0295] as [number, number], // Av. Italia km 10.5
-      [-34.8725, -56.0360] as [number, number], // Av. Italia km 10
-      [-34.8758, -56.0402] as [number, number], // Av. Italia km 9.5
-      [-34.8800, -56.0440] as [number, number], // Av. Italia / 8 de Octubre (nodo)
-      // Desde aquí Line B sigue por corredor hacia Tres Cruces (carril exclusivo)
-      [-34.8818, -56.0558] as [number, number],
-      [-34.8835, -56.0670] as [number, number],
-      [-34.8853, -56.0802] as [number, number],
-      [-34.8870, -56.0935] as [number, number],
-      [-34.8890, -56.1065] as [number, number],
-      [-34.8912, -56.1192] as [number, number],
-      [-34.8930, -56.1310] as [number, number],
-      [-34.8948, -56.1415] as [number, number],
-      [-34.8963, -56.1503] as [number, number], // Tres Cruces
-      ...TRAMO_18_JULIO,
     ],
     lineasUCOTAfectadas: [
       { linea: '221', nombre: 'Línea 221 (Metropolitana)', overlap: 'TOTAL', km: 28, estrategia: 'Redirigir como alimentadora costera → nodo Giannattasio' },
@@ -622,6 +551,26 @@ export default function BRTCorridorDashboard() {
   const [escenarioSel, setEscenarioSel] = useState<string>('obra_8oct');
   const [tarifaKmSlider, setTarifaKmSlider] = useState(420);
   const [kmDiaSlider, setKmDiaSlider] = useState(220);
+  // Trazado REAL: shape GTFS oficial IMM de la línea troncal de referencia
+  // de cada corredor. Reemplaza los waypoints dibujados a mano que cruzaban
+  // edificios y terminaban en la playa. Si no hay shape, no se dibuja línea.
+  const [shapes, setShapes] = useState<Record<string, [number, number][]>>({});
+  useEffect(() => {
+    let vivo = true;
+    Promise.all(
+      CORREDORES.map((c) =>
+        apiClient
+          .get(`/api/comando/shape-linea/${encodeURIComponent(c.lineaRef)}`)
+          .then((r: any) => [c.id, (r && r.puntos) || []] as [string, [number, number][]])
+          .catch(() => [c.id, [] as [number, number][]] as [string, [number, number][]]),
+      ),
+    ).then((pares) => {
+      if (vivo) setShapes(Object.fromEntries(pares));
+    });
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   const corredor = CORREDORES.find(c => c.id === corredorSel) ?? CORREDORES[0];
   const escenario = ESCENARIOS_DESVIO.find(e => e.id === escenarioSel) ?? ESCENARIOS_DESVIO[0];
@@ -780,6 +729,25 @@ export default function BRTCorridorDashboard() {
             )}
           </div>
 
+          {/*
+            FASE 5.14 (2026-05-13): el polyline del corredor usa waypoints
+            sembrados a mano cada ~1km. Leaflet dibuja lineas rectas entre
+            ellos, lo que en zoom alto se ve "cortando" manzanas, edificios
+            y a veces la costa. Para el proyecto real las geometrias deben
+            venir del trazado oficial IMM (snapped a calles via OSRM o GTFS).
+            Mostramos disclaimer abajo para evitar confundir al auditor.
+          */}
+          <div className="mb-3 flex items-start gap-2 bg-slate-800/40 border border-slate-700/40 rounded-xl p-3 text-[11px] text-slate-400">
+            <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-500" />
+            <span>
+              <strong className="text-slate-300">Trazado esquemático.</strong>{' '}
+              Las líneas conectan waypoints estratégicos del corredor; el trazado definitivo
+              se ajustará al diseño geométrico del proyecto IMM (calles reales, carriles
+              exclusivos, accesos a estaciones). Las posiciones de las paradas sí son las
+              coordenadas reales propuestas.
+            </span>
+          </div>
+
           {/* Mapa */}
           <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden relative" style={{ height: 420 }}>
             <MapContainer
@@ -794,11 +762,13 @@ export default function BRTCorridorDashboard() {
               />
               {CORREDORES.map(c => {
                 const isSelected = c.id === corredorSel;
+                const traza = shapes[c.id] ?? [];
+                if (traza.length < 2) return null; // sin shape real → no se dibuja
                 if (mostrarAmbas) {
                   return (
                     <Polyline
                       key={c.id}
-                      positions={c.trayecto}
+                      positions={traza}
                       color={c.color}
                       weight={5}
                       opacity={0.95}
@@ -806,11 +776,10 @@ export default function BRTCorridorDashboard() {
                   );
                 }
                 if (!isSelected) {
-                  // Ghost muy tenue — sólo para dar contexto geográfico
                   return (
                     <Polyline
                       key={c.id}
-                      positions={c.trayecto}
+                      positions={traza}
                       color={c.color}
                       weight={1.5}
                       opacity={0.12}
@@ -821,7 +790,7 @@ export default function BRTCorridorDashboard() {
                 return (
                   <Polyline
                     key={c.id}
-                    positions={c.trayecto}
+                    positions={traza}
                     color={c.color}
                     weight={7}
                     opacity={1}

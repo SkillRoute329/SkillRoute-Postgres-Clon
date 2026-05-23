@@ -28,7 +28,7 @@ import {
   limit,
   where,
   Timestamp,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import {
   Activity,
   AlertTriangle,
@@ -521,7 +521,7 @@ export default function CEODashboardV7() {
       const [overlapsSnap, shapesSnap, alertsSnap, estados, posRes, vehicles, incidenciasSnap] =
         await Promise.all([
           // Cada query con .catch independiente: una falla no rompe las demás.
-          getDocs(query(collection(db, 'corridor_overlap'), limit(5000))).catch((err) => {
+          getDocs(query(collection(db, 'corridor_overlap'), limit(800))).catch((err) => {
             console.warn('[CEODashboardV7] corridor_overlap query failed:', err?.code ?? err);
             return null;
           }),
@@ -645,10 +645,12 @@ export default function CEODashboardV7() {
     }
   }, [empresaPropia]);
 
+  // FASE 5.21 (2026-05-17): se ELIMINA el auto-refresh cada 60s. Re-traía
+  // ~5000 filas de corridor_overlap + GPS + flota cada minuto, saturando el
+  // pool y dejando el panel "cargando una eternidad". Se carga una vez; el
+  // usuario refresca manualmente si lo necesita.
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 60_000);
-    return () => clearInterval(interval);
   }, [fetchData]);
 
   // ── Carga de histórico (solo cuando periodo != 'today') ────────────────

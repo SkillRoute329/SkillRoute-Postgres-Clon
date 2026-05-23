@@ -3,9 +3,9 @@
 
 import { useState, useEffect } from 'react';
 import { X, TrendingUp, Activity, Clock } from 'lucide-react';
-import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, orderBy } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
-import { LineAggregate, OPERATOR_NAMES } from '../../types/compliance';
+import { type LineAggregate, OPERATOR_NAMES } from '../../types/compliance';
 import MetricBadge from '../shared/MetricBadge';
 import DataQualityIndicator from '../shared/DataQualityIndicator';
 import MethodologyTooltip from '../shared/MethodologyTooltip';

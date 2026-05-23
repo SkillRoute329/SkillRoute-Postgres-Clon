@@ -7,7 +7,7 @@ import {
   orderBy,
   limit,
   Timestamp,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import { db, authReady } from '../../config/firebase';
 import {
   DollarSign,

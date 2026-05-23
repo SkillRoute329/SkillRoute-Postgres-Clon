@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState, useMemo } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from '../../../config/firestoreShim';
 import { db } from '../../../config/firebase';
 import {
   LineChart, Line, ResponsiveContainer, ReferenceLine, Tooltip,

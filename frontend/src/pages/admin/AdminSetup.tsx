@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { collection, doc, setDoc, getDocs } from 'firebase/firestore';
+import { collection, doc, setDoc, getDocs } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { LINE_ARCHETYPES } from '../../data/lineTemplates';
 import { line300Data, line300ReverseData } from '../../data/lineTemplates';
@@ -104,6 +104,14 @@ const AdminSetup = () => {
   };
 
   const runFullSeed = async () => {
+    // FASE 5.19: gate anti-contaminación — inyecta 137 coches y 163
+    // servicios FICTICIOS. Exige confirmación tipeada para que no se
+    // dispare por accidente y ensucie datos vivos.
+    const ok = window.prompt(
+      'ATENCIÓN: esto inyectará 137 coches y 163 servicios FICTICIOS (demo, NO reales). ' +
+        'Para confirmar, escribí exactamente: GENERAR DEMO',
+    );
+    if (ok !== 'GENERAR DEMO') return;
     setIsRunning(true);
     setCompletedAll(false);
 
@@ -117,12 +125,12 @@ const AdminSetup = () => {
     setResults(initialResults);
 
     try {
-      // Step 1: Verify Firebase connection
+      // Step 1: Verify base de datos del servidor soberano (vía Firestore shim → Postgres)
       updateResult(0, { status: 'running' });
       await getDocs(collection(db, '__connection_test__'));
       updateResult(0, {
         status: 'success',
-        message: `Firebase OK. Proyecto: ucot-gestor-cloud`,
+        message: `Servidor soberano OK (Postgres local).`,
         count: 1,
       });
     } catch (err: unknown) {

@@ -22,7 +22,7 @@ import {
   Globe2,
 } from 'lucide-react';
 import { GtfsSchedulePanel } from '../../components/competition/GtfsSchedulePanel';
-import { collection, getDocs, query, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, limit, doc, getDoc } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 
@@ -45,9 +45,10 @@ interface LineaCompetidor {
   sublineas: string[]; destinos: string[];
 }
 
-const BRIDGE_PRIMARY = import.meta.env.PROD
-  ? ''
-  : (import.meta.env.VITE_BRIDGE_URL || 'http://localhost:3099');
+// FASE 5.38 (2026-05-22): bridge-server (:3099) está deprecado. El backend
+// principal (:3001) sirve /api/inteligencia/* desde Pase 5.28. Cambiamos
+// BRIDGE_PRIMARY a same-origin para que use el proxy Vite → :3001.
+const BRIDGE_PRIMARY = import.meta.env.VITE_BRIDGE_URL || '';
 
 /**
  * Fix #5 (2026-04-23): URL de fallback cuando el Bridge local no responde.
@@ -55,8 +56,7 @@ const BRIDGE_PRIMARY = import.meta.env.PROD
  * Si se setea VITE_BRIDGE_FALLBACK_URL en .env se puede sobreescribir.
  */
 const BRIDGE_FALLBACK =
-  import.meta.env.VITE_BRIDGE_FALLBACK_URL ||
-  'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/intelligenceApi';
+  import.meta.env.VITE_BRIDGE_FALLBACK_URL || 'http://localhost:3001/api';
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────
 interface BusInfo {
@@ -241,7 +241,8 @@ export default function CompetitorIntelligencePage() {
    * Solo si ambos fallan dejamos bridgeOk = false.
    */
   const [activeBridge, setActiveBridge] = useState<string>(BRIDGE_PRIMARY);
-  const [usingFallback, setUsingFallback] = useState<boolean>(false);
+  // FASE 5.39: usingFallback eliminado — el bridge-server externo está
+  // deprecado; siempre se usa el backend same-origin vía proxy Vite.
   const [lineas, setLineas] = useState<LineaData[]>([]);
   const [totalBuses, setTotalBuses] = useState(0);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
@@ -279,29 +280,15 @@ export default function CompetitorIntelligencePage() {
   const cargarLineas = useCallback(async () => {
     setLoadingLineas(true);
 
-    // Fix #5: intentar primario y, si falla, fallback Cloud Function
-    const tryHealth = async (base: string): Promise<boolean> => {
-      try {
-        const health = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(3000) });
-        if (health.ok) return true;
-        // Bridge local usa /health (sin prefix) — probamos compatibilidad
-        const healthLegacy = await fetch(`${base}/health`, { signal: AbortSignal.timeout(3000) });
-        return healthLegacy.ok;
-      } catch {
-        return false;
-      }
-    };
-
-    let base = BRIDGE_PRIMARY;
-    let ok = await tryHealth(BRIDGE_PRIMARY);
-    if (!ok && BRIDGE_FALLBACK) {
-      console.warn('[CompetitorIntelligence] Bridge primario caído, usando fallback Cloud Function');
-      ok = await tryHealth(BRIDGE_FALLBACK);
-      if (ok) {
-        base = BRIDGE_FALLBACK;
-        setUsingFallback(true);
-      }
-    }
+    // FASE 5.39 (2026-05-23): el bridge-server :3099 está deprecado y el
+    // health-check con fallback `BRIDGE_FALLBACK` (que termina en `/api`)
+    // generaba un 404 ruidoso `/api/api/health` durante el cold-start de
+    // Vite. Como el backend principal sirve estos endpoints same-origin
+    // vía proxy Vite, basta probar el primario una vez.
+    const base = BRIDGE_PRIMARY; // '' = same-origin → Vite proxy → :3001
+    const ok = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(3000) })
+      .then((r) => r.ok)
+      .catch(() => false);
     if (!ok) {
       setBridgeOk(false);
       setLoadingLineas(false);
@@ -386,20 +373,36 @@ export default function CompetitorIntelligencePage() {
     }
   }, [activeBridge]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Cargar líneas de empresa competidora (Firestore) ──────────
+  // ─── Cargar líneas de empresa competidora ──────────
+  // FASE 5.14 (2026-05-13): cambiamos Firestore (`competidores/emp-XX`) por el
+  // bridge `/api/lines/:agencyId`, que devuelve buses REALES activos en
+  // bus_last_pos (poller IMM stm-online cada 10s). La coleccion Firestore
+  // estaba vacia desde que se corto la dependencia con Cloud Functions, lo
+  // que dejaba CUTCSA/COME/COETC mostrando 0 en Radar de Competencia.
   const cargarLineasCompetidor = async (codigo: number) => {
     setLoadingComp(true);
     setLineasComp([]);
     try {
-      const snap = await getDoc(doc(db, 'competidores', `emp-${codigo}`));
-      if (!snap.exists()) { setLoadingComp(false); return; }
-      const data = snap.data();
-      const arr = (data.lineas ?? []) as LineaCompetidor[];
-      const activas = arr
-        .filter((l) => l.activa || l.busesActivosUltimoSnapshot > 0)
-        .sort((a, b) => b.busesActivosUltimoSnapshot - a.busesActivosUltimoSnapshot);
+      const res = await fetch(`${activeBridge}/api/lines/${codigo}`, {
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (!json.ok) throw new Error('bridge devolvio ok=false');
+      const lineas = (json.lineas ?? []) as Array<{ linea: string; cantidad: number; buses: BusInfo[] }>;
+      const activas: LineaCompetidor[] = lineas
+        .filter((l) => l.cantidad > 0)
+        .sort((a, b) => b.cantidad - a.cantidad)
+        .map((l) => ({
+          id: `emp-${codigo}-${l.linea}`,
+          numeroLineaTexto: l.linea,
+          activa: true,
+          busesActivosUltimoSnapshot: l.cantidad,
+          sublineas: [],
+          destinos: [],
+        }));
       setLineasComp(activas);
-      setTotalBusesComp(activas.reduce((s, l) => s + (l.busesActivosUltimoSnapshot ?? 0), 0));
+      setTotalBusesComp(json.totalBuses ?? activas.reduce((s, l) => s + l.busesActivosUltimoSnapshot, 0));
     } catch (err) {
       console.error('Error cargando competidor:', err);
     } finally {
@@ -479,10 +482,10 @@ export default function CompetitorIntelligencePage() {
   }
 
   return (
-    <div className="flex h-full overflow-hidden bg-[#0A0D14] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(99,102,241,0.15),rgba(255,255,255,0))]">
+    <div className="flex flex-col lg:flex-row h-auto lg:h-[calc(100vh-120px)] gap-6 overflow-visible lg:overflow-hidden bg-[#0A0D14] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(99,102,241,0.15),rgba(255,255,255,0))] text-white p-1">
       {/* ── Panel izquierdo: grid de líneas ─────────────────────────────── */}
       <div
-        className={`flex-1 flex flex-col overflow-hidden transition-all duration-500 ease-out ${selectedLinea ? 'max-w-[55%]' : 'max-w-full'}`}
+        className={`flex-1 flex flex-col h-auto lg:h-full bg-slate-900/40 border border-slate-800/60 rounded-2xl overflow-hidden transition-all duration-300 ease-out ${selectedLinea ? 'lg:w-7/12' : 'w-full'}`}
       >
         {/* Header */}
         <div className="flex-none px-8 py-6 border-b border-white/5 bg-white/[0.02] backdrop-blur-xl">
@@ -624,7 +627,7 @@ export default function CompetitorIntelligencePage() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid gap-3 ${selectedLinea ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
                 {lineasComp.map((l) => {
                   const colorMap: Record<number, { a: string; b: string; bg: string }> = {
                     50: { a: 'text-blue-400',    b: 'border-blue-500/20',    bg: 'bg-blue-500/5'    },
@@ -688,7 +691,7 @@ export default function CompetitorIntelligencePage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className={`grid gap-3 ${selectedLinea ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
               {lineas.map((l) => (
                 <LineCard
                   key={l.linea}
@@ -720,7 +723,7 @@ export default function CompetitorIntelligencePage() {
 
       {/* ── Panel derecho: detalle de línea ─────────────────────────────── */}
       {selectedLinea && (
-        <div className="w-[45%] flex-none border-l border-slate-800/60 flex flex-col overflow-hidden bg-slate-900/40 transition-all duration-300">
+        <div className="w-full lg:w-5/12 flex-none bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col overflow-hidden h-auto lg:h-full transition-all duration-300">
           {/* Header detalle */}
           <div className="flex-none px-5 py-4 border-b border-slate-800/60 flex items-center justify-between">
             <div>
@@ -989,52 +992,140 @@ export default function CompetitorIntelligencePage() {
                       <Shield className="w-3.5 h-3.5" />
                       Confrontaciones activas ({detailData.alertas.length})
                     </h3>
-                    {detailData.alertas.map((alerta, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-slate-800/60 border border-slate-700/40 rounded-xl p-3 space-y-2"
-                      >
-                        {/* Bus propio */}
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-indigo-500 flex-none" />
-                          <span className="text-xs text-slate-400">Bus {empresaNombre}</span>
-                          <span className="text-xs font-bold text-white ml-auto">
-                            #{alerta.busUcot.codigoBus}
-                          </span>
-                        </div>
-                        {alerta.busUcot.destino && (
-                          <p className="text-[10px] text-slate-500 pl-4 -mt-1">
-                            → {alerta.busUcot.destino}
-                            {alerta.busUcot.velocidad > 0 && ` · ${alerta.busUcot.velocidad} km/h`}
-                          </p>
-                        )}
+                    {detailData.alertas.map((alerta, idx) => {
+                      // ─── Lógica de Inteligencia Competitiva de Última Generación ───
+                      // Correlacionamos los competidores radiales con el porcentaje de solapamiento real y el sentido IMM.
+                      const competidoresEnriquecidos = alerta.competidoresCercanos.map((rival) => {
+                        // 1. Buscar solapamiento de corredor para esta línea rival
+                        const overlap = compOverlaps.find(
+                          (o) => o.lineaA === rival.linea || o.lineaB === rival.linea
+                        );
+                        const overlapPct = overlap ? Math.round(overlap.pctAInB) : 0;
 
-                        {/* Competidores cercanos */}
-                        <div className="border-t border-slate-700/30 pt-2 space-y-1.5">
-                          {alerta.competidoresCercanos.map((rival, rIdx) => (
-                            <div key={rIdx} className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full bg-red-500 flex-none" />
-                              <div className="flex-1 min-w-0">
-                                <span className="text-xs text-slate-300">
-                                  Emp. {rival.empresa}
-                                  {rival.linea && ` · Línea ${rival.linea}`}
-                                </span>
-                                {rival.destino && (
-                                  <span className="text-[10px] text-slate-500 block truncate">
-                                    {rival.destino}
-                                  </span>
-                                )}
+                        // 2. Identificar coincidencia de sentido mediante text-mining del destino IMM
+                        const destPropio = (alerta.busUcot.destino ?? '').toLowerCase();
+                        const destRival = (rival.destino ?? '').toLowerCase();
+                        
+                        // Tokenizar para buscar coincidencia de palabras clave (ej. "ADUANA", "BUCEO", "POLO")
+                        const keywordsPropio = destPropio.split(/[\s,\-\/]+/).filter(w => w.length > 3);
+                        let comparteSentido = false;
+                        
+                        if (keywordsPropio.length > 0) {
+                          comparteSentido = keywordsPropio.some(kw => destRival.includes(kw));
+                        }
+                        if (destPropio === destRival && destPropio.length > 1) {
+                          comparteSentido = true;
+                        }
+
+                        // 3. Cálculo del Threat Level Score (0-100+)
+                        let threatScore = overlapPct; // Base: % de solapamiento real
+                        if (comparteSentido) threatScore += 60; // Ponderación altísima por ir en el mismo sentido!
+                        if (rival.distanciaKm < 0.35) threatScore += 25; // Cercanía física inmediata!
+
+                        let badgeThreat = 'INFO';
+                        let clsThreat = 'bg-slate-800 text-slate-400 border-slate-700';
+                        if (threatScore >= 80) {
+                          badgeThreat = 'CRÍTICA';
+                          clsThreat = 'bg-red-500/20 text-red-300 border-red-500/40 animate-pulse font-black';
+                        } else if (threatScore >= 45) {
+                          badgeThreat = 'MODERADA';
+                          clsThreat = 'bg-amber-500/20 text-amber-300 border-amber-500/30 font-bold';
+                        }
+
+                        return {
+                          ...rival,
+                          overlapPct,
+                          comparteSentido,
+                          threatScore,
+                          badgeThreat,
+                          clsThreat,
+                        };
+                      }).sort((a, b) => b.threatScore - a.threatScore);
+
+                      return (
+                        <div
+                          key={idx}
+                          className="bg-slate-900/60 border border-slate-750 rounded-xl p-4 space-y-3 relative overflow-hidden shadow-lg shadow-black/20"
+                        >
+                          <div className="absolute top-0 left-0 w-1 h-full bg-indigo-600" />
+                          
+                          {/* Bus propio (SkillRoute) */}
+                          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                              <div className="w-2 h-2 rounded-full bg-emerald-500 absolute" />
+                              <div>
+                                <p className="text-xs font-black text-white tracking-wide">COCHE #{alerta.busUcot.codigoBus}</p>
+                                <p className="text-[9px] text-emerald-400 font-bold uppercase">Activo en corredor</p>
                               </div>
-                              <span
-                                className={`text-xs font-bold flex-none ${rival.distanciaKm < 0.5 ? 'text-red-400' : rival.distanciaKm < 1 ? 'text-amber-400' : 'text-slate-400'}`}
-                              >
-                                {rival.distanciaKm} km
-                              </span>
                             </div>
-                          ))}
+                            <div className="text-right">
+                              <p className="text-[10px] text-slate-400 truncate font-medium max-w-[150px]">
+                                {alerta.busUcot.destino ? `→ ${alerta.busUcot.destino}` : 'Destino no especificado'}
+                              </p>
+                              {alerta.busUcot.velocidad > 0 && (
+                                <p className="text-[9px] text-slate-500 font-mono">{alerta.busUcot.velocidad} km/h</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Competidores Cercanos Filtrados y Ordenados por Peligrosidad */}
+                          <div className="space-y-3 pt-1">
+                            {competidoresEnriquecidos.map((rival, rIdx) => (
+                              <div
+                                key={rIdx}
+                                className={`p-3 rounded-xl border ${
+                                  rival.threatScore >= 80 ? 'bg-red-950/20 border-red-900/50' : 'bg-slate-800/40 border-slate-700/30'
+                                } relative transition-all hover:bg-slate-800/60`}
+                              >
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-xs font-black text-white bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
+                                        L{rival.linea}
+                                      </span>
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                        Coche #{rival.codigoBus || 'S/N'}
+                                      </span>
+                                      <span className={`text-[8px] px-1.5 py-0.5 rounded border uppercase tracking-wider font-extrabold ${rival.clsThreat}`}>
+                                        {rival.badgeThreat}
+                                      </span>
+                                    </div>
+                                    <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+                                      Emp. {EMPRESAS_STM.find(e => e.codigo === Number(rival.empresa))?.nombre || rival.empresa} · → {rival.destino || 'N/D'}
+                                    </p>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <span className={`text-xs font-black ${rival.distanciaKm < 0.4 ? 'text-red-400' : 'text-slate-300'}`}>
+                                      {rival.distanciaKm} km
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Indicadores de Inteligencia Competitiva */}
+                                <div className="flex flex-wrap gap-1.5 mt-2 border-t border-slate-800/50 pt-2">
+                                  {rival.overlapPct > 0 && (
+                                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-slate-900 text-amber-400 border border-amber-500/20">
+                                      🧬 Solapamiento: {rival.overlapPct}%
+                                    </span>
+                                  )}
+                                  {rival.comparteSentido && (
+                                    <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-red-500/10 text-red-400 border border-red-500/30 flex items-center gap-1">
+                                      <Target size={10} className="animate-pulse" /> MISMO SENTIDO
+                                    </span>
+                                  )}
+                                  {!rival.comparteSentido && (
+                                    <span className="text-[9px] px-2 py-0.5 rounded-md bg-slate-900 text-slate-500 border border-slate-800">
+                                      Sentido Contrario
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 

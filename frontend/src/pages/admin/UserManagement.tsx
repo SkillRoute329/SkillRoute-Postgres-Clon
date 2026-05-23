@@ -4,8 +4,8 @@ import { UserService } from '../../services/api'; // Still needed for CREATE (as
 import { UserPlus, Save, Trash2, Search } from 'lucide-react';
 import { useFirestoreCollection } from '../../hooks/useFirestoreCollection';
 import { showSuccess, showError, showLoading, dismiss } from '../../context/FeedbackProvider';
-import { orderBy } from 'firebase/firestore';
-import { getFirestore, deleteDoc, doc } from 'firebase/firestore';
+import { orderBy } from '../../config/firestoreShim';
+import { getFirestore, deleteDoc, doc } from '../../config/firestoreShim';
 
 const UserManagement = () => {
   const { token } = useAuth();

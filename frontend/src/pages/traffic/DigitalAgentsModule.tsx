@@ -46,7 +46,7 @@ import type {
 import { Toast } from '@capacitor/toast';
 // Sweep timestamps #74 (2026-04-23): helper Montevideo UTC-3
 import { formatHoraMvd } from '../../utils/formatTimestamp';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { auth } from '../../config/firebase';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';

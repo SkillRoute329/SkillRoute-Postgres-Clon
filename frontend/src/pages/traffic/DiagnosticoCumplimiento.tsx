@@ -40,18 +40,15 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { collection, doc as firestoreDoc, getDoc, getDocs, orderBy, limit, query, where } from 'firebase/firestore';
+import { collection, doc as firestoreDoc, getDoc, getDocs, orderBy, limit, query, where } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
+import { OPERADORES_ID_NOMBRE } from '../../utils/operadores';
 
 /* ─── Constantes ──────────────────────────────────────── */
 
-const AGENCIAS = [
-  { id: '70', nombre: 'UCOT' },
-  { id: '50', nombre: 'CUTCSA' },
-  { id: '20', nombre: 'COME' },
-  { id: '10', nombre: 'COETC' },
-] as const;
+// FASE 5.16: fuente única utils/operadores.ts.
+const AGENCIAS = OPERADORES_ID_NOMBRE;
 
 const AUTO_REFRESH_MS = 120_000;
 
@@ -221,6 +218,26 @@ function badgeDiagnosis(tipo: TipoDiagnosis) {
         </span>
       );
   }
+}
+
+// ── Barra Tricolor de Clima de Cumplimiento (OTP) ───────────────────────
+function BarraClimaRuta({ enTiempo, adelantado, atrasado }: { enTiempo: number; adelantado: number; atrasado: number }) {
+  const total = enTiempo + adelantado + atrasado;
+  if (total === 0) return <div className="w-full h-2 bg-slate-800 rounded-full" />;
+  return (
+    <div className="w-full max-w-[240px]">
+      <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden flex border border-slate-700/30 relative group shadow-inner">
+        <div className="bg-emerald-500 h-full transition-all hover:brightness-110 cursor-help" style={{ width: `${enTiempo}%` }} title={`En Tiempo: ${enTiempo}%`} />
+        <div className="bg-orange-500 h-full transition-all hover:brightness-110 cursor-help" style={{ width: `${adelantado}%` }} title={`Adelantado: ${adelantado}%`} />
+        <div className="bg-red-500 h-full transition-all hover:brightness-110 cursor-help" style={{ width: `${atrasado}%` }} title={`Atrasado: ${atrasado}%`} />
+      </div>
+      <div className="flex justify-between text-[9px] text-slate-500 font-mono font-semibold mt-1 px-0.5 tracking-tight">
+        <span className={enTiempo > 0 ? "text-emerald-400" : ""}>{enTiempo}% Ok</span>
+        <span className={adelantado > 0 ? "text-orange-400" : ""}>{adelantado}% Adel</span>
+        <span className={atrasado > 0 ? "text-red-400" : ""}>{atrasado}% Atr</span>
+      </div>
+    </div>
+  );
 }
 
 
@@ -1127,6 +1144,18 @@ export default function DiagnosticoCumplimiento() {
 
   const hayDatos = lineasHist.length > 0;
 
+  // TOP de Alertas Críticas para Mando Ejecutivo
+  const topLineasCriticas = [...lineasHist]
+    .filter(l => l.diagnosis.tipo === 'LINEA')
+    .sort((a, b) => (b.pctAtrasado + b.pctAdelantado) - (a.pctAtrasado + a.pctAdelantado))
+    .slice(0, 3);
+
+  const topCochesDesvio = [...lineasHist]
+    .flatMap(l => l.buses.map(b => ({ ...b, lineaCod: l.linea, sentidoCod: l.sentido })))
+    .filter(b => b.totalEventos >= 5 && (b.pctAtrasado + b.pctAdelantado > 35))
+    .sort((a, b) => (b.pctAtrasado + b.pctAdelantado) - (a.pctAtrasado + a.pctAdelantado))
+    .slice(0, 3);
+
   const empresaNombre = AGENCIAS.find((a) => a.id === agenciaId)?.nombre ?? agenciaId;
   const hayFiltros = filtroLinea !== '' || filtroDiagnosis !== 'TODOS';
 
@@ -1410,6 +1439,87 @@ export default function DiagnosticoCumplimiento() {
             </div>
           </div>
 
+          {/* ── Tablero de Alertas Directas (Mando Ejecutivo) ── */}
+          {hayDatos && (topLineasCriticas.length > 0 || topCochesDesvio.length > 0) && (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+              {/* Panel Izquierdo: Líneas Críticas */}
+              {topLineasCriticas.length > 0 && (
+                <div className="bg-gradient-to-br from-red-950/25 to-slate-900 border border-red-900/30 rounded-xl p-5 shadow-xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-3xl pointer-events-none" />
+                  <div className="flex items-center gap-2.5 mb-4 border-b border-red-900/20 pb-3">
+                    <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="w-4 h-4 text-red-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-red-200">Foco Crítico de Líneas (Tránsito / IMM)</h3>
+                      <p className="text-[11px] text-red-400/70 leading-tight">Falla generalizada en la ruta — requiere revisión de tráfico o cartón IMM</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2.5">
+                    {topLineasCriticas.map((l, idx) => (
+                      <div key={idx} className="bg-slate-950/30 border border-red-950/40 rounded-lg p-3 flex items-center justify-between gap-4 hover:bg-slate-950/50 transition-colors">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-black text-white text-lg tracking-tight">L.{l.linea}</span>
+                            {l.sentido && (
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                                l.sentido === 'IDA' ? 'bg-blue-500/10 text-blue-300 border-blue-500/20' : 'bg-orange-500/10 text-orange-300 border-orange-500/20'
+                              }`}>{l.sentido}</span>
+                            )}
+                          </div>
+                          <span className="text-[9px] text-slate-500">{l.busesActivos} coches analizados</span>
+                        </div>
+                        <div className="flex-1 flex justify-center min-w-[140px]">
+                          <BarraClimaRuta enTiempo={l.pctEnTiempo} adelantado={l.pctAdelantado} atrasado={l.pctAtrasado} />
+                        </div>
+                        <div className="text-right border-l border-slate-800 pl-4 min-w-[95px]">
+                          <span className="text-[10px] font-black text-red-400 uppercase tracking-wider block">Revisar IMM</span>
+                          <span className="text-[9px] text-slate-400 font-medium">Acción sugerida</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Panel Derecho: Prevención Conducción */}
+              {topCochesDesvio.length > 0 && (
+                <div className="bg-gradient-to-br from-orange-950/20 to-slate-900 border border-orange-900/30 rounded-xl p-5 shadow-xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-3xl pointer-events-none" />
+                  <div className="flex items-center gap-2.5 mb-4 border-b border-orange-900/20 pb-3">
+                    <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                      <Users className="w-4 h-4 text-orange-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-orange-200">Foco Prevención Conductores (RRHH)</h3>
+                      <p className="text-[11px] text-orange-400/70 leading-tight">Incumplimientos severos concentrados en coches puntuales hoy</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2.5">
+                    {topCochesDesvio.map((b, idx) => (
+                      <div key={idx} className="bg-slate-950/30 border border-orange-950/40 rounded-lg p-3 flex items-center justify-between gap-4 hover:bg-slate-950/50 transition-colors">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-black text-orange-300 text-base tracking-tight">Coche {b.idBus}</span>
+                            <span className="text-[9px] font-bold text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">L.{b.lineaCod}</span>
+                          </div>
+                          <span className="text-[9px] text-slate-500">{b.totalEventos} registros 7d</span>
+                        </div>
+                        <div className="flex-1 flex justify-center min-w-[140px]">
+                          <BarraClimaRuta enTiempo={b.pctEnTiempo} adelantado={b.pctAdelantado} atrasado={b.pctAtrasado} />
+                        </div>
+                        <div className="text-right border-l border-slate-800 pl-4 min-w-[95px]">
+                          <span className="text-[10px] font-black text-orange-400 uppercase tracking-wider block">Charlar Chofer</span>
+                          <span className="text-[9px] text-slate-400 font-medium">Acción sugerida</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ── Filtros de búsqueda ── */}
           {hayDatos && lineasHist.length > 0 && (
             <div className="flex flex-col sm:flex-row gap-3 mb-4 items-center">
@@ -1473,9 +1583,7 @@ export default function DiagnosticoCumplimiento() {
                       <th className="text-center py-3 px-4 text-xs text-slate-400 uppercase tracking-widest font-medium">
                         <span className="flex items-center justify-center gap-1"><Bus className="w-3 h-3" /> Buses</span>
                       </th>
-                      <th className="text-left py-3 px-4 text-xs text-slate-400 uppercase tracking-widest font-medium">En tiempo</th>
-                      <th className="text-center py-3 px-4 text-xs text-slate-400 uppercase tracking-widest font-medium">% Atrasado</th>
-                      <th className="text-center py-3 px-4 text-xs text-slate-400 uppercase tracking-widest font-medium">% Adelantado</th>
+                      <th className="text-left py-3 px-4 text-xs text-slate-400 uppercase tracking-widest font-medium w-[250px]">Clima de Cumplimiento (OTP)</th>
                       <th className="text-left py-3 px-4 text-xs text-slate-400 uppercase tracking-widest font-medium">Diagnóstico</th>
                       <th className="py-3 px-3 w-8"></th>
                     </tr>
@@ -1520,33 +1628,7 @@ export default function DiagnosticoCumplimiento() {
                               <span className="text-slate-300 font-semibold">{item.busesActivos}</span>
                             </td>
                             <td className="py-3.5 px-4">
-                              <div className="flex items-center gap-2">
-                                <div className="w-20 bg-slate-800 rounded-full h-2 overflow-hidden">
-                                  <div
-                                    className={`h-2 rounded-full transition-all ${
-                                      item.pctEnTiempo >= 80 ? 'bg-emerald-500' :
-                                      item.pctEnTiempo >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                                    }`}
-                                    style={{ width: `${item.pctEnTiempo}%` }}
-                                  />
-                                </div>
-                                <span className={`text-xs font-semibold ${
-                                  item.pctEnTiempo >= 80 ? 'text-emerald-400' :
-                                  item.pctEnTiempo >= 60 ? 'text-yellow-400' : 'text-red-400'
-                                }`}>
-                                  {item.pctEnTiempo}%
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-4 text-center">
-                              <span className={`text-sm font-semibold ${item.pctAtrasado > 20 ? 'text-red-400' : 'text-slate-500'}`}>
-                                {item.pctAtrasado}%
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-4 text-center">
-                              <span className={`text-sm font-semibold ${item.pctAdelantado > 20 ? 'text-orange-400' : 'text-slate-500'}`}>
-                                {item.pctAdelantado}%
-                              </span>
+                              <BarraClimaRuta enTiempo={item.pctEnTiempo} adelantado={item.pctAdelantado} atrasado={item.pctAtrasado} />
                             </td>
                             <td className="py-3.5 px-4">{badgeDiagnosis(item.diagnosis.tipo)}</td>
                             <td className="py-3.5 px-3">

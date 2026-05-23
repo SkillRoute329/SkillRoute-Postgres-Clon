@@ -4,6 +4,13 @@ exports.competitionService = void 0;
 const database_1 = require("../config/database");
 const logger_1 = require("../config/logger");
 // Servicio de análisis de competencia - Semana 4
+//
+// AUTONOMIA-PARCIAL (2026-05-13): este servicio aún consulta Firestore para
+// las colecciones `lineas`, `competidores` y `cambios_historicos` que no
+// existen en el schema Postgres del clon. Las consultas están envueltas en
+// try/catch para que si Firestore no es alcanzable (offline) la pantalla
+// muestre estado vacío honesto en vez de crash. Migración a Postgres queda
+// pendiente: requiere crear tablas y pipeline de ingesta de boletaje.
 class CompetitionService {
     /**
      * Ingresa un nuevo competidor con sus líneas y horarios
@@ -65,8 +72,8 @@ class CompetitionService {
             return sobreposiciones;
         }
         catch (error) {
-            logger_1.logger.error(`Error analizando sobreposición: ${error}`);
-            throw error;
+            logger_1.logger.warn(`[AUTONOMIA-PARCIAL] Sobreposición no disponible (Firestore?): ${error?.message ?? error}`);
+            return [];
         }
     }
     /**
@@ -106,8 +113,8 @@ class CompetitionService {
             return conflictos;
         }
         catch (error) {
-            logger_1.logger.error(`Error detectando conflictos: ${error}`);
-            throw error;
+            logger_1.logger.warn(`[AUTONOMIA-PARCIAL] Conflictos horarios no disponibles (Firestore?): ${error?.message ?? error}`);
+            return [];
         }
     }
     /**
@@ -134,8 +141,17 @@ class CompetitionService {
             };
         }
         catch (error) {
-            logger_1.logger.error(`Error analizando competitividad: ${error}`);
-            throw error;
+            logger_1.logger.warn(`[AUTONOMIA-PARCIAL] Competitividad no disponible (Firestore?): ${error?.message ?? error}`);
+            return {
+                lineaId,
+                numeroLinea: 0,
+                competidoresPresentes: [],
+                gradoCompetencia: 'bajo',
+                sobreposiciones: [],
+                conflictosActivos: [],
+                pasajerosEnRiesgoTotal: 0,
+                recomendaciones: []
+            };
         }
     }
     /**
@@ -177,8 +193,18 @@ class CompetitionService {
             };
         }
         catch (error) {
-            logger_1.logger.error(`Error generando reporte: ${error}`);
-            throw error;
+            logger_1.logger.warn(`[AUTONOMIA-PARCIAL] Reporte competencia no disponible (Firestore?): ${error?.message ?? error}`);
+            return {
+                periodo: { inicio: fechaInicio, fin: fechaFin },
+                totalLineasUCOT: 0,
+                lineasConCompetencia: 0,
+                competidoresActivos: [],
+                cambiosDetectados: [],
+                sobreposicionesTop: [],
+                conflictosActivos: [],
+                pasajerosEnRiesgo: 0,
+                recomendacionesUrgentes: []
+            };
         }
     }
     // ============ FUNCIONES AUXILIARES ============

@@ -1,14 +1,13 @@
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 /**
- * Servicio de Almacenamiento Seguro (Direct-to-Cloud)
- * Elimina la carga del backend permitiendo subidas directas desde el navegador.
+ * Servicio de Almacenamiento Seguro
+ * TODO FASE 5: migrar storage a MinIO
+ * Actualmente delega a endpoint REST del backend.
  */
 export const StorageService = {
   /**
-   * Sube un archivo a Firebase Storage en la carpeta especificada.
-   * Estructura: reportes/{folder}/{YYYY-MM-DD}/{id}/{timestamp}_filename
+   * Sube un archivo al backend en la carpeta especificada.
    *
    * @param file Archivo a subir
    * @param folder Carpeta de destino (ej: 'sanciones', 'mantenimiento', 'flota')
@@ -20,30 +19,21 @@ export const StorageService = {
     entityId: string = 'temp',
   ): Promise<string> {
     try {
-      // Validar folder para seguridad (opcional, pero buena práctica)
+      // TODO FASE 5: migrar storage a MinIO
       const cleanFolder = folder.replace(/[^a-zA-Z0-9-_]/g, '');
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', cleanFolder);
+      formData.append('entityId', entityId);
 
-      // Ruta base: reportes/ para aprovechar la regla {match /reportes/{allPaths=**}}
-      const dateStr = new Date().toISOString().split('T')[0];
-      const timestamp = new Date().getTime();
-      const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-
-      const path = `reportes/${cleanFolder}/${dateStr}/${entityId}/${timestamp}_${cleanFileName}`;
-
-      const storageRef = ref(storage, path);
-
-      // Subir
-      console.log(`📤 [Storage] Subiendo a: ${path}`);
-      const snapshot = await uploadBytes(storageRef, file);
-
-      // Obtener URL
-      const url = await getDownloadURL(snapshot.ref);
-      console.log('✅ [Storage] URL Generada:', url);
-
-      return url;
+      const result = await apiClient.post('/api/files/upload', formData) as { url?: string };
+      if (!result?.url) {
+        throw new Error('El backend no devolvió una URL de descarga');
+      }
+      return result.url;
     } catch (error) {
-      console.error('❌ Error Storage:', error);
-      throw error; // Re-lanzar para que el componente maneje la UI
+      console.error('Error Storage:', error);
+      throw error;
     }
   },
 };

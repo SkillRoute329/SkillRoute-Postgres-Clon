@@ -1,21 +1,12 @@
 import type { PuntoLatLng } from '../types/lineasUcot';
+import { distanciaMetros } from './geomath';
 
 /**
- * Calcula la distancia en metros entre dos puntos usando la fórmula de Haversine.
+ * Distancia en metros entre dos puntos (Haversine).
+ * FASE 5.16: delega en utils/geomath (fuente única). API intacta.
  */
 export function getDistance(p1: PuntoLatLng, p2: PuntoLatLng): number {
-  const R = 6371e3; // Radio de la tierra en metros
-  const φ1 = (p1.lat * Math.PI) / 180;
-  const φ2 = (p2.lat * Math.PI) / 180;
-  const Δφ = ((p2.lat - p1.lat) * Math.PI) / 180;
-  const Δλ = ((p2.lng - p1.lng) * Math.PI) / 180;
-
-  const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c;
+  return distanciaMetros(p1, p2);
 }
 
 /**
@@ -49,4 +40,38 @@ export function findFrictionZones(
   }
 
   return zones;
+}
+
+/**
+ * Divide una lista plana de puntos en sub-segmentos continuos, rompiendo
+ * el trazo cada vez que la distancia entre dos puntos consecutivos supera maxJumpMeters.
+ * Esto previene el efecto "zig-zag" en el mapa sin recortar partes de la ruta.
+ */
+export function splitIntoSegments(
+  points: PuntoLatLng[],
+  maxJumpMeters: number = 800,
+): PuntoLatLng[][] {
+  if (points.length === 0) return [];
+  const segments: PuntoLatLng[][] = [];
+  let currentSegment: PuntoLatLng[] = [points[0]];
+
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    
+    // Ignorar puntos inválidos (Null Island)
+    if ((prev.lat === 0 && prev.lng === 0) || (curr.lat === 0 && curr.lng === 0)) {
+      continue;
+    }
+
+    const dist = getDistance(prev, curr);
+    if (dist > maxJumpMeters) {
+      segments.push(currentSegment);
+      currentSegment = [curr];
+    } else {
+      currentSegment.push(curr);
+    }
+  }
+  segments.push(currentSegment);
+  return segments.filter(seg => seg.length > 0);
 }

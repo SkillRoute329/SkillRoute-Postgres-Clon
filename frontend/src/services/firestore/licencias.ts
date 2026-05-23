@@ -1,12 +1,9 @@
 /**
- * licencias.ts — Colección `licencias_personal` en Firestore
+ * licencias.ts — Colección `licencias_personal`
  * Gestión completa de ausencias, licencias y días compensatorios del personal.
  */
-import {
-  collection, doc, setDoc, updateDoc, getDoc,
-  getDocs, query, where, orderBy, onSnapshot, Timestamp,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 
 const COL = 'licencias_personal';
 const COL_COMP = 'compensatorios_personal';
@@ -14,15 +11,15 @@ const COL_COMP = 'compensatorios_personal';
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
 export type TipoLicencia =
-  | 'medica'           // Licencia médica (BPS / mutualista)
-  | 'administrativa'   // Licencia administrativa (trámites, etc.)
-  | 'sindical'         // Actividad sindical (ATM, UNOTT, etc.)
-  | 'estudio'          // Licencia por estudio
-  | 'maternidad'       // Licencia por maternidad/paternidad
-  | 'falta_injustificada' // Falta sin aviso
-  | 'compensatorio'    // Uso de día compensatorio acumulado
-  | 'cambio_libre'     // Cambio de día libre (movimiento de descanso)
-  | 'franco_adicional' // Franco adicional (horas extra, festivo trabajado)
+  | 'medica'
+  | 'administrativa'
+  | 'sindical'
+  | 'estudio'
+  | 'maternidad'
+  | 'falta_injustificada'
+  | 'compensatorio'
+  | 'cambio_libre'
+  | 'franco_adicional'
   | 'otro';
 
 export type EstadoLicencia = 'pendiente' | 'aprobada' | 'rechazada' | 'completada';
@@ -33,30 +30,29 @@ export interface LicenciaPersonal {
   internalNumber: string;
   tipo: TipoLicencia;
   estado: EstadoLicencia;
-  fechaDesde: string;        // YYYY-MM-DD
-  fechaHasta: string;        // YYYY-MM-DD (igual que desde si es 1 día)
-  diasHabiles: number;       // días hábiles afectados
+  fechaDesde: string;
+  fechaHasta: string;
+  diasHabiles: number;
   motivo?: string;
-  documentoUrl?: string;     // URL del certificado médico, etc.
-  aprobadoPor?: string;      // userId del supervisor
+  documentoUrl?: string;
+  aprobadoPor?: string;
   rechazadoPor?: string;
   motivoRechazo?: string;
   creadoEn: string;
   actualizadoEn: string;
-  // Para cambio de libre:
-  diaLibreOriginal?: string; // YYYY-MM-DD — día que se mueve
-  diaLibreNuevo?: string;    // YYYY-MM-DD — nuevo día libre
+  diaLibreOriginal?: string;
+  diaLibreNuevo?: string;
 }
 
 export interface CompensatorioPersonal {
   id: string;
   driverId: string;
   internalNumber: string;
-  concepto: string;          // "Festivo trabajado 25/12/2025", "Horas extra", etc.
-  fecha: string;             // YYYY-MM-DD — cuando se generó el derecho
+  concepto: string;
+  fecha: string;
   diasDisponibles: number;
   diasUsados: number;
-  vencimiento: string;       // YYYY-MM-DD
+  vencimiento: string;
   creadoEn: string;
 }
 
@@ -66,12 +62,12 @@ export const LicenciasService = {
   async crear(data: Omit<LicenciaPersonal, 'id' | 'creadoEn' | 'actualizadoEn'>): Promise<string> {
     const id = `lic_${data.driverId}_${data.fechaDesde}_${Date.now()}`;
     const now = new Date().toISOString();
-    await setDoc(doc(db, COL, id), { ...data, id, creadoEn: now, actualizadoEn: now });
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(id)}`, { ...data, id, creadoEn: now, actualizadoEn: now });
     return id;
   },
 
   async aprobar(id: string, aprobadoPor: string): Promise<void> {
-    await updateDoc(doc(db, COL, id), {
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(id)}`, {
       estado: 'aprobada',
       aprobadoPor,
       actualizadoEn: new Date().toISOString(),
@@ -79,7 +75,7 @@ export const LicenciasService = {
   },
 
   async rechazar(id: string, rechazadoPor: string, motivo: string): Promise<void> {
-    await updateDoc(doc(db, COL, id), {
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(id)}`, {
       estado: 'rechazada',
       rechazadoPor,
       motivoRechazo: motivo,
@@ -88,52 +84,64 @@ export const LicenciasService = {
   },
 
   async getByDriver(driverId: string): Promise<LicenciaPersonal[]> {
-    const q = query(
-      collection(db, COL),
-      where('driverId', '==', driverId),
-      orderBy('fechaDesde', 'desc'),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => d.data() as LicenciaPersonal);
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: {
+        where: `driverId:${driverId}`,
+        orderBy: 'fecha_desde:desc',
+        limit: 5000,
+      },
+    });
+    return Array.isArray(res.data) ? (res.data as unknown as LicenciaPersonal[]) : [];
   },
 
   async getPendientes(): Promise<LicenciaPersonal[]> {
-    const q = query(
-      collection(db, COL),
-      where('estado', '==', 'pendiente'),
-      orderBy('creadoEn', 'asc'),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => d.data() as LicenciaPersonal);
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: {
+        where: 'estado:pendiente',
+        orderBy: 'creado_en:asc',
+        limit: 5000,
+      },
+    });
+    return Array.isArray(res.data) ? (res.data as unknown as LicenciaPersonal[]) : [];
   },
 
   /** Ausencias de un conductor en un rango de fechas */
   async getAusenciasByRango(driverId: string, desde: string, hasta: string): Promise<LicenciaPersonal[]> {
-    const q = query(
-      collection(db, COL),
-      where('driverId', '==', driverId),
-      where('fechaDesde', '>=', desde),
-      where('fechaHasta', '<=', hasta),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => d.data() as LicenciaPersonal);
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: {
+        where: `driverId:${driverId},fechaDesde>=${desde},fechaHasta<=${hasta}`,
+        limit: 5000,
+      },
+    });
+    return Array.isArray(res.data) ? (res.data as unknown as LicenciaPersonal[]) : [];
   },
 
   /** Todos los conductores ausentes en una fecha específica */
   async getAusentesPorFecha(fecha: string): Promise<LicenciaPersonal[]> {
-    const q = query(
-      collection(db, COL),
-      where('fechaDesde', '<=', fecha),
-      where('fechaHasta', '>=', fecha),
-      where('estado', 'in', ['aprobada', 'pendiente']),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => d.data() as LicenciaPersonal);
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: {
+        where: `fechaDesde<=${fecha},fechaHasta>=${fecha}`,
+        limit: 5000,
+      },
+    });
+    // Filter by estado in memory since backend may not support 'in' operator
+    const all = Array.isArray(res.data) ? (res.data as unknown as LicenciaPersonal[]) : [];
+    return all.filter((l) => l.estado === 'aprobada' || l.estado === 'pendiente');
   },
 
+  // FASE 5.34 (2026-05-22): bus socket en lugar de polling 10s.
   subscribe(onChange: (items: LicenciaPersonal[]) => void): () => void {
-    const q = query(collection(db, COL), orderBy('creadoEn', 'desc'));
-    return onSnapshot(q, (snap) => onChange(snap.docs.map((d) => d.data() as LicenciaPersonal)));
+    return subscribeViaBus<LicenciaPersonal[]>(
+      COL,
+      async () => {
+        const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+          query: { orderBy: 'creado_en:desc', limit: 5000 },
+        });
+        return Array.isArray(res.data) ? (res.data as unknown as LicenciaPersonal[]) : [];
+      },
+      onChange,
+      { alsoListen: ['bus:db:licencias:any'] },
+    );
   },
 };
 
@@ -142,31 +150,30 @@ export const LicenciasService = {
 export const CompensatoriosService = {
   async acreditar(data: Omit<CompensatorioPersonal, 'id' | 'creadoEn' | 'diasUsados'>): Promise<string> {
     const id = `comp_${data.driverId}_${data.fecha}_${Date.now()}`;
-    await setDoc(doc(db, COL_COMP, id), {
+    await apiClient.put(`/api/db/${COL_COMP}/${encodeURIComponent(id)}`, {
       ...data, id, diasUsados: 0, creadoEn: new Date().toISOString(),
     });
     return id;
   },
 
   async usar(id: string, dias: number): Promise<void> {
-    const ref = doc(db, COL_COMP, id);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return;
-    const data = snap.data() as CompensatorioPersonal;
-    await updateDoc(ref, {
+    const res = await apiClient.get<CompensatorioPersonal>(`/api/db/${COL_COMP}/${encodeURIComponent(id)}`);
+    if (!res.data) return;
+    const data = res.data;
+    await apiClient.put(`/api/db/${COL_COMP}/${encodeURIComponent(id)}`, {
       diasUsados: Math.min(data.diasUsados + dias, data.diasDisponibles),
     });
   },
 
   async getSaldo(driverId: string): Promise<{ disponibles: number; registros: CompensatorioPersonal[] }> {
     const hoy = new Date().toISOString().split('T')[0];
-    const q = query(
-      collection(db, COL_COMP),
-      where('driverId', '==', driverId),
-      where('vencimiento', '>=', hoy),
-    );
-    const snap = await getDocs(q);
-    const registros = snap.docs.map((d) => d.data() as CompensatorioPersonal);
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL_COMP}`, {
+      query: {
+        where: `driverId:${driverId},vencimiento>=${hoy}`,
+        limit: 5000,
+      },
+    });
+    const registros = Array.isArray(res.data) ? (res.data as unknown as CompensatorioPersonal[]) : [];
     const disponibles = registros.reduce((s, r) => s + r.diasDisponibles - r.diasUsados, 0);
     return { disponibles, registros };
   },

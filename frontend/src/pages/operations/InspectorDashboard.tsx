@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp } from '../../config/firestoreShim';
 import { useAuth } from '../../context/AuthContext';
 import { BulletinService, CartonService, InspectionService } from '../../services/api';
 import { ActiveAssignmentsService } from '../../services/firestore';

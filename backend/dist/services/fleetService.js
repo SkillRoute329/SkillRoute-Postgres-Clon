@@ -1,40 +1,11 @@
 "use strict";
 /**
  * Lógica de negocio para gestión de flota
+ *
+ * FASE 2.2 (2026-05-10): Limpieza del import muerto de firebase-admin.
+ * El service ya estaba 100% migrado a Postgres en una fase previa.
+ * Tablas usadas: vehiculos, inspecciones (ambas en schema_inicial.sql).
  */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -43,106 +14,124 @@ exports.getAllVehicles = getAllVehicles;
 exports.getVehicleById = getVehicleById;
 exports.createFleetCheck = createFleetCheck;
 exports.getVehicleChecks = getVehicleChecks;
-const admin = __importStar(require("firebase-admin"));
-const firebase_1 = require("../config/firebase");
+const database_1 = __importDefault(require("../config/database"));
 const index_1 = require("../types/index");
-const constants_1 = require("../config/constants");
 const logger_1 = __importDefault(require("../config/logger"));
+const uuid_1 = require("uuid");
 /**
- * Obtener todos los vehículos
+ * Obtener todos los vehículos (Desde PostgreSQL Local)
  */
 async function getAllVehicles() {
     try {
-        const snap = await firebase_1.db.collection(constants_1.Config.Collections.VEHICLES).get();
-        const vehicles = snap.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        }));
-        logger_1.default.debug(`[FLEET] Retrieved ${vehicles.length} vehicles`);
+        const rows = await (0, database_1.default)('vehiculos').select('*');
+        // Normalizar salida JSONB y columnas mapeadas
+        const vehicles = rows.map(row => {
+            const data = row.data_jsonb || {};
+            return {
+                id: row.id,
+                internalNumber: row.internal_number,
+                plate: row.plate,
+                agencyId: row.agency_id,
+                ...data
+            };
+        });
+        logger_1.default.info(`[FLEET-SOBERANO] Recuperados ${vehicles.length} vehículos del servidor local.`);
         return vehicles;
     }
     catch (error) {
-        logger_1.default.error('[FLEET] Error getting vehicles', { error: String(error) });
-        throw new index_1.AppError(500, 'Error en flota');
+        logger_1.default.error('[FLEET] Error al recuperar flota local', { error: String(error) });
+        throw new index_1.AppError(500, 'Error en servidor de flota');
     }
 }
 /**
- * Obtener un vehículo específico
+ * Obtener un vehículo específico (Desde PostgreSQL Local)
  */
 async function getVehicleById(id) {
     try {
-        const doc = await firebase_1.db.collection(constants_1.Config.Collections.VEHICLES).doc(id).get();
-        if (!doc.exists) {
-            throw new index_1.AppError(404, 'Vehículo no encontrado');
+        const row = await (0, database_1.default)('vehiculos').where('id', id).first();
+        if (!row) {
+            throw new index_1.AppError(404, 'Vehículo no registrado localmente');
         }
         return {
-            id: doc.id,
-            ...doc.data(),
+            id: row.id,
+            internalNumber: row.internal_number,
+            plate: row.plate,
+            agencyId: row.agency_id,
+            ...(row.data_jsonb || {})
         };
     }
     catch (error) {
-        if (error instanceof index_1.AppError) {
+        if (error instanceof index_1.AppError)
             throw error;
-        }
-        logger_1.default.error(`[FLEET] Error getting vehicle ${id}`, { error: String(error) });
+        logger_1.default.error(`[FLEET] Error getting local vehicle ${id}`, { error: String(error) });
         throw new index_1.AppError(500, 'Error al obtener vehículo');
     }
 }
 /**
- * Crear inspección de vehículo (fleet check)
+ * Crear inspección de vehículo en DB Local (Soberanía Total)
  */
 async function createFleetCheck(check, userId) {
     try {
         if (!check.vehicleId) {
             throw new index_1.AppError(400, 'vehicleId es requerido');
         }
-        const checkRef = firebase_1.db.collection(constants_1.Config.Collections.FLEET_CHECKS).doc();
-        // Asegurar que el driverId venga del usuario autenticado (Zero-Trust)
-        const checkData = {
-            ...check,
-            driverId: userId,
-            timestamp: new Date(),
-        };
-        await checkRef.set(checkData);
-        // Actualizar estado del vehículo
-        await firebase_1.db
-            .collection(constants_1.Config.Collections.VEHICLES)
-            .doc(String(check.vehicleId))
-            .set({
-            lastCheckStatus: check.status || 'OK',
-            lastCheckDate: admin.firestore.FieldValue.serverTimestamp(),
-            currentDriver: check.driverLegajo,
-        }, { merge: true });
-        logger_1.default.info(`[FLEET] Fleet check created: ${checkRef.id} for vehicle ${check.vehicleId}`);
-        return checkRef.id;
+        const newId = (0, uuid_1.v4)(); // Generar ID único local
+        const now = new Date();
+        // 1. Insertar en la tabla `inspecciones` PostgreSQL
+        await (0, database_1.default)('inspecciones').insert({
+            id: newId,
+            agency_id: '70', // Default por simplificación en demo, o tomar de middleware req.user.agencyId
+            vehiculo_id: String(check.vehicleId),
+            fecha_inspeccion: now,
+            inspector_id: userId,
+            data_jsonb: JSON.stringify({
+                ...check,
+                driverId: userId,
+                timestamp: now.toISOString(),
+                fuente: 'LOCAL_SOVEREIGN'
+            })
+        });
+        // 2. Actualizar metadatos del vehículo (lastCheck) atómicamente
+        await (0, database_1.default)('vehiculos')
+            .where('id', String(check.vehicleId))
+            .update({
+            data_jsonb: database_1.default.raw("data_jsonb || ?", [JSON.stringify({
+                    lastCheckStatus: check.status || 'OK',
+                    lastCheckDate: now.toISOString(),
+                    currentDriver: check.driverLegajo
+                })])
+        });
+        logger_1.default.info(`[FLEET-SOBERANO] Inspección registrada LOCALMENTE: ${newId} para coche ${check.vehicleId}`);
+        return newId;
     }
     catch (error) {
-        if (error instanceof index_1.AppError) {
+        if (error instanceof index_1.AppError)
             throw error;
-        }
-        logger_1.default.error('[FLEET] Error creating fleet check', { error: String(error) });
-        throw new index_1.AppError(500, 'Error procesando inspección');
+        logger_1.default.error('[FLEET-SOBERANO] Error creando inspección local', { error: String(error) });
+        throw new index_1.AppError(500, 'Error procesando inspección en servidor físico');
     }
 }
 /**
- * Obtener inspecciones de un vehículo
+ * Obtener histórico de inspecciones desde PostgreSQL
  */
 async function getVehicleChecks(vehicleId) {
     try {
-        const snap = await firebase_1.db
-            .collection(constants_1.Config.Collections.FLEET_CHECKS)
-            .where('vehicleId', '==', vehicleId)
-            .orderBy('timestamp', 'desc')
-            .get();
-        const checks = snap.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        }));
-        logger_1.default.debug(`[FLEET] Retrieved ${checks.length} checks for vehicle ${vehicleId}`);
+        const rows = await (0, database_1.default)('inspecciones')
+            .where('vehiculo_id', vehicleId)
+            .orderBy('fecha_inspeccion', 'desc')
+            .limit(50);
+        const checks = rows.map(row => {
+            return {
+                id: row.id,
+                ...(row.data_jsonb || {}),
+                timestamp: row.fecha_inspeccion
+            };
+        });
+        logger_1.default.info(`[FLEET-SOBERANO] Recuperadas ${checks.length} inspecciones locales para coche ${vehicleId}`);
         return checks;
     }
     catch (error) {
-        logger_1.default.error(`[FLEET] Error getting vehicle checks`, { error: String(error) });
-        throw new index_1.AppError(500, 'Error al obtener inspecciones');
+        logger_1.default.error(`[FLEET] Error getting local inspections`, { error: String(error) });
+        throw new index_1.AppError(500, 'Error al leer histórico local');
     }
 }

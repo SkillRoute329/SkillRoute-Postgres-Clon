@@ -9,11 +9,13 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 import {
   fetchFleetRanking,
   type VehicleSummary,
   type FleetRankingResponse,
 } from '../../services/autoStatsService';
+import AdherenceLabel from '../../components/compliance/AdherenceLabel';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
@@ -576,15 +578,8 @@ export default function RankingCoches() {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`text-sm font-semibold ${
-                              v.desviacionMediaMin === null ? 'text-slate-600' :
-                              Math.abs(v.desviacionMediaMin) > 5 ? 'text-red-400' :
-                              Math.abs(v.desviacionMediaMin) > 2 ? 'text-yellow-400' : 'text-emerald-400'
-                            }`}>
-                              {v.desviacionMediaMin !== null
-                                ? `${v.desviacionMediaMin > 0 ? '+' : ''}${v.desviacionMediaMin} min`
-                                : '—'}
-                            </span>
+                            {/* FASE 5.14: label literal (Atrasado/Adelantado/En tiempo) en vez de "+/- N min". */}
+                            <AdherenceLabel desviacionMin={v.desviacionMediaMin} />
                           </td>
                           <td className="px-4 py-3 text-slate-500 text-xs">{v.totalEventos}</td>
                           <td className="px-4 py-3">
@@ -809,9 +804,111 @@ export default function RankingCoches() {
                 <span>Última actividad: {new Date(vehiculoDetalle.ultimaActividad).toLocaleString('es-UY')}</span>
               </div>
             )}
+
+            {/*
+              FASE 5.14 (2026-05-13): AUDIT TRAIL del coche.
+              Muestra las ultimas N pasadas individuales (fecha/hora/linea/parada/desv)
+              para que un auditor pueda verificar como se construyo el OTP del
+              vehiculo. Sin esto, el ranking es opaco — el operador no puede
+              defender la cifra.
+            */}
+            <AuditTrailCoche idBus={vehiculoDetalle.idBus} agencyId={agenciaId} />
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Audit trail del coche (FASE 5.14) ─────────────────────────────────── */
+
+interface PasadaTrace {
+  id: string;
+  linea: string;
+  estadoCumplimiento: string;
+  desviacionMin: number | null;
+  velocidad: number;
+  proximaParada: string | null;
+  tripId: string | null;
+  timestampGPS: string;
+}
+
+function AuditTrailCoche({ idBus, agencyId }: { idBus: string; agencyId: string }) {
+  const [pasadas, setPasadas] = useState<PasadaTrace[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('skillroute_jwt') : null;
+    const base = (import.meta.env.VITE_BACKEND_URL as string | undefined) || 'http://localhost:3001';
+    axios
+      .get(`${base}/api/autostats/vehicle-trace/${agencyId}/${encodeURIComponent(idBus)}?days=1&limit=200`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      .then((r) => {
+        if (cancelled) return;
+        setPasadas((r.data?.pasadas ?? []) as PasadaTrace[]);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [idBus, agencyId]);
+
+  return (
+    <div className="mt-5 bg-slate-900 border border-slate-800 rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-bold text-slate-200">Pasadas registradas (últimas 24 h)</h3>
+        <span className="text-[10px] text-slate-500 uppercase tracking-wider">Auditoría detallada</span>
+      </div>
+      {loading && <p className="text-xs text-slate-500">Cargando trazas…</p>}
+      {error && <p className="text-xs text-red-400">Error: {error}</p>}
+      {!loading && !error && pasadas.length === 0 && (
+        <p className="text-xs text-slate-500">Sin pasadas registradas en este período.</p>
+      )}
+      {!loading && !error && pasadas.length > 0 && (
+        <div className="overflow-x-auto max-h-72 overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-slate-900 z-10">
+              <tr className="text-left text-slate-500 uppercase tracking-wider">
+                <th className="py-1 pr-3 font-semibold">Fecha y hora</th>
+                <th className="py-1 pr-3 font-semibold">Línea</th>
+                <th className="py-1 pr-3 font-semibold">Punto de control</th>
+                <th className="py-1 pr-3 font-semibold">Trip GTFS</th>
+                <th className="py-1 pr-3 font-semibold">Velocidad</th>
+                <th className="py-1 pr-3 font-semibold">Cumplimiento</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60">
+              {pasadas.slice(0, 60).map((p) => (
+                <tr key={p.id} className="text-slate-300 hover:bg-slate-800/30">
+                  <td className="py-1.5 pr-3 font-mono text-[11px] text-slate-400">
+                    {new Date(p.timestampGPS).toLocaleString('es-UY', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </td>
+                  <td className="py-1.5 pr-3">L{p.linea}</td>
+                  <td className="py-1.5 pr-3 max-w-[220px] truncate text-slate-400" title={p.proximaParada ?? ''}>
+                    {p.proximaParada ?? '—'}
+                  </td>
+                  <td className="py-1.5 pr-3 font-mono text-[10px] text-slate-500">{p.tripId ?? '—'}</td>
+                  <td className="py-1.5 pr-3 text-slate-400">{p.velocidad} km/h</td>
+                  <td className="py-1.5 pr-3">
+                    <AdherenceLabel desviacionMin={p.desviacionMin} compact />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="text-[10px] text-slate-600 mt-2">
+        Cada fila es un ping GPS guardado en <code>vehicle_events</code> con su comparación contra el horario oficial GTFS.
+        Estándar internacional: en tiempo = adherencia en [−1, +5] min (TCRP 165 / WMATA / LA Metro).
+      </p>
     </div>
   );
 }

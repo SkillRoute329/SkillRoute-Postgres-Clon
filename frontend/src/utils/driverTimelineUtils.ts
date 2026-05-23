@@ -3,6 +3,8 @@
  * Fuente: hora del sistema vs puntos de control del JSON; sin GPS simulado.
  */
 
+import { hhmmAMin } from './formatTimestamp';
+
 export interface PuntoHito {
   nombre: string;
   hora: string;
@@ -14,9 +16,9 @@ export interface TimelineState {
   minutosAtraso: number;
 }
 
+// FASE 5.16: delega en utils/formatTimestamp (fuente única). API local intacta.
 export function parseHoraTimeline(h: string): number {
-  const [hh, mm] = h.trim().split(':').map(Number);
-  return (hh ?? 0) * 60 + (mm ?? 0);
+  return hhmmAMin(h);
 }
 
 /**

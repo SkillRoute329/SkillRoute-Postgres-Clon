@@ -8,6 +8,8 @@ import NotificationsDropdown from '../components/NotificationsDropdown';
 import RoadAlertsWidget from '../components/RoadAlertsWidget';
 import RouteErrorBoundary from '../components/RouteErrorBoundary';
 import DriverAlertOverlay from '../components/DriverAlertOverlay';
+import PropagacionLiveWidget from '../components/PropagacionLiveWidget';
+import DriverLineaAlertToast from '../components/DriverLineaAlertToast';
 import { useAuth } from '../context/AuthContext';
 import AiCopilotChat from '../components/AiCopilotChat';
 import { Sparkles } from 'lucide-react';
@@ -26,9 +28,22 @@ const SimulationBanner = () => {
 
 // ── Indicadores en vivo — usa LiveDataContext ─────────────────────────────────
 const LiveIndicators = () => {
-  const { fleetKPIs, busesLoading, alertasCriticas, otpHoy, selectedLine, setSelectedLine } = useLiveData();
+  const { fleetKPIs, busesLoading, alertasCriticas, otpHoy, selectedLine, setSelectedLine, selectedOperator, setSelectedOperator } = useLiveData();
   return (
     <div className="hidden md:flex items-center gap-2 text-[11px] font-bold">
+      {/* FASE 5.35: selector global de operador. Filtra el contexto y se
+          recuerda entre pantallas (localStorage). */}
+      <select
+        value={selectedOperator}
+        onChange={(e) => setSelectedOperator(e.target.value)}
+        className="bg-slate-800 border border-slate-700/60 rounded-full px-3 py-1 text-emerald-300 font-bold text-[10px] focus:outline-none focus:border-emerald-500"
+        title="Operador activo · contexto compartido entre módulos"
+      >
+        <option value="70">UCOT (70)</option>
+        <option value="50">CUTCSA (50)</option>
+        <option value="20">COME (20)</option>
+        <option value="10">COETC (10)</option>
+      </select>
       <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700/60 rounded-full px-3 py-1" title="Buses propios · total sistema">
         <Bus className={`w-3 h-3 ${busesLoading ? 'text-slate-500 animate-pulse' : 'text-emerald-400'}`} />
         {busesLoading ? (
@@ -304,6 +319,18 @@ const DashboardLayoutInner = () => {
           autenticadas (conductor, inspector, tráfico). Escucha onMessage
           foreground y muestra modal con ACK. */}
       <DriverAlertOverlay />
+
+      {/* FASE 5.30 (2026-05-21) — Widget de propagación en vivo: muestra
+          eventos del bus socket (motor de consecuencias, operaciones,
+          cambios de DB) en tiempo real. Materializa visualmente el cometido
+          de interconexión: cada acción en una pantalla se ve aquí. */}
+      <PropagacionLiveWidget />
+
+      {/* FASE 5.35 (2026-05-22) — Toast de alerta crítica de línea para
+          conductores: aparece sólo si el rol es driver/chofer y el motor
+          dispara un evento crítico en alguna línea. Cierra el bucle de
+          propagación hacia la planta operativa. */}
+      <DriverLineaAlertToast />
     </div>
   );
 };

@@ -4,7 +4,7 @@
  * No modifica cartons.ts ni sus subcolecciones.
  */
 
-import type { Timestamp } from 'firebase/firestore';
+import type { Timestamp } from '../config/firestoreShim';
 
 /** Carga de pasajeros: valor exacto o categoría rápida para el inspector */
 export type PassengerLoadValue = number | PassengerLoadCategory;

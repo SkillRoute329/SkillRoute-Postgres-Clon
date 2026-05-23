@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { RefreshCw, Download, Info, ChevronRight, AlertTriangle } from 'lucide-react';
-import { PeriodRange, OperatorData, OPERATOR_NAMES } from '../../types/compliance';
+import { type PeriodRange, type OperatorData, OPERATOR_NAMES } from '../../types/compliance';
 import { fetchOperatorData } from '../../services/complianceService';
 import { useAuth } from '../../context/AuthContext';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
@@ -178,9 +178,9 @@ export default function OperatorComplianceView() {
                 Actualizar
               </button>
               <button
-                disabled
-                title="Exportación PDF disponible próximamente"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600/50 border border-blue-600/30 text-blue-300/70 text-xs font-semibold disabled:cursor-not-allowed"
+                onClick={() => window.print()}
+                title="Exportar este informe a PDF (Guardar como PDF)"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 border border-blue-600/30 text-white text-xs font-semibold transition-all"
               >
                 <Download className="w-3.5 h-3.5" />
                 Exportar PDF

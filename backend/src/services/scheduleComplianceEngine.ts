@@ -146,9 +146,15 @@ export interface BusComplianceResult {
   tripActivo: ScheduledTrip | null;
   proximaParadaControl: ControlStop | null;
   minutosParaProximaParada: number | null;
-  desviacionMin: number | null; // + adelantado, - atrasado
+  desviacionMin: number | null; // + atrasado, - adelantado (TCRP 165 convention)
   estadoCumplimiento: 'EN_TIEMPO' | 'ADELANTADO' | 'ATRASADO' | 'SIN_HORARIO' | 'FUERA_DE_SERVICIO';
   distanciaParadaKm: number | null;
+  // FASE 5.14 (2026-05-13): destino del bus segun feed IMM + sentido
+  // derivado del trip activo. Critico para que la auditoria pueda
+  // separar IDA/VUELTA (un mismo punto de control tiene horarios
+  // distintos segun el sentido de circulacion).
+  destino: string | null;
+  sentido: 'IDA' | 'VUELTA' | null;
 }
 
 /**
@@ -187,11 +193,203 @@ export async function analyzeComplianceForAgency(agencyId: string): Promise<BusC
 
   const results: BusComplianceResult[] = [];
 
+  // FASE 5.14 (2026-05-13) — v2: detector de sentido geográfico.
+  //
+  // En vez de clusterizar por nombre alfabético (frágil con variantes
+  // tipo "Terminal Bajo Valencia (casabo)" vs "CASABO" del feed IMM), se
+  // clusteriza POR PROXIMIDAD GEOGRÁFICA del ÚLTIMO control_stop de cada
+  // trip. Dos sentidos opuestos de una línea tienen destinos finales en
+  // extremos opuestos del recorrido → 2 clusters naturales por lat/lon.
+  //
+  // Algoritmo (k-means simplificado k=2):
+  //   1. Tomar punto medio (lat,lon) de todos los destinos finales.
+  //   2. Para cada destino: ¿está al "lado A" o "lado B" del eje principal?
+  //   3. El eje principal = la dirección de mayor varianza (usamos el delta
+  //      lat vs delta lon más amplio).
+  //   4. Asignar IDA al cluster con la coordenada menor (más al SW),
+  //      VUELTA al mayor — convención consistente.
+  interface DestinoCluster {
+    centroIda: { lat: number; lon: number } | null;
+    centroVuelta: { lat: number; lon: number } | null;
+    // Lookup directo por nombre normalizado
+    nameToSentido: Map<string, 'IDA' | 'VUELTA'>;
+  }
+  function normName(s: string | null | undefined): string {
+    return String(s ?? '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[()]/g, ' ')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  function clusterDestinos(linea: string): DestinoCluster {
+    const empty: DestinoCluster = { centroIda: null, centroVuelta: null, nameToSentido: new Map() };
+    const route = agData.routes[linea];
+    if (!route) return empty;
+    const trips = route[dayType] ?? [];
+    // Recolectar destinos únicos (last control_stop) con coordenadas
+    const seen = new Map<string, { lat: number; lon: number }>();
+    for (const t of trips) {
+      const last = t.control_stops?.[t.control_stops.length - 1];
+      if (!last?.name || typeof last.lat !== 'number' || typeof last.lon !== 'number') continue;
+      if (!seen.has(last.name)) seen.set(last.name, { lat: last.lat, lon: last.lon });
+    }
+    if (seen.size === 0) return empty;
+    if (seen.size === 1) {
+      const [name, pos] = seen.entries().next().value!;
+      const map = new Map<string, 'IDA' | 'VUELTA'>();
+      map.set(normName(name), 'IDA');
+      return { centroIda: pos, centroVuelta: null, nameToSentido: map };
+    }
+    // Calcular varianza lat vs lon para elegir eje
+    const lats = Array.from(seen.values()).map((p) => p.lat);
+    const lons = Array.from(seen.values()).map((p) => p.lon);
+    const meanLat = lats.reduce((a, b) => a + b, 0) / lats.length;
+    const meanLon = lons.reduce((a, b) => a + b, 0) / lons.length;
+    const varLat = lats.reduce((s, v) => s + (v - meanLat) ** 2, 0);
+    const varLon = lons.reduce((s, v) => s + (v - meanLon) ** 2, 0);
+    // Eje de mayor varianza define la separacion. cluster A = lado "menor", cluster B = "mayor"
+    const useLat = varLat >= varLon;
+    const threshold = useLat ? meanLat : meanLon;
+    // Por convencion: cluster con coordenada MENOR = IDA, MAYOR = VUELTA.
+    // Esto es arbitrario pero consistente, lo cual es lo que importa.
+    const idaPositions: Array<{ lat: number; lon: number }> = [];
+    const vueltaPositions: Array<{ lat: number; lon: number }> = [];
+    const nameToSentido = new Map<string, 'IDA' | 'VUELTA'>();
+    for (const [name, pos] of seen) {
+      const coord = useLat ? pos.lat : pos.lon;
+      if (coord <= threshold) {
+        idaPositions.push(pos);
+        nameToSentido.set(normName(name), 'IDA');
+      } else {
+        vueltaPositions.push(pos);
+        nameToSentido.set(normName(name), 'VUELTA');
+      }
+    }
+    const centroide = (arr: Array<{ lat: number; lon: number }>) =>
+      arr.length === 0
+        ? null
+        : { lat: arr.reduce((s, p) => s + p.lat, 0) / arr.length, lon: arr.reduce((s, p) => s + p.lon, 0) / arr.length };
+    return { centroIda: centroide(idaPositions), centroVuelta: centroide(vueltaPositions), nameToSentido };
+  }
+  const destinoClusterCache = new Map<string, DestinoCluster>();
+  function distSq(a: { lat: number; lon: number } | null, b: { lat: number; lon: number }): number {
+    if (!a) return Infinity;
+    const dLat = a.lat - b.lat;
+    const dLon = a.lon - b.lon;
+    return dLat * dLat + dLon * dLon;
+  }
+
+  // FASE 5.14: parada más cercana de la línea (cualquier trip, cualquier
+  // sentido). Sirve para que `proxima_parada` SIEMPRE tenga valor —
+  // tengamos trip activo o no. Sin esto, ~40% de los eventos quedaban con
+  // `proxima_parada=NULL` y la auditoría/análisis por etapa los descartaba.
+  interface NearestStop { name: string; lat: number; lon: number; distKm: number }
+  const allStopsCache = new Map<string, ControlStop[]>();
+  function getAllStopsForLinea(linea: string): ControlStop[] {
+    const cached = allStopsCache.get(linea);
+    if (cached) return cached;
+    const route = agData.routes[linea];
+    if (!route) { allStopsCache.set(linea, []); return []; }
+    const seen = new Map<string, ControlStop>();
+    for (const day of [route.habiles, route.sabados, route.domingos]) {
+      for (const t of day ?? []) {
+        for (const cs of t.control_stops ?? []) {
+          if (cs.stop_id && typeof cs.lat === 'number' && typeof cs.lon === 'number') {
+            if (!seen.has(cs.stop_id)) seen.set(cs.stop_id, cs);
+          }
+        }
+      }
+    }
+    const arr = Array.from(seen.values());
+    allStopsCache.set(linea, arr);
+    return arr;
+  }
+  function nearestStopOfLinea(linea: string, lat: number, lon: number): NearestStop | null {
+    const stops = getAllStopsForLinea(linea);
+    if (stops.length === 0) return null;
+    let best: NearestStop | null = null;
+    for (const s of stops) {
+      const d = distKm(lat, lon, s.lat!, s.lon!);
+      if (!best || d < best.distKm) best = { name: s.name, lat: s.lat!, lon: s.lon!, distKm: d };
+    }
+    return best;
+  }
+  function deriveSentido(
+    linea: string,
+    trip: ScheduledTrip | null,
+    destinoFeed: string | null,
+    busLat?: number,
+    busLon?: number,
+  ): 'IDA' | 'VUELTA' | null {
+    let cluster = destinoClusterCache.get(linea);
+    if (!cluster) {
+      cluster = clusterDestinos(linea);
+      destinoClusterCache.set(linea, cluster);
+    }
+    if (cluster.nameToSentido.size === 0) return null;
+
+    // Señal 1: destino final del trip activo (lookup por nombre normalizado)
+    const lastStop = trip?.control_stops?.[trip.control_stops.length - 1];
+    if (lastStop?.name) {
+      const found = cluster.nameToSentido.get(normName(lastStop.name));
+      if (found) return found;
+      // Si tenemos lat/lon del último stop, asignar por proximidad a centroides
+      if (typeof lastStop.lat === 'number' && typeof lastStop.lon === 'number') {
+        const dIda = distSq(cluster.centroIda, { lat: lastStop.lat, lon: lastStop.lon });
+        const dVuelta = distSq(cluster.centroVuelta, { lat: lastStop.lat, lon: lastStop.lon });
+        if (dIda < dVuelta) return 'IDA';
+        if (dVuelta < dIda) return 'VUELTA';
+      }
+    }
+
+    // Señal 2: destino del feed IMM (fuzzy)
+    if (destinoFeed) {
+      const target = normName(destinoFeed);
+      const direct = cluster.nameToSentido.get(target);
+      if (direct) return direct;
+      // Substring bidireccional
+      let bestSentido: 'IDA' | 'VUELTA' | null = null;
+      let bestLen = 0;
+      for (const [name, sent] of cluster.nameToSentido) {
+        if (name.length < 4) continue;
+        const tokens = name.split(' ').filter((t) => t.length >= 4);
+        for (const tok of tokens) {
+          if (target.includes(tok) && tok.length > bestLen) {
+            bestLen = tok.length;
+            bestSentido = sent;
+          }
+        }
+        const targetTokens = target.split(' ').filter((t) => t.length >= 4);
+        for (const tok of targetTokens) {
+          if (name.includes(tok) && tok.length > bestLen) {
+            bestLen = tok.length;
+            bestSentido = sent;
+          }
+        }
+      }
+      if (bestSentido) return bestSentido;
+    }
+
+    // Señal 3: fallback geométrico. Posición del bus vs centroides.
+    // Si el bus está más cerca del centroide IDA, probablemente va hacia IDA.
+    if (typeof busLat === 'number' && typeof busLon === 'number') {
+      const dIda = distSq(cluster.centroIda, { lat: busLat, lon: busLon });
+      const dVuelta = distSq(cluster.centroVuelta, { lat: busLat, lon: busLon });
+      if (dIda < dVuelta) return 'IDA';
+      if (dVuelta < dIda) return 'VUELTA';
+    }
+
+    return null;
+  }
+
   for (const feat of features) {
     const p = feat.properties;
     const [lon, lat] = feat.geometry.coordinates;
     const routeShort = p.linea;
     const route = agData.routes[routeShort];
+    const destinoFeed = p.destinoDesc ?? null;
 
     if (!route) {
       results.push({
@@ -209,21 +407,58 @@ export async function analyzeComplianceForAgency(agencyId: string): Promise<BusC
         desviacionMin: null,
         estadoCumplimiento: 'SIN_HORARIO',
         distanciaParadaKm: null,
+        destino: destinoFeed,
+        sentido: null,
       });
       continue;
     }
 
-    // Encontrar viaje activo (el que debería estar corriendo ahora)
-    const activeTrips = route[dayType].filter(t => {
+    // FASE 5.3 (2026-05-13): Algoritmo de matching por coherencia espacial.
+    //
+    // Antes: filter por +/- 5 min y tomar activeTrips[0] (arbitrario).
+    // Problema: con 100-200 trips/día por línea, varios pueden estar activos en
+    // un mismo instante (un bus saliendo, otro a mitad, otro llegando). Elegir
+    // activeTrips[0] significaba asignar un bus a un trip aleatorio.
+    //
+    // Ahora: el trip activo es aquel cuyo control_stop más cercano está
+    // realmente cerca del GPS del bus. Eso identifica qué viaje específico el
+    // bus está haciendo, no solo "qué viaje está programado a esta hora".
+    //
+    // Ventana temporal ampliada a +/- 15 min para capturar servicios de baja
+    // frecuencia (CE1, BT1, etc.) que pueden estar entre dos trips.
+    const candidateTrips = route[dayType].filter(t => {
       if (!t.departure || !t.arrival) return false;
       const dep = toMin(t.departure);
       const arr = toMin(t.arrival);
-      return nowMin >= dep - 5 && nowMin <= arr + 5; // margen 5 min
+      return nowMin >= dep - 15 && nowMin <= arr + 15;
     });
 
-    const tripActivo = activeTrips.length > 0 ? activeTrips[0] : null;
+    let tripActivo: ScheduledTrip | null = null;
+    let mejorDistanciaTrip = Infinity;
+    for (const t of candidateTrips) {
+      let minDistInTrip = Infinity;
+      for (const stop of t.control_stops) {
+        if (typeof stop.lat !== 'number' || typeof stop.lon !== 'number') continue;
+        const d = distKm(lat, lon, stop.lat, stop.lon);
+        if (d < minDistInTrip) minDistInTrip = d;
+      }
+      // Solo considerar trips cuyo stop más cercano está a <3km del bus.
+      // Si está más lejos, el bus probablemente no está haciendo ese trip.
+      if (minDistInTrip < mejorDistanciaTrip && minDistInTrip < 3.0) {
+        mejorDistanciaTrip = minDistInTrip;
+        tripActivo = t;
+      }
+    }
 
     if (!tripActivo) {
+      // FASE 5.14: incluso sin trip activo, asignar la parada más cercana de
+      // la línea para que `proxima_parada` SIEMPRE tenga valor → la auditoria
+      // y análisis por etapa pueden agregar por parada aún con buses sin
+      // trip detectable (fuera de horario, refuerzo, etc.).
+      const near = nearestStopOfLinea(routeShort, lat, lon);
+      const proxParadaSinTrip: ControlStop | null = near
+        ? ({ name: near.name, lat: near.lat, lon: near.lon, arrival: '', stop_id: near.name, seq: 0 } as ControlStop)
+        : null;
       results.push({
         idBus: String(p.codigoBus),
         linea: routeShort,
@@ -234,11 +469,13 @@ export async function analyzeComplianceForAgency(agencyId: string): Promise<BusC
         velocidad: p.velocidad ?? 0,
         timestampGPS: now.toISOString(),
         tripActivo: null,
-        proximaParadaControl: null,
+        proximaParadaControl: proxParadaSinTrip,
         minutosParaProximaParada: null,
         desviacionMin: null,
         estadoCumplimiento: 'FUERA_DE_SERVICIO',
-        distanciaParadaKm: null,
+        distanciaParadaKm: near?.distKm ?? null,
+        destino: destinoFeed,
+        sentido: deriveSentido(routeShort, null, destinoFeed, lat, lon),
       });
       continue;
     }
@@ -270,13 +507,47 @@ export async function analyzeComplianceForAgency(agencyId: string): Promise<BusC
       // Tiempo estimado para llegar a la parada (si velocidad > 0)
       const tiempoEstimado = velKmMin > 0 ? minDistKm / velKmMin : null;
       if (tiempoEstimado !== null) {
-        desviacion = Math.round(minutosParaProxima - tiempoEstimado);
-        if (desviacion > 3) estadoCumplimiento = 'ATRASADO';
-        else if (desviacion < -3) estadoCumplimiento = 'ADELANTADO';
-        else estadoCumplimiento = 'EN_TIEMPO';
+        // FASE 5.17 (2026-05-16, auditoría comando unificado): POLÍTICA OTP
+        // ÚNICA = ventana SIMÉTRICA ±4 min, que es la oficial IMM Montevideo.
+        // Antes el motor usaba [-1,+5] (estándar US) mientras la comparación
+        // de cartón, la vista SQL legacy y los dashboards usaban otras
+        // ventanas → 3 OTP distintos para la misma flota. Unificado a ±4
+        // para que cualquier pantalla sea defendible ante IMM.
+        //   - desviacion POSITIVA = atrasado (late)
+        //   - desviacion NEGATIVA = adelantado (early)
+        const raw = tiempoEstimado - minutosParaProxima;
+        desviacion = Math.round(raw);
+
+        // CAP de calidad: |desviacion| > 20 min suele significar que el
+        // matching trip<->bus es incorrecto (probablemente el bus va en
+        // sentido contrario al que se le asigno, o el trip activo no
+        // corresponde). En lugar de reportar "+1h 29min ATRASADO" mentiroso,
+        // marcamos SIN_HORARIO para no contaminar el OTP de la linea.
+        if (Math.abs(desviacion) > 20) {
+          estadoCumplimiento = 'SIN_HORARIO';
+          desviacion = null as unknown as number;
+        } else if (desviacion > 4) {
+          estadoCumplimiento = 'ATRASADO';
+        } else if (desviacion < -4) {
+          estadoCumplimiento = 'ADELANTADO';
+        } else {
+          estadoCumplimiento = 'EN_TIEMPO';
+        }
       }
     }
 
+    // FASE 5.14: si por algún motivo no hubo "proximaParada" del trip
+    // (todas las paradas con stopMin < nowMin-10), igual asignar la más
+    // cercana del recorrido para que el evento sea visible en análisis.
+    let proxParadaFinal = proximaParada;
+    let distParadaFinal = minDistKm === Infinity ? null : Math.round(minDistKm * 100) / 100;
+    if (!proxParadaFinal) {
+      const near = nearestStopOfLinea(routeShort, lat, lon);
+      if (near) {
+        proxParadaFinal = { name: near.name, lat: near.lat, lon: near.lon, arrival: '', stop_id: near.name, seq: 0 } as ControlStop;
+        distParadaFinal = near.distKm;
+      }
+    }
     results.push({
       idBus: String(p.codigoBus),
       linea: routeShort,
@@ -287,11 +558,13 @@ export async function analyzeComplianceForAgency(agencyId: string): Promise<BusC
       velocidad: p.velocidad ?? 0,
       timestampGPS: now.toISOString(),
       tripActivo,
-      proximaParadaControl: proximaParada,
+      proximaParadaControl: proxParadaFinal,
       minutosParaProximaParada: minutosParaProxima,
       desviacionMin: desviacion,
       estadoCumplimiento,
-      distanciaParadaKm: minDistKm === Infinity ? null : Math.round(minDistKm * 100) / 100,
+      distanciaParadaKm: distParadaFinal,
+      destino: destinoFeed,
+      sentido: deriveSentido(routeShort, tripActivo, destinoFeed, lat, lon),
     });
   }
 

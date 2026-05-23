@@ -5,7 +5,7 @@
  */
 import {
   doc, writeBatch, collection, addDoc, setDoc, serverTimestamp
-} from 'firebase/firestore';
+} from '../config/firestoreShim';
 import { db } from '../config/firebase';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

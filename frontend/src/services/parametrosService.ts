@@ -3,8 +3,7 @@
  * Estructura Firestore: parametros_sistema/{parametroId} → { versiones: VersionParametro[] }
  * Regla fundamental: nunca se edita un valor pasado, solo se agrega uno nuevo.
  */
-import { db } from '../config/firebase';
-import { doc, getDoc, updateDoc, setDoc, arrayUnion } from 'firebase/firestore';
+import { apiClient } from '../clients/apiClient';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -40,10 +39,9 @@ export const PARAMETRO_META: Record<ParametroId, { label: string; unidad: string
 // ─── Lectura ──────────────────────────────────────────────────────────────────
 
 export async function getVersiones(id: ParametroId): Promise<VersionParametro[]> {
-  const ref = doc(db, 'parametros_sistema', id);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return [];
-  return ((snap.data().versiones ?? []) as VersionParametro[]).sort(
+  const data = await apiClient.get('/api/db/parametros_sistema/' + encodeURIComponent(id)) as any;
+  if (!data) return [];
+  return ((data.versiones ?? []) as VersionParametro[]).sort(
     (a, b) => b.fechaDesde.localeCompare(a.fechaDesde),
   );
 }
@@ -77,12 +75,10 @@ export async function agregarVersion(
   id: ParametroId,
   datos: { valor: number; fechaDesde: string; creadoPor: string; nota: string },
 ): Promise<void> {
-  const ref = doc(db, 'parametros_sistema', id);
   const nueva: VersionParametro = { ...datos, creadoEn: new Date().toISOString() };
-  const snap = await getDoc(ref);
-  if (!snap.exists()) {
-    await setDoc(ref, { versiones: [nueva] });
-  } else {
-    await updateDoc(ref, { versiones: arrayUnion(nueva) });
-  }
+  // Fetch existing versiones, then append and save
+  const existing = await apiClient.get('/api/db/parametros_sistema/' + encodeURIComponent(id)) as any;
+  const versiones: VersionParametro[] = existing?.versiones ?? [];
+  versiones.push(nueva);
+  await apiClient.put('/api/db/parametros_sistema/' + encodeURIComponent(id), { versiones });
 }

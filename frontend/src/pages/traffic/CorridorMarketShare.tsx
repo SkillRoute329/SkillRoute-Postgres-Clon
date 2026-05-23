@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, query, limit } from 'firebase/firestore';
+import { collection, getDocs, query, limit } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { PieChart, Network, Shield, TrendingUp, AlertTriangle, Info } from 'lucide-react';
+import { OPERADORES as OPERADORES_CANON } from '../../utils/operadores';
 
 interface OverlapDoc {
   key: string;
@@ -19,14 +20,19 @@ interface OverlapDoc {
   sampleCount: number;
 }
 
-const OPERADORES = [
-  { agencyId: '70', nombre: 'UCOT',   bg: 'bg-blue-500/20',    text: 'text-blue-400',    border: 'border-blue-500/30',    bar: '#3B82F6' },
-  { agencyId: '50', nombre: 'CUTCSA', bg: 'bg-orange-500/20',  text: 'text-orange-400',  border: 'border-orange-500/30',  bar: '#F97316' },
-  { agencyId: '20', nombre: 'COME',   bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', bar: '#10B981' },
-  { agencyId: '10', nombre: 'COETC',  bg: 'bg-purple-500/20',  text: 'text-purple-400',  border: 'border-purple-500/30',  bar: '#A855F7' },
-] as const;
+// FASE 5.17 (auditoría): antes había una tabla local de colores DIVERGENTE
+// de la fuente única (UCOT azul vs amarillo canónico, etc.). Se deriva de
+// utils/operadores.ts para que todo el programa use los mismos colores.
+const OPERADORES = OPERADORES_CANON.map((o) => ({
+  agencyId: o.id,
+  nombre: o.nombre,
+  bg: o.bgClass.replace('/10', '/20'),
+  text: o.colorClass,
+  border: o.bgClass.replace('bg-', 'border-').replace('/10', '/30'),
+  bar: o.colorHex,
+}));
 
-type AgencyId = (typeof OPERADORES)[number]['agencyId'];
+type AgencyId = string;
 type SortKey = 'sharedKm' | 'pctAInB' | 'lineaA' | 'empresaA';
 type SortDir = 'asc' | 'desc';
 

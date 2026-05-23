@@ -14,8 +14,28 @@ import * as authController from '../controllers/authController';
 import * as cartonController from '../controllers/cartonController';
 import * as fleetController from '../controllers/fleetController';
 import * as systemController from '../controllers/systemController';
+import * as complianceController from '../controllers/complianceController';
+import * as positionsController from '../controllers/positionsController';
+import * as adminPersonalController from '../controllers/adminPersonalController';
+import * as usersController from '../controllers/usersController';
+import * as shiftsBalanceController from '../controllers/shiftsBalanceController';
+import * as tenantsController from '../controllers/tenantsController';
+import * as configSalarialController from '../controllers/configSalarialController';
+import * as boletinController from '../controllers/boletinController';
+import * as intelligenceController from '../controllers/intelligenceController';
+import * as consequenceController from '../controllers/consequenceController';
+import * as whatsappController from '../controllers/whatsappController';
+import * as adminToolsController from '../controllers/adminToolsController';
+import * as cascadeFeedController from '../controllers/cascadeFeedController';
+import * as cascadeActionsController from '../controllers/cascadeActionsController';
+import * as miTurnoController from '../controllers/miTurnoController';
+import * as operadoresKpiController from '../controllers/operadoresKpiController';
+import * as motorHealthController from '../controllers/motorHealthController';
+import * as cumplimientoCocheController from '../controllers/cumplimientoCocheController';
+import * as alertasMantenimientoController from '../controllers/alertasMantenimientoController';
 
 // Sub-routers (Semanas 4-11)
+import cartonesBulkRoutes from './cartones.routes';
 import competitionRoutes from './competition.routes';
 import analyticsRoutes from './analytics.routes';
 import forecastRoutes from './forecast.routes';
@@ -27,6 +47,12 @@ import autoStatsRoutes from './autoStats.routes';
 import gtfsRoutes from './gtfs.routes';
 import auditRoutes from './audit.routes';
 import dbBridgeRoutes from './dbBridge.routes';
+import etapaStatsRoutes from './etapaStats.routes';
+import gtfsAuditoriaRoutes from './gtfsAuditoria.routes';
+import stmDemandaRoutes from './stmDemanda.routes';
+import stmHorariosRoutes from './stmHorarios.routes';
+import conteoVehicularRoutes from './conteoVehicular.routes';
+import comandoRoutes from './comando.routes';
 
 const router = Router();
 
@@ -73,6 +99,12 @@ router.use('/gtfs', gtfsRoutes);
 router.get('/auth/me', verifyAuth, authController.getCurrentUser);
 
 // ─── CARTONES ────────────────────────────────────────────────────────────
+//
+// FASE 5.6: el sub-router `cartonesBulkRoutes` se monta PRIMERO para que
+// /cartones/bulk, /cartones/count y /cartones/triangulacion tengan prioridad
+// sobre la ruta genérica /cartones/:id (que de otra forma captura 'bulk' como
+// si fuera un id de cartón y devuelve null/vacío).
+router.use('/cartones', cartonesBulkRoutes);
 
 /**
  * GET /api/cartones
@@ -193,6 +225,14 @@ router.use('/autostats', autoStatsRoutes);
 router.use('/audit', auditRoutes);
 
 /**
+ * FASE 4.8 — Cumplimiento del Sistema Metropolitano (vista Regulador/Operador)
+ *   GET /api/compliance/regulador?empresa=all|70|...&desde&hasta&granularidad
+ *   GET /api/compliance/operador?agencyId=70&desde&hasta&granularidad
+ */
+router.get('/compliance/regulador', verifyAuth, complianceController.getRegulatoryData);
+router.get('/compliance/operador',  verifyAuth, complianceController.getOperatorData);
+
+/**
  * FASE 4 — Bridge REST genérico para el shim Firestore del frontend.
  * GET    /api/db                       — lista de colecciones permitidas
  * GET    /api/db/:collection           — list (where, orderBy, limit, offset)
@@ -201,6 +241,158 @@ router.use('/audit', auditRoutes);
  * PUT    /api/db/:collection/:id       — setDoc / updateDoc (upsert)
  * DELETE /api/db/:collection/:id       — deleteDoc
  */
+/**
+ * FASE 5.27 (2026-05-19) — Posiciones GPS de los 4 operadores en vivo.
+ * Lee bus_last_pos (poller IMM). Antes era 404, devuelve filas reales.
+ *
+ * IMPORTANTE: estas rutas se registran ANTES del montaje
+ * `router.use('/', gtfsAuditoriaRoutes)` porque ese sub-router aplica
+ * `verifyAuth` global a TODA request que entra a su mount-point '/', lo
+ * que mata el flujo si /positions queda detrás. Y el frontend
+ * (CEODashboardV7, FleetMonitorModule, CUTCSAFleetDashboard,
+ * DistribucionDiaria, CEODashboard) llama con `fetch('/api/positions')`
+ * sin Authorization header.
+ *
+ *   GET /api/positions          — todos los operadores (~2347 buses vivos)
+ *   GET /api/positions/cutcsa   — solo CUTCSA (agency_id=50)
+ */
+router.get('/positions/cutcsa', positionsController.getCutcsaPositions);
+router.get('/positions', positionsController.getAllPositions);
+
+/**
+ * FASE 5.27 (2026-05-19) — /api/admin/personal.
+ * Antes devolvía 404 (PersonalUcot.tsx, AdminRRHH.tsx). Ahora lee la tabla
+ * `personal` (879 registros UCOT) con paginación y filtros.
+ */
+router.get('/admin/personal', verifyAuth, adminPersonalController.listPersonal);
+router.put('/admin/personal/:id', verifyAuth, adminPersonalController.updatePersonal);
+
+/**
+ * FASE 5.28 (2026-05-19) — Pase 2 de cierre de auditoría.
+ *
+ * /api/users                          → lista users (AdminWhatsApp, Employees)
+ * /api/shifts/balances                → balance global + por usuario (AdminBalances)
+ * /api/shifts/unpaid/:userId          → turnos no pagados de un usuario
+ * /api/shifts/payment                 → registra pago/cobro parcial
+ * /api/shifts/pay                     → salda balance total
+ * /api/tenants                        → lista empresas (TenantsManager)
+ * /api/admin/config-salarial          → turnos + descuentos (ConfigSalarialTab)
+ */
+router.get('/users', verifyAuth, usersController.listUsers);
+
+router.get('/shifts/balances', verifyAuth, shiftsBalanceController.getBalances);
+router.get('/shifts/unpaid/:userId', verifyAuth, shiftsBalanceController.getUnpaidShifts);
+router.post('/shifts/payment', verifyAuth, shiftsBalanceController.postPayment);
+router.post('/shifts/pay', verifyAuth, shiftsBalanceController.postPayAll);
+
+router.get('/tenants', verifyAuth, tenantsController.listTenants);
+router.post('/tenants', verifyAuth, requireAdmin, tenantsController.createTenant);
+
+router.get('/admin/config-salarial', verifyAuth, configSalarialController.getConfigSalarial);
+router.put('/admin/config-salarial/turnos', verifyAuth, requireAdmin, configSalarialController.putTurnos);
+router.put('/admin/config-salarial/descuentos', verifyAuth, requireAdmin, configSalarialController.putDescuentos);
+
+// FASE 5.32 (2026-05-21): config del motor de consecuencias (tarifas, umbrales,
+// cooldowns) editable desde admin sin reinicio.
+router.get('/admin/config-motor', verifyAuth, configSalarialController.getMotorConfigHandler);
+router.put('/admin/config-motor', verifyAuth, requireAdmin, configSalarialController.putMotorConfigHandler);
+
+/**
+ * FASE 5.28 (2026-05-19) — Boletines de inspección, rotación, inteligencia
+ * por línea y motor de consecuencias (la columna vertebral de propagación
+ * del cometido de interconexión).
+ *
+ * /api/boletin/:linea          → matriz paradas × pases desde schedule_index IMM
+ * /api/boletin-verano/:linea   → mismo shape pero desde XLS oficial UCOT
+ * /api/rotacion/:fecha         → coches por servicio del día (cartones_historial)
+ * /api/inteligencia/:linea     → briefing en vivo de la línea (bus_last_pos)
+ * /api/consequencePreview      → motor de consecuencias (simulación)
+ */
+router.get('/boletin/:linea', boletinController.getBoletin);
+router.get('/boletin-verano/:linea', boletinController.getBoletinVerano);
+router.get('/rotacion/:fecha', intelligenceController.getRotacionDiaria);
+router.get('/inteligencia/:linea', intelligenceController.getInteligenciaPorLinea);
+router.post('/consequencePreview', consequenceController.postConsequencePreview);
+
+/**
+ * FASE 5.31 (2026-05-21) — Historial del bus de propagación.
+ * Lo consume el widget PropagacionLive al montar para arrancar con los
+ * últimos eventos en lugar de empezar vacío.
+ *
+ *   GET /api/cascade/feed?since=<ISO>&limit=N
+ */
+router.get('/cascade/feed', verifyAuth, cascadeFeedController.getCascadeFeed);
+
+// FASE 5.35 (2026-05-22): acciones operativas sobre eventos y cooldowns del motor.
+router.post('/cascade/events/:id/atender', verifyAuth, cascadeActionsController.atenderEvento);
+router.post('/cascade/cooldown/clear', verifyAuth, cascadeActionsController.clearCooldown);
+
+// FASE 5.36 (2026-05-22): turno activo del conductor — usado por la vista
+// "Mi Línea" para saber qué línea y coche está cubriendo el chofer hoy.
+router.get('/mi-turno', verifyAuth, miTurnoController.getMiTurno);
+
+// FASE 5.36 (2026-05-22): KPIs comparativos por operador para presentar a IMM.
+router.get('/operadores/kpis', verifyAuth, operadoresKpiController.getOperadoresKpis);
+
+// FASE 5.37 (2026-05-22): salud del motor de consecuencias (telemetría propia).
+router.get('/motor/health', verifyAuth, motorHealthController.getMotorHealth);
+
+// FASE 5.38 (2026-05-22): detalle de cumplimiento por coche+fecha.
+// Resuelve el "marca atrasos sin decir cuándo en qué línea" del Panel.
+router.get('/cumplimiento/coche/:idBus/eventos', verifyAuth, cumplimientoCocheController.getCocheEventos);
+
+// FASE 5.38 (2026-05-22): purga manual de alertas viejas sin atender.
+router.post('/cascade/alertas/purgar', verifyAuth, requireAdmin, alertasMantenimientoController.purgarAlertasViejas);
+
+/**
+ * FASE 5.28 (2026-05-19) — WhatsApp, admin tools y endpoints menores.
+ *
+ *   /api/whatsapp/{status,restart}    → estado WA (stub honesto si no integrado)
+ *   /api/admin/seed-*                 → validan estado de seeds legacy (sin re-cargar)
+ *   /api/system-config (PUT)          → guarda config global en system_config
+ *   /api/emergency/wipe-all           → DESHABILITADO (seguridad)
+ *   /api/debug/force-seed             → DESHABILITADO
+ *   /api/simulation/{report,reset}    → vacío honesto
+ *   /api/data-import/template         → CSV plantilla empleados
+ */
+router.get('/whatsapp/status', verifyAuth, whatsappController.getWhatsappStatus);
+router.post('/whatsapp/restart', verifyAuth, requireAdmin, whatsappController.postWhatsappRestart);
+
+router.post('/admin/:which(seed-[a-z-]+)', verifyAuth, requireAdmin, adminToolsController.postSeedLegacy);
+router.put('/system-config', verifyAuth, requireAdmin, adminToolsController.putSystemConfig);
+router.post('/emergency/wipe-all', verifyAuth, requireAdmin, adminToolsController.postEmergencyWipeAll);
+router.get('/debug/force-seed', verifyAuth, requireAdmin, adminToolsController.getDebugForceSeed);
+router.get('/simulation/report', verifyAuth, adminToolsController.getSimulationReport);
+router.post('/simulation/reset', verifyAuth, requireAdmin, adminToolsController.postSimulationReset);
+router.get('/data-import/template', verifyAuth, adminToolsController.getDataImportTemplate);
+
+// FASE 5.14: gtfsAuditoriaRoutes monta /db/gtfs_timetable/:id y
+// /db/gtfs_stops/:id. Va ANTES de dbBridgeRoutes para que esas rutas
+// especificas tomen precedencia sobre el handler generico /db/:collection/:id.
+router.use('/', gtfsAuditoriaRoutes);
 router.use('/db', dbBridgeRoutes);
+router.use('/etapa-stats', etapaStatsRoutes);
+router.use('/stm-demanda', stmDemandaRoutes);
+router.use('/stm-horarios', stmHorariosRoutes);
+router.use('/conteo-vehicular', conteoVehicularRoutes);
+router.use('/comando', comandoRoutes);
+
+/**
+ * FASE 5 (2026-05-13) — Stubs honestos para CEODashboardV7 que consume
+ * /historicOtp y /historicBunching (antes Cloud Functions). El cálculo
+ * real desde vehicle_events está pendiente. Mientras tanto devolvemos
+ * series vacías para que la pantalla no rompa con HTTP 502.
+ */
+router.get('/historic/otp', verifyAuth, (_req, res) => {
+  res.json({ ok: true, series: [], mensaje: 'Histórico OTP pendiente de cómputo agregado desde vehicle_events.' });
+});
+router.get('/historic/bunching', verifyAuth, (_req, res) => {
+  res.json({ ok: true, series: [], mensaje: 'Histórico bunching pendiente de cómputo agregado desde vehicle_events.' });
+});
+// FASE 5.28 (2026-05-19): legacy Cloud Function MarketPenetration consume
+// /penetrationHistoric. Stub honesto hasta tener el cómputo agregado.
+router.get('/historic/penetration', verifyAuth, (_req, res) => {
+  res.json({ ok: true, series: [], mensaje: 'Penetración histórica pendiente de cómputo agregado cross-operador.' });
+});
 
 export default router;

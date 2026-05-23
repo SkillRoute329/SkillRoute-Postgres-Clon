@@ -1,5 +1,4 @@
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 import type { DailyShift } from '../types/traffic';
 import type { ParsedData } from '../utils/ExcelParserV2';
 
@@ -14,30 +13,30 @@ export const TrafficReferenceService = {
       // Check cache validity (simple check)
       if (Object.keys(_usersCache).length > 0) return;
 
-      console.log('🔗 TrafficLinker: Fetching Collections for Linking...');
+      console.log('TrafficLinker: Fetching Collections for Linking...');
 
       // Users
-      const usersSnap = await getDocs(collection(db, 'users'));
-      usersSnap.forEach((doc) => {
-        const d = doc.data();
+      const usersResult = await apiClient.get('/api/db/users', { query: { limit: 5000 } }) as any[];
+      const usersArr = Array.isArray(usersResult) ? usersResult : [];
+      usersArr.forEach((d: any) => {
         const legajo = d.datos_empresa?.legajo || d.internalNumber;
         if (legajo) {
-          _usersCache[String(legajo).trim()] = { uid: doc.id, ...d };
+          _usersCache[String(legajo).trim()] = { uid: d.id, ...d };
         }
       });
 
       // Vehicles
-      const vehiclesSnap = await getDocs(collection(db, 'vehicles'));
-      vehiclesSnap.forEach((doc) => {
-        const d = doc.data();
-        const unit = d.vehicleNumber || d.unitNumber; // Adjust to schema
+      const vehiclesResult = await apiClient.get('/api/db/vehicles', { query: { limit: 5000 } }) as any[];
+      const vehiclesArr = Array.isArray(vehiclesResult) ? vehiclesResult : [];
+      vehiclesArr.forEach((d: any) => {
+        const unit = d.vehicleNumber || d.unitNumber;
         if (unit) {
-          _vehiclesCache[String(unit).trim()] = { id: doc.id, ...d };
+          _vehiclesCache[String(unit).trim()] = { id: d.id, ...d };
         }
       });
 
       console.log(
-        `🔗 TrafficLinker: Cached ${usersSnap.size} Users, ${vehiclesSnap.size} Vehicles.`,
+        `TrafficLinker: Cached ${usersArr.length} Users, ${vehiclesArr.length} Vehicles.`,
       );
     } catch (e) {
       console.error('TrafficLinker Cache Error:', e);
@@ -64,7 +63,7 @@ export const TrafficReferenceService = {
       id: 'UNKNOWN',
       internalNumber: clean,
       fullName: 'PERSONAL NO REGISTRADO',
-      type: 'LISTA' as const, // Safer default for unknowns
+      type: 'LISTA' as const,
     };
   },
 
@@ -98,19 +97,6 @@ export const TrafficReferenceService = {
     }
 
     return parsedData.services.map((svc) => {
-      // "VehicleInternalNumber" from Excel usually maps to our Vehicle Number
-      // "Driver" might not be in the Excel row depending on parser V2...
-      // Wait, ParserV2 for Rotation returns: { vehicleInternalNumber, ... }
-      // It currently does NOT extract Driver Legajo/Name explicitly in V2?
-      // Need to check V2 parser output again. '' has vehicleInternalNumber, but no explicit 'driverCode'.
-      // If the excel has driver info, we need to extract it.
-      // Assuming for now Vehicle is the main link in the "Rotation" file provided (Salida).
-
-      // NOTE: The current Rotation file provided (Matriz Salida) lists Service, Time, Line, and Vehicle.
-      // It does NOT list Driver usually? The "Matriz de Salida" is usually "Car Assignment".
-      // Driver assignment might come from "Distribution".
-      // IF NO DRIVER: We create the shift with 'Unassigned' or link via Default Car Owner (future feature).
-
       const vehicle = this.resolveVehicle(svc.vehicleInternalNumber || '0000');
 
       return {

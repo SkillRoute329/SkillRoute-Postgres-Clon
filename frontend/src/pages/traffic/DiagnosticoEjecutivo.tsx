@@ -6,6 +6,8 @@ import BloquePerdidaMercado from '../../components/diagnostico/BloquePerdidaMerc
 import BloqueInconsistenciasInternas from '../../components/diagnostico/BloqueInconsistenciasInternas';
 import BloqueComparativaRival from '../../components/diagnostico/BloqueComparativaRival';
 import BloqueRecomendaciones from '../../components/diagnostico/BloqueRecomendaciones';
+import InformeAccionableLineas from '../../components/diagnostico/InformeAccionableLineas';
+import { getDiagnosticoLineas, type DiagnosticoLineasResultado } from '../../services/comandoService';
 
 const BLOQUES = [
   {
@@ -88,6 +90,7 @@ export default function DiagnosticoEjecutivo() {
   const { empresaCfg, setEmpresaPropia } = useEmpresaPropia();
   const [selectedAgency, setSelectedAgency] = useState<string>(empresaCfg.agencyId);
   const [diagnostico, setDiagnostico] = useState<DiagnosticoCompleto | null>(null);
+  const [informe, setInforme] = useState<DiagnosticoLineasResultado | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,11 +98,20 @@ export default function DiagnosticoEjecutivo() {
     setLoading(true);
     setError(null);
     setDiagnostico(null);
+    setInforme(null);
+    // El informe accionable línea×línea es el entregable principal; los 4
+    // bloques agregados son complementarios. Se cargan en paralelo y se
+    // muestra cada uno apenas llega (el informe puede tardar ~15s).
+    void getDiagnosticoLineas(agencyId)
+      .then(setInforme)
+      .catch((e) =>
+        setError((prev) => prev ?? (e?.message ?? 'Error al generar el informe por línea.')),
+      );
     try {
       const result = await fetchDiagnostico(agencyId);
       setDiagnostico(result);
     } catch (err: any) {
-      setError(err.message ?? 'Error desconocido al generar diagnóstico.');
+      setError((prev) => prev ?? (err.message ?? 'Error desconocido al generar diagnóstico.'));
     } finally {
       setLoading(false);
     }
@@ -110,6 +122,7 @@ export default function DiagnosticoEjecutivo() {
     const num = Number(agencyId) as 70 | 50 | 20 | 10;
     if ([70, 50, 20, 10].includes(num)) setEmpresaPropia(num);
     setDiagnostico(null);
+    setInforme(null);
     setError(null);
   };
 
@@ -200,7 +213,37 @@ export default function DiagnosticoEjecutivo() {
         </div>
       )}
 
-      {/* 4 Bloques */}
+      {/* INFORME ACCIONABLE LÍNEA POR LÍNEA — entregable principal */}
+      {(informe || loading) && (
+        <div className="bg-slate-900 border border-slate-700/50 border-l-2 border-l-blue-500/60 rounded-xl p-5">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-slate-800/60 text-blue-400">
+              <BarChart3 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-100">
+                Informe accionable — línea por línea
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Venta de boletos precisa mes a mes · competidor real con su horario · servicio que
+                la cubre · acción concreta
+              </p>
+            </div>
+          </div>
+          {informe ? (
+            <InformeAccionableLineas data={informe} />
+          ) : (
+            <div className="flex items-center gap-2 py-6">
+              <RefreshCw className="w-4 h-4 text-slate-500 animate-spin" />
+              <span className="text-sm text-slate-500">
+                Generando informe línea por línea (cruzando STM, competencia y horarios)…
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 4 Bloques complementarios */}
       {(diagnostico || loading) && (
         <div className="grid gap-5">
           <BloqueCard bloque={BLOQUES[3]} loading={loading} error={false}>

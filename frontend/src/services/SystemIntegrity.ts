@@ -1,9 +1,8 @@
-import { db } from '../config/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { apiClient, getAuthToken } from '../clients/apiClient';
 
 /**
  * SYSTEM INTEGRITY AGENT
- * This service connects to Firebase on startup to check for critical directives.
+ * This service connects to the backend on startup to check for critical directives.
  * It allows the Administrator to force-fix all clients remotely without them needing to do anything.
  */
 
@@ -13,22 +12,34 @@ const CURRENT_CLIENT_VERSION = 5; // Increment this in code when shipping breaki
 export const SystemIntegrity = {
   /**
    * Runs immediately on App Mount / Login.
-   * checks Firestore 'system/global' for 'minVersion' and 'forceCleanup'.
+   * checks system/global for 'minVersion' and 'forceCleanup'.
    */
   checkAndEnforce: async () => {
     try {
       if (import.meta.env.MODE !== 'production') console.log('[SystemIntegrity] checkAndEnforce start');
 
-      // 1. Read Remote Config
-      const configRef = doc(db, 'system', 'global_config');
-      const snap = await getDoc(configRef);
-
-      if (!snap.exists()) {
-        console.log('⚠️ [SystemIntegrity] No cleanup config found. Skipping init.');
+      // FASE 5.26 — FIX BUCLE DE RECARGA: este chequeo pega a un endpoint
+      // AUTENTICADO (/api/db/system/global_config). Si corre SIN sesión
+      // (p.ej. en /login antes de loguear) → 401 → apiClient dispara
+      // 'skillroute:auth-unauthorized' → AuthContext.logout() →
+      // window.location.assign('/login') → recarga → vuelve a montar →
+      // checkAndEnforce → 401 → ... RECARGA INFINITA, nunca se puede
+      // ingresar. Si no hay token, no tiene sentido el chequeo remoto:
+      // se omite hasta que haya sesión (se re-ejecuta tras el login).
+      if (!getAuthToken()) {
+        if (import.meta.env.MODE !== 'production')
+          console.log('[SystemIntegrity] Sin sesión — chequeo remoto omitido (evita bucle de logout/recarga).');
         return;
       }
 
-      const remote = snap.data();
+      // 1. Read Remote Config
+      const remote = await apiClient.get('/api/db/system/' + encodeURIComponent('global_config')) as Record<string, unknown> | null;
+
+      if (!remote) {
+        console.log('[SystemIntegrity] No cleanup config found. Skipping init.');
+        return;
+      }
+
       const localCleanupVer = parseInt(localStorage.getItem(LOCAL_VERSION_KEY) || '0');
 
       // 2. CHECK: Maintenance Mode
@@ -44,16 +55,16 @@ export const SystemIntegrity = {
       }
 
       // 3. CHECK: Critical Cleanup Command (The "Cache Killer" from Cloud)
-      if (remote.forceCleanupIteration > localCleanupVer) {
+      if ((remote.forceCleanupIteration as number) > localCleanupVer) {
         console.warn(
-          `🚨 [SystemIntegrity] Cloud requested Critical Cleanup (v${remote.forceCleanupIteration}). Executing...`,
+          `[SystemIntegrity] Cloud requested Critical Cleanup (v${remote.forceCleanupIteration}). Executing...`,
         );
-        await SystemIntegrity.performDeepCleanup(remote.forceCleanupIteration);
+        await SystemIntegrity.performDeepCleanup(remote.forceCleanupIteration as number);
       }
 
-      console.log('✅ [SystemIntegrity] System Secure & Synchronized.');
+      console.log('[SystemIntegrity] System Secure & Synchronized.');
     } catch (e) {
-      console.warn('⚠️ [SystemIntegrity] Offline or Auth error. Skipping check.', e);
+      console.warn('[SystemIntegrity] Offline or Auth error. Skipping check.', e);
     }
   },
 
@@ -83,7 +94,7 @@ export const SystemIntegrity = {
     localStorage.setItem(LOCAL_VERSION_KEY, String(newVersion));
 
     // 5. Hard Reload
-    alert('♻️ Actualización Crítica Aplicada. El sistema se reiniciará.');
+    alert('Actualización Crítica Aplicada. El sistema se reiniciará.');
     window.location.reload();
   },
 };

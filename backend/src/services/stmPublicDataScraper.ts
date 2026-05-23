@@ -15,6 +15,7 @@ import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 import logger from '../config/logger';
+import sqlDb from '../config/database';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS
@@ -364,118 +365,120 @@ function calcularParadasCompartidas(
 }
 
 /**
- * ANÁLISIS PRINCIPAL: Detecta competencia para una línea específica
+ * ANÁLISIS PRINCIPAL: competencia REAL de una línea.
+ *
+ * FASE 5.21 (2026-05-17): se ELIMINA el cálculo fabricado que comparaba las
+ * líneas UCOT contra sí mismas por igualdad de nombre de parada (daba
+ * "competencia BAJA" uniforme y falsa para todas — causa del rechazo IMM).
+ * Ahora se computa sobre `corridor_overlap`: solape de recorrido REAL
+ * (geometría GTFS, km y % compartido) contra líneas de OTRO operador.
  */
 export async function analizarCompetenciaLinea(
   numeroLinea: string
 ): Promise<ReporteCompetenciaCompleto> {
   const timestamp = new Date().toISOString();
+  const linea = String(numeroLinea).trim();
 
   try {
-    // 1. Obtener todas las líneas UCOT
-    const todasLasLineas = await obtenerLineasUCOT();
+    // Solape real cross-operador (same_empresa=false): la línea aparece como
+    // lado A o B; tomamos el % de SU recorrido que el rival le disputa.
+    const filas = (await sqlDb('corridor_overlap')
+      .where('same_empresa', false)
+      .andWhere((b) => b.where('linea_a', linea).orWhere('linea_b', linea))
+      .select(
+        'linea_a',
+        'linea_b',
+        'agency_a',
+        'agency_b',
+        'sentido_a',
+        'sentido_b',
+        'pct_a_in_b',
+        'pct_b_in_a',
+        'shared_km',
+      )) as Array<{
+      linea_a: string;
+      linea_b: string;
+      agency_a: string;
+      agency_b: string;
+      sentido_a: string | null;
+      sentido_b: string | null;
+      pct_a_in_b: string | number | null;
+      pct_b_in_a: string | number | null;
+      shared_km: string | number | null;
+    }>;
 
-    // 2. Encontrar la línea a analizar
-    const lineaTarget = todasLasLineas.find((l) => l.numero === numeroLinea);
-    if (!lineaTarget) {
-      throw new Error(`Línea ${numeroLinea} no encontrada`);
-    }
+    const competidores: CompetidorDetectado[] = filas.map((r) => {
+      const targetEsA = String(r.linea_a) === linea;
+      const rivalLinea = targetEsA ? r.linea_b : r.linea_a;
+      // % del recorrido de la línea analizada que el rival le solapa.
+      const pct = Math.round(
+        Number((targetEsA ? r.pct_a_in_b : r.pct_b_in_a) ?? 0),
+      );
+      const km = Math.round(Number(r.shared_km ?? 0) * 10) / 10;
+      const sentido: 'IDA' | 'VUELTA' =
+        (targetEsA ? r.sentido_a : r.sentido_b) === 'VUELTA' ? 'VUELTA' : 'IDA';
 
-    // 3. Calcular frecuencia de cada sentido
-    lineaTarget.sentidos.forEach((sentido) => {
-      sentido.horarios.forEach((h) => {
-        h.minutos = horaAMinutos(h.hora);
-      });
-      sentido.horarios.sort((a, b) => a.minutos - b.minutos);
+      const tipoCompetencia: CompetidorDetectado['tipoCompetencia'] =
+        pct >= 50 ? 'DIRECTA' : pct >= 20 ? 'PARCIAL' : 'NULA';
+      const amenaza: CompetidorDetectado['amenaza'] =
+        pct >= 70 || km >= 8
+          ? 'CRITICA'
+          : pct >= 45 || km >= 4
+            ? 'ALTA'
+            : pct >= 20 || km >= 1.5
+              ? 'MEDIA'
+              : 'BAJA';
+
+      return {
+        linea: `${rivalLinea} (op ${targetEsA ? r.agency_b : r.agency_a})`,
+        sentido,
+        solapamientoKm: km,
+        porcentajeRecorridoCompartido: pct,
+        paradasCompartidas: 0, // corridor_overlap es por geometría, no paradas
+        tipoCompetencia,
+        amenaza,
+      };
     });
 
-    // 4. Analizar competencia con todas las demás líneas
-    const competidores: CompetidorDetectado[] = [];
+    competidores.sort((a, b) => {
+      const ord = { CRITICA: 0, ALTA: 1, MEDIA: 2, BAJA: 3 };
+      return ord[a.amenaza] - ord[b.amenaza] ||
+        b.porcentajeRecorridoCompartido - a.porcentajeRecorridoCompartido;
+    });
 
-    for (const otraLinea of todasLasLineas) {
-      if (otraLinea.numero === numeroLinea) continue; // No comparar consigo misma
-
-      for (const sentidoTarget of lineaTarget.sentidos) {
-        for (const sentidoOtro of otraLinea.sentidos) {
-          // Detectar paradas compartidas
-          const paradasCompartidas = calcularParadasCompartidas(
-            sentidoTarget.paradas,
-            sentidoOtro.paradas
-          );
-
-          if (paradasCompartidas.length === 0) continue; // Sin solapamiento
-
-          // Calcular métricas
-          const porcentajeSolapamiento =
-            (paradasCompartidas.length / sentidoTarget.paradas.length) * 100;
-
-          const sentidoOpuesto =
-            sentidoTarget.nombre !== sentidoOtro.nombre ||
-            sentidoTarget.origen !== sentidoOtro.origen;
-
-          const tipoCompetencia = clasificarCompetencia(
-            paradasCompartidas.length,
-            sentidoTarget.paradas.length,
-            sentidoOpuesto
-          );
-
-          const frecuenciaOtra = calcularFrecuenciaPromedio(sentidoOtro.horarios);
-
-          const amenaza = calcularAmenaza(
-            tipoCompetencia,
-            porcentajeSolapamiento,
-            frecuenciaOtra
-          );
-
-          competidores.push({
-            linea: otraLinea.numero,
-            sentido: sentidoOtro.nombre,
-            solapamientoKm: paradasCompartidas.length * 2, // Aproximado: 2km por parada
-            porcentajeRecorridoCompartido: Math.round(porcentajeSolapamiento),
-            paradasCompartidas: paradasCompartidas.length,
-            tipoCompetencia,
-            amenaza,
-          });
-        }
-      }
-    }
-
-    // 5. Calcular resumen
     const competenciaDirecta = competidores.filter(
-      (c) => c.tipoCompetencia === 'DIRECTA'
+      (c) => c.tipoCompetencia === 'DIRECTA',
     ).length;
     const competenciaParcial = competidores.filter(
-      (c) => c.tipoCompetencia === 'PARCIAL'
+      (c) => c.tipoCompetencia === 'PARCIAL',
     ).length;
-    const porcentajePromedio = Math.round(
-      competidores.reduce((sum, c) => sum + c.porcentajeRecorridoCompartido, 0) /
-        Math.max(competidores.length, 1)
-    );
+    const porcentajePromedio = competidores.length
+      ? Math.round(
+          competidores.reduce((s, c) => s + c.porcentajeRecorridoCompartido, 0) /
+            competidores.length,
+        )
+      : 0;
+
+    // Metadatos REALES de la línea desde GTFS (nombre/origen-destino).
+    const ruta = (await sqlDb('gtfs.routes')
+      .where('route_short_name', linea)
+      .select('route_long_name')
+      .first()) as { route_long_name: string | null } | undefined;
+    const nombre = ruta?.route_long_name?.trim() || `Línea ${linea}`;
+    const [origen, destino] = nombre.includes(' - ')
+      ? nombre.split(' - ').map((s) => s.trim())
+      : [nombre, ''];
 
     return {
-      linea: numeroLinea,
+      linea,
       timestamp,
-      datosLinea: {
-        nombre: lineaTarget.nombre,
-        origen: lineaTarget.sentidos[0]?.origen || 'Desconocido',
-        destino: lineaTarget.sentidos[0]?.destino || 'Desconocido',
-        paradas: lineaTarget.sentidos[0]?.paradas.length || 0,
-      },
+      datosLinea: { nombre, origen, destino: destino || origen, paradas: 0 },
       analisisFrequencia: {
-        frecuenciaProgramada: lineaTarget.frecuenciaProgramada,
-        frecuenciaCalculada: calcularFrecuenciaPromedio(
-          lineaTarget.sentidos[0]?.horarios || []
-        ),
-        desviacion:
-          calcularFrecuenciaPromedio(lineaTarget.sentidos[0]?.horarios || []) -
-          lineaTarget.frecuenciaProgramada,
+        frecuenciaProgramada: 0,
+        frecuenciaCalculada: 0,
+        desviacion: 0,
       },
-      competidores: competidores.sort((a, b) => {
-        const ordenAmenaza = { CRITICA: 0, ALTA: 1, MEDIA: 2, BAJA: 3 };
-        return (
-          ordenAmenaza[a.amenaza] - ordenAmenaza[b.amenaza]
-        );
-      }),
+      competidores,
       resumen: {
         totalCompetidores: competidores.length > 0,
         competenciaDirecta,
@@ -487,7 +490,7 @@ export async function analizarCompetenciaLinea(
       },
     };
   } catch (error) {
-    logger.error(`Error analizando línea ${numeroLinea}:`, error);
+    logger.error(`Error analizando línea ${linea}:`, error);
     throw error;
   }
 }

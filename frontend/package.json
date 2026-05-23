@@ -5,7 +5,7 @@
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "vite --port 3005 --strictPort",
+    "dev": "vite --port 3006 --strictPort",
     "prebuild": "node scripts/generateVersion.mjs",
     "build": "vite build",
     "qa:audit": "node scripts/qa_audit.js",
@@ -22,13 +22,17 @@
     "electron:build": "npm run build && electron-builder"
   },
   "dependencies": {
+    "@capacitor-community/keep-awake": "^8.0.1",
     "@capacitor/android": "^8.0.1",
     "@capacitor/camera": "^8.0.0",
     "@capacitor/cli": "^8.0.1",
     "@capacitor/core": "^8.0.1",
     "@capacitor/filesystem": "^8.1.0",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/local-notifications": "^8.1.0",
     "@capacitor/network": "^8.0.0",
     "@capacitor/push-notifications": "^8.0.3",
+    "@capacitor/status-bar": "^8.0.2",
     "@capacitor/toast": "^8.0.0",
     "@ionic/pwa-elements": "^3.3.0",
     "@sentry/react": "^10.50.0",

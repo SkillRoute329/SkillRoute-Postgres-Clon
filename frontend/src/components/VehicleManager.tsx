@@ -13,7 +13,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import ImageUploader from './ImageUploader';
-import { doc, updateDoc, getFirestore } from 'firebase/firestore';
+import { doc, updateDoc, getFirestore } from '../config/firestoreShim';
 import { FleetService, VehicleCategoryService } from '../services/firestore';
 import type { Vehicle, VehicleCategory } from '../services/firestore/types';
 import { getFlotaUCOT, getFlotaStats } from '../data/flotaUCOT';

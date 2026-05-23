@@ -18,6 +18,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Save, RotateCcw, X, MousePointer2, Trash2 } from 'lucide-react';
 import type { LatLng } from '../../services/lineOverrides';
+import { splitIntoSegments, getDistance } from '../../utils/tacticalGeom';
 
 interface RouteEditorMapProps {
   /** Nombre para mostrar en el encabezado */
@@ -101,9 +102,13 @@ export default function RouteEditorMap({
     markersRef.current = [];
     midMarkersRef.current = [];
 
-    // Actualizar polyline
+    // Actualizar polyline usando segmentos contiguos para evitar zig-zags
     if (polylineRef.current) {
-      polylineRef.current.setLatLngs(pts.map((p) => [p.lat, p.lng]));
+      const segments = splitIntoSegments(pts);
+      const polylinePositions = segments.map((seg) =>
+        seg.map((p) => [p.lat, p.lng] as [number, number])
+      );
+      polylineRef.current.setLatLngs(polylinePositions);
     }
 
     // Crear marcadores draggables en cada nodo
@@ -118,7 +123,12 @@ export default function RouteEditorMap({
       marker.on('drag', (e) => {
         const latlng = (e as L.LeafletMouseEvent).latlng;
         pointsRef.current[idx] = { lat: latlng.lat, lng: latlng.lng };
-        polylineRef.current?.setLatLngs(pointsRef.current.map((p) => [p.lat, p.lng]));
+        
+        const segments = splitIntoSegments(pointsRef.current);
+        const polylinePositions = segments.map((seg) =>
+          seg.map((p) => [p.lat, p.lng] as [number, number])
+        );
+        polylineRef.current?.setLatLngs(polylinePositions);
       });
 
       marker.on('dragend', () => {
@@ -145,6 +155,10 @@ export default function RouteEditorMap({
     for (let i = 0; i < pts.length - 1; i++) {
       const a = pts[i];
       const b = pts[i + 1];
+
+      // Ignorar saltos espaciales mayores a 800m (para no crear midpoints flotantes)
+      if (getDistance(a, b) > 800) continue;
+
       const midLat = (a.lat + b.lat) / 2;
       const midLng = (a.lng + b.lng) / 2;
       const capturedI = i;
@@ -168,7 +182,12 @@ export default function RouteEditorMap({
         const idx2 = capturedI + 1;
         const latlng = (e as L.LeafletMouseEvent).latlng;
         pointsRef.current[idx2] = { lat: latlng.lat, lng: latlng.lng };
-        polylineRef.current?.setLatLngs(pointsRef.current.map((p) => [p.lat, p.lng]));
+        
+        const segments = splitIntoSegments(pointsRef.current);
+        const polylinePositions = segments.map((seg) =>
+          seg.map((p) => [p.lat, p.lng] as [number, number])
+        );
+        polylineRef.current?.setLatLngs(polylinePositions);
       });
 
       midMarker.on('dragend', () => {
@@ -200,9 +219,13 @@ export default function RouteEditorMap({
 
     L.tileLayer(TILE_URL, { attribution: TILE_ATTR }).addTo(map);
 
-    // Polyline base
+    // Polyline base dividida en segmentos contiguos
+    const segments = splitIntoSegments(pts);
+    const polylinePositions = segments.map((seg) =>
+      seg.map((p) => [p.lat, p.lng] as [number, number])
+    );
     const polyline = L.polyline(
-      pts.map((p) => [p.lat, p.lng] as [number, number]),
+      polylinePositions,
       {
         color: '#2563eb',
         weight: 5,

@@ -17,7 +17,7 @@
  *   ●─── 05:47  Hospital Saint Bois (destino)
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { X, MapPin, Bus, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 import type { Salida, ControlPointConPasadas, PasadaGPS } from '../../services/auditoriaService';
 import { minToHora } from '../../services/auditoriaService';
@@ -216,11 +216,36 @@ function ControlPointRow({ cp, esOrigen, esDestino }: {
   esOrigen: boolean;
   esDestino: boolean;
 }) {
+  // Depurar pings duplicados para el mismo bus en este control point en ventana de 2.5 minutos
+  const pasadasFiltradas = useMemo(() => {
+    const unicas: PasadaGPS[] = [];
+    const ultimasPorBus: Record<string, PasadaGPS> = {};
+    
+    // Ordenamos pasadas cronológicamente
+    const ordenadas = [...cp.pasadas].sort((a, b) => a.tReal - b.tReal);
+    
+    for (const p of ordenadas) {
+      const ult = ultimasPorBus[p.idBus];
+      if (ult && Math.abs(p.tReal - ult.tReal) <= 2.5) {
+        // Conservamos el que tenga mayor desviación absoluta para reflejar el retraso pico
+        if (Math.abs(p.desv) > Math.abs(ult.desv)) {
+          const idx = unicas.findIndex(x => x === ult);
+          if (idx !== -1) unicas[idx] = p;
+          ultimasPorBus[p.idBus] = p;
+        }
+        continue;
+      }
+      unicas.push(p);
+      ultimasPorBus[p.idBus] = p;
+    }
+    return unicas;
+  }, [cp.pasadas]);
+
   const dotClass = esOrigen
     ? 'bg-emerald-500 ring-emerald-500/30'
     : esDestino
       ? 'bg-orange-500 ring-orange-500/30'
-      : cp.pasadas.length > 0
+      : pasadasFiltradas.length > 0
         ? 'bg-blue-500 ring-blue-500/30'
         : 'bg-slate-700 ring-slate-700/30';
 
@@ -235,24 +260,24 @@ function ControlPointRow({ cp, esOrigen, esDestino }: {
           </span>
           {esOrigen && <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase tracking-wide">Origen</span>}
           {esDestino && <span className="text-[9px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-300 border border-orange-500/30 uppercase tracking-wide">Destino</span>}
-          {cp.pasadas.length > 0 && (
+          {pasadasFiltradas.length > 0 && (
             <span className={`text-[9px] px-1.5 py-0.5 rounded border ${
               cp.pctEnTiempo >= 80 ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' :
               cp.pctEnTiempo >= 60 ? 'bg-yellow-500/10 text-yellow-300 border-yellow-500/30' :
               'bg-red-500/10 text-red-300 border-red-500/30'
             }`}>
-              {cp.pctEnTiempo}% en tiempo · {cp.pasadas.length} {cp.pasadas.length === 1 ? 'pasada' : 'pasadas'}
+              {cp.pctEnTiempo}% en tiempo · {pasadasFiltradas.length} {pasadasFiltradas.length === 1 ? 'pasada' : 'pasadas'}
             </span>
           )}
         </div>
         {/* Pasadas */}
-        {cp.pasadas.length === 0 ? (
+        {pasadasFiltradas.length === 0 ? (
           <p className="text-[10px] text-slate-600 italic mt-0.5">
             Sin pasada GPS detectada en ventana ±12 min
           </p>
         ) : (
           <ul className="mt-1.5 space-y-1">
-            {cp.pasadas.map((p, i) => <PasadaRow key={i} p={p} />)}
+            {pasadasFiltradas.map((p, i) => <PasadaRow key={i} p={p} />)}
           </ul>
         )}
       </div>

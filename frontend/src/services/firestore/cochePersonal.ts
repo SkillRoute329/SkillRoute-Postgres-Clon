@@ -1,39 +1,10 @@
 /**
  * CochePersonalService — Gestión del vínculo Coche ↔ Personal asignado.
  *
- * Colección Firestore: coche_personal
- * Cada documento = un coche con su personal asignado, régimen de rotación
- * y cartones semanales asignados.
- *
- * Modelo operativo UCOT:
- *  - Cada coche tiene mínimo 2 personas asignadas (T1 y T2)
- *  - Régimen: semana_semana | 15_15 | fijo_t1 | fijo_t2
- *  - Cartones: bloque de 5 servicios por semana (ej. 1072-1076 sem1, 1077-1081 sem2)
- *  - turnoActualSemana: quién hace T1 esta semana
- *
- * Modelo de descansos UCOT (6 días trabajo / 7 posibles):
- *  - patronDescanso: tipo de grupo al que pertenece el conductor
- *    · 'sabados'      → libra todos los sábados este mes
- *    · 'domingos'     → libra todos los domingos este mes
- *    · 'entre_semana' → libra días variables según necesidad operativa
- *    · 'rotativo_mensual' → alterna sabados/domingos cada mes
- *  - grupoDescanso: identificador del grupo (ej. 'A', 'B', 'C1', 'C2')
- *  - mesLibraSabado: para grupos rotativos, true = este mes libra sábados
- *  - diasLibresSemana: para grupos entre_semana, días de la semana (0=Dom..6=Sáb)
+ * Colección: coche_personal
  */
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  setDoc,
-  addDoc,
-  query,
-  orderBy,
-  onSnapshot,
-  where,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 
 export type RegimenRotacionCoche = 'semana_semana' | '15_15' | 'fijo_t1' | 'fijo_t2';
 
@@ -50,23 +21,9 @@ export interface PersonalAsignado {
   esFijo: boolean;
 
   // ── Modelo de descansos (6 días / 7) ─────────────────────────────
-  /** Identificador del grupo de descanso: 'A', 'B', 'C1', 'C2', etc. */
   grupoDescanso?: string;
-  /** Patrón de descanso del conductor */
   patronDescanso?: PatronDescanso;
-  /**
-   * Para patronDescanso = 'rotativo_mensual':
-   * true  → este mes libra sábados
-   * false → este mes libra domingos
-   * Se invierte automáticamente al cambiar de mes.
-   */
   mesLibraSabado?: boolean;
-  /**
-   * Para patronDescanso = 'entre_semana':
-   * Array de días de la semana que libra (0=Dom, 1=Lun, ..., 6=Sáb)
-   * Ejemplo: [3] = libra los miércoles
-   * Puede cambiar según necesidad operativa.
-   */
   diasLibresSemana?: number[];
 }
 
@@ -79,22 +36,14 @@ export interface BloqueSemanalCartones {
 
 export interface CochePersonal {
   id?: string;
-  /** Número interno del coche, ej. "104" */
   cocheInternalNumber: string;
   vehicleId?: string;
-  /** Personal asignado a este coche (mín 2) */
   personal: PersonalAsignado[];
-  /** Régimen de rotación entre el personal */
   regimen: RegimenRotacionCoche;
-  /** Quién está en T1 esta semana (userId) */
   turnoT1Actual?: string;
-  /** Quién está en T2 esta semana (userId) */
   turnoT2Actual?: string;
-  /** Inicio del ciclo actual de rotación (ISO date) */
   inicioCiclo?: string;
-  /** Bloques semanales de cartones asignados */
   bloquesSemana: BloqueSemanalCartones[];
-  /** Semana actual del ciclo de cartones (1-based) */
   semanaActualCartones?: number;
   activo?: boolean;
   createdAt?: string;
@@ -103,9 +52,6 @@ export interface CochePersonal {
 
 /**
  * Determina si un conductor descansa en una fecha dada, según su patrón.
- * @param p - PersonalAsignado con datos de descanso
- * @param isoDate - Fecha en formato YYYY-MM-DD
- * @returns true si el conductor libra ese día
  */
 export function conductorLibraEnFecha(p: PersonalAsignado, isoDate: string): boolean {
   const date = new Date(isoDate + 'T12:00:00');
@@ -134,7 +80,6 @@ export function conductorLibraEnFecha(p: PersonalAsignado, isoDate: string): boo
 
 /**
  * Avanza el ciclo mensual de descanso de los conductores con patrón rotativo_mensual.
- * Llamar al inicio de cada mes.
  */
 export function invertirMesLibra(p: PersonalAsignado): PersonalAsignado {
   if (p.patronDescanso !== 'rotativo_mensual') return p;
@@ -163,54 +108,53 @@ function mapCochePersonal(id: string, data: Record<string, unknown>): CochePerso
 
 export const CochePersonalService = {
   async getAll(): Promise<CochePersonal[]> {
-    const q = query(collection(db, COL), orderBy('cocheInternalNumber', 'asc'));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => mapCochePersonal(d.id, d.data() as Record<string, unknown>));
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { orderBy: 'coche_internal_number:asc', limit: 5000 },
+    });
+    return Array.isArray(res.data)
+      ? res.data.map((d) => mapCochePersonal((d.id as string) ?? '', d))
+      : [];
   },
 
+  // FASE 5.35 (2026-05-22): bus socket en lugar de polling 10s.
   subscribe(callback: (items: CochePersonal[]) => void): () => void {
-    const q = query(collection(db, COL), orderBy('cocheInternalNumber', 'asc'));
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map((d) => mapCochePersonal(d.id, d.data() as Record<string, unknown>)));
-    });
+    return subscribeViaBus<CochePersonal[]>(COL, () => this.getAll(), callback);
   },
 
   async getByCoche(cocheInternalNumber: string): Promise<CochePersonal | null> {
-    const q = query(
-      collection(db, COL),
-      where('cocheInternalNumber', '==', cocheInternalNumber),
-    );
-    const snap = await getDocs(q);
-    if (snap.empty) return null;
-    const d = snap.docs[0];
-    return mapCochePersonal(d.id, d.data() as Record<string, unknown>);
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { where: `cocheInternalNumber:${cocheInternalNumber}`, limit: 1 },
+    });
+    const docs = Array.isArray(res.data) ? res.data : [];
+    if (!docs.length) return null;
+    const d = docs[0];
+    return mapCochePersonal((d.id as string) ?? '', d);
   },
 
   async getById(id: string): Promise<CochePersonal | null> {
-    const snap = await getDoc(doc(db, COL, id));
-    if (!snap.exists()) return null;
-    return mapCochePersonal(snap.id, snap.data() as Record<string, unknown>);
+    try {
+      const res = await apiClient.get<Record<string, unknown>>(`/api/db/${COL}/${encodeURIComponent(id)}`);
+      return res.data ? mapCochePersonal(id, res.data) : null;
+    } catch { return null; }
   },
 
   async create(data: Omit<CochePersonal, 'id'>): Promise<CochePersonal> {
     const payload = { ...data, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-    const ref = await addDoc(collection(db, COL), payload);
-    return { ...data, id: ref.id };
+    const res = await apiClient.post<{ id: string }>(`/api/db/${COL}`, payload);
+    return { ...data, id: res.data?.id ?? String(Date.now()) };
   },
 
   async update(id: string, data: Partial<CochePersonal>): Promise<void> {
-    await setDoc(doc(db, COL, id), { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(id)}`, { ...data, updatedAt: new Date().toISOString() });
   },
 
   /**
    * Avanza la rotación semanal: intercambia T1 y T2 si el régimen es semana_semana o 15_15.
-   * Para fijo_t1 / fijo_t2 no hace nada.
    */
   async avanzarRotacion(id: string, coche: CochePersonal): Promise<void> {
     if (coche.regimen === 'fijo_t1' || coche.regimen === 'fijo_t2') return;
     const nofijo = coche.personal.filter((p) => !p.esFijo);
     if (nofijo.length < 2) return;
-    // Intercambiar T1/T2
     const nuevoT1 = coche.turnoT2Actual ?? nofijo[1]?.userId;
     const nuevoT2 = coche.turnoT1Actual ?? nofijo[0]?.userId;
     await this.update(id, {
@@ -222,7 +166,6 @@ export const CochePersonalService = {
 
   /**
    * Marca el personal de este coche como "de lista" (día libre / mantenimiento).
-   * El personal queda disponible para asignación en otros coches.
    */
   async marcarEnLista(id: string, userIds: string[]): Promise<void> {
     const coche = await this.getById(id);

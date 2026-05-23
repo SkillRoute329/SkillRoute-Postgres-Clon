@@ -19,8 +19,7 @@
  * Cache en memoria 5 min para evitar query en cada clasificación.
  */
 
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 import {
   TurnoPersonal,
   TURNOS_DEFAULT_POR_OPERADOR,
@@ -60,12 +59,10 @@ export async function loadParametrosOperativos(
   const cached = cache.get(id);
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
 
-  const ref = doc(db, COLLECTION, id);
   try {
-    const snap = await getDoc(ref);
+    const d = await apiClient.get(`/api/db/${COLLECTION}/` + encodeURIComponent(id)) as any;
     let result: ParametrosOperativos;
-    if (snap.exists()) {
-      const d = snap.data();
+    if (d) {
       result = {
         agencyId: id,
         turnos: Array.isArray(d.turnos) && d.turnos.length > 0
@@ -75,7 +72,7 @@ export async function loadParametrosOperativos(
         otpLateMin: typeof d.otpLateMin === 'number' ? d.otpLateMin : DEFAULTS.otpLateMin,
         ventanaPicoAM: d.ventanaPicoAM ?? DEFAULTS.ventanaPicoAM,
         ventanaPicoPM: d.ventanaPicoPM ?? DEFAULTS.ventanaPicoPM,
-        actualizadoEn: d.actualizadoEn?.toDate?.() ?? null,
+        actualizadoEn: d.actualizadoEn ? new Date(d.actualizadoEn) : null,
         actualizadoPor: d.actualizadoPor ?? null,
         __default: false,
       };
@@ -107,17 +104,12 @@ export async function saveTurnosOperador(
   uid: string,
 ): Promise<void> {
   const id = String(agencyId);
-  const ref = doc(db, COLLECTION, id);
-  await setDoc(
-    ref,
-    {
-      agencyId: id,
-      turnos,
-      actualizadoEn: serverTimestamp(),
-      actualizadoPor: uid,
-    },
-    { merge: true },
-  );
+  await apiClient.put(`/api/db/${COLLECTION}/` + encodeURIComponent(id), {
+    agencyId: id,
+    turnos,
+    actualizadoEn: new Date().toISOString(),
+    actualizadoPor: uid,
+  });
   cache.delete(id);
 }
 
@@ -133,17 +125,12 @@ export async function saveUmbralesOperativos(
   uid: string,
 ): Promise<void> {
   const id = String(agencyId);
-  const ref = doc(db, COLLECTION, id);
-  await setDoc(
-    ref,
-    {
-      agencyId: id,
-      ...patch,
-      actualizadoEn: serverTimestamp(),
-      actualizadoPor: uid,
-    },
-    { merge: true },
-  );
+  await apiClient.put(`/api/db/${COLLECTION}/` + encodeURIComponent(id), {
+    agencyId: id,
+    ...patch,
+    actualizadoEn: new Date().toISOString(),
+    actualizadoPor: uid,
+  });
   cache.delete(id);
 }
 

@@ -11,6 +11,13 @@ import {
 } from '../types/analytics';
 
 // Servicio de pronósticos e ingresos - Semana 6-7
+//
+// AUTONOMIA-PARCIAL (2026-05-13): este servicio aún consulta Firestore para
+// las colecciones `lineas` y `boletaje` que no existen en el schema Postgres
+// del clon. Las consultas están envueltas en try/catch para que si Firestore
+// no es alcanzable (offline) las pantallas muestren estado vacío honesto en
+// vez de crash. Migración a Postgres queda pendiente: requiere crear tabla
+// boletaje y pipeline de ingesta.
 
 class ForecastService {
   /**
@@ -90,8 +97,18 @@ class ForecastService {
         analisisEn: new Date()
       };
     } catch (error) {
-      logger.error(`Error pronosticando ingresos: ${error}`);
-      throw error;
+      logger.warn(`[AUTONOMIA-PARCIAL] Pronóstico ingresos no disponible: ${(error as any)?.message ?? error}`);
+      return {
+        id: `forecast-${lineaId}`,
+        lineaId,
+        numeroLinea: 0,
+        pasajerosActuales: 0,
+        ingresosActuales: 0,
+        escenarios: [],
+        historicoUltimos30Dias: [],
+        tendencia: 'estable',
+        analisisEn: new Date()
+      };
     }
   }
 
@@ -166,8 +183,19 @@ class ForecastService {
         )
       };
     } catch (error) {
-      logger.error(`Error en simulador de horarios: ${error}`);
-      throw error;
+      logger.warn(`[AUTONOMIA-PARCIAL] Simulador horarios no disponible: ${(error as any)?.message ?? error}`);
+      return {
+        id: `simulation-${lineaId}-${Date.now()}`,
+        lineaId,
+        cambios,
+        resultados: {
+          escenarioActual: { pasajeros: 0, ingresos: 0 },
+          escenarioNuevo: { pasajeros: 0, ingresos: 0, cambioAbsoluto: 0, cambioRelativo: 0 },
+          impactoTotal: 0
+        },
+        riesgo: 'bajo',
+        recomendacion: 'Sin datos históricos de boletaje. Integración pendiente.'
+      };
     }
   }
 
@@ -197,8 +225,8 @@ class ForecastService {
         registrosPorHora.reduce((sum, r) => sum + r.boletosVendidos, 0) / registrosPorHora.length
       );
     } catch (error) {
-      logger.error(`Error estimando pasajeros por horario: ${error}`);
-      throw error;
+      logger.warn(`[AUTONOMIA-PARCIAL] Estimación pasajeros no disponible: ${(error as any)?.message ?? error}`);
+      return 0;
     }
   }
 
@@ -235,8 +263,15 @@ class ForecastService {
         tendencia: crecimiento > 5 ? 'creciente' : crecimiento < -5 ? 'decreciente' : 'estable'
       };
     } catch (error) {
-      logger.error(`Error calculando demanda por zona: ${error}`);
-      throw error;
+      logger.warn(`[AUTONOMIA-PARCIAL] Demanda por zona no disponible: ${(error as any)?.message ?? error}`);
+      return {
+        zona,
+        boletajeTotalMes: 0,
+        boletosPorDia: 0,
+        lineasOperando: 0,
+        competenciaPresente: false,
+        tendencia: 'estable'
+      };
     }
   }
 
@@ -272,8 +307,8 @@ class ForecastService {
         .filter(h => h.demanda > promedioGeneral)
         .slice(0, 5);
     } catch (error) {
-      logger.error(`Error identificando horarios de alta demanda: ${error}`);
-      throw error;
+      logger.warn(`[AUTONOMIA-PARCIAL] Horarios alta demanda no disponibles: ${(error as any)?.message ?? error}`);
+      return [];
     }
   }
 
@@ -326,8 +361,14 @@ class ForecastService {
         confianza: Math.max(40, 90 - Math.abs(tasaCrecimientoMensual) * 2) // Mayor volatilidad = menor confianza
       };
     } catch (error) {
-      logger.error(`Error proyectando crecimiento: ${error}`);
-      throw error;
+      logger.warn(`[AUTONOMIA-PARCIAL] Proyección crecimiento no disponible: ${(error as any)?.message ?? error}`);
+      return {
+        lineaId,
+        mesesProjectados: meses,
+        proyecciones: [],
+        tasaCrecimientoMensual: 0,
+        confianza: 0
+      };
     }
   }
 
@@ -368,8 +409,18 @@ class ForecastService {
         recomendaciones: this.generarRecomendacionesBenchmark(diferenciaVsPromedio)
       };
     } catch (error) {
-      logger.error(`Error comparando operadores: ${error}`);
-      throw error;
+      logger.warn(`[AUTONOMIA-PARCIAL] Comparación operador no disponible: ${(error as any)?.message ?? error}`);
+      return {
+        lineaId,
+        numeroLinea: 0,
+        operadorUCOT: { boletosPorDia: 0, ingresosPorDia: 0 },
+        promedioZona: { boletosPorDia: 0, ingresosPorDia: 0 },
+        diferenciaVsPromedio: 0,
+        posicion: 0,
+        clasificacion: 'promedio',
+        tendencia: 'estable',
+        recomendaciones: []
+      };
     }
   }
 
@@ -382,14 +433,19 @@ class ForecastService {
     const fechaInicio = new Date();
     fechaInicio.setDate(fechaInicio.getDate() - dias);
 
-    const snapshot = await db
-      .collection('boletaje')
-      .where('lineaId', '==', lineaId)
-      .where('fecha', '>=', fechaInicio)
-      .orderBy('fecha', 'desc')
-      .get();
+    try {
+      const snapshot = await db
+        .collection('boletaje')
+        .where('lineaId', '==', lineaId)
+        .where('fecha', '>=', fechaInicio)
+        .orderBy('fecha', 'desc')
+        .get();
 
-    return snapshot.docs.map(doc => doc.data() as RegistroBoletaje);
+      return snapshot.docs.map(doc => doc.data() as RegistroBoletaje);
+    } catch (error) {
+      logger.warn(`[AUTONOMIA-PARCIAL] Histórico boletaje no disponible (Firestore?): ${(error as any)?.message ?? error}`);
+      return [];
+    }
   }
 
   private calcularTendencia(

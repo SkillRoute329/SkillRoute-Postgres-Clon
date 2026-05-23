@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Upload, Loader2, Image as ImageIcon } from 'lucide-react';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from '../config/firebaseStubsShim';
 
 interface ImageUploaderProps {
   path: string; // Storage path prefix, e.g. "vehicles/95"

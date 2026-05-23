@@ -1,14 +1,14 @@
 /**
  * GPS Tracker Service — SkillRoute UCOT
  * ============================================
- * Alimenta la colección `viajes_activos` en Firestore en tiempo real.
+ * Alimenta la colección `viajes_activos` en el backend en tiempo real.
  * Funciona desde la app del conductor (web PWA o Android/Capacitor).
  * Compatible con la red 5G/4G de Antel (reemplaza la red 2G caída).
  *
  * INSTALACIÓN:
  * No requiere dependencias extra — usa las ya instaladas:
  * - @capacitor/network (ya en package.json)
- * - firebase/firestore (ya configurado)
+ * - apiClient (cliente REST)
  *
  * USO:
  *   import { gpsTracker } from '../services/gpsTrackerService';
@@ -16,15 +16,14 @@
  *   gpsTracker.detener();
  */
 
-import { doc, setDoc, serverTimestamp, GeoPoint, deleteDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export interface ConfigTrackerParams {
   cocheId: string; // Ej: "115", "203"
   linea: string; // Ej: "300a", "306b"
-  conductorId: string; // UID de Firebase Auth
+  conductorId: string; // UID del usuario
   conductorNombre?: string;
   empresa?: string; // "UCOT" por defecto
   intervaloMs?: number; // Intervalo GPS en ms (por defecto 15000 = 15s)
@@ -147,7 +146,7 @@ class GpsTrackerService {
       },
     );
 
-    // Publicar en Firestore cada intervalo
+    // Publicar en el backend cada intervalo
     const intervalo = this.config.intervaloMs ?? INTERVALO_DEFAULT_MS;
     this.intervaloId = setInterval(() => {
       void this.obtenerYPublicar();
@@ -156,7 +155,7 @@ class GpsTrackerService {
     this.emitirEstado();
   }
 
-  // ── Obtener posición y publicar en Firestore ──────────────────────────────────
+  // ── Obtener posición y publicar ──────────────────────────────────────────────
 
   private async obtenerYPublicar(): Promise<void> {
     if (!this.config) return;
@@ -201,40 +200,37 @@ class GpsTrackerService {
       return;
     }
 
-    // Publicar en Firestore
+    // Publicar en el backend
     try {
       const docId = this.config.cocheId;
-      const ref = doc(db, COL_VIAJES, docId);
 
-      await setDoc(
-        ref,
-        {
-          cocheId: this.config.cocheId,
-          codigoLinea: this.config.linea,
-          conductorId: this.config.conductorId,
-          conductorNombre: this.config.conductorNombre ?? 'Conductor',
-          empresa: this.config.empresa ?? 'UCOT',
-          posicion: new GeoPoint(lat, lng),
-          updatedAt: serverTimestamp(),
-          estado: 'en_servicio',
-          // Datos extra útiles para el dashboard
-          velocidad: null,
-          rumbo: null,
-          pasajeros: null,
-        },
-        { merge: true },
-      );
+      await apiClient.put(`/api/db/${COL_VIAJES}/` + encodeURIComponent(docId), {
+        cocheId: this.config.cocheId,
+        codigoLinea: this.config.linea,
+        conductorId: this.config.conductorId,
+        conductorNombre: this.config.conductorNombre ?? 'Conductor',
+        empresa: this.config.empresa ?? 'UCOT',
+        // GeoPoint stored as lat/lng object (Firestore GeoPoint replacement)
+        posicion: { latitude: lat, longitude: lng },
+        lat,
+        lng,
+        updatedAt: new Date().toISOString(),
+        estado: 'en_servicio',
+        velocidad: null,
+        rumbo: null,
+        pasajeros: null,
+      });
 
       this.estado.ultimaPosicion = { lat, lng };
       this.estado.ultimaActualizacion = new Date();
       this.estado.totalActualizaciones++;
       this.estado.error = null;
 
-      console.log(`[GPS] ✓ Publicado — Coche ${docId} @ [${lat.toFixed(5)}, ${lng.toFixed(5)}]`);
+      console.log(`[GPS] Publicado — Coche ${docId} @ [${lat.toFixed(5)}, ${lng.toFixed(5)}]`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error Firestore';
+      const msg = err instanceof Error ? err.message : 'Error al publicar';
       this.estado.error = `Error al publicar: ${msg}`;
-      console.error('[GPS] Error Firestore:', msg);
+      console.error('[GPS] Error:', msg);
     }
 
     this.emitirEstado();
@@ -253,21 +249,16 @@ class GpsTrackerService {
       this.intervaloId = null;
     }
 
-    // Marcar vehículo como inactivo en Firestore
+    // Marcar vehículo como inactivo
     if (this.config?.cocheId) {
       try {
-        const ref = doc(db, COL_VIAJES, this.config.cocheId);
-        await setDoc(
-          ref,
-          {
-            estado: 'fuera_de_servicio',
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true },
-        );
+        await apiClient.put(`/api/db/${COL_VIAJES}/` + encodeURIComponent(this.config.cocheId), {
+          estado: 'fuera_de_servicio',
+          updatedAt: new Date().toISOString(),
+        });
         console.log(`[GPS] Vehículo ${this.config.cocheId} marcado como fuera de servicio`);
       } catch (err) {
-        console.warn('[GPS] No se pudo actualizar estado en Firestore:', err);
+        console.warn('[GPS] No se pudo actualizar estado:', err);
       }
     }
 
@@ -291,7 +282,7 @@ class GpsTrackerService {
 
   async finalizarServicio(cocheId: string): Promise<void> {
     try {
-      await deleteDoc(doc(db, COL_VIAJES, cocheId));
+      await apiClient.delete(`/api/db/${COL_VIAJES}/` + encodeURIComponent(cocheId));
       console.log(`[GPS] Vehículo ${cocheId} eliminado de viajes_activos`);
     } catch (err) {
       console.error('[GPS] Error al finalizar servicio:', err);

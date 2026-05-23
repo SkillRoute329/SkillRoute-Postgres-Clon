@@ -1,9 +1,25 @@
 import axios from 'axios';
 import { auth } from '../config/firebase';
+import { authHeader } from '../utils/tokenStore';
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3002/api';
+// FASE 5.13 (2026-05-13): VITE_API_URL en el clon es la base SIN /api
+// (ej. http://localhost:3001). Hay que concatenar /api porque las rutas del
+// backend están bajo /api/autostats/*. Bug histórico: causaba 404 masivo en
+// OTPDashboard, AutoStatsModule, RendimientoConductores, CumplimientoHub.
+function buildBase(): string {
+  const env = import.meta.env.VITE_API_URL?.replace(/\/+$/, '');
+  if (env) {
+    return env.endsWith('/api') ? env : `${env}/api`;
+  }
+  return 'http://localhost:3001/api';
+}
+const BASE = buildBase();
 
 async function authHeaders() {
+  // FASE 5.16: tokenStore único (con migración legacy). Fallback a Firebase
+  // Auth sólo si no hay JWT propio (en el clon Firebase está stubbed igual).
+  const h = authHeader();
+  if (h.Authorization) return h;
   const token = await auth.currentUser?.getIdToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
@@ -96,9 +112,17 @@ export async function fetchAgencyRoutes(agencyId: string): Promise<RouteMetaInfo
   return data.routes ?? [];
 }
 
-export async function fetchVehicleHistory(idBus: string, days = 7): Promise<VehicleHistoryResponse> {
+/**
+ * FASE 5.14 (2026-05-13): agencyId pasa a ser parte de la request para evitar
+ * que el backend mezcle historial entre operadores con el mismo codigoBus.
+ * Es opcional para preservar compatibilidad con llamadores antiguos, pero
+ * todo caller nuevo DEBE pasarlo si conoce la agencia.
+ */
+export async function fetchVehicleHistory(idBus: string, days = 7, agencyId?: string): Promise<VehicleHistoryResponse> {
   const h = await authHeaders();
-  const { data } = await axios.get(`${BASE}/autostats/vehicle/${idBus}?days=${days}`, { headers: h });
+  const qs = new URLSearchParams({ days: String(days) });
+  if (agencyId) qs.set('agency_id', agencyId);
+  const { data } = await axios.get(`${BASE}/autostats/vehicle/${idBus}?${qs.toString()}`, { headers: h });
   return data;
 }
 

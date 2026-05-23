@@ -64,18 +64,18 @@ function AgencyPill({ agencyId, active, onClick }: { agencyId: string; active: b
 
 // ── Panel de historial de coche ───────────────────────────────────────────
 
-function VehicleProfilePanel({ idBus, onClose }: { idBus: string; onClose: () => void }) {
+function VehicleProfilePanel({ idBus, agencyId, onClose }: { idBus: string; agencyId: string; onClose: () => void }) {
   const [data, setData] = useState<VehicleHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(7);
 
   useEffect(() => {
     setLoading(true);
-    fetchVehicleHistory(idBus, days)
+    fetchVehicleHistory(idBus, days, agencyId)
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [idBus, days]);
+  }, [idBus, days, agencyId]);
 
   const s = data?.summary;
 
@@ -929,6 +929,7 @@ export default function AutoStatsModule() {
             {selectedBus && (
               <VehicleProfilePanel
                 idBus={selectedBus}
+                agencyId={selectedAgency}
                 onClose={() => setSelectedBus(null)}
               />
             )}

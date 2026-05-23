@@ -1,10 +1,9 @@
 /**
- * otpService — consulta el estado OTP (puntualidad) de una línea desde Firestore.
+ * otpService — consulta el estado OTP (puntualidad) de una línea desde el backend local.
  * Datos escritos por otpEngine cada 10 minutos.
  */
 
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 const OTP_SUMMARY_COL = 'otp_summary';
 const BUS_DELAYS_COL = 'bus_delays';
@@ -42,8 +41,7 @@ export async function getOtpSummary(agencyId: number, linea: string): Promise<Ot
   const cached = summaryCache.get(docId);
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
   try {
-    const snap = await getDoc(doc(db, OTP_SUMMARY_COL, docId));
-    const result = snap.exists() ? (snap.data() as OtpSummary) : null;
+    const result = await apiClient.get(`/api/db/${OTP_SUMMARY_COL}/` + encodeURIComponent(docId)) as OtpSummary | null;
     summaryCache.set(docId, { data: result, ts: Date.now() });
     return result;
   } catch {
@@ -53,8 +51,8 @@ export async function getOtpSummary(agencyId: number, linea: string): Promise<Ot
 
 export async function getBusDelayAtStop(agencyId: number, busId: string): Promise<BusDelay | null> {
   try {
-    const snap = await getDoc(doc(db, BUS_DELAYS_COL, `${agencyId}_${busId}`));
-    return snap.exists() ? (snap.data() as BusDelay) : null;
+    const result = await apiClient.get(`/api/db/${BUS_DELAYS_COL}/` + encodeURIComponent(`${agencyId}_${busId}`)) as BusDelay | null;
+    return result;
   } catch {
     return null;
   }

@@ -10,7 +10,7 @@ import {
   doc,
   Timestamp,
   getDocs,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import { db, authReady } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
@@ -62,9 +62,32 @@ interface Incidencia {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function tiempoAtras(ts: Timestamp | null | undefined): string {
+function tiempoAtras(ts: any): string {
   if (!ts) return '—';
-  const mins = Math.round((Date.now() - ts.toDate().getTime()) / 60_000);
+  
+  let date: Date;
+  try {
+    if (typeof ts.toDate === 'function') {
+      date = ts.toDate();
+    } else if (ts instanceof Date) {
+      date = ts;
+    } else if (typeof ts === 'string' || typeof ts === 'number') {
+      date = new Date(ts);
+    } else if (ts && (ts.seconds !== undefined || ts._seconds !== undefined)) {
+      // Soporte para timestamps serializados como JSON
+      const secs = ts.seconds ?? ts._seconds;
+      const nanos = ts.nanoseconds ?? ts._nanoseconds ?? 0;
+      date = new Date(secs * 1000 + nanos / 1_000_000);
+    } else {
+      date = new Date(ts);
+    }
+  } catch (e) {
+    return '—';
+  }
+
+  if (isNaN(date.getTime())) return '—';
+
+  const mins = Math.round((Date.now() - date.getTime()) / 60_000);
   if (mins < 1) return 'ahora';
   if (mins === 1) return 'hace 1 min';
   if (mins < 60) return `hace ${mins} min`;

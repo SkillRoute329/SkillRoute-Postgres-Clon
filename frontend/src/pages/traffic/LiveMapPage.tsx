@@ -84,20 +84,41 @@ function crearIconoBus(codigoEmpresa: number, linea: string): L.DivIcon {
 
 // ─── Componente de centrado automático ───────────────────────────────────────
 
+/**
+ * FASE 5.14 (2026-05-13): bounding box de Montevideo metropolitano. Cualquier
+ * bus con coordenadas fuera de aqui se descarta del centrado (caso comun:
+ * features del STM con lat/lng=0 o variantes raras que tiraban el promedio
+ * hacia el oceano / otro pais).
+ *   lat:  -35.05 .. -34.65
+ *   lng:  -56.55 .. -55.85
+ */
+const MVD_LAT_MIN = -35.05, MVD_LAT_MAX = -34.65;
+const MVD_LNG_MIN = -56.55, MVD_LNG_MAX = -55.85;
+const MVD_CENTER: [number, number] = [-34.9011, -56.1645];
+
+function isInMvd(lat: number, lng: number): boolean {
+  return lat >= MVD_LAT_MIN && lat <= MVD_LAT_MAX && lng >= MVD_LNG_MIN && lng <= MVD_LNG_MAX;
+}
+
 function AutoCenter({ buses }: { buses: BusSTM[] }) {
   const map = useMap();
   const centered = useRef(false);
 
   useEffect(() => {
-    if (!centered.current && buses.length > 0) {
-      const ucot = buses.filter((b) => b.codigoEmpresa === 70);  // centering default UCOT
-      if (ucot.length > 0) {
-        const lat = ucot.reduce((s, b) => s + b.lat, 0) / ucot.length;
-        const lng = ucot.reduce((s, b) => s + b.lng, 0) / ucot.length;
-        map.setView([lat, lng], 13, { animate: true });
-        centered.current = true;
-      }
+    if (centered.current) return;
+    // Centrar en UCOT con coordenadas validas; si no hay UCOT, en cualquier
+    // bus valido; si no hay nada, en el centro fijo de Montevideo.
+    const validos = buses.filter((b) => isInMvd(b.lat, b.lng));
+    const ucot = validos.filter((b) => b.codigoEmpresa === 70);
+    const target = ucot.length > 0 ? ucot : validos;
+    if (target.length > 0) {
+      const lat = target.reduce((s, b) => s + b.lat, 0) / target.length;
+      const lng = target.reduce((s, b) => s + b.lng, 0) / target.length;
+      map.setView([lat, lng], 13, { animate: true });
+    } else {
+      map.setView(MVD_CENTER, 13, { animate: false });
     }
+    centered.current = true;
   }, [buses, map]);
 
   return null;
@@ -335,8 +356,13 @@ export default function LiveMapPage() {
     };
   }, [cargarBuses, cargarParadas]);
 
-  // ── Mock Heatmap Data (Densidad de Abordajes y Cuellos de botella) ──────────
-  // Representan puntos críticos en Montevideo (8 de Octubre, Tres Cruces, etc.)
+  // ── Heatmap de referencia: puntos críticos editoriales de Montevideo ────────
+  // ANTI-SIMULACION (DIRECTRIZ 2026-05-02): puntos de referencia operativa de
+  // demanda historica conocida en Montevideo (Tres Cruces, 8 de Octubre,
+  // 18 de Julio, Portones, Casavalle). NO se aplica dispersión aleatoria —
+  // los pesos y posiciones son datos editoriales fijos. La capa real de
+  // densidad de demanda en tiempo real está pendiente de integración con
+  // vehicle_events agregados por celda.
   const heatmapData: [number, number, number][] = [
     [-34.896, -56.166, 1.0], // Tres Cruces
     [-34.895, -56.164, 0.9],
@@ -354,14 +380,7 @@ export default function LiveMapPage() {
     [-34.884, -56.082, 0.6], // Portones
     [-34.885, -56.08, 0.8],
     [-34.832, -56.162, 0.7], // Casavalle
-  ].flatMap(([lat, lng, w]) =>
-    // Generar dispersión alrededor del punto para simular mapa de calor real
-    Array.from({ length: 15 }).map(() => [
-      lat + (Math.random() - 0.5) * 0.005,
-      lng + (Math.random() - 0.5) * 0.005,
-      w * (0.5 + Math.random() * 0.5),
-    ]),
-  ) as [number, number, number][];
+  ];
 
   // ── Filtrado ────────────────────────────────────────────────────────────────
   const busesPropios = buses.filter((b) => b.codigoEmpresa === empresaPropia);
@@ -510,10 +529,10 @@ export default function LiveMapPage() {
           Solapamiento ({busesConSolapamiento.length})
         </button>
 
-        {/* Toggle Heatmap */}
+        {/* Toggle Heatmap — capa de referencia editorial, no demanda en vivo */}
         <button
           onClick={() => setMostrarHeatmap((p) => !p)}
-          title="Ver densidad de abordajes y cuellos de botella"
+          title="Puntos editoriales de referencia (Tres Cruces, 8 de Octubre, 18 de Julio, Portones). Densidad real en vivo pendiente de integración."
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer border-2 transition-colors ${
             mostrarHeatmap
               ? 'border-red-500 bg-red-500/20 text-red-500'
@@ -521,7 +540,7 @@ export default function LiveMapPage() {
           }`}
         >
           <Flame size={12} />
-          Densidad Abordajes
+          Zonas Ref.
         </button>
 
         {/* Toggle Paradas Soberanas */}
@@ -561,7 +580,7 @@ export default function LiveMapPage() {
         )}
 
         <MapContainer
-          center={[-34.9, -56.19]}
+          center={MVD_CENTER}
           zoom={13}
           style={{ width: '100%', height: '100%' }}
           zoomControl={true}

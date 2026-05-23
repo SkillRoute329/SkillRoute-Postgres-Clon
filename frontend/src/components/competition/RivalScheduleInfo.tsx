@@ -15,7 +15,7 @@
 
 import { useEffect, useState } from 'react';
 import { Calendar, Clock, AlertCircle } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 
 interface HorarioBlock {

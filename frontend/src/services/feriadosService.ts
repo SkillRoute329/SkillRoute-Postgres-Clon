@@ -1,15 +1,4 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  onSnapshot,
-  query,
-  orderBy,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 const FERIADOS_COL = 'feriados';
 
@@ -22,24 +11,34 @@ export interface Feriado {
 }
 
 export const FeriadosService = {
+  // TODO FASE 4.5: Socket.io firestore:feriados
   subscribe(callback: (feriados: Feriado[]) => void): () => void {
-    const q = query(collection(db, FERIADOS_COL), orderBy('fecha', 'asc'));
-    return onSnapshot(q, (snap) => {
-      const data = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      })) as Feriado[];
-      callback(data);
-    });
+    let active = true;
+
+    const fetch = async () => {
+      try {
+        const raw = await apiClient.get(`/api/db/${FERIADOS_COL}`, {
+          query: { orderBy: 'fecha:asc', limit: 500 },
+        }) as Feriado[];
+        if (active) callback(Array.isArray(raw) ? raw : []);
+      } catch {
+        // ignore
+      }
+    };
+
+    fetch();
+    const interval = setInterval(fetch, 10000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   },
 
   async getAll(): Promise<Feriado[]> {
-    const q = query(collection(db, FERIADOS_COL), orderBy('fecha', 'asc'));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => ({
-      id: d.id,
-      ...d.data(),
-    })) as Feriado[];
+    const raw = await apiClient.get(`/api/db/${FERIADOS_COL}`, {
+      query: { orderBy: 'fecha:asc', limit: 500 },
+    }) as Feriado[];
+    return Array.isArray(raw) ? raw : [];
   },
 
   async isFeriado(fechaStr: string): Promise<Feriado | null> {
@@ -53,17 +52,15 @@ export const FeriadosService = {
   },
 
   async add(feriado: Omit<Feriado, 'id'>): Promise<string> {
-    const docRef = await addDoc(collection(db, FERIADOS_COL), feriado);
-    return docRef.id;
+    const result = await apiClient.post(`/api/db/${FERIADOS_COL}`, feriado) as { id: string };
+    return result.id;
   },
 
   async update(id: string, updates: Partial<Feriado>): Promise<void> {
-    const docRef = doc(db, FERIADOS_COL, id);
-    await updateDoc(docRef, updates);
+    await apiClient.put(`/api/db/${FERIADOS_COL}/` + encodeURIComponent(id), updates);
   },
 
   async remove(id: string): Promise<void> {
-    const docRef = doc(db, FERIADOS_COL, id);
-    await deleteDoc(docRef);
+    await apiClient.delete(`/api/db/${FERIADOS_COL}/` + encodeURIComponent(id));
   },
 };

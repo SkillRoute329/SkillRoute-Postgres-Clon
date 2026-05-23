@@ -30,7 +30,7 @@ import {
   Timestamp,
   limit,
   getDocs,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import {
   Building2,

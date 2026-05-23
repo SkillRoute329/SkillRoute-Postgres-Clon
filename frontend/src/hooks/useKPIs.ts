@@ -1,7 +1,8 @@
 /**
  * useKPIs — KPIs en tiempo real para el CEO Dashboard
  * =====================================================
- * Combina datos de Firestore y calcula los KPIs operativos clave.
+ * Combina datos de REST backend y calcula los KPIs operativos clave.
+ * TODO FASE 4.5: Socket.io firestore:viajes_activos
  *
  * DÓNDE COLOCAR: frontend/src/hooks/useKPIs.ts
  *
@@ -10,8 +11,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -68,78 +68,86 @@ export function useKPIs(autoRefreshMs = 60_000) {
   const today = new Date().toISOString().split('T')[0];
   const INACTIVIDAD_MS = 15 * 60 * 1000;
 
-  // Listener en tiempo real para viajes_activos (GPS)
   useEffect(() => {
-    const unsubGps = onSnapshot(
-      collection(db, 'viajes_activos'),
-      async (gpsSnap) => {
-        try {
-          const ahora = Date.now();
-          const cutoff = ahora - INACTIVIDAD_MS;
+    let active = true;
 
-          const gpsActivos = gpsSnap.docs.filter((d) => {
-            const ts = d.data().updatedAt as { toMillis?: () => number } | undefined;
-            return ts && typeof ts.toMillis === 'function' && ts.toMillis() > cutoff;
-          }).length;
+    const calcularKPIs = async () => {
+      try {
+        const ahora = Date.now();
+        const cutoff = ahora - INACTIVIDAD_MS;
 
-          // Obtener resto de datos en paralelo
-          const [vehiculosSnap, estadosSnap, alertasSnap, mantenimientoSnap] = await Promise.all([
-            getDocs(collection(db, 'vehicles')),
-            getDocs(query(collection(db, 'servicio_estado'), where('fecha', '==', today))),
-            getDocs(query(collection(db, 'road_alerts'), where('estado', '==', 'activa'))),
-            getDocs(query(collection(db, 'maintenance'), where('estado', '==', 'pendiente'))),
-          ]);
+        const [gpsRaw, vehiculosRaw, estadosRaw, alertasRaw, mantenimientoRaw] = await Promise.all([
+          apiClient.get('/api/db/viajes_activos', { query: { limit: 2000 } }) as Promise<any[]>,
+          apiClient.get('/api/db/vehicles', { query: { limit: 5000 } }) as Promise<any[]>,
+          apiClient.get('/api/db/servicio_estado', { query: { where: `fecha:${today}`, limit: 2000 } }) as Promise<any[]>,
+          apiClient.get('/api/db/road_alerts', { query: { where: 'estado:activa', limit: 500 } }) as Promise<any[]>,
+          apiClient.get('/api/db/maintenance', { query: { where: 'estado:pendiente', limit: 500 } }) as Promise<any[]>,
+        ]);
 
-          // Flota
-          const total = vehiculosSnap.size;
-          const activos = vehiculosSnap.docs.filter(
-            (d) => !/mantenimiento|taller|paralizado|baja/i.test(String(d.data().status ?? '')),
-          ).length;
+        if (!active) return;
 
-          // Puntualidad
-          const estados = estadosSnap.docs.map((d) => d.data());
-          const conAtraso = estados.filter((e) => e.atrasoMinutos != null);
-          const puntuales = conAtraso.filter((e) => (e.atrasoMinutos ?? 0) <= 3).length;
-          const puntualidadPct =
-            conAtraso.length > 0 ? Math.round((puntuales / conAtraso.length) * 100) : null;
-          const atrasoTotal = conAtraso.reduce((s, e) => s + Number(e.atrasoMinutos ?? 0), 0);
-          const atrasoPromedio =
-            conAtraso.length > 0 ? Math.round(atrasoTotal / conAtraso.length) : 0;
+        const gpsArr = Array.isArray(gpsRaw) ? gpsRaw : [];
+        const gpsActivos = gpsArr.filter((d: any) => {
+          const tsMs = d.updatedAt ? new Date(d.updatedAt).getTime() : 0;
+          return tsMs > cutoff;
+        }).length;
 
-          const now = new Date();
-          setKpis({
-            vehiculosTotal: total,
-            vehiculosActivos: activos,
-            vehiculosEnServicioGPS: gpsActivos,
-            flotaActivaPct: total > 0 ? Math.round((activos / total) * 100) : 0,
-            puntualidadPct,
-            serviciosConAtraso: conAtraso.length - puntuales,
-            atrasoPromedioMin: atrasoPromedio,
-            serviciosHoy: estados.length,
-            alertasActivas: alertasSnap.size,
-            mantenimientosPendientes: mantenimientoSnap.size,
-            boletosHoy: null,
-            ingresosHoy: null,
-            fechaCalculo: today,
-            horaCalculo: now.toTimeString().slice(0, 5),
-          });
+        // Flota
+        const vehiculosArr = Array.isArray(vehiculosRaw) ? vehiculosRaw : [];
+        const total = vehiculosArr.length;
+        const activos = vehiculosArr.filter(
+          (d: any) => !/mantenimiento|taller|paralizado|baja/i.test(String(d.status ?? '')),
+        ).length;
 
-          setLoading(false);
-          setError(null);
-        } catch (err) {
-          console.error('[useKPIs] Error:', err);
-          setError(err instanceof Error ? err.message : 'Error cargando KPIs');
-          setLoading(false);
-        }
-      },
-      (err) => {
-        setError(err.message);
+        // Puntualidad
+        const estadosArr = Array.isArray(estadosRaw) ? estadosRaw : [];
+        const conAtraso = estadosArr.filter((e: any) => e.atrasoMinutos != null);
+        const puntuales = conAtraso.filter((e: any) => (e.atrasoMinutos ?? 0) <= 3).length;
+        const puntualidadPct =
+          conAtraso.length > 0 ? Math.round((puntuales / conAtraso.length) * 100) : null;
+        const atrasoTotal = conAtraso.reduce((s: number, e: any) => s + Number(e.atrasoMinutos ?? 0), 0);
+        const atrasoPromedio =
+          conAtraso.length > 0 ? Math.round(atrasoTotal / conAtraso.length) : 0;
+
+        const alertasArr = Array.isArray(alertasRaw) ? alertasRaw : [];
+        const mantenimientoArr = Array.isArray(mantenimientoRaw) ? mantenimientoRaw : [];
+
+        const now = new Date();
+        setKpis({
+          vehiculosTotal: total,
+          vehiculosActivos: activos,
+          vehiculosEnServicioGPS: gpsActivos,
+          flotaActivaPct: total > 0 ? Math.round((activos / total) * 100) : 0,
+          puntualidadPct,
+          serviciosConAtraso: conAtraso.length - puntuales,
+          atrasoPromedioMin: atrasoPromedio,
+          serviciosHoy: estadosArr.length,
+          alertasActivas: alertasArr.length,
+          mantenimientosPendientes: mantenimientoArr.length,
+          boletosHoy: null,
+          ingresosHoy: null,
+          fechaCalculo: today,
+          horaCalculo: now.toTimeString().slice(0, 5),
+        });
+
         setLoading(false);
-      },
-    );
+        setError(null);
+      } catch (err) {
+        if (!active) return;
+        console.error('[useKPIs] Error:', err);
+        setError(err instanceof Error ? err.message : 'Error cargando KPIs');
+        setLoading(false);
+      }
+    };
 
-    return () => unsubGps();
-  }, [today]);
+    calcularKPIs();
+    // TODO FASE 4.5: Socket.io firestore:viajes_activos
+    const interval = setInterval(calcularKPIs, autoRefreshMs);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [today, autoRefreshMs]);
 
   return { kpis, loading, error };
 }

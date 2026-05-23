@@ -16,6 +16,8 @@
 
 import masterJson from '../data/ucotVariantsMaster.json';
 import { LINE_INSPECTOR_CONFIGS, type LineInspectorConfig } from './LineInspectorAgent';
+import { distanciaKm } from '../utils/geomath';
+import { hhmmAMin } from '../utils/formatTimestamp';
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -96,10 +98,8 @@ function nowHHMM(d: Date = new Date()): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function hhmmToMin(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
-  return (h || 0) * 60 + (m || 0);
-}
+// FASE 5.16: delega en utils/formatTimestamp (fuente única). API local intacta.
+const hhmmToMin = hhmmAMin;
 
 function diffMin(a: string, b: string): number {
   // b - a en minutos (puede ser negativo)
@@ -460,13 +460,7 @@ function countCloseBusPairs(buses: BusPositionLite[], maxKm: number): number {
   return pares;
 }
 
+// FASE 5.16: delega en utils/geomath (fuente única). API local intacta.
 function haversineKm(a: BusPositionLite, b: BusPositionLite): number {
-  const toRad = (x: number) => (x * Math.PI) / 180;
-  const R = 6371;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
+  return distanciaKm(a, b);
 }

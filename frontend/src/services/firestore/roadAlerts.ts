@@ -1,57 +1,53 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  addDoc,
-  setDoc,
-  query,
-  orderBy,
-  onSnapshot,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 
 const COL = 'alertas_trafico';
 
 export const RoadAlertService = {
   async getAll(): Promise<unknown[]> {
     try {
-      const q = query(collection(db, COL), orderBy('creado_en', 'desc'));
-      const snap = await getDocs(q);
-      return snap.docs.map((d) => {
-        const data = d.data() ?? {};
-        return {
-          id: d.id,
-          title: data.title ?? '',
-          description: data.description ?? '',
-          type: data.type ?? 'DESVIO',
-          severity: data.severity ?? 'MEDIUM',
-          affectedLine: data.affectedLine ?? 'Todas',
-          active: data.active !== false,
-          creado_en: data.creado_en ?? null,
-          createdAt: data.creado_en ?? data.createdAt ?? new Date().toISOString(),
-        };
+      const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+        query: { orderBy: 'creado_en:desc', limit: 5000 },
       });
+      return Array.isArray(res.data)
+        ? res.data.map((data) => ({
+            id: data.id ?? '',
+            title: data.title ?? '',
+            description: data.description ?? '',
+            type: data.type ?? 'DESVIO',
+            severity: data.severity ?? 'MEDIUM',
+            affectedLine: data.affectedLine ?? 'Todas',
+            active: data.active !== false,
+            creado_en: data.creado_en ?? null,
+            createdAt: data.creado_en ?? data.createdAt ?? new Date().toISOString(),
+          }))
+        : [];
     } catch (e) {
       console.error('RoadAlertService.getAll', e);
       return [];
     }
   },
 
-  subscribe(callback: (items: unknown[]) => void) {
-    const q = query(collection(db, COL), orderBy('creado_en', 'desc'));
-    return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+  // FASE 5.34 (2026-05-22): bus socket en lugar de polling 10s.
+  subscribe(callback: (items: unknown[]) => void): () => void {
+    return subscribeViaBus<unknown[]>(
+      COL,
+      () => this.getAll(),
+      callback,
+      { alsoListen: ['bus:db:road_alerts:any', 'bus:db:roadAlerts:any', 'bus:db:traffic_alerts:any'] },
+    );
   },
 
   async create(data: Record<string, unknown>) {
-    const ref = await addDoc(collection(db, COL), {
+    const res = await apiClient.post<{ id: string }>(`/api/db/${COL}`, {
       ...data,
       active: true,
       creado_en: new Date().toISOString(),
     });
-    return { id: ref.id, ...data };
+    return { id: res.data?.id ?? String(Date.now()), ...data };
   },
 
   async resolve(id: string) {
-    await setDoc(doc(db, COL, id), { active: false, status: 'RESOLVED' }, { merge: true });
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(id)}`, { active: false, status: 'RESOLVED' });
   },
 };

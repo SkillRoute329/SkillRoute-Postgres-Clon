@@ -35,15 +35,8 @@
  *  5) Si frecuenciaMin === 0 o no hay horarios_stm → NO_MEDIBLE
  *     (transparencia §12 — gap conocido del scraper STM).
  */
-import { db } from '../config/firebase';
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  getDoc,
-} from 'firebase/firestore';
+import { apiClient } from '../clients/apiClient';
+import { distanciaKm } from '../utils/geomath';
 
 // ─── Tipos ──────────────────────────────────────────────────────────
 
@@ -102,30 +95,16 @@ export interface HRRCrossOp {
 
 const VEL_PROMEDIO_KMH = 25; // refinable a futuro con vehicle_events
 
+// FASE 5.16: delega en utils/geomath (fuente única). API local intacta.
 function haversineKm(
   a: { lat: number; lon: number },
   b: { lat: number; lon: number },
 ): number {
-  const R = 6371;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLon = ((b.lon - a.lon) * Math.PI) / 180;
-  const lat1 = (a.lat * Math.PI) / 180;
-  const lat2 = (b.lat * Math.PI) / 180;
-  const x =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(x));
+  return distanciaKm(a, b);
 }
 
 function distanciaAHeadway(distanciaKm: number): number {
   return (distanciaKm / VEL_PROMEDIO_KMH) * 60;
-}
-
-function tipoDiaHoy(): 'Hábiles' | 'Sábados' | 'Domingos' {
-  const dow = new Date().getDay();
-  if (dow === 0) return 'Domingos';
-  if (dow === 6) return 'Sábados';
-  return 'Hábiles';
 }
 
 function clasificarRatio(ratio: number): EstadoHeadway {
@@ -141,22 +120,19 @@ function clasificarRatio(ratio: number): EstadoHeadway {
  * lista de buses activos transformada al shape interno.
  */
 export async function getViajesActivos(empresa?: EmpresaName): Promise<BusActivo[]> {
-  const col = collection(db, 'viajes_activos');
-  const q = empresa
-    ? query(col, where('empresa', '==', empresa))
-    : query(col);
-  const snap = await getDocs(q);
+  const queryParams: Record<string, any> = { limit: 5000 };
+  if (empresa) queryParams.where = `empresa:${empresa}`;
+  const raw = (await apiClient.get('/api/db/viajes_activos', { query: queryParams })) as unknown as any[];
+  const arr = Array.isArray(raw) ? raw : [];
   const result: BusActivo[] = [];
-  snap.forEach((d) => {
-    const data = d.data() as Record<string, unknown>;
+  arr.forEach((data: any) => {
     const pos = data.posicion as { latitude: number; longitude: number } | undefined;
     const posPrev = data.posicion_anterior as
       | { latitude: number; longitude: number }
       | undefined;
     if (!pos || typeof pos.latitude !== 'number') return;
-    const updatedAt = data.updatedAt as { toDate?: () => Date } | undefined;
     result.push({
-      interno: d.id,
+      interno: data.id,
       empresa: String(data.empresa || '') as EmpresaName,
       linea: String(data.linea || ''),
       variante: Number(data.variante || 0),
@@ -164,43 +140,40 @@ export async function getViajesActivos(empresa?: EmpresaName): Promise<BusActivo
       posicionAnterior: posPrev
         ? { lat: posPrev.latitude, lon: posPrev.longitude }
         : undefined,
-      updatedAt: updatedAt?.toDate ? updatedAt.toDate() : new Date(),
+      updatedAt: data.updatedAt ? new Date(data.updatedAt) : new Date(),
     });
   });
   return result;
 }
 
 /**
- * Lee horarios_stm/{linea} y devuelve la frecuencia esperada para hoy.
- * null si la línea no tiene horarios cargados o no aplica para hoy.
+ * FASE 5.21 (2026-05-17): `horarios_stm` NO existe (ni en whitelist ni tabla)
+ * → toda línea daba NO_MEDIBLE y el módulo no servía. Ahora la frecuencia
+ * PROGRAMADA se deriva del GTFS oficial IMM vía /api/comando/frecuencias-gtfs
+ * (mapa línea→headway min, cacheado en backend). Se memoiza una vez por sesión.
  */
+let _frecMapPromise: Promise<Record<string, number>> | null = null;
+function cargarFrecuencias(): Promise<Record<string, number>> {
+  if (!_frecMapPromise) {
+    _frecMapPromise = apiClient
+      .get('/api/comando/frecuencias-gtfs')
+      .then((r: any) => (r && r.frecuencias) || {})
+      .catch((err) => {
+        console.warn('[headwayInsightsService] frecuencias-gtfs', err);
+        _frecMapPromise = null; // permitir reintento
+        return {};
+      });
+  }
+  return _frecMapPromise;
+}
+
 export async function getFrecuenciaEsperada(
   linea: string,
-  variante?: number,
+  _variante?: number,
 ): Promise<number | null> {
-  try {
-    const ref = doc(db, 'horarios_stm', linea);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return null;
-    const data = snap.data() as Record<string, unknown>;
-    const dias = data.dias as Record<string, { variantes?: Array<Record<string, unknown>> }>;
-    const tipo = tipoDiaHoy();
-    const dia = dias?.[tipo];
-    if (!dia?.variantes || dia.variantes.length === 0) return null;
-    // Si se pidió variante específica, intentar matchearla.
-    let v = dia.variantes[0];
-    if (variante !== undefined) {
-      const match = dia.variantes.find(
-        (x) => Number(x.variante ?? 0) === variante,
-      );
-      if (match) v = match;
-    }
-    const freq = Number(v.frecuenciaMin ?? 0);
-    return freq > 0 ? freq : null;
-  } catch (err) {
-    console.warn('[headwayInsightsService.getFrecuenciaEsperada]', linea, err);
-    return null;
-  }
+  const mapa = await cargarFrecuencias();
+  const f = Number(mapa[String(linea)] ?? 0);
+  return f > 0 ? f : null;
 }
 
 // ─── Single-op headway analytics ────────────────────────────────────

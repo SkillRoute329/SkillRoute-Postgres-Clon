@@ -1,11 +1,11 @@
 /**
  * Hook para gestionar datos en tiempo real
- * Migrado de Socket.io a Firebase Firestore onSnapshot
+ * Migrado de Firebase onSnapshot a polling REST (apiClient).
+ * TODO FASE 4.5: Socket.io firestore:viajes_activos / alertas_regulacion / fleet_checks
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { collection, query, onSnapshot, orderBy, limit, doc, getDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 import type { LocationUpdate, ServiceStatusChange, InspectorAlert, FleetCheckCompleted, UserConnected } from '../services/socketService';
 // Zod #73/#66 (2026-04-23): validación de shape para hooks real-time
 import { safeParseOrLog, ViajeActivoSchema, AlertaRegulacionSchema } from '../schemas';
@@ -15,45 +15,52 @@ export function useLocationUpdates() {
   const [lastUpdate, setLastUpdate] = useState<LocationUpdate | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, 'viajes_activos'), limit(200));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setLocations((prev) => {
-        const newMap = new Map(prev);
-        snapshot.docChanges().forEach((change) => {
-          const raw = change.doc.data();
-          // Zod #73: valida shape antes de usar. Si falla, loggea + omite.
-          const parsed = safeParseOrLog(ViajeActivoSchema, raw, `viajes_activos/${change.doc.id}`);
-          const data = (parsed ?? raw) as any;  // si Zod falla mantenemos retrocompatibilidad
-          const vehicleId = data.cocheId || data.vehicleId || change.doc.id;
+    let active = true;
 
-          if (change.type === 'removed') {
-            newMap.delete(vehicleId);
-          } else {
-            // Soportar ambos formatos: GeoPoint en 'posicion' y campos lat/lng directos
-            const pos = data.posicion as { latitude?: number; longitude?: number } | undefined;
-            const lat = pos?.latitude ?? data.latitude ?? data.lat;
-            const lng = pos?.longitude ?? data.longitude ?? data.lng;
+    const fetch = async () => {
+      try {
+        const raw = await apiClient.get('/api/db/viajes_activos', { query: { limit: 200 } }) as any[];
+        if (!active) return;
+        setLocations(() => {
+          const newMap = new Map<string, LocationUpdate>();
+          (Array.isArray(raw) ? raw : []).forEach((data: any) => {
+            const parsed = safeParseOrLog(ViajeActivoSchema, data, `viajes_activos/${data.id}`);
+            const d = (parsed ?? data) as any;
+            const vehicleId = d.cocheId || d.vehicleId || d.id;
+
+            const pos = d.posicion as { latitude?: number; longitude?: number } | undefined;
+            const lat = pos?.latitude ?? d.latitude ?? d.lat;
+            const lng = pos?.longitude ?? d.longitude ?? d.lng;
 
             if (typeof lat === 'number' && typeof lng === 'number' && (lat !== 0 || lng !== 0)) {
+              const tsMs = d.updatedAt ? new Date(d.updatedAt).getTime() : Date.now();
               const locUpdate: LocationUpdate = {
                 vehicleId,
                 latitude: lat,
                 longitude: lng,
-                speed: data.velocidad ?? data.speed ?? 0,
-                heading: data.heading || 0,
-                timestamp: data.updatedAt?.toMillis?.() || data.lastUpdate?.toMillis?.() || Date.now(),
-                updatedBy: data.conductorNombre || data.driverId || 'System',
+                speed: d.velocidad ?? d.speed ?? 0,
+                heading: d.heading || 0,
+                timestamp: isNaN(tsMs) ? Date.now() : tsMs,
+                updatedBy: d.conductorNombre || d.driverId || 'System',
               };
               newMap.set(vehicleId, locUpdate);
               setLastUpdate(locUpdate);
             }
-          }
+          });
+          return newMap;
         });
-        return newMap;
-      });
-    }, () => {});
+      } catch {
+        // No-op: keep previous data on error
+      }
+    };
 
-    return () => unsubscribe();
+    fetch();
+    // TODO FASE 4.5: Socket.io firestore:viajes_activos
+    const interval = setInterval(fetch, 10000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const getLocation = useCallback((vehicleId: string) => {
@@ -68,31 +75,39 @@ export function useServiceStatusUpdates() {
   const [lastUpdate, setLastUpdate] = useState<ServiceStatusChange | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, 'viajes_activos'), limit(200));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setServices((prev) => {
-        const newMap = new Map(prev);
-        snapshot.docChanges().forEach((change) => {
-          const data = change.doc.data();
-          const serviceId = data.cartonId || data.cocheId || change.doc.id;
-          
-          if (change.type === 'removed') {
-            newMap.delete(serviceId);
-          } else {
+    let active = true;
+
+    const fetch = async () => {
+      try {
+        const raw = await apiClient.get('/api/db/viajes_activos', { query: { limit: 200 } }) as any[];
+        if (!active) return;
+        setServices(() => {
+          const newMap = new Map<string, ServiceStatusChange>();
+          (Array.isArray(raw) ? raw : []).forEach((data: any) => {
+            const serviceId = data.cartonId || data.cocheId || data.id;
+            const tsMs = data.updatedAt ? new Date(data.updatedAt).getTime() : Date.now();
             const statusUpdate: ServiceStatusChange = {
               serviceId,
               status: data.estado || data.status || 'in_progress',
-              timestamp: data.updatedAt?.toMillis?.() || data.lastUpdate?.toMillis?.() || Date.now(),
+              timestamp: isNaN(tsMs) ? Date.now() : tsMs,
             };
             newMap.set(serviceId, statusUpdate);
             setLastUpdate(statusUpdate);
-          }
+          });
+          return newMap;
         });
-        return newMap;
-      });
-    }, () => {});
+      } catch {
+        // No-op
+      }
+    };
 
-    return () => unsubscribe();
+    fetch();
+    // TODO FASE 4.5: Socket.io firestore:viajes_activos
+    const interval = setInterval(fetch, 10000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const getStatus = useCallback((serviceId: string) => {
@@ -107,47 +122,55 @@ export function useInspectorAlerts() {
   const [criticalAlerts, setCriticalAlerts] = useState<InspectorAlert[]>([]);
 
   useEffect(() => {
-    const q = query(collection(db, 'alertas_regulacion'), orderBy('timestamp', 'desc'), limit(50));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newAlerts: InspectorAlert[] = [];
-      const newCriticals: InspectorAlert[] = [];
+    let active = true;
 
-      snapshot.forEach((doc) => {
-        const raw = doc.data();
-        const parsed = safeParseOrLog(
-          AlertaRegulacionSchema,
-          raw,
-          `alertas_regulacion/${doc.id}`,
-        );
-        if (!parsed) return; // doc malformado — se loggea y se omite
-        const p = parsed as any;
-        const alert: InspectorAlert = {
-          vehicleId: String(p.vehicleId ?? p.coche_id ?? 'Unknown'),
-          severity: (p.severity ?? 'info') as InspectorAlert['severity'],
-          message: String(p.message ?? p.mensaje_chofer ?? ''),
-          timestamp:
-            typeof p.timestamp === 'object' && p.timestamp?.toMillis
-              ? p.timestamp.toMillis()
-              : Date.now(),
-        };
-        newAlerts.push(alert);
-        if (alert.severity === 'critical') newCriticals.push(alert);
-      });
+    const fetch = async () => {
+      try {
+        const raw = await apiClient.get('/api/db/alertas_regulacion', {
+          query: { orderBy: 'timestamp:desc', limit: 50 },
+        }) as any[];
+        if (!active) return;
+        const newAlerts: InspectorAlert[] = [];
+        const newCriticals: InspectorAlert[] = [];
 
-      setAlerts(newAlerts);
+        (Array.isArray(raw) ? raw : []).forEach((data: any) => {
+          const parsed = safeParseOrLog(AlertaRegulacionSchema, data, `alertas_regulacion/${data.id}`);
+          if (!parsed) return;
+          const p = parsed as any;
+          const tsMs = p.timestamp ? new Date(p.timestamp).getTime() : Date.now();
+          const alert: InspectorAlert = {
+            vehicleId: String(p.vehicleId ?? p.coche_id ?? 'Unknown'),
+            severity: (p.severity ?? 'info') as InspectorAlert['severity'],
+            message: String(p.message ?? p.mensaje_chofer ?? ''),
+            timestamp: isNaN(tsMs) ? Date.now() : tsMs,
+          };
+          newAlerts.push(alert);
+          if (alert.severity === 'critical') newCriticals.push(alert);
+        });
 
-      if (newCriticals.length > criticalAlerts.length && newCriticals.length > 0) {
-        try {
-          const audio = new Audio(
-            'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==',
-          );
-          audio.play().catch(() => {});
-        } catch (e) {}
+        setAlerts(newAlerts);
+
+        if (newCriticals.length > criticalAlerts.length && newCriticals.length > 0) {
+          try {
+            const audio = new Audio(
+              'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==',
+            );
+            audio.play().catch(() => {});
+          } catch (e) {}
+        }
+        setCriticalAlerts(newCriticals);
+      } catch {
+        // No-op
       }
-      setCriticalAlerts(newCriticals);
-    }, () => {});
+    };
 
-    return () => unsubscribe();
+    fetch();
+    // TODO FASE 4.5: Socket.io firestore:alertas_regulacion
+    const interval = setInterval(fetch, 10000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [criticalAlerts.length]);
 
   const clearCriticalAlerts = useCallback(() => setCriticalAlerts([]), []);
@@ -165,28 +188,39 @@ export function useFleetChecks() {
   const [lastCheck, setLastCheck] = useState<FleetCheckCompleted | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, 'fleet_checks'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setChecks((prev) => {
-        const newMap = new Map(prev);
-        snapshot.docChanges().forEach((change) => {
-          const data = change.doc.data();
-          if (change.type !== 'removed') {
+    let active = true;
+
+    const fetch = async () => {
+      try {
+        const raw = await apiClient.get('/api/db/fleet_checks', { query: { limit: 500 } }) as any[];
+        if (!active) return;
+        setChecks(() => {
+          const newMap = new Map<string, FleetCheckCompleted>();
+          (Array.isArray(raw) ? raw : []).forEach((data: any) => {
+            const tsMs = data.timestamp ? new Date(data.timestamp).getTime() : Date.now();
             const checkUpdate: FleetCheckCompleted = {
-              checkId: change.doc.id,
+              checkId: data.id,
               vehicleId: data.vehicleId || 'Unknown',
               status: data.status || 'OK',
-              timestamp: data.timestamp?.toMillis?.() || Date.now(),
+              timestamp: isNaN(tsMs) ? Date.now() : tsMs,
             };
             newMap.set(checkUpdate.checkId, checkUpdate);
             setLastCheck(checkUpdate);
-          }
+          });
+          return newMap;
         });
-        return newMap;
-      });
-    }, () => {});
+      } catch {
+        // No-op
+      }
+    };
 
-    return () => unsubscribe();
+    fetch();
+    // TODO FASE 4.5: Socket.io firestore:fleet_checks
+    const interval = setInterval(fetch, 10000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const getChecksByVehicle = useCallback((vehicleId: string) => {
@@ -217,7 +251,7 @@ export function useSocketLatency() {
     setIsCheckingLatency(true);
     const t0 = Date.now();
     try {
-      await getDoc(doc(db, 'system', 'current_kpis'));
+      await apiClient.get('/api/db/system/' + encodeURIComponent('current_kpis'));
       setLatency(Date.now() - t0);
     } catch {
       setLatency(null);

@@ -15,22 +15,19 @@ const BuildTag = () => {
       .then((data) => setClientInfo(data))
       .catch((err) => console.error('Client Version Error', err));
 
-    // 2. Get Server Version (or Mock if offline/sim)
-    // If serverInfo is already set (e.g. from initializer), we don't fetch
+    // 2. Get Server Version desde el clon local (Postgres + JWT, sin cloud)
+    //    FASE 4.8 (2026-05-12): se eliminó el fallback "Firebase Connected"
+    //    porque el clon ya no usa Firebase; ahora muestra "Backend local" u
+    //    "Offline" según la respuesta del health del clon.
     if (!serverInfo) {
-      // Try to reach API, but fallback to "Cloud Active" if endpoint is missing (common for simple backends)
-      fetch(`${API_URL}/health-check`) // Try a dummy endpoint or root
-        .then((res) => {
-          if (res.ok) setServerInfo({ version: 'Cloud ONLINE' });
-          else throw new Error('API Unreachable');
+      fetch(`${API_URL}/health`)
+        .then((res) => res.ok ? res.json() : Promise.reject(new Error('API Unreachable')))
+        .then((body) => {
+          const v = body?.data?.version || body?.version || 'local';
+          setServerInfo({ version: `Backend local ${v}` });
         })
         .catch(() => {
-          // 🛡️ FALLBACK: If API fails, we are still serving the frontend!
-          // Let's check if we can reach outside world (Google)
-          const img = new Image();
-          img.onload = () => setServerInfo({ version: 'Firebase Connected' });
-          img.onerror = () => setServerInfo({ version: 'Firebase Connected' }); // Assume yes if compiled
-          img.src = 'https://www.google.com/favicon.ico?' + Date.now();
+          setServerInfo({ version: 'Backend offline' });
         });
     }
   }, [serverInfo]);

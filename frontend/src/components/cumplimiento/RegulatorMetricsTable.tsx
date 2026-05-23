@@ -2,7 +2,7 @@
 // SPEC_CUMPLIMIENTO_V2_FRONTEND_2026_05.md §2.1
 
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { OperatorSummary, PeriodRange, OPERATOR_NAMES } from '../../types/compliance';
+import { type OperatorSummary, type PeriodRange, OPERATOR_NAMES } from '../../types/compliance';
 import MetricBadge from '../shared/MetricBadge';
 import MethodologyTooltip from '../shared/MethodologyTooltip';
 

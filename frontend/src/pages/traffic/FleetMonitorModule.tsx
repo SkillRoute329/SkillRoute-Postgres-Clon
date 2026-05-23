@@ -22,6 +22,7 @@ import {
   calcularKPIs,
 } from './fleetMonitorUtils';
 import FleetEtaPanel from './FleetEtaPanel';
+import { authHeader } from '../../utils/tokenStore';
 
 const EMPRESA_COLORES: Record<string, string> = {
   UCOT:   '#eab308',
@@ -110,19 +111,29 @@ function ParadasLayer({
 // ─── URL de la API de paradas ─────────────────────────────────────────────────
 
 const IMM_PARADAS_URL =
-  'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/immParadasList';
+  import.meta.env.VITE_IMM_PARADAS_URL || 'http://localhost:3001/api/gtfs/stops';
 
 // ─── Fetch datos GPS ──────────────────────────────────────────────────────────
 
 const IMM_LIVE_URL =
-  'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/immBusesLive?empresa=all';
+  (import.meta.env.VITE_IMM_BUSES_URL || 'http://localhost:3001/api/stm/buses') + '?empresa=all';
 
 async function fetchBuses(): Promise<BusLive[]> {
   const ctrl  = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 15_000);
+  // FASE 5.39 (2026-05-23): la ruta /api/stm/live-buses tiene `requireAuth`
+  // — sin Authorization el backend devuelve 401 (visible en auditoría
+  // semántica como crítico). Si todavía no hay token (mount inicial antes
+  // de que AuthContext hidrate), evitamos el request y dejamos que el
+  // intervalo posterior cubra el caso.
+  const hdr = authHeader();
+  if (!hdr.Authorization) {
+    clearTimeout(timer);
+    return [];
+  }
   try {
     // Fuente primaria: API oficial IMM (GPS enriquecido con velocidad, acceso, AC, emisiones)
-    const res = await fetch(IMM_LIVE_URL, { signal: ctrl.signal });
+    const res = await fetch(IMM_LIVE_URL, { signal: ctrl.signal, headers: { ...hdr } });
     if (!res.ok) throw new Error(`IMM HTTP ${res.status}`);
     const data = await res.json();
     if (data.ok && Array.isArray(data.buses) && data.buses.length > 0) {
@@ -131,7 +142,7 @@ async function fetchBuses(): Promise<BusLive[]> {
     throw new Error('Sin datos IMM');
   } catch {
     // Fallback: STM básico (sin campos enriquecidos)
-    const res2 = await fetch('/api/positions');
+    const res2 = await fetch('/api/positions', { headers: { ...hdr } });
     if (!res2.ok) throw new Error(`STM HTTP ${res2.status}`);
     const data2 = await res2.json();
     return normalizarBuses((data2.buses ?? []) as Record<string, unknown>[], 'STM');

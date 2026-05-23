@@ -160,7 +160,16 @@ export function LiveDataProvider({ children }: { children: ReactNode }): JSX.Ele
   const [otpSeries, setOtpSeries] = useState<OtpPoint[]>([]);
 
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
-  const [selectedOperator, setSelectedOperator] = useState('70');
+  // FASE 5.35 (2026-05-22): persistir el operador seleccionado en localStorage
+  // para que el filtro se recuerde entre pantallas y entre sesiones.
+  const [selectedOperator, setSelectedOperatorRaw] = useState<string>(() => {
+    try { return localStorage.getItem('skillroute_selected_operator') || '70'; }
+    catch { return '70'; }
+  });
+  const setSelectedOperator = useCallback((op: string) => {
+    setSelectedOperatorRaw(op);
+    try { localStorage.setItem('skillroute_selected_operator', op); } catch { /* */ }
+  }, []);
 
   const busIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const otpIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);

@@ -1,53 +1,19 @@
 /**
  * useLiveBusesByLine — Buses live filtrados por línea y operador.
  * ===============================================================
- * Hook compañero del Navegador que carga las posiciones GPS actuales de los
- * buses operando AHORA en una línea específica de un operador específico,
- * combinando 3 fuentes (mismo patrón que ShadowRadar):
+ * Hook que carga las posiciones GPS actuales de los buses operando AHORA
+ * en una línea específica de un operador específico, combinando 3 fuentes:
  *
- *   1. `viajes_activos`     — chofer logueado (interno, puede estar vacío)
- *   2. `vehicle_events`     — cron autoStatsCollector cada 5 min (relleno)
- *   3. `competidores`       — cron refreshCompetidoresTick cada 10 min,
- *                              entidad-nivel con bus[] embebido (cross-op)
- *
- * Política:
- *   - getDocs (one-shot) en cada tick. NO onSnapshot — el SDK Firestore tiene
- *     el bug conocido de re-emitir permission-denied en listeners aunque
- *     la rule sea correcta (ver historial DIAGNOSTICO_NAVEGADOR_2026_04_25).
- *   - Refresh manual cada `refreshSec` (default 30 s).
- *   - Auth guard: si !user?.uid, retorna vacío y no abre nada.
- *   - Tolerante a fallos: si una fuente falla, las otras siguen.
- *
- * Filtros:
- *   - agencyId obligatorio (10/20/50/70).
- *   - codigoLinea opcional (si se omite devuelve TODOS los de la empresa).
- *
- * Performance:
- *   - Empresa propia (`viajes_activos` + `vehicle_events`) se queryan con
- *     `where('empresa', '==', empresaName)` para reducir datos.
- *   - `competidores/{emp-XX}` se lee con getDoc (un solo doc por empresa).
- *
- * USO:
- *   const { buses, loading, ultimaActualizacion, refrescar } = useLiveBusesByLine({
- *     agencyId: 50,
- *     codigoLinea: '60',
- *     refreshSec: 30,
- *   });
+ *   1. `viajes_activos`  — chofer logueado (interno)
+ *   2. `vehicle_events`  — cron autoStatsCollector cada 5 min
+ *   3. `competidores`    — entidad-nivel con bus[] embebido (cross-op)
+ *   4. `/api/stm/live-buses` — Proxy Directo IMM local
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  limit as limitDocs,
-  type DocumentData,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 import { useAuth } from '../context/AuthContext';
+import { authHeader } from '../utils/tokenStore';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -106,13 +72,17 @@ const COMPETIDORES_DOC_ID: Record<number, string> = {
 function toMillis(updatedAt: unknown): number {
   if (!updatedAt) return 0;
   if (typeof updatedAt === 'number') return updatedAt;
+  if (typeof updatedAt === 'string') {
+    const ms = new Date(updatedAt).getTime();
+    return isNaN(ms) ? 0 : ms;
+  }
   const ts = updatedAt as { toMillis?: () => number; seconds?: number };
   if (typeof ts.toMillis === 'function') return ts.toMillis();
   if (typeof ts.seconds === 'number') return ts.seconds * 1000;
   return 0;
 }
 
-/** Acepta (lat, lng) sueltos o GeoPoint Firestore o {latitude/longitude}. */
+/** Acepta (lat, lng) sueltos o GeoPoint o {latitude/longitude}. */
 function extractLatLng(
   raw: unknown,
 ): { lat: number; lng: number } | null {
@@ -151,6 +121,8 @@ export function useLiveBusesByLine(
   const [error, setError] = useState<string | null>(null);
   const [ultimaActualizacion, setUltimaActualizacion] = useState<Date | null>(null);
   const cancelRef = useRef(false);
+  const tokenRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tokenRetryCountRef = useRef(0);
 
   const cargar = useCallback(async () => {
     if (!user?.uid) return;
@@ -170,90 +142,88 @@ export function useLiveBusesByLine(
 
     // ── 1) viajes_activos: chofer logueado ───────────────────────────────────
     try {
-      const q = query(
-        collection(db, 'viajes_activos'),
-        where('empresa', '==', empresaName),
-        limitDocs(500),
-      );
-      const snap = await getDocs(q);
-      snap.docs.forEach((d: DocumentData) => {
-        const data = d.data() as Record<string, unknown>;
+      const raw = await apiClient.get('/api/db/viajes_activos', {
+        query: { where: `empresa:${empresaName}`, limit: 500 },
+      }) as any[];
+      (Array.isArray(raw) ? raw : []).forEach((data: any) => {
         const updatedAtMs = toMillis(data.updatedAt);
         if (updatedAtMs && updatedAtMs < cutoff) return;
         if (!matchLinea(data.codigoLinea ?? data.linea, codigoLinea)) return;
-        const pos = extractLatLng(data.posicion);
+        const pos = extractLatLng(data.posicion) ?? (
+          typeof data.lat === 'number' && typeof data.lng === 'number'
+            ? { lat: data.lat, lng: data.lng }
+            : null
+        );
         if (!pos) return;
 
-        const id = `va-${d.id}`;
+        const id = `va-${data.id}`;
         if (seenIds.has(id)) return;
         seenIds.add(id);
         lista.push({
           id,
-          cocheId: String(data.cocheId ?? d.id),
+          cocheId: String(data.cocheId ?? data.id),
           empresa: empresaName,
           agencyId,
           codigoLinea: String(data.codigoLinea ?? data.linea ?? '—'),
           lat: pos.lat,
           lng: pos.lng,
-          heading: typeof data.heading === 'number' ? (data.heading as number) : null,
-          velocidad: typeof data.velocidad === 'number' ? (data.velocidad as number) : null,
+          heading: typeof data.heading === 'number' ? data.heading : null,
+          velocidad: typeof data.velocidad === 'number' ? data.velocidad : null,
           fuente: 'viajes_activos',
           updatedAtMs,
           hacieCuantoMin: updatedAtMs ? Math.floor((ahora - updatedAtMs) / 60000) : 0,
         });
       });
-    } catch (err) {
+    } catch {
       // No-op: si esta fuente falla, las otras siguen.
     }
 
     // ── 2) vehicle_events: cron autoStatsCollector ───────────────────────────
     try {
-      const q = query(
-        collection(db, 'vehicle_events'),
-        where('agencyId', '==', String(agencyId)),
-        limitDocs(500),
-      );
-      const snap = await getDocs(q);
-      snap.docs.forEach((d: DocumentData) => {
-        const data = d.data() as Record<string, unknown>;
+      const raw = await apiClient.get('/api/db/vehicle_events', {
+        query: { where: `agencyId:${String(agencyId)}`, limit: 500 },
+      }) as any[];
+      (Array.isArray(raw) ? raw : []).forEach((data: any) => {
         const updatedAtMs = toMillis(data.timestamp ?? data.updatedAt);
         if (updatedAtMs && updatedAtMs < cutoff) return;
         if (!matchLinea(data.linea ?? data.codigoLinea, codigoLinea)) return;
-        const pos = extractLatLng(data.posicion ?? data.geometry);
+        const pos = extractLatLng(data.posicion ?? data.geometry) ?? (
+          typeof data.lat === 'number' && typeof data.lng === 'number'
+            ? { lat: data.lat, lng: data.lng }
+            : null
+        );
         if (!pos) return;
 
-        const id = `ve-${data.cocheId ?? d.id}`;
+        const id = `ve-${data.cocheId ?? data.id}`;
         if (seenIds.has(id)) return;
         seenIds.add(id);
         lista.push({
           id,
-          cocheId: String(data.cocheId ?? d.id),
+          cocheId: String(data.cocheId ?? data.id),
           empresa: empresaName,
           agencyId,
           codigoLinea: String(data.linea ?? data.codigoLinea ?? '—'),
           lat: pos.lat,
           lng: pos.lng,
-          heading: typeof data.heading === 'number' ? (data.heading as number) : null,
-          velocidad: typeof data.velocidad === 'number' ? (data.velocidad as number) : null,
+          heading: typeof data.heading === 'number' ? data.heading : null,
+          velocidad: typeof data.velocidad === 'number' ? data.velocidad : null,
           fuente: 'vehicle_events',
           updatedAtMs,
           hacieCuantoMin: updatedAtMs ? Math.floor((ahora - updatedAtMs) / 60000) : 0,
         });
       });
-    } catch (err) {
+    } catch {
       // No-op
     }
 
     // ── 3) competidores/{emp-XX}: cron refreshCompetidoresTick ───────────────
     if (competidorDocId) {
       try {
-        const ref = doc(db, 'competidores', competidorDocId);
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          const data = snap.data() as Record<string, unknown>;
-          const buses = (data.buses ?? data.vehiculos ?? []) as Array<Record<string, unknown>>;
+        const data = await apiClient.get('/api/db/competidores/' + encodeURIComponent(competidorDocId)) as any;
+        if (data) {
+          const busArr = (data.buses ?? data.vehiculos ?? []) as Array<Record<string, unknown>>;
           const fuenteMs = toMillis(data.actualizadoEn ?? data.updatedAt);
-          buses.forEach((b, idx) => {
+          busArr.forEach((b, idx) => {
             if (!matchLinea(b.linea ?? b.codigoLinea, codigoLinea)) return;
             const pos = extractLatLng({ lat: b.lat, lng: b.lng });
             if (!pos) return;
@@ -277,33 +247,48 @@ export function useLiveBusesByLine(
             });
           });
         }
-      } catch (err) {
+      } catch {
         // No-op
       }
     }
 
-    // ── 4) SOBERANIA: Proxy Directo IMM local 🚀 ─────────────────────────────
+    // ── 4) SOBERANIA: Proxy Directo IMM local ─────────────────────────────────
+    // FASE 5.38 (2026-05-22): guard contra race condition — si todavía no
+    // hay token en localStorage, evitamos el 401 silencioso. Cuando el
+    // siguiente tick reactive el token, la llamada saldrá OK.
+    // FASE 5.39 (2026-05-23): si el token aún no está, programamos un
+    // micro-reintento (1s, hasta 3 intentos) en vez de esperar al refresh
+    // periódico de 30s. Cubre el bug de fleet-monitor que mostraba 401
+    // crítico en primera carga porque el AuthContext sigue rehidratando.
     try {
-      const token = localStorage.getItem('tf_token');
+      const hdr = authHeader();
+      if (!hdr.Authorization) {
+        if (tokenRetryCountRef.current < 3) {
+          tokenRetryCountRef.current += 1;
+          if (tokenRetryRef.current) clearTimeout(tokenRetryRef.current);
+          tokenRetryRef.current = setTimeout(() => {
+            if (!cancelRef.current) void cargar();
+          }, 1000);
+        }
+      } else {
+        tokenRetryCountRef.current = 0;
       const res = await fetch('/api/stm/live-buses', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { ...hdr }
       });
       const outerJson = await res.json();
       if (outerJson.success && outerJson.data?.features) {
         outerJson.data.features.forEach((feat: any) => {
           const p = feat.properties;
           if (!p || !p.codigoEmpresa || !p.linea) return;
-          
-          // Filtros
+
           const numericAgency = Number(p.codigoEmpresa);
           if (agencyId !== -1 && numericAgency !== agencyId) return;
           if (!matchLinea(p.linea, codigoLinea)) return;
-          
+
           const coords = feat.geometry?.coordinates;
           if (!coords || coords.length < 2) return;
 
           const id = `imm-${p.codigoBus}`;
-          // Evitar duplicados
           if (seenIds.has(id)) return;
           seenIds.add(id);
 
@@ -313,16 +298,17 @@ export function useLiveBusesByLine(
             empresa: AGENCY_NAME[numericAgency] || `EMP_${numericAgency}`,
             agencyId: numericAgency,
             codigoLinea: String(p.linea),
-            lat: coords[1], // Latitud
-            lng: coords[0], // Longitud
+            lat: coords[1],
+            lng: coords[0],
             heading: null,
             velocidad: typeof p.velocidad === 'number' ? p.velocidad : null,
-            fuente: 'competidores', // Usar fuente 'competidores' para mostrar en mapa
+            fuente: 'competidores',
             updatedAtMs: ahora,
             hacieCuantoMin: 0,
           });
         });
       }
+      } // close: token guard else
     } catch (err) {
       console.warn('[useLiveBusesByLine] Error recuperando telemetry local IMM', err);
     }
@@ -340,6 +326,10 @@ export function useLiveBusesByLine(
     return () => {
       cancelRef.current = true;
       clearInterval(id);
+      if (tokenRetryRef.current) {
+        clearTimeout(tokenRetryRef.current);
+        tokenRetryRef.current = null;
+      }
     };
   }, [cargar, refreshSec, pausado]);
 

@@ -2,14 +2,13 @@
  * ShadowDispatcherService.ts — Cliente Frontend del Shadow Dispatcher
  * ===================================================================
  * Suscribe al Navegador del chofer a las alertas de "Regulación de Marcha"
- * en tiempo real desde Firestore. Actualiza el estado React de forma reactiva.
+ * en tiempo real via polling. Actualiza el estado React de forma reactiva.
  *
  * Uso: montar el listener al iniciar el turno y desmontarlo al finalizar.
  * Restricción: SOLO lee de `alertas_regulacion/{cocheId}` — nunca escribe directamente.
  */
 
-import { db } from '../config/firebase';
-import { doc, onSnapshot, updateDoc, serverTimestamp, collection, query, where, type Unsubscribe } from 'firebase/firestore';
+import { apiClient } from '../clients/apiClient';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -32,21 +31,19 @@ export interface AlertaRegulacion {
   linea_id: string;
   coche_id: string;
   leido: boolean;
-  timestamp?: { seconds: number; nanoseconds: number } | null;
+  timestamp?: { seconds: number; nanoseconds: number } | string | null;
 }
 
 export type CallbackAlerta = (alerta: AlertaRegulacion | null) => void;
+export type Unsubscribe = () => void;
 
 // ─── ShadowDispatcherService ──────────────────────────────────────────────────
 
 export const ShadowDispatcherService = {
   /**
-   * Subscribes to real-time regulation alerts for a specific vehicle.
-   * Triggers `callback` with the alert data whenever it changes.
-   * Returns an unsubscribe function to clean up the listener.
-   *
-   * Anti-loop: automatically marks the alert as `leido: true` after
-   * delivering it to the callback, preventing repeated triggers.
+   * Suscribe con polling a alertas de regulación para un vehículo.
+   * Marca como leída cada alerta entregada para evitar repeticiones.
+   * TODO FASE 4.5: Socket.io firestore:alertas_regulacion
    */
   subscribeAlertas(cocheId: string, callback: CallbackAlerta): Unsubscribe {
     if (!cocheId) {
@@ -54,52 +51,57 @@ export const ShadowDispatcherService = {
       return () => {};
     }
 
-    const alertaRef = doc(db, 'alertas_regulacion', cocheId);
+    let active = true;
     let ultimoTimestamp: number | null = null;
 
-    const unsubscribe = onSnapshot(
-      alertaRef,
-      (snap) => {
-        if (!snap.exists()) {
+    const fetch = async () => {
+      try {
+        const data = await apiClient.get('/api/db/alertas_regulacion/' + encodeURIComponent(cocheId)) as AlertaRegulacion | null;
+
+        if (!active) return;
+
+        if (!data) {
           callback(null);
           return;
         }
 
-        const data = snap.data() as AlertaRegulacion;
-
-        // Filtrar alertas ya leídas
         if (data.leido) {
           callback(null);
           return;
         }
 
         // Anti-loop: solo entregar si el timestamp cambió
-        const ts = data.timestamp?.seconds ?? 0;
+        const ts = typeof data.timestamp === 'object' && data.timestamp !== null
+          ? (data.timestamp as { seconds: number }).seconds ?? 0
+          : 0;
         if (ts === ultimoTimestamp) return;
         ultimoTimestamp = ts;
 
         callback(data);
 
-        // Marcar como leído de forma asíncrona para no bloquear el render
-        updateDoc(alertaRef, {
+        // Marcar como leído
+        apiClient.put('/api/db/alertas_regulacion/' + encodeURIComponent(cocheId), {
           leido: true,
-          leido_en: serverTimestamp(),
+          leido_en: new Date().toISOString(),
         }).catch((err) => {
           console.warn('[ShadowDispatcher] Error al marcar leído:', err);
         });
-      },
-      (err) => {
-        console.error('[ShadowDispatcher] Error en listener:', err);
-        callback(null);
-      },
-    );
+      } catch {
+        // ignore
+      }
+    };
 
-    return unsubscribe;
+    fetch();
+    const interval = setInterval(fetch, 10000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   },
 
   /**
-   * Suscribe a todas las alertas activas (recientes) de una línea específica.
-   * Útil para el Dashboard del Inspector.
+   * Suscribe a todas las alertas activas de una línea específica.
+   * TODO FASE 4.5: Socket.io firestore:alertas_regulacion
    */
   subscribeAlertasPorLinea(
     lineaId: string,
@@ -110,24 +112,26 @@ export const ShadowDispatcherService = {
       return () => {};
     }
 
-    const q = query(
-      collection(db, 'alertas_regulacion'),
-      where('linea_id', '==', lineaId)
-    );
+    let active = true;
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snap) => {
-        const alertas = snap.docs.map((d) => d.data() as AlertaRegulacion);
-        callback(alertas);
-      },
-      (err) => {
+    const fetch = async () => {
+      try {
+        const raw = await apiClient.get('/api/db/alertas_regulacion', {
+          query: { where: `linea_id:${lineaId}`, limit: 500 },
+        }) as AlertaRegulacion[];
+        if (active) callback(Array.isArray(raw) ? raw : []);
+      } catch (err) {
         console.error('[ShadowDispatcher] Error en listener por línea:', err);
-        callback([]);
+        if (active) callback([]);
       }
-    );
+    };
 
-    return unsubscribe;
+    fetch();
+    const interval = setInterval(fetch, 10000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   },
 
   /**

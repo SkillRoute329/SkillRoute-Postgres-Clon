@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>SkillRoute QA Harness — IMM Audit Suite</title>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 1200px; margin: 24px auto; padding: 16px; background: #0f172a; color: #e2e8f0; }
+  h1 { color: #38bdf8; border-bottom: 2px solid #38bdf8; padding-bottom: 8px; }
+  h2 { color: #fbbf24; margin-top: 28px; }
+  .meta { background: #1e293b; padding: 12px; border-radius: 6px; margin: 8px 0; font-family: monospace; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; background: #1e293b; }
+  th, td { border: 1px solid #334155; padding: 6px 10px; text-align: left; font-size: 13px; }
+  th { background: #334155; color: #fbbf24; }
+  .ok { color: #4ade80; }
+  .fail { color: #f87171; font-weight: bold; }
+  .warn { color: #fbbf24; }
+  .info { color: #38bdf8; }
+  .sample { font-family: monospace; font-size: 11px; max-width: 480px; max-height: 80px; overflow: auto; white-space: pre-wrap; background: #0f172a; padding: 4px; border-radius: 3px; }
+  button { background: #38bdf8; color: #0f172a; border: 0; padding: 10px 18px; border-radius: 4px; font-weight: bold; cursor: pointer; margin: 4px; }
+  button:hover { background: #0ea5e9; }
+  button:disabled { background: #475569; cursor: not-allowed; }
+  input { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; padding: 6px 8px; border-radius: 3px; font-family: monospace; }
+  .summary { font-size: 24px; padding: 16px; border-radius: 6px; margin: 16px 0; text-align: center; }
+  .summary.pass { background: #14532d; color: #4ade80; }
+  .summary.partial { background: #78350f; color: #fbbf24; }
+  .summary.fail { background: #7f1d1d; color: #f87171; }
+  .log { background: #020617; padding: 12px; border-radius: 4px; max-height: 240px; overflow: auto; font-family: monospace; font-size: 11px; }
+</style>
+</head>
+<body>
+  <h1>SkillRoute v2.0 — QA Harness (IMM Audit)</h1>
+  <p>Probador exhaustivo de cada endpoint del backend. Login automático con creds de prueba, luego batería de tests con comparación contra datos oficiales STM Montevideo.</p>
+
+  <div class="meta">
+    Backend: <input id="api" value="http://localhost:3001" size="30">
+    Usuario: <input id="user" value="329" size="6">
+    Password: <input id="pwd" type="password" value="" size="14">
+    <button id="run">▶ Ejecutar suite</button>
+    <button id="probe">🔍 Solo detectar puerto</button>
+  </div>
+
+  <div id="summary"></div>
+
+  <h2>1. Detección de servidor</h2>
+  <table id="t-probe"><thead><tr><th>Puerto</th><th>HTTP</th><th>Identificación</th></tr></thead><tbody></tbody></table>
+
+  <h2>2. Endpoints públicos</h2>
+  <table id="t-public"><thead><tr><th>Endpoint</th><th>HTTP</th><th>Tiempo</th><th>Resultado</th><th>Muestra</th></tr></thead><tbody></tbody></table>
+
+  <h2>3. Autenticación</h2>
+  <table id="t-auth"><thead><tr><th>Paso</th><th>HTTP</th><th>Tiempo</th><th>Resultado</th><th>Detalle</th></tr></thead><tbody></tbody></table>
+
+  <h2>4. Endpoints protegidos (con JWT)</h2>
+  <table id="t-protected"><thead><tr><th>Endpoint</th><th>HTTP</th><th>Tiempo</th><th>Filas/Resultado</th><th>Muestra</th></tr></thead><tbody></tbody></table>
+
+  <h2>5. Colecciones /api/db/* (whitelist)</h2>
+  <table id="t-db"><thead><tr><th>Colección</th><th>HTTP</th><th>Filas</th><th>Tiempo</th><th>Muestra</th></tr></thead><tbody></tbody></table>
+
+  <h2>6. Comparación contra datos oficiales STM Montevideo</h2>
+  <table id="t-compare"><thead><tr><th>Métrica</th><th>Clon (Postgres)</th><th>STM Oficial</th><th>Δ</th><th>Veredicto</th></tr></thead><tbody></tbody></table>
+
+  <h2>Log</h2>
+  <pre class="log" id="log"></pre>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const log = (msg, cls = 'info') => {
+  const t = new Date().toISOString().slice(11, 19);
+  const line = `[${t}] ${msg}`;
+  $('log').textContent += line + '\n';
+  $('log').scrollTop = $('log').scrollHeight;
+};
+const addRow = (tableId, cells) => {
+  const tr = document.createElement('tr');
+  cells.forEach(c => {
+    const td = document.createElement('td');
+    if (typeof c === 'object') {
+      td.innerHTML = c.html;
+      if (c.cls) td.className = c.cls;
+    } else {
+      td.textContent = c;
+    }
+    tr.appendChild(td);
+  });
+  $(tableId).querySelector('tbody').appendChild(tr);
+};
+const clearTable = (id) => { $(id).querySelector('tbody').innerHTML = ''; };
+
+const STM_OFICIAL = {
+  agencias_esperadas: ['70', '50', '20', '10'],
+  buses_total_estimado: 1200, // STM Montevideo ~1200 buses operando
+  lineas_ucot: 44, // UCOT tiene 44 líneas activas
+  stops_gtfs_montevideo: 4900, // GTFS oficial Montevideo ~4900 paradas
+};
+
+async function fetchJson(url, opts = {}) {
+  const t0 = performance.now();
+  try {
+    const r = await fetch(url, { ...opts, signal: AbortSignal.timeout(opts.timeout || 8000) });
+    const dt = Math.round(performance.now() - t0);
+    let body = null, text = '';
+    try { text = await r.text(); body = JSON.parse(text); } catch { /* not json */ }
+    return { ok: r.ok, status: r.status, ms: dt, body, text };
+  } catch (e) {
+    return { ok: false, status: 0, ms: Math.round(performance.now() - t0), error: String(e) };
+  }
+}
+
+async function detectServer() {
+  clearTable('t-probe');
+  const ports = [3001, 3000, 3002, 3003, 3005, 4000, 3010];
+  let detected = null;
+  for (const p of ports) {
+    const url = `http://localhost:${p}/api/health`;
+    const r = await fetchJson(url);
+    let kind = 'sin servidor';
+    if (r.ok) {
+      const v = r.body?.data?.version || r.body?.version || '';
+      if (String(v).includes('2.0.1-MODULAR') || r.body?.name === 'TransformaFacil 2.0 Backend') {
+        kind = '✓ SkillRoute v2.0';
+        detected = `http://localhost:${p}`;
+      } else if (r.body?.name === 'MiTurno') {
+        kind = '✗ MiTurno (otra app)';
+      } else {
+        kind = `? ${r.text.slice(0, 50)}`;
+      }
+    }
+    addRow('t-probe', [p, r.status || '—', { html: kind, cls: detected && kind.includes('SkillRoute') ? 'ok' : (kind.includes('✗') ? 'fail' : '') }]);
+  }
+  if (detected) {
+    $('api').value = detected;
+    log(`Detectado SkillRoute en ${detected}`, 'ok');
+    return detected;
+  }
+  log('No se encontró SkillRoute en puertos comunes', 'fail');
+  return null;
+}
+
+async function testPublic(api) {
+  clearTable('t-public');
+  const endpoints = [
+    { url: '/api/health', desc: 'Health check', expect: (b) => b?.data?.version?.includes('2.0.1') },
+    { url: '/api/doctor', desc: 'System doctor (Postgres)', expect: (b) => b?.data?.database?.vehicleCount >= 0 },
+    { url: '/api/version', desc: 'Version', expect: (b) => b?.data?.version?.includes('2.0.1') },
+  ];
+  for (const ep of endpoints) {
+    const r = await fetchJson(api + ep.url);
+    const passed = r.ok && (!ep.expect || ep.expect(r.body));
+    addRow('t-public', [
+      ep.url,
+      { html: r.status, cls: r.ok ? 'ok' : 'fail' },
+      r.ms + 'ms',
+      { html: passed ? '✓ ' + ep.desc : '✗ ' + ep.desc, cls: passed ? 'ok' : 'fail' },
+      { html: `<div class="sample">${(r.text || '').slice(0, 200)}</div>` },
+    ]);
+  }
+}
+
+let jwtToken = null;
+async function testAuth(api) {
+  clearTable('t-auth');
+  const internalNumber = $('user').value;
+  const password = $('pwd').value;
+  if (!password) {
+    addRow('t-auth', ['Login', '—', '—', { html: '✗ Sin password (pegá la real)', cls: 'fail' }, '']);
+    return false;
+  }
+  const r = await fetchJson(api + '/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ internalNumber, password }),
+  });
+  const passed = r.ok && r.body?.data?.token;
+  if (passed) {
+    jwtToken = r.body.data.token;
+    log('JWT obtenido OK', 'ok');
+  }
+  addRow('t-auth', [
+    'POST /api/auth/login',
+    { html: r.status, cls: r.ok ? 'ok' : 'fail' },
+    r.ms + 'ms',
+    { html: passed ? '✓ JWT obtenido' : '✗ Falló login', cls: passed ? 'ok' : 'fail' },
+    { html: `<div class="sample">${(r.text || '').slice(0, 200)}</div>` },
+  ]);
+
+  if (jwtToken) {
+    const me = await fetchJson(api + '/api/auth/me', { headers: { Authorization: `Bearer ${jwtToken}` } });
+    addRow('t-auth', [
+      'GET /api/auth/me',
+      { html: me.status, cls: me.ok ? 'ok' : 'fail' },
+      me.ms + 'ms',
+      { html: me.ok ? '✓ Sesión válida' : '✗', cls: me.ok ? 'ok' : 'fail' },
+      { html: `<div class="sample">${(me.text || '').slice(0, 200)}</div>` },
+    ]);
+  }
+  return !!jwtToken;
+}
+
+async function testProtected(api) {
+  clearTable('t-protected');
+  if (!jwtToken) {
+    addRow('t-protected', ['—', '—', '—', { html: '✗ Sin JWT, saltando', cls: 'warn' }, '']);
+    return {};
+  }
+  const headers = { Authorization: `Bearer ${jwtToken}` };
+  const eps = [
+    '/api/cartones',
+    '/api/fleet/vehicles',
+    '/api/gtfs/stops?limit=1',
+    '/api/autostats/agencies',
+    '/api/audit/poller-stats',
+    '/api/audit/coverage?from=2026-05-05&to=2026-05-12',
+    '/api/audit/buses-active?agency=70&minutes=5',
+    '/api/audit/buses-active?agency=50&minutes=5',
+    '/api/audit/buses-active?agency=20&minutes=5',
+    '/api/audit/buses-active?agency=10&minutes=5',
+    '/api/audit/eta-snapshot?agency=70&limit=10',
+    '/api/competition/lines',
+    '/api/dashboard/kpis',
+    '/api/forecast/agencies',
+    '/api/analytics/summary',
+    '/api/listero/resumen',
+    '/api/stm/agencies',
+  ];
+  const harvest = {};
+  for (const ep of eps) {
+    const r = await fetchJson(api + ep, { headers });
+    let count = '';
+    if (r.body?.data) {
+      const d = r.body.data;
+      if (Array.isArray(d)) count = d.length;
+      else if (d.total !== undefined) count = d.total;
+      else if (d.total_buses_activos !== undefined) count = d.total_buses_activos;
+      else if (d.dias && Array.isArray(d.dias)) count = d.dias.length;
+      else if (Array.isArray(d.items)) count = d.items.length;
+      else if (Array.isArray(d.buses)) count = d.buses.length;
+    }
+    harvest[ep] = { status: r.status, count, body: r.body };
+    addRow('t-protected', [
+      ep,
+      { html: r.status, cls: r.ok ? 'ok' : 'fail' },
+      r.ms + 'ms',
+      String(count),
+      { html: `<div class="sample">${(r.text || '').slice(0, 300)}</div>` },
+    ]);
+  }
+  return harvest;
+}
+
+async function testDb(api) {
+  clearTable('t-db');
+  if (!jwtToken) {
+    addRow('t-db', ['—', '—', '—', '—', { html: '✗ Sin JWT', cls: 'warn' }]);
+    return {};
+  }
+  const headers = { Authorization: `Bearer ${jwtToken}` };
+  const cols = [
+    'vehicles','users','personal','turnos_dia','cartones','cartones_completados',
+    'alertas_operativas','alertas_regulacion','alertas_trafico',
+    'inspecciones','boletines','bus_last_pos','vehicle_events',
+    'bus_delays','auto_stats_diarios','empresas','ai_orders',
+  ];
+  const counts = {};
+  for (const c of cols) {
+    const r = await fetchJson(`${api}/api/db/${c}?limit=1`, { headers });
+    const items = r.body?.data?.items || r.body?.data || [];
+    const totalHint = r.body?.data?.total ?? (Array.isArray(items) ? items.length : '?');
+    counts[c] = totalHint;
+    addRow('t-db', [
+      c,
+      { html: r.status, cls: r.ok ? 'ok' : 'fail' },
+      String(totalHint),
+      r.ms + 'ms',
+      { html: `<div class="sample">${(r.text || '').slice(0, 200)}</div>` },
+    ]);
+  }
+  return counts;
+}
+
+async function compareOficial(api, harvest, dbCounts) {
+  clearTable('t-compare');
+  const headers = jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {};
+
+  // 1) Agencias activas
+  const agencyStats = await fetchJson(api + '/api/autostats/agencies', { headers });
+  const agencias = (agencyStats.body?.data?.agencies || agencyStats.body?.data || []).map(a => String(a.id || a.agency_id || a));
+  const allOk = STM_OFICIAL.agencias_esperadas.every(a => agencias.includes(a));
+  addRow('t-compare', [
+    'Agencias (UCOT/CUTCSA/COME/COETC)',
+    agencias.join(', ') || '(vacío)',
+    STM_OFICIAL.agencias_esperadas.join(', '),
+    allOk ? 0 : 'falta',
+    { html: allOk ? '✓ todas presentes' : '✗ faltan', cls: allOk ? 'ok' : 'fail' },
+  ]);
+
+  // 2) Buses activos suma 4 agencias
+  let totalBuses = 0;
+  for (const ag of STM_OFICIAL.agencias_esperadas) {
+    const r = harvest[`/api/audit/buses-active?agency=${ag}&minutes=5`];
+    totalBuses += Number(r?.count || 0);
+  }
+  const delta = totalBuses - STM_OFICIAL.buses_total_estimado;
+  addRow('t-compare', [
+    'Buses GPS activos (4 agencias, últimos 5 min)',
+    totalBuses,
+    `~${STM_OFICIAL.buses_total_estimado}`,
+    Math.abs(delta) < 200 ? `${delta}` : `${delta} ⚠`,
+    { html: totalBuses > 800 ? '✓ rango razonable' : '⚠ baja captura', cls: totalBuses > 800 ? 'ok' : 'warn' },
+  ]);
+
+  // 3) Cobertura del poller
+  const coverage = harvest['/api/audit/coverage?from=2026-05-05&to=2026-05-12'];
+  const pctProm = coverage?.body?.data?.pct_cobertura_promedio || 0;
+  addRow('t-compare', [
+    'Cobertura promedio poller (7d)',
+    `${pctProm}%`,
+    '≥ 90%',
+    pctProm >= 90 ? '+' + (pctProm - 90).toFixed(1) : (pctProm - 90).toFixed(1),
+    { html: pctProm >= 90 ? '✓ excelente' : (pctProm >= 70 ? '⚠ aceptable' : '✗ bajo'), cls: pctProm >= 90 ? 'ok' : (pctProm >= 70 ? 'warn' : 'fail') },
+  ]);
+
+  // 4) Líneas en /api/competition/lines vs UCOT
+  const lines = harvest['/api/competition/lines'];
+  const lineCount = Number(lines?.count || 0);
+  addRow('t-compare', [
+    'Líneas competidoras catalogadas',
+    lineCount,
+    '≥ ' + STM_OFICIAL.lineas_ucot,
+    lineCount - STM_OFICIAL.lineas_ucot,
+    { html: lineCount >= STM_OFICIAL.lineas_ucot ? '✓' : '⚠ faltan líneas', cls: lineCount >= STM_OFICIAL.lineas_ucot ? 'ok' : 'warn' },
+  ]);
+
+  // 5) Vehicles en /api/fleet/vehicles
+  const vehicles = harvest['/api/fleet/vehicles'];
+  const vCount = Number(vehicles?.count || 0);
+  addRow('t-compare', [
+    'Vehículos en flota (UCOT)',
+    vCount,
+    '~190',
+    vCount - 190,
+    { html: vCount >= 150 ? '✓ flota completa' : '⚠ flota incompleta', cls: vCount >= 150 ? 'ok' : 'warn' },
+  ]);
+
+  // 6) Users en /api/db/users
+  const usersCount = dbCounts['users'];
+  addRow('t-compare', [
+    'Usuarios en BD',
+    String(usersCount),
+    '≥ 100 (~ 1000 esperado)',
+    typeof usersCount === 'number' ? usersCount - 100 : '?',
+    { html: typeof usersCount === 'number' && usersCount >= 100 ? '✓' : '⚠', cls: typeof usersCount === 'number' && usersCount >= 100 ? 'ok' : 'warn' },
+  ]);
+}
+
+function renderSummary(stats) {
+  const total = stats.pass + stats.warn + stats.fail;
+  const status = stats.fail === 0 ? (stats.warn === 0 ? 'pass' : 'partial') : 'fail';
+  const text = stats.fail === 0
+    ? (stats.warn === 0 ? `✓ ${stats.pass}/${total} pasados — listo para auditoría IMM` : `⚠ ${stats.pass}/${total} OK, ${stats.warn} con advertencias`)
+    : `✗ ${stats.fail}/${total} fallidos — corregir antes de IMM`;
+  $('summary').innerHTML = `<div class="summary ${status}">${text}</div>`;
+}
+
+$('probe').onclick = detectServer;
+
+$('run').onclick = async () => {
+  $('run').disabled = true;
+  $('log').textContent = '';
+  log('Iniciando suite QA…');
+
+  const detected = await detectServer();
+  if (!detected) { $('run').disabled = false; return; }
+
+  await testPublic(detected);
+  const authed = await testAuth(detected);
+  const harvest = authed ? await testProtected(detected) : {};
+  const dbCounts = authed ? await testDb(detected) : {};
+  await compareOficial(detected, harvest, dbCounts);
+
+  // Resumen aproximado en base a las celdas verdes/rojas
+  const greens = document.querySelectorAll('.ok').length;
+  const reds   = document.querySelectorAll('.fail').length;
+  const warns  = document.querySelectorAll('.warn').length;
+  renderSummary({ pass: greens, fail: reds, warn: warns });
+  log(`Suite terminada. ✓${greens} ⚠${warns} ✗${reds}`);
+  $('run').disabled = false;
+};
+
+// Probe automático al cargar
+detectServer();
+</script>
+</body>
+</html>

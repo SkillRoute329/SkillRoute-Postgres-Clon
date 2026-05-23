@@ -10,7 +10,7 @@ import {
   Clock,
   ArrowUpDown,
 } from 'lucide-react';
-import { collection, onSnapshot, query, limit, orderBy, where, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, limit, orderBy, where, getDocs } from '../config/firestoreShim';
 import { db } from '../config/firebase';
 import {
   checkCorridorThreat,

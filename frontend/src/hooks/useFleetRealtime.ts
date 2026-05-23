@@ -1,8 +1,9 @@
 /**
  * useFleetRealtime — Hook GPS en tiempo real
  * ===========================================
- * Escucha viajes_activos en Firestore y retorna la flota activa actualizada.
+ * Consulta viajes_activos via REST polling y retorna la flota activa actualizada.
  * Usado por FleetMonitorModule, CEODashboard y cualquier widget de mapa.
+ * TODO FASE 4.5: Socket.io firestore:viajes_activos
  *
  * DÓNDE COLOCAR: frontend/src/hooks/useFleetRealtime.ts
  *
@@ -12,8 +13,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, onSnapshot, type DocumentData } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -34,7 +34,7 @@ export interface VehiculoEnMapa {
 export interface UseFleetRealtimeOptions {
   soloEmpresa?: string; // Filtrar por empresa, ej: 'UCOT'
   inactividadMin?: number; // Descartar vehículos inactivos hace N min (default: 15)
-  habilitado?: boolean; // Pausar el listener si false
+  habilitado?: boolean; // Pausar el polling si false
 }
 
 export interface UseFleetRealtimeResult {
@@ -69,44 +69,49 @@ export function useFleetRealtime(opciones: UseFleetRealtimeOptions = {}): UseFle
       return;
     }
 
+    let active = true;
     setLoading(true);
     setError(null);
 
-    const colRef = collection(db, COL_VIAJES);
     const inactividadMs = inactividadMin * 60 * 1000;
 
-    const unsubscribe = onSnapshot(
-      colRef,
-      (snapshot) => {
+    const fetchFleet = async () => {
+      try {
+        const queryParams: Record<string, string | number> = { limit: 2000 };
+        if (soloEmpresa) {
+          queryParams.where = `empresa:${soloEmpresa}`;
+        }
+        const raw = await apiClient.get(`/api/db/${COL_VIAJES}`, { query: queryParams }) as any[];
+        if (!active) return;
+
         const ahora = Date.now();
         const cutoff = ahora - inactividadMs;
-
         const lista: VehiculoEnMapa[] = [];
 
-        snapshot.docs.forEach((docSnap: DocumentData) => {
-          const data = docSnap.data() as Record<string, unknown>;
-
+        (Array.isArray(raw) ? raw : []).forEach((data: any) => {
           // Filtrar inactivos
           const updatedAtMs = toMillis(data.updatedAt);
           if (updatedAtMs < cutoff) return;
 
-          // Filtrar por empresa si se especificó
+          // Filtrar por empresa si se especificó (belt-and-suspenders when query not supported)
           if (soloEmpresa && data.empresa !== soloEmpresa) return;
 
-          // Extraer posición
+          // Extraer posición — soportar GeoPoint object o campos planos lat/lng
           const pos = data.posicion as { latitude?: number; longitude?: number } | undefined;
-          if (!pos || typeof pos.latitude !== 'number' || typeof pos.longitude !== 'number') return;
+          const lat = pos?.latitude ?? data.lat ?? data.latitude;
+          const lng = pos?.longitude ?? data.lng ?? data.longitude;
+          if (typeof lat !== 'number' || typeof lng !== 'number') return;
 
           const hacieCuantoMin = Math.floor((ahora - updatedAtMs) / 60000);
 
           lista.push({
-            id: docSnap.id,
-            cocheId: String(data.cocheId ?? docSnap.id),
+            id: data.id,
+            cocheId: String(data.cocheId ?? data.id),
             empresa: String(data.empresa ?? 'UCOT'),
             codigoLinea: String(data.codigoLinea ?? '—'),
             conductorNombre: String(data.conductorNombre ?? 'Conductor'),
-            lat: pos.latitude,
-            lng: pos.longitude,
+            lat,
+            lng,
             velocidad: data.velocidad != null ? Number(data.velocidad) : null,
             estado: String(data.estado ?? 'en_servicio'),
             updatedAtMs,
@@ -125,15 +130,21 @@ export function useFleetRealtime(opciones: UseFleetRealtimeOptions = {}): UseFle
         setLoading(false);
         setUltimaActualizacion(new Date());
         setError(null);
-      },
-      (err) => {
-        console.error('[useFleetRealtime] Error Firestore:', err.message);
-        setError(err.message);
+      } catch (err: any) {
+        if (!active) return;
+        console.error('[useFleetRealtime] Error REST:', err?.message ?? err);
+        setError(err?.message ?? 'Error cargando flota');
         setLoading(false);
-      },
-    );
+      }
+    };
 
-    return () => unsubscribe();
+    fetchFleet();
+    // TODO FASE 4.5: Socket.io firestore:viajes_activos
+    const interval = setInterval(fetchFleet, 10000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [habilitado, inactividadMin, soloEmpresa, refreshKey]);
 
   const totalUCOT = vehiculos.filter((v) => v.empresa === 'UCOT').length;
@@ -155,6 +166,11 @@ export function useFleetRealtime(opciones: UseFleetRealtimeOptions = {}): UseFle
 
 function toMillis(updatedAt: unknown): number {
   if (!updatedAt) return 0;
+  if (typeof updatedAt === 'string') {
+    const ms = new Date(updatedAt).getTime();
+    return isNaN(ms) ? 0 : ms;
+  }
+  if (typeof updatedAt === 'number') return updatedAt;
   const ts = updatedAt as { toMillis?: () => number; seconds?: number };
   if (typeof ts.toMillis === 'function') return ts.toMillis();
   if (typeof ts.seconds === 'number') return ts.seconds * 1000;

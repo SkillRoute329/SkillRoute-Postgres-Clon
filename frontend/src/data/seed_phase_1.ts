@@ -1,5 +1,5 @@
 import { db } from '../config/firebase';
-import { collection, doc, writeBatch } from 'firebase/firestore';
+import { collection, doc, writeBatch } from '../config/firestoreShim';
 
 // DATA SOURCE: "HABIL VERANO ENERO 2026" (From User Images)
 // This file will seed the services required for the TrafficControlMatrix.

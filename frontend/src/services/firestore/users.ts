@@ -1,5 +1,5 @@
-import { collection, doc, getDocs, setDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 import type { User } from './types';
 
 const COL = 'users';
@@ -29,22 +29,23 @@ function mapDoc(id: string, data: Record<string, unknown>): User {
 
 export const UserService = {
   async getAll(): Promise<User[]> {
-    const q = query(collection(db, COL), orderBy('internalNumber', 'asc'));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => mapDoc(d.id, { ...d.data(), uid: d.id }));
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { orderBy: 'internal_number:asc', limit: 5000 },
+    });
+    return Array.isArray(res.data)
+      ? res.data.map((d) => mapDoc((d.id as string) ?? '', { ...d, uid: d.id }))
+      : [];
   },
 
-  subscribe(callback: (users: User[]) => void) {
-    const q = query(collection(db, COL), orderBy('internalNumber', 'asc'));
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map((d) => mapDoc(d.id, { ...d.data(), uid: d.id })));
-    });
+  // FASE 5.35 (2026-05-22): bus socket en lugar de polling 10s.
+  subscribe(callback: (users: User[]) => void): () => void {
+    return subscribeViaBus<User[]>(COL, () => this.getAll(), callback);
   },
 
   async create(data: Partial<User> & { email?: string; password?: string }) {
-    const ref = doc(collection(db, COL));
+    const id = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const payload: Record<string, unknown> = {
-      uid: ref.id,
+      uid: id,
       email: data.email,
       rol: data.role ?? 'User',
       datos_personales: { nombre: data.firstName, apellido: data.lastName },
@@ -56,8 +57,8 @@ export const UserService = {
       ...data,
     };
     delete payload.password;
-    await setDoc(ref, payload);
-    return { id: ref.id, ...payload };
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(id)}`, payload);
+    return { id, ...payload };
   },
 
   async update(
@@ -75,7 +76,6 @@ export const UserService = {
       >
     >,
   ) {
-    const ref = doc(db, COL, userId);
     const payload: Record<string, unknown> = {
       ...patch,
       updatedAt: new Date().toISOString(),
@@ -85,13 +85,13 @@ export const UserService = {
     if (patch.internalNumber_coche_fijo != null)
       payload.internalNumber_coche_fijo = patch.internalNumber_coche_fijo;
     if (patch.internalNumber != null) payload.internalNumber = patch.internalNumber;
-    await setDoc(ref, payload, { merge: true });
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(userId)}`, payload);
   },
 
   async login(internalNumber: string, _password: string, _companySlug?: string) {
     // CERO-SIMULACIÓN: Bypass CEO para Acceso Inmediato a Plataforma 2.0 (UCOT GOD MODE)
     if (internalNumber === '0000' || internalNumber === 'admin@transformafacil.com') {
-      console.log('⚡ Acceso concedido mediante Bypass CEO / Cero-Simulación');
+      console.log('Acceso concedido mediante Bypass CEO / Cero-Simulación');
       return {
         token: 'ceo-bypass-' + Date.now(),
         user: {
@@ -109,7 +109,6 @@ export const UserService = {
     }
 
     // Fallback: Modo emergencia para otros usuarios si no hay Auth configurado aún
-    // Esto permite probar la interfaz sin bloqueos de backend.
     return {
       token: 'emergency-token-' + Date.now(),
       user: {

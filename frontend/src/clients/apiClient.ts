@@ -12,6 +12,8 @@
  *   - REGLA -2: si una llamada falla, propaga el error real, no inventa.
  */
 
+import { getToken, setToken } from '../utils/tokenStore';
+
 const ENV_BASE = (import.meta as any).env?.VITE_API_URL as string | undefined;
 
 // Fallback en orden:
@@ -21,26 +23,24 @@ const ENV_BASE = (import.meta as any).env?.VITE_API_URL as string | undefined;
 function resolveBaseUrl(): string {
   if (ENV_BASE && ENV_BASE.trim()) return ENV_BASE.replace(/\/+$/, '');
   if (typeof window !== 'undefined' && window.location?.origin) {
-    return 'http://localhost:3000';
+    return 'http://localhost:3001';
   }
-  return 'http://localhost:3000';
+  return 'http://localhost:3001';
 }
 
 export const API_BASE_URL = resolveBaseUrl();
 
 // ─── Token management ──────────────────────────────────────────────────────
-
-const TOKEN_KEY = 'skillroute_jwt';
+// FASE 5.16: delega en utils/tokenStore (única fuente de verdad + migración
+// automática de keys legacy). Nombres exportados intactos para no romper
+// imports existentes.
 
 export function setAuthToken(token: string | null): void {
-  if (typeof window === 'undefined') return;
-  if (token) window.localStorage.setItem(TOKEN_KEY, token);
-  else window.localStorage.removeItem(TOKEN_KEY);
+  setToken(token);
 }
 
 export function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return window.localStorage.getItem(TOKEN_KEY);
+  return getToken();
 }
 
 // ─── Tipos básicos ──────────────────────────────────────────────────────────
@@ -139,6 +139,27 @@ async function rawRequest<T = unknown>(
   }
 
   if (!res.ok) {
+    // FASE 5.16 (2026-05-16): handler global 401, con GUARD anti-tormenta.
+    //
+    // Bug original (Antigravity): cada request 401 disparaba el evento
+    // `skillroute:auth-unauthorized` → AuthContext hacía logout() →
+    // re-render → más requests en paralelo → más 401 → más eventos...
+    // Tormenta sincrónica que congelaba el navegador (ni F12 abría).
+    //
+    // Fix: una sola emisión del evento por "episodio". El flag global se
+    // arma al primer 401 y se desarma a los 5s. Mientras esté armado,
+    // los 401 subsecuentes NO re-disparan el evento. Corta el bucle de
+    // raíz sin perder el comportamiento de logout en sesión caducada.
+    if (res.status === 401 && !opts.anon) {
+      const w = window as unknown as { __sr401Lock?: boolean };
+      if (!w.__sr401Lock) {
+        w.__sr401Lock = true;
+        console.warn('[API] Sesión caducada o no autorizada (401). Cerrando sesión una vez.');
+        window.dispatchEvent(new CustomEvent('skillroute:auth-unauthorized'));
+        setTimeout(() => { w.__sr401Lock = false; }, 5000);
+      }
+    }
+
     const errBody = parsed as ApiResponse<T>;
     const message = errBody?.error ?? errBody?.message ?? res.statusText;
     throw new ApiError(res.status, message, parsed);

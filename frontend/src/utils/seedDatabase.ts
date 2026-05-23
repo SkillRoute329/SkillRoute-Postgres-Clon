@@ -1,4 +1,4 @@
-import { doc, writeBatch, serverTimestamp, GeoPoint, Timestamp } from 'firebase/firestore';
+import { doc, writeBatch, serverTimestamp, GeoPoint, Timestamp } from '../config/firestoreShim';
 import { db } from '../config/firebase';
 
 export const runGenesisProtocol = async () => {

@@ -1,21 +1,8 @@
-import { db, auth } from '../config/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import {
-  getDocs,
-  collection,
-  limit,
-  query,
-  disableNetwork,
-  enableNetwork,
-} from 'firebase/firestore';
+import { apiClient } from '../clients/apiClient';
+import { getToken } from '../utils/tokenStore';
 
-/** Espera el primer callback de onAuthStateChanged — evita falsos "No User" en la race condition de boot. */
-const authReady = new Promise<void>((resolve) => {
-  const unsub = onAuthStateChanged(auth, () => {
-    unsub();
-    resolve();
-  });
-});
+// TODO FASE 4.5: onAuthStateChanged replaced by JWT validation in apiClient
+// disableNetwork / enableNetwork have no REST equivalent — omitted
 
 export type ConnectivityStatus = 'ONLINE' | 'OFFLINE' | 'UNSTABLE' | 'BLOCKED';
 
@@ -29,40 +16,37 @@ export const ConnectivityGuard = {
 
     // 1. Basic Internet Check
     if (!navigator.onLine) {
-      console.warn('🛡️ ConnectivityGuard: No Internet Connection detected at boot.');
+      console.warn('ConnectivityGuard: No Internet Connection detected at boot.');
       return { status: 'OFFLINE', message: 'Sin conexión a internet. Iniciando en Modo Offline.' };
     }
 
-    // 2. Firebase Connectivity Check (Ping)
-    // Esperar a que auth resuelva para no evaluar currentUser antes de que onAuthStateChanged dispare.
-    await authReady;
-    if (!auth.currentUser) {
+    // 2. Check if user has a valid JWT token
+    const token = getToken();
+    if (!token) {
       return { status: 'ONLINE', message: 'Esperando Autenticación...' };
     }
 
+    // 3. Backend Connectivity Check (Ping)
     const start = performance.now();
     try {
-      // Try to read a public config or just check connection validity
-      // Using a very cheap query
-      const q = query(collection(db, 'system_settings'), limit(1));
-      // Set a strict timeout
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Timeout')), 5000),
       );
 
-      await Promise.race([getDocs(q), timeoutPromise]);
+      await Promise.race([
+        apiClient.get('/api/db/system_settings', { query: { limit: 1 } }),
+        timeoutPromise,
+      ]);
 
       const duration = Math.round(performance.now() - start);
-      console.log(`🛡️ ConnectivityGuard: Connection Verified in ${duration}ms.`);
+      console.log(`ConnectivityGuard: Connection Verified in ${duration}ms.`);
 
       return { status: 'ONLINE', message: 'Conexión Establecida.' };
     } catch (error: any) {
-      console.warn('🛡️ ConnectivityGuard: Connection Check Failed.', error?.message ?? error);
+      console.warn('ConnectivityGuard: Connection Check Failed.', error?.message ?? error);
 
-      if (error.code === 'permission-denied' || String(error).includes('permissions')) {
-        // FAKE IT TIL YOU MAKE IT:
-        // If we are blocked by rules, we ARE connected, just not authorized.
-        // Allow boot to proceed so user can Login.
+      if (error?.status === 401 || error?.status === 403 || String(error).includes('permissions')) {
+        // If blocked by auth rules, we ARE connected, just not authorized.
         return { status: 'ONLINE', message: 'Conectado (Requiere Login)' };
       }
 
@@ -70,13 +54,13 @@ export const ConnectivityGuard = {
         return { status: 'UNSTABLE', message: 'Conexión lenta detectada. Ajustando protocolo...' };
       }
 
-      if (error.code === 'failed-precondition' || error.message.includes('offline')) {
+      if (String(error).includes('offline') || String(error).includes('network')) {
         return { status: 'OFFLINE', message: 'Modo Offline Activado.' };
       }
 
       return {
         status: 'BLOCKED',
-        message: `Red Restrictiva Detectada (${error.code || 'Unknown'}). Intentando bypass...`,
+        message: `Red Restrictiva Detectada. Intentando bypass...`,
       };
     }
   },
@@ -84,15 +68,9 @@ export const ConnectivityGuard = {
   /**
    * MANUAL NETWORK TOGGLE
    * For "Tunnel Mode" simulation or recovery.
+   * TODO FASE 4.5: disableNetwork/enableNetwork have no REST equivalent; this is a no-op stub.
    */
   async forceReconnect() {
-    try {
-      await disableNetwork(db);
-      await new Promise((r) => setTimeout(r, 1000));
-      await enableNetwork(db);
-      console.log('🛡️ ConnectivityGuard: Reconnection Forced.');
-    } catch (e) {
-      console.error(e);
-    }
+    console.log('ConnectivityGuard: forceReconnect called (REST mode — no-op).');
   },
 };

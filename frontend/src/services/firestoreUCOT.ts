@@ -1,8 +1,7 @@
 /**
- * Acceso Firestore UCOT: cartones_completados (1 pestaña = 1 doc) y programacion_diaria (asignaciones Listero).
+ * Acceso backend UCOT: cartones_completados (1 pestaña = 1 doc) y programacion_diaria (asignaciones Listero).
  */
-import { collection, getDocs, getDoc, doc, setDoc, query, where } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 const CARTONES_COMPLETADOS = 'cartones_completados';
 const PROGRAMACION_DIARIA = 'programacion_diaria';
@@ -31,19 +30,24 @@ export type ProgramacionDiariaRecord = {
 
 export const firestoreUCOT = {
   async getCartonesFisicos(): Promise<CartonFisicoDoc[]> {
-    const snap = await getDocs(collection(db, CARTONES_COMPLETADOS));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as CartonFisicoDoc);
+    const result = await apiClient.get(`/api/db/${CARTONES_COMPLETADOS}`, { query: { limit: 5000 } }) as CartonFisicoDoc[];
+    return Array.isArray(result) ? result : [];
   },
 
   async getCartonFisicoById(id: string): Promise<CartonFisicoDoc | null> {
-    const snap = await getDoc(doc(db, CARTONES_COMPLETADOS, id));
-    return snap.exists() ? ({ id: snap.id, ...snap.data() } as CartonFisicoDoc) : null;
+    try {
+      const result = await apiClient.get(`/api/db/${CARTONES_COMPLETADOS}/` + encodeURIComponent(id)) as CartonFisicoDoc | null;
+      return result;
+    } catch {
+      return null;
+    }
   },
 
   async getProgramacionByDate(date: string): Promise<ProgramacionDiariaRecord[]> {
-    const q = query(collection(db, PROGRAMACION_DIARIA), where('date', '==', date));
-    const snap = await getDocs(q);
-    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ProgramacionDiariaRecord);
+    const result = await apiClient.get(`/api/db/${PROGRAMACION_DIARIA}`, {
+      query: { where: `date:${date}` },
+    }) as ProgramacionDiariaRecord[];
+    const list = Array.isArray(result) ? result : [];
     list.sort((a, b) => (a.horaInicio || '').localeCompare(b.horaInicio || ''));
     return list;
   },
@@ -57,7 +61,7 @@ export const firestoreUCOT = {
         80,
       );
     const payload = { ...record, id, createdAt: new Date().toISOString() };
-    await setDoc(doc(db, PROGRAMACION_DIARIA, id), payload, { merge: true });
+    await apiClient.put(`/api/db/${PROGRAMACION_DIARIA}/` + encodeURIComponent(id), payload);
     return payload as ProgramacionDiariaRecord;
   },
 };

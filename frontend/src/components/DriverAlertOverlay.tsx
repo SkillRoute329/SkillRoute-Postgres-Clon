@@ -19,12 +19,13 @@
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { onMessage, type MessagePayload } from 'firebase/messaging';
+import { onMessage, type MessagePayload } from '../config/firebaseStubsShim';
 import { getAppMessaging } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ShieldAlert, CheckCircle2, X, Vibrate, AlertTriangle } from 'lucide-react';
 import { useNativeDriverAlerts } from '../hooks/useNativeDriverAlerts';
+import { on as socketOn } from '../clients/socketClient';
 
 interface PendingAlert {
   alertaId: string;
@@ -122,6 +123,42 @@ export const DriverAlertOverlay = () => {
       if (dismissTimerRef.current) clearInterval(dismissTimerRef.current);
     };
   }, []);
+
+  // FASE 5.36 (2026-05-22): suscripción al bus socket del cascade engine.
+  // Cuando el motor genera un evento crítico con línea identificada, el
+  // bus emite `bus:driver:linea-critica`. Si el usuario es conductor,
+  // levantamos el modal pantalla completa (mismo flujo que FCM).
+  useEffect(() => {
+    const role = String(user?.role ?? '').toLowerCase();
+    const isDriver = role === 'driver' || role === 'chofer' || role === 'user' || role === 'conductor';
+    if (!isDriver) return;
+    const off = socketOn<{ lineaId: string; agencyId?: string; tipo: string; causa: string; feedId?: number | null }>(
+      'bus:driver:linea-critica',
+      (data) => {
+        const tipo = String(data.tipo ?? 'CASCADA');
+        // Solo abrimos modal si NO hay otra alerta activa (no spammeamos al chofer).
+        setActive((prev) => {
+          if (prev) return prev;
+          setAutoDismissIn(AUTO_DISMISS_MS / 1000);
+          if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+            try { navigator.vibrate([200, 100, 200, 100, 400]); } catch { /* */ }
+          }
+          return {
+            alertaId: data.feedId != null ? `cascade-${data.feedId}` : `cascade-${Date.now()}`,
+            tipo,
+            mensaje: String(data.causa ?? tipo).slice(0, 200),
+            cocheId: '',
+            lineaId: String(data.lineaId ?? ''),
+            rivalEmpresa: '',
+            rivalLinea: '',
+            distanciaMetros: 0,
+            receivedAt: Date.now(),
+          };
+        });
+      },
+    );
+    return off;
+  }, [user?.role]);
 
   // ── Countdown de auto-dismiss ──────────────────────────────────────────────
   useEffect(() => {

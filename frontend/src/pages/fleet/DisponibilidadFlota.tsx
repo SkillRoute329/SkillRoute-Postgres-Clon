@@ -5,7 +5,7 @@ import {
   onSnapshot,
   query,
   Timestamp,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import { db, authReady } from '../../config/firebase';
 import {
   Bus,

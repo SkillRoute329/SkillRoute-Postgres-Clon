@@ -21,8 +21,7 @@
  * este service apunta ahí y los demás módulos no se enteran.
  */
 
-import { collection, getDocs, query, where, limit } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 import {
   getLineasUCOT,
   getLineaData as getLineaDataUCOT,
@@ -59,46 +58,50 @@ export async function getLineasByAgency(agencyId: number): Promise<LineaUCOTResu
   } else {
     // Cross-operador: leer de shapes_cross_operator
     try {
-      const snap = await getDocs(
-        query(
-          collection(db, 'shapes_cross_operator'),
-          where('agencyId', '==', String(agencyId)),
-          limit(1000),
-        ),
-      );
-      const seen = new Set<string>();
-      const result: LineaUCOTResumen[] = [];
-      const empresaName = AGENCY_NAME[agencyId] ?? `EMP_${agencyId}`;
-      snap.forEach((doc) => {
-        const d = doc.data();
-        const codigo = String(d.linea ?? '').trim();
-        if (!codigo || codigo === '—') return;
-        const sentido = String(d.sentido ?? 'IDA').toUpperCase();
-        const key2 = `${codigo}_${sentido}`;
-        if (seen.has(key2)) return;
-        seen.add(key2);
-        result.push({
-          id: doc.id,
-          codigo,
-          nombre:
-            d.origen && d.destino
-              ? `${codigo} · ${d.origen} ↔ ${d.destino}`
-              : `${codigo} (${sentido})`,
-          empresa: empresaName,
-          origen: typeof d.origen === 'string' ? d.origen : undefined,
-          destino: typeof d.destino === 'string' ? d.destino : undefined,
-          sentido: sentido === 'VUELTA' ? 'VUELTA' : ('IDA' as SentidoLinea),
+      const raw = await apiClient.get('/api/db/shapes_cross_operator', {
+        query: { where: `agencyId:${String(agencyId)}`, limit: 1000 },
+      }) as any[];
+      const arr = Array.isArray(raw) ? raw : [];
+      
+      if (arr.length === 0) {
+        // FALLBACK A INYECTOR ESTÁTICO LOCAL SI LA BD ESTÁ VACÍA
+        const inyectadas = await import('../features/navigation/data/crossOpShapesInjector');
+        data = await inyectadas.listCrossOpLineasInyectadas(agencyId);
+      } else {
+        const seen = new Set<string>();
+        const result: LineaUCOTResumen[] = [];
+        const empresaName = AGENCY_NAME[agencyId] ?? `EMP_${agencyId}`;
+        arr.forEach((d: any) => {
+          const codigo = String(d.linea ?? '').trim();
+          if (!codigo || codigo === '—') return;
+          const sentido = String(d.sentido ?? 'IDA').toUpperCase();
+          const key2 = `${codigo}_${sentido}`;
+          if (seen.has(key2)) return;
+          seen.add(key2);
+          result.push({
+            id: d.id,
+            codigo,
+            nombre:
+              d.origen && d.destino
+                ? `${codigo} · ${d.origen} ↔ ${d.destino}`
+                : `${codigo} (${sentido})`,
+            empresa: empresaName,
+            origen: typeof d.origen === 'string' ? d.origen : undefined,
+            destino: typeof d.destino === 'string' ? d.destino : undefined,
+            sentido: sentido === 'VUELTA' ? 'VUELTA' : ('IDA' as SentidoLinea),
+          });
         });
-      });
-      data = result.sort((a, b) =>
-        a.codigo.localeCompare(b.codigo, undefined, { numeric: true }),
-      );
+        data = result.sort((a, b) =>
+          a.codigo.localeCompare(b.codigo, undefined, { numeric: true }),
+        );
+      }
     } catch (err) {
       console.warn(
-        `[linesService] No se pudo cargar shapes_cross_operator para agencyId=${agencyId}:`,
+        `[linesService] Falló shapes_cross_operator para agencyId=${agencyId}. Usando inyector estático fallback.`,
         err,
       );
-      data = [];
+      const inyectadas = await import('../features/navigation/data/crossOpShapesInjector');
+      data = await inyectadas.listCrossOpLineasInyectadas(agencyId);
     }
   }
 
@@ -112,37 +115,82 @@ export async function getLineasByAgency(agencyId: number): Promise<LineaUCOTResu
  * armar un objeto LineaUCOT mínimo desde shapes_cross_operator (recorrido
  * disponible, paradas no — falta scraping STM por línea cross-operador).
  */
+/**
+ * FASE 5.18 (2026-05-16) — GEOMETRÍA REAL.
+ * Trae el recorrido REAL de gtfs.shapes (feed oficial IMM, 319 rutas) vía
+ * /api/gtfs/geometry. Antes el trazado salía de shapes_cross_operator /
+ * inyectores estáticos (simulado) — el centro de comando lo marcó como
+ * descalificante. Esto es la fuente única de geometría real; devuelve []
+ * si GTFS no la tiene (no rompe: el caller hace fallback).
+ */
+export async function getRecorridoRealGtfs(
+  agencyId: number,
+  linea: string,
+  directionId = 0,
+): Promise<{ lat: number; lng: number }[]> {
+  try {
+    const resp = (await apiClient.get('/api/gtfs/geometry', {
+      query: { agencyId: String(agencyId), linea, directionId: String(directionId) },
+    })) as { success?: boolean; data?: { recorrido?: Array<{ lat: number; lng: number }> } } | { recorrido?: Array<{ lat: number; lng: number }> };
+    const rec =
+      (resp as { data?: { recorrido?: Array<{ lat: number; lng: number }> } })?.data?.recorrido ??
+      (resp as { recorrido?: Array<{ lat: number; lng: number }> })?.recorrido ??
+      [];
+    return Array.isArray(rec)
+      ? rec
+          .filter((p) => p && typeof p.lat === 'number' && typeof p.lng === 'number')
+          .map((p) => ({ lat: p.lat, lng: p.lng }))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getLineaDataByAgency(
   agencyId: number,
   codigo: string,
 ): Promise<LineaUCOT | null> {
   if (agencyId === 70) {
-    return getLineaDataUCOT(codigo);
+    const ucot = await getLineaDataUCOT(codigo);
+    if (ucot) {
+      // Override con trazado REAL de GTFS si está disponible.
+      const real = await getRecorridoRealGtfs(70, codigo, 0);
+      if (real.length > 2) ucot.recorrido = real;
+    }
+    return ucot;
   }
   try {
-    const snap = await getDocs(
-      query(
-        collection(db, 'shapes_cross_operator'),
-        where('agencyId', '==', String(agencyId)),
-        where('linea', '==', codigo),
-        limit(2), // ida + vuelta
-      ),
-    );
-    if (snap.empty) return null;
+    const raw = await apiClient.get('/api/db/shapes_cross_operator', {
+      query: { where: `agencyId:${String(agencyId)},linea:${codigo}`, limit: 2 },
+    }) as any[];
+    const arr = Array.isArray(raw) ? raw : [];
+    
+    if (arr.length === 0) {
+      // FALLBACK A INYECTOR LOCAL ESTÁTICO
+      const inyectadas = await import('../features/navigation/data/crossOpShapesInjector');
+      return inyectadas.getCrossOpLineaInyectada(agencyId, codigo);
+    }
 
     // Toma el primer match (típicamente IDA). Para vuelta se pediría aparte.
-    const docu = snap.docs[0]!;
-    const d = docu.data();
+    const d = arr[0];
     const empresaName = AGENCY_NAME[agencyId] ?? `EMP_${agencyId}`;
 
-    // Convertir polyline (lat/lng pairs) si está disponible
-    const recorrido: { lat: number; lng: number }[] = Array.isArray(d.points)
-      ? d.points
-          .filter((p: unknown): p is { lat: number; lng: number } =>
-            typeof p === 'object' && p !== null && 'lat' in p && 'lng' in p,
-          )
-          .map((p: { lat: number; lng: number }) => ({ lat: p.lat, lng: p.lng }))
-      : [];
+    // GEOMETRÍA REAL primero (gtfs.shapes); fallback al polyline de
+    // shapes_cross_operator solo si GTFS no la tiene.
+    let recorrido: { lat: number; lng: number }[] = await getRecorridoRealGtfs(
+      agencyId,
+      codigo,
+      0,
+    );
+    if (recorrido.length <= 2) {
+      recorrido = Array.isArray(d.points)
+        ? d.points
+            .filter((p: unknown): p is { lat: number; lng: number } =>
+              typeof p === 'object' && p !== null && 'lat' in p && 'lng' in p,
+            )
+            .map((p: { lat: number; lng: number }) => ({ lat: p.lat, lng: p.lng }))
+        : [];
+    }
 
     const ahora = new Date();
     return {

@@ -11,9 +11,10 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
+import { haversineMetros as geoHaversineMetros } from '../../utils/geomath';
 import {
   Lock, RefreshCw, AlertTriangle, TrendingUp, X,
   ChevronDown, ChevronUp, Info, Clock, MapPin,
@@ -60,13 +61,9 @@ interface ParDRO {
 
 // ── Geometría ─────────────────────────────────────────────────────────────────
 
+// FASE 5.16: delega en utils/geomath (fuente única). API local intacta.
 function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2
-    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return geoHaversineMetros(lat1, lng1, lat2, lng2);
 }
 
 function buildGrid(points: Punto[], cellDeg = 0.008): Map<string, Punto[]> {
@@ -394,6 +391,7 @@ function PanelDetalle({ par, onClose }: { par: ParDRO; onClose: () => void }) {
   const [servicioInfo, setServicioInfo] = useState<{
     tipo: string; diaLabel: string; ventanaStart: number; ventanaEnd: number;
   } | null>(null);
+  const [verTodoDia, setVerTodoDia]     = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -464,7 +462,7 @@ function PanelDetalle({ par, onClose }: { par: ParDRO; onClose: () => void }) {
     return () => { cancelled = true; cancelRef.v = true; };
   }, [par.shapeA.id, par.shapeB.id]);
 
-  // Salidas en la ventana temporal actual (dinámica) para ambas líneas
+  // Salidas en la ventana temporal actual (dinámica) o día completo para ambas líneas
   const pico = useMemo(() => {
     if (!servicioInfo) return [];
     type Salida = { t: string; empresa: string; hex: string; near: boolean };
@@ -472,7 +470,11 @@ function PanelDetalle({ par, onClose }: { par: ParDRO; onClose: () => void }) {
     const { ventanaStart, ventanaEnd } = servicioInfo;
     const rango = (sal: string[] | undefined, emp: string, hex: string) =>
       (sal ?? [])
-        .filter(s => { const m = toMin(s); return m >= ventanaStart && m <= ventanaEnd; })
+        .filter(s => {
+          if (verTodoDia) return true;
+          const m = toMin(s);
+          return m >= ventanaStart && m <= ventanaEnd;
+        })
         .map(s => ({ t: s, empresa: emp, hex, near: false }));
     const lista = [
       ...rango(horarioA?.salidas, cfgA?.label ?? '', cfgA?.hex ?? '#fff'),
@@ -483,7 +485,7 @@ function PanelDetalle({ par, onClose }: { par: ParDRO; onClose: () => void }) {
       const near = lista.some((o, j) => j !== i && o.empresa !== s.empresa && Math.abs(toMin(o.t) - sm) <= 8);
       return { ...s, near };
     });
-  }, [horarioA, horarioB, cfgA, cfgB, servicioInfo]);
+  }, [horarioA, horarioB, cfgA, cfgB, servicioInfo, verTodoDia]);
 
   return (
     <div className="fixed right-0 top-0 h-full w-[420px] bg-slate-900 border-l border-slate-700 z-50 overflow-y-auto shadow-2xl">
@@ -638,10 +640,22 @@ function PanelDetalle({ par, onClose }: { par: ParDRO; onClose: () => void }) {
                 {/* Pico mañana interleaved */}
                 {pico.length > 0 && (
                   <div className="mt-3">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">
-                      Salidas · {servicioInfo?.diaLabel} · {minToHH(servicioInfo?.ventanaStart ?? 0)}–{minToHH(servicioInfo?.ventanaEnd ?? 1439)}
-                      {servicioInfo && <span className="ml-1 normal-case text-slate-600">({servicioInfo.tipo})</span>}
-                    </p>
+                    <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                      <p className="text-[10px] text-slate-500 uppercase tracking-widest">
+                        {verTodoDia ? 'Todas las salidas' : 'Salidas Próximas'} · {servicioInfo?.diaLabel}
+                        {!verTodoDia && ` (${minToHH(servicioInfo?.ventanaStart ?? 0)}–${minToHH(servicioInfo?.ventanaEnd ?? 1439)})`}
+                      </p>
+                      <button
+                        onClick={() => setVerTodoDia(!verTodoDia)}
+                        className={`text-[9px] font-bold px-2 py-0.5 rounded transition-colors border ${
+                          verTodoDia 
+                            ? 'bg-blue-600/30 border-blue-500 text-blue-300' 
+                            : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {verTodoDia ? 'Ver Rango Actual' : 'Ver Todo el Día'}
+                      </button>
+                    </div>
                     <div className="space-y-0.5 max-h-52 overflow-y-auto pr-1 custom-scrollbar">
                       {pico.map((s, i) => (
                         <div key={i} className={`flex items-center gap-2 px-2 py-1 rounded text-[11px] ${
@@ -936,7 +950,7 @@ export default function GanttRedMetropolitana() {
         {loading ? (
           <div className="flex items-center justify-center h-40 gap-3">
             <RefreshCw className="w-5 h-5 text-slate-600 animate-spin" />
-            <span className="text-slate-500 text-sm">Cargando rutas desde Firestore...</span>
+            <span className="text-slate-500 text-sm">Cargando rutas desde Base de datos local...</span>
           </div>
         ) : computing ? (
           <div className="flex flex-col items-center justify-center h-40 gap-2">

@@ -9,7 +9,7 @@
  *
  * Los recorridos de ómnibus NO cambian — se cachean agresivamente.
  */
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 
 // ─── Import static route data ───────────────────────────────────────────────
@@ -38,7 +38,7 @@ const ROUTE_CACHE = new Map<string, CachedRoute>();
 let staticLoaded = false;
 let firestoreBulkLoaded = false;
 
-const PROXY_BASE = 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/montevideoProxy';
+const PROXY_BASE = import.meta.env.VITE_STM_PROXY_URL || 'http://localhost:3001/api/stm/proxy';
 
 function getProxyUrl(endpoint: string): string {
   return `${PROXY_BASE}?endpoint=${encodeURIComponent(endpoint)}`;

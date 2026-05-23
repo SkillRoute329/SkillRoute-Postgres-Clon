@@ -9,6 +9,8 @@ import { verifyAuth } from '../middleware/auth';
 import * as listeroService from '../services/listeroService';
 import * as cascadeEngine from '../services/cascadeEngineService';
 import logger from '../config/logger';
+import { computeConsequencesForEvent } from '../controllers/consequenceController';
+import { busOperation } from '../services/socketBus';
 
 const router = Router();
 
@@ -102,6 +104,20 @@ router.post(
       )
       .catch((err) => logger.error('[LISTERO_ROUTE] Error en cascada ausencia', { err: String(err) }));
 
+    // FASE 5.30 (2026-05-21): trigger automático del motor de consecuencias
+    // y emit al bus para que las pantallas conectadas vean el efecto en vivo.
+    // No bloqueante: si el motor falla, la ausencia ya quedó registrada.
+    computeConsequencesForEvent({
+      tipo: 'CONDUCTOR_AUSENTE',
+      conductorId,
+      conductorNombre: conductorNombre ?? conductorId,
+      codigoAusencia: String(motivo).toLowerCase().includes('injust') ? 'ausencia_injustificada' : motivo,
+      duracionHoras: 8,
+      kmEsperados: 120,
+    }).catch((err) => logger.error('[LISTERO_ROUTE] consequencePreview error', { err: String(err) }));
+
+    busOperation('ausencia', { conductorId, conductorNombre, fecha, motivo, registradoPor });
+
     res.json({ ok: true, mensaje: 'Ausencia registrada. Cascada de alertas iniciada.' });
   }),
 );
@@ -119,6 +135,7 @@ router.post(
     const user = (req as any).user;
     const asignadoPor = user?.fullName ?? user?.id ?? 'sistema';
     await listeroService.asignarReserva(turnoId, conductorReservaId, conductorReservaNombre ?? '', asignadoPor);
+    busOperation('reserva-asignada', { turnoId, conductorReservaId, conductorReservaNombre, asignadoPor });
     res.json({ ok: true, mensaje: 'Reserva asignada correctamente.' });
   }),
 );
@@ -154,7 +171,80 @@ router.post(
       .procesarVehiculoEnTaller(vehiculoId, vehiculoInterno ?? vehiculoId, motivo, registradoPor, fechaHoy)
       .catch((err) => logger.error('[LISTERO_ROUTE] Error en cascada taller', { err: String(err) }));
 
+    // FASE 5.30 (2026-05-21): motor de consecuencias + bus.
+    computeConsequencesForEvent({
+      tipo: 'VEHICULO_FUERA_DE_SERVICIO',
+      cocheId: vehiculoId,
+      cocheNumero: vehiculoInterno ?? vehiculoId,
+      motivoVehiculo: motivo,
+      horasEstimadas: 4,
+      kmPerdidos: 60,
+    }).catch((err) => logger.error('[LISTERO_ROUTE] consequencePreview error', { err: String(err) }));
+
+    busOperation('vehiculo-taller', { vehiculoId, vehiculoInterno, motivo, fecha: fechaHoy, registradoPor });
+
     res.json({ ok: true, mensaje: 'Vehículo marcado en taller. Cascada de alertas iniciada.' });
+  }),
+);
+
+// ─── GENERAR PROGRAMACIÓN DEL DÍA ────────────────────────────────────────────
+
+/**
+ * POST /api/listero/generar-programacion
+ *   body: { fecha: 'YYYY-MM-DD' }
+ *
+ * FASE 5.28 (2026-05-19): genera los turnos del día desde la última
+ * rotación capturada por el watcher en `cartones_historial`. Devuelve
+ * `{ ok, created, existing }`. Si ya hay turnos para esa fecha, no
+ * duplica.
+ */
+router.post(
+  '/generar-programacion',
+  verifyAuth,
+  wrap(async (req, res) => {
+    const fecha = String(req.body?.fecha ?? new Date().toISOString().slice(0, 10));
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      res.status(400).json({ ok: false, error: 'Formato esperado: fecha=YYYY-MM-DD' });
+      return;
+    }
+    const existentes = await listeroService.getTurnosByFecha(fecha);
+    if (existentes.length > 0) {
+      res.json({ ok: true, created: 0, existing: existentes.length, fecha });
+      return;
+    }
+    // Leer rotación del día desde cartones_historial.
+    const sqlDb = (await import('../config/database')).default;
+    const rows: Array<{ vehiculo_id: string; service_number: string | null; line: string | null }>
+      = await sqlDb('cartones_historial')
+        .select('vehiculo_id', 'service_number', 'line')
+        .where('fecha', fecha);
+    if (rows.length === 0) {
+      res.json({ ok: true, created: 0, existing: 0, fecha, nota: 'No hay rotación capturada para esa fecha.' });
+      return;
+    }
+    let created = 0;
+    for (const r of rows) {
+      try {
+        // conductor_id es FK a personal(id); si no hay asignación aún,
+        // dejamos null (FK lo permite). El listero asigna después.
+        await listeroService.createTurno({
+          fecha,
+          vehiculoId: r.vehiculo_id,
+          vehiculoInterno: r.vehiculo_id,
+          lineaId: r.line ?? '',
+          horaSalida: '00:00',
+          horaLlegadaEstimada: '00:00',
+          conductorId: null,
+          conductorNombre: null,
+          conductorInterno: null,
+          servicioId: r.service_number ?? null,
+        } as never);
+        created += 1;
+      } catch (e) {
+        logger.warn('[listero/generar-programacion] turno no creado', { error: String(e) });
+      }
+    }
+    res.json({ ok: true, created, existing: 0, fecha });
   }),
 );
 

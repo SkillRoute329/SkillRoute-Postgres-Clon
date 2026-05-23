@@ -23,6 +23,34 @@ const PenalizationsPage = () => {
     }
   };
 
+  // FASE 5.27 (2026-05-19) — Cableado del botón "Aplicar Sanción". Antes
+  // sin onClick. La aplicación de una sanción persiste en `penalties` y
+  // marca el número rojo como sancionado; eso propaga al cómputo de
+  // balances/jornales (interconexión real).
+  const handleApply = async (row: any) => {
+    if (
+      !confirm(
+        `¿Aplicar sanción a ${row.userName ?? row.user_name ?? 'usuario'} por "${row.ruleName ?? row.rule_name ?? 'infracción'}"?\n\nSe registra en historial y se descuenta del jornal correspondiente.`,
+      )
+    )
+      return;
+    try {
+      await PenaltyService.applyPenalty({
+        userId: row.userId ?? row.user_id,
+        userName: row.userName ?? row.user_name,
+        ruleId: row.ruleId ?? row.rule_id,
+        ruleName: row.ruleName ?? row.rule_name,
+        monto: Number(row.monto_base ?? row.monto ?? 0),
+        redNumberId: row.id,
+        motivo: row.ruleName ?? row.rule_name,
+      });
+      alert('Sanción aplicada y registrada.');
+      await loadData();
+    } catch (e) {
+      alert('No se pudo aplicar la sanción: ' + String(e).slice(0, 200));
+    }
+  };
+
   return (
     <div className="space-y-8 animate-fade-in-up pb-24">
       <div>
@@ -83,7 +111,10 @@ const PenalizationsPage = () => {
                         </td>
                         <td className="px-6 py-4 text-center text-white font-bold">{item.count}</td>
                         <td className="px-6 py-4 text-right">
-                          <button className="text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg border border-slate-700">
+                          <button
+                            onClick={() => handleApply(item)}
+                            className="text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg border border-slate-700"
+                          >
                             Aplicar Sanción
                           </button>
                         </td>

@@ -1,5 +1,4 @@
-import { db } from '../config/firebase';
-import { collection, addDoc, getDocs, query, where, Timestamp, orderBy } from 'firebase/firestore';
+import { apiClient } from '../clients/apiClient';
 
 export type AlertType = 'ACCIDENT' | 'TRAFFIC' | 'POLICE' | 'DETOUR' | 'WEATHER' | 'OTHER';
 
@@ -10,8 +9,8 @@ export interface TrafficAlert {
   lng: number;
   description: string;
   reportedBy: string; // User ID
-  reportedAt: any; // Timestamp
-  expiresAt: any; // Timestamp
+  reportedAt: string; // ISO timestamp
+  expiresAt: string; // ISO timestamp
   line?: string; // Optional: Specific to a line
 }
 
@@ -22,10 +21,10 @@ export const TrafficService = {
       const now = new Date();
       const expiration = new Date(now.getTime() + 2 * 60 * 60 * 1000); // Expires in 2 hours by default
 
-      await addDoc(collection(db, 'traffic_alerts'), {
+      await apiClient.post('/api/db/traffic_alerts', {
         ...alert,
-        reportedAt: Timestamp.fromDate(now),
-        expiresAt: Timestamp.fromDate(expiration),
+        reportedAt: now.toISOString(),
+        expiresAt: expiration.toISOString(),
       });
       return true;
     } catch (e) {
@@ -34,24 +33,21 @@ export const TrafficService = {
     }
   },
 
-  // Get Active Alerts (Real-time listener recommended instead)
+  // Get Active Alerts
   getActiveAlerts: async () => {
     try {
-      const now = Timestamp.fromDate(new Date());
-      const q = query(
-        collection(db, 'traffic_alerts'),
-        where('expiresAt', '>', now),
-        orderBy('expiresAt', 'desc'),
-      );
-      const snap = await getDocs(q);
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const now = new Date().toISOString();
+      const raw = await apiClient.get('/api/db/traffic_alerts', {
+        query: { where: `expiresAt>${now}`, orderBy: 'expiresAt:desc', limit: 500 },
+      }) as any[];
+      return Array.isArray(raw) ? raw : [];
     } catch (e) {
       console.error(e);
       return [];
     }
   },
 
-  // 📡 BROADCAST POSITION (For Admin Fleet View)
+  // BROADCAST POSITION (For Admin Fleet View)
   broadcastPosition: async (
     uid: string,
     line: string,
@@ -61,28 +57,21 @@ export const TrafficService = {
     heading: number,
   ) => {
     try {
-      const { doc, setDoc, getFirestore } = await import('firebase/firestore');
-      const db = getFirestore();
-
-      await setDoc(
-        doc(db, 'fleet_positions', uid),
-        {
-          line,
-          lat,
-          lng,
-          speed,
-          heading,
-          lastUpdate: Timestamp.now(),
-          status: 'ONLINE',
-        },
-        { merge: true },
-      );
+      await apiClient.put('/api/db/fleet_positions/' + encodeURIComponent(uid), {
+        line,
+        lat,
+        lng,
+        speed,
+        heading,
+        lastUpdate: new Date().toISOString(),
+        status: 'ONLINE',
+      });
     } catch (e) {
       console.error('GPS Broadcast Error', e);
     }
   },
 
-  // 🕵️ FETCH COMPETITOR POSITIONS
+  // FETCH COMPETITOR POSITIONS
   fetchCompetitorPositions: async (lines: string[]): Promise<any[]> => {
     try {
       const response = await fetch('/api/positions');
@@ -97,12 +86,11 @@ export const TrafficService = {
         cleanLines.includes(String(b.linea).replace(/[ab]$/i, '')),
       );
 
-      // Mapear al formato que usa stmLiveService para mantener compatibilidad
       return activeRivals.map((b: any) => ({
         id: String(b.codigoBus || b.idBus),
         codigoLinea: String(b.linea),
         linea: String(b.linea),
-        latitud: Number(b.lat), // Necesario para CompetitorThreatWidget
+        latitud: Number(b.lat),
         longitud: Number(b.lng),
         lat: Number(b.lat),
         lng: Number(b.lng),
@@ -115,7 +103,7 @@ export const TrafficService = {
     }
   },
 
-  // 🚍 FETCH UCOT REAL POSITIONS VIA IMM API
+  // FETCH UCOT REAL POSITIONS VIA IMM API
   fetchUcotPositions: async (lines: string[]): Promise<any[]> => {
     try {
       const response = await fetch('/api/positions');
@@ -147,27 +135,32 @@ export const TrafficService = {
     }
   },
 
-  // 🚍 FETCH UCOT REAL FLEET POSITIONS
+  // FETCH UCOT REAL FLEET POSITIONS
   fetchFleetPositions: async (lines: string[]): Promise<any[]> => {
     if (!lines || lines.length === 0) return [];
     try {
-      const chunks = [];
-      // Firestore 'in' solo soporta max 10
+      const fifteenMinsAgo = new Date(Date.now() - 15 * 60000).toISOString();
+      const results: any[] = [];
+      // Process in chunks for compatibility
+      const chunks: string[][] = [];
       for (let i = 0; i < lines.length; i += 10) {
         chunks.push(lines.slice(i, i + 10));
       }
-
-      const results: any[] = [];
-      const fifteenMinsAgo = Timestamp.fromDate(new Date(Date.now() - 15 * 60000));
-
       for (const chunk of chunks) {
-        const q = query(
-          collection(db, 'fleet_positions'),
-          where('line', 'in', chunk),
-          where('lastUpdate', '>', fifteenMinsAgo),
-        );
-        const snap = await getDocs(q);
-        results.push(...snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+        // Fetch fleet positions filtered by line, then filter by lastUpdate client-side
+        const raw = await apiClient.get('/api/db/fleet_positions', {
+          query: { limit: 5000 },
+        }) as any[];
+        const arr = Array.isArray(raw) ? raw : [];
+        arr.forEach((d: any) => {
+          if (
+            chunk.includes(d.line) &&
+            d.lastUpdate &&
+            d.lastUpdate >= fifteenMinsAgo
+          ) {
+            results.push(d);
+          }
+        });
       }
       return results;
     } catch (e) {

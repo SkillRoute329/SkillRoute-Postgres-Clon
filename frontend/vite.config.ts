@@ -138,39 +138,69 @@ export default defineConfig({
   },
   server: {
     host: '127.0.0.1',
-    port: 3005,
+    port: 3006,
     strictPort: true,
     allowedHosts: true,
+    // FASE 5.26: usePolling:true en Windows re-estatea por mtime y detecta
+    // cambios FALSOS en index.css/main.tsx → HMR → como main.tsx es el entry
+    // (importa index.css y NO acepta HMR) Vite hace full reload → al recargar
+    // el poll vuelve a "ver" el cambio → RECARGA INFINITA (la página nunca
+    // deja ingresar). El disco es C: NTFS local: los eventos nativos del FS
+    // funcionan bien y son exactos. Se desactiva el polling. Además se
+    // ignoran rutas volátiles para que ningún archivo generado dispare HMR.
     watch: {
-      usePolling: true,
+      usePolling: false,
+      ignored: [
+        '**/node_modules/**',
+        '**/.git/**',
+        '**/dist/**',
+        '**/.vite/**',
+        '**/logs/**',
+        '**/analisis_stm/**',
+        '**/.tmpwork/**',
+        '**/*.log',
+      ],
     },
     proxy: {
       '/api/gtfs': {
-        target: 'http://127.0.0.1:3000',
+        target: 'http://127.0.0.1:3001',
         changeOrigin: true,
         secure: false,
       },
       '/api/auth': {
-        target: 'http://127.0.0.1:3000',
+        target: 'http://127.0.0.1:3001',
         changeOrigin: true,
         secure: false,
         timeout: 10000,
         proxyTimeout: 10000,
       },
       '/api/health-check': {
-        target: 'http://127.0.0.1:3000',
+        target: 'http://127.0.0.1:3001',
         changeOrigin: true,
         secure: false,
       },
+      // FASE 5 (2026-05-13): cortadas las dependencias a Cloud Functions.
+      // Estas rutas ahora caen en el backend clon que devuelve stubs honestos
+      // hasta que se compute desde vehicle_events local.
       '/historicOtp': {
-        target: 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net',
+        target: 'http://127.0.0.1:3001',
         changeOrigin: true,
-        secure: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/historicOtp/, '/api/historic/otp'),
       },
       '/historicBunching': {
-        target: 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net',
+        target: 'http://127.0.0.1:3001',
         changeOrigin: true,
-        secure: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/historicBunching/, '/api/historic/bunching'),
+      },
+      // FASE 5.28 (2026-05-19): legacy Cloud Function /penetrationHistoric
+      // → backend principal con stub honesto en /api/historic/penetration.
+      '/penetrationHistoric': {
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/penetrationHistoric/, '/api/historic/penetration'),
       },
       '/proxy-horarios': {
         target: 'https://www.montevideo.gub.uy',
@@ -182,26 +212,25 @@ export default defineConfig({
           'Referer': 'https://www.montevideo.gub.uy/app/stm/horarios/'
         }
       },
-      '/api/inteligencia': {
-        // Route agent intelligence calls directly to the Cloud Function
-        target: 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/intelligenceApi',
-        changeOrigin: true,
-        secure: true,
-      },
-      '/api/positions': {
-        // Route positions endpoints to the Cloud Function
-        target: 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/intelligenceApi',
-        changeOrigin: true,
-        secure: true,
-      },
+      // FASE 5.28 (2026-05-19): /api/inteligencia ahora vive en el backend
+      // principal :3001 (intelligenceController.getInteligenciaPorLinea) y
+      // consulta bus_last_pos en vivo. Antes apuntaba al bridge-server :3099
+      // que no estaba alimentado con dato real. Removido para que el bloque
+      // catch-all '/api' lo derive a :3001.
+      // FASE 5.27 (2026-05-19): /api/positions y /api/positions/cutcsa
+      // ahora viven en el backend principal :3001 (positionsController.ts),
+      // leyendo bus_last_pos en vivo. Antes apuntaba al bridge-server :3099,
+      // que devolvía datos en otro shape y NO tenía la ruta /cutcsa (404).
+      // Removido para que caiga al catch-all '/api' → :3001 más abajo.
+      // '/api/positions': eliminado adrede; el bloque '/api' lo cubre.
       '/api/ucot': {
-        // Route fleet intelligence endpoints to the Cloud Function
-        target: 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/intelligenceApi',
+        // Route fleet intelligence endpoints to local bridge-server
+        target: 'http://127.0.0.1:3099',
         changeOrigin: true,
-        secure: true,
+        secure: false,
       },
       '/api': {
-        target: 'http://127.0.0.1:3000',
+        target: 'http://127.0.0.1:3001',
         changeOrigin: true,
         secure: false,
         configure: (proxy) => {

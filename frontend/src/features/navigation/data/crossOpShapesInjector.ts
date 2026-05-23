@@ -9,6 +9,7 @@
 import type { LineaUCOT, ParadaUcot, PuntoLatLng, SentidoLinea } from '../../../types/lineasUcot';
 import type { LineaUCOTResumen } from '../../../services/linesService';
 import { LINE_ARCHETYPES } from '../../../data/lineTemplates';
+import { distanciaMetros } from '../../../utils/geomath';
 
 // ─── Tipos internos ──────────────────────────────────────────────────────────
 
@@ -47,16 +48,9 @@ const AGENCY_NAME: Record<number, string> = {
 
 // ─── Helpers geométricos ─────────────────────────────────────────────────────
 
+// FASE 5.16: delega en utils/geomath (fuente única). API local intacta.
 function haversineMetros(p1: PuntoLatLng, p2: PuntoLatLng): number {
-  const R = 6371000;
-  const dLat = ((p2.lat - p1.lat) * Math.PI) / 180;
-  const dLng = ((p2.lng - p1.lng) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((p1.lat * Math.PI) / 180) *
-      Math.cos((p2.lat * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return distanciaMetros(p1, p2);
 }
 
 /**
@@ -68,24 +62,9 @@ function haversineMetros(p1: PuntoLatLng, p2: PuntoLatLng): number {
 const MAX_JUMP_M = 800; // salto máximo tolerable entre puntos consecutivos
 
 function longestContiguousSegment(points: Array<{ lat: number; lng: number }>): Array<{ lat: number; lng: number }> {
-  if (points.length <= 2) return points;
-
-  const segments: Array<Array<{ lat: number; lng: number }>> = [];
-  let current: Array<{ lat: number; lng: number }> = [points[0]];
-
-  for (let i = 1; i < points.length; i++) {
-    const dist = haversineMetros(points[i - 1], points[i]);
-    if (dist > MAX_JUMP_M) {
-      segments.push(current);
-      current = [points[i]];
-    } else {
-      current.push(points[i]);
-    }
-  }
-  segments.push(current);
-
-  // Devolver el segmento con más puntos
-  return segments.reduce((best, seg) => (seg.length > best.length ? seg : best), segments[0]);
+  // RETORNAR EL RECORRIDO COMPLETO 100% SIN CORTAR TRAMOS
+  // Permite que la edición de desvíos pueda marcar cualquier sección de la línea
+  return points;
 }
 
 function distribuirParadasSobreShape(
@@ -131,13 +110,35 @@ function mockTimestamp(ahora: Date): LineaUCOT['ultimaActualizacion'] {
 function entryToLineaUCOT(docId: string, entry: ShapeEntry, codigo: string, agencyId: number): LineaUCOT {
   const ahora = new Date();
   const rawPoints = entry.points.map((p) => ({ lat: p.lat, lng: p.lng }));
-  const recorrido: PuntoLatLng[] = longestContiguousSegment(rawPoints);
+  let recorrido: PuntoLatLng[] = longestContiguousSegment(rawPoints);
   const sentidoLinea: SentidoLinea = (String(entry.sentido).toUpperCase() === 'VUELTA' ? 'VUELTA' : 'IDA') as SentidoLinea;
   const baseCodigo = String(entry.linea).trim();
 
+  let needsReversal = false;
+  // HEURÍSTICA DE SEGURIDAD: Si el JSON estático reutilizó el mismo shape para IDA y VUELTA
+  // (mismos extremos y mismo recuento), revertimos en VUELTA para que sea navegable en sentido opuesto.
+  if (sentidoLinea === 'VUELTA' && recorrido.length > 2 && _shapesCache) {
+    const agencyStr = String(agencyId);
+    const idIDA = `${agencyStr}_${baseCodigo}_IDA`;
+    const entryIDA = _shapesCache[idIDA];
+    
+    if (entryIDA && entryIDA.points && entryIDA.points.length === entry.points.length) {
+      const firstCoincide = Math.abs(entry.points[0].lat - entryIDA.points[0].lat) < 0.0001 && Math.abs(entry.points[0].lng - entryIDA.points[0].lng) < 0.0001;
+      const lastCoincide = Math.abs(entry.points[entry.points.length - 1].lat - entryIDA.points[entryIDA.points.length - 1].lat) < 0.0001 && Math.abs(entry.points[entry.points.length - 1].lng - entryIDA.points[entryIDA.points.length - 1].lng) < 0.0001;
+      
+      if (firstCoincide && lastCoincide) {
+        console.warn(`[crossOpShapesInjector] Detectado shape duplicado para VUELTA en línea ${baseCodigo}. Revirtiendo recorrido.`);
+        needsReversal = true;
+        recorrido = [...recorrido].reverse();
+      }
+    }
+  }
+
   // Usar paradas del JSON si tienen nombres; si no, distribuir desde LINE_ARCHETYPES
   let paradas: ParadaUcot[];
-  const paradasConNombre = entry.paradas.filter((p) => p.nombre);
+  const rawParadas = [...entry.paradas];
+  if (needsReversal) rawParadas.reverse();
+  const paradasConNombre = rawParadas.filter((p) => p.nombre);
   if (paradasConNombre.length >= 2) {
     paradas = paradasConNombre.map((p, i) => ({
       id: `p${i + 1}`,

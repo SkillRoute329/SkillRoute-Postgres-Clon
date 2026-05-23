@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import {
   TrendingUp,

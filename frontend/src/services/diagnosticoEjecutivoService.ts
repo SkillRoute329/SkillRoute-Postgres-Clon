@@ -1,5 +1,4 @@
-import { collection, getDocs, query, where, limit, orderBy } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 import { fetchEtapaStats } from './etapaStatsService';
 
 // ── Tipos públicos ───────────────────────────────────────────────────────────
@@ -143,31 +142,35 @@ function velPromedio(eventos: Array<{ velocidad?: number }>): number | null {
 // ── Fetchers por colección ───────────────────────────────────────────────────
 
 async function fetchVehicleEvents(agencyId: string, maxDocs = 2000) {
-  const q = query(
-    collection(db, 'vehicle_events'),
-    where('agencyId', '==', agencyId),
-    limit(maxDocs),
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => d.data() as {
-    idBus: string; linea: string; sentido: string; agencyId: string;
-    empresa: string; estadoCumplimiento: string; desviacionMin: number;
-    velocidad?: number; createdAt?: { toDate?: () => Date } | Date;
-  });
+  // FASE 5.21 (2026-05-17): sin orderBy, el shim traía las primeras 2000
+  // filas del heap de vehicle_events (32M, casi todas viejas y SIN_HORARIO)
+  // → todos los bloques daban sinDatos ("no hace nada"). Pedimos los 2000
+  // eventos MÁS RECIENTES del operador (índice idx_vehicle_events_agency_created).
+  const raw = await apiClient.get('/api/db/vehicle_events', {
+    query: { where: `agencyId:${agencyId}`, orderBy: 'createdAt:desc', limit: maxDocs },
+  }) as any[];
+  const arr = Array.isArray(raw) ? raw : [];
+  return arr.map((d: any) => ({
+    idBus: d.idBus as string,
+    linea: d.linea as string,
+    sentido: d.sentido as string,
+    agencyId: d.agencyId as string,
+    empresa: d.empresa as string,
+    estadoCumplimiento: d.estadoCumplimiento as string,
+    desviacionMin: d.desviacionMin as number,
+    velocidad: d.velocidad as number | undefined,
+    createdAt: d.createdAt ? new Date(d.createdAt) : undefined,
+  }));
 }
 
 async function fetchCorredoresContraRivales(agencyId: string) {
-  const [snapA, snapB] = await Promise.all([
-    getDocs(query(
-      collection(db, 'corridor_overlap'),
-      where('agencyA', '==', agencyId),
-      where('sameEmpresa', '==', false),
-    )),
-    getDocs(query(
-      collection(db, 'corridor_overlap'),
-      where('agencyB', '==', agencyId),
-      where('sameEmpresa', '==', false),
-    )),
+  const [rawA, rawB] = await Promise.all([
+    apiClient.get('/api/db/corridor_overlap', {
+      query: { where: `agencyA:${agencyId},sameEmpresa:false`, limit: 1000 },
+    }) as Promise<any[]>,
+    apiClient.get('/api/db/corridor_overlap', {
+      query: { where: `agencyB:${agencyId},sameEmpresa:false`, limit: 1000 },
+    }) as Promise<any[]>,
   ]);
 
   const pares: Array<{
@@ -176,16 +179,14 @@ async function fetchCorredoresContraRivales(agencyId: string) {
     sharedKm: number;
   }> = [];
 
-  snapA.docs.forEach(d => {
-    const data = d.data();
+  (Array.isArray(rawA) ? rawA : []).forEach((data: any) => {
     pares.push({
       lineaPropia: String(data.lineaA), sentidoPropio: data.sentidoA ?? '',
       lineaRival: String(data.lineaB), empresaRival: data.empresaB ?? '',
       agencyRival: String(data.agencyB), sharedKm: data.sharedKm ?? 0,
     });
   });
-  snapB.docs.forEach(d => {
-    const data = d.data();
+  (Array.isArray(rawB) ? rawB : []).forEach((data: any) => {
     pares.push({
       lineaPropia: String(data.lineaB), sentidoPropio: data.sentidoB ?? '',
       lineaRival: String(data.lineaA), empresaRival: data.empresaA ?? '',
@@ -227,10 +228,8 @@ async function calcBloque1(agencyId: string): Promise<Bloque1Result> {
   const ahora = Date.now();
   const mitad = ahora - 3.5 * 24 * 3600 * 1000;
 
-  function esMitadReciente(e: { createdAt?: { toDate?: () => Date } | Date }): boolean {
-    const fecha = e.createdAt instanceof Date ? e.createdAt
-      : typeof (e.createdAt as any)?.toDate === 'function' ? (e.createdAt as any).toDate()
-      : null;
+  function esMitadReciente(e: { createdAt?: Date }): boolean {
+    const fecha = e.createdAt instanceof Date ? e.createdAt : null;
     return fecha ? fecha.getTime() > mitad : true;
   }
 
@@ -401,10 +400,9 @@ async function calcBloque2(agencyId: string): Promise<Bloque2Result> {
     eventosPorLineaSentido[key].push(e);
   });
 
-  function evToMs(e: { createdAt?: { toDate?: () => Date } | Date }): number {
+  function evToMs(e: { createdAt?: Date }): number {
     if (!e.createdAt) return 0;
     if (e.createdAt instanceof Date) return e.createdAt.getTime();
-    if (typeof (e.createdAt as any).toDate === 'function') return (e.createdAt as any).toDate().getTime();
     return 0;
   }
 
@@ -432,8 +430,6 @@ async function calcBloque2(agencyId: string): Promise<Bloque2Result> {
             const diffMin = Math.round(Math.abs(evToMs(cercano) - taMs) / 60_000);
             const tsIso = ea.createdAt instanceof Date
               ? ea.createdAt.toISOString()
-              : typeof (ea.createdAt as any)?.toDate === 'function'
-              ? (ea.createdAt as any).toDate().toISOString()
               : new Date().toISOString();
             bunchingAlertas.push({ linea, sentido, coche1: ids[i], coche2: ids[j], distanciaMetros: 0, duracionMin: diffMin, ts: tsIso });
             break;

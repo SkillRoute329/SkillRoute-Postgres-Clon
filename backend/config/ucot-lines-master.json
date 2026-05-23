@@ -283,8 +283,9 @@
   ],
   "auditoria": {
     "fecha": "2026-04-07T15:52:56.350Z",
-    "accion": "Eliminación de IDs fantasma 317/371/379",
-    "lineasEliminadas": [
+    "accion": "Deduplicación: 317/371/379 NO son fantasma — son los códigos UCOT (prefijo '3') de las líneas IMM 17/71/79. Este master lista los códigos IMM (17/71/79); se quitaron los duplicados con prefijo para no listar dos veces la misma línea. La equivalencia IMM↔UCOT (regla del prefijo '3') sigue siendo válida y se aplica en el cruce.",
+    "correccion_2026_05_16": "Nota previa decía 'IDs fantasma' — era incorrecto y contradecía la regla de dominio validada (IMM 17 = UCOT 317).",
+    "lineasDeduplicadas": [
       "317",
       "371",
       "379"

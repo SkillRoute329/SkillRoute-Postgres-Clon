@@ -7,19 +7,7 @@
  *  4. API STM en vivo (último recurso)
  * CORRIDOR_MAP provee origen/destino para el selector.
  */
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  serverTimestamp,
-  writeBatch,
-  query,
-  where,
-  Timestamp,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 import type { LineaUCOT, ParadaUcot, PuntoLatLng, SentidoLinea } from '../types/lineasUcot';
 import { CORRIDOR_MAP } from './CompetitorIntelligence';
 import { LINE_ARCHETYPES, line300Data, line300ReverseData } from '../data/lineTemplates';
@@ -29,7 +17,7 @@ import { getRealRouteCoordinates, ALL_UCOT_ROUTES } from '../data/routesGeoData'
 // import { LINES_DB } from '../data/geo/lines';
 
 const COL = 'lineas_ucot';
-const PROXY_BASE = 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/montevideoProxy';
+const PROXY_BASE = import.meta.env.VITE_STM_PROXY_URL || 'http://localhost:3001/api/stm/proxy';
 
 /**
  * Códigos de línea UCOT verificados contra el registro oficial IMM/STM.
@@ -181,9 +169,9 @@ function mapApiToLineaUCOT(
   };
 }
 
-/** Tipo para ingesta desde archivo (ultimaActualizacion se asigna al escribir con serverTimestamp). */
+/** Tipo para ingesta desde archivo (ultimaActualizacion se asigna al escribir). */
 export type LineaUCOTParaEscritura = Omit<LineaUCOT, 'ultimaActualizacion'> & {
-  ultimaActualizacion?: ReturnType<typeof serverTimestamp>;
+  ultimaActualizacion?: string;
 };
 
 const BATCH_SIZE_STM = 500;
@@ -284,7 +272,7 @@ export function parseGeoJSONOrJSONToLineasUCOT(raw: string): LineaUCOTParaEscrit
 }
 
 /**
- * Escribe líneas en Firestore (lineas_ucot) en lotes de 500 con writeBatch.
+ * Escribe líneas en el backend (lineas_ucot) en lotes paralelos.
  */
 export async function writeLineasUCOTInBatches(
   lineas: LineaUCOTParaEscritura[],
@@ -292,15 +280,16 @@ export async function writeLineasUCOTInBatches(
 ): Promise<{ written: number; errors: string[] }> {
   const errors: string[] = [];
   let written = 0;
+  const now = new Date().toISOString();
   for (let offset = 0; offset < lineas.length; offset += BATCH_SIZE_STM) {
     const chunk = lineas.slice(offset, offset + BATCH_SIZE_STM);
-    const batch = writeBatch(db);
-    for (const linea of chunk) {
-      const ref = doc(db, COL, linea.codigo);
-      batch.set(ref, { ...linea, ultimaActualizacion: serverTimestamp() }, { merge: true });
-    }
     try {
-      await batch.commit();
+      await Promise.all(chunk.map(async (linea) => {
+        await apiClient.put(`/api/db/${COL}/` + encodeURIComponent(linea.codigo), {
+          ...linea,
+          ultimaActualizacion: now,
+        });
+      }));
       written += chunk.length;
       onProgress?.(written, lineas.length);
     } catch (e) {
@@ -326,10 +315,8 @@ export async function getLineaData(codigo: string): Promise<LineaUCOT | null> {
 
   // 1. Fuente principal: colección lineas_ucot (tolerante a offline)
   try {
-    const ref = doc(db, COL, codigo);
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-      const data = snap.data() as LineaUCOT;
+    const data = await apiClient.get(`/api/db/${COL}/` + encodeURIComponent(codigo)) as LineaUCOT | null;
+    if (data) {
       data.desviosFijos = data.desviosFijos ?? [];
       data.desviosTemporales = data.desviosTemporales ?? [];
       data.paradas = data.paradas ?? [];
@@ -338,8 +325,8 @@ export async function getLineaData(codigo: string): Promise<LineaUCOT | null> {
         result = data;
       }
     }
-  } catch (firestoreError) {
-    console.warn('[UCOT] Firestore offline para getLineaData:', codigo, firestoreError);
+  } catch (backendError) {
+    console.warn('[UCOT] Backend offline para getLineaData:', codigo, backendError);
   }
 
   // 2. Fallback: construir paradas desde colección cartones (DESACTIVADO según opción 1)
@@ -364,6 +351,28 @@ export async function getLineaData(codigo: string): Promise<LineaUCOT | null> {
   // 5. ENRIQUECER con coordenadas GPS reales del GeoServer oficial
   if (result) {
     result = enrichWithOfficialGeoData(result, codigo);
+  }
+
+  // 6. FASE 5.18 — GEOMETRÍA REAL: el recorrido visible debe ser el de
+  // gtfs.shapes (feed oficial IMM), no inyectores/templates simulados (el
+  // centro de comando marcó el trazado simulado como descalificante).
+  // Override solo si GTFS tiene la geometría; si no, se conserva la previa.
+  if (result) {
+    try {
+      const base = codigo.replace(/[ab]$/i, '');
+      const dir = /b$/i.test(codigo) ? 1 : 0;
+      const resp = (await apiClient.get('/api/gtfs/geometry', {
+        query: { agencyId: '70', linea: base, directionId: String(dir) },
+      })) as { data?: { recorrido?: Array<{ lat: number; lng: number }> } };
+      const real = resp?.data?.recorrido;
+      if (Array.isArray(real) && real.length > 2) {
+        result.recorrido = real
+          .filter((p) => p && typeof p.lat === 'number' && typeof p.lng === 'number')
+          .map((p) => ({ lat: p.lat, lng: p.lng }));
+      }
+    } catch {
+      /* GTFS no disponible → se conserva el recorrido previo (fallback) */
+    }
   }
 
   return result;
@@ -471,12 +480,14 @@ async function _buildLineaFromCartones(codigo: string): Promise<LineaUCOT | null
   const sentido: SentidoLinea = isVariantB ? 'VUELTA' : 'IDA';
 
   try {
-    const q = query(collection(db, 'cartones'), where('linea', '==', baseCodigo));
-    const snap = await getDocs(q);
-    if (snap.empty) return null;
+    const raw = await apiClient.get('/api/db/cartones', {
+      query: { where: `linea:${baseCodigo}`, limit: 1 },
+    }) as any[];
+    const arr = Array.isArray(raw) ? raw : [];
+    if (arr.length === 0) return null;
 
     // Tomar el primer cartón para extraer las paradas
-    const cartonData = snap.docs[0].data();
+    const cartonData = arr[0];
     const paradasRaw = (cartonData.paradas as Array<{ nombre: string; tiempos?: string[] }>) || [];
     if (paradasRaw.length === 0) return null;
 
@@ -511,7 +522,7 @@ async function _buildLineaFromCartones(codigo: string): Promise<LineaUCOT | null
       recorrido: [], // Sin datos GPS — el mapa mostrará hitos teóricos
       desviosFijos: [],
       desviosTemporales: [],
-      ultimaActualizacion: Timestamp.now(),
+      ultimaActualizacion: new Date().toISOString() as any,
     };
   } catch (e) {
     console.warn('[getLineaData] Error leyendo cartones:', e);
@@ -658,26 +669,28 @@ export interface LineaUCOTResumen {
 export async function getLineasUCOT(): Promise<LineaUCOTResumen[]> {
   const firestoreMap = new Map<string, LineaUCOTResumen>();
 
-  // 1. Intentar cargar desde Firestore (tolerante a modo offline)
+  // 1. Intentar cargar desde el backend (tolerante a modo offline)
   try {
-    const snap = await getDocs(collection(db, COL));
-    snap.docs
-      .filter((d) => d.id)
-      .forEach((d) => {
-        const data = d.data();
-        firestoreMap.set(d.id, {
-          id: d.id,
-          codigo: String(data?.codigo ?? d.id),
-          nombre: String(data?.nombre ?? data?.codigo ?? d.id),
-          empresa: data?.empresa != null ? String(data.empresa) : undefined,
-          origen: data?.origen != null ? String(data.origen) : undefined,
-          destino: data?.destino != null ? String(data.destino) : undefined,
-          sentido: data?.sentido as SentidoLinea | undefined,
+    const raw = await apiClient.get(`/api/db/${COL}`, { query: { limit: 5000 } }) as any[];
+    const arr = Array.isArray(raw) ? raw : [];
+    arr
+      .filter((d: any) => d.id || d.codigo)
+      .forEach((d: any) => {
+        const id = String(d.id ?? d.codigo ?? '');
+        if (!id) return;
+        firestoreMap.set(id, {
+          id,
+          codigo: String(d?.codigo ?? id),
+          nombre: String(d?.nombre ?? d?.codigo ?? id),
+          empresa: d?.empresa != null ? String(d.empresa) : undefined,
+          origen: d?.origen != null ? String(d.origen) : undefined,
+          destino: d?.destino != null ? String(d.destino) : undefined,
+          sentido: d?.sentido as SentidoLinea | undefined,
         });
       });
-  } catch (firestoreError) {
-    // Firestore offline o sin permisos — continuamos con datos estáticos
-    console.warn('[UCOT] Firestore no disponible, usando datos locales:', firestoreError);
+  } catch (backendError) {
+    // Backend offline o sin permisos — continuamos con datos estáticos
+    console.warn('[UCOT] Backend no disponible, usando datos locales:', backendError);
   }
 
   // 2. Generar lista completa con CORRIDOR_MAP + ALL_UCOT_ROUTES para origen/destino
@@ -860,17 +873,13 @@ export async function syncLineaFromAPI(codigo: string, numeroAPI: string): Promi
     terminalLlegada: ultimaParada || existing?.terminalLlegada,
     desviosFijos,
     desviosTemporales,
-    ultimaActualizacion: serverTimestamp() as LineaUCOT['ultimaActualizacion'],
+    ultimaActualizacion: new Date().toISOString() as any,
   };
 
-  await setDoc(
-    doc(db, COL, codigo),
-    {
-      ...docData,
-      empresa: 'UCOT', // Siempre etiquetar como UCOT al sincronizar desde este servicio
-    },
-    { merge: true },
-  );
+  await apiClient.put(`/api/db/${COL}/` + encodeURIComponent(codigo), {
+    ...docData,
+    empresa: 'UCOT', // Siempre etiquetar como UCOT al sincronizar desde este servicio
+  });
 }
 
 /**

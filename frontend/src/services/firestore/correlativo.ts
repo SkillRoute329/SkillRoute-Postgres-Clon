@@ -1,62 +1,34 @@
 /**
  * CorrelativoService — Gestión de solicitudes de correlativo entre conductores.
  *
- * Colección Firestore: correlativos
- *
- * Correlativo: conductor A cubre al conductor B, realizando ambos turnos.
- * Regla UCOT:
- *  - Si ambos turnos son en el mismo coche → factible siempre.
- *  - Si son coches distintos → se necesita al menos 45 min de gap entre el fin
- *    del turno cubierto y el inicio del segundo servicio del solicitante.
- *
- * El sistema calcula la factibilidad y propone la solución; el listero aprueba.
+ * Colección: correlativos
  */
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  addDoc,
-  setDoc,
-  query,
-  orderBy,
-  where,
-  onSnapshot,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 
 export type CorrelativoEstado = 'pendiente' | 'aprobado' | 'rechazado' | 'completado';
 
 export interface TurnoCorrelativo {
   servicioId?: string;
-  /** Número interno del coche */
   cocheInternalNumber?: string;
   linea?: string;
   horaInicio?: string;
-  /** HH:MM */
   horaFin?: string;
 }
 
 export interface CorrelativoRequest {
   id?: string;
-  fecha: string; // ISO YYYY-MM-DD
-  /** Quien solicita el correlativo (cubre al compañero) */
+  fecha: string;
   solicitanteUserId: string;
   solicitanteInternalNumber: string;
   solicitanteNombre?: string;
-  /** Quien es cubierto */
   cubiertaUserId: string;
   cubiertaInternalNumber: string;
   cubiertaNombre?: string;
-  /** Turno del conductor cubierto (el que asume el solicitante) */
   turno1: TurnoCorrelativo;
-  /** Turno propio del solicitante */
   turno2: TurnoCorrelativo;
-  /** Análisis de factibilidad */
   mismoCoche: boolean;
-  /** Gap en minutos entre fin de turno1 y inicio de turno2 (si coches distintos) */
   gapMinutos?: number;
-  /** true si cumple con regla 45 min o es mismo coche */
   factible: boolean;
   recomendacion?: string;
   estado: CorrelativoEstado;
@@ -78,7 +50,6 @@ function timeToMinutes(hhmm: string): number {
 
 /**
  * Calcula si un correlativo es factible según las reglas operativas UCOT.
- * Retorna { factible, gapMinutos, mismoCoche, recomendacion }
  */
 export function calcularFactibilidadCorrelativo(
   turno1: TurnoCorrelativo,
@@ -143,45 +114,47 @@ function mapCorrelativo(id: string, data: Record<string, unknown>): CorrelativoR
 
 export const CorrelativoService = {
   async getAll(): Promise<CorrelativoRequest[]> {
-    const q = query(collection(db, COL), orderBy('fecha', 'desc'));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => mapCorrelativo(d.id, d.data() as Record<string, unknown>));
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { orderBy: 'fecha:desc', limit: 5000 },
+    });
+    return Array.isArray(res.data)
+      ? res.data.map((d) => mapCorrelativo((d.id as string) ?? '', d))
+      : [];
   },
 
   async getByFecha(fecha: string): Promise<CorrelativoRequest[]> {
-    const q = query(collection(db, COL), where('fecha', '==', fecha));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => mapCorrelativo(d.id, d.data() as Record<string, unknown>));
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { where: `fecha:${fecha}`, limit: 5000 },
+    });
+    return Array.isArray(res.data)
+      ? res.data.map((d) => mapCorrelativo((d.id as string) ?? '', d))
+      : [];
   },
 
   async getPendientes(): Promise<CorrelativoRequest[]> {
-    const q = query(
-      collection(db, COL),
-      where('estado', '==', 'pendiente'),
-      orderBy('fecha', 'asc'),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => mapCorrelativo(d.id, d.data() as Record<string, unknown>));
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { where: 'estado:pendiente', orderBy: 'fecha:asc', limit: 5000 },
+    });
+    return Array.isArray(res.data)
+      ? res.data.map((d) => mapCorrelativo((d.id as string) ?? '', d))
+      : [];
   },
 
+  // FASE 5.35 (2026-05-22): bus socket en lugar de polling 10s.
   subscribe(callback: (items: CorrelativoRequest[]) => void): () => void {
-    const q = query(collection(db, COL), orderBy('fecha', 'desc'));
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map((d) => mapCorrelativo(d.id, d.data() as Record<string, unknown>)));
-    });
+    return subscribeViaBus<CorrelativoRequest[]>(COL, () => this.getAll(), callback);
   },
 
+  // FASE 5.35 (2026-05-22): bus socket en lugar de polling 10s.
   subscribeByFecha(fecha: string, callback: (items: CorrelativoRequest[]) => void): () => void {
-    const q = query(collection(db, COL), where('fecha', '==', fecha));
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map((d) => mapCorrelativo(d.id, d.data() as Record<string, unknown>)));
-    });
+    return subscribeViaBus<CorrelativoRequest[]>(COL, () => this.getByFecha(fecha), callback);
   },
 
   async getById(id: string): Promise<CorrelativoRequest | null> {
-    const snap = await getDoc(doc(db, COL, id));
-    if (!snap.exists()) return null;
-    return mapCorrelativo(snap.id, snap.data() as Record<string, unknown>);
+    try {
+      const res = await apiClient.get<Record<string, unknown>>(`/api/db/${COL}/${encodeURIComponent(id)}`);
+      return res.data ? mapCorrelativo(id, res.data) : null;
+    } catch { return null; }
   },
 
   /**
@@ -203,12 +176,12 @@ export const CorrelativoService = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    const ref = await addDoc(collection(db, COL), payload);
-    return { ...payload, id: ref.id };
+    const res = await apiClient.post<{ id: string }>(`/api/db/${COL}`, payload);
+    return { ...payload, id: res.data?.id ?? String(Date.now()) };
   },
 
   async update(id: string, data: Partial<CorrelativoRequest>): Promise<void> {
-    await setDoc(doc(db, COL, id), { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(id)}`, { ...data, updatedAt: new Date().toISOString() });
   },
 
   async aprobar(id: string, aprobadoPor: string, notas?: string): Promise<void> {

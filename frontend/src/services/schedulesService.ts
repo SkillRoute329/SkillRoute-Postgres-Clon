@@ -14,8 +14,7 @@
  *
  * Cache en memoria por línea (10 min TTL) para evitar reads repetidos.
  */
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 export type TipoDiaSTM = 'Hábiles' | 'Sábados' | 'Domingos';
 
@@ -58,13 +57,7 @@ export async function getHorarioByLinea(linea: string): Promise<HorarioLinea | n
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
 
   try {
-    const ref = doc(db, 'horarios_stm', key);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) {
-      cache.set(key, { ts: Date.now(), data: null });
-      return null;
-    }
-    const data = snap.data() as HorarioLinea;
+    const data = await apiClient.get(`/api/db/horarios_stm/` + encodeURIComponent(key)) as HorarioLinea | null;
     cache.set(key, { ts: Date.now(), data });
     return data;
   } catch (err) {

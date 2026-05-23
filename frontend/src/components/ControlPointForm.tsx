@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { X, Check, AlertTriangle, Info, Clock } from 'lucide-react';
 import { checkCompetitorProximity } from '../services/CompetitorIntelligence';
 import { InspectionService } from '../services/api';
-import { Timestamp } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { Timestamp } from '../config/firestoreShim';
+import { getAuth } from '../config/firebaseAuthShim';
 import type { PassengerLoadCategory } from '../types/inspections';
 
 interface ControlProps {

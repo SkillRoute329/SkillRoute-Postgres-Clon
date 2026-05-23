@@ -34,6 +34,7 @@ import {
   type LatLng,
   type TipoDesvio,
 } from '../../services/desviosService';
+import { splitIntoSegments } from '../../utils/tacticalGeom';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Props
@@ -277,10 +278,16 @@ export default function DesvioMapEditor({
 
       // Ruta base (gris semitransparente, referencia)
       if (basePts.length >= 2) {
-        basePolyRef.current = L.polyline(
-          basePts.map((p) => [p.lat, p.lng] as [number, number]),
-          { color: '#64748b', weight: 4, opacity: 0.45, dashArray: '8 6' },
-        ).addTo(map);
+        const baseSegments = splitIntoSegments(basePts);
+        const basePositions = baseSegments.map((seg) =>
+          seg.map((p) => [p.lat, p.lng] as [number, number])
+        );
+        basePolyRef.current = L.polyline(basePositions, {
+          color: '#64748b',
+          weight: 4,
+          opacity: 0.45,
+          dashArray: '8 6',
+        }).addTo(map);
       }
 
       // Desvío (naranja, editable)

@@ -7,7 +7,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import {
   AlertTriangle, CheckCircle2, Info, Zap, Users, DollarSign,
@@ -302,10 +302,10 @@ export default function MotorConsecuencias() {
                 onChange={(e) => set('empresaId', e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none"
               >
+                {/* FASE 5.19: el motor opera con datos de cartón UCOT
+                    (único con descarga oficial automatizada). Se quitaron
+                    las opciones "próximamente" ilustrativas. */}
                 <option value="70">UCOT (70)</option>
-                <option value="50" disabled>CUTCSA (50) — próximamente</option>
-                <option value="20" disabled>COME (20) — próximamente</option>
-                <option value="10" disabled>COETC (10) — próximamente</option>
               </select>
             </div>
 

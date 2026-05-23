@@ -1,5 +1,4 @@
-import { db } from '../config/firebase';
-import { collection, doc, setDoc, Timestamp, GeoPoint } from 'firebase/firestore';
+import { apiClient } from '../clients/apiClient';
 import { LINEAS_UCOT_BASE } from './ucotLinesService';
 import { tacticalDataBus } from './tacticalDataBus';
 
@@ -32,43 +31,46 @@ export const TelemetrySimulator = {
       for (const lineId of selectedLines) {
         const offsetLat = (Math.random() - 0.5) * 0.05;
         const offsetLng = (Math.random() - 0.5) * 0.05;
-        const pos = new GeoPoint(center.lat + offsetLat, center.lng + offsetLng);
+        // GeoPoint stored as lat/lng object (Firestore GeoPoint replacement)
+        const posicion = { latitude: center.lat + offsetLat, longitude: center.lng + offsetLng };
         const heading = Math.floor(Math.random() * 360);
 
         const ucotUnit = {
           id: `sim-ucot-${lineId}`,
           empresa: 'UCOT',
           codigoLinea: lineId,
-          posicion: pos,
-          updatedAt: Timestamp.now(),
+          posicion,
+          lat: posicion.latitude,
+          lng: posicion.longitude,
+          updatedAt: new Date().toISOString(),
           estado: 'EN_RUTA',
           heading,
           isSimulated: true,
         };
         newBatch.push(ucotUnit);
 
-        // Inyectar en Firestore (intentar)
-        setDoc(doc(db, 'viajes_activos', ucotUnit.id), ucotUnit, { merge: true }).catch(() => {});
+        // Inyectar en backend (intentar)
+        apiClient.put('/api/db/viajes_activos/' + encodeURIComponent(ucotUnit.id), ucotUnit).catch(() => {});
 
         if (Math.random() > 0.4) {
           const rLine = rivalLines[Math.floor(Math.random() * rivalLines.length)];
-          const rPos = new GeoPoint(
-            center.lat + offsetLat + (Math.random() - 0.5) * 0.005,
-            center.lng + offsetLng + (Math.random() - 0.5) * 0.005,
-          );
+          const rPosicion = {
+            latitude: center.lat + offsetLat + (Math.random() - 0.5) * 0.005,
+            longitude: center.lng + offsetLng + (Math.random() - 0.5) * 0.005,
+          };
           const rivalUnit = {
             id: `sim-rival-${rLine}-${lineId}`,
             empresa: 'COMPETENCIA',
             codigoLinea: rLine,
-            posicion: rPos,
-            updatedAt: Timestamp.now(),
+            posicion: rPosicion,
+            lat: rPosicion.latitude,
+            lng: rPosicion.longitude,
+            updatedAt: new Date().toISOString(),
             heading: Math.floor(Math.random() * 360),
             isSimulated: true,
           };
           newBatch.push(rivalUnit);
-          setDoc(doc(db, 'viajes_activos', rivalUnit.id), rivalUnit, { merge: true }).catch(
-            () => {},
-          );
+          apiClient.put('/api/db/viajes_activos/' + encodeURIComponent(rivalUnit.id), rivalUnit).catch(() => {});
         }
       }
 

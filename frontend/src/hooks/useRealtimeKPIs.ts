@@ -1,12 +1,11 @@
 /**
  * Hook especializado para CEODashboard
- * Escucha actualizaciones de KPIs en tiempo real desde Firestore
- * Migrado de Socket.io a Firebase onSnapshot
+ * Escucha actualizaciones de KPIs en tiempo real desde REST backend (polling).
+ * TODO FASE 4.5: Socket.io firestore:system
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 export interface KPIUpdate {
   timestamp: number;
@@ -47,16 +46,17 @@ export function useRealtimeKPIs() {
   const updateTimestampRef = useRef<number>(Date.now());
 
   useEffect(() => {
-    setConnectionStatus('connected');
-    const docRef = doc(db, 'system', 'current_kpis');
+    let active = true;
 
-    const unsubscribe = onSnapshot(
-      docRef,
-      (snapshot) => {
-        setLatency(Math.floor(Math.random() * 50) + 10);
+    const fetchKPIs = async () => {
+      const t0 = Date.now();
+      try {
+        const data = await apiClient.get('/api/db/system/' + encodeURIComponent('current_kpis')) as any;
+        if (!active) return;
         const receiveTime = Date.now();
-        const data = snapshot.data();
-        
+        setLatency(receiveTime - t0);
+        setConnectionStatus('connected');
+
         if (data) {
           setKpis((prev) => ({
             ...prev,
@@ -69,7 +69,7 @@ export function useRealtimeKPIs() {
             lastUpdate: receiveTime,
             updateCount: prev.updateCount + 1,
           }));
-          
+
           setLastKPIUpdate({
             timestamp: receiveTime,
             kpiType: 'efficiency', // mock default for generic update
@@ -77,15 +77,20 @@ export function useRealtimeKPIs() {
           });
           updateTimestampRef.current = receiveTime;
         }
-      },
-      (error) => {
-        console.error('[CEODashboard] Error subscribing to KPIs in Firestore', error);
+      } catch (error) {
+        if (!active) return;
+        console.error('[CEODashboard] Error fetching KPIs from REST backend', error);
         setConnectionStatus('disconnected');
       }
-    );
+    };
+
+    fetchKPIs();
+    // TODO FASE 4.5: Socket.io firestore:system
+    const interval = setInterval(fetchKPIs, 10000);
 
     return () => {
-      unsubscribe();
+      active = false;
+      clearInterval(interval);
       setConnectionStatus('disconnected');
     };
   }, []);

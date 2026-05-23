@@ -14,6 +14,7 @@
  *   // empresaCfg: { codigo, label, agencyId, color }
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { OPERADORES_EMPRESA_CONFIG } from '../utils/operadores';
 
 export interface EmpresaConfig {
   codigo: number;
@@ -22,12 +23,9 @@ export interface EmpresaConfig {
   color: string;
 }
 
-export const EMPRESAS_OPCIONES: ReadonlyArray<EmpresaConfig> = [
-  { codigo: 70, label: 'UCOT', agencyId: '70', color: '#eab308' },
-  { codigo: 50, label: 'CUTCSA', agencyId: '50', color: '#3b82f6' },
-  { codigo: 20, label: 'COME', agencyId: '20', color: '#22c55e' },
-  { codigo: 10, label: 'COETC', agencyId: '10', color: '#ef4444' },
-];
+// FASE 5.16: fuente única utils/operadores.ts. El array antes inline acá
+// era una de las 30+ copias del mapeo de operadores.
+export const EMPRESAS_OPCIONES: ReadonlyArray<EmpresaConfig> = OPERADORES_EMPRESA_CONFIG;
 
 const STORAGE_KEY = 'skillroute.empresaPropia';
 const DEFAULT_CODIGO = 70;

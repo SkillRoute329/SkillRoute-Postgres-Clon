@@ -1,5 +1,5 @@
 /**
- * Servicio de desvíos UCOT — persistencia en Firestore (Zero-Mocks).
+ * Servicio de desvíos UCOT — persistencia en el backend (Zero-Mocks).
  *
  * Los desvíos ahora se definen dibujando el recorrido alternativo en el mapa.
  *
@@ -9,19 +9,7 @@
  *  - 'indefinido' → siempre activo hasta que se desactive manualmente
  */
 
-import {
-  collection,
-  doc,
-  getDocs,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  onSnapshot,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 const COL = 'desvios_guardados';
 
@@ -59,36 +47,44 @@ export interface DesvioGuardado {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CRUD FIRESTORE
+// CRUD
 // ─────────────────────────────────────────────────────────────────────────────
 
 function generateId(): string {
   return `dsv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-/** Obtiene todos los desvíos de una línea de una vez. (Para casos sin onSnapshot) */
+/** Obtiene todos los desvíos de una línea de una vez. */
 export async function getDesviosPorLinea(lineaCodigo: string): Promise<DesvioGuardado[]> {
-  const q = query(collection(db, COL), where('lineaCodigo', '==', lineaCodigo));
-  const snap = await getDocs(q);
-  return snap.docs.map((doc) => doc.data() as DesvioGuardado);
+  const raw = await apiClient.get(`/api/db/${COL}`, {
+    query: { where: `lineaCodigo:${lineaCodigo}`, limit: 500 },
+  }) as DesvioGuardado[];
+  return Array.isArray(raw) ? raw : [];
 }
 
-/** Escucha los desvíos de una línea en tiempo real. */
+/** Escucha los desvíos de una línea con polling cada 10s. */
+// TODO FASE 4.5: Socket.io firestore:desvios_guardados
 export function listenDesviosPorLinea(
   lineaCodigo: string,
   onUpdate: (desvios: DesvioGuardado[]) => void,
 ): () => void {
-  const q = query(collection(db, COL), where('lineaCodigo', '==', lineaCodigo));
-  return onSnapshot(
-    q,
-    (snap) => {
-      const desvios = snap.docs.map((d) => d.data() as DesvioGuardado);
-      onUpdate(desvios);
-    },
-    (err) => {
+  let active = true;
+
+  const fetch = async () => {
+    try {
+      const desvios = await getDesviosPorLinea(lineaCodigo);
+      if (active) onUpdate(desvios);
+    } catch (err) {
       console.error('[desviosService] Error escuchando desvios:', err);
-    },
-  );
+    }
+  };
+
+  fetch();
+  const interval = setInterval(fetch, 10000);
+  return () => {
+    active = false;
+    clearInterval(interval);
+  };
 }
 
 /** Guarda un desvío nuevo. */
@@ -102,8 +98,7 @@ export async function crearDesvio(
     creadoEn: now,
     actualizadoEn: now,
   };
-  const ref = doc(db, COL, nuevo.id);
-  await setDoc(ref, nuevo);
+  await apiClient.put(`/api/db/${COL}/` + encodeURIComponent(nuevo.id), nuevo);
   return nuevo;
 }
 
@@ -112,8 +107,7 @@ export async function actualizarDesvio(
   id: string,
   changes: Partial<Omit<DesvioGuardado, 'id' | 'creadoEn'>>,
 ): Promise<void> {
-  const ref = doc(db, COL, id);
-  await updateDoc(ref, {
+  await apiClient.put(`/api/db/${COL}/` + encodeURIComponent(id), {
     ...changes,
     actualizadoEn: new Date().toISOString(),
   });
@@ -121,8 +115,7 @@ export async function actualizarDesvio(
 
 /** Elimina un desvío. */
 export async function eliminarDesvio(id: string): Promise<void> {
-  const ref = doc(db, COL, id);
-  await deleteDoc(ref);
+  await apiClient.delete(`/api/db/${COL}/` + encodeURIComponent(id));
 }
 
 /** Activa/desactiva un desvío. */

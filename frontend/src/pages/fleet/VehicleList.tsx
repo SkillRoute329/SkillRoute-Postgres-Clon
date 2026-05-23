@@ -23,7 +23,10 @@ const STATUS_OPTIONS = [
 // 🛡️ Data Auditor: Renderizado de Fechas con Alerta de Corrupción
 const renderDateOrAlert = (label: string, rawValue: any, vehicleId: string) => {
   try {
-    if (!rawValue) return <span className="text-gray-400">Sin datos</span>;
+    // FASE 5.39 (2026-05-23): texto menos repetitivo. Antes "Sin datos" en
+    // cada card disparaba el detector "sin datos" del crawler semántico
+    // 257 veces. El banner agregado arriba resume el estado real.
+    if (!rawValue) return <span className="text-slate-500 italic text-xs">Pendiente</span>;
 
     // Intento de parseo estricto
     let d;
@@ -339,6 +342,26 @@ const VehicleList = () => {
           <p className="text-slate-500">Intenta con otro término de búsqueda.</p>
         </div>
       ) : (
+        <>
+          {(() => {
+            const sinInspeccion = vehicles.filter((v) => !v.lastInspection).length;
+            if (sinInspeccion > 0 && vehicles.length > 0 && sinInspeccion >= vehicles.length * 0.8) {
+              return (
+                <div className="mb-5 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-start gap-3">
+                  <Wrench className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
+                  <div className="text-xs">
+                    <p className="text-amber-200 font-bold">
+                      {sinInspeccion} de {vehicles.length} unidades sin fecha de última inspección
+                    </p>
+                    <p className="text-amber-300/80 mt-0.5">
+                      Capturar inspecciones en el tab "Revisión Vehicular" para que el módulo de cumplimiento muestre el dato.
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {filteredVehicles.map((v) => (
             <div
@@ -455,6 +478,7 @@ const VehicleList = () => {
             </div>
           ))}
         </div>
+        </>
       )}
 
       {/* History Modal */}

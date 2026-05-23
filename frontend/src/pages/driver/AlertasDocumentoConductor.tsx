@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { AlertTriangle, CheckCircle, FileText } from 'lucide-react';

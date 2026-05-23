@@ -24,15 +24,8 @@
  * Índice usado: (idBus ASC, createdAt DESC) — ya existente en
  * firestore.indexes.json desde antes de Sprint 1.
  */
-import { db } from '../config/firebase';
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  getDocs,
-  Timestamp,
-} from 'firebase/firestore';
+import { apiClient } from '../clients/apiClient';
+import { distanciaKm } from '../utils/geomath';
 
 export interface GpsPing {
   idBus: string;
@@ -63,19 +56,12 @@ export interface TrayectoriaResultado {
   };
 }
 
+// FASE 5.16: delega en utils/geomath (fuente única). API local intacta.
 function haversineKm(
   a: { lat: number; lon: number },
   b: { lat: number; lon: number },
 ): number {
-  const R = 6371;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLon = ((b.lon - a.lon) * Math.PI) / 180;
-  const lat1 = (a.lat * Math.PI) / 180;
-  const lat2 = (b.lat * Math.PI) / 180;
-  const x =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(x));
+  return distanciaKm(a, b);
 }
 
 /**
@@ -87,6 +73,7 @@ export async function getTrayectoria(
   idBus: string,
   desde?: Date,
   hasta?: Date,
+  agencyId?: string,
 ): Promise<TrayectoriaResultado> {
   const hastaFinal = hasta || new Date();
   const desdeFinal = desde || new Date(hastaFinal.getTime() - 24 * 3600 * 1000);
@@ -99,20 +86,24 @@ export async function getTrayectoria(
     desdeFinal.setTime(hastaFinal.getTime() - 24 * 7 * 3600 * 1000);
   }
 
-  const q = query(
-    collection(db, 'vehicle_events'),
-    where('idBus', '==', idBus),
-    where('createdAt', '>=', Timestamp.fromDate(desdeFinal)),
-    where('createdAt', '<=', Timestamp.fromDate(hastaFinal)),
-    orderBy('createdAt', 'asc'),
-  );
+  // FASE 5.14 (2026-05-13): id_bus en vehicle_events es el codigoBus crudo,
+  // que puede coincidir entre operadores. Sin agencyId, la trayectoria
+  // mezcla pings de buses distintos. Tambien aceleramos la query (existe
+  // indice compuesto agency_id+created_at).
+  const parts = [
+    `idBus:${idBus}`,
+    `createdAt>=${desdeFinal.toISOString()}`,
+    `createdAt<=${hastaFinal.toISOString()}`,
+  ];
+  if (agencyId) parts.push(`agencyId:${agencyId}`);
+  const whereClause = parts.join(',');
+  const raw = await apiClient.get('/api/db/vehicle_events', {
+    query: { where: whereClause, orderBy: 'createdAt:asc', limit: 5000 },
+  }) as any[];
+  const arr = Array.isArray(raw) ? raw : [];
 
-  const snap = await getDocs(q);
   const pings: GpsPing[] = [];
-  snap.forEach((d) => {
-    const data = d.data() as Record<string, unknown>;
-    const ts = data.createdAt as { toDate?: () => Date } | undefined;
-    if (!ts?.toDate) return;
+  arr.forEach((data: any) => {
     const lat = Number(data.lat ?? 0);
     const lon = Number(data.lon ?? 0);
     if (!lat || !lon) return;
@@ -129,7 +120,7 @@ export async function getTrayectoria(
       proximaParada: String(data.proximaParada || ''),
       sentido: String(data.sentido || ''),
       bearing: Number(data.bearing ?? 0),
-      timestamp: ts.toDate(),
+      timestamp: data.createdAt ? new Date(data.createdAt) : new Date(),
     });
   });
 
@@ -172,21 +163,26 @@ export async function getTrayectoria(
 /**
  * Devuelve la lista de buses únicos que tuvieron pings en las últimas
  * 24h. Útil para popular el selector de bus en GPSPlayback.tsx.
+ *
+ * FASE 5.14 (2026-05-13): antes filtraba por `empresa:UCOT` (texto sin
+ * índice) → scan completo de vehicle_events (~10M filas) → la pantalla
+ * se quedaba "no activa". Ahora consume el endpoint dedicado
+ * /api/autostats/fleet-ranking que ya devuelve los buses activos del
+ * operador agrupados por id_bus, en <2s.
  */
 export async function getBusesActivosUltimas24h(
-  empresa?: string,
+  agencyId?: string,
 ): Promise<string[]> {
-  const desde = new Date(Date.now() - 24 * 3600 * 1000);
-  const conds: Array<ReturnType<typeof where>> = [
-    where('createdAt', '>=', Timestamp.fromDate(desde)),
-  ];
-  if (empresa) conds.push(where('empresa', '==', empresa));
-  const q = query(collection(db, 'vehicle_events'), ...conds);
-  const snap = await getDocs(q);
-  const set = new Set<string>();
-  snap.forEach((d) => {
-    const idBus = String(d.data().idBus || '');
-    if (idBus) set.add(idBus);
-  });
-  return [...set].sort((a, b) => Number(a) - Number(b));
+  if (!agencyId) return [];
+  try {
+    const res = await apiClient.get(`/api/autostats/fleet-ranking/${agencyId}`, {
+      query: { days: 1, limit: 500 },
+    }) as { vehicles?: Array<{ idBus: string }> } | Array<{ idBus: string }>;
+    const arr = Array.isArray(res) ? res : (res?.vehicles ?? []);
+    const set = new Set<string>();
+    arr.forEach((v) => { if (v?.idBus) set.add(String(v.idBus)); });
+    return [...set].sort((a, b) => Number(a) - Number(b));
+  } catch {
+    return [];
+  }
 }

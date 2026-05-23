@@ -7,7 +7,7 @@ import {
   serverTimestamp,
   GeoPoint,
   writeBatch,
-} from 'firebase/firestore';
+} from '../config/firestoreShim';
 
 export class ChaosEngine {
   private static intervalId: NodeJS.Timeout | null = null;

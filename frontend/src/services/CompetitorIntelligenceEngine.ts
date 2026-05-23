@@ -10,8 +10,7 @@
  * Fuente: Red STM Montevideo — Cutcsa, COETC, COME, Copsa (verificado operativo 2025)
  */
 
-import { db } from '../config/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { apiClient } from '../clients/apiClient';
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -1280,9 +1279,9 @@ export async function enriquecerConDatosReales(): Promise<void> {
   const ahora = Date.now();
   if (ahora - _enriquecidoTs < 5 * 60 * 1000) return;
   try {
-    const snap = await getDocs(collection(db, 'competidores'));
-    snap.forEach((docSnap) => {
-      const data = docSnap.data();
+    const raw = await apiClient.get('/api/db/competidores', { query: { limit: 5000 } }) as any[];
+    const arr = Array.isArray(raw) ? raw : [];
+    arr.forEach((data: any) => {
       const lineas: Array<{ numeroLinea: number; busesActivosUltimoSnapshot?: number; activa?: boolean }> =
         data.lineas ?? [];
       for (const linea of lineas) {

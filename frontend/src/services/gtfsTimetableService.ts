@@ -1,13 +1,12 @@
 /**
- * gtfsTimetableService — consultas sobre gtfs_timetable en Firestore.
+ * gtfsTimetableService — consultas sobre gtfs_timetable en el backend local.
  *
  * Formato de doc: { stops: string[], viajes: [{s: "HH:MM", t: number[]}], ... }
  * t[i] = minutos desde medianoche para la parada stops[i].
  * -1 indica que ese viaje no sirve esa parada.
  */
 
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 const TIMETABLE_COL = 'gtfs_timetable';
 
@@ -45,8 +44,7 @@ export async function getTimetable(
   const docId = `${agencyId}_${linea}_${directionId}_${serviceType}`;
   if (cache.has(docId)) return cache.get(docId)!;
   try {
-    const snap = await getDoc(doc(db, TIMETABLE_COL, docId));
-    const result = snap.exists() ? (snap.data() as TimetableDoc) : null;
+    const result = await apiClient.get(`/api/db/${TIMETABLE_COL}/` + encodeURIComponent(docId)) as TimetableDoc | null;
     cache.set(docId, result);
     return result;
   } catch {

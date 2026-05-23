@@ -20,7 +20,7 @@ import {
   serverTimestamp,
   getDocs,
   type Unsubscribe,
-} from 'firebase/firestore';
+} from '../../../config/firestoreShim';
 import { db, auth } from '../../../config/firebase';
 import {
   type Disruption,

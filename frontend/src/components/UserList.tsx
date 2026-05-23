@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../config/firebase';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from '../config/firestoreShim';
 import { UserCheck, UserX, Search, Filter } from 'lucide-react';
 import StatsRibbon from './StatsRibbon';
 

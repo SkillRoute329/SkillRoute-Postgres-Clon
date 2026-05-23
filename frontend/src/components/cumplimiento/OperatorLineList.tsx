@@ -2,7 +2,7 @@
 // SPEC_CUMPLIMIENTO_V2_FRONTEND_2026_05.md §3.1
 
 import { ChevronRight, AlertTriangle, CheckCircle2, HelpCircle, WifiOff } from 'lucide-react';
-import { LineResult, LineEstado } from '../../types/compliance';
+import type { LineResult, LineEstado } from '../../types/compliance';
 
 interface Props {
   lines: LineResult[];

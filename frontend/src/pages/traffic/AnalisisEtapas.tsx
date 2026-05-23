@@ -19,13 +19,11 @@ import {
   type ParadaStat,
 } from '../../services/etapaStatsService';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
+import AdherenceLabel from '../../components/compliance/AdherenceLabel';
+import { OPERADORES_ID_NOMBRE } from '../../utils/operadores';
 
-const AGENCIAS = [
-  { id: '70', nombre: 'UCOT'   },
-  { id: '50', nombre: 'CUTCSA' },
-  { id: '20', nombre: 'COME'   },
-  { id: '10', nombre: 'COETC'  },
-] as const;
+// FASE 5.16: fuente única.
+const AGENCIAS = OPERADORES_ID_NOMBRE;
 
 // ──────────────────── helpers visuales ────────────────────────────────────────
 
@@ -67,12 +65,47 @@ function StopDot({
   );
 }
 
-function StopDetail({ parada, onClose }: { parada: ParadaStat; onClose: () => void }) {
+interface PasadaParada {
+  idBus: string;
+  estadoCumplimiento: string;
+  desviacionMin: number | null;
+  // FASE 5.14: desviación contra la hora GTFS oficial del trip cuyo
+  // destino coincide con el destino que IMM reporta para el bus.
+  desviacionEtapaMin: number | null;
+  horaProgramadaPasada: string | null;
+  destino: string | null;
+  velocidad: number;
+  tripId: string | null;
+  distanciaMetros: number | null;
+  timestampGPS: string;
+}
+
+function StopDetail({
+  parada, agencyId, linea, onClose,
+}: { parada: ParadaStat; agencyId: string; linea: string; onClose: () => void }) {
   const nivel  = nivelDemora(parada.pctAtrasado, parada.desviacionMediaMin);
   const styles = NIVEL_STYLE[nivel];
   const horas  = Object.entries(parada.byHour)
     .map(([h, s]) => ({ h: parseInt(h), ...s }))
     .sort((a, b) => a.h - b.h);
+
+  // FASE 5.14: cargar AVL — pasadas individuales por esta parada.
+  const [pasadas, setPasadas] = useState<PasadaParada[]>([]);
+  const [loadingPasadas, setLoadingPasadas] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingPasadas(true);
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('skillroute_jwt') : null;
+    const base = (import.meta.env.VITE_BACKEND_URL as string | undefined) || 'http://localhost:3001';
+    fetch(`${base}/api/etapa-stats/${agencyId}/${encodeURIComponent(linea)}/pasadas?stopName=${encodeURIComponent(parada.nombre)}&days=1&limit=80`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then((r) => r.json())
+      .then((j) => { if (!cancelled) setPasadas((j?.pasadas ?? []) as PasadaParada[]); })
+      .catch(() => { if (!cancelled) setPasadas([]); })
+      .finally(() => { if (!cancelled) setLoadingPasadas(false); });
+    return () => { cancelled = true; };
+  }, [agencyId, linea, parada.nombre]);
 
   return (
     <div className="bg-slate-900 border border-slate-700/60 rounded-xl p-4 mt-4">
@@ -85,7 +118,7 @@ function StopDetail({ parada, onClose }: { parada: ParadaStat; onClose: () => vo
               {styles.label}
             </span>
           </div>
-          <p className="text-xs text-slate-500 ml-6">{parada.total} observaciones registradas</p>
+          <p className="text-xs text-slate-500 ml-6">{parada.total} observaciones agregadas · L{linea}</p>
         </div>
         <button onClick={onClose} className="text-slate-500 hover:text-slate-300 text-xs shrink-0">✕</button>
       </div>
@@ -100,17 +133,21 @@ function StopDetail({ parada, onClose }: { parada: ParadaStat; onClose: () => vo
           <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Atrasado</p>
           <p className={`text-xl font-black ${styles.text}`}>{parada.pctAtrasado}%</p>
         </div>
-        <div className="bg-slate-800/60 rounded-lg p-3 text-center">
-          <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Desv. media</p>
-          <p className={`text-xl font-black ${styles.text}`}>
-            {parada.desviacionMediaMin > 0 ? `+${parada.desviacionMediaMin}` : parada.desviacionMediaMin} min
-          </p>
+        <div
+          className="bg-slate-800/60 rounded-lg p-3 text-center"
+          title="Diferencia promedio entre la hora real que pasó un bus por este punto y la hora programada por el horario oficial. + atrasado, − adelantado."
+        >
+          <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Atraso/adelanto promedio</p>
+          <div className="mt-1">
+            <AdherenceLabel desviacionMin={parada.desviacionMediaMin} />
+          </div>
+          <p className="text-[9px] text-slate-600 mt-1">vs. horario oficial</p>
         </div>
       </div>
 
       {/* Perfil horario */}
       {horas.length > 0 && (
-        <div>
+        <div className="mb-4">
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Perfil por hora</p>
           <div className="flex items-end gap-1 h-16">
             {horas.map(({ h, pctAtrasado, desviacionMedia }) => (
@@ -121,7 +158,7 @@ function StopDetail({ parada, onClose }: { parada: ParadaStat; onClose: () => vo
                     height: `${Math.max(4, Math.min(60, pctAtrasado))}px`,
                     background: pctAtrasado > 55 ? '#ef4444' : pctAtrasado > 30 ? '#fb923c' : pctAtrasado > 10 ? '#facc15' : '#34d399',
                   }}
-                  title={`${h}:00 — ${pctAtrasado}% tarde, ${desviacionMedia} min avg`}
+                  title={`${h}:00 — ${pctAtrasado}% de buses atrasados, atraso/adelanto promedio ${desviacionMedia} min`}
                 />
                 <span className="text-[8px] text-slate-600">{h}</span>
               </div>
@@ -130,6 +167,56 @@ function StopDetail({ parada, onClose }: { parada: ParadaStat; onClose: () => vo
           <p className="text-[10px] text-slate-600 mt-1">Altura = % de buses atrasados en esa hora</p>
         </div>
       )}
+
+      {/* FASE 5.14: AVL — pasadas individuales por esta parada (últimas 24h). */}
+      <div className="border-t border-slate-800 pt-3">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-slate-300 uppercase tracking-wider font-semibold">Últimas pasadas (24 h)</p>
+          <span className="text-[10px] text-slate-600">AVL — vehículo por vehículo</span>
+        </div>
+        {loadingPasadas && <p className="text-xs text-slate-500">Cargando pasadas…</p>}
+        {!loadingPasadas && pasadas.length === 0 && (
+          <p className="text-xs text-slate-500">Sin pasadas registradas por este punto en las últimas 24 h.</p>
+        )}
+        {!loadingPasadas && pasadas.length > 0 && (
+          <div className="overflow-x-auto max-h-64 overflow-y-auto">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-slate-900 z-10">
+                <tr className="text-left text-slate-500 uppercase tracking-wider">
+                  <th className="py-1 pr-3 font-semibold">Hora real</th>
+                  <th className="py-1 pr-3 font-semibold" title="Hora oficial GTFS del trip cuyo destino coincide con el destino que IMM reporta para este bus">Hora oficial</th>
+                  <th className="py-1 pr-3 font-semibold">Coche</th>
+                  <th className="py-1 pr-3 font-semibold" title="Destino que reporta el feed IMM para el bus">Destino IMM</th>
+                  <th className="py-1 pr-3 font-semibold">Vel.</th>
+                  <th className="py-1 pr-3 font-semibold" title="Hora real − Hora oficial. + atrasado, − adelantado.">Atraso / adelanto</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {pasadas.map((p, i) => {
+                  const realDate = new Date(p.timestampGPS);
+                  const realHHMM = realDate.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' });
+                  return (
+                    <tr key={p.idBus + '-' + i} className="text-slate-300 hover:bg-slate-800/30">
+                      <td className="py-1.5 pr-3 font-mono text-[11px] text-slate-400">{realHHMM}</td>
+                      <td className="py-1.5 pr-3 font-mono text-[11px] text-slate-500">{p.horaProgramadaPasada ?? '—'}</td>
+                      <td className="py-1.5 pr-3 font-semibold">#{p.idBus}</td>
+                      <td className="py-1.5 pr-3 text-slate-400 max-w-[140px] truncate" title={p.destino ?? ''}>{p.destino ?? '—'}</td>
+                      <td className="py-1.5 pr-3 text-slate-400">{p.velocidad} km/h</td>
+                      <td className="py-1.5 pr-3">
+                        <AdherenceLabel desviacionMin={p.desviacionEtapaMin} compact />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="text-[10px] text-slate-600 mt-2">
+          Cada fila muestra cuánto adelantado (−) o atrasado (+) pasó ese bus por esta parada respecto del horario oficial GTFS.
+          Estándar internacional &quot;en tiempo&quot; = entre 1 min antes y 5 min después (TCRP 165 / WMATA / LA Metro).
+        </p>
+      </div>
     </div>
   );
 }
@@ -345,7 +432,12 @@ export default function AnalisisEtapas() {
 
           {/* Panel de detalle de la parada seleccionada */}
           {paradaActiva && (
-            <StopDetail parada={paradaActiva} onClose={() => setParadaActiva(null)} />
+            <StopDetail
+              parada={paradaActiva}
+              agencyId={agencyId}
+              linea={lineaSeleccionada}
+              onClose={() => setParadaActiva(null)}
+            />
           )}
 
           {!paradaActiva && (

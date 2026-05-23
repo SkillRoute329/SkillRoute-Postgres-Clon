@@ -1,20 +1,9 @@
 /**
- * Servicio Firestore para categorías de vehículos.
+ * Servicio para categorías de vehículos.
  * Colección: vehicle_categories
- * Permite crear categorías como: Híbrido, Piso Bajo, MT15, Convencional, etc.
  */
-import {
-  collection,
-  doc,
-  getDocs,
-  addDoc,
-  setDoc,
-  deleteDoc,
-  onSnapshot,
-  orderBy,
-  query,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 import type { VehicleCategory } from './types';
 
 const COL = 'vehicle_categories';
@@ -22,35 +11,34 @@ const COL = 'vehicle_categories';
 export const VehicleCategoryService = {
   /** Obtener todas las categorías */
   async getAll(): Promise<VehicleCategory[]> {
-    const q = query(collection(db, COL), orderBy('name', 'asc'));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as VehicleCategory);
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { orderBy: 'name:asc', limit: 5000 },
+    });
+    return Array.isArray(res.data) ? (res.data as unknown as VehicleCategory[]) : [];
   },
 
   /** Suscripción en tiempo real */
-  subscribe(callback: (cats: VehicleCategory[]) => void) {
-    const q = query(collection(db, COL), orderBy('name', 'asc'));
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as VehicleCategory));
-    });
+  // FASE 5.35 (2026-05-22): bus socket en lugar de polling 10s.
+  subscribe(callback: (cats: VehicleCategory[]) => void): () => void {
+    return subscribeViaBus<VehicleCategory[]>(COL, () => this.getAll(), callback);
   },
 
   /** Crear nueva categoría */
   async create(data: Omit<VehicleCategory, 'id'>): Promise<VehicleCategory> {
-    const docRef = await addDoc(collection(db, COL), {
+    const res = await apiClient.post<{ id: string }>(`/api/db/${COL}`, {
       ...data,
       createdAt: new Date().toISOString(),
     });
-    return { id: docRef.id, ...data } as VehicleCategory;
+    return { id: res.data?.id ?? String(Date.now()), ...data } as VehicleCategory;
   },
 
   /** Actualizar categoría */
   async update(id: string, data: Partial<VehicleCategory>): Promise<void> {
-    await setDoc(doc(db, COL, id), data, { merge: true });
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(id)}`, data);
   },
 
   /** Eliminar categoría */
   async delete(id: string): Promise<void> {
-    await deleteDoc(doc(db, COL, id));
+    await apiClient.delete(`/api/db/${COL}/${encodeURIComponent(id)}`);
   },
 };

@@ -17,7 +17,7 @@ import {
   where,
   orderBy,
   limit,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -152,7 +152,7 @@ function formatHaceMinutos(ts: { seconds: number } | Date | null | undefined): s
 }
 
 function semaforo(otp: number | null): { color: string; label: string; dot: string } {
-  if (otp === null) return { color: 'text-slate-500', label: 'Sin datos', dot: 'bg-slate-600' };
+  if (otp === null) return { color: 'text-slate-500', label: 'Pendiente', dot: 'bg-slate-600' };
   if (otp >= 85) return { color: 'text-emerald-400', label: 'Óptimo', dot: 'bg-emerald-400' };
   if (otp >= 70) return { color: 'text-amber-400', label: 'Regular', dot: 'bg-amber-400' };
   return { color: 'text-red-400', label: 'Crítico', dot: 'bg-red-400' };
@@ -397,7 +397,12 @@ export default function CentroMandoUnificado() {
                 </span>
               </div>
               <p className="text-sm text-slate-400 mt-0.5">
-                Sistema Metropolitano de Montevideo — 4 operadores — tiempo real
+                Sistema Metropolitano de Montevideo · 4 operadores · refresco cada 60s
+              </p>
+              <p className="text-[11px] text-slate-500 mt-1 max-w-2xl">
+                Vista ejecutiva consolidada. Las cifras vienen del clon soberano alimentado por el feed
+                GPS oficial IMM (stm-online, refresco 10s) más las alertas de cumplimiento del motor TCRP 165.
+                Cada operador se desglosa al expandir su tarjeta.
               </p>
             </div>
           </div>
@@ -426,29 +431,38 @@ export default function CentroMandoUnificado() {
 
         {/* ── Sección 4 — KPIs globales ──────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-5">
+          <div
+            className="bg-slate-900 border border-slate-700/50 rounded-xl p-5"
+            title="Vehiculos registrados como activos en la tabla vehiculos (NO es GPS en vivo; es la flota habilitada para operar)."
+          >
             <div className="flex items-center gap-2 mb-2">
               <Bus className="w-4 h-4 text-blue-400" />
-              <span className="text-xs text-slate-500 uppercase tracking-widest">Buses activos</span>
+              <span className="text-xs text-slate-500 uppercase tracking-widest">Flota habilitada</span>
             </div>
             <div className="text-3xl font-black text-white">
               {cargando ? <Loader2 className="w-6 h-6 animate-spin text-slate-600" /> : totalBusesActivos}
             </div>
-            <p className="text-xs text-slate-500 mt-1">en toda la red</p>
+            <p className="text-xs text-slate-500 mt-1">vehículos en estado operativo</p>
           </div>
 
-          <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-5">
+          <div
+            className="bg-slate-900 border border-slate-700/50 rounded-xl p-5"
+            title="Alertas de cumplimiento sin atender, emitidas por el motor TCRP 165 cuando una linea baja del umbral OTP."
+          >
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="w-4 h-4 text-amber-400" />
-              <span className="text-xs text-slate-500 uppercase tracking-widest">Alertas OTP</span>
+              <span className="text-xs text-slate-500 uppercase tracking-widest">Alertas OTP abiertas</span>
             </div>
             <div className="text-3xl font-black text-white">
               {cargando ? <Loader2 className="w-6 h-6 animate-spin text-slate-600" /> : totalAlertasActivas}
             </div>
-            <p className="text-xs text-slate-500 mt-1">activas en la red</p>
+            <p className="text-xs text-slate-500 mt-1">pendientes de resolucion</p>
           </div>
 
-          <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-5">
+          <div
+            className="bg-slate-900 border border-slate-700/50 rounded-xl p-5"
+            title="Lineas con OTP promedio del dia por debajo del 70% (umbral IMM)."
+          >
             <div className="flex items-center gap-2 mb-2">
               <Activity className="w-4 h-4 text-red-400" />
               <span className="text-xs text-slate-500 uppercase tracking-widest">Líneas críticas</span>
@@ -456,13 +470,16 @@ export default function CentroMandoUnificado() {
             <div className="text-3xl font-black text-white">
               {cargando ? <Loader2 className="w-6 h-6 animate-spin text-slate-600" /> : lineasCriticas.length}
             </div>
-            <p className="text-xs text-slate-500 mt-1">OTP &lt; 70%</p>
+            <p className="text-xs text-slate-500 mt-1">OTP del día &lt; 70%</p>
           </div>
 
-          <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-5">
+          <div
+            className="bg-slate-900 border border-slate-700/50 rounded-xl p-5"
+            title="Empresas monitoreadas de forma simultanea por el clon. Cada una en una pestana al expandir abajo."
+          >
             <div className="flex items-center gap-2 mb-2">
               <Network className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs text-slate-500 uppercase tracking-widest">Operadores</span>
+              <span className="text-xs text-slate-500 uppercase tracking-widest">Operadores monitoreados</span>
             </div>
             <div className="text-3xl font-black text-white">4</div>
             <p className="text-xs text-slate-500 mt-1">UCOT · CUTCSA · COME · COETC</p>
@@ -513,9 +530,9 @@ export default function CentroMandoUnificado() {
                           <p className="text-xs text-slate-500">OTP prom.</p>
                         </div>
                       ) : (
-                        <div className="text-right">
+                        <div className="text-right" title="OTP aún no calculado por el motor GPS">
                           <div className="text-lg font-black text-slate-600">—</div>
-                          <p className="text-xs text-slate-600">Sin datos</p>
+                          <p className="text-xs text-slate-600">pendiente</p>
                         </div>
                       )}
                     </div>
@@ -551,7 +568,7 @@ export default function CentroMandoUnificado() {
                           ) : estado?.totalVehiculos ? (
                             estado.totalVehiculos
                           ) : (
-                            <span className="text-slate-600 text-sm" title="Sin datos de flota cargados">—</span>
+                            <span className="text-slate-600 text-sm" title="Flota aún no cargada en el sistema">—</span>
                           )}
                         </div>
                         <p className="text-[10px] text-slate-500">total flota</p>
@@ -577,7 +594,7 @@ export default function CentroMandoUnificado() {
                           Peor OTP por línea
                         </p>
                         {estado?.top3LineasPeorOtp.length === 0 ? (
-                          <p className="text-xs text-slate-600">Sin datos de líneas</p>
+                          <p className="text-xs text-slate-600 italic">Esperando primer ciclo OTP…</p>
                         ) : (
                           <div className="space-y-1.5">
                             {estado?.top3LineasPeorOtp.map((l) => {
@@ -734,7 +751,7 @@ export default function CentroMandoUnificado() {
                 {rankingOperadores.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-5 py-8 text-center text-slate-500 text-sm">
-                      {cargando ? 'Cargando datos...' : 'Sin datos disponibles'}
+                      {cargando ? 'Cargando…' : 'Ranking pendiente del primer ciclo del motor.'}
                     </td>
                   </tr>
                 )}

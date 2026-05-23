@@ -1,75 +1,45 @@
 /**
- * parametrosOperativos.ts — Service Firestore para parámetros operativos
+ * parametrosOperativos.ts — Service para parámetros operativos
  * =====================================================================
  *
- * Cierre de Fase 1 (2026-04-23):
- *   Convierte el archivo estático `parametros-operativos.ts` en una fuente
- *   de verdad DINÁMICA editable por Super Admin desde UI.
+ * Migrado FASE 4.4: usa apiClient hacia el backend del clon (Postgres).
  *
  * Arquitectura:
- *   Firestore `parametros_operativos/{key}`   → valor vigente
- *   Firestore `parametros_operativos_historial/{autoId}` → auditoría
+ *   Backend `parametros_operativos/{key}`   → valor vigente
+ *   Backend `parametros_operativos_historial/{autoId}` → auditoría
  *   Cache en memoria                          → lectura sincrónica rápida
  *   Archivo local `config/parametros-operativos.ts` → defaults/fallback
- *
- * Política no-regresión:
- *   Los callers que importan las constantes del archivo siguen funcionando.
- *   Esta capa es OPT-IN: solo componentes nuevos (UI admin) la usan.
- *   Cuando queramos que un caller use la versión dinámica, se migra al
- *   helper `getParametroValor(key)` que devuelve el valor de cache.
  */
 
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  setDoc,
-  addDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  where,
-  limit,
-  serverTimestamp,
-  Timestamp,
-  type Unsubscribe,
-} from 'firebase/firestore';
-import { db, auth } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 import {
   PARAMETROS_REGISTRY,
   type ParametroEconomico,
   type ConfidenceLevel,
 } from '../../config/parametros-operativos';
 
-/** Colecciones Firestore. */
+/** Colecciones. */
 const COL_PARAMS = 'parametros_operativos';
 const COL_HISTORIAL = 'parametros_operativos_historial';
 
-/** Cache en memoria — clave → parámetro completo (defaults + override Firestore). */
+/** Cache en memoria — clave → parámetro completo (defaults + override backend). */
 const cache = new Map<string, ParametroEconomico>();
 
-/** Flag de inicialización: true tras el primer load exitoso desde Firestore. */
+/** Flag de inicialización: true tras el primer load exitoso desde el backend. */
 let initialized = false;
 
-/** Listener activo de onSnapshot — se setea al usar `subscribeAll()`. */
-let activeUnsub: Unsubscribe | null = null;
+/** Handle del setInterval activo para subscribeAll. */
+let activeIntervalHandle: ReturnType<typeof setInterval> | null = null;
 
 // ═══════════════════════════════════════════════════════════════════════════
-// MODELO DOCUMENTO FIRESTORE
+// MODELO DOCUMENTO
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Forma de un documento `parametros_operativos/{key}`.
- * Es el mismo shape que `ParametroEconomico` pero añade auditoría.
- */
 export interface ParametroDoc extends ParametroEconomico {
-  /** UID del último usuario que actualizó este parámetro. */
   updatedBy?: string;
-  /** Nombre del último usuario que actualizó. */
   updatedByName?: string;
-  /** Timestamp de última actualización (Firestore server time). */
-  updatedAt?: Timestamp;
+  updatedAt?: string;
 }
 
 export interface HistorialEntry {
@@ -81,7 +51,7 @@ export interface HistorialEntry {
   fuenteNueva?: string;
   changedBy: string;
   changedByName: string;
-  timestamp: Timestamp;
+  timestamp: string;
   motivo?: string;
 }
 
@@ -89,79 +59,52 @@ export interface HistorialEntry {
 // INICIALIZACIÓN Y CACHE
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Carga cache con defaults del archivo local (sin tocar red).
- * Se ejecuta la primera vez que se accede a cualquier helper.
- */
 function bootDefaults(): void {
   for (const [key, param] of Object.entries(PARAMETROS_REGISTRY)) {
     if (!cache.has(key)) cache.set(key, param);
   }
 }
 
-/**
- * Carga todos los parámetros desde Firestore y fusiona con defaults.
- * Los documentos de Firestore OVERRIDEN los defaults.
- * Si Firestore falla, queda el cache con defaults locales (fallback silencioso).
- */
 export async function loadAll(): Promise<ParametroEconomico[]> {
   bootDefaults();
   try {
-    const snap = await getDocs(collection(db, COL_PARAMS));
-    snap.forEach((d) => {
-      const data = d.data() as ParametroDoc;
-      cache.set(d.id, { ...PARAMETROS_REGISTRY[d.id], ...data });
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL_PARAMS}`, { query: { limit: 5000 } });
+    (Array.isArray(res.data) ? res.data : []).forEach((d) => {
+      const key = (d.id as string) ?? (d.key as string);
+      if (key) cache.set(key, { ...PARAMETROS_REGISTRY[key], ...(d as ParametroDoc) });
     });
     initialized = true;
   } catch (err) {
-    console.warn('[parametrosOperativos] Fallo al leer Firestore, usando defaults locales:', err);
+    console.warn('[parametrosOperativos] Fallo al leer el backend, usando defaults locales:', err);
   }
   return Array.from(cache.values());
 }
 
-/**
- * Suscribe al snapshot de la colección — mantiene cache actualizado.
- * Devuelve unsubscribe; si ya había uno activo, lo reemplaza.
- */
-export function subscribeAll(cb: (params: ParametroEconomico[]) => void): Unsubscribe {
+// FASE 5.35 (2026-05-22): bus socket en lugar de polling 15s.
+export function subscribeAll(cb: (params: ParametroEconomico[]) => void): () => void {
   bootDefaults();
-  if (activeUnsub) activeUnsub();
-  activeUnsub = onSnapshot(
-    collection(db, COL_PARAMS),
-    (snap) => {
-      snap.forEach((d) => {
-        const data = d.data() as ParametroDoc;
-        cache.set(d.id, { ...PARAMETROS_REGISTRY[d.id], ...data });
-      });
-      initialized = true;
-      cb(Array.from(cache.values()));
+  return subscribeViaBus<ParametroEconomico[]>(
+    COL_PARAMS,
+    async () => {
+      try { return await loadAll(); }
+      catch { return Array.from(cache.values()); }
     },
-    (err) => {
-      console.warn('[parametrosOperativos] Suscripción falló, usando cache:', err);
-      cb(Array.from(cache.values()));
-    },
+    cb,
+    { alsoListen: ['bus:db:parametros_sistema:any'] },
   );
-  return activeUnsub;
 }
 
-/**
- * Devuelve el valor de un parámetro desde cache (sincrónico).
- * Si no está en cache, usa el default del archivo local.
- * Si la clave no existe en ningún lado, devuelve `undefined`.
- */
 export function getParametroValor<T = number>(key: string): T | undefined {
   bootDefaults();
   const p = cache.get(key);
   return p?.valor as T | undefined;
 }
 
-/** Devuelve el parámetro completo desde cache (con toda su metadata). */
 export function getParametro(key: string): ParametroEconomico | undefined {
   bootDefaults();
   return cache.get(key);
 }
 
-/** Devuelve todos los parámetros desde cache. */
 export function listParametros(): Array<{ key: string; param: ParametroEconomico }> {
   bootDefaults();
   return Array.from(cache.entries()).map(([key, param]) => ({ key, param }));
@@ -172,54 +115,39 @@ export function isInitialized(): boolean {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ESCRITURA — solo Super Admin (validado por Firestore rules)
+// ESCRITURA — solo Super Admin (validado por backend)
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Actualiza un parámetro. Escribe el doc principal + entrada de historial.
- * La regla Firestore valida que el usuario tenga rol admin/superadmin.
- *
- * @param key        clave del parámetro (ej. 'TARIFA_STM')
- * @param updates    campos a modificar (valor, fuente, fuenteUrl, etc.)
- * @param motivo     texto opcional para el historial
- */
 export async function updateParametro(
   key: string,
   updates: Partial<ParametroEconomico>,
   motivo?: string,
 ): Promise<void> {
   bootDefaults();
-  const user = auth.currentUser;
-  if (!user) throw new Error('Requiere sesión autenticada.');
 
   const prev = cache.get(key) ?? PARAMETROS_REGISTRY[key];
   if (!prev) throw new Error(`Parámetro desconocido: ${key}`);
 
+  const now = new Date().toISOString();
   const merged: ParametroDoc = {
     ...prev,
     ...updates,
-    // Nunca permitir cambiar el tipo/unidad desde UI (solo valor y fuente)
     unidad: prev.unidad,
-    // Mantener fechaVigenciaDesde del default si no se provee una nueva
-    fechaVigenciaDesde: updates.fechaVigenciaDesde ?? new Date().toISOString().slice(0, 10),
-    updatedBy: user.uid,
-    updatedByName: user.displayName ?? user.email ?? 'Super Admin',
-    updatedAt: serverTimestamp() as unknown as Timestamp,
+    fechaVigenciaDesde: updates.fechaVigenciaDesde ?? now.slice(0, 10),
+    updatedAt: now,
   };
 
   // 1. Upsert documento principal
-  await setDoc(doc(db, COL_PARAMS, key), merged, { merge: true });
+  await apiClient.put(`/api/db/${COL_PARAMS}/${encodeURIComponent(key)}`, merged);
 
-  // 2. Append historial (audit trail inmutable)
-  await addDoc(collection(db, COL_HISTORIAL), {
+  // 2. Append historial (audit trail)
+  await apiClient.post(`/api/db/${COL_HISTORIAL}`, {
     key,
     valorAnterior: prev.valor,
     valorNuevo: merged.valor,
     fuenteAnterior: prev.fuente,
     fuenteNueva: merged.fuente,
-    changedBy: user.uid,
-    changedByName: user.displayName ?? user.email ?? 'Super Admin',
-    timestamp: serverTimestamp(),
+    timestamp: now,
     motivo: motivo ?? null,
   });
 
@@ -227,40 +155,30 @@ export async function updateParametro(
   cache.set(key, merged);
 }
 
-/**
- * Seed inicial: vuelca los defaults del archivo local a Firestore
- * (solo los que no existen ya). Idempotente — se puede correr varias veces.
- *
- * Útil la primera vez que se abre la UI de Super Admin en un proyecto fresco.
- */
 export async function seedInitial(): Promise<{ creados: number; existentes: number }> {
-  const user = auth.currentUser;
-  if (!user) throw new Error('Requiere sesión autenticada.');
-
   let creados = 0;
   let existentes = 0;
   for (const [key, param] of Object.entries(PARAMETROS_REGISTRY)) {
-    const ref = doc(db, COL_PARAMS, key);
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-      existentes++;
-      continue;
-    }
-    await setDoc(ref, {
+    try {
+      const res = await apiClient.get<Record<string, unknown>>(`/api/db/${COL_PARAMS}/${encodeURIComponent(key)}`);
+      if (res.data) {
+        existentes++;
+        continue;
+      }
+    } catch { /* not found, proceed to create */ }
+
+    const now = new Date().toISOString();
+    await apiClient.put(`/api/db/${COL_PARAMS}/${encodeURIComponent(key)}`, {
       ...param,
-      updatedBy: user.uid,
-      updatedByName: user.displayName ?? user.email ?? 'Super Admin (seed)',
-      updatedAt: serverTimestamp(),
+      updatedAt: now,
     });
-    await addDoc(collection(db, COL_HISTORIAL), {
+    await apiClient.post(`/api/db/${COL_HISTORIAL}`, {
       key,
       valorAnterior: null,
       valorNuevo: param.valor,
       fuenteAnterior: null,
       fuenteNueva: param.fuente,
-      changedBy: user.uid,
-      changedByName: user.displayName ?? user.email ?? 'Super Admin (seed)',
-      timestamp: serverTimestamp(),
+      timestamp: now,
       motivo: 'Seed inicial desde archivo local',
     });
     creados++;
@@ -272,20 +190,18 @@ export async function seedInitial(): Promise<{ creados: number; existentes: numb
 // HISTORIAL
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Obtiene las últimas N entradas de historial de un parámetro (default 10).
- * Requiere índice Firestore sobre (key ASC, timestamp DESC) — ver firestore.indexes.json.
- */
 export async function getHistorial(key: string, max: number = 10): Promise<HistorialEntry[]> {
   try {
-    const q = query(
-      collection(db, COL_HISTORIAL),
-      where('key', '==', key),
-      orderBy('timestamp', 'desc'),
-      limit(max),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<HistorialEntry, 'id'>) }));
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL_HISTORIAL}`, {
+      query: {
+        where: `key:${key}`,
+        orderBy: 'timestamp:desc',
+        limit: max,
+      },
+    });
+    return Array.isArray(res.data)
+      ? res.data.map((d) => ({ id: d.id as string | undefined, ...(d as Omit<HistorialEntry, 'id'>) }))
+      : [];
   } catch (err) {
     console.warn('[parametrosOperativos] Historial no disponible:', err);
     return [];
@@ -296,7 +212,6 @@ export async function getHistorial(key: string, max: number = 10): Promise<Histo
 // UTILIDADES PARA UI
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Devuelve clases Tailwind para el badge de confidence. */
 export function confidenceBadgeClass(c: ConfidenceLevel): string {
   switch (c) {
     case 'oficial':   return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';

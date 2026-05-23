@@ -1,7 +1,7 @@
 // Servicio de cumplimiento — consulta /api/compliance/regulador y /api/compliance/operador
 // SPEC_CUMPLIMIENTO_V2_FRONTEND_2026_05.md §2.7, §3
 
-import { RegulatoryData, OperatorData, Granularidad } from '../types/compliance';
+import type { RegulatoryData, OperatorData, Granularidad } from '../types/compliance';
 
 const API_BASE = '/api';
 

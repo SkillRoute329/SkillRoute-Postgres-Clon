@@ -1,12 +1,11 @@
 /**
  * Hook especializado para ServiceMatrix y CartonManager
- * Escucha cambios en cartones (hojas de ruta) en tiempo real
- * Migrado de Socket.io a Firestore onSnapshot
+ * Escucha cambios en cartones (hojas de ruta) mediante polling REST.
+ * TODO FASE 4.5: Socket.io firestore:cartones_de_servicio
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 export interface CartonDraft {
   id: string;
@@ -26,54 +25,55 @@ export function useRealtimeCartones(lineId?: number) {
   const [latency, setLatency] = useState<number | null>(null);
 
   useEffect(() => {
-    let q = query(collection(db, 'cartones_de_servicio'));
-    if (lineId) {
-      q = query(collection(db, 'cartones_de_servicio'), where('lineId', '==', lineId));
-    }
+    let active = true;
 
-    setConnectionStatus('connected');
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        setLatency(Math.floor(Math.random() * 50) + 10); // Simulated low latency in ms
+    const fetch = async () => {
+      const t0 = Date.now();
+      try {
+        const queryParams: Record<string, string | number> = { limit: 500 };
+        if (lineId) {
+          queryParams.where = `lineId:${lineId}`;
+        }
+        const raw = await apiClient.get('/api/db/cartones_de_servicio', { query: queryParams }) as any[];
+        if (!active) return;
         const receiveTime = Date.now();
-        
+        setLatency(receiveTime - t0);
+        setConnectionStatus('connected');
+
         setCartones((prev) => {
           const newMap = new Map(prev);
-          
-          snapshot.docChanges().forEach((change) => {
-            const data = change.doc.data();
-            const cartonId = change.doc.id;
-
-            if (change.type === 'removed') {
-              newMap.delete(cartonId);
-            } else {
-              const existing = newMap.get(cartonId) || {};
-              newMap.set(cartonId, {
-                id: cartonId,
-                lineId: data.lineId || 0,
-                lastModified: data.updatedAt?.toMillis?.() || receiveTime,
-                lastModifiedBy: data.updatedBy || 'System',
-                isDirty: false, // on load from DB, it's not dirty
-                data: data,
-                ...existing, // preserve local dirty state if any
-              });
-            }
+          (Array.isArray(raw) ? raw : []).forEach((data: any) => {
+            const cartonId = data.id;
+            const lastModMs = data.updatedAt ? new Date(data.updatedAt).getTime() : receiveTime;
+            const existing = newMap.get(cartonId) || {};
+            newMap.set(cartonId, {
+              id: cartonId,
+              lineId: data.lineId || 0,
+              lastModified: isNaN(lastModMs) ? receiveTime : lastModMs,
+              lastModifiedBy: data.updatedBy || 'System',
+              isDirty: false, // on load from DB, it's not dirty
+              data: data,
+              ...existing, // preserve local dirty state if any
+            });
           });
-          
           return newMap;
         });
 
         setLastCartonUpdate(receiveTime);
-      },
-      (error) => {
-        console.error('[CartonManager] Error en la suscripción de Firestore:', error);
+      } catch (error) {
+        if (!active) return;
+        console.error('[CartonManager] Error en la solicitud REST:', error);
         setConnectionStatus('disconnected');
       }
-    );
+    };
+
+    fetch();
+    // TODO FASE 4.5: Socket.io firestore:cartones_de_servicio
+    const interval = setInterval(fetch, 10000);
 
     return () => {
-      unsubscribe();
+      active = false;
+      clearInterval(interval);
       setConnectionStatus('disconnected');
     };
   }, [lineId]);

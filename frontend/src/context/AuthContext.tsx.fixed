@@ -1,0 +1,87 @@
+  useEffect(() => {
+    let cancelled = false;
+    const bootstrap = async (): Promise<void> => {
+      try {
+        // 1. Restaurar sesión local si existe.
+        const storedToken = localStorage.getItem(TOKEN_KEY);
+        const storedUser = localStorage.getItem(USER_KEY);
+        if (storedToken && storedUser) {
+          try {
+            const parsed = JSON.parse(storedUser) as User;
+            
+            // FASE 5.16: Validar expiración del JWT antes de restaurar
+            const payload = decodeJwtPayload(storedToken);
+            const now = Math.floor(Date.now() / 1000);
+            
+            if (payload && payload.exp && (payload.exp as number) < now) {
+              console.warn('[AuthContext] Sesión local caducada, limpiando...');
+              clearSession();
+            } else if (!cancelled) {
+              setToken(storedToken);
+              setUser(parsed);
+              setAuthToken(storedToken);
+              console.info('[AuthContext] Sesión local restaurada para', parsed.email ?? parsed.id ?? '(?)');
+            }
+          } catch {
+            clearSession();
+          }
+        }
+
+        // FASE 5.16: Escuchar eventos 401 de la API para logout automático
+        const handleUnauthorized = () => {
+          console.warn('[AuthContext] Recibida señal 401, cerrando sesión...');
+          logout();
+        };
+        window.addEventListener('skillroute:auth-unauthorized', handleUnauthorized);
+
+        // 2. Sin sesión: intentar auto-relogin con credenciales recordadas.
+        if (!token && !storedToken) {
+          try {
+            const creds = await recallCredentials();
+            if (creds) {
+              const resp = await apiClient.post<{ token: string; user: Record<string, unknown> }>(
+                '/api/auth/login',
+                { internalNumber: creds.internalNumber, password: creds.password },
+                { anon: true },
+              );
+              const newToken = resp.data?.token;
+              const newUser = (resp.data?.user ?? {}) as Record<string, unknown>;
+              if (newToken && !cancelled) {
+                const u: User = {
+                  id: String(newUser.id ?? ''),
+                  uid: String(newUser.id ?? ''),
+                  internalNumber: String(newUser.internalNumber ?? '----'),
+                  firstName: (newUser.fullName as string)?.split(' ')[0] ?? 'Usuario',
+                  lastName: '',
+                  fullName: (newUser.fullName as string) ?? 'Usuario Sistema',
+                  role: (newUser.role as string) ?? 'USER',
+                  email: (newUser.email as string) ?? undefined,
+                } as User;
+                setToken(newToken);
+                setUser(u);
+                persistSession(newToken, u);
+                refreshSocketAuth();
+                // eslint-disable-next-line no-console
+                console.info('[AuthContext] Auto-relogin exitoso para', u.internalNumber);
+              } else {
+                forgetDevice();
+              }
+            }
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn('[AuthContext] Auto-relogin falló:', err);
+            forgetDevice();
+          }
+        }
+      } finally {
+        if (!cancelled) setInitializing(false);
+      }
+    };
+
+    void bootstrap();
+    return () => {
+      cancelled = true;
+      // Nota: handleUnauthorized es local a bootstrap, no podemos removerla aquí fácilmente 
+      // si no la extraemos. La extraemos para limpieza correcta.
+    };
+  }, []);

@@ -16,7 +16,7 @@ import {
   query,
   where,
   Timestamp,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import { db, authReady } from '../../config/firebase';
 import {
   Bus,
@@ -657,15 +657,15 @@ export default function PanelRendicionCuentas() {
               )}
             </section>
 
-            {/* ══ Botón exportar PDF (próximamente) ══ */}
+            {/* ══ Botón exportar PDF ══ */}
             <div className="flex justify-end pb-4">
               <button
-                disabled
-                title="Esta función estará disponible próximamente"
-                className="flex items-center gap-2 bg-slate-800 border border-slate-700/50 text-slate-500 rounded-xl px-5 py-2.5 text-sm font-semibold cursor-not-allowed opacity-60"
+                onClick={() => window.print()}
+                title="Exportar la rendición de cuentas a PDF (Guardar como PDF)"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 border border-blue-600/30 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition-all"
               >
                 <FileText size={16} />
-                Exportar PDF (próximamente)
+                Exportar PDF
               </button>
             </div>
           </>

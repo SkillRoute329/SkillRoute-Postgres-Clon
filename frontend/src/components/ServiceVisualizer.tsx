@@ -7,7 +7,7 @@ import { db } from '../config/firebase'; // Assuming Direct Firestore for Massiv
 // A single Line/Service has modest size, but "All Lines" is huge.
 // Let's implement virtualization for a specific Line/Service view or a aggregated view.
 // Given "Matriz de Horarios", usually means viewing a full Day or Line schedule.
-import { collection, getDocs, query } from 'firebase/firestore';
+import { collection, getDocs, query } from '../config/firestoreShim';
 
 const ServiceVisualizer = () => {
   const [lines, setLines] = useState<any[]>([]);

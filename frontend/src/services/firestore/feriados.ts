@@ -1,21 +1,18 @@
 /**
- * feriados.ts — Colección `feriados` en Firestore
+ * feriados.ts — Colección `feriados`
  * Gestión de feriados nacionales, departamentales y especiales UCOT.
  */
-import {
-  collection, doc, setDoc, deleteDoc,
-  getDocs, query, where, orderBy, onSnapshot,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 
 const COL = 'feriados';
 
 export type TipoFeriado =
-  | 'nacional'        // Feriado nacional (Semana de Turismo, etc.)
-  | 'departamental'   // Feriado departamental
-  | 'ucot_especial'   // Día especial UCOT (evento, paro, etc.)
-  | 'sabado_especial' // Sábado con grilla de domingo
-  | 'domingo_especial'; // Domingo con grilla de sábado
+  | 'nacional'
+  | 'departamental'
+  | 'ucot_especial'
+  | 'sabado_especial'
+  | 'domingo_especial';
 
 export interface Feriado {
   id: string;         // YYYY-MM-DD
@@ -51,43 +48,41 @@ export const FeriadosService = {
   /** Carga feriados pre-definidos de Uruguay 2026 si no existen */
   async seedFeriados(): Promise<void> {
     for (const f of FERIADOS_URUGUAY_2026) {
-      const ref = doc(db, COL, f.fecha);
-      await setDoc(ref, { ...f, id: f.fecha }, { merge: true });
+      await apiClient.put(`/api/db/${COL}/${encodeURIComponent(f.fecha)}`, { ...f, id: f.fecha });
     }
   },
 
   /** Obtiene todos los feriados del año */
   async getAll(): Promise<Feriado[]> {
-    const snap = await getDocs(query(collection(db, COL), orderBy('fecha')));
-    return snap.docs.map((d) => d.data() as Feriado);
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { orderBy: 'fecha:asc', limit: 5000 },
+    });
+    return Array.isArray(res.data) ? (res.data as unknown as Feriado[]) : [];
   },
 
   /** Obtiene feriados en un rango de fechas */
   async getByRango(desde: string, hasta: string): Promise<Feriado[]> {
-    const q = query(
-      collection(db, COL),
-      where('fecha', '>=', desde),
-      where('fecha', '<=', hasta),
-      orderBy('fecha'),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => d.data() as Feriado);
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: {
+        where: `fecha>=${desde},fecha<=${hasta}`,
+        orderBy: 'fecha:asc',
+        limit: 5000,
+      },
+    });
+    return Array.isArray(res.data) ? (res.data as unknown as Feriado[]) : [];
   },
 
-  /** Escucha cambios en tiempo real */
+  // FASE 5.35 (2026-05-22): bus socket en lugar de polling 15s.
   subscribe(onChange: (feriados: Feriado[]) => void): () => void {
-    const q = query(collection(db, COL), orderBy('fecha'));
-    return onSnapshot(q, (snap) => {
-      onChange(snap.docs.map((d) => d.data() as Feriado));
-    });
+    return subscribeViaBus<Feriado[]>(COL, () => this.getAll(), onChange);
   },
 
   async save(feriado: Omit<Feriado, 'id'>): Promise<void> {
-    await setDoc(doc(db, COL, feriado.fecha), { ...feriado, id: feriado.fecha }, { merge: true });
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(feriado.fecha)}`, { ...feriado, id: feriado.fecha });
   },
 
   async delete(fecha: string): Promise<void> {
-    await deleteDoc(doc(db, COL, fecha));
+    await apiClient.delete(`/api/db/${COL}/${encodeURIComponent(fecha)}`);
   },
 
   /** Determina el tipo de día para una fecha dada */
@@ -96,9 +91,12 @@ export const FeriadosService = {
     const dow = d.getDay(); // 0=dom, 6=sab
 
     // Consultar feriado
-    const feriadoSnap = await getDocs(query(collection(db, COL), where('fecha', '==', fecha)));
-    if (!feriadoSnap.empty) {
-      const f = feriadoSnap.docs[0].data() as Feriado;
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { where: `fecha:${fecha}`, limit: 1 },
+    });
+    const docs = Array.isArray(res.data) ? res.data : [];
+    if (docs.length > 0) {
+      const f = docs[0] as unknown as Feriado;
       return f.grilla ?? 'festivo';
     }
 

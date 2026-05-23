@@ -23,8 +23,9 @@ import {
   Building2,
 } from 'lucide-react';
 import { useEmpresaPropia, EMPRESAS_OPCIONES } from '../../hooks/useEmpresaPropia';
-import { collection, doc, setDoc, updateDoc, serverTimestamp, GeoPoint } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, serverTimestamp, GeoPoint } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
+import { haversineMetros as geoHaversineMetros } from '../../utils/geomath';
 import { useAuth } from '../../context/AuthContext';
 import {
   syncLineaFromAPI,
@@ -69,18 +70,9 @@ export interface TarifaSTM {
 }
 
 /** Distancia en metros entre dos puntos (fórmula de Haversine). */
+// FASE 5.16: delega en utils/geomath (fuente única). API local intacta.
 function haversineDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  return geoHaversineMetros(lat1, lng1, lat2, lng2);
 }
 
 function speak(text: string): void {
@@ -388,19 +380,23 @@ export default function NavigationModule() {
     }
   }, [selectedCodigo, editNombre, editOrigen, editDestino, linea]);
 
-  /** Intercambio r\u00e1pido de origen \u2194 destino. */
+  /** Intercambio rápido de sentido (IDA ↔ VUELTA). */
   const handleSwapOrigenDestino = useCallback(() => {
-    const cur = lineasDisponibles.find((l) => l.id === selectedCodigo);
-    if (!cur) return;
-    const ov = getOverride(selectedCodigo);
-    const currentOrigen = ov?.origen || cur.origen || '';
-    const currentDestino = ov?.destino || cur.destino || '';
-    swapOrigenDestino(selectedCodigo, currentOrigen, currentDestino);
-    setOverridesVersion((v) => v + 1);
-    if (linea) {
-      setLinea({ ...linea, origen: currentDestino, destino: currentOrigen });
+    if (!selectedCodigo) return;
+    const base = selectedCodigo.replace(/[ab]$/i, '');
+    const isA = selectedCodigo.toLowerCase().endsWith('a');
+    const oppositeSuffix = isA ? 'b' : 'a';
+    const oppositeCodigo = `${base}${oppositeSuffix}`;
+
+    // Buscar si el código opuesto existe en la lista de opciones disponibles
+    const oppositeOption = listCompleta.find(
+      (l) => l.codigo.toLowerCase() === oppositeCodigo.toLowerCase()
+    );
+
+    if (oppositeOption) {
+      setSelectedCodigo(oppositeOption.id);
     }
-  }, [selectedCodigo, lineasDisponibles, linea]);
+  }, [selectedCodigo, listCompleta]);
 
   /** Abre el editor de recorrido y verifica si ya existe un override guardado. */
   const openRouteEditor = useCallback(() => {

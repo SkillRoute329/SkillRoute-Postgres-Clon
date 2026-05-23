@@ -2,19 +2,8 @@
  * Colección central active_assignments: vínculo dinámico Coche ↔ Servicio ↔ Conductor.
  * Reasignar no borra el registro previo; se mantiene historial.
  */
-import {
-  collection,
-  doc,
-  getDoc,
-  setDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  getDocs,
-  onSnapshot,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 
 const COL = 'active_assignments';
 
@@ -33,47 +22,39 @@ function docId(servicioId: string, date: string): string {
   return `${String(servicioId).replace(/\s+/g, '_')}_${date}`.slice(0, 80);
 }
 
+function mapRecord(x: Record<string, unknown>, fallbackId?: string): ActiveAssignmentRecord {
+  return {
+    servicioId: (x?.servicioId as string) ?? fallbackId ?? '',
+    date: (x?.date as string) ?? '',
+    cocheId: (x?.cocheId as string) ?? null,
+    choferId: (x?.choferId as string) ?? null,
+    linea: x?.linea as string | undefined,
+    horaInicio: x?.horaInicio as string | undefined,
+    historial: ((x?.historial ?? []) as ActiveAssignmentRecord['historial']).slice(-50),
+    updatedAt: (x?.updatedAt as string) ?? '',
+  };
+}
+
 export const ActiveAssignmentsService = {
   docId,
 
   async get(servicioId: string, date: string): Promise<ActiveAssignmentRecord | null> {
-    const ref = doc(db, COL, docId(servicioId, date));
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return null;
-    const d = snap.data();
-    return {
-      servicioId: d?.servicioId ?? servicioId,
-      date: d?.date ?? date,
-      cocheId: d?.cocheId ?? null,
-      choferId: d?.choferId ?? null,
-      linea: d?.linea,
-      horaInicio: d?.horaInicio,
-      historial: (d?.historial ?? []).slice(-50),
-      updatedAt: d?.updatedAt ?? '',
-    };
+    const id = docId(servicioId, date);
+    try {
+      const res = await apiClient.get<Record<string, unknown>>(`/api/db/${COL}/${encodeURIComponent(id)}`);
+      return res.data ? mapRecord(res.data, servicioId) : null;
+    } catch { return null; }
   },
 
   async getByDate(date: string): Promise<ActiveAssignmentRecord[]> {
-    const q = query(collection(db, COL), where('date', '==', date));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => {
-      const x = d.data();
-      return {
-        servicioId: x?.servicioId ?? d.id,
-        date: x?.date ?? date,
-        cocheId: x?.cocheId ?? null,
-        choferId: x?.choferId ?? null,
-        linea: x?.linea,
-        horaInicio: x?.horaInicio,
-        historial: (x?.historial ?? []).slice(-50),
-        updatedAt: x?.updatedAt ?? '',
-      };
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { where: `date:${date}`, limit: 5000 },
     });
+    return Array.isArray(res.data) ? res.data.map((x) => mapRecord(x)) : [];
   },
 
   /**
    * Historial de rotación: cuántas veces cambió de manos un coche en el mes (para CEO).
-   * Suma los historial de todos los documentos del mes donde cocheId actual o historial coincide.
    */
   async getRotacionByCocheMonth(
     cocheId: string,
@@ -86,21 +67,22 @@ export const ActiveAssignmentsService = {
     const start = `${yearMonth}-01`;
     const lastDay = new Date(y, m, 0).getDate();
     const end = `${yearMonth}-${String(lastDay).padStart(2, '0')}`;
-    const q = query(collection(db, COL), where('date', '>=', start), where('date', '<=', end));
-    const snap = await getDocs(q);
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { where: `date>=${start},date<=${end}`, limit: 5000 },
+    });
+    const docs = Array.isArray(res.data) ? res.data : [];
     const detalle: Array<{ date: string; servicioId: string; cambios: number }> = [];
     let total = 0;
     const cid = String(cocheId);
-    snap.docs.forEach((d) => {
-      const x = d.data();
+    docs.forEach((x) => {
       const coche = x?.cocheId ?? null;
       const hist = (x?.historial ?? []) as ActiveAssignmentRecord['historial'];
       const cambiosCoche =
         coche === cid ? hist.length : hist.filter((h) => h.cocheId === cid).length;
       if (cambiosCoche > 0) {
         detalle.push({
-          date: x?.date ?? '',
-          servicioId: x?.servicioId ?? d.id,
+          date: (x?.date as string) ?? '',
+          servicioId: (x?.servicioId as string) ?? '',
           cambios: cambiosCoche,
         });
         total += cambiosCoche;
@@ -109,24 +91,9 @@ export const ActiveAssignmentsService = {
     return { cambios: total, detalle };
   },
 
-  subscribeByDate(date: string, callback: (records: ActiveAssignmentRecord[]) => void) {
-    const q = query(collection(db, COL), where('date', '==', date));
-    return onSnapshot(q, (snap) => {
-      const list = snap.docs.map((d) => {
-        const x = d.data();
-        return {
-          servicioId: x?.servicioId ?? d.id,
-          date: x?.date ?? date,
-          cocheId: x?.cocheId ?? null,
-          choferId: x?.choferId ?? null,
-          linea: x?.linea,
-          horaInicio: x?.horaInicio,
-          historial: (x?.historial ?? []).slice(-50),
-          updatedAt: x?.updatedAt ?? '',
-        };
-      });
-      callback(list);
-    });
+  // FASE 5.35 (2026-05-22): bus socket en lugar de polling 10s.
+  subscribeByDate(date: string, callback: (records: ActiveAssignmentRecord[]) => void): () => void {
+    return subscribeViaBus<ActiveAssignmentRecord[]>(COL, () => this.getByDate(date), callback);
   },
 
   /**
@@ -137,28 +104,14 @@ export const ActiveAssignmentsService = {
     fechaDesde: string,
     fechaHasta: string,
   ): Promise<ActiveAssignmentRecord[]> {
-    const q = query(
-      collection(db, COL),
-      where('choferId', '==', choferId),
-      where('date', '>=', fechaDesde),
-      where('date', '<=', fechaHasta),
-      orderBy('date', 'desc'),
-      limit(200),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => {
-      const x = d.data();
-      return {
-        servicioId: x?.servicioId ?? d.id,
-        date: x?.date,
-        cocheId: x?.cocheId ?? null,
-        choferId: x?.choferId ?? null,
-        linea: x?.linea,
-        horaInicio: x?.horaInicio,
-        historial: (x?.historial ?? []).slice(-50),
-        updatedAt: x?.updatedAt ?? '',
-      };
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: {
+        where: `choferId:${choferId},date>=${fechaDesde},date<=${fechaHasta}`,
+        orderBy: 'date:desc',
+        limit: 200,
+      },
     });
+    return Array.isArray(res.data) ? res.data.map((x) => mapRecord(x)) : [];
   },
 
   /**
@@ -169,28 +122,14 @@ export const ActiveAssignmentsService = {
     fechaDesde: string,
     fechaHasta: string,
   ): Promise<ActiveAssignmentRecord[]> {
-    const q = query(
-      collection(db, COL),
-      where('cocheId', '==', cocheId),
-      where('date', '>=', fechaDesde),
-      where('date', '<=', fechaHasta),
-      orderBy('date', 'desc'),
-      limit(200),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => {
-      const x = d.data();
-      return {
-        servicioId: x?.servicioId ?? d.id,
-        date: x?.date,
-        cocheId: x?.cocheId ?? null,
-        choferId: x?.choferId ?? null,
-        linea: x?.linea,
-        horaInicio: x?.horaInicio,
-        historial: (x?.historial ?? []).slice(-50),
-        updatedAt: x?.updatedAt ?? '',
-      };
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: {
+        where: `cocheId:${cocheId},date>=${fechaDesde},date<=${fechaHasta}`,
+        orderBy: 'date:desc',
+        limit: 200,
+      },
     });
+    return Array.isArray(res.data) ? res.data.map((x) => mapRecord(x)) : [];
   },
 
   /**
@@ -204,9 +143,8 @@ export const ActiveAssignmentsService = {
     meta?: { linea?: string; horaInicio?: string },
   ): Promise<void> {
     const id = docId(servicioId, date);
-    const ref = doc(db, COL, id);
-    const existing = await getDoc(ref).then((s) => (s.exists() ? s.data() : null));
-    const historial = (existing?.historial as ActiveAssignmentRecord['historial']) ?? [];
+    const existing = await this.get(servicioId, date);
+    const historial: ActiveAssignmentRecord['historial'] = existing?.historial ?? [];
     const prevCoche = existing?.cocheId;
     const prevChofer = existing?.choferId;
     if (prevCoche && prevChofer && (prevCoche !== cocheId || prevChofer !== choferId)) {
@@ -216,19 +154,15 @@ export const ActiveAssignmentsService = {
         at: new Date().toISOString(),
       });
     }
-    await setDoc(
-      ref,
-      {
-        servicioId,
-        date,
-        cocheId,
-        choferId,
-        linea: meta?.linea ?? existing?.linea,
-        horaInicio: meta?.horaInicio ?? existing?.horaInicio,
-        historial: historial.slice(-50),
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true },
-    );
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(id)}`, {
+      servicioId,
+      date,
+      cocheId,
+      choferId,
+      linea: meta?.linea ?? existing?.linea,
+      horaInicio: meta?.horaInicio ?? existing?.horaInicio,
+      historial: historial.slice(-50),
+      updatedAt: new Date().toISOString(),
+    });
   },
 };

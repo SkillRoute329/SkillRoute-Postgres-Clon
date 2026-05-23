@@ -16,7 +16,7 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { INCIDENCIA_META } from '../../services/incidenciasService';
 import {

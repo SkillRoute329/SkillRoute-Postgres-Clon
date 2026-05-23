@@ -13,35 +13,53 @@
 export function registerServiceWorker(): void {
   if (!('serviceWorker' in navigator)) return;
 
+  // FASE 5.26: esta purga recargaba la página cada vez que detectaba un SW.
+  // Como unregister() es asíncrono, en la carga siguiente el SW seguía
+  // apareciendo → recargaba otra vez → BUCLE INFINITO ("la página se
+  // actualiza constantemente"). En DEV no hay PWA (devOptions.enabled:false)
+  // así que se omite del todo; en PROD se recarga UNA sola vez por sesión
+  // (guard en sessionStorage), nunca en bucle.
+  const isDev =
+    (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
+
   window.addEventListener('load', async () => {
     try {
-      const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      let hadSw = false;
+      for (const reg of registrations) {
+        await reg.unregister();
+        hadSw = true;
+        console.warn('[sw] Purgado service worker antiguo detectado.');
+      }
 
-      // Chequeo periódico por nueva versión del SW.
-      window.setInterval(() => {
-        reg.update().catch(() => {});
-      }, 60_000);
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (const key of keys) {
+          await caches.delete(key);
+          console.warn(`[sw] Eliminada caché persistente: ${key}`);
+        }
+      }
 
-      // Deshabilitado: el controllerchange forzaba reload en cada deploy.
-      // Reactivar para producción normal descomentando el bloque de abajo.
-      // let refreshing = false;
-      // navigator.serviceWorker.addEventListener('controllerchange', () => {
-      //   if (refreshing) return;
-      //   refreshing = true;
-      //   window.location.reload();
-      // });
-
-      reg.addEventListener('updatefound', () => {
-        const nuevo = reg.installing;
-        if (!nuevo) return;
-        nuevo.addEventListener('statechange', () => {
-          if (nuevo.state === 'activated') {
-            console.info('[sw] Nueva versión activada.');
-          }
-        });
-      });
+      let yaRecargo = false;
+      try {
+        yaRecargo = sessionStorage.getItem('sw_purge_reloaded') === '1';
+      } catch {
+        yaRecargo = true; // sin sessionStorage: NO recargar (evita loop)
+      }
+      // En DEV nunca se recarga (eso causaba el bucle). El SW viejo igual
+      // quedó desregistrado y las cachés borradas arriba → navegador sano
+      // sin loop. En PROD sí se recarga, pero UNA sola vez por sesión.
+      if (hadSw && !isDev && !yaRecargo) {
+        try {
+          sessionStorage.setItem('sw_purge_reloaded', '1');
+        } catch {
+          /* noop */
+        }
+        console.warn('[sw] Recargando UNA vez tras purgar service worker.');
+        window.location.reload();
+      }
     } catch (err) {
-      console.warn('[sw] registro falló:', err);
+      console.warn('[sw] purga falló:', err);
     }
   });
 }

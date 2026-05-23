@@ -3,7 +3,7 @@ import { LogIn, CheckCircle, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 import ResetApp from '../components/ResetApp';
 import BuildTag from '../components/BuildTag';
-import { signInWithCustomToken } from 'firebase/auth';
+import { signInWithCustomToken } from '../config/firebaseAuthShim';
 import { auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { rememberCredentials, forgetDevice, hasRememberedCredentials } from '../services/rememberDevice';

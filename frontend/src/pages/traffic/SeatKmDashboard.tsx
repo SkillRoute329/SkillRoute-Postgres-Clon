@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState, useMemo } from 'react';
-import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, query, where } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import {
   PieChart, Pie, Cell, Tooltip as RechartTooltip, Legend,

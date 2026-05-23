@@ -1,51 +1,47 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  addDoc,
-  deleteDoc,
-  setDoc,
-  onSnapshot,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 
 const COL = 'departments';
 
 export const DepartmentService = {
   async getAll(): Promise<unknown[]> {
-    const q = collection(db, COL);
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, { query: { limit: 5000 } });
+    return Array.isArray(res.data) ? res.data : [];
   },
 
-  subscribe(callback: (items: unknown[]) => void) {
-    return onSnapshot(collection(db, COL), (snap) => {
-      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
+  // FASE 5.35 (2026-05-22): bus socket en lugar de polling 10s.
+  subscribe(callback: (items: unknown[]) => void): () => void {
+    return subscribeViaBus<unknown[]>(COL, () => this.getAll(), callback);
   },
 
   async create(data: Record<string, unknown>) {
-    const ref = await addDoc(collection(db, COL), data);
-    return { id: ref.id, ...data };
+    const res = await apiClient.post<{ id: string }>(`/api/db/${COL}`, data);
+    return { id: res.data?.id ?? String(Date.now()), ...data };
   },
 
   async update(id: string, data: Record<string, unknown>) {
-    await setDoc(doc(db, COL, id), data, { merge: true });
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(id)}`, data);
     return { id, ...data };
   },
 
   async delete(id: string) {
-    await deleteDoc(doc(db, COL, id));
+    await apiClient.delete(`/api/db/${COL}/${encodeURIComponent(id)}`);
   },
 
   async addRole(departmentId: string, data: Record<string, unknown>) {
-    const ref = collection(db, COL, departmentId, 'roles');
-    const docRef = await addDoc(ref, data);
-    return { id: docRef.id, ...data };
+    // Subcollection departments/{departmentId}/roles → tabla departments_roles
+    // TODO: confirmar tabla subcollection
+    const res = await apiClient.post<{ id: string }>(`/api/db/departments_roles`, {
+      ...data,
+      departmentId,
+    });
+    return { id: res.data?.id ?? String(Date.now()), ...data };
   },
 
   async deleteRole(roleId: string) {
     const [deptId, roleDocId] = roleId.split('/');
-    if (roleDocId) await deleteDoc(doc(db, COL, deptId, 'roles', roleDocId));
+    if (roleDocId) {
+      await apiClient.delete(`/api/db/departments_roles/${encodeURIComponent(roleDocId)}`);
+    }
   },
 };

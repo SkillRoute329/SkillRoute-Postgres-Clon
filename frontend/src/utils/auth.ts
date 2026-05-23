@@ -1,42 +1,40 @@
-// Authentication utilities for managing JWT tokens and user data
+// Authentication utilities — JWT + user data.
+//
+// FASE 5.16 (2026-05-16): este módulo tenía su propio esquema de
+// localStorage (`auth` JSON, `token`, `user`) PARALELO al resto del
+// frontend. Nadie lo importa hoy, pero para que no reintroduzca la
+// fragmentación que causó el incidente del 401, delega el token en el
+// tokenStore único. El `user` se mantiene aparte porque tokenStore no
+// gestiona el perfil de usuario.
 
-export const getAuthToken = (): string | null => {
-  const authData = localStorage.getItem('auth');
-  if (authData) {
-    try {
-      const parsed = JSON.parse(authData);
-      return parsed.token || null;
-    } catch {
-      return localStorage.getItem('token');
-    }
+import { getToken, setToken, clearToken } from './tokenStore';
+
+export const getAuthToken = (): string | null => getToken();
+
+export const setAuthData = (token: string, user: unknown): void => {
+  setToken(token);
+  try {
+    localStorage.setItem('user', JSON.stringify(user));
+  } catch {
+    /* localStorage lleno o modo incógnito: ignorar */
   }
-  return localStorage.getItem('token');
 };
 
-export const setAuthData = (token: string, user: any): void => {
-  localStorage.setItem('auth', JSON.stringify({ token, user }));
-  // Also set separately for backward compatibility
-  localStorage.setItem('token', token);
-  localStorage.setItem('user', JSON.stringify(user));
-};
-
-export const getCurrentUser = (): any | null => {
-  const authData = localStorage.getItem('auth');
-  if (authData) {
-    try {
-      const parsed = JSON.parse(authData);
-      return parsed.user || null;
-    } catch {
-      const userData = localStorage.getItem('user');
-      return userData ? JSON.parse(userData) : null;
-    }
+export const getCurrentUser = (): unknown | null => {
+  try {
+    const userData = localStorage.getItem('user');
+    return userData ? JSON.parse(userData) : null;
+  } catch {
+    return null;
   }
-  const userData = localStorage.getItem('user');
-  return userData ? JSON.parse(userData) : null;
 };
 
 export const clearAuthData = (): void => {
-  localStorage.removeItem('auth');
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
+  clearToken();
+  try {
+    localStorage.removeItem('user');
+    localStorage.removeItem('auth'); // legacy
+  } catch {
+    /* ignorar */
+  }
 };

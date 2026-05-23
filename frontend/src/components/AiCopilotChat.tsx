@@ -23,6 +23,7 @@ import {
   ShieldX,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { authHeader } from '../utils/tokenStore';
 
 interface ChatMsg {
   role: 'user' | 'assistant';
@@ -111,13 +112,12 @@ export default function AiCopilotChat({ className, placeholder, initialContext }
       setLoading(true);
 
       try {
-        const token = localStorage.getItem('tf_token');
         const historyPayload = messages.slice(-12);
         const res = await fetch('/api/ai/chat', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...authHeader(),
           },
           body: JSON.stringify({ 
             history: historyPayload, 
@@ -163,12 +163,11 @@ export default function AiCopilotChat({ className, placeholder, initialContext }
     async (orderId: string, action: 'approve' | 'reject') => {
       const body = action === 'reject' ? { reason: 'Rechazado desde copiloto' } : {};
       try {
-        const token = localStorage.getItem('tf_token');
         const res = await fetch(`/api/ai/orders/${orderId}/${action}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...authHeader(),
           },
           body: JSON.stringify(body),
         });

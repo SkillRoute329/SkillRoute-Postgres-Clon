@@ -2,7 +2,7 @@
 // SPEC_CUMPLIMIENTO_V2_FRONTEND_2026_05.md §7.1
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { RegulatoryData, Granularidad } from '../types/compliance';
+import type { RegulatoryData, Granularidad } from '../types/compliance';
 import { fetchRegulatoryData } from '../services/complianceService';
 import { useAuth } from '../context/AuthContext';
 

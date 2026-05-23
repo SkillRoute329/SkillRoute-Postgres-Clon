@@ -156,6 +156,24 @@ export function toIsoMvd(input: unknown): string | null {
   return `${y}-${mo}-${da}T${h}:${mi}:${s}-03:00`;
 }
 
+/**
+ * Parsea "HH:MM" (o "HH:MM:SS") a minutos desde las 00:00.
+ *
+ * FASE 5.16: este parser estaba reimplementado ~10 veces (CEODashboard
+ * parseHoraToMinutes, OTPDashboard horaToMin, driverTimelineUtils
+ * parseHoraTimeline, variantIntelligenceService hhmmToMin, etc.). Todas
+ * con la misma semántica "parte inválida = 0". Esta es la única.
+ *
+ * Partes inválidas/ausentes cuentan como 0 (NUNCA NaN) para no romper
+ * comparaciones aritméticas. Si necesitás "inválido = centinela", NO uses
+ * esta — schedulesService.hhmmToMinutes devuelve null y
+ * BoletinInspeccion.horaAMinutos devuelve -1 a propósito.
+ */
+export function hhmmAMin(hhmm: string): number {
+  const [h, m] = String(hhmm ?? '').trim().split(':');
+  return (Number(h) || 0) * 60 + (Number(m) || 0);
+}
+
 // ─── Export default para imports rápidos ─────────────────────────────────
 export default {
   hora: formatHoraMvd,
@@ -164,4 +182,5 @@ export default {
   fechaHora: formatFechaHoraMvd,
   relativo: formatRelativoMvd,
   iso: toIsoMvd,
+  hhmmAMin,
 };

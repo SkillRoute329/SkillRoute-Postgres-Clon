@@ -1,11 +1,14 @@
+// TODO FASE 5: firebase/messaging (getToken, onMessage) has no REST equivalent.
+// Push notification delivery requires either:
+//   a) Capacitor PushNotifications (native — already wired below, no Firebase dep)
+//   b) Web Push via Web Push Protocol + VAPID (replace firebase/messaging)
+// Until Fase 5, web push is silently disabled; native push continues to work.
+
 import { useEffect, useRef, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
-import { getToken, onMessage } from 'firebase/messaging';
-import { getAppMessaging } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 import { useAuth } from '../context/AuthContext';
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
 import toast from 'react-hot-toast';
 
 export const usePushNotifications = () => {
@@ -16,11 +19,11 @@ export const usePushNotifications = () => {
   const saveToken = async (token: string) => {
     setFcmToken(token);
     if (user?.uid) {
-      await setDoc(
-        doc(db, 'users', user.uid),
-        { fcmToken: token, fcmPlatform: Capacitor.isNativePlatform() ? 'android' : 'web', updatedAt: new Date() },
-        { merge: true },
-      );
+      await apiClient.put('/api/db/users/' + encodeURIComponent(user.uid), {
+        fcmToken: token,
+        fcmPlatform: Capacitor.isNativePlatform() ? 'android' : 'web',
+        updatedAt: new Date().toISOString(),
+      });
     }
   };
 
@@ -64,7 +67,7 @@ export const usePushNotifications = () => {
       await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
         const data = action.notification.data as Record<string, string> | undefined;
         console.log('[FCM-Native] Acción notificación:', data?.tipo ?? 'tap');
-        // El DriverAlertOverlay escucha alertas_regulacion vía onSnapshot — no necesita acción aquí
+        // El DriverAlertOverlay escucha alertas_regulacion vía polling — no necesita acción aquí
       });
 
     } catch (err) {
@@ -72,50 +75,15 @@ export const usePushNotifications = () => {
     }
   };
 
-  // ── Web / PWA ─────────────────────────────────────────────────────────────
+  // ── Web / PWA — TODO FASE 5 ───────────────────────────────────────────────
   const setupWeb = async (): Promise<(() => void) | null> => {
-    try {
-      const messaging = await getAppMessaging();
-      if (!messaging) return null;
-
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') return null;
-
-      /**
-       * VAPID key del proyecto Firebase.
-       * La clave es pública y OK para commitear.
-       * Inyectada via VITE_FCM_VAPID_KEY en .env.production.
-       * El placeholder hace que se omita silenciosamente en dev.
-       */
-      const VAPID_KEY = (import.meta.env?.VITE_FCM_VAPID_KEY as string | undefined)
-        ?? 'BPr7S4M1fBsc8vL7dZk5Hj8Oexr_e6H_E6vM9-wRWe3eM-rY5aT1aL-_z91vX_Z3x9QpT8nU3O5O-lF9WbP7IOM';
-      const VAPID_IS_PLACEHOLDER = VAPID_KEY.startsWith('BPr7S4M1fBsc8vL7dZk5Hj8Oexr_e6H');
-      if (VAPID_IS_PLACEHOLDER) return null;
-
-      const token = await getToken(messaging, { vapidKey: VAPID_KEY });
-      if (token) await saveToken(token);
-
-      const unsubscribe = onMessage(messaging, (payload) => {
-        toast.success(
-          `${payload.notification?.title ?? 'Notificación'}\n${payload.notification?.body ?? ''}`,
-          { duration: 6000 },
-        );
-      });
-
-      return unsubscribe;
-
-    } catch (error) {
-      const code = (error as { code?: string })?.code ?? '';
-      if (code === 'messaging/token-subscribe-failed') {
-        if (!(window as any).__fcmWarnedOnce) {
-          (window as any).__fcmWarnedOnce = true;
-          console.info('[FCM-Web] Push deshabilitado: VAPID/SW no configurados. Se activa al integrar servicio de mensajería del operador.');
-        }
-      } else {
-        console.error('[FCM-Web] Error configurando notificaciones:', error);
-      }
-      return null;
+    // TODO FASE 5: replace firebase/messaging with Web Push Protocol + VAPID
+    // getToken / onMessage removed — web push silently disabled until Fase 5.
+    if (!(window as any).__webPushWarnedOnce) {
+      (window as any).__webPushWarnedOnce = true;
+      console.info('[WebPush] Push web deshabilitado hasta Fase 5 (integración Web Push Protocol).');
     }
+    return null;
   };
 
   // ── Efecto principal ──────────────────────────────────────────────────────

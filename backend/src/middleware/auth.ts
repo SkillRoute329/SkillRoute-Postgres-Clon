@@ -57,8 +57,19 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
     return res.status(error.statusCode).json({ error: error.message });
   }
 
+  // FASE 5.28 (2026-05-19) — aceptar también las variantes mayúsculas/
+  // minúsculas (legacy Firestore JWT trae 'SUPERADMIN'). requireRole ya
+  // hace esto desde 5.1; alineamos requireAdmin con el mismo criterio para
+  // que /api/admin/seed-*, /api/system-config, /api/emergency, etc. respondan
+  // correctamente cuando el usuario es SUPERADMIN.
+  const role = String(req.user.role ?? '');
   const isAdmin =
-    req.user.role === Config.Roles.SUPER_ADMIN || req.user.role === Config.Roles.ADMIN;
+    role === Config.Roles.SUPER_ADMIN ||
+    role === Config.Roles.ADMIN ||
+    role === 'SUPERADMIN' ||
+    role === 'superadmin' ||
+    role === 'ADMIN' ||
+    role === 'admin';
 
   if (!isAdmin) {
     logger.warn(`[AUTH] Unauthorized access attempt by ${req.user.id} (${req.user.role})`);
@@ -79,9 +90,20 @@ export const requireRole = (...requiredRoles: string[]) => {
       return res.status(error.statusCode).json({ error: error.message });
     }
 
-    if (!requiredRoles.includes(req.user.role)) {
+    // FASE 5.1 (2026-05-13): SUPERADMIN es superset universal — pasa cualquier
+    // requireRole. Antes este check no consideraba SUPERADMIN y devolvía 403
+    // para todas las rutas con requireRole('admin','manager'), rompiendo
+    // dashboard ejecutivo, competition, forecast, etc.
+    const role = req.user.role;
+    const isSuperAdmin = role === Config.Roles.SUPER_ADMIN || role === 'SUPERADMIN' || role === 'superadmin';
+    if (isSuperAdmin) {
+      next();
+      return;
+    }
+
+    if (!requiredRoles.includes(role)) {
       logger.warn(
-        `[AUTH] Insufficient permissions: user ${req.user.id} needs [${requiredRoles.join(', ')}] but has ${req.user.role}`,
+        `[AUTH] Insufficient permissions: user ${req.user.id} needs [${requiredRoles.join(', ')}] but has ${role}`,
       );
       const error = new AppError(403, `Role required: ${requiredRoles.join(' or ')}`);
       return res.status(error.statusCode).json({ error: error.message });

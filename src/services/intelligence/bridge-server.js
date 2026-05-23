@@ -10,7 +10,10 @@ const cors = require('cors');
 const app = express();
 const PORT = 3099;
 
-app.use(cors({ origin: '*' }));
+app.use(cors({ 
+  origin: ['http://localhost:3006', 'http://127.0.0.1:3006'], 
+  credentials: true 
+}));
 app.use(express.json());
 
 // ─── Constantes ────────────────────────────────────────────────────────────

@@ -11,7 +11,7 @@ import {
   doc,
   serverTimestamp,
   Timestamp,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { authReady } from '../../config/firebase';
 import { AlertTriangle, Bell, CheckCircle, Clock, MapPin, Send, X, RefreshCw, Navigation } from 'lucide-react';
@@ -51,15 +51,33 @@ type Tab = 'eventos' | 'notificar' | 'historial';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function tsToStr(ts: Timestamp | null | undefined): string {
-  if (!ts) return '—';
-  const d = ts.toDate();
+function safeDate(ts: any): Date | null {
+  if (!ts) return null;
+  try {
+    if (typeof ts.toDate === 'function') return ts.toDate();
+    if (ts instanceof Date) return ts;
+    if (typeof ts === 'string' || typeof ts === 'number') return new Date(ts);
+    if (ts && (ts.seconds !== undefined || ts._seconds !== undefined)) {
+      const secs = ts.seconds ?? ts._seconds;
+      const nanos = ts.nanoseconds ?? ts._nanoseconds ?? 0;
+      return new Date(secs * 1000 + nanos / 1_000_000);
+    }
+    return new Date(ts);
+  } catch (e) {
+    return null;
+  }
+}
+
+function tsToStr(ts: any): string {
+  const d = safeDate(ts);
+  if (!d || isNaN(d.getTime())) return '—';
   return d.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-function minutosAtras(ts: Timestamp | null | undefined): string {
-  if (!ts) return '';
-  const mins = Math.round((Date.now() - ts.toDate().getTime()) / 60_000);
+function minutosAtras(ts: any): string {
+  const d = safeDate(ts);
+  if (!d || isNaN(d.getTime())) return '';
+  const mins = Math.round((Date.now() - d.getTime()) / 60_000);
   if (mins < 1) return 'ahora';
   if (mins === 1) return 'hace 1 min';
   if (mins < 60) return `hace ${mins} min`;
@@ -104,7 +122,10 @@ const GestionDesviosPage = () => {
         snap => {
           setEventos(snap.docs
             .map(d => ({ id: d.id, ...(d.data() as Omit<EventoDesvio, 'id'>) }))
-            .filter(e => !e.timestamp || e.timestamp.toMillis() > cutoff.toMillis())
+            .filter(e => {
+              const d = safeDate(e.timestamp);
+              return !d || isNaN(d.getTime()) || d.getTime() > cutoff.toMillis();
+            })
           );
           setLoadingEventos(false);
         },
@@ -185,9 +206,10 @@ const GestionDesviosPage = () => {
   // ── KPIs de cabecera ───────────────────────────────────────────────────────
   const eventosAbiertos = eventos.filter(e => !e.resuelto).length;
   const notificadosHoy = alertas.filter(a => {
-    if (!a.timestamp) return false;
+    const d = safeDate(a.timestamp);
+    if (!d || isNaN(d.getTime())) return false;
     const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-    return a.timestamp.toDate() >= hoy;
+    return d >= hoy;
   }).length;
   const ackRate = alertas.length > 0
     ? Math.round((alertas.filter(a => a.leido).length / alertas.length) * 100)

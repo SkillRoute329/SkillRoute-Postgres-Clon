@@ -1,14 +1,4 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  updateDoc,
-  onSnapshot,
-  setDoc,
-  query,
-  orderBy,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 export interface TarifaSTM {
   id: string;
@@ -20,32 +10,40 @@ export interface TarifaSTM {
 
 const COLLECTION_NAME = 'tarifario_stm';
 
-/** Obtiene las tarifas de Firestore (Lectura única) */
+/** Obtiene las tarifas del backend (Lectura única) */
 export async function getTarifas(): Promise<TarifaSTM[]> {
-  const snapshot = await getDocs(query(collection(db, COLLECTION_NAME), orderBy('precio')));
-  return snapshot.docs.map((doc) => ({
-    ...(doc.data() as Omit<TarifaSTM, 'id'>),
-    id: doc.id,
-  }));
+  const raw = await apiClient.get(`/api/db/${COLLECTION_NAME}`, {
+    query: { orderBy: 'precio:asc', limit: 500 },
+  }) as TarifaSTM[];
+  return Array.isArray(raw) ? raw : [];
 }
 
 /** Escucha en tiempo real las tarifas para mantener el cliente siempre actualizado */
+// TODO FASE 4.5: Socket.io firestore:tarifario_stm
 export function listenToTarifas(onUpdate: (tarifas: TarifaSTM[]) => void): () => void {
-  const q = query(collection(db, COLLECTION_NAME), orderBy('precio'));
-  return onSnapshot(q, (snapshot) => {
-    const tarifas = snapshot.docs.map((doc) => ({
-      ...(doc.data() as Omit<TarifaSTM, 'id'>),
-      id: doc.id,
-    }));
-    onUpdate(tarifas);
-  });
+  let active = true;
+
+  const fetch = async () => {
+    try {
+      const tarifas = await getTarifas();
+      if (active) onUpdate(tarifas);
+    } catch {
+      // ignore
+    }
+  };
+
+  fetch();
+  const interval = setInterval(fetch, 10000);
+  return () => {
+    active = false;
+    clearInterval(interval);
+  };
 }
 
 /** Inserta un array inicial para rellenar (seed) la base de datos si está vacía. Solo admin. */
 export async function setSeedTarfias(tarifasSeed: TarifaSTM[]) {
   for (const t of tarifasSeed) {
-    // usamos t.id como el id del documento para que no haya duplicados si se lanza varias veces
-    await setDoc(doc(db, COLLECTION_NAME, t.id), {
+    await apiClient.put(`/api/db/${COLLECTION_NAME}/` + encodeURIComponent(t.id), {
       nombre: t.nombre,
       precio: t.precio,
       categoria: t.categoria,
@@ -55,8 +53,7 @@ export async function setSeedTarfias(tarifasSeed: TarifaSTM[]) {
 
 /** Actualiza el precio de una tarifa */
 export async function updatePrecioTarifa(id: string, nuevoPrecio: number) {
-  const ref = doc(db, COLLECTION_NAME, id);
-  await updateDoc(ref, {
+  await apiClient.put(`/api/db/${COLLECTION_NAME}/` + encodeURIComponent(id), {
     precio: nuevoPrecio,
   });
 }

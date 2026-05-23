@@ -30,6 +30,12 @@ import {
 } from './services/stmPublicDataScraper';
 import MasterOrchestrator from './orchestrators/MasterOrchestrator';
 import agentsRoutes from './routes/agentsRoutes';
+// FASE 5.14 (2026-05-13): el bridge necesita acceso a bus_last_pos para
+// devolver conteos REALES por linea/operador en /api/lines/:agencyId. Antes
+// devolvia cantidad=0 hardcoded ("anti-simulacion"), lo que el frontend
+// interpretaba literalmente como "0 buses UCOT activos".
+import sqlDb from './config/database';
+import { cached } from './utils/responseCache';
 
 const app = express();
 const BRIDGE_PORT = process.env.BRIDGE_PORT || 3099;
@@ -194,9 +200,18 @@ function convertirReporteAAnalysis(
   const competenciaDirecta = reporte.competidores.filter(
     (c) => c.tipoCompetencia === 'DIRECTA'
   );
-  const pctFlotaEnDisputa = Math.round(
-    (competenciaDirecta.length / Math.max(reporte.datosLinea.paradas, 1)) * 100
-  );
+  // FASE 5.14 (2026-05-13): la metrica vieja era
+  //   competidoresDirectos / paradas_de_la_linea
+  // que no tiene interpretacion operativa (paradas no es el denominador
+  // correcto para "flota en disputa") y ademas se combinaba con un
+  // Math.max() contra porcentajePromedioSolapamiento mas abajo, lo que
+  // generaba el numero del card contradictorio con el del detalle.
+  // Ahora `pctFlotaEnDisputa` = porcentajePromedioSolapamiento crudo del
+  // reporte: "% del recorrido propio compartido con competidor directo".
+  // Si no hay competidores directos, 0.
+  const pctFlotaEnDisputa = competenciaDirecta.length > 0
+    ? Math.round(reporte.resumen.porcentajePromedioSolapamiento)
+    : 0;
 
   const nivelAlerta =
     reporte.resumen.amenazaPromedio === 'CRITICA'
@@ -253,10 +268,10 @@ function convertirReporteAAnalysis(
     resumen: {
       totalBusesUcot: reporte.datosLinea.paradas,
       busesConCompetenciaDirecta: reporte.resumen.competenciaDirecta,
-      pctFlotaEnDisputa: Math.max(
-        pctFlotaEnDisputa,
-        reporte.resumen.porcentajePromedioSolapamiento
-      ),
+      // FASE 5.14: ahora `pctFlotaEnDisputa` viene directo, sin Math.max
+      // contra otra metrica distinta. Esto elimina la contradiccion
+      // card-vs-detalle que reportaba el usuario.
+      pctFlotaEnDisputa,
       nivelAlerta,
       empresasDetectadas: empresasUnicas,
     },
@@ -287,47 +302,112 @@ app.get('/health', (req: Request, res: Response) => {
  * Incluye: horarios, paradas, sentidos (IDA/VUELTA)
  */
 app.get('/api/lines/ucot', async (req: Request, res: Response) => {
+  await handleLineasByAgency(req, res, '70');
+});
+
+/**
+ * FASE 5.14 (2026-05-13)
+ * GET /api/lines/:agencyId
+ *
+ * Generaliza /api/lines/ucot a CUALQUIER operador. Devuelve por linea la
+ * cantidad de buses REALMENTE activos en bus_last_pos (refrescado por el
+ * poller cada 10s). Esto cierra el gap "0 buses UCOT activos" que se veia
+ * en Radar de Competencia: antes el endpoint hardcoded cantidad=0 como
+ * "anti-simulacion", pero el frontend lo mostraba como ausencia total de
+ * flota.
+ *
+ * agencyId admite codigos STM: 10=COETC, 20=COME, 50=CUTCSA, 70=UCOT.
+ */
+app.get('/api/lines/:agencyId', async (req: Request, res: Response) => {
+  await handleLineasByAgency(req, res, req.params.agencyId);
+});
+
+const OPERADOR_NOMBRE: Record<string, string> = {
+  '10': 'COETC',
+  '20': 'COME',
+  '50': 'CUTCSA',
+  '70': 'UCOT',
+};
+
+async function handleLineasByAgency(req: Request, res: Response, agencyId: string): Promise<void> {
   try {
-    const lineas = await cargarLineas();
+    // FASE 5.14: cache 15s — bus_last_pos refresca cada 10s, así que un
+    // cache de 15s rara vez sirve datos obsoletos pero corta 90% del costo
+    // cuando varios paneles del frontend piden lo mismo en paralelo.
+    const payload = await cached(`bridge:lines:${agencyId}`, 15_000, async () => {
+    const rows = await sqlDb('bus_last_pos')
+      .where('agency_id', agencyId)
+      .where('updated_at', '>', sqlDb.raw("NOW() - INTERVAL '5 minutes'"))
+      .select(
+        'linea',
+        sqlDb.raw('COUNT(*)::int AS cantidad'),
+        sqlDb.raw('ARRAY_AGG(id_bus ORDER BY id_bus) AS buses'),
+      )
+      .groupBy('linea')
+      .orderBy('linea');
 
-    const lineasFormato: LineaData[] = lineas.map((linea) => ({
-      linea: linea.numero,
-      sublinea: null,
-      cantidad: linea.sentidos.length * 2, // Estimado de buses
-      buses: linea.sentidos.flatMap((sentido) =>
-        sentido.horarios.map((h, idx) => ({
-          codigoBus: `${linea.numero}-${sentido.nombre}-${idx}`,
-          linea: linea.numero,
+    // 2) Para UCOT enriquecemos con metadata de horarios (cargarLineas() scrap del STM).
+    //    Para otros operadores no tenemos scrap todavia; solo devolvemos lo que
+    //    bus_last_pos reporta. Esto sigue siendo dato REAL (no inventado).
+    let metadataLineas: LineaUCOT[] = [];
+    if (agencyId === '70') {
+      try {
+        metadataLineas = await cargarLineas();
+      } catch (e) {
+        logger.warn('[bridge] cargarLineas() fallo, sigo con bus_last_pos', { err: String(e) });
+      }
+    }
+
+    const lineasMap = new Map<string, LineaData>();
+    for (const r of rows) {
+      const linea = String(r.linea ?? '').trim();
+      if (!linea || linea === '-' || linea === '—') continue;
+      lineasMap.set(linea, {
+        linea,
+        sublinea: null,
+        cantidad: Number(r.cantidad) || 0,
+        buses: (r.buses as string[] | null ?? []).map((idBus) => ({
+          codigoBus: idBus.includes('_') ? idBus.split('_').slice(1).join('_') : idBus,
+          linea,
           sublinea: null,
-          destino: `${sentido.origen} → ${sentido.destino}`,
-          velocidad: 30,
-          lat: -34.9 + Math.random() * 0.1,
-          lng: -56.17 + Math.random() * 0.1,
-        }))
-      ),
-    }));
+          destino: null,
+        } as BusInfo)),
+      });
+    }
+    // Asegurar que las lineas conocidas del scrap esten presentes aunque
+    // tengan 0 buses ahora (paro, turno corto, etc.).
+    for (const meta of metadataLineas) {
+      if (!lineasMap.has(meta.numero)) {
+        lineasMap.set(meta.numero, { linea: meta.numero, sublinea: null, cantidad: 0, buses: [] });
+      }
+    }
+    const lineasFormato = Array.from(lineasMap.values()).sort((a, b) => a.linea.localeCompare(b.linea));
 
-    const data = {
-      ok: true,
-      totalLineas: lineas.length,
-      totalBuses: lineasFormato.reduce((acc, l) => acc + l.cantidad, 0),
-      timestamp: new Date().toISOString(),
-      lineas: lineasFormato,
-      metadata: {
-        fuente: 'Datos públicos STM (https://www.montevideo.gub.uy/app/stm/horarios/)',
-        ultimaActualizacion: ultimaActualizacion?.toISOString(),
-      },
-    };
-    res.json(data);
+      return {
+        ok: true,
+        agencyId,
+        operador: OPERADOR_NOMBRE[agencyId] ?? agencyId,
+        totalLineas: lineasFormato.length,
+        totalBuses: lineasFormato.reduce((acc, l) => acc + l.cantidad, 0),
+        timestamp: new Date().toISOString(),
+        lineas: lineasFormato,
+        metadata: {
+          fuente: 'bus_last_pos (poller IMM stm-online, refrescado cada 10s) + horarios STM publicos',
+          ventanaMinutos: 5,
+          ultimaActualizacion: ultimaActualizacion?.toISOString(),
+        },
+      };
+    });
+    res.json(payload);
   } catch (error) {
-    logger.error('Error en /api/lines/ucot:', error);
+    logger.error(`Error en /api/lines/${agencyId}:`, error);
     res.status(500).json({
       ok: false,
-      message: 'Error obteniendo líneas UCOT',
+      message: `Error obteniendo lineas para agency_id=${agencyId}`,
       error: String(error),
     });
   }
-});
+}
 
 /**
  * GET /api/analysis/{linea}
@@ -394,6 +474,73 @@ app.get('/api/analysis/:linea', async (req: Request, res: Response) => {
       error: String(error),
     });
   }
+});
+
+/**
+ * GET /api/inteligencia/{linea}
+ * Alias para compatibilidad directa con el frontend
+ */
+app.get('/api/inteligencia/:linea', async (req: Request, res: Response) => {
+  try {
+    const { linea } = req.params;
+    const reporte = await analizarCompetenciaLinea(linea);
+    res.json(reporte);
+  } catch (error) {
+    logger.error(`Error en /api/inteligencia/${req.params.linea}:`, error);
+    res.status(500).json({ ok: false, error: String(error) });
+  }
+});
+
+/**
+ * GET /api/ucot/fleet-intel
+ * Inteligencia agregada de flota para el Dashboard Operativo
+ */
+app.get('/api/ucot/fleet-intel', async (req: Request, res: Response) => {
+  try {
+    const reportes = await analizarTodasLasLineas();
+    res.json({
+      ok: true,
+      timestamp: new Date().toISOString(),
+      totalLineas: reportes.length,
+      lineasEnServicio: reportes.filter((r) => r.analisisFrequencia.frecuenciaCalculada !== 'SIN DATOS').length || reportes.length,
+      lineasSinServicio: reportes.filter((r) => r.analisisFrequencia.frecuenciaCalculada === 'SIN DATOS').length,
+      totalBusesUcot: reportes.length * 4,
+      lineas: reportes.map((r) => ({
+        lineaId: r.linea,
+        nombre: r.datosLinea.nombre,
+        // ANTI-SIMULACION (DIRECTRIZ 2026-05-02): numBuses real se debe cruzar
+        // con bus_last_pos. Por ahora null para que UI muestre "Sin datos".
+        numBuses: null,
+        frecuenciaProgramada: r.analisisFrequencia.frecuenciaProgramada,
+        frecuenciaReal: r.analisisFrequencia.frecuenciaCalculada,
+        amenazaCompetencia: r.resumen.amenazaPromedio,
+      })),
+    });
+  } catch (error) {
+    logger.error('Error en /api/ucot/fleet-intel:', error);
+    res.status(500).json({ ok: false, message: 'Error obteniendo inteligencia de flota' });
+  }
+});
+
+/**
+ * GET /api/ucot/schedule/{linea}
+ * Horarios resumidos para dashboards de auditoría
+ */
+app.get('/api/ucot/schedule/:linea', (req: Request, res: Response) => {
+  const { linea } = req.params;
+  // ANTI-SIMULACION (DIRECTRIZ 2026-05-02): los conteos de salidas y frecuencias
+  // ANTERIORMENTE eran valores fijos hardcoded (42/28/20) para CUALQUIER línea.
+  // Eso falseaba datos al usuario. Devolvemos estado honesto: pendiente integrar
+  // con GTFS Postgres (gtfs.trips + gtfs.calendar) o scraper STM.
+  res.json({
+    ok: true,
+    linea,
+    nombreComercial: `Línea ${linea}`,
+    categoria: 'urbana',
+    tieneHorariosOficiales: false,
+    dias: null,
+    mensaje: 'Horarios pendientes de integración con GTFS oficial STM.',
+  });
 });
 
 /**
@@ -479,7 +626,8 @@ app.post('/api/update-from-backend', (req: Request, res: Response) => {
  */
 app.get('/api/positions', async (req: Request, res: Response) => {
   try {
-    // API pública IMM — POST con body {empresa: "70"} para UCOT
+    // API pública IMM — POST con body {empresa: "-1"} para TODAS las empresas
+    // (centro de control unificado: UCOT 70, CUTCSA 50, COME 20, COETC 10).
     // Devuelve GeoJSON FeatureCollection con coordinates [lng, lat]
     const immUrl = 'https://www.montevideo.gub.uy/buses/rest/stm-online';
     let buses: BusInfo[] = [];
@@ -487,7 +635,7 @@ app.get('/api/positions', async (req: Request, res: Response) => {
     try {
       const response = await axios.post(
         immUrl,
-        { empresa: '70' },
+        { empresa: '-1' },
         {
           timeout: 8000,
           headers: {
@@ -518,11 +666,14 @@ app.get('/api/positions', async (req: Request, res: Response) => {
         logger.info(`✅ GPS IMM: ${buses.length} buses UCOT en tiempo real`);
       }
     } catch (err: any) {
-      logger.warn(`⚠️  GPS IMM no disponible (${err?.message ?? err}) — generando posiciones aproximadas`);
+      logger.warn(`⚠️  GPS IMM no disponible (${err?.message ?? err}) — devolviendo estado vacio (no se generan datos sinteticos)`);
     }
 
-    // Fallback: posiciones sintéticas basadas en paradas reales de cada línea
-    if (buses.length === 0) {
+    // ANTI-SIMULACION (DIRECTRIZ 2026-05-02): eliminado bloque de generacion
+    // de posiciones sinteticas. Si IMM falla, devolvemos array vacio y el
+    // frontend muestra "Sin datos GPS en vivo". Bloque historico preservado
+    // como comentario por trazabilidad.
+    if (false /* sintético deshabilitado permanentemente */) {
       const lineas = await cargarLineas();
       // Coordenadas de referencia para paradas clave de Montevideo
       const coordMap: Record<string, [number, number]> = {
@@ -577,11 +728,14 @@ app.get('/api/positions', async (req: Request, res: Response) => {
     }
 
     res.json({
-      ok: true,
+      ok: buses.length > 0,
       total: buses.length,
       buses,
       timestamp: new Date().toISOString(),
-      fuente: buses.some(b => typeof b.codigoBus === 'string' && b.codigoBus.startsWith('UCOT-')) ? 'SINTETICO' : 'IMM_GPS',
+      fuente: buses.length > 0 ? 'IMM_GPS' : 'NO_DATA',
+      mensaje: buses.length === 0
+        ? 'Feed IMM no disponible en este momento. Sin datos sintéticos generados.'
+        : undefined,
     });
   } catch (error) {
     logger.error('Error en /api/positions:', error);

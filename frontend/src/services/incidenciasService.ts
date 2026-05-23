@@ -1,16 +1,5 @@
-import {
-  collection,
-  addDoc,
-  doc,
-  updateDoc,
-  getDocs,
-  query,
-  orderBy,
-  limit as limitDocs,
-  serverTimestamp,
-  where,
-} from 'firebase/firestore';
-import { auth, db, authReady } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
+import { getToken } from '../utils/tokenStore';
 
 export type TipoIncidencia =
   | 'corte_calle'
@@ -56,17 +45,22 @@ export const INCIDENCIA_META: Record<
   DEMORA: { label: 'Demora', emoji: '⏱️', color: 'text-blue-400 bg-blue-500/10' },
 };
 
-// ── Auth cold-start helper ───────────────────────────────────────────────────
-// authReady resuelve cuando onAuthStateChanged dispara por primera vez (estado real),
-// más fiable que authStateReady() con persistentMultipleTabManager en cold start.
-async function ensureAuthReady(): Promise<void> {
-  await authReady;
-  if (auth.currentUser) {
-    await auth.currentUser.getIdToken();
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Obtiene el uid del usuario actual desde el JWT almacenado en localStorage. */
+function getCurrentUid(): string {
+  try {
+    const token = getToken() ?? '';
+    const payload = token.split('.')[1];
+    if (!payload) return 'anonymous';
+    const decoded = JSON.parse(atob(payload));
+    return decoded.uid ?? decoded.sub ?? 'anonymous';
+  } catch {
+    return 'anonymous';
   }
 }
 
-// ── CRUD (Firestore) ────────────────────────────────────────────────────────
+// ── CRUD ────────────────────────────────────────────────────────────────────
 
 const COL = 'incidencias';
 
@@ -81,9 +75,7 @@ export async function reportarIncidencia(
     conductorUid?: string;
   },
 ): Promise<IncidenciaReportada> {
-  await ensureAuthReady();
-
-  const reporterUid = extras?.conductorUid ?? auth.currentUser?.uid ?? 'anonymous';
+  const reporterUid = extras?.conductorUid ?? getCurrentUid();
   const payload: Record<string, unknown> = {
     type: tipo,
     status: 'ABIERTO',
@@ -91,17 +83,17 @@ export async function reportarIncidencia(
     description: extras?.descripcion ?? INCIDENCIA_META[tipo]?.label,
     reportedBy: { uid: reporterUid, name: reporterUid },
     source: 'DRIVER_APP',
-    createdAt: serverTimestamp(),
+    createdAt: new Date().toISOString(),
   };
   if (extras?.lat !== undefined) payload.lat = extras.lat;
   if (extras?.lng !== undefined) payload.lng = extras.lng;
   if (extras?.lineaCodigo) payload.lineaCodigo = extras.lineaCodigo;
   if (extras?.lineaNombre) payload.lineaNombre = extras.lineaNombre;
 
-  const ref = await addDoc(collection(db, COL), payload);
+  const result = await apiClient.post(`/api/db/${COL}`, payload) as { id: string };
 
   return {
-    id: ref.id,
+    id: result.id,
     tipo,
     descripcion: extras?.descripcion,
     lat: extras?.lat,
@@ -119,38 +111,30 @@ export async function getIncidencias(filtros?: {
   soloAbiertas?: boolean;
   limite?: number;
 }): Promise<IncidenciaReportada[]> {
-  await ensureAuthReady();
+  const queryParams: Record<string, any> = {
+    orderBy: 'createdAt:desc',
+    limit: filtros?.limite ?? 500,
+  };
 
-  const qArgs: any[] = [orderBy('createdAt', 'desc')];
+  const raw = await apiClient.get(`/api/db/${COL}`, { query: queryParams }) as any[];
+  let arr = Array.isArray(raw) ? raw : [];
 
   if (filtros?.soloAbiertas) {
-    qArgs.push(where('status', 'in', ['ABIERTO', 'EN_PROCESO']));
+    arr = arr.filter((d: any) => d.status === 'ABIERTO' || d.status === 'EN_PROCESO');
   }
 
-  if (filtros?.limite) {
-    qArgs.push(limitDocs(filtros.limite));
-  }
-
-  const q = query(collection(db, COL), ...qArgs);
-  const snap = await getDocs(q);
-
-  let result = snap.docs.map((doc) => {
-    const data = doc.data();
-    return {
-      id: doc.id,
-      tipo: data.type as TipoIncidencia,
-      descripcion: data.description,
-      lat: data.lat,
-      lng: data.lng,
-      lineaCodigo: data.lineaCodigo,
-      lineaNombre: data.lineaNombre,
-      conductorUid: data.reportedBy?.uid,
-      timestamp: data.createdAt?.toDate
-        ? data.createdAt.toDate().toISOString()
-        : new Date().toISOString(),
-      resuelta: data.status === 'CERRADO',
-    };
-  });
+  let result: IncidenciaReportada[] = arr.map((data: any) => ({
+    id: data.id,
+    tipo: data.type as TipoIncidencia,
+    descripcion: data.description,
+    lat: data.lat,
+    lng: data.lng,
+    lineaCodigo: data.lineaCodigo,
+    lineaNombre: data.lineaNombre,
+    conductorUid: data.reportedBy?.uid,
+    timestamp: data.createdAt ?? new Date().toISOString(),
+    resuelta: data.status === 'CERRADO',
+  }));
 
   if (filtros?.lineaCodigo) {
     result = result.filter((r) => r.lineaCodigo === filtros.lineaCodigo);
@@ -160,19 +144,16 @@ export async function getIncidencias(filtros?: {
 }
 
 export async function marcarResuelta(id: string): Promise<void> {
-  await ensureAuthReady();
-  await updateDoc(doc(db, COL, id), {
+  await apiClient.put(`/api/db/${COL}/` + encodeURIComponent(id), {
     status: 'CERRADO',
-    closedAt: serverTimestamp(),
+    closedAt: new Date().toISOString(),
   });
 }
 
 export async function eliminarIncidencia(id: string): Promise<void> {
   // En producción, es preferible no borrar duro (Hard Delete), sino cambiar estado.
-  // Pero si se necesita: await deleteDoc(doc(db, COL, id));
-  await updateDoc(doc(db, COL, id), {
+  await apiClient.put(`/api/db/${COL}/` + encodeURIComponent(id), {
     status: 'CERRADO',
-    // deleted: true
   });
 }
 

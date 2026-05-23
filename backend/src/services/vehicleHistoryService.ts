@@ -119,28 +119,103 @@ export async function saveComplianceSnapshot(results: BusComplianceResult[]): Pr
         proxima_parada: r.proximaParadaControl?.name ?? null,
         timestamp_gps: r.timestampGPS,
         expires_at: expiresAt,
+        // FASE 5.14: destino del feed IMM + sentido IDA/VUELTA derivado.
+        destino: r.destino ?? null,
+        sentido: r.sentido ?? null,
       }));
       await sqlDb(TABLE).insert(batch);
     }
     logger.info(`[VehicleHistory] Guardados ${results.length} eventos en Postgres`);
+
+    // ─── FASE 5.15 (2026-05-14): SINCRONIZACIÓN AUTOMÁTICA CON FLOTA (User Request)
+    // Cualquier coche UCOT reconocido y activo en calle se auto-registra/sincroniza en flota
+    const ucotBuses = results.filter((r) => r.agencyId === '70');
+    if (ucotBuses.length > 0) {
+      const uniqueBusesMap = new Map<string, BusComplianceResult>();
+      for (const b of ucotBuses) {
+        uniqueBusesMap.set(b.idBus, b);
+      }
+
+      for (const [idBus, bus] of uniqueBusesMap.entries()) {
+        await sqlDb('vehiculos')
+          .insert({
+            id: idBus,
+            agency_id: '70',
+            internal_number: idBus,
+            data_jsonb: JSON.stringify({
+              coche: idBus,
+              cocheId: idBus,
+              empresa: 70,
+              agencyId: 70,
+              marca: 'Volare / Marcopolo (Auto)',
+              status: 'activo',
+              source: 'GPS_COMPLIANCE_SYNC',
+              lineaActiva: bus.linea,
+              lastSeenGPS: bus.timestampGPS,
+              velocidadActual: bus.velocidad,
+              estadoCumplimientoActual: bus.estadoCumplimiento,
+              desviacionMinActual: bus.desviacionMin,
+              tripActivo: bus.tripActivo?.trip_id ?? null,
+              updatedAt: new Date().toISOString()
+            }),
+            created_at: new Date()
+          })
+          .onConflict('id')
+          .merge({
+            data_jsonb: sqlDb.raw("vehiculos.data_jsonb || ?::jsonb", [JSON.stringify({
+              lineaActiva: bus.linea,
+              lastSeenGPS: bus.timestampGPS,
+              velocidadActual: bus.velocidad,
+              estadoCumplimientoActual: bus.estadoCumplimiento,
+              desviacionMinActual: bus.desviacionMin,
+              tripActivo: bus.tripActivo?.trip_id ?? null,
+              status: 'activo',
+              updatedAt: new Date().toISOString()
+            })])
+          });
+      }
+      logger.info(`[VehicleHistory] Auto-sincronizados ${uniqueBusesMap.size} coches UCOT en Inventario de Flota y Mantenimiento`);
+    }
   } catch (error) {
     logger.error('[VehicleHistory] Error guardando snapshot de compliance', { error: String(error) });
     // No re-throw — esto es telemetría, no debe romper el pipeline GPS.
   }
 }
 
-/** Historial de un coche específico (últimos N días) */
+/**
+ * Historial de un coche específico (últimos N días).
+ *
+ * FASE 5.14 (2026-05-13): si se pasa agencyId, filtra también por agency_id.
+ * Sin este filtro, dos operadores con el mismo codigoBus (ej. UCOT 46 y
+ * CUTCSA 46) producen un historial mezclado, lo que rompe la auditoría IMM
+ * porque los datos no coinciden con los del operador.
+ *
+ * El parámetro `idBus` acepta tanto el formato crudo (`46`) — que es como
+ * vehicle_events almacena el codigoBus — como el formato prefijado
+ * (`70_46`) que usa bus_last_pos. Si llega prefijado, se separa y se usa
+ * agency_id derivado del prefijo cuando el parámetro explícito no viene.
+ */
 export async function getVehicleHistory(
   idBus: string,
   days = 7,
+  agencyId?: string,
 ): Promise<VehicleEvent[]> {
   try {
+    let rawId = idBus;
+    let agency = agencyId;
+    const m = /^(\d+)_(.+)$/.exec(idBus);
+    if (m) {
+      if (!agency) agency = m[1];
+      rawId = m[2];
+    }
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    const rows = await sqlDb<EventRow>(TABLE)
-      .where('id_bus', idBus)
+    const q = sqlDb<EventRow>(TABLE)
+      .where('id_bus', rawId)
       .where('created_at', '>=', since)
       .orderBy('created_at', 'desc')
       .limit(500);
+    if (agency) q.where('agency_id', agency);
+    const rows = await q;
     return rows.map(rowToEvent);
   } catch (error) {
     logger.error(`[VehicleHistory] Error getVehicleHistory(${idBus})`, { error: String(error) });
@@ -152,8 +227,9 @@ export async function getVehicleHistory(
 export async function getVehicleSummary(
   idBus: string,
   days = 30,
+  agencyId?: string,
 ): Promise<VehicleHistorySummary | null> {
-  const events = await getVehicleHistory(idBus, days);
+  const events = await getVehicleHistory(idBus, days, agencyId);
   if (events.length === 0) return null;
 
   const empresa = events[0].empresa;

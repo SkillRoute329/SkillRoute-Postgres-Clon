@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { handleServiceInterruption } from '../../services/contingencyEngine';
 import type { ServiceInterruptionResult } from '../../services/contingencyEngine';

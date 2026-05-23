@@ -32,7 +32,7 @@ import {
   query,
   where,
   limit,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { useLiveData } from '../../context/LiveDataContext';
 import { fetchSTMPosiciones } from '../../services/stmLiveService';

@@ -50,14 +50,12 @@ const yearMonth = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
 // Sweep timestamps #74 (2026-04-23): helper Montevideo UTC-3
-import { formatHoraSegundosMvd, formatFechaHoraMvd } from '../../utils/formatTimestamp';
+import { formatHoraSegundosMvd, formatFechaHoraMvd, hhmmAMin } from '../../utils/formatTimestamp';
 
 const timeNow = () => formatHoraSegundosMvd(new Date());
 
-function parseHoraToMinutes(h: string): number {
-  const [hh, mm] = h.trim().split(':').map(Number);
-  return (hh ?? 0) * 60 + (mm ?? 0);
-}
+// FASE 5.16: delega en utils/formatTimestamp (fuente única). API local intacta.
+const parseHoraToMinutes = hhmmAMin;
 
 /* ─── Sparkline SVG Component ──────────────────────────── */
 function MiniSparkline({
@@ -271,7 +269,16 @@ export default function CEODashboard() {
         FleetService.getVehicles(),
         ServicioEstadoService.getByDate(today),
         fetch('/api/positions').then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch(`/api/listero/resumen?fecha=${today}`).then(r => r.ok ? r.json() : null).catch(() => null),
+        // FASE 5.38 (2026-05-22): incluir Bearer token; antes daba 401 silencioso.
+        (async () => {
+          try {
+            const tok = localStorage.getItem('skillroute_jwt') || '';
+            const r = await fetch(`/api/listero/resumen?fecha=${today}`, {
+              headers: tok ? { Authorization: `Bearer ${tok}` } : {},
+            });
+            return r.ok ? await r.json() : null;
+          } catch { return null; }
+        })(),
       ]);
 
       // Fleet KPIs — usa GPS en vivo si hay datos, si no usa Firestore.
@@ -320,7 +327,8 @@ export default function CEODashboard() {
       setServiciosActivos(actSvc);
 
       const conAtraso = estados.filter((e) => e.atrasoMinutos != null);
-      const puntuales = conAtraso.filter((e) => (e.atrasoMinutos ?? 0) <= 3).length;
+      // FASE 5.17: política OTP única ±4 min (IMM).
+      const puntuales = conAtraso.filter((e) => Math.abs(e.atrasoMinutos ?? 0) <= 4).length;
       const puntPct =
         conAtraso.length > 0 ? Math.round((puntuales / conAtraso.length) * 1000) / 10 : null;
       setPuntualidadPct(puntPct);
@@ -348,25 +356,31 @@ export default function CEODashboard() {
       buildLineRanking(estados);
 
       // Executive KPIs
-      // OTP fleet-wide: % of services with ≤3min delay
+      // FASE 5.17: política OTP ÚNICA ±4 min (oficial IMM). NOTA: este OTP
+      // proviene del atraso del LISTERO (planilla de turnos), NO del GPS.
+      // Se reetiqueta en la UI como "OTP Listero" para no confundirlo con
+      // el cumplimiento GPS auditado.
       const serviciosConDato = estados.filter((e) => e.atrasoMinutos != null);
-      const serviciosPuntuales = serviciosConDato.filter((e) => (e.atrasoMinutos ?? 0) <= 3).length;
+      const serviciosPuntuales = serviciosConDato.filter((e) => Math.abs(e.atrasoMinutos ?? 0) <= 4).length;
       const otpVal =
         serviciosConDato.length > 0
           ? Math.round((serviciosPuntuales / serviciosConDato.length) * 1000) / 10
           : null;
       setOtpFleetwide(otpVal);
 
-      // E-mobility savings: estimate based on electric buses in fleet
+      // Buses eléctricos en flota (conteo REAL). FASE 5.17: se eliminó el
+      // "ahorro USD 45/día" inventado (cifra hardcodeada sin sustento, riesgo
+      // de auditoría). Se reporta el conteo real, no un ahorro fabricado.
       const electricos = vehicles.filter((v) =>
         /electr|ev|byd|e-bus/i.test(
           String(v.status ?? '') + ' ' + String((v as Record<string, unknown>).fuelType ?? ''),
         ),
       ).length;
-      // Ahorro promedio estimado: ~USD 45/día por bus eléctrico vs diesel
-      setEmovilAhorro(electricos * 45);
+      setEmovilAhorro(electricos);
 
-      // Competition threat index: % of services with >5min delay (exposed to rivals)
+      // FASE 5.17: antes esto se etiquetaba "amenaza competencia" (narrativa
+      // inventada: atraso ≠ amenaza de rival). Es simplemente el % de
+      // servicios con atraso >5min; se reetiqueta así en la UI.
       const expuestos = serviciosConDato.filter((e) => (e.atrasoMinutos ?? 0) > 5).length;
       const threatPct =
         serviciosConDato.length > 0 ? Math.round((expuestos / serviciosConDato.length) * 100) : 0;
@@ -442,7 +456,9 @@ export default function CEODashboard() {
     if (!cocheRotacionId.trim()) return;
     setBusGpsLoading(true);
     setBusGpsStats(null);
-    fetchVehicleHistory(cocheRotacionId.trim(), 7)
+    // FASE 5.14: panel rotación UCOT, agency_id fijo 70 para no mezclar
+    // historial con buses CUTCSA/COME/COETC que compartan codigoBus.
+    fetchVehicleHistory(cocheRotacionId.trim(), 7, '70')
       .then(r => setBusGpsStats(r.summary))
       .catch(() => setBusGpsStats(null))
       .finally(() => setBusGpsLoading(false));
@@ -828,14 +844,14 @@ export default function CEODashboard() {
                             </span>
                             <span
                               className={`text-[9px] font-bold flex items-center gap-0.5 ${
-                                r.atraso <= 3
+                                r.atraso <= 4
                                   ? 'text-emerald-400'
-                                  : r.atraso <= 5
+                                  : r.atraso <= 8
                                     ? 'text-amber-400'
                                     : 'text-red-400'
                               }`}
                             >
-                              {r.atraso <= 3 ? (
+                              {r.atraso <= 4 ? (
                                 <TrendingUp className="w-2.5 h-2.5" />
                               ) : (
                                 <TrendingDown className="w-2.5 h-2.5" />
@@ -1226,13 +1242,15 @@ export default function CEODashboard() {
                         <Gauge className="w-4 h-4 text-cyan-400" />
                       </div>
                       <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                        OTP Flota
+                        OTP Listero
                       </p>
                     </div>
                     <div className="text-3xl font-black text-white leading-none mb-1">
                       <AnimatedNumber value={otpFleetwide} suffix="%" />
                     </div>
-                    <p className="text-[10px] text-slate-500">On-Time Performance (≤3 min)</p>
+                    <p className="text-[10px] text-slate-500">
+                      Puntualidad del listero (±4 min, política IMM). No es el OTP GPS auditado.
+                    </p>
                     <div className="mt-3 w-full h-2 bg-slate-700/50 rounded-full overflow-hidden">
                       <div
                         id="exec-otp-bar"
@@ -1258,24 +1276,20 @@ export default function CEODashboard() {
                         <Zap className="w-4 h-4 text-emerald-400" />
                       </div>
                       <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                        Ahorro E-Movilidad
+                        Flota Eléctrica
                       </p>
                     </div>
                     <div className="text-3xl font-black text-emerald-400 leading-none mb-1">
-                      USD <AnimatedNumber value={emovilAhorro} />
+                      <AnimatedNumber value={emovilAhorro} />
                     </div>
-                    <p className="text-[10px] text-slate-500">Ahorro diario estimado vs. diesel</p>
+                    <p className="text-[10px] text-slate-500">
+                      Buses eléctricos en flota (conteo real)
+                    </p>
                     <div className="mt-3 space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-[10px] font-bold text-emerald-400">
-                          USD {emovilAhorro * 30}/mes proyectado
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
                         <Leaf className="w-3.5 h-3.5 text-green-400" />
-                        <span className="text-[10px] font-bold text-green-400">
-                          {Math.round(emovilAhorro * 0.83)} kg CO₂/día evitados
+                        <span className="text-[10px] font-bold text-slate-400">
+                          Ahorro/CO₂ requiere factor oficial — no estimado aquí
                         </span>
                       </div>
                     </div>
@@ -1291,7 +1305,7 @@ export default function CEODashboard() {
                         <ShieldAlert className="w-4 h-4 text-rose-400" />
                       </div>
                       <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                        Amenaza Rival
+                        Servicios c/ Atraso &gt;5min
                       </p>
                     </div>
                     <div
@@ -1306,7 +1320,7 @@ export default function CEODashboard() {
                       {amenazaCompetencia}%
                     </div>
                     <p className="text-[10px] text-slate-500">
-                      Servicios expuestos ({'>'} 5 min atraso)
+                      % de servicios con atraso mayor a 5 min (listero)
                     </p>
                     <div className="mt-3 flex items-center gap-1.5">
                       <span
@@ -1320,10 +1334,10 @@ export default function CEODashboard() {
                       />
                       <span className="text-[10px] font-bold text-slate-500">
                         {amenazaCompetencia <= 10
-                          ? 'Zona segura'
+                          ? 'Bajo'
                           : amenazaCompetencia <= 25
-                            ? 'Vigilancia activa'
-                            : 'ALERTA MÁXIMA'}
+                            ? 'Moderado'
+                            : 'Alto'}
                       </span>
                     </div>
                   </div>
@@ -1425,9 +1439,9 @@ export default function CEODashboard() {
                             <td className="px-4 py-3">
                               <span
                                 className={`font-bold ${
-                                  r.atraso <= 3
+                                  r.atraso <= 4
                                     ? 'text-emerald-400'
-                                    : r.atraso <= 5
+                                    : r.atraso <= 8
                                       ? 'text-amber-400'
                                       : 'text-red-400'
                                 }`}
@@ -1438,25 +1452,25 @@ export default function CEODashboard() {
                             <td className="px-4 py-3">
                               <span
                                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  r.pct >= 80 && r.atraso <= 3
+                                  r.pct >= 80 && r.atraso <= 4
                                     ? 'bg-emerald-500/15 text-emerald-400'
-                                    : r.pct >= 50 && r.atraso <= 5
+                                    : r.pct >= 50 && r.atraso <= 8
                                       ? 'bg-amber-500/15 text-amber-400'
                                       : 'bg-red-500/15 text-red-400'
                                 }`}
                               >
                                 <span
                                   className={`w-1.5 h-1.5 rounded-full ${
-                                    r.pct >= 80 && r.atraso <= 3
+                                    r.pct >= 80 && r.atraso <= 4
                                       ? 'bg-emerald-500'
-                                      : r.pct >= 50 && r.atraso <= 5
+                                      : r.pct >= 50 && r.atraso <= 8
                                         ? 'bg-amber-500'
                                         : 'bg-red-500'
                                   }`}
                                 />
-                                {r.pct >= 80 && r.atraso <= 3
+                                {r.pct >= 80 && r.atraso <= 4
                                   ? 'ÓPTIMO'
-                                  : r.pct >= 50 && r.atraso <= 5
+                                  : r.pct >= 50 && r.atraso <= 8
                                     ? 'ATENCIÓN'
                                     : 'CRÍTICO'}
                               </span>
@@ -1483,18 +1497,16 @@ export default function CEODashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 rounded-xl bg-slate-800/30 border border-white/5">
                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">
-                      Ahorro Anual E-Movilidad
+                      Flota Eléctrica
                     </p>
-                    <p className="text-xl font-black text-emerald-400">
-                      USD {(emovilAhorro * 365).toLocaleString()}
-                    </p>
+                    <p className="text-xl font-black text-emerald-400">{emovilAhorro} buses</p>
                     <p className="text-[10px] text-slate-500 mt-1">
-                      Proyección basada en flota eléctrica actual
+                      Conteo real (ahorro/CO₂ requiere factor oficial MIEM)
                     </p>
                   </div>
                   <div className="p-4 rounded-xl bg-slate-800/30 border border-white/5">
                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">
-                      Índice de Competitividad
+                      Servicios sin atraso &gt;5min
                     </p>
                     <p
                       className={`text-xl font-black ${
@@ -1504,7 +1516,7 @@ export default function CEODashboard() {
                       {100 - amenazaCompetencia}%
                     </p>
                     <p className="text-[10px] text-slate-500 mt-1">
-                      Servicios protegidos frente a rivales
+                      % de servicios dentro de 5 min (listero)
                     </p>
                   </div>
                   <div className="p-4 rounded-xl bg-slate-800/30 border border-white/5">
@@ -1526,13 +1538,11 @@ export default function CEODashboard() {
                   <div className="p-4 rounded-xl bg-slate-800/30 border border-green-500/10">
                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">
                       <Leaf className="w-3 h-3 inline mr-1 text-green-400" />
-                      Huella de Carbono Evitada
+                      Huella de Carbono
                     </p>
-                    <p className="text-xl font-black text-green-400">
-                      {Math.round(emovilAhorro * 0.83 * 365).toLocaleString()} kg
-                    </p>
+                    <p className="text-xl font-black text-slate-400">N/D</p>
                     <p className="text-[10px] text-slate-500 mt-1">
-                      CO₂ anual evitado (dato clave MIEM/MA)
+                      Requiere factor de emisión oficial — no estimado
                     </p>
                   </div>
                 </div>

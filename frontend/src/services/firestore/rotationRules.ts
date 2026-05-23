@@ -1,15 +1,5 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  setDoc,
-  addDoc,
-  query,
-  orderBy,
-  onSnapshot,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 import type { ReglaRotacion } from '../../types/rotation';
 
 const COL = 'reglas_rotacion';
@@ -31,22 +21,24 @@ function mapRegla(id: string, data: Record<string, unknown>): ReglaRotacion {
 
 export const RotationRulesService = {
   async getAll(): Promise<ReglaRotacion[]> {
-    const snap = await getDocs(query(collection(db, COL), orderBy('nombre', 'asc')));
-    return snap.docs.map((d) => mapRegla(d.id, { ...d.data() }));
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { orderBy: 'nombre:asc', limit: 5000 },
+    });
+    return Array.isArray(res.data)
+      ? res.data.map((d) => mapRegla((d.id as string) ?? '', { ...d }))
+      : [];
   },
 
-  subscribe(callback: (reglas: ReglaRotacion[]) => void) {
-    const q = query(collection(db, COL), orderBy('nombre', 'asc'));
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map((d) => mapRegla(d.id, { ...d.data() })));
-    });
+  // FASE 5.35 (2026-05-22): bus socket en lugar de polling 10s.
+  subscribe(callback: (reglas: ReglaRotacion[]) => void): () => void {
+    return subscribeViaBus<ReglaRotacion[]>(COL, () => this.getAll(), callback);
   },
 
   async getById(id: string): Promise<ReglaRotacion | null> {
-    const ref = doc(db, COL, id);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return null;
-    return mapRegla(snap.id, { ...snap.data() });
+    try {
+      const res = await apiClient.get<Record<string, unknown>>(`/api/db/${COL}/${encodeURIComponent(id)}`);
+      return res.data ? mapRegla(id, { ...res.data }) : null;
+    } catch { return null; }
   },
 
   async create(data: Omit<ReglaRotacion, 'id'>): Promise<ReglaRotacion> {
@@ -55,12 +47,14 @@ export const RotationRulesService = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    const ref = await addDoc(collection(db, COL), payload);
-    return { ...data, id: ref.id } as ReglaRotacion;
+    const res = await apiClient.post<{ id: string }>(`/api/db/${COL}`, payload);
+    return { ...data, id: res.data?.id ?? String(Date.now()) } as ReglaRotacion;
   },
 
   async update(id: string, data: Partial<ReglaRotacion>): Promise<void> {
-    const ref = doc(db, COL, id);
-    await setDoc(ref, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(id)}`, {
+      ...data,
+      updatedAt: new Date().toISOString(),
+    });
   },
 };

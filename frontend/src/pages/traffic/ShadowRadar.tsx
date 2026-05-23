@@ -11,10 +11,11 @@ import {
   getDocs,
   doc,
   setDoc,
-} from 'firebase/firestore';
-import type { GeoPoint } from 'firebase/firestore';
+} from '../../config/firestoreShim';
+import type { GeoPoint } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { fetchSTMPosiciones } from '../../services/stmLiveService';
+import { haversineMetros as geoHaversineMetros } from '../../utils/geomath';
 import { Radar, ShieldAlert, Bus, AlertTriangle, Zap, CheckCircle2, Target, X, Crosshair, Flag, Eye, Users, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
@@ -29,6 +30,8 @@ interface AlertaRegulacion {
   linea_id: string;
   rival_empresa?: string;
   rival_interno?: string;
+  rival_coche_id?: string;
+  rival_linea?: string;
   distancia_metros?: number;
   instruccion: string;
   mensaje_chofer: string;
@@ -75,16 +78,9 @@ function calculateBearing(lat1: number, lng1: number, lat2: number, lng2: number
   return (bearing + 360) % 360;
 }
 
+// FASE 5.16: delega en utils/geomath (fuente única). API local intacta.
 function haversineMetros(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-    Math.cos((lat2 * Math.PI) / 180) *
-    Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return geoHaversineMetros(lat1, lng1, lat2, lng2);
 }
 
 function toMillis(ts: unknown): number {
@@ -111,7 +107,7 @@ function minutesSince(ts: unknown): number {
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
-const PROXY_BASE = 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/montevideoProxy';
+const PROXY_BASE = import.meta.env.VITE_STM_PROXY_URL || 'http://localhost:3001/api/stm/proxy';
 const INACTIVITY_MS = 15 * 60 * 1000;
 
 const EMPRESAS_OPCIONES = [
@@ -487,12 +483,20 @@ const ShadowRadar: React.FC = () => {
         tipo: 'DISPARO_MANUAL',
         coche_id: manualCocheId,
         linea_id: manualLineaId,
-        rival_empresa: 'MANUAL',
-        distancia_metros: 0,
-        instruccion: 'REGULACION_MARCHA',
-        mensaje_chofer: manualMensaje,
-        timestamp: Timestamp.now(),
-        leido: false,
+        agency_id: String(empresaPropia),
+        timestamp: new Date().toISOString(),
+        data_jsonb: {
+          tipo: 'DISPARO_MANUAL',
+          coche_id: manualCocheId,
+          linea_id: manualLineaId,
+          empresa_id: empresaPropia,
+          rival_empresa: 'MANUAL',
+          distancia_metros: 0,
+          instruccion: 'REGULACION_MARCHA',
+          mensaje_chofer: manualMensaje,
+          timestamp: new Date().toISOString(),
+          leido: false,
+        },
       });
       toast.success(`Disparo táctico emitido a coche ${manualCocheId}`);
       setShowModal(false);
@@ -808,20 +812,28 @@ const ShadowRadar: React.FC = () => {
       setDoc(
         doc(db, 'alertas_regulacion', docId),
         {
+          id: docId,
           tipo,
           coche_id: ucot.cocheId,
           linea_id: ucot.codigoLinea,
-          empresa_id: empresaPropia,
-          rival_empresa: rivalEmpresa,
-          rival_linea: rivalLinea,
-          rival_coche_id: rivalKey,
-          distancia_metros: rivalPrincipal?.distanciaMetros ?? 0,
-          instruccion,
-          mensaje_chofer: mensaje,
-          timestamp: Timestamp.now(),
-          leido: false,
-          fuente: 'auto_shadow_dispatcher',
-          bucket5min,
+          agency_id: String(empresaPropia),
+          timestamp: new Date().toISOString(),
+          data_jsonb: {
+            tipo,
+            coche_id: ucot.cocheId,
+            linea_id: ucot.codigoLinea,
+            empresa_id: empresaPropia,
+            rival_empresa: rivalEmpresa,
+            rival_linea: rivalLinea,
+            rival_coche_id: rivalKey,
+            distancia_metros: rivalPrincipal?.distanciaMetros ?? 0,
+            instruccion,
+            mensaje_chofer: mensaje,
+            timestamp: new Date().toISOString(),
+            leido: false,
+            fuente: 'auto_shadow_dispatcher',
+            bucket5min,
+          }
         },
         { merge: true },
       ).catch((err) => console.warn('[ShadowDispatcher] No se pudo escribir alerta:', err));
@@ -1288,40 +1300,53 @@ const ShadowRadar: React.FC = () => {
                                   : `Presión competitiva DRO: ${pcs}/100 (HRR×corredor_compartido) — ` +
                                     (pcs < 30 ? 'baja amenaza en corredor' : pcs < 60 ? 'amenaza moderada' : 'amenaza alta — corredor compartido con rival fuerte');
                               return (
-                                <div key={i} className="flex items-center justify-between text-xs bg-slate-900/80 rounded px-2 py-1 border border-slate-800 gap-2">
-                                  <span className="text-red-400 font-bold flex items-center gap-1 min-w-0">
-                                    <ShieldAlert className="w-3 h-3 shrink-0" />
-                                    <span className="truncate">{r.empresa} #{r.cocheId} L{r.codigoLinea}</span>
-                                  </span>
-                                  <div className="flex items-center gap-1.5 shrink-0">
+                                <div key={i} className="flex flex-col gap-1.5 bg-slate-900/90 hover:bg-slate-900 border border-slate-800 rounded-lg p-2.5 transition-all shadow-md relative overflow-hidden">
+                                  {/* Level 1: Identificación Expandida sin Truncamiento */}
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1 min-w-0 flex-1">
+                                      <ShieldAlert className="w-3 h-3 text-red-500 animate-pulse shrink-0" />
+                                      <span className="font-extrabold text-red-400 text-[10px] tracking-tight uppercase truncate max-w-[70px]">
+                                        {r.empresa}
+                                      </span>
+                                      <span className="bg-slate-800 text-white px-1 py-0.5 rounded text-[9px] font-bold border border-slate-700 shrink-0">
+                                        #{r.cocheId}
+                                      </span>
+                                      <span className="bg-red-950/40 text-red-300 px-1 py-0.5 rounded text-[9px] font-black border border-red-900/50 shrink-0">
+                                        L{r.codigoLinea}
+                                      </span>
+                                    </div>
+                                    <span className={`font-mono font-black text-[10px] shrink-0 px-1.5 py-0.5 bg-slate-950/50 rounded border border-slate-800 ${
+                                      r.distanciaMetros < 500 ? 'text-red-400' : 'text-orange-400'
+                                    }`}>
+                                      {r.distanciaMetros}m
+                                    </span>
+                                  </div>
+
+                                  {/* Level 2: Badges Métricas Tácticas */}
+                                  <div className="flex items-center gap-1 pt-1.5 border-t border-slate-800/40 flex-wrap">
                                     <span
-                                      className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold border ${tierColor}`}
+                                      className={`px-1 py-0.5 rounded text-[8px] font-mono font-extrabold border tracking-tight shrink-0 ${tierColor}`}
                                       title={tierTitle}
                                     >
                                       {tierLabel}
                                     </span>
-                                    <span className={`font-mono text-[10px] ${etaColor}`} title={etaTitle}>
-                                      {etaTxt}
+                                    <span className={`font-mono text-[8px] font-bold shrink-0 bg-slate-950 px-1 py-0.5 rounded border border-slate-850 ${etaColor}`} title={etaTitle}>
+                                      ⏳ {etaTxt}
                                     </span>
                                     <span
-                                      className={`font-mono text-[10px] font-black px-1 rounded ${hrrColor} ${hrr === null ? 'bg-transparent' : 'bg-slate-800/80'}`}
+                                      className={`font-mono text-[8px] font-black px-1 py-0.5 rounded border border-slate-850 shrink-0 ${hrrColor} bg-slate-950`}
                                       title={hrrTitle}
                                     >
                                       HRR {hrrTxt}
                                     </span>
                                     {pcs !== null && (
                                       <span
-                                        className={`font-mono text-[9px] font-bold px-1.5 py-0.5 rounded border ${pcsColor}`}
+                                        className={`font-mono text-[8px] font-extrabold px-1 py-0.5 rounded border shrink-0 ${pcsColor}`}
                                         title={pcsTitle}
                                       >
-                                        {pcs}%
+                                        DRO {pcs}%
                                       </span>
                                     )}
-                                    <span className={`font-mono font-bold ${
-                                      r.distanciaMetros < 500 ? 'text-red-400' : 'text-orange-400'
-                                    }`}>
-                                      {r.distanciaMetros}m
-                                    </span>
                                   </div>
                                 </div>
                               );
@@ -1406,14 +1431,34 @@ const ShadowRadar: React.FC = () => {
                     </div>
                     <div className="pl-7">
                       <p className="font-medium opacity-90 line-clamp-2">"{alerta.mensaje_chofer}"</p>
-                      <div className="flex items-center gap-2 mt-2 opacity-70 text-xs">
-                        <span>Coche: {alerta.coche_id}</span>
-                        {alerta.linea_id && <span>| L. {alerta.linea_id}</span>}
+                      {/*
+                        FASE 5.14 (2026-05-13): identificacion explicita del rival.
+                        Antes solo se mostraba el coche propio (UCOT) sin identificar
+                        que operador / linea / coche rival disparo la alerta. Para
+                        que el operador de turno actue, necesita saber A QUIEN tiene
+                        encima — no solo su propia info.
+                      */}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 opacity-80 text-xs">
+                        <span className="flex items-center gap-1">
+                          <span className="text-[10px] uppercase opacity-60">Propio:</span>
+                          <span className="font-semibold">#{alerta.coche_id}</span>
+                          {alerta.linea_id && <span>· L{alerta.linea_id}</span>}
+                        </span>
+                        {(alerta.rival_empresa || alerta.rival_interno || alerta.rival_coche_id) && (
+                          <span className="flex items-center gap-1 text-red-300">
+                            <span className="text-[10px] uppercase opacity-60">Rival:</span>
+                            {alerta.rival_empresa && <span className="font-semibold">{alerta.rival_empresa}</span>}
+                            {(alerta.rival_interno || alerta.rival_coche_id) && (
+                              <span>· #{alerta.rival_interno ?? alerta.rival_coche_id}</span>
+                            )}
+                            {alerta.rival_linea && <span>· L{alerta.rival_linea}</span>}
+                          </span>
+                        )}
                         {alerta.distancia_metros != null && alerta.distancia_metros > 0 && (
-                          <span>| {alerta.distancia_metros}m</span>
+                          <span className="opacity-70">{alerta.distancia_metros}m</span>
                         )}
                         {ackAt && alerta.ack_by_coche_id && (
-                          <span className="text-emerald-400">| ACK por #{alerta.ack_by_coche_id}</span>
+                          <span className="text-emerald-400">ACK por #{alerta.ack_by_coche_id}</span>
                         )}
                       </div>
                     </div>

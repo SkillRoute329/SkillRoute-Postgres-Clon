@@ -1,18 +1,8 @@
 /**
  * Colección mensajes_internos: avisos rápidos Listero ↔ Chofer (y solicitudes como Cambio de Turno).
  */
-import {
-  collection,
-  addDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  getDocs,
-  onSnapshot,
-  Timestamp,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 
 const COL = 'mensajes_internos';
 
@@ -39,77 +29,65 @@ export const MensajesInternosService = {
     servicioId?: string;
     date?: string;
   }): Promise<MensajeInternoEntry> {
-    const ref = await addDoc(collection(db, COL), {
+    const now = new Date().toISOString();
+    const res = await apiClient.post<{ id: string }>(`/api/db/${COL}`, {
       ...params,
-      createdAt: Timestamp.now(),
+      createdAt: now,
     });
-    return { id: ref.id, ...params, createdAt: new Date().toISOString() } as MensajeInternoEntry;
+    return { id: res.data?.id ?? String(Date.now()), ...params, createdAt: now } as MensajeInternoEntry;
   },
 
   async getByUser(uid: string, limitCount = 30): Promise<MensajeInternoEntry[]> {
-    const q = query(
-      collection(db, COL),
-      where('toUserId', '==', uid),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => {
-      const data = d.data();
-      return {
-        id: d.id,
-        fromUserId: String(data.fromUserId || ''),
-        toUserId: String(data.toUserId || ''),
-        tipo: (data.tipo as MensajeInternoEntry['tipo']) || 'aviso',
-        titulo: String(data.titulo || ''),
-        mensaje: String(data.mensaje || ''),
-        servicioId: data.servicioId ? String(data.servicioId) : undefined,
-        date: data.date ? String(data.date) : undefined,
-        readAt: data.readAt ? String(data.readAt) : null,
-        createdAt: (data.createdAt as Timestamp)?.toDate?.()?.toISOString?.() ?? '',
-      } satisfies MensajeInternoEntry;
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: {
+        where: `toUserId:${uid}`,
+        orderBy: 'created_at:desc',
+        limit: limitCount,
+      },
     });
+    return Array.isArray(res.data)
+      ? res.data.map((data) => ({
+          id: data.id as string | undefined,
+          fromUserId: String(data.fromUserId || ''),
+          toUserId: String(data.toUserId || ''),
+          tipo: (data.tipo as MensajeInternoEntry['tipo']) || 'aviso',
+          titulo: String(data.titulo || ''),
+          mensaje: String(data.mensaje || ''),
+          servicioId: data.servicioId ? String(data.servicioId) : undefined,
+          date: data.date ? String(data.date) : undefined,
+          readAt: data.readAt ? String(data.readAt) : null,
+          createdAt: String(data.createdAt || ''),
+        }) satisfies MensajeInternoEntry)
+      : [];
   },
 
+  // FASE 5.34 (2026-05-22): bus socket en lugar de polling 10s.
   subscribeByUser(uid: string, callback: (items: MensajeInternoEntry[]) => void): () => void {
-    const q = query(
-      collection(db, COL),
-      where('toUserId', '==', uid),
-      orderBy('createdAt', 'desc'),
-      limit(50),
+    return subscribeViaBus<MensajeInternoEntry[]>(
+      COL,
+      () => this.getByUser(uid, 50),
+      callback,
+      { alsoListen: ['bus:db:mensajesInternos:any'] },
     );
-    return onSnapshot(q, (snap) => {
-      const list = snap.docs.map((d) => {
-        const data = d.data();
-        return {
-          id: d.id,
-          ...data,
-          createdAt: (data.createdAt as Timestamp)?.toDate?.()?.toISOString?.() ?? '',
-        } as unknown as MensajeInternoEntry;
-      });
-      callback(list);
-    });
   },
 
-  /** Para el Listero: alertas de solicitud de cambio de turno (toUserId 'listero' para que cualquier listero las vea). */
+  /** Para el Listero: alertas de solicitud de cambio de turno. */
+  // FASE 5.35 (2026-05-22): bus socket en lugar de polling 10s.
   subscribeCambioTurnoAlerts(callback: (items: MensajeInternoEntry[]) => void): () => void {
-    const q = query(
-      collection(db, COL),
-      where('toUserId', '==', 'listero'),
-      where('tipo', '==', 'cambio_turno'),
-      orderBy('createdAt', 'desc'),
-      limit(20),
+    return subscribeViaBus<MensajeInternoEntry[]>(
+      COL,
+      async () => {
+        const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+          query: {
+            where: 'toUserId:listero,tipo:cambio_turno',
+            orderBy: 'created_at:desc',
+            limit: 20,
+          },
+        });
+        return Array.isArray(res.data) ? (res.data as unknown as MensajeInternoEntry[]) : [];
+      },
+      callback,
+      { alsoListen: ['bus:db:mensajesInternos:any'] },
     );
-    return onSnapshot(q, (snap) => {
-      const list = snap.docs.map((d) => {
-        const data = d.data();
-        return {
-          id: d.id,
-          ...data,
-          createdAt: (data.createdAt as Timestamp)?.toDate?.()?.toISOString?.() ?? '',
-        } as unknown as MensajeInternoEntry;
-      });
-      callback(list);
-    });
   },
 };

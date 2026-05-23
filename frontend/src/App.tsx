@@ -98,6 +98,12 @@ const AdminTurnosOperativos = lazy(() => import('./pages/admin/ParametrosOperati
 // 2026-04-25: Admin Audit Log — trazabilidad de cambios
 const AdminAuditLog = lazy(() => import('./pages/admin/AdminAuditLog'));
 const MotorConsecuencias = lazy(() => import('./pages/traffic/MotorConsecuencias'));
+const CascadeAudit = lazy(() => import('./pages/admin/CascadeAudit'));
+const MotorConfigPanel = lazy(() => import('./pages/admin/MotorConfigPanel'));
+const AuditoriaRegulatoriaIMM = lazy(() => import('./pages/admin/AuditoriaRegulatoriaIMM'));
+const MiLinea = lazy(() => import('./pages/driver/MiLinea'));
+const OperadoresComparativa = lazy(() => import('./pages/admin/OperadoresComparativa'));
+const MotorHealth = lazy(() => import('./pages/admin/MotorHealth'));
 // Trim+ #69 (2026-04-23): gestión de disrupciones operacionales
 // Migrado a feature-first 2026-04-24 (ADR 002)
 const AdminDisruptionsPage = lazy(() => import('./features/disruptions').then(m => ({ default: m.AdminDisruptionsPage })));
@@ -112,6 +118,7 @@ const Distribution = lazy(() => import('./pages/operations/Distribution'));
 const RotationMatrix = lazy(() => import('./pages/traffic/RotationMatrix'));
 const VehicleCheck = lazy(() => import('./pages/fleet/VehicleCheck'));
 const CompetitorIntelligencePage = lazy(() => import('./pages/traffic/CompetitorIntelligencePage'));
+const AnalisisCriticoCompetencia = lazy(() => import('./pages/traffic/AnalisisCriticoCompetencia'));
 const DiagnosticoEjecutivo = lazy(() => import('./pages/traffic/DiagnosticoEjecutivo'));
 const DigitalAgentsModule = lazy(() => import('./pages/traffic/DigitalAgentsModule'));
 const OTPDashboard = lazy(() => import('./pages/traffic/OTPDashboard'));
@@ -269,6 +276,12 @@ function App() {
                     <Route path="super-admin/centro-mando" element={<PrivateRoute roles={['SUPERADMIN']}><CentroMandoUnificado /></PrivateRoute>} />
                     <Route path="super-admin/gantt-red" element={<PrivateRoute roles={['SUPERADMIN']}><GanttRedMetropolitana /></PrivateRoute>} />
                     <Route path="super-admin/motor-consecuencias" element={<PrivateRoute roles={['SUPERADMIN', 'ADMIN']}><MotorConsecuencias /></PrivateRoute>} />
+                    <Route path="super-admin/cascade-audit" element={<PrivateRoute roles={['SUPERADMIN', 'ADMIN']}><CascadeAudit /></PrivateRoute>} />
+                    <Route path="super-admin/motor-config" element={<PrivateRoute roles={['SUPERADMIN', 'ADMIN']}><MotorConfigPanel /></PrivateRoute>} />
+                    <Route path="super-admin/auditoria-imm" element={<PrivateRoute roles={['SUPERADMIN', 'ADMIN']}><AuditoriaRegulatoriaIMM /></PrivateRoute>} />
+                    <Route path="driver/mi-linea" element={<MiLinea />} />
+                    <Route path="super-admin/operadores" element={<PrivateRoute roles={['SUPERADMIN', 'ADMIN']}><OperadoresComparativa /></PrivateRoute>} />
+                    <Route path="super-admin/motor-health" element={<PrivateRoute roles={['SUPERADMIN', 'ADMIN']}><MotorHealth /></PrivateRoute>} />
 
                     {/* Alertas de Vía (menú Gestión de Flota) */}
                     <Route path="alerts" element={<RoadAlertsPage />} />
@@ -320,6 +333,7 @@ function App() {
                     <Route path="traffic/live-map" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><LiveMapPage /></PrivateRoute>} />
                     <Route path="traffic/shadow-radar" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ShadowRadar /></PrivateRoute>} />
                     <Route path="traffic/competitor-intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CompetitorIntelligencePage /></PrivateRoute>} />
+                    <Route path="traffic/analisis-critico" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><AnalisisCriticoCompetencia /></PrivateRoute>} />
                     <Route path="traffic/diagnostico-ejecutivo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><DiagnosticoEjecutivo /></PrivateRoute>} />
                     {/* Hub: Inteligencia de Corredores + Participación km en tabs */}
                     <Route path="traffic/corridor-intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorredoresHub /></PrivateRoute>} />

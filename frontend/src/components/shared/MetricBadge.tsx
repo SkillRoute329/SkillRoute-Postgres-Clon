@@ -2,7 +2,7 @@
 // SPEC_CUMPLIMIENTO_V2_FRONTEND_2026_05.md §5.1
 
 import { Info } from 'lucide-react';
-import { MetricBadge as BadgeType, MetricUnit } from '../../types/compliance';
+import type { MetricBadge as BadgeType, MetricUnit } from '../../types/compliance';
 
 interface Props {
   value: number | null;

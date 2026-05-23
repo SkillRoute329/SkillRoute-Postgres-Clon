@@ -6,11 +6,11 @@ import { TrafficService } from '../../services/trafficService';
 import { Navigation, AlertTriangle, CloudRain, Shield, AlertOctagon, Locate } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../config/firebase';
-import { collection, onSnapshot, query, where, Timestamp, limit, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, Timestamp, limit, addDoc, serverTimestamp } from '../../config/firestoreShim';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import { getAllLines, getVariants, type GeoLine } from '../../data/geo/lines';
-import { updateDoc, doc } from 'firebase/firestore';
+import { updateDoc, doc } from '../../config/firestoreShim';
 
 // Helper to center map on User
 const RecenterMap = ({ lat, lng }: { lat: number; lng: number }) => {

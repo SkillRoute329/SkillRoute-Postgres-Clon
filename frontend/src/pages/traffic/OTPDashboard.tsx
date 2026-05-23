@@ -11,9 +11,10 @@
  */
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, orderBy, limit, onSnapshot, getDocs, Timestamp } from 'firebase/firestore';
-import { db, authReady } from '../../config/firebase';
+import { collection, query, where, getDocs } from '../../config/firestoreShim';
+import { db } from '../../config/firebase';
 import { useLiveData } from '../../context/LiveDataContext';
+import { fetchHistorySummary, type LineSummary } from '../../services/autoStatsService';
 import {
   TrendingUp,
   TrendingDown,
@@ -28,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import type { OtpSummary } from '../../services/otpService';
+import { hhmmAMin } from '../../utils/formatTimestamp';
 
 /* ─── Types ───────────────────────────────────────────── */
 
@@ -60,10 +62,8 @@ interface OTPLinea {
 
 const TOLERANCIA_MIN = 4; // ±4 minutos = PUNTUAL (POLITICA_OTP_UNIFICADA.md · IMM/TCRP 165)
 
-function horaToMin(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
-  return h * 60 + m;
-}
+// FASE 5.16: delega en utils/formatTimestamp (fuente única). API local intacta.
+const horaToMin = hhmmAMin;
 
 function clasificar(diff: number): OTPClasificacion {
   if (diff < -TOLERANCIA_MIN) return 'ADELANTADO';
@@ -116,130 +116,48 @@ export default function OTPDashboard() {
   const [otpSummaryLines, setOtpSummaryLines] = useState<OtpSummary[]>([]);
 
   useEffect(() => {
+    // FASE 5.8 (2026-05-13): OTPDashboard ahora se alimenta del motor GPS
+    // (auto_stats vía endpoint /api/autostats/history) en lugar de la
+    // colección Firestore `inspections` (que estaba vacía porque no usamos
+    // inspectores manuales — el motor de cumplimiento es autónomo basado en
+    // posición GPS contra horario GTFS oficial, política IMM ±4 min).
     setLoading(true);
     setError(null);
-    let unsubscribe: (() => void) | null = null;
 
-    const processSnapshot = (snap: import('firebase/firestore').QuerySnapshot) => {
-      if (snap.empty) {
-        setRegistros([]);
-        setByLinea([]);
-        setLoading(false);
-        return;
-      }
-
-      // Procesar cada inspección usando los campos reales guardados por InspectorCapture
-      const regs: OTPRegistro[] = [];
-
-      for (const d of snap.docs) {
-        const data = d.data();
-
-        // InspectionService guarda: lineId, scheduledTime, actualPassedAt (Timestamp), timeDeltaMinutes
-        const lineaId: string = ((data.lineId ?? data.lineaId ?? data.linea ?? '') as string);
-        const timeDeltaMinutes: number | null =
-          typeof data.timeDeltaMinutes === 'number' ? data.timeDeltaMinutes : null;
-
-        if (!lineaId || timeDeltaMinutes === null) continue;
-
-        // Convertir actualPassedAt (Timestamp) a HH:MM
-        let horaReal = '';
-        if (data.actualPassedAt instanceof Timestamp) {
-          const dt = data.actualPassedAt.toDate();
-          horaReal = `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
-        }
-        if (!horaReal) continue;
-
-        const scheduledTime: string = (data.scheduledTime ?? '') as string;
-        const clasificacion = clasificar(timeDeltaMinutes);
-        const fecha =
-          data.createdAt instanceof Timestamp
-            ? data.createdAt.toDate().toISOString().split('T')[0]
-            : new Date().toISOString().split('T')[0];
-
-        regs.push({
-          id: d.id,
-          lineaId,
-          lineaNombre: (data.lineaNombre as string | undefined) ?? `Línea ${lineaId}`,
-          servicioId: (data.cartonServiceId ?? data.servicioId) as string | undefined,
-          horaProgramada: scheduledTime || '—',
-          horaReal,
-          diferencia: timeDeltaMinutes,
-          clasificacion,
-          fecha,
-        });
-      }
-
-      setRegistros(regs);
-
-      // Agregar por línea
-      const map = new Map<string, OTPLinea>();
-      for (const r of regs) {
-        if (!map.has(r.lineaId)) {
-          map.set(r.lineaId, {
-            lineaId: r.lineaId,
-            lineaNombre: r.lineaNombre ?? `Línea ${r.lineaId}`,
-            total: 0,
-            puntuales: 0,
-            adelantados: 0,
-            demorados: 0,
-            otp: 0,
-            demora_avg: 0,
-          });
-        }
-        const row = map.get(r.lineaId)!;
-        row.total++;
-        if (r.clasificacion === 'PUNTUAL') row.puntuales++;
-        if (r.clasificacion === 'ADELANTADO') row.adelantados++;
-        if (r.clasificacion === 'DEMORADO') row.demorados++;
-      }
-
-      // Calcular OTP y demora promedio
-      const lineas: OTPLinea[] = [...map.values()].map((l) => {
-        const demorados_data = regs.filter(
-          (r) => r.lineaId === l.lineaId && r.clasificacion === 'DEMORADO',
-        );
-        return {
-          ...l,
-          otp: l.total > 0 ? Math.round(((l.puntuales + l.adelantados) / l.total) * 100) : 0,
-          demora_avg:
-            demorados_data.length > 0
-              ? Math.round(
-                  demorados_data.reduce((s, r) => s + r.diferencia, 0) / demorados_data.length,
-                )
+    fetchHistorySummary(empresaCfg.agencyId, dias)
+      .then((resp) => {
+        const lines: OTPLinea[] = resp.lines.map((l: LineSummary) => {
+          // pctEnTiempo es el % EN_TIEMPO (tolerancia ±4 min). pctAdelantado
+          // y pctAtrasado son los % fuera de tolerancia (signo según dirección).
+          // Convertimos % a conteos absolutos para mantener compatibilidad.
+          const total = l.totalEventos ?? 0;
+          const puntuales = Math.round((total * (l.pctEnTiempo ?? 0)) / 100);
+          const adelantados = Math.round((total * (l.pctAdelantado ?? 0)) / 100);
+          const demorados = Math.round((total * (l.pctAtrasado ?? 0)) / 100);
+          return {
+            lineaId: l.linea,
+            lineaNombre: `Línea ${l.linea}`,
+            total,
+            puntuales,
+            adelantados,
+            demorados,
+            otp: l.pctEnTiempo ?? 0,
+            demora_avg: typeof l.desviacionMediaMin === 'number' && l.desviacionMediaMin > 0
+              ? Math.round(l.desviacionMediaMin)
               : 0,
-        };
+          };
+        });
+        setByLinea(lines);
+        // registros queda como [] — el motor GPS agrega por línea, no por evento individual
+        setRegistros([]);
+        setLoading(false);
+      })
+      .catch((e: unknown) => {
+        console.error('OTP fetchHistorySummary error:', e);
+        setError('No se pudieron cargar los datos de puntualidad GPS.');
+        setLoading(false);
       });
-
-      setByLinea(lineas);
-      setLoading(false);
-    };
-
-    void authReady.then(() => {
-      // Fecha límite
-      const desde = new Date();
-      desde.setDate(desde.getDate() - dias);
-      const desdeTs = Timestamp.fromDate(desde);
-
-      unsubscribe = onSnapshot(
-        query(
-          collection(db, 'inspections'),
-          where('createdAt', '>=', desdeTs),
-          orderBy('createdAt', 'desc'),
-          limit(2000),
-        ),
-        processSnapshot,
-        (e) => {
-          console.error('OTP onSnapshot error:', e);
-          setError('No se pudieron cargar los datos de puntualidad. Verifica la conexión.');
-          setLoading(false);
-        },
-      );
-    });
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [dias, refreshKey, empresaPropia]);
+  }, [dias, refreshKey, empresaPropia, empresaCfg.agencyId]);
 
   // Cargar otp_summary del motor GPS (otpEngine — snap-to-stop real, cada 10 min)
   // Cross-operador: filtra por la empresa actualmente seleccionada
@@ -251,18 +169,19 @@ export default function OTPDashboard() {
       .catch(() => setOtpSummaryLines([]));
   }, [empresaPropia, refreshKey]);
 
-  /* ── KPIs globales ── */
-  const totalReg = registros.length;
-  const puntuales = registros.filter((r) => r.clasificacion === 'PUNTUAL').length;
-  const adelantados = registros.filter((r) => r.clasificacion === 'ADELANTADO').length;
-  const demorados = registros.filter((r) => r.clasificacion === 'DEMORADO').length;
-  const otpGlobal = totalReg > 0 ? Math.round(((puntuales + adelantados) / totalReg) * 100) : 0;
+  /* ── KPIs globales — FASE 5.8: agregamos desde byLinea (motor GPS) ── */
+  const totalReg = byLinea.reduce((s, l) => s + l.total, 0);
+  const puntuales = byLinea.reduce((s, l) => s + l.puntuales, 0);
+  const adelantados = byLinea.reduce((s, l) => s + l.adelantados, 0);
+  const demorados = byLinea.reduce((s, l) => s + l.demorados, 0);
+  // OTP = % EN_TIEMPO (solo puntuales, política IMM/TCRP 165). Adelantados
+  // y atrasados están FUERA de tolerancia — no cuentan como cumplidos.
+  const otpGlobal = totalReg > 0 ? Math.round((puntuales / totalReg) * 100) : 0;
   const demoraAvg =
-    demorados > 0
+    byLinea.length > 0
       ? Math.round(
-          registros
-            .filter((r) => r.clasificacion === 'DEMORADO')
-            .reduce((s, r) => s + r.diferencia, 0) / demorados,
+          byLinea.reduce((s, l) => s + l.demora_avg * l.demorados, 0) /
+            Math.max(1, demorados),
         )
       : 0;
 

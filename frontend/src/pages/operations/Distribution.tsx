@@ -63,6 +63,67 @@ const Distribution = () => {
     }
   };
 
+  // FASE 5.27 (2026-05-19) — Cableado del botón "Asignar Chofer" que estaba
+  // sin onClick. Ahora cumple su cometido: muestra al listero los conductores
+  // disponibles (los que no tienen activeShift hoy), permite elegir uno e
+  // invoca ShiftService.assign — que persiste en backend y propaga al resto
+  // del sistema (tablero del conductor, balances, programación, ranking).
+  const handleAssignDriver = async (shift: Shift) => {
+    const isAssignedToday = (driver: User): boolean => {
+      const did = String(driver.id);
+      const internal = driver.internalNumber ? String(driver.internalNumber) : '';
+      return shifts.some((s) => {
+        const candidates = [
+          (s as { driverId?: string | number }).driverId,
+          (s as { assignedTo?: string | number }).assignedTo,
+          (s as { conductorId?: string | number }).conductorId,
+          (s as { driverInternalNumber?: string | number }).driverInternalNumber,
+        ]
+          .filter((v): v is string | number => v != null)
+          .map(String);
+        return candidates.includes(did) || (internal !== '' && candidates.includes(internal));
+      });
+    };
+    const available = drivers.filter((d) => !isAssignedToday(d));
+    if (available.length === 0) {
+      alert(
+        'No hay conductores disponibles para asignar.\nVerificá ausencias y licencias del día.',
+      );
+      return;
+    }
+    const lista = available
+      .slice(0, 30)
+      .map((d, i) => {
+        const label = (d as { fullName?: string; name?: string }).fullName
+          ?? (d as { fullName?: string; name?: string }).name
+          ?? String(d.id);
+        const int = d.internalNumber ? ` (Int ${d.internalNumber})` : '';
+        return `${i + 1}. ${label}${int}`;
+      })
+      .join('\n');
+    const pick = window.prompt(
+      `Asignar chofer al Servicio ${shift.serviceNumber} (Coche ${shift.carNumber || '???'}).\n\n` +
+        `Conductores disponibles hoy:\n${lista}\n\n` +
+        `Ingresá el número (1-${Math.min(available.length, 30)}):`,
+    );
+    if (pick == null || pick.trim() === '') return;
+    const idx = Number(pick) - 1;
+    if (!Number.isInteger(idx) || idx < 0 || idx >= available.length) {
+      alert('Selección inválida.');
+      return;
+    }
+    const driver = available[idx];
+    try {
+      await ShiftService.assign(shift.id as string, driver.id as string);
+      alert(
+        `Asignado ${(driver as { fullName?: string }).fullName ?? driver.id} → Servicio ${shift.serviceNumber}.`,
+      );
+      await loadData();
+    } catch (e) {
+      alert('No se pudo asignar el chofer: ' + String(e).slice(0, 200));
+    }
+  };
+
   const handleGenerateDailyShifts = async () => {
     if (
       !confirm(
@@ -350,7 +411,10 @@ const Distribution = () => {
                         Línea {shift.line} • {shift.category}
                       </p>
 
-                      <button className="mt-3 w-full py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded flex items-center justify-center gap-1 transition-colors shadow-lg shadow-amber-900/20">
+                      <button
+                        onClick={() => handleAssignDriver(shift)}
+                        className="mt-3 w-full py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded flex items-center justify-center gap-1 transition-colors shadow-lg shadow-amber-900/20"
+                      >
                         <UserX className="w-3 h-3" /> Asignar Chofer
                       </button>
                     </div>

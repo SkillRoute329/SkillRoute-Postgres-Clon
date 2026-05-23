@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import StatsWidget from '../components/StatsWidget';
 import { useAuth } from '../context/AuthContext';
 import { useLiveData } from '../context/LiveDataContext';
+import { apiClient } from '../clients/apiClient';
 import ExcelUploader from '../components/ExcelUploader';
 import VehicleCheckModal from '../components/VehicleCheckModal';
 import {
@@ -74,19 +75,25 @@ function PanelOperacional() {
   useEffect(() => {
     const fecha = new Date().toISOString().split('T')[0];
 
-    fetch(`/api/listero/resumen?fecha=${fecha}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d?.resumen) setResumen(d.resumen); })
-      .catch(() => {})
+    // FASE 5.38 (2026-05-22): apiClient agrega Bearer token automáticamente.
+    // Antes hacía fetch crudo y devolvía 401 silencioso → KPIs en cero.
+    apiClient
+      .get<{ resumen: ResumenDiario }>(`/api/listero/resumen`, { query: { fecha } })
+      .then((res) => {
+        const r = (res as unknown as { resumen?: ResumenDiario })?.resumen ?? res.data?.resumen;
+        if (r) setResumen(r);
+      })
+      .catch(() => { /* silencioso — el dashboard se queda con valores en cero */ })
       .finally(() => setLoading(false));
 
-    // Solo cargar alertas del endpoint si el contexto no tiene ninguna
-    fetch(`/api/listero/alertas?fecha=${fecha}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.alertas && alertasVivas.length === 0) setAlertas(d.alertas.slice(0, 5));
+    type _Alerta = { id: string; urgencia: string; titulo: string; mensaje: string };
+    apiClient
+      .get<{ alertas: _Alerta[] }>(`/api/listero/alertas`, { query: { fecha } })
+      .then((res) => {
+        const a = (res as unknown as { alertas?: _Alerta[] })?.alertas ?? res.data?.alertas;
+        if (a && alertasVivas.length === 0) setAlertas(a.slice(0, 5));
       })
-      .catch(() => {});
+      .catch(() => { /* silencioso */ });
   }, []);
 
   const URGENCIA_COLOR: Record<string, string> = {

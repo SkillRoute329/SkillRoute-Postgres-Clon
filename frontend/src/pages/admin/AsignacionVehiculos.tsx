@@ -18,7 +18,7 @@ import {
   getDocs,
   updateDoc,
   doc,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import {
   Bus,

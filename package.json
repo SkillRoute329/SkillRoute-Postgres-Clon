@@ -7,7 +7,7 @@
     "install:all": "cd frontend && npm install && cd ../backend && npm install",
     "build": "cd frontend && npm install && npm run build && cd ../backend && npm install && npm run build",
     "start": "npm run install:all && concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"node scripts/open-browser.js\"",
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run bridge\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "bridge": "node src/services/intelligence/bridge-server.js",

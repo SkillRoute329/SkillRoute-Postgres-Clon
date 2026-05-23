@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BarChart3, Clock, TrendingUp, AlertTriangle, Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs } from '../config/firestoreShim';
 import { db } from '../config/firebase';
 import { InspectionService, FleetService } from '../services/api';
 

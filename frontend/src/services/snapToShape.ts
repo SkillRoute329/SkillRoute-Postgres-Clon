@@ -13,16 +13,7 @@
  * Los helpers de carga (loadShape, findOverlappingCorridors) viven al final
  * y sí usan Firestore; se exportan aparte para poder mockearlos.
  */
-import {
-  collection,
-  query,
-  where,
-  limit,
-  getDocs,
-  doc,
-  getDoc,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 
 // ─── Tipos exportados ─────────────────────────────────────────────────────────
 
@@ -201,9 +192,8 @@ export async function loadShape(
   sentido: Sentido,
 ): Promise<ShapeDoc | null> {
   const key = `${agencyId}-${linea}-${sentido}`;
-  const snap = await getDoc(doc(db, 'shapes_cross_operator', key));
-  if (!snap.exists()) return null;
-  const d = snap.data();
+  const d = await apiClient.get('/api/db/shapes_cross_operator/' + encodeURIComponent(key)) as any;
+  if (!d) return null;
   return {
     key: String(d.key ?? key),
     agencyId: String(d.agencyId),
@@ -224,17 +214,14 @@ export async function findOverlappingCorridors(
   shapeAKey: string,
   opts?: { includeSameEmpresa?: boolean },
 ): Promise<CorridorOverlapDoc[]> {
-  const q = query(
-    collection(db, 'corridor_overlap'),
-    where('shapeAKey', '==', shapeAKey),
-    limit(500),
-  );
-  const snap = await getDocs(q);
+  const raw = await apiClient.get('/api/db/corridor_overlap', {
+    query: { where: `shapeAKey:${shapeAKey}`, limit: 500 },
+  }) as any[];
+  const arr = Array.isArray(raw) ? raw : [];
   const out: CorridorOverlapDoc[] = [];
-  for (const docSnap of snap.docs) {
-    const d = docSnap.data() as CorridorOverlapDoc;
+  for (const d of arr) {
     if (!opts?.includeSameEmpresa && d.sameEmpresa) continue;
-    out.push(d);
+    out.push(d as CorridorOverlapDoc);
   }
   return out;
 }
@@ -246,27 +233,24 @@ export async function findOverlappingCorridors(
 export async function loadShapesBulk(keys: string[]): Promise<Map<string, ShapeDoc>> {
   const result = new Map<string, ShapeDoc>();
   if (keys.length === 0) return result;
-  const chunks: string[][] = [];
-  for (let i = 0; i < keys.length; i += 30) chunks.push(keys.slice(i, i + 30));
-
-  for (const chunk of chunks) {
-    const q = query(
-      collection(db, 'shapes_cross_operator'),
-      where('key', 'in', chunk),
-    );
-    const snap = await getDocs(q);
-    for (const docSnap of snap.docs) {
-      const d = docSnap.data();
-      result.set(String(d.key), {
-        key: String(d.key),
-        agencyId: String(d.agencyId),
-        empresa: String(d.empresa),
-        linea: String(d.linea),
-        sentido: d.sentido as Sentido,
-        points: (d.points ?? []) as LatLon[],
-        lengthMeters: Number(d.lengthMeters ?? 0),
-      });
-    }
+  // Fetch all and filter client-side (REST backend may not support 'in' operator)
+  const raw = await apiClient.get('/api/db/shapes_cross_operator', {
+    query: { limit: 5000 },
+  }) as any[];
+  const arr = Array.isArray(raw) ? raw : [];
+  const keySet = new Set(keys);
+  for (const d of arr) {
+    const k = String(d.key ?? d.id ?? '');
+    if (!keySet.has(k)) continue;
+    result.set(k, {
+      key: k,
+      agencyId: String(d.agencyId),
+      empresa: String(d.empresa),
+      linea: String(d.linea),
+      sentido: d.sentido as Sentido,
+      points: (d.points ?? []) as LatLon[],
+      lengthMeters: Number(d.lengthMeters ?? 0),
+    });
   }
   return result;
 }

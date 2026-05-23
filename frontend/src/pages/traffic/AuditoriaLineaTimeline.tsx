@@ -376,19 +376,48 @@ function PasadasHuerfanas({ pasadas }: { pasadas: PasadaGPS[] }) {
   for (const p of pasadas) {
     (porBus[p.idBus] ||= []).push(p);
   }
-  const buses = Object.entries(porBus).sort((a, b) => b[1].length - a[1].length);
-  // Ordenar pasadas por hora dentro de cada bus
-  for (const [, ps] of buses) ps.sort((a, b) => a.tReal - b.tReal);
+  
+  // Depurar ruidos de GPS repetidos para el mismo bus en la misma parada en ventana de 2.5 minutos
+  const busesOriginales = Object.entries(porBus).sort((a, b) => b[1].length - a[1].length);
+  const buses = busesOriginales.map(([idBus, ps]) => {
+    // Ordenar cronológicamente
+    ps.sort((a, b) => a.tReal - b.tReal);
+    
+    const unicas: PasadaGPS[] = [];
+    let ultima: PasadaGPS | null = null;
+    
+    for (const p of ps) {
+      if (
+        ultima &&
+        ultima.proximaParada === p.proximaParada &&
+        Math.abs(p.tReal - ultima.tReal) <= 2.5
+      ) {
+        // Conservamos la lectura con mayor desviación absoluta para reflejar el pico más representativo
+        if (Math.abs(p.desv) > Math.abs(ultima.desv)) {
+          unicas[unicas.length - 1] = p;
+          ultima = p;
+        }
+        continue;
+      }
+      unicas.push(p);
+      ultima = p;
+    }
+    return [idBus, unicas] as [string, PasadaGPS[]];
+  });
+
+  const totalOriginales = pasadas.length;
+  const totalDepuradas = buses.reduce((sum, b) => sum + b[1].length, 0);
 
   return (
     <div className="mt-4 bg-slate-900/40 border border-yellow-700/30 rounded-xl overflow-hidden">
       <div className="px-4 py-2.5 bg-yellow-900/15 border-b border-yellow-700/20 flex items-center gap-2">
         <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
-        <p className="text-[11px] text-yellow-200/90 leading-relaxed">
-          <span className="font-bold">{pasadas.length} {pasadas.length === 1 ? 'pasada GPS sin asociar' : 'pasadas GPS sin asociar'}</span>
-          {' — '}eventos detectados fuera de la ventana ±12 min de cualquier viaje programado
-          (ej. en gaps entre servicios, primera/última hora del día).
-          Igual los mostramos para no esconder ningún registro.
+        <p className="text-[11px] text-yellow-200/90 leading-relaxed flex-1">
+          <span className="font-bold">{totalDepuradas} pasadas físicas detectadas</span>
+          {totalOriginales > totalDepuradas && (
+            <span className="text-[10px] text-yellow-400/70 ml-1.5 italic">({totalOriginales - totalDepuradas} pings de GPS redundantes depurados)</span>
+          )}
+          {' — '}eventos agrupados por parada en ventana de 2.5 min. Mostramos la desviación más crítica para evitar confusión.
         </p>
       </div>
       <div className="overflow-x-auto overflow-y-auto max-h-[40vh]">

@@ -23,7 +23,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   collection, query, where, getDocs, orderBy, limit, Timestamp,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { useEmpresaPropia, EMPRESAS_OPCIONES } from '../../hooks/useEmpresaPropia';

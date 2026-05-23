@@ -2,7 +2,7 @@
  * Tipos para la colección Firestore lineas_ucot (Navegador UCOT).
  * Esquema 12.4 — fuente: API Montevideo + desvíos locales.
  */
-import type { Timestamp } from 'firebase/firestore';
+import type { Timestamp } from '../config/firestoreShim';
 
 export interface ParadaUcot {
   id: string;

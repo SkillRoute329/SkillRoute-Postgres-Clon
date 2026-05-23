@@ -17,6 +17,7 @@ import 'leaflet/dist/leaflet.css';
 import type { LineaUCOT, PuntoLatLng } from '../../types/lineasUcot';
 import type { DesvioGuardado } from '../../services/desviosService';
 import type { BusLive } from '../../hooks/useLiveBusesByLine';
+import { splitIntoSegments } from '../../utils/tacticalGeom';
 
 function MapClickHandler({ onMapClick }: { onMapClick?: (lat: number, lng: number) => void }) {
   useMapEvents({
@@ -186,10 +187,10 @@ export default function RouteMap({
     );
   }
 
-  // Filtrar puntos inválidos (lat=0,lng=0) ANTES de dibujar la polyline
-  const positions = (linea?.recorrido ?? [])
-    .filter(isValidPoint)
-    .map((p) => [p.lat, p.lng] as [number, number]);
+  // Filtrar puntos inválidos y dividir en segmentos contiguos para evitar zig-zags
+  const basePoints = (linea?.recorrido ?? []).filter(isValidPoint);
+  const segments = splitIntoSegments(basePoints);
+  const positions = segments.map((seg) => seg.map((p) => [p.lat, p.lng] as [number, number]));
   const desviosActivosFijos = linea?.desviosFijos.filter((d) => d.activo) ?? [];
   const desviosActivosTemp = linea?.desviosTemporales.filter((d) => d.activo) ?? [];
 

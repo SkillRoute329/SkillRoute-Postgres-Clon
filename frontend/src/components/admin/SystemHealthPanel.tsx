@@ -7,7 +7,7 @@ import {
   getCountFromServer,
   collection,
   serverTimestamp,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 

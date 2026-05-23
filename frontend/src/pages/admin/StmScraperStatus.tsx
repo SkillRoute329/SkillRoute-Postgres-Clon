@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, orderBy, onSnapshot, limit, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, limit, Timestamp } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { Activity, Database, Clock, ArrowDownToLine, ServerCrash } from 'lucide-react';
 import toast from 'react-hot-toast';

@@ -20,7 +20,7 @@ import {
   where,
   getDocs,
   Timestamp,
-} from 'firebase/firestore';
+} from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import {

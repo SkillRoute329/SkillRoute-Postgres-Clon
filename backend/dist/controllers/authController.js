@@ -9,7 +9,7 @@ const authService_1 = require("../services/authService");
 /**
  * POST /api/auth/login
  */
-async function login(req, res) {
+async function login(req, res, next) {
     try {
         const { internalNumber, password } = req.body;
         const loginResponse = await (0, authService_1.authenticateUser)({
@@ -24,8 +24,8 @@ async function login(req, res) {
         res.json(response);
     }
     catch (error) {
-        // El error será capturado por el error handler middleware
-        throw error;
+        // Pasar el error al middleware de error global para no tumbar node
+        next(error);
     }
 }
 /**

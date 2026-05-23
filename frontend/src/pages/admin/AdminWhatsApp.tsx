@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Search, MessageCircle, ExternalLink } from 'lucide-react';
+import { apiClient } from '../../clients/apiClient';
 
 const AdminWhatsApp = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    fetch('/api/users')
-      .then((res) => res.json())
+    // FASE 5.39 (2026-05-23): usar apiClient para incluir Authorization
+    // (antes fetch('/api/users') daba 401 silencioso y la pantalla
+    // mostraba 0 contactos sin diagnóstico).
+    apiClient
+      .get('/api/users')
       .then((data) => {
         if (Array.isArray(data)) {
           setUsers(data);

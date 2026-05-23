@@ -40,6 +40,8 @@ import {
   PieChart,
   Navigation,
   CheckSquare,
+  Sliders,
+  Building2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
@@ -92,6 +94,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       items: [
         { path: '/dashboard/traffic/ceo',                     label: 'Centro de Mando',       icon: TrendingUp },
         { path: '/dashboard/traffic/competitor-intelligence', label: 'Radar de Competencia',   icon: Radar      },
+        { path: '/dashboard/traffic/analisis-critico',        label: 'Simulador Táctico',     icon: Sliders    },
         { path: '/dashboard/traffic/diagnostico-ejecutivo',   label: 'Diagnóstico Ejecutivo',  icon: ClipboardList },
         // Hub: Corredores + Market Share + Penetración + Analytics + Headway
         { path: '/dashboard/traffic/corridor-intelligence',   label: 'Inteligencia Cross-Op.', icon: Network    },
@@ -140,6 +143,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         { path: '/dashboard/super-admin/gantt-red',      label: 'Gantt Red (SA)',           icon: Network    },
         // Motor de Consecuencias — grafo operativo
         { path: '/dashboard/super-admin/motor-consecuencias', label: 'Motor Consecuencias', icon: Zap        },
+        { path: '/dashboard/super-admin/cascade-audit',       label: 'Auditoría Cascada',   icon: Activity   },
+        { path: '/dashboard/super-admin/motor-config',        label: 'Config Motor',        icon: Sliders    },
+        { path: '/dashboard/super-admin/auditoria-imm',       label: 'Reporte IMM',         icon: FileText   },
+        { path: '/dashboard/super-admin/operadores',          label: 'Operadores',          icon: Building2  },
+        { path: '/dashboard/super-admin/motor-health',        label: 'Salud del Motor',     icon: Zap        },
       ],
     },
 
@@ -147,6 +155,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     {
       title: 'Mi Espacio',
       items: [
+        { path: '/dashboard/driver/mi-linea',   label: 'Mi Línea',         icon: Bus          },
         { path: '/dashboard/driver/compliance', label: 'Mi Rendimiento',  icon: Activity     },
         { path: '/dashboard/market',            label: 'Bolsa de Trabajo', icon: ShoppingCart },
         { path: '/dashboard/my-balance',        label: 'Mi Cuenta',        icon: Wallet       },

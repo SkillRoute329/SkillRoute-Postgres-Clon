@@ -1,14 +1,5 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  setDoc,
-  addDoc,
-  query,
-  orderBy,
-  onSnapshot,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 import type { PersonalRotacion } from '../../types/rotation';
 
 const COL = 'personal';
@@ -36,15 +27,17 @@ function mapPersonal(id: string, data: Record<string, unknown>): PersonalRotacio
 
 export const PersonalRotationService = {
   async getAll(): Promise<PersonalRotacion[]> {
-    const snap = await getDocs(query(collection(db, COL), orderBy('internalNumber', 'asc')));
-    return snap.docs.map((d) => mapPersonal(d.id, { ...d.data() }));
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { orderBy: 'internal_number:asc', limit: 5000 },
+    });
+    return Array.isArray(res.data)
+      ? res.data.map((d) => mapPersonal((d.id as string) ?? '', { ...d }))
+      : [];
   },
 
-  subscribe(callback: (personal: PersonalRotacion[]) => void) {
-    const q = query(collection(db, COL), orderBy('internalNumber', 'asc'));
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map((d) => mapPersonal(d.id, { ...d.data() })));
-    });
+  // FASE 5.35 (2026-05-22): bus socket en lugar de polling 10s.
+  subscribe(callback: (personal: PersonalRotacion[]) => void): () => void {
+    return subscribeViaBus<PersonalRotacion[]>(COL, () => this.getAll(), callback);
   },
 
   async getByCocheFijo(cocheInternalNumber: string): Promise<PersonalRotacion[]> {
@@ -63,12 +56,14 @@ export const PersonalRotationService = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    const ref = await addDoc(collection(db, COL), payload);
-    return { ...data, id: ref.id } as PersonalRotacion;
+    const res = await apiClient.post<{ id: string }>(`/api/db/${COL}`, payload);
+    return { ...data, id: res.data?.id ?? String(Date.now()) } as PersonalRotacion;
   },
 
   async update(id: string, data: Partial<PersonalRotacion>): Promise<void> {
-    const ref = doc(db, COL, id);
-    await setDoc(ref, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(id)}`, {
+      ...data,
+      updatedAt: new Date().toISOString(),
+    });
   },
 };

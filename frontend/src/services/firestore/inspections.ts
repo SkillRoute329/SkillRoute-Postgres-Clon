@@ -1,14 +1,5 @@
-import {
-  collection,
-  getDocs,
-  addDoc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  Timestamp,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 import type { Inspection, InspectionCreate } from '../../types/inspections';
 
 const COL = 'inspections';
@@ -29,33 +20,34 @@ function mapDoc(id: string, data: Record<string, unknown>): Inspection {
   };
 }
 
-/** Payload para crear inspección: actualPassedAt puede ser Timestamp o ms (number) */
+/** Payload para crear inspección: actualPassedAt puede ser un número (ms) o ISO string */
 type CreatePayload = Omit<InspectionCreate, 'actualPassedAt'> & {
-  actualPassedAt: Timestamp | number;
+  actualPassedAt: number | string;
 };
 
 export const InspectionService = {
   async create(data: CreatePayload): Promise<Inspection> {
+    // Normalize actualPassedAt to ISO string for REST backend
     const actualPassedAt =
-      data.actualPassedAt instanceof Timestamp
-        ? data.actualPassedAt
-        : Timestamp.fromMillis(
-            typeof data.actualPassedAt === 'number' ? data.actualPassedAt : Date.now(),
-          );
+      typeof data.actualPassedAt === 'number'
+        ? new Date(data.actualPassedAt).toISOString()
+        : data.actualPassedAt;
     const payload = {
       ...data,
       actualPassedAt,
-      createdAt: Timestamp.now(),
+      createdAt: new Date().toISOString(),
     };
-    const ref = await addDoc(collection(db, COL), payload);
-    return mapDoc(ref.id, { ...payload, id: ref.id });
+    const res = await apiClient.post<{ id: string }>(`/api/db/${COL}`, payload);
+    return mapDoc(res.data?.id ?? String(Date.now()), { ...payload, id: res.data?.id });
   },
 
   async getAll(filters?: { serviceDate?: string; lineId?: string }): Promise<Inspection[]> {
-    const colRef = collection(db, COL);
-    const q = query(colRef, orderBy('actualPassedAt', 'desc'));
-    const snap = await getDocs(q);
-    let list = snap.docs.map((d) => mapDoc(d.id, { ...d.data(), id: d.id }));
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { orderBy: 'actual_passed_at:desc', limit: 5000 },
+    });
+    let list = Array.isArray(res.data)
+      ? res.data.map((d) => mapDoc((d.id as string) ?? '', { ...d }))
+      : [];
     if (filters?.serviceDate) list = list.filter((i) => i.serviceDate === filters.serviceDate);
     if (filters?.lineId) list = list.filter((i) => i.lineId === filters.lineId);
     return list;
@@ -63,51 +55,48 @@ export const InspectionService = {
 
   /** Inspecciones de un cartón/servicio para análisis cruzado (motor de alertas). */
   async getByCartonServiceId(cartonServiceId: string): Promise<Inspection[]> {
-    const colRef = collection(db, COL);
-    const q = query(colRef, where('cartonServiceId', '==', cartonServiceId));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => mapDoc(d.id, { ...d.data(), id: d.id }));
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: { where: `cartonServiceId:${cartonServiceId}`, limit: 5000 },
+    });
+    return Array.isArray(res.data)
+      ? res.data.map((d) => mapDoc((d.id as string) ?? '', { ...d }))
+      : [];
   },
 
   /**
    * Inspecciones de un día (y opcionalmente una línea) para Control Inspectores.
-   * Usado para cargar y actualizar la matriz del día en tiempo real.
    */
   async getForDate(serviceDate: string, lineId?: string): Promise<Inspection[]> {
-    const colRef = collection(db, COL);
-    const constraints = lineId
-      ? [
-          where('serviceDate', '==', serviceDate),
-          where('lineId', '==', lineId),
-          orderBy('actualPassedAt', 'asc'),
-        ]
-      : [where('serviceDate', '==', serviceDate), orderBy('actualPassedAt', 'asc')];
-    const q = query(colRef, ...constraints);
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => mapDoc(d.id, { ...d.data(), id: d.id }));
+    const whereParts = [`serviceDate:${serviceDate}`];
+    if (lineId) whereParts.push(`lineId:${lineId}`);
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, {
+      query: {
+        where: whereParts.join(','),
+        orderBy: 'actual_passed_at:asc',
+        limit: 5000,
+      },
+    });
+    return Array.isArray(res.data)
+      ? res.data.map((d) => mapDoc((d.id as string) ?? '', { ...d }))
+      : [];
   },
 
   /**
    * Suscripción en tiempo real a inspecciones del día (y opcionalmente línea).
    * Retorna función de limpieza (unsubscribe).
+   * TODO FASE 4.5: optimizar a Socket.io cuando el backend emita evento firestore:inspections
    */
+  // FASE 5.34 (2026-05-22): bus socket en lugar de polling 10s.
   subscribeForDate(
     serviceDate: string,
     lineId: string | undefined,
     callback: (inspections: Inspection[]) => void,
   ): () => void {
-    const colRef = collection(db, COL);
-    const constraints = lineId
-      ? [
-          where('serviceDate', '==', serviceDate),
-          where('lineId', '==', lineId),
-          orderBy('actualPassedAt', 'asc'),
-        ]
-      : [where('serviceDate', '==', serviceDate), orderBy('actualPassedAt', 'asc')];
-    const q = query(colRef, ...constraints);
-    return onSnapshot(q, (snap) => {
-      const list = snap.docs.map((d) => mapDoc(d.id, { ...d.data(), id: d.id }));
-      callback(list);
-    });
+    return subscribeViaBus<Inspection[]>(
+      COL,
+      () => this.getForDate(serviceDate, lineId),
+      callback,
+      { alsoListen: ['bus:db:inspecciones:any'] },
+    );
   },
 };

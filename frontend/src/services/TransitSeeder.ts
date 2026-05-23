@@ -1,5 +1,4 @@
-import { collection, getDocs, doc, writeBatch, Timestamp } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { apiClient } from '../clients/apiClient';
 import type { DailyShift, ServiceDefinition } from '../types/traffic';
 import type { ParsedData } from '../utils/ExcelParserV2';
 
@@ -19,30 +18,28 @@ export const TransitSeeder = {
     console.log('TransitSeeder: Loading Master Indices...');
     try {
       // Users Index (by internalNumber/legajo)
-      const usersSnap = await getDocs(collection(db, 'users'));
-      usersSnap.forEach((d) => {
-        const data = d.data();
+      const usersRaw = await apiClient.get('/api/db/users', { query: { limit: 5000 } }) as any[];
+      (Array.isArray(usersRaw) ? usersRaw : []).forEach((data: any) => {
         const legajo = String(data.datos_empresa?.legajo || data.internalNumber || '').trim();
         const name =
           `${data.datos_personales?.nombre || ''} ${data.datos_personales?.apellido || ''}`.trim();
         if (legajo) {
-          _usersIndex[legajo] = { uid: d.id, name: name || 'Usuario Sin Nombre' };
+          _usersIndex[legajo] = { uid: data.id, name: name || 'Usuario Sin Nombre' };
         }
       });
 
       // Vehicles Index (by number)
-      const vehiclesSnap = await getDocs(collection(db, 'vehicles'));
-      vehiclesSnap.forEach((d) => {
-        const data = d.data();
+      const vehiclesRaw = await apiClient.get('/api/db/vehicles', { query: { limit: 5000 } }) as any[];
+      (Array.isArray(vehiclesRaw) ? vehiclesRaw : []).forEach((data: any) => {
         const num = String(data.vehicleNumber || data.unitNumber || '').trim();
         if (num) {
-          _vehiclesIndex[num] = { id: d.id, status: data.status || 'OK' };
+          _vehiclesIndex[num] = { id: data.id, status: data.status || 'OK' };
         }
       });
 
       _cacheLoaded = true;
       console.log(
-        `TransitSeeder: Indexed ${_usersIndex.length} users and ${_vehiclesIndex.length} vehicles.`,
+        `TransitSeeder: Indexed ${Object.keys(_usersIndex).length} users and ${Object.keys(_vehiclesIndex).length} vehicles.`,
       );
     } catch (e) {
       console.warn('TransitSeeder: Failed to load indices (Offline?)', e);
@@ -58,8 +55,6 @@ export const TransitSeeder = {
     forceDate?: string,
   ): Promise<{ success: boolean; message: string }> {
     await this.loadMasterIndices();
-
-    const _timestamp = new Date();
 
     try {
       switch (parsedData.type) {
@@ -85,12 +80,12 @@ export const TransitSeeder = {
     }
   },
 
-  /** Máximo de operaciones por batch (límite Firestore). */
-  BATCH_SIZE: 500,
+  /** Máximo de operaciones por lote paralelo. */
+  BATCH_SIZE: 50,
 
   /**
    * B. IMPORT SERVICE DEFINITIONS (Cartones)
-   * Escribe en service_definitions y en colección cartones (esquema UCOT) en chunks de 500.
+   * Escribe en service_definitions y en colección cartones (esquema UCOT) en lotes paralelos.
    */
   async importServiceDefinitions(parsedData: ParsedData) {
     const services = parsedData.services;
@@ -99,10 +94,7 @@ export const TransitSeeder = {
     let count = 0;
     for (let offset = 0; offset < services.length; offset += this.BATCH_SIZE) {
       const chunk = services.slice(offset, offset + this.BATCH_SIZE);
-      const batch = writeBatch(db);
-
-      for (const svc of chunk) {
-        const docRef = doc(db, 'service_definitions', String(svc.serviceNumber));
+      await Promise.all(chunk.map(async (svc) => {
         const def: ServiceDefinition = {
           serviceNumber: svc.serviceNumber,
           lineCode: svc.lineCode,
@@ -115,13 +107,12 @@ export const TransitSeeder = {
           headers: svc.stops || [],
           rawMatrix: svc.fullSchedule || [],
         };
-        batch.set(docRef, def);
+        await apiClient.put('/api/db/service_definitions/' + encodeURIComponent(String(svc.serviceNumber)), def);
         count++;
-      }
-      await batch.commit();
+      }));
     }
 
-    // 5.3 — Escribir también en colección cartones (id: servicioId_minuta). Minuta según día: HABILES | SABADEROS | FESTIVOS.
+    // Escribir también en colección cartones
     const dayType = (parsedData as { dayType?: string }).dayType?.toUpperCase() ?? '';
     const minuta =
       dayType === 'SABADO'
@@ -131,11 +122,12 @@ export const TransitSeeder = {
           : parsedData.type === 'CARTON'
             ? 'HABILES'
             : 'HABILES';
+
     let cartonesCount = 0;
+    const now = new Date().toISOString();
     for (let offset = 0; offset < services.length; offset += this.BATCH_SIZE) {
       const chunk = services.slice(offset, offset + this.BATCH_SIZE);
-      const batch = writeBatch(db);
-      for (const svc of chunk) {
+      await Promise.all(chunk.map(async (svc) => {
         const docId = `${svc.serviceNumber}_${minuta}`;
         let stopNames = (svc.stops || []).map((s: string) => String(s).trim()).filter(Boolean);
         const schedule = svc.fullSchedule || [];
@@ -143,14 +135,12 @@ export const TransitSeeder = {
           const firstRow = schedule[0]?.checkpoints ?? [];
           stopNames = firstRow.map((_: string, i: number) => `Punto ${i + 1}`);
         }
-        // Construcción del array paradas: una entrada por columna (parada), tiempos = columna de cada viaje en HH:mm
         const paradas = stopNames.map((nombre: string, colIdx: number) => ({
           nombre,
           tiempos: schedule.map(
             (trip: { checkpoints?: string[] }) => trip.checkpoints?.[colIdx] ?? '--:--',
           ),
         }));
-        const firstRow = svc.fullSchedule?.[0];
         const turnos = (svc.fullSchedule || []).slice(0, 3).map((trip, i) => ({
           numero: (i + 1) as 1 | 2 | 3,
           inicio: trip.startTime || '--:--',
@@ -158,36 +148,31 @@ export const TransitSeeder = {
           duracion: '',
           primerPunto: paradas[0]?.nombre || '',
         }));
-        batch.set(
-          doc(db, 'cartones', docId),
-          {
-            servicio: String(svc.serviceNumber),
-            linea: svc.lineCode || '',
-            minuta,
-            nombre: `Cartón ${svc.serviceNumber} ${minuta}`,
-            paradas,
-            turnos,
-            totalHoras:
-              svc.totalHours ||
-              (svc.durationMinutes
-                ? `${Math.floor(svc.durationMinutes / 60)}:${String(svc.durationMinutes % 60).padStart(2, '0')}`
-                : ''),
-            kilometros: svc.kilometers || '',
-            temporada: 'VERANO_2026', // Requerido para filtro AdminCartones
-            tipo_dia:
-              dayType === 'SABADO'
-                ? 'SABADO'
-                : dayType === 'DOMINGO' || dayType === 'FESTIVO'
-                  ? 'DOMINGO'
-                  : 'HABIL',
-            vigenciaDesde: Timestamp.now(),
-            creadoEn: Timestamp.now(),
-          },
-          { merge: true },
-        );
+        await apiClient.put('/api/db/cartones/' + encodeURIComponent(docId), {
+          servicio: String(svc.serviceNumber),
+          linea: svc.lineCode || '',
+          minuta,
+          nombre: `Cartón ${svc.serviceNumber} ${minuta}`,
+          paradas,
+          turnos,
+          totalHoras:
+            svc.totalHours ||
+            (svc.durationMinutes
+              ? `${Math.floor(svc.durationMinutes / 60)}:${String(svc.durationMinutes % 60).padStart(2, '0')}`
+              : ''),
+          kilometros: svc.kilometers || '',
+          temporada: 'VERANO_2026',
+          tipo_dia:
+            dayType === 'SABADO'
+              ? 'SABADO'
+              : dayType === 'DOMINGO' || dayType === 'FESTIVO'
+                ? 'DOMINGO'
+                : 'HABIL',
+          vigenciaDesde: now,
+          creadoEn: now,
+        });
         cartonesCount++;
-      }
-      await batch.commit();
+      }));
     }
 
     return {
@@ -198,19 +183,17 @@ export const TransitSeeder = {
 
   /**
    * C. IMPORT DAILY ROTATION (Daily Shifts)
-   * Procesa la totalidad de parsedData.services en chunks de 500 con writeBatch.
+   * Procesa la totalidad de parsedData.services en lotes paralelos.
    */
   async importDailyRotation(parsedData: ParsedData, dateISO: string) {
     const services = parsedData.services;
     let count = 0;
+    const now = new Date().toISOString();
 
     for (let offset = 0; offset < services.length; offset += this.BATCH_SIZE) {
       const chunk = services.slice(offset, offset + this.BATCH_SIZE);
-      const batch = writeBatch(db);
-
-      for (const svc of chunk) {
+      await Promise.all(chunk.map(async (svc) => {
         const shiftId = `${dateISO}_${svc.serviceNumber}`;
-        const docRef = doc(db, 'daily_shifts', shiftId);
 
         const vehicleInfo = _vehiclesIndex[String(svc.vehicleInternalNumber)];
         const vehicleData = vehicleInfo
@@ -241,14 +224,14 @@ export const TransitSeeder = {
           vehicle: vehicleData,
           driver: driverData,
           status: 'SCHEDULED',
-          createdAt: Timestamp.now(),
+          createdAt: now as any,
         };
 
-        batch.set(docRef, shift);
+        await apiClient.put('/api/db/daily_shifts/' + encodeURIComponent(shiftId), shift);
         count++;
-      }
-      await batch.commit();
+      }));
     }
+
     return {
       success: true,
       message: `Generados ${count} Turnos Diarios para ${dateISO}.`,

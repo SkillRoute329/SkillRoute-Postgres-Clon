@@ -21,7 +21,6 @@ export default function CartonDetail() {
   const { lineId, serviceId } = useParams<{ lineId: string; serviceId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const modeEdit = searchParams.get('mode') === 'edit';
   const isFisico = searchParams.get('fisico') === '1';
   const [carton, setCarton] = useState<CartonData | null>(null);
   const [cartonFisico, setCartonFisico] = useState<CartonFisicoData | null>(null);
@@ -208,11 +207,6 @@ export default function CartonDetail() {
         )}
       </div>
 
-      {modeEdit && (
-        <div className="p-4 border-t border-slate-800 bg-slate-900/50">
-          <p className="text-slate-400 text-sm text-center">Modo edición — próximamente</p>
-        </div>
-      )}
     </div>
   );
 }

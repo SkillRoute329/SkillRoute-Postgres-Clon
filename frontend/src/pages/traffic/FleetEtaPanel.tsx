@@ -29,7 +29,7 @@ interface Props {
   onClose: () => void;
 }
 
-const IMM_ETA = 'https://us-central1-ucot-gestor-cloud.cloudfunctions.net/immEta';
+const IMM_ETA = import.meta.env.VITE_IMM_ETA_URL || 'http://localhost:3001/api/audit/eta-snapshot';
 
 const EMPRESA_COLORES: Record<string, string> = {
   UCOT: '#eab308', CUTCSA: '#3b82f6', COETC: '#ef4444', COME: '#22c55e',

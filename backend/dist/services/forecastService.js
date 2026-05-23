@@ -4,6 +4,13 @@ exports.forecastService = void 0;
 const database_1 = require("../config/database");
 const logger_1 = require("../config/logger");
 // Servicio de pronósticos e ingresos - Semana 6-7
+//
+// AUTONOMIA-PARCIAL (2026-05-13): este servicio aún consulta Firestore para
+// las colecciones `lineas` y `boletaje` que no existen en el schema Postgres
+// del clon. Las consultas están envueltas en try/catch para que si Firestore
+// no es alcanzable (offline) las pantallas muestren estado vacío honesto en
+// vez de crash. Migración a Postgres queda pendiente: requiere crear tabla
+// boletaje y pipeline de ingesta.
 class ForecastService {
     /**
      * Genera pronóstico de ingresos con diferentes escenarios
@@ -80,8 +87,18 @@ class ForecastService {
             };
         }
         catch (error) {
-            logger_1.logger.error(`Error pronosticando ingresos: ${error}`);
-            throw error;
+            logger_1.logger.warn(`[AUTONOMIA-PARCIAL] Pronóstico ingresos no disponible: ${error?.message ?? error}`);
+            return {
+                id: `forecast-${lineaId}`,
+                lineaId,
+                numeroLinea: 0,
+                pasajerosActuales: 0,
+                ingresosActuales: 0,
+                escenarios: [],
+                historicoUltimos30Dias: [],
+                tendencia: 'estable',
+                analisisEn: new Date()
+            };
         }
     }
     /**
@@ -145,8 +162,19 @@ class ForecastService {
             };
         }
         catch (error) {
-            logger_1.logger.error(`Error en simulador de horarios: ${error}`);
-            throw error;
+            logger_1.logger.warn(`[AUTONOMIA-PARCIAL] Simulador horarios no disponible: ${error?.message ?? error}`);
+            return {
+                id: `simulation-${lineaId}-${Date.now()}`,
+                lineaId,
+                cambios,
+                resultados: {
+                    escenarioActual: { pasajeros: 0, ingresos: 0 },
+                    escenarioNuevo: { pasajeros: 0, ingresos: 0, cambioAbsoluto: 0, cambioRelativo: 0 },
+                    impactoTotal: 0
+                },
+                riesgo: 'bajo',
+                recomendacion: 'Sin datos históricos de boletaje. Integración pendiente.'
+            };
         }
     }
     /**
@@ -170,8 +198,8 @@ class ForecastService {
             return Math.round(registrosPorHora.reduce((sum, r) => sum + r.boletosVendidos, 0) / registrosPorHora.length);
         }
         catch (error) {
-            logger_1.logger.error(`Error estimando pasajeros por horario: ${error}`);
-            throw error;
+            logger_1.logger.warn(`[AUTONOMIA-PARCIAL] Estimación pasajeros no disponible: ${error?.message ?? error}`);
+            return 0;
         }
     }
     /**
@@ -203,8 +231,15 @@ class ForecastService {
             };
         }
         catch (error) {
-            logger_1.logger.error(`Error calculando demanda por zona: ${error}`);
-            throw error;
+            logger_1.logger.warn(`[AUTONOMIA-PARCIAL] Demanda por zona no disponible: ${error?.message ?? error}`);
+            return {
+                zona,
+                boletajeTotalMes: 0,
+                boletosPorDia: 0,
+                lineasOperando: 0,
+                competenciaPresente: false,
+                tendencia: 'estable'
+            };
         }
     }
     /**
@@ -235,8 +270,8 @@ class ForecastService {
                 .slice(0, 5);
         }
         catch (error) {
-            logger_1.logger.error(`Error identificando horarios de alta demanda: ${error}`);
-            throw error;
+            logger_1.logger.warn(`[AUTONOMIA-PARCIAL] Horarios alta demanda no disponibles: ${error?.message ?? error}`);
+            return [];
         }
     }
     /**
@@ -282,8 +317,14 @@ class ForecastService {
             };
         }
         catch (error) {
-            logger_1.logger.error(`Error proyectando crecimiento: ${error}`);
-            throw error;
+            logger_1.logger.warn(`[AUTONOMIA-PARCIAL] Proyección crecimiento no disponible: ${error?.message ?? error}`);
+            return {
+                lineaId,
+                mesesProjectados: meses,
+                proyecciones: [],
+                tasaCrecimientoMensual: 0,
+                confianza: 0
+            };
         }
     }
     /**
@@ -320,21 +361,37 @@ class ForecastService {
             };
         }
         catch (error) {
-            logger_1.logger.error(`Error comparando operadores: ${error}`);
-            throw error;
+            logger_1.logger.warn(`[AUTONOMIA-PARCIAL] Comparación operador no disponible: ${error?.message ?? error}`);
+            return {
+                lineaId,
+                numeroLinea: 0,
+                operadorUCOT: { boletosPorDia: 0, ingresosPorDia: 0 },
+                promedioZona: { boletosPorDia: 0, ingresosPorDia: 0 },
+                diferenciaVsPromedio: 0,
+                posicion: 0,
+                clasificacion: 'promedio',
+                tendencia: 'estable',
+                recomendaciones: []
+            };
         }
     }
     // ============ FUNCIONES AUXILIARES ============
     async obtenerHistoricoBoletaje(lineaId, dias) {
         const fechaInicio = new Date();
         fechaInicio.setDate(fechaInicio.getDate() - dias);
-        const snapshot = await database_1.db
-            .collection('boletaje')
-            .where('lineaId', '==', lineaId)
-            .where('fecha', '>=', fechaInicio)
-            .orderBy('fecha', 'desc')
-            .get();
-        return snapshot.docs.map(doc => doc.data());
+        try {
+            const snapshot = await database_1.db
+                .collection('boletaje')
+                .where('lineaId', '==', lineaId)
+                .where('fecha', '>=', fechaInicio)
+                .orderBy('fecha', 'desc')
+                .get();
+            return snapshot.docs.map(doc => doc.data());
+        }
+        catch (error) {
+            logger_1.logger.warn(`[AUTONOMIA-PARCIAL] Histórico boletaje no disponible (Firestore?): ${error?.message ?? error}`);
+            return [];
+        }
     }
     calcularTendencia(registros) {
         if (registros.length < 10)

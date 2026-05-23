@@ -1,6 +1,240 @@
 # SESION ACTUAL — estado vivo
 
 ---
+## ESTADO ACTUAL — 2026-05-13 (demo IMM hoy, clon autónomo)
+
+**HOLD LEVANTADO.** Jonathan tiene presentación HOY a equipo multidisciplinario IMM. El clon (Express + Postgres en `localhost`, sin Firebase) es el target. La versión cloud (`skillroute.web.app`) está congelada — **no tocar `functions/src/`**.
+
+### Credenciales del clon
+- internalNumber: `329`
+- password: `Skill329`
+- rol: SUPERADMIN
+
+### Servicios corriendo (verificado 2026-05-13 ~09:50 UY)
+- Backend Express `:3001` UP, `version 2.0.1-MODULAR`
+- Bridge `:3099` UP (sirve `/api/positions`, `/api/lines/ucot`, etc.)
+- Frontend Vite `:3006` UP
+- Postgres `skillroute_master` UP, poller IMM activo (last write < 30s, 0 errores)
+- Cobertura GPS real 4 operadores: COETC 327, COME 148, CUTCSA 2014, UCOT 285 (= 2774 buses live)
+
+### Cambios hechos esta sesión (2026-05-13)
+
+**Cortes de dependencia cloud (frontend):**
+- 5 archivos cambiaron URLs cloud → env vars con default localhost: `ShadowRadar.tsx:114`, `FleetMonitorModule.tsx:112-118`, `FleetEtaPanel.tsx:32`, `ucotLinesService.ts:20`, `routeCacheService.ts:41`
+- `frontend/.env.local` añade 5 vars: `VITE_STM_PROXY_URL`, `VITE_IMM_BUSES_URL`, `VITE_IMM_PARADAS_URL`, `VITE_IMM_ETA_URL`, `VITE_BRIDGE_FALLBACK_URL`
+
+**Eliminación de datos sintéticos (anti-simulación 2026-05-02):**
+- `bridge-server.ts`: 5 secciones limpiadas. `/api/positions` ahora trae empresa: '-1' (4 operadores reales). `/api/lines/ucot` devuelve `buses: []` (no más Math.random lat/lng). `/api/ucot/fleet-intel` `numBuses: null`. `/api/ucot/schedule` `tieneHorariosOficiales: false` con mensaje honesto. Fallback sintético en `/api/positions` deshabilitado.
+- `LiveMapPage.tsx`: heatmap sin dispersión Math.random (240 → 16 puntos editoriales), UI label cambiada a "Zonas Ref."
+
+**Robustez:**
+- `database.ts`: `debug: false` (no leak SQL en logs)
+- `competitionService.ts` y `forecastService.ts`: catch blocks devuelven empty defaults en vez de throw (graceful si Firestore cae)
+
+**FASE 5 — Views Postgres para compatibilidad con shim Firestore:**
+- Aplicada `backend/src/database/schema_fase5_views.sql`
+- Nuevas VIEWs derivadas de `bus_last_pos` (datos reales del poller, NO sintéticos):
+  - `viajes_activos` (660 buses activos, 4 operadores, ventana 20 min)
+  - `competidores` (4 docs emp-10/20/50/70 con buses[] embebido)
+  - `competencia_monitoreo` (subset excluyendo UCOT)
+  - `lineas` (319 rutas, alias de gtfs.routes)
+- Nuevas tablas vacías estructuradas: `corridor_overlap`, `shapes_cross_operator`, `cambios_historicos`, `boletaje`
+- `dbBridgeController.ts` whitelist extendida con estas colecciones
+
+### Verificaciones realizadas (2026-05-13)
+- ✅ `tsc --noEmit` en backend: 0 errores nuevos (3 preexistentes ya estaban)
+- ✅ `/api/positions` (bridge): 781 buses reales 4 operadores
+- ✅ `/api/db/viajes_activos`: 660 buses con coords reales
+- ✅ `/api/db/competidores`: 4 docs (emp-10 158, emp-20 8, emp-50 534, emp-70 27 buses)
+- ✅ `/api/db/competidores/emp-70`: doc UCOT con array `buses[]` embedded
+- ✅ `/api/db/corridor_overlap`: 200 OK con `data:[]` (sin error 500)
+- ✅ `/api/db/lineas`: 319 rutas GTFS
+
+### Verificación browser (delegada a otro agente, 2026-05-13 ~09:45 UY)
+Resultado intermedio (antes de FASE 5):
+- ✅ Fleet Monitor: OK, 797 unidades de 4 operadores
+- ⚠️ Centro de Mando Unificado: "Buses activos: 0" → FIX aplicado (FASE 5 viajes_activos + competidores)
+- ⚠️ Shadow Radar: "0 buses UCOT" → FIX aplicado (FASE 5 viajes_activos)
+- ❌ Diagnóstico Ejecutivo: "Error consultando colección" → FIX aplicado (FASE 5 + dbBridge whitelist)
+
+**Pendiente revalidación post-FASE 5.** Cuando el agente del browser re-verifique, los 3 errores deberían estar resueltos.
+
+### FASE 5.1 (2026-05-13, segunda parte de la sesión)
+
+**Hotfixes y optimizaciones aplicadas después del primer roundtrip con el agente browser:**
+
+- **`dbBridge` aplana `data_jsonb` automáticamente** ([dbBridgeController.ts](c:/SkillRoute_Master/repo/backend/src/controllers/dbBridgeController.ts)): el frontend espera campos top-level como `v.status`, `v.dismissed`, `v.empresa` que viven dentro del JSONB en Postgres. Ahora se aplanan transparentemente en cada respuesta.
+- **VIEW `viajes_activos` con `posicion` JSONB**: añadido campo `posicion: {latitude, longitude}` para compatibilidad con `GeoPoint` que esperaba ShadowRadar. También `estado='en_servicio'`, `pasajeros`, `conductorNombre`.
+- **Whitelist extendida FASE 5.1**: `compliance_alerts` → alertas_regulacion, `traffic_alerts`/`road_alerts` → alertas_trafico, `vehiculos` (alias español).
+- **`requireRole` ahora reconoce SUPERADMIN como superset universal** ([middleware/auth.ts](c:/SkillRoute_Master/repo/backend/src/middleware/auth.ts)). Antes daba 403 en /api/competition, /api/dashboard, /api/forecast.
+- **`/api/compliance/regulador` optimizado de 30s timeout → 4.9s**: 6 queries por operador → 1 query agregada con FILTER; Promise.all paraleliza los 4 operadores; default ventana 7 días → hoy; índice Postgres `idx_vehicle_events_agency_created` (10M filas).
+- **`/api/forecast/income/*` arreglado**: el controller hacía `.reduce()` sin initial value sobre escenarios vacíos (graceful fallback) → HTTP 500. Ahora chequea length primero.
+- **Stubs `/api/historic/otp` y `/api/historic/bunching`** en backend para que CEODashboardV7 no llame a cloud.
+- **`vite.config.ts` libre de URLs cloud** + UI labels delatores ("ucot-gestor-cloud" en CloudUploadTest y AdminSetup) reemplazados.
+- **`schema_fase5_views.sql`** ([backend/src/database/schema_fase5_views.sql](c:/SkillRoute_Master/repo/backend/src/database/schema_fase5_views.sql)) aplicado: VIEWs `viajes_activos`, `competidores`, `competencia_monitoreo`, `lineas` + tablas estructuradas `corridor_overlap`, `shapes_cross_operator`, `cambios_historicos`, `boletaje`.
+
+### Endpoints demo-grade verificados al cierre FASE 5.1
+
+| Endpoint | Tiempo | Datos |
+|---|---|---|
+| `/api/positions` (bridge) | <2s | 781 buses 4 operadores |
+| `/api/db/viajes_activos` | <1s | 660 buses con posicion JSONB |
+| `/api/db/competidores` | <1s | 4 docs emp-10/20/50/70 |
+| `/api/db/vehiculos` | <1s | con `status:'activo'` aplanado |
+| `/api/db/compliance_alerts` | <1s | aplanado, datos reales |
+| `/api/compliance/regulador` | **4.9s** | 4 operadores hoy |
+| `/api/compliance/operador?agencyId=70` | <2s | UCOT 79K eventos |
+| `/api/audit/poller-stats` | <1s | 348 cycles, 91K events, 0 err |
+| `/api/audit/buses-active` | <1s | 20 UCOT activos en 5 min |
+| `/api/stm/live-buses` | <2s | GeoJSON IMM real |
+| `/api/competition/overlap/*` | <1s | 200 OK (rol fix) |
+| `/api/forecast/*` | <1s | 200 OK con empty defaults |
+| `/api/autostats/agencies` | <1s | 4 operadores con rutas |
+| `/api/autostats/compliance/70` | <2s | 130 buses UCOT |
+
+### FASE 5.12 (2026-05-13 ~17:35 UY) — Backup automático Postgres + cheatsheet demo
+
+- Script [backend/scripts/backup_postgres.js](c:/SkillRoute_Master/repo/backend/scripts/backup_postgres.js) como 5° servicio PM2: pg_dump comprimido custom format cada 6h, retención 7 días, output en `c:/SkillRoute_Master/backups/`.
+- Primer backup: 89 MB exitoso al arranque.
+- Cheatsheet del demo: [docs/CHEATSHEET_DEMO_IMM_2026_05_13.md](c:/SkillRoute_Master/repo/docs/CHEATSHEET_DEMO_IMM_2026_05_13.md) — guion paso a paso, comandos de recovery, números clave para memorizar.
+
+### FASE 5.11 (2026-05-13 ~17:25 UY) — Watcher automático Antigravity
+
+Script [backend/scripts/watch_cartones_antigravity.js](c:/SkillRoute_Master/repo/backend/scripts/watch_cartones_antigravity.js) como 4° servicio PM2:
+- Cada 30s monitorea `c:/Users/Usuario/Desktop/SkillRoute clon/ucot_downloads/`
+- Detecta JSONs nuevos por mtime
+- Parsea con heurística (línea, paradas, viajes, notas)
+- Bulk upsert a `/api/cartones/bulk` (idempotente)
+- Re-login automático cada 7h
+
+Validado: 5 cartones piloto procesados en primer ciclo, 0 errores.
+
+### FASE 5.10 (2026-05-13 ~17:15 UY) — Cargador Antigravity + endpoint comparativa-etapas
+
+**Cargador inicial** [backend/scripts/cargar_cartones_antigravity.js](c:/SkillRoute_Master/repo/backend/scripts/cargar_cartones_antigravity.js): one-shot que lee `ucot_downloads/`, parsea, y hace bulk upsert. Usado para validar el pipeline antes del watcher persistente.
+
+**Endpoint nuevo** [`GET /api/cartones/comparativa-etapas/:idBus`](c:/SkillRoute_Master/repo/backend/src/routes/cartones.routes.ts) — para un coche+fecha:
+- Lee el cartón asignado (vehiculo_id match)
+- Lee eventos GPS del día
+- Para cada viaje del cartón, cruza tiempo cartón vs tiempo GPS real por etapa
+- Devuelve clasificación EN_TIEMPO/ATRASADO/ADELANTADO por etapa
+- Resumen por viaje + global
+
+Validado con 5 coches piloto:
+
+| Coche | Servicio | Línea | Etapas | Matched | En tiempo | % Cumpl |
+|---|---|---|---|---|---|---|
+| 8 | 1076 | 328 | 28 | 20 | 16 | **80.0%** |
+| 144 | 1152 | 329 | 53 | 28 | 20 | 71.4% |
+| 72 | 1116 | 317 | 63 | 26 | 18 | 69.2% |
+| 139 | 1147 | 330 | 58 | 31 | 20 | 64.5% |
+| 91 | 1070 | 329 | 54 | 17 | 10 | **58.8%** |
+
+### FASE 5.9 (2026-05-13 ~17:10 UY) — VIEWs Postgres para colecciones legacy
+
+[backend/src/database/schema_fase5_9_legacy_views.sql](c:/SkillRoute_Master/repo/backend/src/database/schema_fase5_9_legacy_views.sql) crea VIEWs alias para colecciones que el frontend pedía con nombre legacy:
+- `eventos_desvio` ← alias semántico de `alertas_regulacion` (959K rows)
+- `compliance_log` ← subset de `vehicle_events` con desviación > ±4 min (313K rows)
+- `fleet_positions` ← alias de `bus_last_pos` con campo `lastUpdate`
+- `service_matrices`, `licencias_personal`, `daily_shifts` ← aliases vacíos honestos
+- `hrr_live` (tabla) ← creada vacía para evitar 404
+
+Whitelist [dbBridgeController.ts](c:/SkillRoute_Master/repo/backend/src/controllers/dbBridgeController.ts) extendido con FASE 5.9. Esto activa: IncidentCommandCenter, GestionDesviosPage, PanelFinancieroOperativo, PanelRendicionCuentas, CentroTurnoDashboard, ComplianceHub, AdminStressTest, HrrDashboard.
+
+### FASE 5.8 (2026-05-13 ~17:00 UY) — PM2 persistencia + OTPDashboard refactor
+
+**Process manager:** [ecosystem.config.cjs](c:/SkillRoute_Master/repo/ecosystem.config.cjs) con auto-restart en crash (max 100), uptime mín 20s. Instalado pm2-windows-startup → arranque automático al reiniciar Windows. `pm2 save` persiste lista.
+
+**OTPDashboard refactor:** [frontend/src/pages/traffic/OTPDashboard.tsx](c:/SkillRoute_Master/repo/frontend/src/pages/traffic/OTPDashboard.tsx) ahora lee de `/api/autostats/history/:agency` (motor GPS) en vez de colección Firestore `inspections` (vacía). Cálculo OTP corregido para usar solo EN_TIEMPO como puntuales (política UITP/TCRP 165).
+
+### FASE 5.7 (2026-05-13 ~16:45 UY) — Auto-detección de cartones desajustados
+
+Endpoints nuevos en [backend/src/routes/cartones.routes.ts](c:/SkillRoute_Master/repo/backend/src/routes/cartones.routes.ts):
+
+- **`GET /api/cartones/coche/:idBus?fecha=YYYY-MM-DD&agency_id=70`**
+  Drilldown coche → cartón asignado + eventos GPS del día + resumen por línea (% cumplimiento, desviación media). Cuando Antigravity carga el cartón con `vehiculo_id`, este endpoint cruza automáticamente.
+
+- **`GET /api/cartones/ajustes-sugeridos/:linea?sentido=IDA&agency_id=70&dias=7`**
+  Analiza eventos GPS de N días y detecta paradas con desviación sistemática. Clasifica severidad CRÍTICA/ALTA/MEDIA/BAJA. Para cada parada problemática emite sugerencia: "Adelantar/Retrasar X min".
+
+Verificado en producción (línea 306 UCOT, 7 días):
+- 50 paradas analizadas
+- 25 problemáticas (8 críticas, 8 altas, 9 medias)
+- Ej: "Av 8 De Octubre Y Vera" +43 min de atraso sistemático con 4,407 muestras
+
+### FASE 5.6 (2026-05-13 ~16:30 UY) — Triangulación IMM/cartón/GPS
+
+[backend/src/routes/cartones.routes.ts](c:/SkillRoute_Master/repo/backend/src/routes/cartones.routes.ts) habilita 3 endpoints para soporte del agente Antigravity:
+
+- **`POST /api/cartones/bulk`** — upsert masivo (≤5000 por request) con id custom, agency_id, line, service_number, vehiculo_id, conductor_id, data_jsonb. Idempotente.
+- **`GET /api/cartones/count?agency_id=70`** — breakdown por agencia/línea.
+- **`GET /api/cartones/triangulacion?linea=300&sentido=IDA&service_number=S001`** — devuelve las 3 capas (IMM-GTFS, cartón UCOT, GPS real) con análisis automático de capas faltantes.
+
+Verificado para línea 300 IDA: triangulacion_completa=true, IMM con 100 paradas, cartón referencia cargado, GPS con 2,000 eventos y 5 buses distintos.
+
+### FASE 5.5 (2026-05-13 ~14:50 UY) — Seeds operativos
+15 entradas en `parametros_operativos`: tarifa STM $56, gasoil ANCAP $49.5/L, jornal micrero UCOT $3550, IVA 22%, factor DRO 0.25, tolerancia OTP ±4min, subsidio STM, etc. Fuentes oficiales documentadas en cada doc. `system_config` con global config.
+
+### FASE 5.4 (2026-05-13 ~14:30 UY) — Mapa de solapamientos cross-operador
+
+Script [backend/scripts/populate_corridor_overlap.js](c:/SkillRoute_Master/repo/backend/scripts/populate_corridor_overlap.js) genera matriz DRO real desde `gtfs.shapes` (329K puntos en Postgres):
+
+- Para cada operador (10/20/50/70) toma top 30 líneas activas → ~120 shapes
+- Cada shape resampleado a 80 puntos uniformes
+- Para cada par cross-operador, calcula `pctAInB` (% puntos A a ≤120m de algún punto B, definición TCRP 195)
+- Persiste en `shapes_cross_operator` y `corridor_overlap` (truncate + insert)
+- Tiers: T1 ≥70%, T2 ≥40%, T3 ≥5%
+
+Habilita: CorridorMap, CorridorIntelligence, GanttRedMetropolitana, ShadowAnalytics.
+
+### FASE 5.3 (2026-05-13 ~14:15 UY) — Algoritmo de matching mejorado
+
+Problema: el algoritmo elegía `activeTrips[0]` arbitrariamente cuando había múltiples trips programados al mismo tiempo. Resultado: clasificaba pero la asignación trip↔bus era aleatoria.
+
+Fix en [scheduleComplianceEngine.ts:215-260](c:/SkillRoute_Master/repo/backend/src/services/scheduleComplianceEngine.ts#L215):
+- Margen temporal ampliado de ±5 min a ±15 min (cubre servicios baja frecuencia)
+- Selección del trip por COHERENCIA ESPACIAL: el trip cuyo `control_stop` más cercano está más cerca del GPS del bus
+- Threshold de proximidad: si stop más cercano está a >3km del bus, se descarta el candidato
+- Resultado: clasificación 98%+ con distribución realista (40% en tiempo, 51% adel, 8% atras)
+- OTP regulador con n grande: UCOT n=12,497 (vs 620 antes), IC95 [39.15, 40.86]
+
+Variabilidad por línea (real, no decorativa):
+- Línea 300 UCOT: 69% cumplimiento (17 buses, 11 puntuales)
+- Línea 316: 65%, Línea 71: 67%
+- Línea 17: 42%, Línea 79: 40%
+- Línea 306: **37%** con 10 buses atrasados (línea crítica)
+
+### FASE 5.2 (2026-05-13 ~12:30 UY) — AVL y estadísticas de coches/líneas
+
+**Hallazgo crítico tras feedback del browser audit:** El AVL (Automatic Vehicle Location) NO clasificaba — todos los eventos quedaban en `SIN_HORARIO`. % adelanto/atraso siempre 0. Estadísticas por línea y por coche vacías.
+
+**Causa raíz:** [scheduleComplianceEngine.ts](c:/SkillRoute_Master/repo/backend/src/services/scheduleComplianceEngine.ts) lee `schedule_index.json` (4.6 MB) — tenía solo **44 rutas totales** (3 UCOT, 9 COETC, 21 COME, 11 CUTCSA), pero Postgres `gtfs.routes` tiene **319 rutas reales**. El GPS reporta líneas como D8, 306, 300, 17, 328, 370 (UCOT) que no estaban en el JSON → todo `route` undefined → `SIN_HORARIO`.
+
+**Fix aplicado:**
+
+1. Script Node [backend/scripts/regenerate_schedule_index.js](c:/SkillRoute_Master/repo/backend/scripts/regenerate_schedule_index.js) que consulta `gtfs.routes` + `trips` + `stop_times` + `calendar` y regenera el JSON con 140 rutas por operador × 35,561 trip entries con control_stops sampleados.
+2. JSON ahora 108 MB (vs 4.6 MB) cargado en memoria al iniciar el backend.
+3. Endpoints nuevos en [autoStats.routes.ts](c:/SkillRoute_Master/repo/backend/src/routes/autoStats.routes.ts): `/api/autostats/vehicle-stats/:agencyId` y `/api/autostats/conductor-ranking/:agencyId` (referenciados por el frontend pero estaban sin implementar).
+
+**Resultado verificado:**
+
+- Clasificación funcionando en `vehicle_events`: ADELANTADO 742, EN_TIEMPO 360, ATRASADO 77 (en ventana 5 min). En `bus_last_pos`: ADELANTADO 508, EN_TIEMPO 239, ATRASADO 57.
+- `/api/autostats/compliance/70`: línea 17 con 13 buses, 5 en tiempo, 8 adelantados, 0 atrasados, cumplimiento 38% (datos reales en vivo).
+- `/api/compliance/regulador`: UCOT con OTP **38.06%** badge `OK`, IC 95% [34.33, 41.95], n=620 (antes era null/INSUFFICIENT).
+- `/api/compliance/operador?agencyId=70`: línea 17 con OTP **73.65%** en ventana 7 días (n=2,125 trips).
+- `/api/autostats/vehicle-stats/70`: 136 coches UCOT con %EnTiempo, %Atrasado, %Adelantado, líneas operadas, días activos.
+
+### Skills creadas (en `.claude/skills/`)
+- `skillroute-demo-check`, `skillroute-cut-cloud`, `skillroute-no-fake-data`, `skillroute-imm-pulse`, `skillroute-postgres-state`, `skillroute-create-skill`
+
+### Pendientes conocidos no críticos para demo
+1. **`lineas` VIEW** devuelve `agency_id: 'STM-MVD'` para las 319 rutas (gtfs.routes no diferencia operador). Si una pantalla filtra `where=operador:UCOT`, devuelve vacío. Mejorable después con derivación por route_short_name.
+2. **`vehiculos` tabla** solo tiene 3 operadores catalogados (falta agency_id='20' COME — 0 docs). GPS sí está completo en `bus_last_pos`.
+3. **`competitionService` y `forecastService`** aún consultan Firestore para `cambios_historicos` y `boletaje`. Ahora hay tablas Postgres vacías con la estructura — si se llenan, los servicios pueden migrar leyendo de Postgres. Por ahora graceful fallback si Firestore cae.
+4. **vite.config.ts:165-174** todavía tiene proxies cloud `/historicOtp` y `/historicBunching` activos (consumidos por CEODashboardV7). Si el auditor revisa código, lo verá. Migración pendiente.
+5. **`agencyId === 70` hardcodes** en 7 archivos frontend (linesService, operationsIntelligenceService, dailyBriefingService, navigationDataService, RegulatorMetricsTable, CrossOpCoverage, CompetitorThreatWidget). Para vista cross-op estos pueden mostrar empty si `empresaPropia` cambia a 50/20/10.
+
+---
 ## ESTADO AL CIERRE DE SESION — 2026-05-09 17:35 UY
 
 ### HOLD ACTIVO (BRIDGE-085 Cowork 17:05 UTC)

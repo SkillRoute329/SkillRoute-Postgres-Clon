@@ -27,8 +27,8 @@ const ENV_BRIDGE = (import.meta as any).env?.VITE_BRIDGE_URL as string | undefin
 const ENV_API = (import.meta as any).env?.VITE_API_URL as string | undefined;
 
 function resolveSocketUrl(): string {
-  // Prefiero el bridge (3099) si está; cae al backend directo si no.
-  const base = ENV_BRIDGE || ENV_API || 'http://localhost:3000';
+  // Debe apuntar al backend principal (donde corre el servidor socket.io)
+  const base = ENV_API || ENV_BRIDGE || 'http://localhost:3001';
   return base.replace(/\/+$/, '');
 }
 

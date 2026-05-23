@@ -1,22 +1,11 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  setDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  addDoc,
-} from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
+import { subscribeViaBus } from '../../clients/firestoreSubscribe';
 import type { Shift } from './types';
 
 const COL = 'daily_shifts';
 const CATEGORIES_COL = 'shift_categories';
-const CONFIG_DOC = 'system/global_config';
+const CONFIG_COL = 'system';
+const CONFIG_DOC_ID = 'global_config';
 
 function mapShift(id: string, data: Record<string, unknown>): Shift {
   return {
@@ -37,72 +26,71 @@ function mapShift(id: string, data: Record<string, unknown>): Shift {
 
 export const ShiftService = {
   async getAll(date?: string): Promise<Shift[]> {
-    const colRef = collection(db, COL);
-    const q = date
-      ? query(colRef, where('date', '==', date), orderBy('start', 'asc'))
-      : query(colRef, orderBy('start', 'desc'));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => mapShift(d.id, { ...d.data(), id: d.id }));
+    const query: Record<string, unknown> = date
+      ? { where: `date:${date}`, orderBy: 'start:asc', limit: 5000 }
+      : { orderBy: 'start:desc', limit: 5000 };
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, { query });
+    return Array.isArray(res.data)
+      ? res.data.map((d) => mapShift((d.id as string) ?? '', { ...d }))
+      : [];
   },
 
-  subscribe(callback: (shifts: Shift[]) => void, date?: string) {
-    const colRef = collection(db, COL);
-    const q = date
-      ? query(colRef, where('date', '==', date), orderBy('start', 'asc'))
-      : query(colRef, orderBy('start', 'desc'));
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map((d) => mapShift(d.id, { ...d.data(), id: d.id })));
-    });
+  // FASE 5.31 (2026-05-21): bus socket en lugar de polling 10s. Cuando el
+  // backend emite bus:db:daily_shifts:* (o el alias 'shifts'), refetch
+  // inmediato. Polling de respaldo a 60s.
+  subscribe(callback: (shifts: Shift[]) => void, date?: string): () => void {
+    return subscribeViaBus<Shift[]>(
+      COL,
+      () => this.getAll(date),
+      callback,
+      { alsoListen: ['bus:db:shifts:any', 'bus:db:turnos_dia:any'] },
+    );
   },
 
   async create(data: Partial<Shift>) {
-    const ref = await addDoc(collection(db, COL), { ...data });
-    return { id: ref.id, ...data };
+    const res = await apiClient.post<{ id: string }>(`/api/db/${COL}`, { ...data });
+    return { id: res.data?.id ?? String(Date.now()), ...data };
   },
 
   async update(id: string | number, data: Partial<Shift>) {
-    const ref = doc(db, COL, String(id));
-    await setDoc(ref, data, { merge: true });
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(String(id))}`, data);
     return { id, ...data };
   },
 
   async delete(id: number | string) {
-    await deleteDoc(doc(db, COL, String(id)));
+    await apiClient.delete(`/api/db/${COL}/${encodeURIComponent(String(id))}`);
   },
 
   async assign(id: number | string, userId: number | string) {
-    const ref = doc(db, COL, String(id));
-    await setDoc(ref, { assignedTo: userId, status: 'Assigned' }, { merge: true });
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(String(id))}`, {
+      assignedTo: userId,
+      status: 'Assigned',
+    });
   },
 
   async publish(id: number | string) {
-    const ref = doc(db, COL, String(id));
-    await setDoc(ref, { status: 'Public' }, { merge: true });
+    await apiClient.put(`/api/db/${COL}/${encodeURIComponent(String(id))}`, { status: 'Public' });
   },
 
   async getCategories(
     _date?: string,
   ): Promise<{ id: number; name: string; baseValue: string; extraHourValue: string }[]> {
-    const snap = await getDocs(collection(db, CATEGORIES_COL));
-    return snap.docs.map(
-      (d, i) =>
-        ({ id: i + 1, ...d.data() }) as {
-          id: number;
-          name: string;
-          baseValue: string;
-          extraHourValue: string;
-        },
-    );
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${CATEGORIES_COL}`, { query: { limit: 5000 } });
+    return Array.isArray(res.data)
+      ? res.data.map((d, i) => ({ id: i + 1, ...d }) as { id: number; name: string; baseValue: string; extraHourValue: string })
+      : [];
   },
 
   async getSystemConfig(): Promise<Record<string, unknown>> {
-    const snap = await getDoc(doc(db, CONFIG_DOC));
-    return snap.exists() ? (snap.data() ?? {}) : {};
+    try {
+      const res = await apiClient.get<Record<string, unknown>>(`/api/db/${CONFIG_COL}/${encodeURIComponent(CONFIG_DOC_ID)}`);
+      return res.data ?? {};
+    } catch { return {}; }
   },
 
   async createCategory(data: { name: string; baseValue: number; extraHourValue: number }) {
-    const ref = await addDoc(collection(db, CATEGORIES_COL), data);
-    return { id: ref.id, ...data };
+    const res = await apiClient.post<{ id: string }>(`/api/db/${CATEGORIES_COL}`, data);
+    return { id: res.data?.id ?? String(Date.now()), ...data };
   },
 
   async getCategoryHistory(_id: number): Promise<unknown[]> {
@@ -110,8 +98,7 @@ export const ShiftService = {
   },
 
   async updateCategory(id: string | number, data: Record<string, unknown>) {
-    const ref = doc(db, CATEGORIES_COL, String(id));
-    await setDoc(ref, data, { merge: true });
+    await apiClient.put(`/api/db/${CATEGORIES_COL}/${encodeURIComponent(String(id))}`, data);
     return { id, ...data };
   },
 
@@ -120,11 +107,11 @@ export const ShiftService = {
   },
 
   async deleteCategory(id: number | string) {
-    await deleteDoc(doc(db, CATEGORIES_COL, String(id)));
+    await apiClient.delete(`/api/db/${CATEGORIES_COL}/${encodeURIComponent(String(id))}`);
   },
 
   async getBalances(): Promise<unknown[]> {
-    const snap = await getDocs(collection(db, COL));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${COL}`, { query: { limit: 5000 } });
+    return Array.isArray(res.data) ? res.data : [];
   },
 };

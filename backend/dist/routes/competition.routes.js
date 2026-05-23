@@ -41,4 +41,16 @@ router.get('/threats', (0, auth_1.requireRole)('admin', 'manager'), competitionC
  * Acciones sugeridas para una línea específica
  */
 router.get('/recommendations/:lineaId', (0, auth_1.requireRole)('admin', 'manager'), competitionController_1.competitionController.getRecommendations);
+/**
+ * Sync desde STM en vivo
+ * Pulls GPS público de IMM, agrega por empresa y upsert en `competidores`.
+ */
+router.post('/sync-from-stm', (0, auth_1.requireRole)('admin'), competitionController_1.competitionController.syncFromSTM);
+/**
+ * Enriquecimiento de horarios reales por competidor.
+ * Scrapea stm/horarios para cada línea del competidor y popula
+ * `lineas[].horarios` y `lineas[].frecuencia` con datos reales.
+ * Operación pesada (~5 round-trips × ~400ms × N líneas).
+ */
+router.post('/enrich-horarios/:competidorId', (0, auth_1.requireRole)('admin'), competitionController_1.competitionController.enrichCompetidorHorarios);
 exports.default = router;
