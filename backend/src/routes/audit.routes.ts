@@ -119,12 +119,12 @@ router.get('/resumen-imm', verifyAuth, async (_req: Request, res: Response) => {
       },
       salud_sistema: {
         poller: {
-          total_ciclos: Number(pollerRow?.total_ciclos ?? 0),
-          total_buses_recibidos: Number(pollerRow?.total_buses_recibidos ?? 0),
-          total_eventos_persistidos: Number(pollerRow?.total_eventos_persistidos ?? 0),
-          ultimo_ciclo: pollerRow?.ultimo_ciclo,
-          segundos_desde_ultimo_ciclo: Number(pollerRow?.segundos_desde_ultimo ?? 0),
-          estado: Number(pollerRow?.segundos_desde_ultimo ?? 999) < 60 ? 'LIVE' : 'STALE',
+          total_ciclos: Number((pollerRow as any)?.total_ciclos ?? 0),
+          total_buses_recibidos: Number((pollerRow as any)?.total_buses_recibidos ?? 0),
+          total_eventos_persistidos: Number((pollerRow as any)?.total_eventos_persistidos ?? 0),
+          ultimo_ciclo: (pollerRow as any)?.ultimo_ciclo,
+          segundos_desde_ultimo_ciclo: Number((pollerRow as any)?.segundos_desde_ultimo ?? 0),
+          estado: Number((pollerRow as any)?.segundos_desde_ultimo ?? 999) < 60 ? 'LIVE' : 'STALE',
         },
         eventos_historicos_totales: Number((eventos24h as Record<string, unknown>)?.count ?? 0),
       },

@@ -229,6 +229,16 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/api/lines': {
+        target: 'http://127.0.0.1:3099',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/analysis': {
+        target: 'http://127.0.0.1:3099',
+        changeOrigin: true,
+        secure: false,
+      },
       '/api': {
         target: 'http://127.0.0.1:3001',
         changeOrigin: true,

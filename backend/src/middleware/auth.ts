@@ -94,7 +94,7 @@ export const requireRole = (...requiredRoles: string[]) => {
     // requireRole. Antes este check no consideraba SUPERADMIN y devolvía 403
     // para todas las rutas con requireRole('admin','manager'), rompiendo
     // dashboard ejecutivo, competition, forecast, etc.
-    const role = req.user.role;
+    const role = req.user.role as string;
     const isSuperAdmin = role === Config.Roles.SUPER_ADMIN || role === 'SUPERADMIN' || role === 'superadmin';
     if (isSuperAdmin) {
       next();

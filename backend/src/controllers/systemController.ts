@@ -29,17 +29,17 @@ export async function systemDoctor(_req: Request, res: Response): Promise<void> 
       .first();
     const vehicleCount = parseInt((vRow?.count as string) ?? '0', 10);
 
-    // Cartones — Firestore (TODO FASE 2). Tolerante a fallos: si Firebase está
-    // caído, devolvemos 0 + warn, no rompemos el doctor.
+    // Cartones — Migrado a PostgreSQL Soberano (FASE 2)
     let cartonCount = 0;
     try {
-      const snap = await db.collection(Config.Collections.CARTONES).get();
-      cartonCount = snap.size;
-    } catch (firebaseErr: unknown) {
-      const msg = firebaseErr instanceof Error ? firebaseErr.message : String(firebaseErr);
-      logger.warn('[doctor] Firestore inalcanzable para cartones, devolviendo 0', {
+      const cRow = await sqlDb('cartones_completados')
+        .count<Array<{ count: string }>>({ count: '*' })
+        .first();
+      cartonCount = parseInt((cRow?.count as string) ?? '0', 10);
+    } catch (dbErr: unknown) {
+      const msg = dbErr instanceof Error ? dbErr.message : String(dbErr);
+      logger.warn('[doctor] Postgres error contando cartones, devolviendo 0', {
         error: msg,
-        action: 'pendiente migración FASE 2 a Postgres',
       });
     }
 

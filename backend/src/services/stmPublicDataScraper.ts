@@ -72,7 +72,7 @@ export interface ReporteCompetenciaCompleto {
   };
   analisisFrequencia: {
     frecuenciaProgramada: number;
-    frecuenciaCalculada: number;
+    frecuenciaCalculada: number | 'SIN DATOS';
     desviacion: number;
   };
   competidores: CompetidorDetectado[];
@@ -380,6 +380,35 @@ export async function analizarCompetenciaLinea(
   const linea = String(numeroLinea).trim();
 
   try {
+    // 1. Obtener la frecuencia programada real de la configuración de líneas UCOT
+    const lineasUcot = await obtenerLineasUCOT();
+    const lineaInfo = lineasUcot.find((l) => l.numero === linea);
+    const frecuenciaProgramada = lineaInfo?.frecuenciaProgramada ?? 15;
+
+    // 2. Consultar buses UCOT activos en bus_last_pos para calcular desviación y frecuencia real
+    const activeUcotBuses = await sqlDb('bus_last_pos')
+      .where('agency_id', '70')
+      .where('linea', linea)
+      .where('timestamp_gps', '>', sqlDb.raw("NOW() - INTERVAL '20 minutes'"))
+      .select('data_jsonb');
+
+    let desviacion = 0;
+    let frecuenciaCalculada: number | 'SIN DATOS' = 'SIN DATOS';
+
+    if (activeUcotBuses.length > 0) {
+      let totalDelay = 0;
+      let countWithDelay = 0;
+      for (const b of activeUcotBuses) {
+        const delay = Number(b.data_jsonb?.desviacionMin);
+        if (!isNaN(delay)) {
+          totalDelay += delay;
+          countWithDelay++;
+        }
+      }
+      desviacion = countWithDelay > 0 ? Math.round(totalDelay / countWithDelay) : 0;
+      frecuenciaCalculada = Math.max(1, frecuenciaProgramada + desviacion);
+    }
+
     // Solape real cross-operador (same_empresa=false): la línea aparece como
     // lado A o B; tomamos el % de SU recorrido que el rival le disputa.
     const filas = (await sqlDb('corridor_overlap')
@@ -469,14 +498,17 @@ export async function analizarCompetenciaLinea(
       ? nombre.split(' - ').map((s) => s.trim())
       : [nombre, ''];
 
+    // Auditoría e integridad de datos para cumplir normas ISO
+    logger.info(`[audit] Línea ${linea} analizada. Frecuencia Prog: ${frecuenciaProgramada} min, Real: ${frecuenciaCalculada} min, Desviación: ${desviacion} min. Buses en servicio: ${activeUcotBuses.length}. Competidores: ${competidores.length}`);
+
     return {
       linea,
       timestamp,
       datosLinea: { nombre, origen, destino: destino || origen, paradas: 0 },
       analisisFrequencia: {
-        frecuenciaProgramada: 0,
-        frecuenciaCalculada: 0,
-        desviacion: 0,
+        frecuenciaProgramada,
+        frecuenciaCalculada,
+        desviacion,
       },
       competidores,
       resumen: {

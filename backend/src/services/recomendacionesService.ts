@@ -93,7 +93,7 @@ async function porOperador(agencyId: string, fecha: string): Promise<Recomendaci
             CASE WHEN cc.line = chr(63) THEN NULL ELSE cc.line END AS line
        FROM cartones_completados cc
       WHERE cc.agency_id = ?
-        AND cc.updated_at::date = ?::date
+        AND COALESCE((cc.data_jsonb ->> 'timestamp')::timestamptz::date, cc.updated_at::date) = ?::date
         AND cc.vehiculo_id IS NOT NULL
         AND NOT EXISTS (
           SELECT 1 FROM mv_fleet_ranking_diario m

@@ -332,7 +332,7 @@ router.get('/coche/:idBus', async (req: Request, res: Response) => {
     const carton = await sqlDb('cartones_completados')
       .where('agency_id', agencyId)
       .where('vehiculo_id', idBus)
-      .whereRaw(`(data_jsonb->>'fecha' = ? OR DATE(updated_at) = ?)`, [fecha, fecha])
+      .whereRaw("COALESCE((data_jsonb ->> 'timestamp')::timestamptz::date, updated_at::date) = ?::date", [fecha])
       .first();
 
     // 2. Eventos GPS del coche en esa fecha
@@ -517,7 +517,7 @@ router.get('/comparativa-etapas/:idBus', async (req: Request, res: Response) => 
     const cartonRow = await sqlDb('cartones_completados')
       .where('agency_id', agencyId)
       .where('vehiculo_id', idBus)
-      .orderBy('updated_at', 'desc')
+      .whereRaw("COALESCE((data_jsonb ->> 'timestamp')::timestamptz::date, updated_at::date) = ?::date", [fecha])
       .first();
     if (!cartonRow) {
       res.json({
@@ -707,9 +707,9 @@ router.get('/coches-en-servicio-hoy', async (req: Request, res: Response) => {
     if (hit) { res.json(hit); return; }
     const rows = await sqlDb('bus_last_pos as b')
       .leftJoin('cartones_completados as c', function () {
-        this.on('c.agency_id', '=', 'b.agency_id').andOn(
-          sqlDb.raw("c.vehiculo_id = regexp_replace(b.id_bus, '^[0-9]+_', '')"),
-        );
+        this.on('c.agency_id', '=', 'b.agency_id')
+          .andOn(sqlDb.raw("c.vehiculo_id = regexp_replace(b.id_bus, '^[0-9]+_', '')"))
+          .andOn(sqlDb.raw("COALESCE((c.data_jsonb ->> 'timestamp')::timestamptz::date, c.updated_at::date) = b.updated_at::date"));
       })
       .where('b.agency_id', agency)
       .where('b.updated_at', '>', sqlDb.raw("NOW() - INTERVAL '5 minutes'"))
@@ -845,7 +845,7 @@ router.get('/panel-cumplimiento', async (req: Request, res: Response) => {
     // Cartón asignado del día por coche (rotación scrapeada).
     const cartones = (await sqlDb('cartones_completados')
       .where('agency_id', agencyId)
-      .whereRaw('updated_at::date = ?::date', [fecha])
+      .whereRaw("COALESCE((data_jsonb ->> 'timestamp')::timestamptz::date, updated_at::date) = ?::date", [fecha])
       .whereNotNull('vehiculo_id')
       .select('vehiculo_id', 'service_number', 'line')) as any[];
 
@@ -1045,7 +1045,7 @@ router.get('/sustituciones', async (req: Request, res: Response) => {
     if (esperados.length === 0) {
       esperados = (await sqlDb('cartones_completados')
         .where('agency_id', agencyId)
-        .whereRaw('updated_at::date = ?', [fecha])
+        .whereRaw("COALESCE((data_jsonb ->> 'timestamp')::timestamptz::date, updated_at::date) = ?::date", [fecha])
         .whereNotNull('vehiculo_id')
         .select('vehiculo_id', 'service_number', { line: 'line' })) as any[];
     }

@@ -27,7 +27,16 @@ const index_1 = __importDefault(require("./routes/index"));
 const realtimeService_1 = require("./services/realtimeService");
 const aiService_1 = require("./services/aiService");
 const cascadeEngineService_1 = require("./services/cascadeEngineService");
+const socketBus_1 = require("./services/socketBus");
 const pollerService_1 = require("./services/pollerService");
+const fleetRankingMvRefresh_1 = require("./utils/fleetRankingMvRefresh");
+const ucotCartonesScheduler_1 = require("./utils/ucotCartonesScheduler");
+const gtfsRefreshScheduler_1 = require("./utils/gtfsRefreshScheduler");
+const horariosControlScheduler_1 = require("./utils/horariosControlScheduler");
+const conteoVehicularScheduler_1 = require("./utils/conteoVehicularScheduler");
+const cartonesHistorialScheduler_1 = require("./utils/cartonesHistorialScheduler");
+const cascadeAutoTriggerScheduler_1 = require("./utils/cascadeAutoTriggerScheduler");
+const alertasCaducidadScheduler_1 = require("./utils/alertasCaducidadScheduler");
 // ═══════════════════════════════════════════════════════════════════════════
 // INICIALIZACIÓN
 // ═══════════════════════════════════════════════════════════════════════════
@@ -168,6 +177,10 @@ exports.io = io;
 (0, realtimeService_1.initializeSocket)(io);
 // Conectar el motor de cascada al Socket.io para emitir alertas en tiempo real
 (0, cascadeEngineService_1.setSocketServer)(io);
+// FASE 5.30 (2026-05-21): bus general de propagación accesible desde cualquier
+// controller via services/socketBus.ts → permite emitir bus:db:*, bus:cascade:*,
+// bus:operation:* sin pasar la instancia io entre capas.
+(0, socketBus_1.setBusServer)(io);
 // ═══════════════════════════════════════════════════════════════════════════
 // START SERVER
 // ═══════════════════════════════════════════════════════════════════════════
@@ -229,6 +242,69 @@ const server = httpServer.listen({ port: PORT_NUM, host: '0.0.0.0', exclusive: t
     // datos ("KnexTimeoutError: Timeout acquiring a connection"). El cache
     // pasivo en los endpoints sigue activo y da 20-40× speedup en warm.
     // startCacheWarmup();
+    // FASE 5.16 — Refresco de la MV de fleet-ranking. REFRESH CONCURRENTLY
+    // (no bloquea), 1 conexión, cada 5 min, guard reentrante. Reemplaza el
+    // cacheWarmup roto sin saturar el pool.
+    try {
+        (0, fleetRankingMvRefresh_1.startFleetRankingMvRefresh)();
+        logger_1.default.info('[fleetRankingMv] refresco periódico iniciado (cada 5 min)');
+    }
+    catch (err) {
+        logger_1.default.error('[fleetRankingMv] error iniciando refresco', { err: String(err) });
+    }
+    // FASE 5.17 — Scheduler del scraper de cartones UCOT (env-gated). Evita
+    // que la descarga vuelva a quedar detenida como el 2026-05-14.
+    try {
+        (0, ucotCartonesScheduler_1.startUcotCartonesScheduler)();
+    }
+    catch (err) {
+        logger_1.default.error('[ucotCartones] error iniciando scheduler', { err: String(err) });
+    }
+    // FASE 5.17 — Refresco automático del GTFS oficial IMM (env-gated).
+    try {
+        (0, gtfsRefreshScheduler_1.startGtfsRefreshScheduler)();
+    }
+    catch (err) {
+        logger_1.default.error('[gtfsRefresh] error iniciando scheduler', { err: String(err) });
+    }
+    // FASE 5.17 — Refresco diario de horarios STM por punto de control.
+    try {
+        (0, horariosControlScheduler_1.startHorariosControlScheduler)();
+    }
+    catch (err) {
+        logger_1.default.error('[horariosCtrl] error iniciando scheduler', { err: String(err) });
+    }
+    // FASE 5.17 — Refresco del conteo vehicular IMM (mes en curso).
+    try {
+        (0, conteoVehicularScheduler_1.startConteoVehicularScheduler)();
+    }
+    catch (err) {
+        logger_1.default.error('[conteoVeh] error iniciando scheduler', { err: String(err) });
+    }
+    // FASE 5.17 — Snapshot del historial coche→servicio (DB→DB, distribución/sustituciones).
+    try {
+        (0, cartonesHistorialScheduler_1.startCartonesHistorialScheduler)();
+    }
+    catch (err) {
+        logger_1.default.error('[cartonesHistorial] error iniciando scheduler', { err: String(err) });
+    }
+    // FASE 5.31 (2026-05-21) — Disparador automático del motor de consecuencias
+    // desde GPS en vivo (bus_last_pos). Detecta retrasos por línea y vehículos
+    // fuera de servicio sin intervención humana. Emite al bus de propagación.
+    try {
+        (0, cascadeAutoTriggerScheduler_1.startCascadeAutoTrigger)();
+    }
+    catch (err) {
+        logger_1.default.error('[cascadeAutoTrigger] error iniciando scheduler', { err: String(err) });
+    }
+    // FASE 5.38 (2026-05-22) — Auto-caducidad de alertas viejas sin atender.
+    // Evita que `alertas_regulacion` se llene de alertas de hace +200h.
+    try {
+        (0, alertasCaducidadScheduler_1.startAlertasCaducidad)();
+    }
+    catch (err) {
+        logger_1.default.error('[alertasCaducidad] error iniciando scheduler', { err: String(err) });
+    }
 });
 exports.server = server;
 // ═══════════════════════════════════════════════════════════════════════════

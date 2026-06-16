@@ -27,7 +27,7 @@ export async function snapshotHistorial(agencyId = '70'): Promise<number> {
        FROM cartones_completados
       WHERE agency_id = ?
         AND vehiculo_id IS NOT NULL
-        AND updated_at::date = ?::date
+        AND COALESCE((data_jsonb ->> 'timestamp')::timestamptz::date, updated_at::date) = ?::date
      ON CONFLICT (fecha, agency_id, vehiculo_id, service_number) DO NOTHING`,
     [hoy, tipoDia, agencyId, hoy],
   );

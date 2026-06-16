@@ -691,3 +691,32 @@ SkillRoute ahora opera 100% cross-operador desde el sidebar. Cualquier operador 
 - `vehicle_events`: TTL 7 días, escrito cada 15min por autoStatsCollector, agencyId presente en cada doc
 
 **URL a verificar:** https://skillroute.web.app/dashboard/traffic/diagnostico-cumplimiento → tab "Por Línea"
+
+---
+
+## 2026-06-15 — Corrección sistemática de cartones y panel de cumplimiento
+
+**Duración:** ~1.5 horas.
+
+**Features entregadas:**
+
+| Feature | Archivo(s) | Estado |
+|---|---|---|
+| Filtro por fecha operativa real (timestamp JSONB) | [cartones.routes.ts](file:///c:/SkillRoute_Master/repo/backend/src/routes/cartones.routes.ts) | prod |
+| Filtro de fecha en snapshot historial | [cartonesHistorialService.ts](file:///c:/SkillRoute_Master/repo/backend/src/services/cartonesHistorialService.ts) | prod |
+| Filtro por fecha operativa en recomendaciones de no-salida | [recomendacionesService.ts](file:///c:/SkillRoute_Master/repo/backend/src/services/recomendacionesService.ts) | prod |
+| Restricción de Left Join en coches activos por fecha | [cartones.routes.ts](file:///c:/SkillRoute_Master/repo/backend/src/routes/cartones.routes.ts) | prod |
+| Eliminación de endpoints duplicados (/positions y /inteligencia) | [bridge-server.ts](file:///c:/SkillRoute_Master/repo/backend/src/bridge-server.ts) | prod |
+
+**Decisiones:**
+- Utilizar `COALESCE((data_jsonb ->> 'timestamp')::timestamptz::date, updated_at::date)` para obtener la fecha de servicio operativa real en lugar de la fecha física del backend, eliminando buses marcados falsamente como `NO_SALIO`.
+- Eliminar los stubs duplicados de telemetría y posiciones del bridge server, enrutando todo directamente a través de Vite al backend.
+
+**Métricas medidas:**
+- 0 errores en compilación de TypeScript (`npx tsc --noEmit`).
+- Suite de pruebas de control de calidad completada con éxito (**29/29 tests PASS**).
+- Registros cargados de UCOT reducidos de 496 a 107 y buses reportados con fallas falsas reducidos a **0**.
+
+**Pendientes para próxima:**
+- Monitoreo de producción del panel de cumplimiento en vivo y confirmación de la estabilidad del cargador de cartones automático.
+

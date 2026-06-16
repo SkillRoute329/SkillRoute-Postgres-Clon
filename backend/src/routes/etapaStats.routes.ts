@@ -651,7 +651,7 @@ router.get('/:agencyId/:linea/pasadas', async (req: Request, res: Response) => {
         AND lat BETWEEN ? AND ?
         AND lon BETWEEN ? AND ?
         AND ST_DistanceSphere(geom, ST_SetSRID(ST_MakePoint(?, ?), 4326)) <= ?`;
-    const params: unknown[] = [
+    const params: any[] = [
       stopLon, stopLat,
       agencyId, linea,
       stopLat - latDelta, stopLat + latDelta,

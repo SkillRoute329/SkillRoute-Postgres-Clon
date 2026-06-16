@@ -45,7 +45,7 @@ function rowToCarton(row: CartonRow): Carton {
     updatedAt: row.updated_at,
     createdAt: row.created_at,
     ...data,
-  } as Carton;
+  } as unknown as Carton;
 }
 
 /**

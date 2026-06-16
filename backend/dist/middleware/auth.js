@@ -55,7 +55,18 @@ const requireAdmin = (req, res, next) => {
         const error = new index_1.AppError(401, 'Authentication required');
         return res.status(error.statusCode).json({ error: error.message });
     }
-    const isAdmin = req.user.role === constants_1.Config.Roles.SUPER_ADMIN || req.user.role === constants_1.Config.Roles.ADMIN;
+    // FASE 5.28 (2026-05-19) — aceptar también las variantes mayúsculas/
+    // minúsculas (legacy Firestore JWT trae 'SUPERADMIN'). requireRole ya
+    // hace esto desde 5.1; alineamos requireAdmin con el mismo criterio para
+    // que /api/admin/seed-*, /api/system-config, /api/emergency, etc. respondan
+    // correctamente cuando el usuario es SUPERADMIN.
+    const role = String(req.user.role ?? '');
+    const isAdmin = role === constants_1.Config.Roles.SUPER_ADMIN ||
+        role === constants_1.Config.Roles.ADMIN ||
+        role === 'SUPERADMIN' ||
+        role === 'superadmin' ||
+        role === 'ADMIN' ||
+        role === 'admin';
     if (!isAdmin) {
         logger_1.default.warn(`[AUTH] Unauthorized access attempt by ${req.user.id} (${req.user.role})`);
         const error = new index_1.AppError(403, 'Admin privileges required');

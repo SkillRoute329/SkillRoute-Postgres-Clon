@@ -101,7 +101,7 @@ function parseCarton(raw) {
 function fileToCartonRow(filePath, mtimeMs) {
   let raw;
   try {
-    raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    raw = JSON.parse(fs.readFileSync(filePath).toString('utf-8'));
   } catch (e) {
     return { error: `parse fail: ${e.message}` };
   }

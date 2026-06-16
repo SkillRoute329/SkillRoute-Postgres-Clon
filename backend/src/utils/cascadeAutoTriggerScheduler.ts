@@ -152,7 +152,7 @@ async function detectarFueraDeServicio(): Promise<void> {
         fuente: 'cascadeAutoTriggerScheduler',
       });
       if (res.ok) {
-        logger.info(`[AUTO-CASCADE] coche ${r.id_bus} FUERA_DE_SERVICIO ${COCHE_FDS_MIN_MIN}min+ — efectos=${res.efectos.length}`);
+        logger.info(`[AUTO-CASCADE] coche ${r.id_bus} FUERA_DE_SERVICIO ${cfg.cocheFdsMinMin}min+ — efectos=${res.efectos.length}`);
       }
     } catch (e) {
       logger.warn('[AUTO-CASCADE] error en coche ' + r.id_bus, { err: String(e).slice(0, 100) });

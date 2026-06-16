@@ -8,7 +8,11 @@ node_modules/
 **/node_modules/
 dist/
 build/
-*.log
+**/*.log
+combined.log
+error.log
+schedule_index.json
+**/schedule_index.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

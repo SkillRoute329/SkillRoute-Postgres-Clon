@@ -193,9 +193,9 @@ function calcularDistanciaKm(
 /**
  * Convierte ReporteCompetenciaCompleto a formato AnalysisData
  */
-function convertirReporteAAnalysis(
+async function convertirReporteAAnalysis(
   reporte: ReporteCompetenciaCompleto
-): AnalysisData {
+): Promise<AnalysisData> {
   // Calcular nivel de alerta basado en competencia
   const competenciaDirecta = reporte.competidores.filter(
     (c) => c.tipoCompetencia === 'DIRECTA'
@@ -225,42 +225,102 @@ function convertirReporteAAnalysis(
     ...new Set(reporte.competidores.map((c) => c.linea)),
   ];
 
-  // Convertir competidores a alertas
-  const alertas: Alerta[] = reporte.competidores
-    .filter((comp) => comp.amenaza !== 'BAJA')
-    .map((comp) => ({
-      busUcot: {
-        codigoBus: `UCOT-${reporte.linea}`,
-        linea: reporte.linea,
-        sublinea: null,
-        destino: reporte.datosLinea.destino,
-        velocidad: 30,
-        lat: -34.9,
-        lng: -56.17,
-      },
-      competidoresCercanos: [
-        {
-          codigoBus: `COMP-${comp.linea}`,
-          empresa: comp.linea,
-          linea: comp.linea,
-          sublinea: null,
-          destino: `Sentido ${comp.sentido}`,
-          distanciaKm: comp.solapamientoKm,
-          lat: -34.9,
-          lng: -56.17,
-        },
-      ],
-      maxAmenaza: {
-        codigoBus: `COMP-${comp.linea}`,
-        empresa: comp.linea,
-        linea: comp.linea,
-        sublinea: null,
-        destino: `Sentido ${comp.sentido}`,
-        distanciaKm: comp.solapamientoKm,
-        lat: -34.9,
-        lng: -56.17,
-      },
-    }));
+  // ─── Proximidad Real GPS (Alertas) desde bus_last_pos ───
+  const alertas: Alerta[] = [];
+  try {
+    // 1. Obtener buses de UCOT activos en esta línea
+    const ucotBuses = await sqlDb('bus_last_pos')
+      .where('agency_id', '70')
+      .where('linea', reporte.linea)
+      .where('timestamp_gps', '>', sqlDb.raw("NOW() - INTERVAL '20 minutes'"))
+      .select('id_bus', 'lat', 'lon as lng', 'velocidad', 'destino');
+
+    // 2. Extraer líneas y agencias rivales a evaluar
+    const rivals = reporte.competidores.map((comp) => {
+      const match = comp.linea.match(/^([^\s]+)\s+\(op\s+(\d+)\)$/);
+      if (match) {
+        return { linea: match[1], agencyId: match[2] };
+      }
+      return null;
+    }).filter(Boolean) as Array<{ linea: string; agencyId: string }>;
+
+    let rivalBuses: any[] = [];
+    if (rivals.length > 0 && ucotBuses.length > 0) {
+      // 3. Consultar buses rivales activos para estas líneas específicas (consulta agrupada paramétrica)
+      rivalBuses = await sqlDb('bus_last_pos')
+        .where('timestamp_gps', '>', sqlDb.raw("NOW() - INTERVAL '20 minutes'"))
+        .andWhere(function() {
+          rivals.forEach((r, idx) => {
+            if (idx === 0) {
+              this.where('agency_id', r.agencyId).andWhere('linea', r.linea);
+            } else {
+              this.orWhere(function() {
+                this.where('agency_id', r.agencyId).andWhere('linea', r.linea);
+              });
+            }
+          });
+        })
+        .select('id_bus', 'agency_id', 'linea', 'lat', 'lon as lng', 'velocidad', 'destino');
+    }
+
+    // 4. Evaluar distancias físicas entre buses UCOT y rivales
+    for (const uBus of ucotBuses) {
+      const uLat = Number(uBus.lat);
+      const uLng = Number(uBus.lng);
+      // Validaciones de rango e integridad física de coordenadas (estándar ISO/IEC)
+      if (isNaN(uLat) || isNaN(uLng) || uLat < -90 || uLat > 90 || uLng < -180 || uLng > 180) {
+        continue;
+      }
+
+      const competidoresCercanos: CompetidorCercano[] = [];
+      for (const rBus of rivalBuses) {
+        const rLat = Number(rBus.lat);
+        const rLng = Number(rBus.lng);
+        if (isNaN(rLat) || isNaN(rLng) || rLat < -90 || rLat > 90 || rLng < -180 || rLng > 180) {
+          continue;
+        }
+
+        const dist = calcularDistanciaKm(uLat, uLng, rLat, rLng);
+        // Generar confrontación si el bus rival está a menos de 2.0 km en el corredor
+        if (dist <= 2.0) {
+          competidoresCercanos.push({
+            codigoBus: rBus.id_bus,
+            empresa: rBus.agency_id,
+            linea: rBus.linea,
+            sublinea: null,
+            destino: rBus.destino || 'Destino no especificado',
+            distanciaKm: Math.round(dist * 100) / 100, // Redondear a 2 decimales para calidad
+            lat: rLat,
+            lng: rLng,
+          });
+        }
+      }
+
+      if (competidoresCercanos.length > 0) {
+        // Ordenar del más cercano al más lejano
+        competidoresCercanos.sort((a, b) => a.distanciaKm - b.distanciaKm);
+        const maxAmenaza = competidoresCercanos[0];
+
+        alertas.push({
+          busUcot: {
+            codigoBus: uBus.id_bus,
+            linea: reporte.linea,
+            sublinea: null,
+            destino: uBus.destino || reporte.datosLinea.destino,
+            velocidad: Number(uBus.velocidad) || 0,
+            lat: uLat,
+            lng: uLng,
+          },
+          competidoresCercanos,
+          maxAmenaza,
+        });
+      }
+    }
+
+    logger.info(`[audit] Proximidad procesada para línea ${reporte.linea}. Alertas generadas: ${alertas.length}. Buses evaluados: UCOT=${ucotBuses.length}, rivales=${rivalBuses.length}.`);
+  } catch (err) {
+    logger.error(`[audit] Falló el cálculo de proximidad real para línea ${reporte.linea}:`, err);
+  }
 
   return {
     ok: true,
@@ -422,7 +482,7 @@ app.get('/api/analysis/:linea', async (req: Request, res: Response) => {
     const reporte = await analizarCompetenciaLinea(linea);
 
     // Convertir a formato API
-    const analisis = convertirReporteAAnalysis(reporte);
+    const analisis = await convertirReporteAAnalysis(reporte);
 
     // Agregar detalles adicionales
     res.json({
@@ -432,11 +492,13 @@ app.get('/api/analysis/:linea', async (req: Request, res: Response) => {
         frecuenciaProgramada: reporte.analisisFrequencia.frecuenciaProgramada,
         frecuenciaCalculada: reporte.analisisFrequencia.frecuenciaCalculada,
         desviacionMinutos: reporte.analisisFrequencia.desviacion,
-        desviacionPorcentaje: Math.round(
-          (reporte.analisisFrequencia.desviacion /
-            reporte.analisisFrequencia.frecuenciaProgramada) *
-            100
-        ),
+        desviacionPorcentaje: reporte.analisisFrequencia.frecuenciaProgramada > 0
+          ? Math.round(
+              (reporte.analisisFrequencia.desviacion /
+                reporte.analisisFrequencia.frecuenciaProgramada) *
+                100
+            )
+          : 0,
       },
       // ANÁLISIS DE COBERTURA / SOLAPAMIENTO
       analisisCobertura: reporte.competidores.map((comp) => ({
@@ -476,20 +538,7 @@ app.get('/api/analysis/:linea', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * GET /api/inteligencia/{linea}
- * Alias para compatibilidad directa con el frontend
- */
-app.get('/api/inteligencia/:linea', async (req: Request, res: Response) => {
-  try {
-    const { linea } = req.params;
-    const reporte = await analizarCompetenciaLinea(linea);
-    res.json(reporte);
-  } catch (error) {
-    logger.error(`Error en /api/inteligencia/${req.params.linea}:`, error);
-    res.status(500).json({ ok: false, error: String(error) });
-  }
-});
+
 
 /**
  * GET /api/ucot/fleet-intel
@@ -498,19 +547,34 @@ app.get('/api/inteligencia/:linea', async (req: Request, res: Response) => {
 app.get('/api/ucot/fleet-intel', async (req: Request, res: Response) => {
   try {
     const reportes = await analizarTodasLasLineas();
+
+    // Consultar el conteo real de buses UCOT activos por línea en el último intervalo (20 minutos)
+    const activeUcotBuses = await sqlDb('bus_last_pos')
+      .where('agency_id', '70')
+      .where('timestamp_gps', '>', sqlDb.raw("NOW() - INTERVAL '20 minutes'"))
+      .select('linea', sqlDb.raw('COUNT(*)::int AS cantidad'))
+      .groupBy('linea');
+
+    const countMap = new Map<string, number>();
+    for (const row of activeUcotBuses) {
+      countMap.set(String(row.linea).trim(), Number(row.cantidad) || 0);
+    }
+
+    const totalBuses = Array.from(countMap.values()).reduce((sum, val) => sum + val, 0);
+
+    logger.info(`[audit] Generada inteligencia de flota. Líneas: ${reportes.length}, buses UCOT en servicio: ${totalBuses}.`);
+
     res.json({
       ok: true,
       timestamp: new Date().toISOString(),
       totalLineas: reportes.length,
       lineasEnServicio: reportes.filter((r) => r.analisisFrequencia.frecuenciaCalculada !== 'SIN DATOS').length || reportes.length,
       lineasSinServicio: reportes.filter((r) => r.analisisFrequencia.frecuenciaCalculada === 'SIN DATOS').length,
-      totalBusesUcot: reportes.length * 4,
+      totalBusesUcot: totalBuses,
       lineas: reportes.map((r) => ({
         lineaId: r.linea,
         nombre: r.datosLinea.nombre,
-        // ANTI-SIMULACION (DIRECTRIZ 2026-05-02): numBuses real se debe cruzar
-        // con bus_last_pos. Por ahora null para que UI muestre "Sin datos".
-        numBuses: null,
+        numBuses: countMap.get(r.linea) ?? 0,
         frecuenciaProgramada: r.analisisFrequencia.frecuenciaProgramada,
         frecuenciaReal: r.analisisFrequencia.frecuenciaCalculada,
         amenazaCompetencia: r.resumen.amenazaPromedio,
@@ -618,130 +682,7 @@ app.post('/api/update-from-backend', (req: Request, res: Response) => {
   }
 });
 
-/**
- * GET /api/positions
- * Posiciones GPS de los buses UCOT en tiempo real.
- * Intenta la API pública IMM; si falla, genera posiciones aproximadas
- * basadas en las paradas conocidas de cada línea.
- */
-app.get('/api/positions', async (req: Request, res: Response) => {
-  try {
-    // API pública IMM — POST con body {empresa: "-1"} para TODAS las empresas
-    // (centro de control unificado: UCOT 70, CUTCSA 50, COME 20, COETC 10).
-    // Devuelve GeoJSON FeatureCollection con coordinates [lng, lat]
-    const immUrl = 'https://www.montevideo.gub.uy/buses/rest/stm-online';
-    let buses: BusInfo[] = [];
 
-    try {
-      const response = await axios.post(
-        immUrl,
-        { empresa: '-1' },
-        {
-          timeout: 8000,
-          headers: {
-            'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Referer': 'https://www.montevideo.gub.uy/buses/',
-            'Origin': 'https://www.montevideo.gub.uy',
-          },
-        }
-      );
-      const features = response.data?.features;
-      if (Array.isArray(features)) {
-        buses = features.map((f: any) => {
-          const p = f.properties ?? {};
-          const [lng, lat] = f.geometry?.coordinates ?? [0, 0];
-          return {
-            codigoBus: p.codigoBus ?? null,
-            linea: String(p.linea ?? ''),
-            sublinea: p.sublinea ?? null,
-            destino: p.destinoDesc ?? null,
-            velocidad: p.velocidad ?? 0,
-            lat,
-            lng,
-          };
-        });
-        logger.info(`✅ GPS IMM: ${buses.length} buses UCOT en tiempo real`);
-      }
-    } catch (err: any) {
-      logger.warn(`⚠️  GPS IMM no disponible (${err?.message ?? err}) — devolviendo estado vacio (no se generan datos sinteticos)`);
-    }
-
-    // ANTI-SIMULACION (DIRECTRIZ 2026-05-02): eliminado bloque de generacion
-    // de posiciones sinteticas. Si IMM falla, devolvemos array vacio y el
-    // frontend muestra "Sin datos GPS en vivo". Bloque historico preservado
-    // como comentario por trazabilidad.
-    if (false /* sintético deshabilitado permanentemente */) {
-      const lineas = await cargarLineas();
-      // Coordenadas de referencia para paradas clave de Montevideo
-      const coordMap: Record<string, [number, number]> = {
-        'Crio. Central':      [-34.8971, -56.1805],
-        'Tres Cruces':        [-34.8919, -56.1711],
-        'Intercamb Bell':     [-34.8857, -56.1495],
-        'Instrucc y Bell':    [-34.8838, -56.1458],
-        'Tnal RBco':          [-34.9126, -56.1760],
-        'Portones':           [-34.8836, -56.0806],
-        'Tnal Cerro':         [-34.9210, -56.2380],
-        'Casabo':             [-34.9300, -56.2600],
-        'Kilometro 16':       [-34.8510, -56.1040],
-        'Zonamerica':         [-34.8136, -56.0714],
-        'Solymar':            [-34.8202, -55.9875],
-        'Mendoza':            [-34.8949, -56.1570],
-        'Pya.Cerro/Tnal':    [-34.9227, -56.2424],
-        'Mvd Shopping':       [-34.8856, -56.1526],
-        'Tnal.Juncal':        [-34.9042, -56.2118],
-        'Ciudad Vieja/T.Solis': [-34.9063, -56.2026],
-      };
-
-      let busId = 1;
-      for (const linea of lineas) {
-        // 2 buses por línea como mínimo
-        for (let i = 0; i < 2; i++) {
-          const sentido = linea.sentidos[i % linea.sentidos.length];
-          if (!sentido) continue;
-
-          const paradaRef = sentido.paradas[Math.floor(Math.random() * sentido.paradas.length)];
-          const baseCoord = paradaRef ? coordMap[paradaRef.nombre] : null;
-
-          const lat = baseCoord
-            ? baseCoord[0] + (Math.random() - 0.5) * 0.01
-            : -34.9 + (Math.random() - 0.5) * 0.15;
-          const lng = baseCoord
-            ? baseCoord[1] + (Math.random() - 0.5) * 0.01
-            : -56.17 + (Math.random() - 0.5) * 0.15;
-
-          buses.push({
-            codigoBus: `UCOT-${linea.numero}-${String(busId).padStart(3, '0')}`,
-            linea: linea.numero,
-            sublinea: null,
-            destino: `${sentido.origen} → ${sentido.destino}`,
-            velocidad: Math.round(20 + Math.random() * 30),
-            lat,
-            lng,
-          });
-          busId++;
-        }
-      }
-      logger.info(`📍 Posiciones sintéticas: ${buses.length} buses para ${lineas.length} líneas UCOT`);
-    }
-
-    res.json({
-      ok: buses.length > 0,
-      total: buses.length,
-      buses,
-      timestamp: new Date().toISOString(),
-      fuente: buses.length > 0 ? 'IMM_GPS' : 'NO_DATA',
-      mensaje: buses.length === 0
-        ? 'Feed IMM no disponible en este momento. Sin datos sintéticos generados.'
-        : undefined,
-    });
-  } catch (error) {
-    logger.error('Error en /api/positions:', error);
-    res.status(500).json({ ok: false, message: 'Error obteniendo posiciones', error: String(error) });
-  }
-});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RUTAS DE AGENTES INTELIGENTES

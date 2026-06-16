@@ -120,7 +120,7 @@ async function main() {
 
   const cartones = [];
   for (const f of files) {
-    const raw = JSON.parse(fs.readFileSync(path.join(DOWNLOADS_DIR, f), 'utf-8'));
+    const raw = JSON.parse(fs.readFileSync(path.join(DOWNLOADS_DIR, f)).toString('utf-8'));
     const parsed = parseCarton(raw);
     const id = `ucot_${raw.coche}_${raw.servicio}`;
     cartones.push({

@@ -114,10 +114,10 @@ export async function getOperadoresKpis(req: Request, res: Response): Promise<vo
         agencyId: ag.id,
         nombre: ag.nombre,
         buses: {
-          total: Number(busesRow?.total ?? 0),
-          enTiempo: Number(busesRow?.en_tiempo ?? 0),
-          atrasado: Number(busesRow?.atrasado ?? 0),
-          fds: Number(busesRow?.fds ?? 0),
+          total: Number((busesRow as any)?.total ?? 0),
+          enTiempo: Number((busesRow as any)?.en_tiempo ?? 0),
+          atrasado: Number((busesRow as any)?.atrasado ?? 0),
+          fds: Number((busesRow as any)?.fds ?? 0),
         },
         motor: {
           eventos: eventosRows.length,
