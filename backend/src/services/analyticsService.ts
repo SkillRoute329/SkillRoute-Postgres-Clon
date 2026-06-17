@@ -1,4 +1,4 @@
-import { db } from '../config/database';
+import sqlDb, { db } from '../config/database';
 import { logger } from '../config/logger';
 import {
   Carton,
@@ -22,6 +22,22 @@ class AnalyticsService {
   private readonly COSTO_SEGURO_DIARIO = 500;
 
   /**
+   * Helper para obtener un parámetro operativo desde PostgreSQL local
+   */
+  private async getParametroValor(key: string, defaultValor: number): Promise<number> {
+    try {
+      const row = await sqlDb('parametros_operativos').where('key', key).first();
+      if (row && row.value_jsonb && typeof row.value_jsonb.valor === 'number') {
+        return row.value_jsonb.valor;
+      }
+      return defaultValor;
+    } catch (e) {
+      logger.warn(`Error leyendo parametro ${key} de Postgres, usando default: ${defaultValor}`, { err: String(e) });
+      return defaultValor;
+    }
+  }
+
+  /**
    * Valida viabilidad de un cartón de servicio
    */
   async validarCartoon(cartoonId: string): Promise<CartoonViabilidad> {
@@ -43,9 +59,13 @@ class AnalyticsService {
         30 // últimos 30 días
       );
 
+      const tarifa = await this.getParametroValor('tarifa_stm_comun_uyu', 56);
+      const iva = await this.getParametroValor('iva_transporte', 0);
+      const diasHabiles = await this.getParametroValor('viajes_dia_habil_promedio', 22);
+
       // Calcular métricas
       const pasajerosEstimados = this.estimarPasajeros(cartoon, registros);
-      const ingresosEstimados = pasajerosEstimados * 56; // 56 pesos por boleto
+      const ingresosEstimados = pasajerosEstimados * tarifa * (1 - iva);
       const costosEstimados = this.calcularCostosOperacionales(cartoon, lineaData);
 
       const margenEstimado = ingresosEstimados - costosEstimados;
@@ -60,7 +80,8 @@ class AnalyticsService {
         cartoon,
         pasajerosEstimados,
         margenEstimado,
-        registros
+        registros,
+        tarifa
       );
 
       // Generar recomendaciones
@@ -81,11 +102,11 @@ class AnalyticsService {
         viajesPorDia: cartoon.viajesPorDia,
         pasajerosEstimados,
         ingresosEstimados,
-        ingresosEstimadosMes: ingresosEstimados * 22, // 22 días hábiles
+        ingresosEstimadosMes: ingresosEstimados * diasHabiles, // días hábiles parametrizados
         costosEstimados,
-        costosEstimadosMes: costosEstimados * 22,
+        costosEstimadosMes: costosEstimados * diasHabiles,
         margenEstimado,
-        margenEstimadoMes: margenEstimado * 22,
+        margenEstimadoMes: margenEstimado * diasHabiles,
         porcentajeMargen,
         esViable: margenEstimado > 0,
         puntajeViabilidad,
@@ -188,6 +209,10 @@ class AnalyticsService {
    */
   async identificarLineasEnRiesgo(operador: string): Promise<LineaEnRiesgo[]> {
     try {
+      const tarifa = await this.getParametroValor('tarifa_stm_comun_uyu', 56);
+      const iva = await this.getParametroValor('iva_transporte', 0);
+      const diasHabiles = await this.getParametroValor('viajes_dia_habil_promedio', 22);
+
       const lineasSnapshot = await db
         .collection('lineas')
         .where('operador', '==', operador)
@@ -216,7 +241,7 @@ class AnalyticsService {
             caida,
             causaProbable: 'Requiere análisis de competencia',
             pasajerosEnRiesgo: Math.round(boletosActual * caida / 100),
-            ingresoEnRiesgo: Math.round(boletosActual * caida / 100 * 56 * 22),
+            ingresoEnRiesgo: Math.round(boletosActual * caida / 100 * tarifa * (1 - iva) * diasHabiles),
             recomendacionesUrgentes: [
               'Revisar cambios de competencia',
               'Analizar patrones de demanda',
@@ -294,7 +319,8 @@ class AnalyticsService {
     cartoon: Carton,
     pasajeros: number,
     margen: number,
-    registros: RegistroBoletaje[]
+    registros: RegistroBoletaje[],
+    tarifa: number
   ): AlertaCartoon[] {
     const alertas: AlertaCartoon[] = [];
 
@@ -328,7 +354,7 @@ class AnalyticsService {
         titulo: 'Ocupación Baja',
         mensaje: `Solo ${pasajeros} pasajeros/día estimados`,
         severidad: 'media',
-        impacto: (350 - pasajeros) * 56,
+        impacto: (350 - pasajeros) * tarifa,
         recomendacion: 'Considera aumentar frecuencia en horas pico o reducir servicios en valles'
       });
     }

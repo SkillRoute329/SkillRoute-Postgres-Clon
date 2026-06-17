@@ -42,11 +42,12 @@ class ForecastService {
     try {
       const tarifa = await this.getParametroValor('tarifa_stm_comun_uyu', 56);
       const diasHabiles = await this.getParametroValor('viajes_dia_habil_promedio', 22);
+      const iva = await this.getParametroValor('iva_transporte', 0); // 0 = exento por defecto
 
       // Obtener datos históricos
       const registrosUltimos30 = await this.obtenerHistoricoBoletaje(lineaId, 30);
       const pasajerosActuales = registrosUltimos30.reduce((sum, r) => sum + r.boletosVendidos, 0) / 30;
-      const ingresosActuales = pasajerosActuales * tarifa;
+      const ingresosActuales = pasajerosActuales * tarifa * (1 - iva);
 
       // Escenarios de simulación
       const escenarios = [
@@ -140,10 +141,11 @@ class ForecastService {
     try {
       const tarifa = await this.getParametroValor('tarifa_stm_comun_uyu', 56);
       const diasHabiles = await this.getParametroValor('viajes_dia_habil_promedio', 22);
+      const iva = await this.getParametroValor('iva_transporte', 0);
 
       const registros = await this.obtenerHistoricoBoletaje(lineaId, 30);
       const pasajerosActuales = registros.reduce((sum, r) => sum + r.boletosVendidos, 0) / 30;
-      const ingresosActuales = pasajerosActuales * tarifa;
+      const ingresosActuales = pasajerosActuales * tarifa * (1 - iva);
 
       // Calcular impacto de cambios
       let multiplicadorImpacto = 1.0;
@@ -363,17 +365,20 @@ class ForecastService {
 
       const tarifa = await this.getParametroValor('tarifa_stm_comun_uyu', 56);
       const diasHabiles = await this.getParametroValor('viajes_dia_habil_promedio', 22);
+      const iva = await this.getParametroValor('iva_transporte', 0);
 
       for (let i = 1; i <= meses; i++) {
         boletosActuales = boletosActuales * (1 + tasaCrecimientoMensual / 100);
         const fecha = new Date();
         fecha.setMonth(fecha.getMonth() + i);
 
+        const ingresoNeto = boletosActuales * tarifa * diasHabiles * (1 - iva);
+
         proyecciones.push({
           mes: i,
           fecha,
           boletosProyectados: Math.round(boletosActuales),
-          ingresoProyectado: Math.round(boletosActuales * tarifa * diasHabiles) // dias habiles parametrizados
+          ingresoProyectado: Math.round(ingresoNeto) // ingreso proyectado neto parametrizado
         });
       }
 
@@ -402,10 +407,11 @@ class ForecastService {
   async compararUCOTVsPromedio(lineaId: string): Promise<ComparacionOperador> {
     try {
       const tarifa = await this.getParametroValor('tarifa_stm_comun_uyu', 56);
+      const iva = await this.getParametroValor('iva_transporte', 0);
 
       const registrosUCOT = await this.obtenerHistoricoBoletaje(lineaId, 30);
       const boletosPorDiaUCOT = registrosUCOT.reduce((sum, r) => sum + r.boletosVendidos, 0) / 30;
-      const ingresosPorDiaUCOT = boletosPorDiaUCOT * tarifa;
+      const ingresosPorDiaUCOT = boletosPorDiaUCOT * tarifa * (1 - iva);
 
       // Obtener información de la línea
       const lineaDoc = await db.collection('lineas').doc(lineaId).get();
@@ -413,7 +419,7 @@ class ForecastService {
 
       // Simular datos de competencia (en producción, obtener datos reales)
       const promedioZona = boletosPorDiaUCOT * 0.95; // Asumir que UCOT está 5% arriba
-      const ingresosPorDiaPromedio = promedioZona * tarifa;
+      const ingresosPorDiaPromedio = promedioZona * tarifa * (1 - iva);
 
       const diferenciaVsPromedio = ((boletosPorDiaUCOT - promedioZona) / promedioZona) * 100;
 

@@ -53,15 +53,8 @@ import {
   calcularCostoTotalEmpleado,
   SALARIO_INSPECTOR_NOMINAL,
 } from '../../config/parametros-operativos';
+import { subscribeAll, getParametroValor } from '../../services/firestore/parametrosOperativos';
 
-const TARIFA_STM_UYU = v(TARIFA_STM);
-const COSTO_COMBUSTIBLE_KM = v(COMB_PARAM);
-const COSTO_CONDUCTOR_DIA = v(CONDUCTOR_PARAM);
-const COSTO_MANTENIMIENTO_KM = v(MANT_PARAM);
-const KM_PROMEDIO_VIAJE = v(KM_PARAM);
-const PASAJEROS_PROMEDIO_VIAJE = v(PAX_PARAM);
-/** Fix #3: factor de elasticidad frecuencia→demanda (Balcombe et al. 2004, TRL593). */
-const ELASTICIDAD_FLOTA = v(ELASTICIDAD_PARAM);
 const OCUPACION_PICO = 0.85;
 const OCUPACION_VALLE = 0.45;
 const DIAS_PROYECCION = 30;
@@ -118,7 +111,8 @@ interface LineaEconomica {
   corredor: string;
   viajesDia: number;
   pasajerosRealesPromedio: number; // del Firestore si hay datos
-  ingresosDia: number; // UYU
+  ingresosDia: number; // UYU bruto
+  ingresosDiaNeto: number; // UYU neto deducido el IVA
   costosDia: number; // UYU
   margenDia: number; // UYU
   margenPct: number; // %
@@ -128,6 +122,17 @@ interface LineaEconomica {
   forecastMes: number; // UYU proyectado mes
   agencyId?: string;
   esDatoReal: boolean;
+}
+
+interface ParametrosCalculo {
+  tarifa: number;
+  combustible: number;
+  conductor: number;
+  mantenimiento: number;
+  kmViaje: number;
+  paxDefault: number;
+  elasticidad: number;
+  iva: number;
 }
 
 /* ─── Helpers ─────────────────────────────────────────── */
@@ -143,6 +148,7 @@ function fmtUYU(n: number): string {
 function calcularLinea(
   linea: LineaBase,
   inspData: Map<string, { avg: number; tendencia: number }>,
+  p: ParametrosCalculo,
 ): LineaEconomica {
   // Viajes por día desde ScheduleService
   let viajesDia = 0;
@@ -156,23 +162,24 @@ function calcularLinea(
 
   // Pasajeros reales del Firestore (si existen)
   const insp = inspData.get(linea.id);
-  const pasajerosPromedio = insp?.avg ?? PASAJEROS_PROMEDIO_VIAJE;
+  const pasajerosPromedio = insp?.avg ?? p.paxDefault;
   const tendencia = insp?.tendencia ?? 0;
 
   // Ingresos diarios
-  const ingresosDia = viajesDia * pasajerosPromedio * TARIFA_STM_UYU;
+  const ingresosDiaBruto = viajesDia * pasajerosPromedio * p.tarifa;
+  const ingresosDiaNeto = ingresosDiaBruto * (1 - p.iva);
 
   // Costos diarios
-  const kmDia = viajesDia * KM_PROMEDIO_VIAJE;
+  const kmDia = viajesDia * p.kmViaje;
   const costosDia =
-    kmDia * COSTO_COMBUSTIBLE_KM + COSTO_CONDUCTOR_DIA + kmDia * COSTO_MANTENIMIENTO_KM;
+    kmDia * p.combustible + p.conductor + kmDia * p.mantenimiento;
 
-  const margenDia = ingresosDia - costosDia;
-  const margenPct = ingresosDia > 0 ? (margenDia / ingresosDia) * 100 : 0;
+  const margenDia = ingresosDiaNeto - costosDia;
+  const margenPct = ingresosDiaNeto > 0 ? (margenDia / ingresosDiaNeto) * 100 : 0;
 
   // Break-even: cuántos pasajeros por viaje para cubrir costos
   const breakEvenPasajeros =
-    viajesDia > 0 ? Math.ceil(costosDia / (viajesDia * TARIFA_STM_UYU)) : 0;
+    viajesDia > 0 ? Math.ceil(costosDia / (viajesDia * p.tarifa)) : 0;
 
   const estado: LineaEconomica['estado'] =
     margenPct >= 15 ? 'RENTABLE' : margenPct >= 0 ? 'EN_RIESGO' : 'DEFICITARIA';
@@ -183,7 +190,8 @@ function calcularLinea(
     corredor: linea.corredor,
     viajesDia,
     pasajerosRealesPromedio: Math.round(pasajerosPromedio),
-    ingresosDia: Math.round(ingresosDia),
+    ingresosDia: Math.round(ingresosDiaBruto),
+    ingresosDiaNeto: Math.round(ingresosDiaNeto),
     costosDia: Math.round(costosDia),
     margenDia: Math.round(margenDia),
     margenPct: Math.round(margenPct * 10) / 10,
@@ -208,6 +216,33 @@ export default function EconomicProjectionsPage() {
   const [flotaDelta, setFlotaDelta] = useState(0); // % reducción de viajes diarios
   const [sortBy, setSortBy] = useState<'margen' | 'ingresos' | 'estado'>('margen');
   const [showPitch, setShowPitch] = useState(false);
+
+  const [params, setParams] = useState<ParametrosCalculo>({
+    tarifa: 45,
+    combustible: 12,
+    conductor: 1800,
+    mantenimiento: 3,
+    kmViaje: 18,
+    paxDefault: 28,
+    elasticidad: 0.002,
+    iva: 0,
+  });
+
+  useEffect(() => {
+    const unsub = subscribeAll(() => {
+      setParams({
+        tarifa: getParametroValor<number>('TARIFA_STM') ?? 45,
+        combustible: getParametroValor<number>('COSTO_COMBUSTIBLE_KM') ?? 12,
+        conductor: getParametroValor<number>('COSTO_CONDUCTOR_DIA') ?? 1800,
+        mantenimiento: getParametroValor<number>('COSTO_MANTENIMIENTO_KM') ?? 3,
+        kmViaje: getParametroValor<number>('KM_PROMEDIO_VIAJE') ?? 18,
+        paxDefault: getParametroValor<number>('PASAJEROS_PROMEDIO_VIAJE') ?? 28,
+        elasticidad: getParametroValor<number>('ELASTICIDAD_FLOTA_DEMANDA') ?? 0.002,
+        iva: getParametroValor<number>('IVA_TRANSPORTE') ?? 0,
+      });
+    });
+    return unsub;
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -265,13 +300,13 @@ export default function EconomicProjectionsPage() {
           if (typeof cargaRaw === 'number') {
             cargaN = cargaRaw;
           } else if (cargaRaw === 'ALTO' || cargaRaw === 'Excelente') {
-            cargaN = PASAJEROS_PROMEDIO_VIAJE * OCUPACION_PICO;
+            cargaN = params.paxDefault * OCUPACION_PICO;
           } else if (cargaRaw === 'MEDIO' || cargaRaw === 'Bueno') {
-            cargaN = PASAJEROS_PROMEDIO_VIAJE * 0.65;
+            cargaN = params.paxDefault * 0.65;
           } else if (cargaRaw === 'BAJO' || cargaRaw === 'Regular' || cargaRaw === 'Malo') {
-            cargaN = PASAJEROS_PROMEDIO_VIAJE * OCUPACION_VALLE;
+            cargaN = params.paxDefault * OCUPACION_VALLE;
           } else {
-            cargaN = PASAJEROS_PROMEDIO_VIAJE;
+            cargaN = params.paxDefault;
           }
           if (cargaN === 0 || !lineaId) return;
 
@@ -283,9 +318,9 @@ export default function EconomicProjectionsPage() {
           const createdAt = data.createdAt;
           const esReciente =
             createdAt instanceof Timestamp ? createdAt.toMillis() >= hace15Ts.toMillis() : false;
-        if (esReciente) row.recientes.push(cargaN);
-        else row.antiguos.push(cargaN);
-      });
+          if (esReciente) row.recientes.push(cargaN);
+          else row.antiguos.push(cargaN);
+        });
 
         // Map lineaId → avg + tendencia
         byLinea.forEach((v, lineaId) => {
@@ -307,7 +342,7 @@ export default function EconomicProjectionsPage() {
       const flotaFactor = 1 - flotaDelta / 100; // Reducción de viajes/flota
 
       const resultado = todasLineas.map((l) => {
-        const base = calcularLinea(l, inspData);
+        const base = calcularLinea(l, inspData, params);
         // Aplicar ajuste de escenario y de flota (ROI Simulator)
         
         // Si reducimos la flota (y los viajes) un X%, los costos bajan linealmente aprox
@@ -315,21 +350,23 @@ export default function EconomicProjectionsPage() {
           base.costosDia * flotaFactor *
             (1 +
               (combustibleFactor - 1) *
-                (COSTO_COMBUSTIBLE_KM / (COSTO_COMBUSTIBLE_KM + COSTO_MANTENIMIENTO_KM))),
+                (params.combustible / (params.combustible + params.mantenimiento))),
         );
 
         // Si reducimos viajes, la demanda se agrupa pero asumiendo una penalización 
         // Para simplificar: Pierde 0.2% de pasajeros por cada 1% de viaje reducido (fricción)
-        const penalizacionDemanda = flotaDelta > 0 ? (1 - (flotaDelta * ELASTICIDAD_FLOTA)) : 1;
-        const ingresosAjustados = Math.round(base.ingresosDia * penalizacionDemanda * tarifaFactor);
+        const penalizacionDemanda = flotaDelta > 0 ? (1 - (flotaDelta * params.elasticidad)) : 1;
+        const ingresosBrutosAjustados = Math.round(base.ingresosDia * penalizacionDemanda * tarifaFactor);
+        const ingresosNetosAjustados = Math.round(ingresosBrutosAjustados * (1 - params.iva));
         
-        const margenAjustado = ingresosAjustados - costosAjustados;
+        const margenAjustado = ingresosNetosAjustados - costosAjustados;
         const margenPctAjustado =
-          ingresosAjustados > 0 ? (margenAjustado / ingresosAjustados) * 100 : 0;
+          ingresosNetosAjustados > 0 ? (margenAjustado / ingresosNetosAjustados) * 100 : 0;
         return {
           ...base,
           costosDia: costosAjustados,
-          ingresosDia: ingresosAjustados,
+          ingresosDia: ingresosBrutosAjustados,
+          ingresosDiaNeto: ingresosNetosAjustados,
           margenDia: margenAjustado,
           margenPct: Math.round(margenPctAjustado * 10) / 10,
           estado: (margenPctAjustado >= 15
@@ -347,7 +384,7 @@ export default function EconomicProjectionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [empresaPropia, modoTodos, combustibleDelta, tarifaDelta, flotaDelta]);
+  }, [empresaPropia, modoTodos, combustibleDelta, tarifaDelta, flotaDelta, params]);
 
   useEffect(() => {
     void fetchData();
@@ -361,15 +398,16 @@ export default function EconomicProjectionsPage() {
 
   /* ── KPIs globales ── */
   const totalIngresos = lineas.reduce((s, l) => s + l.ingresosDia, 0);
+  const totalIngresosNeto = lineas.reduce((s, l) => s + l.ingresosDiaNeto, 0);
   const totalCostos = lineas.reduce((s, l) => s + l.costosDia, 0);
-  const totalMargen = totalIngresos - totalCostos;
+  const totalMargen = totalIngresosNeto - totalCostos;
   const rentables = lineas.filter((l) => l.estado === 'RENTABLE').length;
   const deficitarias = lineas.filter((l) => l.estado === 'DEFICITARIA').length;
 
   /* ── Sorted ── */
   const sorted = [...lineas].sort((a, b) => {
     if (sortBy === 'margen') return b.margenDia - a.margenDia;
-    if (sortBy === 'ingresos') return b.ingresosDia - a.ingresosDia;
+    if (sortBy === 'ingresos') return b.ingresosDiaNeto - a.ingresosDiaNeto;
     const order = { RENTABLE: 0, EN_RIESGO: 1, DEFICITARIA: 2 };
     return order[a.estado] - order[b.estado];
   });
@@ -382,18 +420,19 @@ export default function EconomicProjectionsPage() {
     doc.text(`Proyecciones Económicas — ${modoTodos ? 'Sistema Metropolitano' : empresaCfg.label}`, 14, 20);
     doc.setFontSize(9);
     doc.text(
-      `Generado: ${new Date().toLocaleDateString('es-UY')} | Tarifa STM: $${TARIFA_STM_UYU} | Ajuste combustible: ${combustibleDelta > 0 ? '+' : ''}${combustibleDelta}%`,
+      `Generado: ${new Date().toLocaleDateString('es-UY')} | Tarifa STM: $${params.tarifa} | Ajuste combustible: ${combustibleDelta > 0 ? '+' : ''}${combustibleDelta}% | IVA: ${params.iva * 100}%`,
       14,
       28,
     );
 
     doc.setFontSize(11);
-    doc.text(`Ingresos totales/día: ${fmtUYU(totalIngresos)}`, 14, 38);
-    doc.text(`Costos totales/día: ${fmtUYU(totalCostos)}`, 14, 44);
+    doc.text(`Ingresos brutos totales/día: ${fmtUYU(totalIngresos)}`, 14, 38);
+    doc.text(`Ingresos netos (deducido IVA)/día: ${fmtUYU(totalIngresosNeto)}`, 14, 44);
+    doc.text(`Costos totales/día: ${fmtUYU(totalCostos)}`, 14, 50);
     doc.text(
-      `Margen operativo/día: ${fmtUYU(totalMargen)} (${totalIngresos > 0 ? ((totalMargen / totalIngresos) * 100).toFixed(1) : 0}%)`,
+      `Margen operativo/día: ${fmtUYU(totalMargen)} (${totalIngresosNeto > 0 ? ((totalMargen / totalIngresosNeto) * 100).toFixed(1) : 0}%)`,
       14,
-      50,
+      56,
     );
 
     autoTable(doc, {
@@ -503,7 +542,7 @@ export default function EconomicProjectionsPage() {
         <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
         <div className="text-xs text-slate-400 leading-relaxed">
           <span className="font-semibold text-blue-300">Análisis sobre datos públicos del IMM/STM.</span>{' '}
-          Proyecciones macro calculadas con tarifa STM 2026 (UYU {TARIFA_STM_UYU}/pasajero),
+          Proyecciones macro calculadas con tarifa STM 2026 (UYU {params.tarifa}/pasajero),
           promedio de viajes/día por línea y costo operativo estimado sobre parámetros públicos
           (BCU combustible, planilla MTOP). Para análisis preciso por línea individual, SkillRoute
           integra con sistema de boletera del operador y planilla de costos reales —{' '}
@@ -515,8 +554,9 @@ export default function EconomicProjectionsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           {
-            label: 'Ingresos/día',
-            value: fmtUYU(totalIngresos),
+            label: 'Ingresos/día (Neto)',
+            value: fmtUYU(totalIngresosNeto),
+            subtext: params.iva > 0 ? `${fmtUYU(totalIngresos)} Bruto (IVA ${params.iva * 100}%)` : undefined,
             icon: TrendingUp,
             color: 'text-emerald-400',
             bg: 'bg-emerald-500/10 border-emerald-500/20',
@@ -552,6 +592,9 @@ export default function EconomicProjectionsPage() {
               <span className="text-xs text-slate-500">{kpi.label}</span>
             </div>
             <p className={`text-lg font-black ${kpi.color}`}>{loading ? '—' : kpi.value}</p>
+            {kpi.subtext && !loading && (
+              <p className="text-[10px] text-slate-400 font-medium mt-0.5 opacity-90">{kpi.subtext}</p>
+            )}
           </div>
         ))}
       </div>
@@ -729,8 +772,13 @@ export default function EconomicProjectionsPage() {
 
                 {/* Ingresos */}
                 <div className="col-span-2 text-right">
-                  <p className="text-xs font-mono text-emerald-400">{fmtUYU(l.ingresosDia)}</p>
-                  <p className="text-xs text-slate-600">ingresos/día</p>
+                  <p className="text-xs font-mono text-emerald-400">
+                    {fmtUYU(l.ingresosDiaNeto)}{' '}
+                    <span className="text-[10px] text-slate-500 font-bold">neto</span>
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-mono">
+                    {params.iva > 0 ? `(${fmtUYU(l.ingresosDia)} bruto)` : 'ingresos/día'}
+                  </p>
                 </div>
 
                 {/* Costos */}

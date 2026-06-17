@@ -100,6 +100,21 @@ function getDayType(date: Date): 'habiles' | 'sabados' | 'domingos' {
   return 'habiles';
 }
 
+/** Obtiene hora operativa y tipo de día, manejando el cruce de medianoche operativo (antes de 04:00 AM) */
+function getOperationalTimeAndDay(date: Date): { nowMin: number; dayType: 'habiles' | 'sabados' | 'domingos' } {
+  const adjustedDate = new Date(date);
+  let nowMin = date.getHours() * 60 + date.getMinutes();
+
+  if (date.getHours() < 4) {
+    // Es antes de las 4:00 AM, operativamente es el día anterior
+    adjustedDate.setDate(adjustedDate.getDate() - 1);
+    nowMin += 1440; // Rango de 24h a 28h
+  }
+
+  const dayType = getDayType(adjustedDate);
+  return { nowMin, dayType };
+}
+
 // ── API pública ────────────────────────────────────────────────────────────
 
 /** Devuelve todas las líneas y viajes disponibles para una empresa */
@@ -123,12 +138,14 @@ export function getActiveTripsNow(agencyId: string, routeShort: string, now = ne
   const idx = getScheduleIndex();
   const route = idx[agencyId]?.routes[routeShort];
   if (!route) return [];
-  const dayType = getDayType(now);
-  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const { nowMin, dayType } = getOperationalTimeAndDay(now);
   return route[dayType].filter(t => {
     if (!t.departure || !t.arrival) return false;
     const dep = toMin(t.departure);
-    const arr = toMin(t.arrival);
+    let arr = toMin(t.arrival);
+    if (arr < dep) {
+      arr += 1440; // Cruce de medianoche
+    }
     return nowMin >= dep && nowMin <= arr;
   });
 }
@@ -169,8 +186,7 @@ export async function analyzeComplianceForAgency(agencyId: string): Promise<BusC
     logger.warn(`[ComplianceEngine] Agency ${agencyId} no encontrada en GTFS`);
     return [];
   }
-  const dayType = getDayType(now);
-  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const { nowMin, dayType } = getOperationalTimeAndDay(now);
 
   // Mapear agencyId a código STM
   const codeMap: Record<string, string> = {
@@ -429,7 +445,10 @@ export async function analyzeComplianceForAgency(agencyId: string): Promise<BusC
     const candidateTrips = route[dayType].filter(t => {
       if (!t.departure || !t.arrival) return false;
       const dep = toMin(t.departure);
-      const arr = toMin(t.arrival);
+      let arr = toMin(t.arrival);
+      if (arr < dep) {
+        arr += 1440;
+      }
       return nowMin >= dep - 15 && nowMin <= arr + 15;
     });
 
@@ -485,9 +504,15 @@ export async function analyzeComplianceForAgency(agencyId: string): Promise<BusC
     let minDistKm = Infinity;
     let desviacion: number | null = null;
 
+    const depTime = toMin(tripActivo.departure || '00:00');
+    const isMidnightTrip = (toMin(tripActivo.arrival || '00:00') < depTime);
+
     for (const stop of tripActivo.control_stops) {
       if (!stop.lat || !stop.lon) continue;
-      const stopMin = toMin(stop.arrival);
+      let stopMin = toMin(stop.arrival);
+      if (isMidnightTrip && stopMin < depTime) {
+        stopMin += 1440;
+      }
       if (stopMin < nowMin - 10) continue; // ya pasada hace más de 10 min
       const dist = distKm(lat, lon, stop.lat, stop.lon);
       if (dist < minDistKm) {
@@ -500,7 +525,10 @@ export async function analyzeComplianceForAgency(agencyId: string): Promise<BusC
     let minutosParaProxima: number | null = null;
 
     if (proximaParada) {
-      const stopMin = toMin(proximaParada.arrival);
+      let stopMin = toMin(proximaParada.arrival);
+      if (isMidnightTrip && stopMin < depTime) {
+        stopMin += 1440;
+      }
       minutosParaProxima = stopMin - nowMin;
       // Velocidad actual en km/min
       const velKmMin = (p.velocidad ?? 20) / 60;
