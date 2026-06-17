@@ -722,7 +722,7 @@ export default function EconomicProjectionsPage() {
                 {tarifaDelta > 0 ? '+' : ''}
                 {tarifaDelta}%
                 <span className="text-slate-500 font-normal ml-1">
-                  (${Math.round(TARIFA_STM_UYU * (1 + tarifaDelta / 100))})
+                  (${Math.round(params.tarifa * (1 + tarifaDelta / 100))})
                 </span>
               </span>
             </div>
@@ -1000,8 +1000,8 @@ export default function EconomicProjectionsPage() {
 
       {/* Notas metodológicas */}
       <p className="text-xs text-slate-700 text-center">
-        Tarifa STM base: ${TARIFA_STM_UYU} UYU · Costo combustible: ${COSTO_COMBUSTIBLE_KM}/km ·
-        Conductor: ${COSTO_CONDUCTOR_DIA}/día · Km/viaje: {KM_PROMEDIO_VIAJE}km estimado
+        Tarifa STM base: {params.tarifa} UYU · Costo combustible: {params.combustible} UYU/km ·
+        Conductor: {params.conductor} UYU/día · Km/viaje: {params.kmViaje} km (estimado)
       </p>
     </div>
   );
