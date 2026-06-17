@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import toast from 'react-hot-toast';
+import { formatHoraMvd } from '../../utils/formatTimestamp';
 
 // ─── Tipos (espejo del backend) ───────────────────────────────────────────────
 
@@ -303,7 +304,7 @@ export default function ListeroModule() {
 
   const firmarCarton = async (turnoId: string) => {
     try {
-      const hora = new Date().toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' });
+      const hora = formatHoraMvd(new Date());
       await apiFetch('/api/listero/firma', {
         method: 'POST',
         body: JSON.stringify({ turnoId, horaFirma: hora }),

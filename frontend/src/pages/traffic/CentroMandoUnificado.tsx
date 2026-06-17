@@ -20,6 +20,7 @@ import {
 } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
+import { formatHoraMvd } from '../../utils/formatTimestamp';
 import {
   Shield,
   AlertTriangle,
@@ -411,7 +412,7 @@ export default function CentroMandoUnificado() {
             {ultimaActualizacion && (
               <span className="text-xs text-slate-500 flex items-center gap-1.5">
                 <Clock className="w-3 h-3" />
-                Act. {ultimaActualizacion.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}
+                Act. {formatHoraMvd(ultimaActualizacion)}
               </span>
             )}
             <button

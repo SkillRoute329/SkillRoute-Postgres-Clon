@@ -16,6 +16,7 @@ import { db } from '../../config/firebase';
 import { authReady } from '../../config/firebase';
 import { AlertTriangle, Bell, CheckCircle, Clock, MapPin, Send, X, RefreshCw, Navigation } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { formatHoraSegundosMvd } from '../../utils/formatTimestamp';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -69,9 +70,7 @@ function safeDate(ts: any): Date | null {
 }
 
 function tsToStr(ts: any): string {
-  const d = safeDate(ts);
-  if (!d || isNaN(d.getTime())) return '—';
-  return d.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return formatHoraSegundosMvd(ts);
 }
 
 function minutosAtras(ts: any): string {
