@@ -102,7 +102,95 @@ router.get('/resumen-imm', verifyAuth, async (_req: Request, res: Response) => {
         .select('agency_id', sqlDb.raw('COUNT(*) AS total'))
         .groupBy('agency_id'),
     ]);
-    const cobertura24h: never[] = []; const otpPorAgencia: never[] = []; const topLineasProblematicas: never[] = [];
+    // Obtener la fecha mas reciente de la MV de forma eficiente (o usar la fecha de hoy)
+    const maxFechaRow = (await sqlDb('mv_fleet_ranking_diario').max('fecha as max_fecha').first()) as { max_fecha: string | Date } | undefined;
+    const fechaConsulta = maxFechaRow?.max_fecha
+      ? new Date(maxFechaRow.max_fecha).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+
+    const [
+      rawToday,
+      rawProblematic
+    ] = await Promise.all([
+      sqlDb('mv_fleet_ranking_diario')
+        .where('fecha', fechaConsulta)
+        .select('agency_id', 'id_bus', 'total', 'en_tiempo', 'atrasado', 'adelantado', 'sin_horario', 'lineas'),
+
+      sqlDb.raw(`
+        SELECT 
+          agency_id,
+          l AS linea,
+          SUM(en_tiempo)::int AS en_tiempo,
+          SUM(atrasado)::int AS atrasado,
+          SUM(adelantado)::int AS adelantado
+        FROM mv_fleet_ranking_diario,
+        UNNEST(lineas) AS l
+        WHERE fecha >= (?::date - INTERVAL '3 days')
+        GROUP BY agency_id, l
+        HAVING (SUM(en_tiempo) + SUM(atrasado) + SUM(adelantado)) >= 100
+        ORDER BY (SUM(en_tiempo)::float / NULLIF(SUM(en_tiempo) + SUM(atrasado) + SUM(adelantado), 0)) ASC
+        LIMIT 10
+      `, [fechaConsulta])
+    ]);
+
+    // Procesar cobertura 24h y OTP diario en memoria a partir de los datos pre-agregados por bus
+    const coberturaMap = new Map<string, { eventos: number; buses: Set<string>; lineas: Set<string> }>();
+    const otpMap = new Map<string, { total: number; en_tiempo: number }>();
+
+    for (const r of rawToday) {
+      const agencyId = String(r.agency_id);
+      const totalEventos = Number(r.total) || 0;
+      const enTiempo = Number(r.en_tiempo) || 0;
+      const atrasado = Number(r.atrasado) || 0;
+      const adelantado = Number(r.adelantado) || 0;
+      const conSchedule = enTiempo + atrasado + adelantado;
+
+      if (!coberturaMap.has(agencyId)) {
+        coberturaMap.set(agencyId, { eventos: 0, buses: new Set(), lineas: new Set() });
+      }
+      const cob = coberturaMap.get(agencyId)!;
+      cob.eventos += totalEventos;
+      cob.buses.add(String(r.id_bus));
+      if (Array.isArray(r.lineas)) {
+        for (const l of r.lineas) {
+          if (l) cob.lineas.add(String(l));
+        }
+      }
+
+      if (!otpMap.has(agencyId)) {
+        otpMap.set(agencyId, { total: 0, en_tiempo: 0 });
+      }
+      const otp = otpMap.get(agencyId)!;
+      otp.total += conSchedule;
+      otp.en_tiempo += enTiempo;
+    }
+
+    const cobertura24h = Array.from(coberturaMap.entries()).map(([agencyId, val]) => ({
+      agency_id: agencyId,
+      eventos: val.eventos,
+      buses_unicos: val.buses.size,
+      lineas_activas: val.lineas.size,
+    }));
+
+    const otpPorAgencia = Array.from(otpMap.entries()).map(([agencyId, val]) => ({
+      agency_id: agencyId,
+      total: val.total,
+      en_tiempo: val.en_tiempo,
+    }));
+
+    const topLineasProblematicas = (rawProblematic.rows ?? rawProblematic).map((r: any) => {
+      const enTiempo = Number(r.en_tiempo) || 0;
+      const atrasado = Number(r.atrasado) || 0;
+      const adelantado = Number(r.adelantado) || 0;
+      const total = enTiempo + atrasado + adelantado;
+      return {
+        agency_id: r.agency_id,
+        linea: r.linea,
+        muestras: total,
+        pct_en_tiempo: total > 0 ? Number(((enTiempo / total) * 100).toFixed(2)) : 0
+      };
+    });
+
     const eventos24h = eventosApprox;
     const alertasUltimas24h = autoStatsRecent;
 

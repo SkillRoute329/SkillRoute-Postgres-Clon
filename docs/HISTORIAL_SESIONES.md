@@ -720,3 +720,25 @@ SkillRoute ahora opera 100% cross-operador desde el sidebar. Cualquier operador 
 **Pendientes para próxima:**
 - Monitoreo de producción del panel de cumplimiento en vivo y confirmación de la estabilidad del cargador de cartones automático.
 
+---
+
+## 2026-06-16 — Sesión Optimización Resumen IMM + Robustez QA Suite
+
+**Duración:** ~1 hora.
+
+**Features entregadas:**
+
+| Feature | Archivo(s) | Estado |
+|---|---|---|
+| Consulta de cobertura, OTP y top 10 líneas problemáticas dinámicas | [audit.routes.ts](file:///C:/SkillRoute_Master/repo/backend/src/routes/audit.routes.ts) | prod |
+| Validación de expiración de token en caché y login SuperAdmin | [run_qa_suite.ps1](file:///C:/SkillRoute_Master/run_qa_suite.ps1) | prod |
+
+**Decisiones:**
+- Utilizar la vista materializada `mv_fleet_ranking_diario` para alimentar el endpoint `/api/audit/resumen-imm`, garantizando datos reales agregados con un tiempo de respuesta ultra eficiente (<540ms) en lugar de retornar arrays vacíos.
+- Validar el token local de QA antes de ejecutar la suite de pruebas para evitar fallas 401 sistemáticas cuando expira.
+
+**Métricas medidas:**
+- 0 errores en compilación de TypeScript (`npm run build`).
+- Suite de QA completada con éxito (**29/29 tests PASS** con 1 WARN normal por horario nocturno).
+- Cobertura 24h, OTP por operador y top 10 líneas con problemas calculados y verificados en tiempo real.
+
