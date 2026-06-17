@@ -133,21 +133,16 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         { path: '/dashboard/traffic/inspector-control',  label: 'Inspectores',             icon: Activity   },
         // Hub: Estado Sistema + Monitor STM + Ingesta + Turnos OTP + Config + Setup + Seed
         { path: '/dashboard/admin/sistema',              label: 'Sistema y Configuración', icon: ShieldCheck},
-        // Hub: Cumplimiento MTOP + Cross-Op + Rendición + Audit Log
+        // Hub: Cumplimiento MTOP + Cross-Op + Rendición + Audit Log + Cumplimiento del Sistema
         { path: '/dashboard/admin/regulatorio',          label: 'Reportes Regulatorios',   icon: Shield     },
-        // Sprint 3 (2026-05-07): Vista Regulador cross-operador
-        { path: '/dashboard/admin/regulatorio/cumplimiento', label: 'Cumplimiento del Sistema', icon: CheckSquare },
         // Centro de Mando Unificado — solo SUPERADMIN (guard en la página)
-        { path: '/dashboard/super-admin/centro-mando',   label: 'Centro de Mando (SA)',    icon: ShieldAlert},
+        { path: '/dashboard/super-admin/centro-mando',   label: 'Monitoreo Metropolitano (SA)',    icon: ShieldAlert},
         // Gantt Red Metropolitana — solo SUPERADMIN
         { path: '/dashboard/super-admin/gantt-red',      label: 'Gantt Red (SA)',           icon: Network    },
-        // Motor de Consecuencias — grafo operativo
-        { path: '/dashboard/super-admin/motor-consecuencias', label: 'Motor Consecuencias', icon: Zap        },
-        { path: '/dashboard/super-admin/cascade-audit',       label: 'Auditoría Cascada',   icon: Activity   },
-        { path: '/dashboard/super-admin/motor-config',        label: 'Config Motor',        icon: Sliders    },
+        // Hub: Simulación + Auditoría + Configuración + Salud del Motor
+        { path: '/dashboard/super-admin/motor',          label: 'Motor de Consecuencias (SA)', icon: Zap     },
         { path: '/dashboard/super-admin/auditoria-imm',       label: 'Reporte IMM',         icon: FileText   },
         { path: '/dashboard/super-admin/operadores',          label: 'Operadores',          icon: Building2  },
-        { path: '/dashboard/super-admin/motor-health',        label: 'Salud del Motor',     icon: Zap        },
       ],
     },
 

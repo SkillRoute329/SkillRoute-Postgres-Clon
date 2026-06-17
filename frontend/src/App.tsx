@@ -104,6 +104,7 @@ const AuditoriaRegulatoriaIMM = lazy(() => import('./pages/admin/AuditoriaRegula
 const MiLinea = lazy(() => import('./pages/driver/MiLinea'));
 const OperadoresComparativa = lazy(() => import('./pages/admin/OperadoresComparativa'));
 const MotorHealth = lazy(() => import('./pages/admin/MotorHealth'));
+const MotorHub = lazy(() => import('./pages/admin/MotorHub'));
 // Trim+ #69 (2026-04-23): gestión de disrupciones operacionales
 // Migrado a feature-first 2026-04-24 (ADR 002)
 const AdminDisruptionsPage = lazy(() => import('./features/disruptions').then(m => ({ default: m.AdminDisruptionsPage })));
@@ -275,13 +276,14 @@ function App() {
                     <Route path="super-admin/tenants" element={<PrivateRoute roles={['SUPERADMIN']}><TenantsManager /></PrivateRoute>} />
                     <Route path="super-admin/centro-mando" element={<PrivateRoute roles={['SUPERADMIN']}><CentroMandoUnificado /></PrivateRoute>} />
                     <Route path="super-admin/gantt-red" element={<PrivateRoute roles={['SUPERADMIN']}><GanttRedMetropolitana /></PrivateRoute>} />
-                    <Route path="super-admin/motor-consecuencias" element={<PrivateRoute roles={['SUPERADMIN', 'ADMIN']}><MotorConsecuencias /></PrivateRoute>} />
-                    <Route path="super-admin/cascade-audit" element={<PrivateRoute roles={['SUPERADMIN', 'ADMIN']}><CascadeAudit /></PrivateRoute>} />
-                    <Route path="super-admin/motor-config" element={<PrivateRoute roles={['SUPERADMIN', 'ADMIN']}><MotorConfigPanel /></PrivateRoute>} />
+                    <Route path="super-admin/motor" element={<PrivateRoute roles={['SUPERADMIN', 'ADMIN']}><MotorHub /></PrivateRoute>} />
+                    <Route path="super-admin/motor-consecuencias" element={<Navigate to="/dashboard/super-admin/motor?tab=simulador" replace />} />
+                    <Route path="super-admin/cascade-audit" element={<Navigate to="/dashboard/super-admin/motor?tab=auditoria" replace />} />
+                    <Route path="super-admin/motor-config" element={<Navigate to="/dashboard/super-admin/motor?tab=config" replace />} />
+                    <Route path="super-admin/motor-health" element={<Navigate to="/dashboard/super-admin/motor?tab=salud" replace />} />
                     <Route path="super-admin/auditoria-imm" element={<PrivateRoute roles={['SUPERADMIN', 'ADMIN']}><AuditoriaRegulatoriaIMM /></PrivateRoute>} />
                     <Route path="driver/mi-linea" element={<MiLinea />} />
                     <Route path="super-admin/operadores" element={<PrivateRoute roles={['SUPERADMIN', 'ADMIN']}><OperadoresComparativa /></PrivateRoute>} />
-                    <Route path="super-admin/motor-health" element={<PrivateRoute roles={['SUPERADMIN', 'ADMIN']}><MotorHealth /></PrivateRoute>} />
 
                     {/* Alertas de Vía (menú Gestión de Flota) */}
                     <Route path="alerts" element={<RoadAlertsPage />} />
@@ -372,13 +374,7 @@ function App() {
                     <Route path="traffic/financiero" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><FinancieroHub /></PrivateRoute>} />
                     <Route path="admin/sistema" element={<PrivateRoute roles={['ADMIN']}><SistemaAdminHub /></PrivateRoute>} />
                     <Route path="admin/regulatorio" element={<PrivateRoute roles={['ADMIN','SUPERADMIN']}><RegulatorioHub /></PrivateRoute>} />
-                    <Route path="admin/regulatorio/cumplimiento" element={
-                      <PrivateRoute roles={['ADMIN','SUPERADMIN']}>
-                        <Suspense fallback={<PageLoader />}>
-                          <RegulatorComplianceView />
-                        </Suspense>
-                      </PrivateRoute>
-                    } />
+                    <Route path="admin/regulatorio/cumplimiento" element={<Navigate to="/dashboard/admin/regulatorio?tab=sistema" replace />} />
                     <Route path="traffic/cumplimiento" element={
                       <PrivateRoute roles={['TRAFFIC','ADMIN','SUPERADMIN']}>
                         <Suspense fallback={<PageLoader />}>
