@@ -216,6 +216,7 @@ export default function EconomicProjectionsPage() {
   const [flotaDelta, setFlotaDelta] = useState(0); // % reducción de viajes diarios
   const [sortBy, setSortBy] = useState<'margen' | 'ingresos' | 'estado'>('margen');
   const [showPitch, setShowPitch] = useState(false);
+  const [fallbackUcotUsed, setFallbackUcotUsed] = useState(false);
 
   const [params, setParams] = useState<ParametrosCalculo>({
     tarifa: 45,
@@ -250,9 +251,34 @@ export default function EconomicProjectionsPage() {
       // ── 1. Cargar líneas del/los operador/es seleccionados ──────────────
       const agencyIds = modoTodos ? [...OPERADORES_TODOS] : [empresaPropia];
 
+      let usedFallback = false;
       const lineasPorOperador = await Promise.all(
         agencyIds.map(async (aid) => {
-          if (aid === 70) return LINEAS_UCOT;
+          if (aid === 70) {
+            try {
+              const res = await getLineasByAgency(70);
+              if (!res || res.length === 0) {
+                throw new Error("No dynamic lines returned for UCOT");
+              }
+              return res.map<LineaBase>((l) => {
+                const variantLower = l.codigo.toLowerCase();
+                const variantSuffix = variantLower.endsWith('a') || variantLower.endsWith('b')
+                  ? variantLower
+                  : `${variantLower}a`;
+                return {
+                  id: l.codigo,
+                  nombre: l.nombre.includes('·') ? l.nombre : `Línea ${l.codigo}`,
+                  corredor: l.origen && l.destino ? `${l.origen}–${l.destino}` : 'UCOT',
+                  variante: variantSuffix,
+                  agencyId: '70',
+                };
+              });
+            } catch (err) {
+              console.warn('[EconomicProjections] Error fetching dynamic UCOT lines. Using fallback.', err);
+              usedFallback = true;
+              return LINEAS_UCOT;
+            }
+          }
           const res = await getLineasByAgency(aid);
           return res.map<LineaBase>((l) => ({
             id: l.codigo,
@@ -263,6 +289,7 @@ export default function EconomicProjectionsPage() {
           }));
         }),
       );
+      setFallbackUcotUsed(usedFallback);
       const todasLineas = lineasPorOperador.flat();
 
       // ── 2. Inspecciones de pasajeros — solo UCOT tiene datos reales ─────
@@ -486,8 +513,13 @@ export default function EconomicProjectionsPage() {
             <DollarSign className="w-5 h-5 text-emerald-400" />
           </div>
           <div>
-            <h1 className="text-xl font-black text-white tracking-tight">
+            <h1 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
               Proyecciones Económicas{modoTodos ? ` — Sistema Metropolitano` : ` — ${empresaCfg.label}`}
+              {fallbackUcotUsed && (
+                <span className="text-[10px] font-black text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded border border-amber-500/20 animate-pulse">
+                  ⚠️ Muestra parcial (Fallback)
+                </span>
+              )}
             </h1>
             <p className="text-xs text-slate-500">
               Rentabilidad real por línea · Simulación de escenarios · Forecast {DIAS_PROYECCION}d

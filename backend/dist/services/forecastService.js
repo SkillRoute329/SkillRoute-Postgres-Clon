@@ -1,7 +1,40 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.forecastService = void 0;
-const database_1 = require("../config/database");
+const database_1 = __importStar(require("../config/database"));
 const logger_1 = require("../config/logger");
 // Servicio de pronósticos e ingresos - Semana 6-7
 //
@@ -13,14 +46,33 @@ const logger_1 = require("../config/logger");
 // boletaje y pipeline de ingesta.
 class ForecastService {
     /**
+     * Helper para obtener un parámetro operativo desde PostgreSQL local
+     */
+    async getParametroValor(key, defaultValor) {
+        try {
+            const row = await (0, database_1.default)('parametros_operativos').where('key', key).first();
+            if (row && row.value_jsonb && typeof row.value_jsonb.valor === 'number') {
+                return row.value_jsonb.valor;
+            }
+            return defaultValor;
+        }
+        catch (e) {
+            logger_1.logger.warn(`Error leyendo parametro ${key} de Postgres, usando default: ${defaultValor}`, { err: String(e) });
+            return defaultValor;
+        }
+    }
+    /**
      * Genera pronóstico de ingresos con diferentes escenarios
      */
     async pronosticarIngresos(lineaId) {
         try {
+            const tarifa = await this.getParametroValor('tarifa_stm_comun_uyu', 56);
+            const diasHabiles = await this.getParametroValor('viajes_dia_habil_promedio', 22);
+            const iva = await this.getParametroValor('iva_transporte', 0); // 0 = exento por defecto
             // Obtener datos históricos
             const registrosUltimos30 = await this.obtenerHistoricoBoletaje(lineaId, 30);
             const pasajerosActuales = registrosUltimos30.reduce((sum, r) => sum + r.boletosVendidos, 0) / 30;
-            const ingresosActuales = pasajerosActuales * 56;
+            const ingresosActuales = pasajerosActuales * tarifa * (1 - iva);
             // Escenarios de simulación
             const escenarios = [
                 {
@@ -36,7 +88,7 @@ class ForecastService {
                     pasajerosProyectados: Math.round(pasajerosActuales * 1.15), // +15%
                     ingresosProyectados: Math.round(ingresosActuales * 1.15),
                     cambioVsActual: 15,
-                    impacto: Math.round((ingresosActuales * 1.15 - ingresosActuales) * 22), // Impacto mensual
+                    impacto: Math.round((ingresosActuales * 1.15 - ingresosActuales) * diasHabiles), // Impacto mensual
                     confianza: 72
                 },
                 {
@@ -44,7 +96,7 @@ class ForecastService {
                     pasajerosProyectados: Math.round(pasajerosActuales * 1.25), // +25%
                     ingresosProyectados: Math.round(ingresosActuales * 1.25),
                     cambioVsActual: 25,
-                    impacto: Math.round((ingresosActuales * 1.25 - ingresosActuales) * 22),
+                    impacto: Math.round((ingresosActuales * 1.25 - ingresosActuales) * diasHabiles),
                     confianza: 65
                 },
                 {
@@ -52,7 +104,7 @@ class ForecastService {
                     pasajerosProyectados: Math.round(pasajerosActuales * 1.20), // +20%
                     ingresosProyectados: Math.round(ingresosActuales * 1.20),
                     cambioVsActual: 20,
-                    impacto: Math.round((ingresosActuales * 1.20 - ingresosActuales) * 22),
+                    impacto: Math.round((ingresosActuales * 1.20 - ingresosActuales) * diasHabiles),
                     confianza: 68
                 },
                 {
@@ -60,7 +112,7 @@ class ForecastService {
                     pasajerosProyectados: Math.round(pasajerosActuales * 0.85), // -15% (peor escenario)
                     ingresosProyectados: Math.round(ingresosActuales * 0.85),
                     cambioVsActual: -15,
-                    impacto: Math.round((ingresosActuales * 0.85 - ingresosActuales) * 22),
+                    impacto: Math.round((ingresosActuales * 0.85 - ingresosActuales) * diasHabiles),
                     confianza: 80
                 },
                 {
@@ -68,7 +120,7 @@ class ForecastService {
                     pasajerosProyectados: Math.round(pasajerosActuales * 1.30), // +30%
                     ingresosProyectados: Math.round(ingresosActuales * 1.30),
                     cambioVsActual: 30,
-                    impacto: Math.round((ingresosActuales * 1.30 - ingresosActuales) * 22),
+                    impacto: Math.round((ingresosActuales * 1.30 - ingresosActuales) * diasHabiles),
                     confianza: 55
                 }
             ];
@@ -106,9 +158,12 @@ class ForecastService {
      */
     async simuladorHorarios(lineaId, cambios) {
         try {
+            const tarifa = await this.getParametroValor('tarifa_stm_comun_uyu', 56);
+            const diasHabiles = await this.getParametroValor('viajes_dia_habil_promedio', 22);
+            const iva = await this.getParametroValor('iva_transporte', 0);
             const registros = await this.obtenerHistoricoBoletaje(lineaId, 30);
             const pasajerosActuales = registros.reduce((sum, r) => sum + r.boletosVendidos, 0) / 30;
-            const ingresosActuales = pasajerosActuales * 56;
+            const ingresosActuales = pasajerosActuales * tarifa * (1 - iva);
             // Calcular impacto de cambios
             let multiplicadorImpacto = 1.0;
             const descripcionCambios = [];
@@ -133,7 +188,7 @@ class ForecastService {
                 }
             }
             const pasajerosNuevo = Math.round(pasajerosActuales * multiplicadorImpacto);
-            const ingresosNuevo = Math.round(pasajerosNuevo * 56);
+            const ingresosNuevo = Math.round(pasajerosNuevo * tarifa);
             // Evaluar riesgo
             let riesgo = 'bajo';
             if (multiplicadorImpacto < 0.95)
@@ -155,7 +210,7 @@ class ForecastService {
                         cambioAbsoluto: Math.round(ingresosNuevo - ingresosActuales),
                         cambioRelativo: Math.round(((ingresosNuevo - ingresosActuales) / ingresosActuales) * 100)
                     },
-                    impactoTotal: Math.round((ingresosNuevo - ingresosActuales) * 22) // Impacto mensual
+                    impactoTotal: Math.round((ingresosNuevo - ingresosActuales) * diasHabiles) // Impacto mensual
                 },
                 riesgo,
                 recomendacion: this.generarRecomendacionSimulacion(multiplicadorImpacto, riesgo, descripcionCambios)
@@ -297,15 +352,19 @@ class ForecastService {
             // Proyectar hacia el futuro
             const proyecciones = [];
             let boletosActuales = ultimoMes;
+            const tarifa = await this.getParametroValor('tarifa_stm_comun_uyu', 56);
+            const diasHabiles = await this.getParametroValor('viajes_dia_habil_promedio', 22);
+            const iva = await this.getParametroValor('iva_transporte', 0);
             for (let i = 1; i <= meses; i++) {
                 boletosActuales = boletosActuales * (1 + tasaCrecimientoMensual / 100);
                 const fecha = new Date();
                 fecha.setMonth(fecha.getMonth() + i);
+                const ingresoNeto = boletosActuales * tarifa * diasHabiles * (1 - iva);
                 proyecciones.push({
                     mes: i,
                     fecha,
                     boletosProyectados: Math.round(boletosActuales),
-                    ingresoProyectado: Math.round(boletosActuales * 56 * 22) // 22 días hábiles
+                    ingresoProyectado: Math.round(ingresoNeto) // ingreso proyectado neto parametrizado
                 });
             }
             return {
@@ -332,15 +391,17 @@ class ForecastService {
      */
     async compararUCOTVsPromedio(lineaId) {
         try {
+            const tarifa = await this.getParametroValor('tarifa_stm_comun_uyu', 56);
+            const iva = await this.getParametroValor('iva_transporte', 0);
             const registrosUCOT = await this.obtenerHistoricoBoletaje(lineaId, 30);
             const boletosPorDiaUCOT = registrosUCOT.reduce((sum, r) => sum + r.boletosVendidos, 0) / 30;
-            const ingresosPorDiaUCOT = boletosPorDiaUCOT * 56;
+            const ingresosPorDiaUCOT = boletosPorDiaUCOT * tarifa * (1 - iva);
             // Obtener información de la línea
             const lineaDoc = await database_1.db.collection('lineas').doc(lineaId).get();
             const lineaData = lineaDoc.data();
             // Simular datos de competencia (en producción, obtener datos reales)
             const promedioZona = boletosPorDiaUCOT * 0.95; // Asumir que UCOT está 5% arriba
-            const ingresosPorDiaPromedio = promedioZona * 56;
+            const ingresosPorDiaPromedio = promedioZona * tarifa * (1 - iva);
             const diferenciaVsPromedio = ((boletosPorDiaUCOT - promedioZona) / promedioZona) * 100;
             return {
                 lineaId,

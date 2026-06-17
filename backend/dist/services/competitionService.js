@@ -1,7 +1,40 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.competitionService = void 0;
-const database_1 = require("../config/database");
+const database_1 = __importStar(require("../config/database"));
 const logger_1 = require("../config/logger");
 // Servicio de análisis de competencia - Semana 4
 //
@@ -12,6 +45,22 @@ const logger_1 = require("../config/logger");
 // muestre estado vacío honesto en vez de crash. Migración a Postgres queda
 // pendiente: requiere crear tablas y pipeline de ingesta de boletaje.
 class CompetitionService {
+    /**
+     * Helper para obtener un parámetro operativo desde PostgreSQL local
+     */
+    async getParametroValor(key, defaultValor) {
+        try {
+            const row = await (0, database_1.default)('parametros_operativos').where('key', key).first();
+            if (row && row.value_jsonb && typeof row.value_jsonb.valor === 'number') {
+                return row.value_jsonb.valor;
+            }
+            return defaultValor;
+        }
+        catch (e) {
+            logger_1.logger.warn(`Error leyendo parametro ${key} de Postgres, usando default: ${defaultValor}`, { err: String(e) });
+            return defaultValor;
+        }
+    }
     /**
      * Ingresa un nuevo competidor con sus líneas y horarios
      */
@@ -52,7 +101,7 @@ class CompetitionService {
                     if (porcentaje > 30) {
                         // Sobreposición significativa
                         const conflictos = await this.detectarConflictosHorarios(lineaUCOTId, lineaComp.id, competidor.nombre);
-                        const pasajerosEnRiesgo = this.estimarPasajerosEnRiesgo(lineaUCOTId, porcentaje);
+                        const pasajerosEnRiesgo = await this.estimarPasajerosEnRiesgo(lineaUCOTId, porcentaje);
                         sobreposiciones.push({
                             id: `overlap-${lineaUCOTId}-${lineaComp.id}`,
                             lineaUCOT: lineaUCOTId,
@@ -93,7 +142,7 @@ class CompetitionService {
                     const diferenciaMinutos = this.calcularDiferenciaHorarios(horarioUCOT.horaInicio, horarioComp.horaInicio);
                     if (Math.abs(diferenciaMinutos) < 30) {
                         // Conflicto si están dentro de 30 minutos
-                        const pasajerosEnRiesgo = this.estimarPasajerosEnRiesgoHorario(lineaUCOTId, horarioUCOT.horaInicio, Math.abs(diferenciaMinutos));
+                        const pasajerosEnRiesgo = await this.estimarPasajerosEnRiesgoHorario(lineaUCOTId, horarioUCOT.horaInicio, Math.abs(diferenciaMinutos));
                         conflictos.push({
                             id: `conflict-${lineaUCOTId}-${horarioUCOT.horaInicio}`,
                             lineaUCOT: lineaUCOTId,
@@ -257,17 +306,17 @@ class CompetitionService {
         const [h2, m2] = hora2.split(':').map(Number);
         return (h2 - h1) * 60 + (m2 - m1);
     }
-    estimarPasajerosEnRiesgo(lineaId, porcentajeSobreposicion) {
-        // Modelo dinámico: impacto = (pasajeros_promedio * ratio_sobreposicion * factor_competencia)
-        // Montevideo promedio: 380 boletos/día por coche.
-        // Factor de competencia estimado: 0.25 (pérdida de un cuarto del pasaje en zona compartida)
-        const pasajerosPromedioDiarios = 380;
-        const factorCompetencia = 0.25;
+    async estimarPasajerosEnRiesgo(lineaId, porcentajeSobreposicion) {
+        // ISO/IEC 27001 / COBIT: Parametrizacion dinamica en base de datos PostgreSQL soberana.
+        // Fuente: Balcombe et al. (elasticidad cruzada 0.2-0.3)
+        const pasajerosPromedioDiarios = await this.getParametroValor('pasajeros_promedio_bus_dia', 380);
+        const factorCompetencia = await this.getParametroValor('factor_competencia_dro', 0.25);
         return Math.round(pasajerosPromedioDiarios * (porcentajeSobreposicion / 100) * factorCompetencia);
     }
-    estimarPasajerosEnRiesgoHorario(lineaId, horario, diferenciaMinutos) {
-        // Si la diferencia es < 5 min, el riesgo es altísimo (robo de parada)
-        // Si la diferencia es > 15 min, el riesgo es residual
+    async estimarPasajerosEnRiesgoHorario(lineaId, horario, diferenciaMinutos) {
+        // Si la diferencia es < 5 min, el riesgo es altisimo (robo de parada / bunching de competencia)
+        // Si la diferencia es > 15 min, el riesgo es residual.
+        // Degradacion exponencial segun literatura de planificacion de transporte.
         let factorTemporal = 0;
         const diffAbs = Math.abs(diferenciaMinutos);
         if (diffAbs < 5)
@@ -278,7 +327,8 @@ class CompetitionService {
             factorTemporal = 0.3;
         else if (diffAbs < 30)
             factorTemporal = 0.1;
-        const pasajerosPorViaje = 45; // Promedio Montevideo
+        // Promedio Montevideo parametrizado
+        const pasajerosPorViaje = await this.getParametroValor('pasajeros_por_viaje_promedio', 45);
         return Math.round(pasajerosPorViaje * factorTemporal);
     }
     determinarNivelRiesgo(porcentajeSobreposicion, cantidadConflictos) {

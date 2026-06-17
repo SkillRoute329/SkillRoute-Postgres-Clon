@@ -1,7 +1,40 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.analyticsService = void 0;
-const database_1 = require("../config/database");
+const database_1 = __importStar(require("../config/database"));
 const logger_1 = require("../config/logger");
 // Servicio de análisis de ingresos y viabilidad - Semana 5
 class AnalyticsService {
@@ -11,6 +44,22 @@ class AnalyticsService {
         this.COSTO_CONDUCTOR_POR_HORA = 250;
         this.COSTO_MANTENIMIENTO_DIARIO = 800;
         this.COSTO_SEGURO_DIARIO = 500;
+    }
+    /**
+     * Helper para obtener un parámetro operativo desde PostgreSQL local
+     */
+    async getParametroValor(key, defaultValor) {
+        try {
+            const row = await (0, database_1.default)('parametros_operativos').where('key', key).first();
+            if (row && row.value_jsonb && typeof row.value_jsonb.valor === 'number') {
+                return row.value_jsonb.valor;
+            }
+            return defaultValor;
+        }
+        catch (e) {
+            logger_1.logger.warn(`Error leyendo parametro ${key} de Postgres, usando default: ${defaultValor}`, { err: String(e) });
+            return defaultValor;
+        }
     }
     /**
      * Valida viabilidad de un cartón de servicio
@@ -28,9 +77,12 @@ class AnalyticsService {
             // Obtener historial de boletaje
             const registros = await this.obtenerHistoricoBoletaje(cartoon.lineaId, 30 // últimos 30 días
             );
+            const tarifa = await this.getParametroValor('tarifa_stm_comun_uyu', 56);
+            const iva = await this.getParametroValor('iva_transporte', 0);
+            const diasHabiles = await this.getParametroValor('viajes_dia_habil_promedio', 22);
             // Calcular métricas
             const pasajerosEstimados = this.estimarPasajeros(cartoon, registros);
-            const ingresosEstimados = pasajerosEstimados * 56; // 56 pesos por boleto
+            const ingresosEstimados = pasajerosEstimados * tarifa * (1 - iva);
             const costosEstimados = this.calcularCostosOperacionales(cartoon, lineaData);
             const margenEstimado = ingresosEstimados - costosEstimados;
             const porcentajeMargen = (margenEstimado / ingresosEstimados) * 100;
@@ -38,7 +90,7 @@ class AnalyticsService {
             const nivelViabilidad = this.determinarNivelViabilidad(margenEstimado);
             const puntajeViabilidad = this.calcularPuntajeViabilidad(margenEstimado, porcentajeMargen);
             // Detectar alertas
-            const alertas = this.detectarAlertasCartoon(cartoon, pasajerosEstimados, margenEstimado, registros);
+            const alertas = this.detectarAlertasCartoon(cartoon, pasajerosEstimados, margenEstimado, registros, tarifa);
             // Generar recomendaciones
             const recomendaciones = this.generarRecomendacionesCartoon(cartoon, margenEstimado, alertas, registros);
             return {
@@ -51,11 +103,11 @@ class AnalyticsService {
                 viajesPorDia: cartoon.viajesPorDia,
                 pasajerosEstimados,
                 ingresosEstimados,
-                ingresosEstimadosMes: ingresosEstimados * 22, // 22 días hábiles
+                ingresosEstimadosMes: ingresosEstimados * diasHabiles, // días hábiles parametrizados
                 costosEstimados,
-                costosEstimadosMes: costosEstimados * 22,
+                costosEstimadosMes: costosEstimados * diasHabiles,
                 margenEstimado,
-                margenEstimadoMes: margenEstimado * 22,
+                margenEstimadoMes: margenEstimado * diasHabiles,
                 porcentajeMargen,
                 esViable: margenEstimado > 0,
                 puntajeViabilidad,
@@ -145,6 +197,9 @@ class AnalyticsService {
      */
     async identificarLineasEnRiesgo(operador) {
         try {
+            const tarifa = await this.getParametroValor('tarifa_stm_comun_uyu', 56);
+            const iva = await this.getParametroValor('iva_transporte', 0);
+            const diasHabiles = await this.getParametroValor('viajes_dia_habil_promedio', 22);
             const lineasSnapshot = await database_1.db
                 .collection('lineas')
                 .where('operador', '==', operador)
@@ -167,7 +222,7 @@ class AnalyticsService {
                         caida,
                         causaProbable: 'Requiere análisis de competencia',
                         pasajerosEnRiesgo: Math.round(boletosActual * caida / 100),
-                        ingresoEnRiesgo: Math.round(boletosActual * caida / 100 * 56 * 22),
+                        ingresoEnRiesgo: Math.round(boletosActual * caida / 100 * tarifa * (1 - iva) * diasHabiles),
                         recomendacionesUrgentes: [
                             'Revisar cambios de competencia',
                             'Analizar patrones de demanda',
@@ -236,7 +291,7 @@ class AnalyticsService {
             puntaje += 5;
         return Math.min(100, Math.max(0, puntaje));
     }
-    detectarAlertasCartoon(cartoon, pasajeros, margen, registros) {
+    detectarAlertasCartoon(cartoon, pasajeros, margen, registros, tarifa) {
         const alertas = [];
         if (margen <= 0) {
             alertas.push({
@@ -268,7 +323,7 @@ class AnalyticsService {
                 titulo: 'Ocupación Baja',
                 mensaje: `Solo ${pasajeros} pasajeros/día estimados`,
                 severidad: 'media',
-                impacto: (350 - pasajeros) * 56,
+                impacto: (350 - pasajeros) * tarifa,
                 recomendacion: 'Considera aumentar frecuencia en horas pico o reducir servicios en valles'
             });
         }

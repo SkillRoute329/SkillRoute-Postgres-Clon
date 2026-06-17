@@ -69,7 +69,19 @@ function MiniSparkline({
   width?: number;
   height?: number;
 }) {
-  if (data.length < 2) return null;
+  if (data.length < 2) {
+    return (
+      <svg width={width} height={height} className="animate-pulse opacity-25 overflow-visible" aria-label="Cargando gráfico">
+        <path
+          d={`M 0 ${height / 2} Q ${width / 4} ${height / 4}, ${width / 2} ${height / 2} T ${width} ${height / 2}`}
+          fill="none"
+          stroke="#475569"
+          strokeWidth="1.5"
+          strokeDasharray="4 2"
+        />
+      </svg>
+    );
+  }
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
