@@ -151,6 +151,7 @@ const CorredoresHub        = lazy(() => import('./pages/traffic/CorredoresHub'))
 const TurnoVivoHub         = lazy(() => import('./pages/traffic/TurnoVivoHub'));
 const MapaFlotaHub         = lazy(() => import('./pages/traffic/MapaFlotaHub'));
 const IncidenciasHub       = lazy(() => import('./pages/traffic/IncidenciasHub'));
+const LiveOperationsConsole = lazy(() => import('./pages/traffic/LiveOperationsConsole'));
 const ListeroHub           = lazy(() => import('./pages/traffic/ListeroHub'));
 const PlanificacionHub     = lazy(() => import('./pages/traffic/PlanificacionHub'));
 const FinancieroHub        = lazy(() => import('./pages/traffic/FinancieroHub'));
@@ -310,7 +311,8 @@ function App() {
                       element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><CartonDetail /></PrivateRoute>}
                     />
                     <Route path="traffic/navigation" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO','DRIVER','CONDUCTOR']}><NavigationModule /></PrivateRoute>} />
-                    <Route path="traffic/fleet-monitor" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><MapaFlotaHub /></PrivateRoute>} />
+                    <Route path="traffic/fleet-monitor" element={<Navigate to="/dashboard/traffic/monitoreo" replace />} />
+                    <Route path="traffic/monitoreo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><LiveOperationsConsole /></PrivateRoute>} />
                     <Route path="traffic/cutcsa-fleet" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CUTCSAFleetDashboard /></PrivateRoute>} />
                     <Route path="traffic/listero" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><ListeroHub /></PrivateRoute>} />
                     <Route path="traffic/listero-cascada" element={<Navigate to="/dashboard/traffic/listero" replace />} />
@@ -345,8 +347,8 @@ function App() {
                     <Route path="traffic/shadow-analytics" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />
                     <Route path="traffic/penetration" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />
                     <Route path="traffic/roi-calculator" element={<Navigate to="/dashboard/traffic/financiero" replace />} />
-                    <Route path="traffic/desvios" element={<Navigate to="/dashboard/traffic/centro-turno" replace />} />
-                    <Route path="traffic/centro-turno" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><TurnoVivoHub /></PrivateRoute>} />
+                    <Route path="traffic/desvios" element={<Navigate to="/dashboard/traffic/monitoreo" replace />} />
+                    <Route path="traffic/centro-turno" element={<Navigate to="/dashboard/traffic/monitoreo" replace />} />
                     {/* Hub: Diagnóstico por Línea + Ranking de Coches en tabs */}
                     <Route path="traffic/diagnostico-cumplimiento" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CumplimientoHub /></PrivateRoute>} />
                     {/* Redirect: ranking-coches ahora es tab del hub de cumplimiento */}

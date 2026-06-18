@@ -77,10 +77,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     {
       title: 'Control y Monitoreo',
       items: [
-        // Hub: Centro de Turno + Desvíos + Radar Sombra
-        { path: '/dashboard/traffic/centro-turno',             label: 'Turno en Vivo',      icon: Zap    },
-        // Hub: Monitoreo de Flota + Mapa en Vivo STM
-        { path: '/dashboard/traffic/fleet-monitor',            label: 'Posición de Flota',  icon: Radio  },
+        { path: '/dashboard/traffic/monitoreo',                label: 'Servicios en Vía',   icon: Activity },
         // Hub: Diagnóstico + Ranking + OTP + AutoStats GPS
         { path: '/dashboard/traffic/diagnostico-cumplimiento', label: 'Cumplimiento',       icon: Search },
         // Hub: Incidencias + Contingencia
