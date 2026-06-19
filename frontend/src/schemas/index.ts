@@ -22,8 +22,8 @@ import { z, ZodError, type ZodSchema } from 'zod';
 
 /** Timestamp Firestore (pato-tipo: toDate(), toMillis(), seconds). */
 const FirestoreTimestampSchema = z.object({
-  toDate: z.function().args().returns(z.date()).optional(),
-  toMillis: z.function().args().returns(z.number()).optional(),
+  toDate: z.any().optional(),
+  toMillis: z.any().optional(),
   seconds: z.number().optional(),
 }).passthrough();
 

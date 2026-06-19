@@ -40,11 +40,13 @@ describe('clasificarTurnoPersonal — UCOT', () => {
   });
 
   it('borde inferior incluye, borde superior excluye (mismo día)', () => {
-    // segundo: 10:00-18:00. 10:00 incluido, 18:00 NO (es del siguiente turno)
-    expect(clasificarTurnoPersonal('10:00', 70)?.id).toBe('segundo');
-    expect(clasificarTurnoPersonal('17:59', 70)?.id).toBe('segundo');
-    // En 18:00 ya cae en tarde (13:00-21:00) — overlap entre segundo y tarde,
-    // pero clasificarTurnoPersonal devuelve el primero que matchea, que es tarde.
+    const testTurnos = [
+      { id: 'segundo', label: 'Segundo', horaInicio: '10:00', horaFin: '18:00' },
+      { id: 'tarde', label: 'Tarde', horaInicio: '18:00', horaFin: '22:00' },
+    ];
+    expect(clasificarTurnoPersonal('10:00', 70, testTurnos)?.id).toBe('segundo');
+    expect(clasificarTurnoPersonal('17:59', 70, testTurnos)?.id).toBe('segundo');
+    expect(clasificarTurnoPersonal('18:00', 70, testTurnos)?.id).toBe('tarde');
   });
 
   it('acepta turnosOverride para casos custom', () => {
@@ -66,13 +68,13 @@ describe('clasificarTurnoPersonal — UCOT', () => {
 
 describe('tipoDiaDe', () => {
   it('domingo → DOMINGO', () => {
-    expect(tipoDiaDe(new Date('2026-04-26'))).toBe('DOMINGO'); // domingo
+    expect(tipoDiaDe(new Date(2026, 3, 26))).toBe('DOMINGO'); // domingo
   });
   it('sábado → SABADO', () => {
-    expect(tipoDiaDe(new Date('2026-04-25'))).toBe('SABADO');
+    expect(tipoDiaDe(new Date(2026, 3, 25))).toBe('SABADO');
   });
   it('miércoles → HABIL', () => {
-    expect(tipoDiaDe(new Date('2026-04-22'))).toBe('HABIL');
+    expect(tipoDiaDe(new Date(2026, 3, 22))).toBe('HABIL');
   });
 });
 

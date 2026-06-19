@@ -5,7 +5,6 @@ import { ServicioEstadoService, type ServicioEstadoRecord } from '../services/fi
 import { PersonalService, type PersonalRecord } from '../services/firestore/personal';
 import { collection, query, onSnapshot, where, limit, orderBy } from '../config/firestoreShim';
 import { db, authReady } from '../config/firebase';
-import { detectingBunching, BUNCHING_UMBRAL_KM } from '../pages/traffic/fleetMonitorUtils';
 import { haversineKm } from '../utils/geomath';
 
 // ─── Tipos Unificados ──────────────────────────────────────────────────────────

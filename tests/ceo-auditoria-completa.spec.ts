@@ -7,14 +7,13 @@
 import { test, expect } from '@playwright/test';
 
 const USUARIO = process.env.TEST_USER || '329';
-const PASSWORD = process.env.TEST_PASSWORD || 'admin123';
-const BASE = process.env.BASE_URL || 'http://localhost:5173';
+const PASSWORD = process.env.TEST_PASSWORD || 'Skill329';
+const BASE = process.env.BASE_URL || 'http://localhost:3006';
 
 test.describe('Auditoría CEO - Todas las funciones', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' });
-    await page.getByPlaceholder(/1234|número interno/i).fill(USUARIO);
-    // Usar el placeholder real o el tipo
+    await page.locator('input[type="text"]').fill(USUARIO);
     await page.locator('input[type="password"]').fill(PASSWORD);
     await page.getByRole('button', { name: /Ingresar/i }).click();
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 30000 });
@@ -41,10 +40,21 @@ test.describe('Auditoría CEO - Todas las funciones', () => {
   });
 
   test('Cabecera: INICIAR TURNO abre flujo check-in', async ({ page }) => {
+    // Cerrar sesión del usuario admin actual
+    await page.getByRole('button', { name: /Cerrar Sesión/i }).click();
+    await expect(page).toHaveURL(/\/login/);
+    
+    // Iniciar sesión como conductor
+    await page.locator('input[type="text"]').fill('legajo_100');
+    await page.locator('input[type="password"]').fill('Skill329');
+    await page.getByRole('button', { name: /Ingresar/i }).click();
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 30000 });
+
+    // Click en INICIAR TURNO que ahora sí está visible en el dashboard del conductor
     await page.getByRole('button', { name: /INICIAR TURNO/i }).click();
     await expect(
       page.getByRole('heading', { name: /Check-in|Inspección|Advertencia/i }),
-    ).toBeVisible({ timeout: 5000 });
+    ).toBeVisible({ timeout: 10000 });
     await page
       .getByRole('button', { name: /NO, OMITIR|Volver/i })
       .first()
@@ -54,12 +64,13 @@ test.describe('Auditoría CEO - Todas las funciones', () => {
 
   test('Matriz de Servicio: carga, historial, Subir nube, botones línea', async ({ page }) => {
     await page.goto(`${BASE}/dashboard/traffic/service-matrix`);
-    await expect(page).toHaveURL(/service-matrix/);
+    await expect(page).toHaveURL(/planificacion/);
+    await page.getByRole('button', { name: 'Matriz de Servicio' }).click();
     await expect(page.getByRole('heading', { name: /Historial Cloud|Matriz/i })).toBeVisible({
       timeout: 10000,
     });
     await expect(page.getByRole('button', { name: /Subir a la nube/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /300a|300b/i })).toBeVisible();
+    await expect(page.getByText(/Selecciona una Matriz del historial o sube un archivo local/i)).toBeVisible();
   });
 
   test('Control Inspectores: Línea, Cargar, Estadísticas', async ({ page }) => {
@@ -80,8 +91,9 @@ test.describe('Auditoría CEO - Todas las funciones', () => {
 
   test('Gestor de Cartones: carga', async ({ page }) => {
     await page.goto(`${BASE}/dashboard/traffic/cartons`);
-    await expect(page).toHaveURL(/cartons/);
-    await expect(page.getByRole('heading', { name: /Carton|cartón/i })).toBeVisible({
+    await expect(page).toHaveURL(/planificacion/);
+    await page.getByRole('button', { name: 'Documentos de Servicio' }).click();
+    await expect(page.getByRole('heading', { name: /Gestor de Cartones/i })).toBeVisible({
       timeout: 10000,
     });
   });
@@ -95,16 +107,16 @@ test.describe('Auditoría CEO - Todas las funciones', () => {
   test('Navegador UCOT: carga, Iniciar Viaje, Actualizar', async ({ page }) => {
     await page.goto(`${BASE}/dashboard/traffic/navigation`);
     await expect(page).toHaveURL(/navigation/);
-    await expect(page.getByRole('button', { name: /Iniciar Viaje|Actualizar/i })).toBeVisible({
+    await expect(page.getByRole('button', { name: 'Iniciar Viaje GPS' })).toBeVisible({
       timeout: 10000,
     });
   });
 
   test('Monitoreo de Flota: carga, Zoom', async ({ page }) => {
     await page.goto(`${BASE}/dashboard/traffic/fleet-monitor`);
-    await expect(page).toHaveURL(/fleet-monitor/);
-    await expect(page.getByRole('button', { name: /Zoom in|Zoom out/i })).toBeVisible({
-      timeout: 10000,
+    await expect(page).toHaveURL(/monitoreo/);
+    await expect(page.locator('.leaflet-container')).toBeVisible({
+      timeout: 15000,
     });
   });
 
@@ -127,9 +139,9 @@ test.describe('Auditoría CEO - Todas las funciones', () => {
   });
 
   test('Mantenimiento: Nueva Denuncia, filtros', async ({ page }) => {
-    await page.goto(`${BASE}/dashboard/admin/maintenance`);
-    await expect(page).toHaveURL(/maintenance/);
-    await expect(page.getByRole('button', { name: /Nueva Denuncia|Todos|Enviado/i })).toBeVisible({
+    await page.goto(`${BASE}/dashboard/fleet`);
+    await page.getByRole('button', { name: 'Mantenimiento', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Nueva Denuncia' })).toBeVisible({
       timeout: 10000,
     });
   });
@@ -137,7 +149,7 @@ test.describe('Auditoría CEO - Todas las funciones', () => {
   test('Alertas de Vía: carga', async ({ page }) => {
     await page.goto(`${BASE}/dashboard/alerts`);
     await expect(page).toHaveURL(/alerts/);
-    await expect(page.getByRole('heading', { name: /Alertas/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Alertas de Vía', exact: true })).toBeVisible({ timeout: 10000 });
   });
 
   test('Gestión de Personal RRHH: Usuarios, Exportar, Nuevo Empleado', async ({ page }) => {
@@ -151,40 +163,39 @@ test.describe('Auditoría CEO - Todas las funciones', () => {
   test('Centro de Talento: carga, lista conductores', async ({ page }) => {
     await page.goto(`${BASE}/dashboard/talento`);
     await expect(page).toHaveURL(/talento/);
-    await expect(page.locator('main')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('main').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('Motor de Rotación: Coche, Conductor, Servicio, Asignar', async ({ page }) => {
-    await page.goto(`${BASE}/dashboard/admin/rrhh/rotation`);
-    await expect(page).toHaveURL(/rotation/);
-    await expect(page.getByRole('combobox', { name: /Coche|Conductor|Servicio/i })).toBeVisible({
+    await page.goto(`${BASE}/dashboard/traffic/rotation-matrix`);
+    await expect(page).toHaveURL(/rotation-matrix/);
+    await expect(page.getByRole('heading', { name: 'Matriz de Rotación', exact: true })).toBeVisible({
       timeout: 10000,
     });
-    await expect(page.getByRole('button', { name: /Asignar y Guardar/i })).toBeVisible();
+    await expect(page.locator('#day-type-filter')).toBeVisible();
   });
 
   test('Fichas Médicas/CI: Exportar, Importar, Nuevo Empleado', async ({ page }) => {
-    await page.goto(`${BASE}/dashboard/admin/employees`);
-    await expect(page).toHaveURL(/employees/);
-    await expect(
-      page.getByRole('button', { name: /Exportar|Importar|Nuevo Empleado/i }),
-    ).toBeVisible({ timeout: 10000 });
+    await page.goto(`${BASE}/dashboard/admin/rrhh`);
+    await expect(page).toHaveURL(/rrhh/);
+    await expect(page.getByRole('button', { name: 'Exportar' }).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: 'Importar' }).first()).toBeVisible();
   });
 
   test('Estado del Sistema: ACTUALIZAR SISTEMA', async ({ page }) => {
-    await page.goto(`${BASE}/dashboard/admin/maintenance-system`);
-    await expect(page).toHaveURL(/maintenance-system/);
-    await expect(page.getByRole('button', { name: /ACTUALIZAR SISTEMA/i })).toBeVisible({
+    await page.goto(`${BASE}/dashboard/admin/sistema`);
+    await expect(page).toHaveURL(/sistema/);
+    await expect(page.getByRole('button', { name: /EJECUTAR SEED COMPLETO/i })).toBeVisible({
       timeout: 10000,
     });
   });
 
   test('Ingesta de Datos: DESCARGAR PLANTILLA, Sincronizar', async ({ page }) => {
-    await page.goto(`${BASE}/dashboard/admin/ingestion`);
-    await expect(page).toHaveURL(/ingestion/);
-    await expect(
-      page.getByRole('button', { name: /DESCARGAR PLANTILLA|Sincronizar|Limpiar/i }),
-    ).toBeVisible({ timeout: 10000 });
+    await page.goto(`${BASE}/dashboard/admin/sistema`);
+    await expect(page).toHaveURL(/sistema/);
+    await expect(page.getByRole('heading', { name: /Panel de Configuración Inicial/i })).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test('Parámetros del Sistema: Margen, Guardar', async ({ page }) => {

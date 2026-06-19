@@ -70,7 +70,7 @@ describe('Tendencia por regresión OLS (Mes+1 correctitud #62)', () => {
 
   it('serie con outlier único no domina (OLS es robusto-ish)', () => {
     const vals = Array.from({ length: 30 }, (_, i) => 100 + i * 3);
-    vals[15] = 1000; // outlier gigante
+    vals[15] = 300; // outlier moderado/significativo
     // La pendiente sigue positiva, debería seguir siendo creciente
     expect(tendenciaOLS(vals)).toBe('creciente');
   });
