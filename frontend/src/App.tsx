@@ -118,7 +118,7 @@ const BusNavigation = lazy(() => import('./pages/driver/BusNavigation'));
 const Distribution = lazy(() => import('./pages/operations/Distribution'));
 const RotationMatrix = lazy(() => import('./pages/traffic/RotationMatrix'));
 const VehicleCheck = lazy(() => import('./pages/fleet/VehicleCheck'));
-const CompetitorIntelligencePage = lazy(() => import('./pages/traffic/CompetitorIntelligencePage'));
+const MarketIntelligenceConsole = lazy(() => import('./pages/traffic/MarketIntelligenceConsole'));
 const AnalisisCriticoCompetencia = lazy(() => import('./pages/traffic/AnalisisCriticoCompetencia'));
 const DiagnosticoEjecutivo = lazy(() => import('./pages/traffic/DiagnosticoEjecutivo'));
 const DigitalAgentsModule = lazy(() => import('./pages/traffic/DigitalAgentsModule'));
@@ -126,9 +126,6 @@ const OTPDashboard = lazy(() => import('./pages/traffic/OTPDashboard'));
 const IncidentCommandCenter = lazy(() => import('./pages/traffic/IncidentCommandCenter'));
 const EconomicProjectionsPage = lazy(() => import('./pages/traffic/EconomicProjectionsPage'));
 const ContingencyManagementPage = lazy(() => import('./pages/traffic/ContingencyManagementPage'));
-const ShadowRadar = lazy(() => import('./pages/traffic/ShadowRadar'));
-const CorridorIntelligence = lazy(() => import('./pages/traffic/CorridorIntelligence'));
-const CorridorMap = lazy(() => import('./pages/traffic/CorridorMap'));
 const LiveMapPage = lazy(() => import('./pages/traffic/LiveMapPage'));
 const ShadowAnalytics = lazy(() => import('./pages/traffic/ShadowAnalytics'));
 const MarketPenetration = lazy(() => import('./pages/traffic/MarketPenetration'));
@@ -147,7 +144,6 @@ const RankingCoches = lazy(() => import('./pages/traffic/RankingCoches'));
 const AnalisisEtapas = lazy(() => import('./pages/traffic/AnalisisEtapas'));
 // Hubs unificados (wrapper de tabs — no reemplazan los componentes originales)
 const CumplimientoHub      = lazy(() => import('./pages/traffic/CumplimientoHub'));
-const CorredoresHub        = lazy(() => import('./pages/traffic/CorredoresHub'));
 const TurnoVivoHub         = lazy(() => import('./pages/traffic/TurnoVivoHub'));
 const MapaFlotaHub         = lazy(() => import('./pages/traffic/MapaFlotaHub'));
 const IncidenciasHub       = lazy(() => import('./pages/traffic/IncidenciasHub'));
@@ -155,7 +151,6 @@ const LiveOperationsConsole = lazy(() => import('./pages/traffic/LiveOperationsC
 const ListeroHub           = lazy(() => import('./pages/traffic/ListeroHub'));
 const PlanificacionHub     = lazy(() => import('./pages/traffic/PlanificacionHub'));
 const FinancieroHub        = lazy(() => import('./pages/traffic/FinancieroHub'));
-const MapasHub             = lazy(() => import('./pages/traffic/MapasHub'));
 const GestionFlotaHub      = lazy(() => import('./pages/fleet/GestionFlotaHub'));
 const GestionPersonalHub   = AdminRRHH;
 const InspectoresHub       = InspectorDashboard;
@@ -330,22 +325,18 @@ function App() {
                     {/* Redirects legacy: nombres en español → rutas en inglés */}
                     <Route path="traffic/navegador" element={<Navigate to="/dashboard/traffic/navigation" replace />} />
                     <Route path="traffic/posicion" element={<Navigate to="/dashboard/traffic/fleet-monitor" replace />} />
-                    {/* Redirect legacy: Centro de Inteligencia → Inteligencia de Corredores (v3) */}
-                    <Route path="traffic/intelligence" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />
-                    {/* Redirect legacy: Mapa en Vivo STM → Mapa de Corredores (v4, más capas + DRO) */}
-                    {/* Restaurado 2026-04-25: LiveMapPage tiene heatmap de demanda que CorridorMap no cubre. Ambos conviven con roles distintos. */}
+                    {/* Nueva Consola de Inteligencia de Red (Fase 2) */}
+                    <Route path="traffic/intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><MarketIntelligenceConsole /></PrivateRoute>} />
                     <Route path="traffic/live-map" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><LiveMapPage /></PrivateRoute>} />
-                    <Route path="traffic/shadow-radar" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><ShadowRadar /></PrivateRoute>} />
-                    <Route path="traffic/competitor-intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CompetitorIntelligencePage /></PrivateRoute>} />
+                    <Route path="traffic/shadow-radar" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
+                    <Route path="traffic/competitor-intelligence" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
                     <Route path="traffic/analisis-critico" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><AnalisisCriticoCompetencia /></PrivateRoute>} />
                     <Route path="traffic/diagnostico-ejecutivo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><DiagnosticoEjecutivo /></PrivateRoute>} />
-                    {/* Hub: Inteligencia de Corredores + Participación km en tabs */}
-                    <Route path="traffic/corridor-intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CorredoresHub /></PrivateRoute>} />
-                    {/* Redirect: market-share ahora es tab del hub de corredores */}
-                    <Route path="traffic/market-share" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />
-                    <Route path="traffic/corridor-map" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><MapasHub /></PrivateRoute>} />
-                    <Route path="traffic/shadow-analytics" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />
-                    <Route path="traffic/penetration" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />
+                    <Route path="traffic/corridor-intelligence" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
+                    <Route path="traffic/market-share" element={<Navigate to="/dashboard/traffic/intelligence?tab=market" replace />} />
+                    <Route path="traffic/corridor-map" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
+                    <Route path="traffic/shadow-analytics" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
+                    <Route path="traffic/penetration" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
                     <Route path="traffic/roi-calculator" element={<Navigate to="/dashboard/traffic/financiero" replace />} />
                     <Route path="traffic/desvios" element={<Navigate to="/dashboard/traffic/monitoreo" replace />} />
                     <Route path="traffic/centro-turno" element={<Navigate to="/dashboard/traffic/monitoreo" replace />} />

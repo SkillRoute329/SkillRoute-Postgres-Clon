@@ -81,7 +81,7 @@ test.describe('Pruebas de usuario real - TransformaFacil 2.0', () => {
     await expect(page.getByRole('heading', { level: 1, name: /Hola,/ })).toBeVisible({
       timeout: 15000,
     });
-    await expect(page.getByText('Centro de Mando')).toBeVisible();
+    await expect(page.getByText('Inteligencia de Red')).toBeVisible();
     await expect(page.getByText('Servicios en Vía')).toBeVisible();
     await expect(page.getByText('Gestión de Flota')).toBeVisible();
   });

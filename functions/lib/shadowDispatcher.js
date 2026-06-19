@@ -169,7 +169,7 @@ function calcularGapPuntualidad(posGPS, paradas, horaActual, params) {
 // y procesa cada coche de forma aislada. Un error en un coche no para el ciclo.
 exports.shadowDispatcherTick = functions
     .runWith({ timeoutSeconds: 300, memory: '512MB' })
-    .pubsub.schedule('every 2 minutes')
+    .pubsub.schedule('every 1 minutes')
     .onRun(async () => {
     const ahora = new Date();
     const ahoraTs = admin.firestore.Timestamp.now();
@@ -201,76 +201,59 @@ exports.shadowDispatcherTick = functions
         console.log('[shadowDispatcher] STM no devolvió buses en este ciclo.');
         return;
     }
-    // 3. Detectar rivalidad cross-operador — los 4 operadores del sistema STM
-    //    Genera alertas en vivo (alertas_regulacion) + log append-only (alertas_log)
-    const TODOS_OPERADORES = [70, 50, 20, 10];
+    const busesPropia = todosLosBuses.filter((b) => b.empresaId === empresaPropiaId);
+    const busesRivales = todosLosBuses.filter((b) => b.empresaId !== empresaPropiaId);
+    console.log(`[shadowDispatcher] ${busesPropia.length} buses propios (emp ${empresaPropiaId}), ${busesRivales.length} rivales.`);
+    if (busesPropia.length === 0) {
+        console.log('[shadowDispatcher] Sin buses de empresa propia activos.');
+        return;
+    }
+    // 3. Detectar rivalidad: por cada bus propio, buscar rivales dentro del umbral
     const alertasEscritas = [];
-    const logEscritos = [];
     const UMBRAL_M = params.PROXIMIDAD_RIVAL_M;
     const ahora_str = ahora.toISOString();
-    // TTL: docs de alertas_log expiran en 30 dias (habilitar en Firestore TTL policy)
-    const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 30 * 24 * 3600 * 1000);
-    let totalDetecciones = 0;
-    for (const opId of TODOS_OPERADORES) {
-        const busesPropia = todosLosBuses.filter((b) => b.empresaId === opId);
-        const busesRivales = todosLosBuses.filter((b) => b.empresaId !== opId);
-        if (busesPropia.length === 0)
+    for (const busProp of busesPropia) {
+        const rivalesCercanos = busesRivales.filter((r) => {
+            // Criterio único confiable sin historial: proximidad física (mismo corredor)
+            // El heading requiere 2 snapshots consecutivos — no disponible en snapshot estático
+            return haversineMetros(busProp.lat, busProp.lng, r.lat, r.lng) <= UMBRAL_M;
+        });
+        if (rivalesCercanos.length === 0)
             continue;
-        for (const busProp of busesPropia) {
-            const rivalesCercanos = busesRivales.filter((r) => haversineMetros(busProp.lat, busProp.lng, r.lat, r.lng) <= UMBRAL_M);
-            if (rivalesCercanos.length === 0)
-                continue;
-            const rival = rivalesCercanos[0];
-            const dist = Math.round(haversineMetros(busProp.lat, busProp.lng, rival.lat, rival.lng));
-            const sentidoLabel = busProp.sentido !== 'DESCONOCIDO' ? ` [${busProp.sentido}]` : '';
-            const mensaje = `🚨 ATENCION COCHE ${busProp.cocheId}${sentidoLabel}: Rival ${rival.empresa} #${rival.cocheId} a ${dist}m. Mantenga la marcha. Regule ${Math.round(dist / 50)} minutos.`;
-            // Alerta en vivo — clave incluye opId para evitar colisiones entre operadores
-            const alertaRef = db.collection('alertas_regulacion').doc(`${opId}_${busProp.cocheId}_${rival.cocheId}`);
-            alertasEscritas.push(alertaRef.set({
-                tipo: 'RIVAL_PISANDO_TURNO',
-                rival_empresa: rival.empresa,
-                rival_interno: rival.cocheId,
-                rival_linea: rival.lineaId,
-                distancia_metros: dist,
-                instruccion: 'REGULAR_MARCHA',
-                mensaje_chofer: mensaje,
-                linea_id: busProp.lineaId,
-                coche_id: busProp.cocheId,
-                empresa_id: opId,
-                sentido: busProp.sentido,
-                destino_propio: busProp.destino,
-                destino_rival: rival.destino,
-                lat_propio: busProp.lat,
-                lng_propio: busProp.lng,
-                lat_rival: rival.lat,
-                lng_rival: rival.lng,
-                timestamp: admin.firestore.FieldValue.serverTimestamp(),
-                leido: false,
-                generado_en: ahora_str,
-            }, { merge: true }));
-            // Log append-only para analytics historico — add() crea un doc nuevo por ciclo
-            logEscritos.push(db.collection('alertas_log').add({
-                tipo: 'RIVAL_PISANDO_TURNO',
-                empresa_id: opId,
-                linea_id: busProp.lineaId,
-                coche_id: busProp.cocheId,
-                rival_empresa: rival.empresa,
-                rival_linea: rival.lineaId,
-                rival_interno: rival.cocheId,
-                distancia_metros: dist,
-                timestamp: admin.firestore.FieldValue.serverTimestamp(),
-                generado_en: ahora_str,
-                expiresAt,
-            }));
-            totalDetecciones += 1;
-        }
+        const rival = rivalesCercanos[0];
+        const dist = Math.round(haversineMetros(busProp.lat, busProp.lng, rival.lat, rival.lng));
+        const sentidoLabel = busProp.sentido !== 'DESCONOCIDO' ? ` [${busProp.sentido}]` : '';
+        const mensaje = `🚨 ATENCIÓN COCHE ${busProp.cocheId}${sentidoLabel}: Rival ${rival.empresa} #${rival.cocheId} a ${dist}m. Mantenga la marcha. Regule ${Math.round(dist / 50)} minutos.`;
+        const alertaRef = db.collection('alertas_regulacion').doc(`${busProp.cocheId}_${rival.cocheId}`);
+        alertasEscritas.push(alertaRef.set({
+            tipo: 'RIVAL_PISANDO_TURNO',
+            rival_empresa: rival.empresa,
+            rival_interno: rival.cocheId,
+            rival_linea: rival.lineaId,
+            distancia_metros: dist,
+            instruccion: 'REGULAR_MARCHA',
+            mensaje_chofer: mensaje,
+            linea_id: busProp.lineaId,
+            coche_id: busProp.cocheId,
+            empresa_id: empresaPropiaId,
+            sentido: busProp.sentido,
+            destino_propio: busProp.destino,
+            destino_rival: rival.destino,
+            lat_propio: busProp.lat,
+            lng_propio: busProp.lng,
+            lat_rival: rival.lat,
+            lng_rival: rival.lng,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            leido: false,
+            generado_en: ahora_str,
+        }, { merge: true }));
     }
     if (alertasEscritas.length === 0) {
         console.log('[shadowDispatcher] Sin rivalidades detectadas en este ciclo.');
         return;
     }
-    await Promise.allSettled([...alertasEscritas, ...logEscritos]);
-    console.log(`[shadowDispatcher] Ciclo completo. ${totalDetecciones} detecciones, ${logEscritos.length} logs escritos.`);
+    await Promise.allSettled(alertasEscritas);
+    console.log(`[shadowDispatcher] Ciclo completo. ${alertasEscritas.length} alertas escritas.`);
 });
 // ─── Agente Aislado: Lógica por Coche ────────────────────────────────────────
 async function procesarAgente(carton, ahora, params) {
@@ -682,29 +665,25 @@ exports.limpiarPingsRivales = functions
 exports.onAlertaRegulacion = functions.firestore
     .document('alertas_regulacion/{cocheId}')
     .onWrite(async (change, context) => {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c;
     const { cocheId } = context.params;
     const datos = change.after.data();
-    // Solo actuar si la alerta es nueva (no existe before) o fue reseteada a leido=false.
-    // fcmSent=true: ya se envió la notificación en este ciclo, no reenviar.
-    if (!datos || datos.leido === true || datos.fcmSent === true)
+    // Solo actuar si la alerta es nueva (no existe before) o fue reseteada a leido=false
+    if (!datos || datos.leido === true)
         return;
     const before = change.before.data();
     if (before && before.leido === false && ((_a = before.timestamp) === null || _a === void 0 ? void 0 : _a.isEqual(datos.timestamp)))
         return;
-    // datos.coche_id es el número real del coche (ej: "123").
-    // context.params.cocheId es el ID del documento (ej: "70_123_456") — NO el coche.
-    const cocheReal = (_c = (_b = datos.coche_id) !== null && _b !== void 0 ? _b : datos.cocheId) !== null && _c !== void 0 ? _c : cocheId;
-    // Leer FCM token desde el cartón activo usando el coche real, no el ID del documento
+    // Leer FCM token desde el cartón activo
     const cartonSnap = await db
         .collection('cartones_de_servicio')
-        .where('cocheId', '==', cocheReal)
+        .where('cocheId', '==', cocheId)
         .where('expire_at', '>', admin.firestore.Timestamp.now())
         .limit(1)
         .get();
     if (cartonSnap.empty)
         return;
-    const fcmToken = (_e = (_d = cartonSnap.docs[0].data()) === null || _d === void 0 ? void 0 : _d.chofer_snapshot) === null || _e === void 0 ? void 0 : _e.fcm_token;
+    const fcmToken = (_c = (_b = cartonSnap.docs[0].data()) === null || _b === void 0 ? void 0 : _b.chofer_snapshot) === null || _c === void 0 ? void 0 : _c.fcm_token;
     if (!fcmToken)
         return;
     try {
@@ -721,10 +700,8 @@ exports.onAlertaRegulacion = functions.firestore
             },
             android: { priority: 'high' },
         });
-        // Marcar como enviado para no reenviar si el documento se actualiza de nuevo
-        await change.after.ref.update({ fcmSent: true });
     }
     catch (err) {
-        console.warn(`[onAlertaRegulacion] FCM error coche ${cocheReal}:`, err);
+        console.warn(`[onAlertaRegulacion] FCM error coche ${cocheId}:`, err);
     }
 });

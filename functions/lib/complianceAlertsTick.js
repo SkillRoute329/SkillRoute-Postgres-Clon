@@ -89,9 +89,7 @@ exports.complianceAlertsTick = functions.pubsub
         if (!ESTADOS_MEDIBLES.has(estado))
             continue;
         const linea = String((_e = d.linea) !== null && _e !== void 0 ? _e : '?');
-        // Usar agencyId (código numérico '70','50','20','10') como clave — no el nombre de empresa
-        // para evitar ambigüedades y poder filtrar en Firestore por agencyId
-        const empresa = String((_g = (_f = d.agencyId) !== null && _f !== void 0 ? _f : d.empresa) !== null && _g !== void 0 ? _g : '?');
+        const empresa = String((_g = (_f = d.codigoEmpresa) !== null && _f !== void 0 ? _f : d.empresa) !== null && _g !== void 0 ? _g : '?');
         const key = `${empresa}_${linea}`;
         if (!porLinea[key])
             porLinea[key] = { total: 0, enTiempo: 0, empresa };
@@ -112,8 +110,7 @@ exports.complianceAlertsTick = functions.pubsub
             const nivel = pct < UMBRAL_CRITICO ? 'CRITICO' : 'BAJO';
             batch.set(ref, {
                 linea,
-                agencyId: empresa, // código numérico '70','50','20','10'
-                empresa, // mismo valor — para filtros Firestore
+                empresa,
                 empresaNombre: (_h = NOMBRE_EMPRESA[empresa]) !== null && _h !== void 0 ? _h : empresa,
                 pctEnTiempo: pct,
                 totalEventos: data.total,

@@ -123,7 +123,7 @@ function esCoordenadaValida(lat, lng) {
 // alimenta competencia_monitoreo y viajes_activos.
 exports.ingestaIMMTick = functions
     .runWith({ timeoutSeconds: 120, memory: '512MB' })
-    .pubsub.schedule('every 2 minutes')
+    .pubsub.schedule('every 1 minutes')
     .onRun(async () => {
     var _a, _b, _c, _d;
     const startMs = Date.now();

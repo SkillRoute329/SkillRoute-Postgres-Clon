@@ -24,6 +24,7 @@ import {
   Shield,
   Tag,
   RefreshCw,
+  Target,
   Clipboard,
   Siren,
   Search,
@@ -89,14 +90,8 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     {
       title: 'Inteligencia Competitiva',
       items: [
-        { path: '/dashboard/traffic/ceo',                     label: 'Centro de Mando',       icon: TrendingUp },
-        { path: '/dashboard/traffic/competitor-intelligence', label: 'Radar de Competencia',   icon: Radar      },
-        { path: '/dashboard/traffic/analisis-critico',        label: 'Simulador Táctico',     icon: Sliders    },
+        { path: '/dashboard/traffic/intelligence',            label: 'Inteligencia de Red',   icon: Target     },
         { path: '/dashboard/traffic/diagnostico-ejecutivo',   label: 'Diagnóstico Ejecutivo',  icon: ClipboardList },
-        // Hub: Corredores + Market Share + Penetración + Analytics + Headway
-        { path: '/dashboard/traffic/corridor-intelligence',   label: 'Inteligencia Cross-Op.', icon: Network    },
-        // Hub: Mapa Corredores + Reproducción GPS
-        { path: '/dashboard/traffic/corridor-map',         label: 'Mapas Estratégicos', icon: Map        },
         { path: '/dashboard/traffic/brt',                  label: 'BRT 2027',           icon: Train      },
       ],
     },
