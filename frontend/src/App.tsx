@@ -143,7 +143,6 @@ const RankingCoches = lazy(() => import('./pages/traffic/RankingCoches'));
 const AnalisisEtapas = lazy(() => import('./pages/traffic/AnalisisEtapas'));
 // Hubs unificados (wrapper de tabs — no reemplazan los componentes originales)
 const CumplimientoHub      = lazy(() => import('./pages/traffic/CumplimientoHub'));
-const TurnoVivoHub         = lazy(() => import('./pages/traffic/TurnoVivoHub'));
 const IncidenciasHub       = lazy(() => import('./pages/traffic/IncidenciasHub'));
 const LiveOperationsConsole = lazy(() => import('./pages/traffic/LiveOperationsConsole'));
 const ListeroHub           = lazy(() => import('./pages/traffic/ListeroHub'));
