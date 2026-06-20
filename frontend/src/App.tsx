@@ -69,7 +69,6 @@ const ServiceAnalytics = lazy(() => import('./pages/traffic/ServiceAnalytics'));
 const CartonManager = lazy(() => import('./pages/traffic/CartonManager'));
 const CartonDetail = lazy(() => import('./pages/traffic/CartonDetail'));
 const NavigationModule = lazy(() => import('./pages/traffic/NavigationModule'));
-const FleetMonitorModule = lazy(() => import('./pages/traffic/FleetMonitorModule'));
 const CUTCSAFleetDashboard = lazy(() => import('./pages/traffic/CUTCSAFleetDashboard'));
 const TerminalListero = lazy(() => import('./pages/traffic/TerminalListero'));
 const ListeroModule = lazy(() => import('./pages/traffic/ListeroModule'));
@@ -126,7 +125,7 @@ const OTPDashboard = lazy(() => import('./pages/traffic/OTPDashboard'));
 const IncidentCommandCenter = lazy(() => import('./pages/traffic/IncidentCommandCenter'));
 const EconomicProjectionsPage = lazy(() => import('./pages/traffic/EconomicProjectionsPage'));
 const ContingencyManagementPage = lazy(() => import('./pages/traffic/ContingencyManagementPage'));
-const LiveMapPage = lazy(() => import('./pages/traffic/LiveMapPage'));
+const MapHub = lazy(() => import('./pages/traffic/MapHub'));
 const ShadowAnalytics = lazy(() => import('./pages/traffic/ShadowAnalytics'));
 const MarketPenetration = lazy(() => import('./pages/traffic/MarketPenetration'));
 const CorridorMarketShare = lazy(() => import('./pages/traffic/CorridorMarketShare'));
@@ -145,7 +144,6 @@ const AnalisisEtapas = lazy(() => import('./pages/traffic/AnalisisEtapas'));
 // Hubs unificados (wrapper de tabs — no reemplazan los componentes originales)
 const CumplimientoHub      = lazy(() => import('./pages/traffic/CumplimientoHub'));
 const TurnoVivoHub         = lazy(() => import('./pages/traffic/TurnoVivoHub'));
-const MapaFlotaHub         = lazy(() => import('./pages/traffic/MapaFlotaHub'));
 const IncidenciasHub       = lazy(() => import('./pages/traffic/IncidenciasHub'));
 const LiveOperationsConsole = lazy(() => import('./pages/traffic/LiveOperationsConsole'));
 const ListeroHub           = lazy(() => import('./pages/traffic/ListeroHub'));
@@ -306,7 +304,8 @@ function App() {
                       element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><CartonDetail /></PrivateRoute>}
                     />
                     <Route path="traffic/navigation" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO','DRIVER','CONDUCTOR']}><NavigationModule /></PrivateRoute>} />
-                    <Route path="traffic/fleet-monitor" element={<Navigate to="/dashboard/traffic/monitoreo" replace />} />
+                    <Route path="traffic/map-hub" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><MapHub /></PrivateRoute>} />
+                    <Route path="traffic/fleet-monitor" element={<Navigate to="/dashboard/traffic/map-hub?layer=buses" replace />} />
                     <Route path="traffic/monitoreo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><LiveOperationsConsole /></PrivateRoute>} />
                     <Route path="traffic/cutcsa-fleet" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CUTCSAFleetDashboard /></PrivateRoute>} />
                     <Route path="traffic/listero" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><ListeroHub /></PrivateRoute>} />
@@ -324,10 +323,10 @@ function App() {
                     <Route path="traffic/rotation-matrix" element={<PrivateRoute roles={['ADMIN','TRAFFIC','RRHH']}><RotationMatrix /></PrivateRoute>} />
                     {/* Redirects legacy: nombres en español → rutas en inglés */}
                     <Route path="traffic/navegador" element={<Navigate to="/dashboard/traffic/navigation" replace />} />
-                    <Route path="traffic/posicion" element={<Navigate to="/dashboard/traffic/fleet-monitor" replace />} />
+                    <Route path="traffic/posicion" element={<Navigate to="/dashboard/traffic/map-hub?layer=buses" replace />} />
                     {/* Nueva Consola de Inteligencia de Red (Fase 2) */}
                     <Route path="traffic/intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><MarketIntelligenceConsole /></PrivateRoute>} />
-                    <Route path="traffic/live-map" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><LiveMapPage /></PrivateRoute>} />
+                    <Route path="traffic/live-map" element={<Navigate to="/dashboard/traffic/map-hub?layer=mapa" replace />} />
                     <Route path="traffic/shadow-radar" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
                     <Route path="traffic/competitor-intelligence" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
                     <Route path="traffic/analisis-critico" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><AnalisisCriticoCompetencia /></PrivateRoute>} />

@@ -114,7 +114,7 @@ test.describe('Auditoría CEO - Todas las funciones', () => {
 
   test('Monitoreo de Flota: carga, Zoom', async ({ page }) => {
     await page.goto(`${BASE}/dashboard/traffic/fleet-monitor`);
-    await expect(page).toHaveURL(/monitoreo/);
+    await expect(page).toHaveURL(/map-hub/);
     await expect(page.locator('.leaflet-container')).toBeVisible({
       timeout: 15000,
     });

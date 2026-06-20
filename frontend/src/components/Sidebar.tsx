@@ -79,6 +79,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       title: 'Control y Monitoreo',
       items: [
         { path: '/dashboard/traffic/monitoreo',                label: 'Servicios en Vía',   icon: Activity },
+        { path: '/dashboard/traffic/map-hub',                  label: 'Map Hub Unificado',  icon: Map },
         // Hub: Diagnóstico + Ranking + OTP + AutoStats GPS
         { path: '/dashboard/traffic/diagnostico-cumplimiento', label: 'Cumplimiento',       icon: Search },
         // Hub: Incidencias + Contingencia
