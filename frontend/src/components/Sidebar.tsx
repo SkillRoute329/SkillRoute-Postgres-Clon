@@ -14,6 +14,7 @@ import {
   Wallet,
   ShoppingCart,
   Activity,
+  Cpu,
   ShieldCheck,
   Smartphone,
   BarChart3,
@@ -128,6 +129,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         { path: '/dashboard/admin/sistema',              label: 'Sistema y Configuración', icon: ShieldCheck},
         // Hub: Cumplimiento MTOP + Cross-Op + Rendición + Audit Log + Cumplimiento del Sistema
         { path: '/dashboard/admin/regulatorio',          label: 'Reportes Regulatorios',   icon: Shield     },
+        { path: '/dashboard/admin/ml-monitoring',        label: 'Monitoreo ML',            icon: Cpu        },
         // Centro de Mando Unificado — solo SUPERADMIN (guard en la página)
         { path: '/dashboard/super-admin/centro-mando',   label: 'Monitoreo Metropolitano (SA)',    icon: ShieldAlert},
         // Gantt Red Metropolitana — solo SUPERADMIN

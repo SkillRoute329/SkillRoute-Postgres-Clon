@@ -1,0 +1,432 @@
+{
+  "tree": {
+    "feature": "speed_kmh",
+    "threshold": 3,
+    "left": {
+      "feature": "distance_meters",
+      "threshold": 1182,
+      "left": {
+        "feature": "distance_meters",
+        "threshold": 620,
+        "left": {
+          "feature": "scheduled_deviation_min",
+          "threshold": 0,
+          "left": {
+            "feature": "distance_meters",
+            "threshold": 392,
+            "left": {
+              "feature": "distance_meters",
+              "threshold": 270,
+              "left": {
+                "value": 216
+              },
+              "right": {
+                "value": 317
+              }
+            },
+            "right": {
+              "feature": "distance_meters",
+              "threshold": 506,
+              "left": {
+                "value": 422
+              },
+              "right": {
+                "value": 561
+              }
+            }
+          },
+          "right": {
+            "feature": "scheduled_deviation_min",
+            "threshold": 9,
+            "left": {
+              "feature": "distance_meters",
+              "threshold": 291,
+              "left": {
+                "value": 597
+              },
+              "right": {
+                "value": 885
+              }
+            },
+            "right": {
+              "value": 1214
+            }
+          }
+        },
+        "right": {
+          "feature": "distance_meters",
+          "threshold": 841,
+          "left": {
+            "feature": "scheduled_deviation_min",
+            "threshold": 0,
+            "left": {
+              "feature": "distance_meters",
+              "threshold": 753,
+              "left": {
+                "value": 684
+              },
+              "right": {
+                "value": 786
+              }
+            },
+            "right": {
+              "feature": "scheduled_deviation_min",
+              "threshold": 12,
+              "left": {
+                "value": 1137
+              },
+              "right": {
+                "value": 1798
+              }
+            }
+          },
+          "right": {
+            "feature": "scheduled_deviation_min",
+            "threshold": 0,
+            "left": {
+              "feature": "distance_meters",
+              "threshold": 982,
+              "left": {
+                "value": 892
+              },
+              "right": {
+                "value": 1071
+              }
+            },
+            "right": {
+              "feature": "scheduled_deviation_min",
+              "threshold": 5,
+              "left": {
+                "value": 1284
+              },
+              "right": {
+                "value": 1619
+              }
+            }
+          }
+        }
+      },
+      "right": {
+        "feature": "distance_meters",
+        "threshold": 1615,
+        "left": {
+          "feature": "scheduled_deviation_min",
+          "threshold": 0,
+          "left": {
+            "feature": "distance_meters",
+            "threshold": 1319,
+            "left": {
+              "feature": "distance_meters",
+              "threshold": 1209,
+              "left": {
+                "value": 1056
+              },
+              "right": {
+                "value": 1265
+              }
+            },
+            "right": {
+              "feature": "distance_meters",
+              "threshold": 1482,
+              "left": {
+                "value": 1381
+              },
+              "right": {
+                "value": 1508
+              }
+            }
+          },
+          "right": {
+            "feature": "scheduled_deviation_min",
+            "threshold": 5,
+            "left": {
+              "feature": "distance_meters",
+              "threshold": 1323,
+              "left": {
+                "value": 1441
+              },
+              "right": {
+                "value": 1649
+              }
+            },
+            "right": {
+              "feature": "distance_meters",
+              "threshold": 1253,
+              "left": {
+                "value": 1755
+              },
+              "right": {
+                "value": 1800
+              }
+            }
+          }
+        },
+        "right": {
+          "feature": "distance_meters",
+          "threshold": 1713,
+          "left": {
+            "feature": "scheduled_deviation_min",
+            "threshold": 0,
+            "left": {
+              "feature": "distance_meters",
+              "threshold": 1670,
+              "left": {
+                "value": 1643
+              },
+              "right": {
+                "value": 1694
+              }
+            },
+            "right": {
+              "value": 1781
+            }
+          },
+          "right": {
+            "feature": "distance_meters",
+            "threshold": 1772,
+            "left": {
+              "feature": "scheduled_deviation_min",
+              "threshold": 0,
+              "left": {
+                "value": 1741
+              },
+              "right": {
+                "value": 1800
+              }
+            },
+            "right": {
+              "feature": "speed_kmh",
+              "threshold": 1,
+              "left": {
+                "value": 1799
+              },
+              "right": {
+                "value": 1773
+              }
+            }
+          }
+        }
+      }
+    },
+    "right": {
+      "feature": "scheduled_deviation_min",
+      "threshold": 5,
+      "left": {
+        "feature": "speed_kmh",
+        "threshold": 8,
+        "left": {
+          "feature": "distance_meters",
+          "threshold": 1643,
+          "left": {
+            "feature": "distance_meters",
+            "threshold": 921,
+            "left": {
+              "feature": "distance_meters",
+              "threshold": 546,
+              "left": {
+                "value": 253
+              },
+              "right": {
+                "value": 459
+              }
+            },
+            "right": {
+              "feature": "speed_kmh",
+              "threshold": 4,
+              "left": {
+                "value": 1098
+              },
+              "right": {
+                "value": 702
+              }
+            }
+          },
+          "right": {
+            "feature": "speed_kmh",
+            "threshold": 5,
+            "left": {
+              "feature": "distance_meters",
+              "threshold": 1778,
+              "left": {
+                "value": 1407
+              },
+              "right": {
+                "value": 1665
+              }
+            },
+            "right": {
+              "feature": "scheduled_deviation_min",
+              "threshold": -2,
+              "left": {
+                "value": 772
+              },
+              "right": {
+                "value": 982
+              }
+            }
+          }
+        },
+        "right": {
+          "feature": "distance_meters",
+          "threshold": 1864,
+          "left": {
+            "feature": "scheduled_deviation_min",
+            "threshold": 2,
+            "left": {
+              "feature": "speed_kmh",
+              "threshold": 12,
+              "left": {
+                "value": 339
+              },
+              "right": {
+                "value": 125
+              }
+            },
+            "right": {
+              "feature": "speed_kmh",
+              "threshold": 11,
+              "left": {
+                "value": 647
+              },
+              "right": {
+                "value": 382
+              }
+            }
+          },
+          "right": {
+            "feature": "distance_meters",
+            "threshold": 4800,
+            "left": {
+              "feature": "scheduled_deviation_min",
+              "threshold": 0,
+              "left": {
+                "value": 270
+              },
+              "right": {
+                "value": 589
+              }
+            },
+            "right": {
+              "feature": "speed_kmh",
+              "threshold": 27,
+              "left": {
+                "value": 1668
+              },
+              "right": {
+                "value": 963
+              }
+            }
+          }
+        }
+      },
+      "right": {
+        "feature": "scheduled_deviation_min",
+        "threshold": 12,
+        "left": {
+          "feature": "distance_meters",
+          "threshold": 1863,
+          "left": {
+            "feature": "scheduled_deviation_min",
+            "threshold": 8,
+            "left": {
+              "feature": "speed_kmh",
+              "threshold": 16,
+              "left": {
+                "value": 779
+              },
+              "right": {
+                "value": 553
+              }
+            },
+            "right": {
+              "feature": "speed_kmh",
+              "threshold": 18,
+              "left": {
+                "value": 944
+              },
+              "right": {
+                "value": 738
+              }
+            }
+          },
+          "right": {
+            "feature": "distance_meters",
+            "threshold": 5160,
+            "left": {
+              "feature": "speed_kmh",
+              "threshold": 13,
+              "left": {
+                "value": 1367
+              },
+              "right": {
+                "value": 861
+              }
+            },
+            "right": {
+              "value": 1761
+            }
+          }
+        },
+        "right": {
+          "feature": "scheduled_deviation_min",
+          "threshold": 16,
+          "left": {
+            "feature": "speed_kmh",
+            "threshold": 13,
+            "left": {
+              "feature": "distance_meters",
+              "threshold": 726,
+              "left": {
+                "value": 1012
+              },
+              "right": {
+                "value": 1435
+              }
+            },
+            "right": {
+              "feature": "distance_meters",
+              "threshold": 1771,
+              "left": {
+                "value": 980
+              },
+              "right": {
+                "value": 1197
+              }
+            }
+          },
+          "right": {
+            "feature": "distance_meters",
+            "threshold": 1637,
+            "left": {
+              "feature": "speed_kmh",
+              "threshold": 18,
+              "left": {
+                "value": 1393
+              },
+              "right": {
+                "value": 1232
+              }
+            },
+            "right": {
+              "feature": "distance_meters",
+              "threshold": 1911,
+              "left": {
+                "value": 1381
+              },
+              "right": {
+                "value": 1698
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "metrics": {
+    "mae": 218.92,
+    "rmse": 804.12,
+    "r2": -1,
+    "datasetSize": 5000,
+    "trainedAt": "2026-06-20T23:15:34.767Z"
+  }
+}

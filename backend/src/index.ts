@@ -33,6 +33,7 @@ import { startConteoVehicularScheduler } from './utils/conteoVehicularScheduler'
 import { startCartonesHistorialScheduler } from './utils/cartonesHistorialScheduler';
 import { startCascadeAutoTrigger } from './utils/cascadeAutoTriggerScheduler';
 import { startAlertasCaducidad } from './utils/alertasCaducidadScheduler';
+import { startMlRetrainScheduler } from './utils/mlRetrainScheduler';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJSDoc from 'swagger-jsdoc';
 
@@ -363,6 +364,13 @@ const server = httpServer.listen({ port: PORT_NUM, host: '0.0.0.0', exclusive: t
     startAlertasCaducidad();
   } catch (err) {
     logger.error('[alertasCaducidad] error iniciando scheduler', { err: String(err) });
+  }
+
+  // FASE 3 Bloque 4 — Scheduler de re-entrenamiento automático de ML.
+  try {
+    startMlRetrainScheduler();
+  } catch (err) {
+    logger.error('[mlRetrain] error iniciando scheduler', { err: String(err) });
   }
 });
 

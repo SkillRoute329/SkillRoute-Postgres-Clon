@@ -85,6 +85,7 @@ const BRTCorridorDashboard = lazy(() => import('./pages/traffic/BRTCorridorDashb
 const EVChargeOptimizer = lazy(() => import('./pages/fleet/EVChargeOptimizer'));
 const ComplianceHub = lazy(() => import('./pages/admin/ComplianceHub'));
 const ServiceCategoryPage = lazy(() => import('./pages/admin/ServiceCategoryPage'));
+const MlMonitoringPage = lazy(() => import('./pages/admin/MlMonitoringPage'));
 
 // Restored Orphaned Pages (were on disk but missing routes)
 const AdminBoletines = lazy(() => import('./pages/admin/AdminBoletines'));
@@ -266,6 +267,7 @@ function App() {
                     <Route path="admin/seed" element={<Navigate to="/dashboard/admin/sistema" replace />} />
                     <Route path="admin/shifts" element={<Navigate to="/dashboard/admin/rrhh" replace />} />
                     <Route path="admin/cross-op-coverage" element={<Navigate to="/dashboard/admin/regulatorio" replace />} />
+                    <Route path="admin/ml-monitoring" element={<PrivateRoute roles={['ADMIN', 'SUPERADMIN']}><MlMonitoringPage /></PrivateRoute>} />
 
                     {/* Super Admin Routes */}
                     <Route path="super-admin/tenants" element={<PrivateRoute roles={['SUPERADMIN']}><TenantsManager /></PrivateRoute>} />
