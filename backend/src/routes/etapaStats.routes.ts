@@ -43,7 +43,7 @@ type ScheduleIndex = Record<string, ScheduleAgency>;
 
 let scheduleIndex: ScheduleIndex | null = null;
 let scheduleLoadedAt = 0;
-function getSchedule(): ScheduleIndex | null {
+export function getSchedule(): ScheduleIndex | null {
   if (scheduleIndex && Date.now() - scheduleLoadedAt < 60 * 60 * 1000) return scheduleIndex;
   try {
     const p = path.resolve(__dirname, '..', 'data', 'gtfs', 'schedule_index.json');
@@ -56,7 +56,7 @@ function getSchedule(): ScheduleIndex | null {
   }
 }
 
-function norm(s: string | null | undefined): string {
+export function norm(s: string | null | undefined): string {
   return String(s ?? '').toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -66,7 +66,7 @@ function norm(s: string | null | undefined): string {
  * Construye un map normName(parada) → seq promedio, para ordenar.
  * Si no hay match, retorna 999 para que la parada caiga al final.
  */
-function buildStopSeqMap(agencyId: string, linea: string): Map<string, number> {
+export function buildStopSeqMap(agencyId: string, linea: string): Map<string, number> {
   const out = new Map<string, number>();
   const sched = getSchedule();
   if (!sched) return out;
@@ -112,7 +112,7 @@ function buildStopSeqMap(agencyId: string, linea: string): Map<string, number> {
  * realmente usa como guía (los que están en TODOS o casi todos los
  * cartones). Devuelve un set de nombres normalizados.
  */
-function getEtapasPrincipales(
+export function getEtapasPrincipales(
   agencyId: string,
   linea: string,
   minPct = 0.3,

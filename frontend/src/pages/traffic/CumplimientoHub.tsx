@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { Search, Bus, BarChart3, Activity, TrendingUp, Navigation, Database, Globe, GitCompare, Repeat, AlertTriangle, Lightbulb, FlaskConical } from 'lucide-react';
+import { Search, Bus, BarChart3, Activity, TrendingUp, Navigation, Database, Globe, GitCompare, Repeat, AlertTriangle, Lightbulb, FlaskConical, Route, Timer } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { OPERADORES_ID_NOMBRE } from '../../utils/operadores';
 import PageHub from '../../components/PageHub';
@@ -25,6 +25,10 @@ const CentroComando            = lazy(() => import('./CentroComando'));
 // FASE 5.19: simulador de escenarios (estimador de impacto transparente).
 const SimuladorEscenarios      = lazy(() => import('./SimuladorEscenarios'));
 
+// Real-Time Analytics Tabs (Sprint 3)
+const RunTimesTab              = lazy(() => import('./RunTimesTab'));
+const StopDwellTab             = lazy(() => import('./StopDwellTab'));
+
 // FASE 5.16: fuente única utils/operadores.ts.
 const AGENCIAS = OPERADORES_ID_NOMBRE;
 
@@ -38,6 +42,8 @@ const TABS = [
   { key: 'autostats',   label: 'Por Coche',          icon: Activity,   Component: AutoStatsModule },
   { key: 'tendencia',   label: 'Semana vs Semana',   icon: TrendingUp, Component: TendenciaTab },
   { key: 'etapas',      label: 'Análisis por Etapa', icon: Navigation, Component: AnalisisEtapas },
+  { key: 'run-times',   label: 'Tiempos de Viaje',   icon: Route,      Component: RunTimesTab },
+  { key: 'stop-dwell',  label: 'Tiempos de Parada',  icon: Timer,      Component: StopDwellTab },
   { key: 'carton-gps',  label: 'Cartón vs GPS',      icon: GitCompare, Component: ComparacionServicioCoche },
   { key: 'rotacion',    label: 'Rotación & Sustituciones', icon: Repeat, Component: RotacionSustituciones },
   // FASE 5.15: nuevos tabs con validaciones oficiales IMM
