@@ -236,12 +236,19 @@ export default function PricingPage() {
           pricing es opaco y excluye a operadores chicos y medianos. SkillRoute
           publica precios reales, en USD, con tiers claros por cantidad de buses.
         </p>
-        <div className="mt-8 flex items-center justify-center gap-3 text-sm">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-sm">
           <Link
             to="/pricing/onboarding"
             className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/40 hover:bg-slate-800/40 px-4 py-2 text-slate-300 hover:text-white transition"
           >
             Ver proceso de onboarding (2-4 semanas)
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link
+            to="/pricing/sla"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/40 hover:bg-slate-800/40 px-4 py-2 text-slate-300 hover:text-white transition"
+          >
+            Ver Acuerdo de Nivel de Servicio (SLA)
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

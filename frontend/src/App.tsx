@@ -160,6 +160,7 @@ const OperatorComplianceView = lazy(() => import('./pages/traffic/OperatorCompli
 // Sprint 1 (2026-04-25): Pricing público — accesible sin auth
 const PricingPage = lazy(() => import('./pages/public/PricingPage'));
 const OnboardingPage = lazy(() => import('./pages/public/OnboardingPage'));
+const SLAPage = lazy(() => import('./pages/public/SLAPage'));
 // Centro de Mando Unificado — solo SUPERADMIN
 const CentroMandoUnificado = lazy(() => import('./pages/traffic/CentroMandoUnificado'));
 // Gantt Red Metropolitana — solo SUPERADMIN
@@ -218,6 +219,7 @@ function App() {
                   <Route path="/login" element={<LoginScreen />} />
                   <Route path="/pricing" element={<PricingPage />} />
                   <Route path="/pricing/onboarding" element={<OnboardingPage />} />
+                  <Route path="/pricing/sla" element={<SLAPage />} />
 
                   {/* Test Route for Cloud Upload */}
                   <Route

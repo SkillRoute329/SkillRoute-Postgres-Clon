@@ -33,6 +33,8 @@ import { startConteoVehicularScheduler } from './utils/conteoVehicularScheduler'
 import { startCartonesHistorialScheduler } from './utils/cartonesHistorialScheduler';
 import { startCascadeAutoTrigger } from './utils/cascadeAutoTriggerScheduler';
 import { startAlertasCaducidad } from './utils/alertasCaducidadScheduler';
+import swaggerUi from 'swagger-ui-express';
+import swaggerJSDoc from 'swagger-jsdoc';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INICIALIZACIÓN
@@ -150,6 +152,37 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 // ═══════════════════════════════════════════════════════════════════════════
 // RUTAS
 // ═══════════════════════════════════════════════════════════════════════════
+
+// Documentación de API (OpenAPI 3.0 / Swagger UI)
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'SkillRoute API Documentation',
+      version: '2.0.0',
+      description: 'API del Sistema Inteligente de Gestión de Tránsito y Cobertura Metropolitana (Montevideo - UCOT)',
+    },
+    servers: [
+      {
+        url: 'http://localhost:3001',
+        description: 'Servidor Local (PM2)',
+      },
+    ],
+  },
+  apis: [
+    './src/routes/*.ts',
+    './dist/routes/*.js',
+    './src/routes/index.ts',
+    './dist/routes/index.js'
+  ],
+};
+
+const swaggerSpec = swaggerJSDoc(swaggerOptions);
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get('/api/docs-json', (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
 
 // Prefijo /api
 app.use('/api', routes);

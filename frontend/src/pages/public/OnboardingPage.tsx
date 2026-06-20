@@ -386,7 +386,13 @@ export default function OnboardingPage() {
                   'Documentación completa en español',
                   'Capacitación grabada (videos accesibles permanentemente)',
                   'Acceso a roadmap público',
-                  'SLA post-go-live: uptime 99.95% · latencia GTFS-RT < 5s',
+                  <span key="sla">
+                    SLA post-go-live: uptime 99.95% (ver{' '}
+                    <Link to="/pricing/sla" className="text-amber-400 hover:underline font-bold">
+                      SLA detallado
+                    </Link>
+                    ) · latencia GTFS-RT &lt; 5s
+                  </span>,
                 ].map((c, i) => (
                   <li
                     key={i}
