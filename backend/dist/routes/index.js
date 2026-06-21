@@ -87,26 +87,114 @@ const stmDemanda_routes_1 = __importDefault(require("./stmDemanda.routes"));
 const stmHorarios_routes_1 = __importDefault(require("./stmHorarios.routes"));
 const conteoVehicular_routes_1 = __importDefault(require("./conteoVehicular.routes"));
 const comando_routes_1 = __importDefault(require("./comando.routes"));
+const predictions_routes_1 = __importDefault(require("./predictions.routes"));
+const planning_routes_1 = __importDefault(require("./planning.routes"));
 const router = (0, express_1.Router)();
 // ─── PÚBLICAS (sin autenticación) ─────────────────────────────────────────
 /**
- * POST /api/auth/login
- * Realizar login con internalNumber y contraseña
+ * @openapi
+ * /api/auth/login:
+ *   post:
+ *     summary: Iniciar sesión de usuario
+ *     description: Permite a los empleados (conductores, inspectores, administradores) iniciar sesión en el sistema usando su número de interno y contraseña.
+ *     tags:
+ *       - Autenticación
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - internalNumber
+ *               - password
+ *             properties:
+ *               internalNumber:
+ *                 type: string
+ *                 description: Número interno único del empleado (ej. "329")
+ *               password:
+ *                 type: string
+ *                 description: Contraseña de acceso
+ *     responses:
+ *       200:
+ *         description: Login exitoso, devuelve el token JWT
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     token:
+ *                       type: string
+ *                       description: Token JWT para autorización Bearer
+ *                     user:
+ *                       type: object
+ *       400:
+ *         description: Faltan campos requeridos
+ *       401:
+ *         description: Credenciales incorrectas
  */
 router.post('/auth/login', (0, validation_1.validateBody)(['internalNumber', 'password']), authController.login);
 /**
- * GET /api/doctor
- * Diagnóstico del sistema
+ * @openapi
+ * /api/doctor:
+ *   get:
+ *     summary: Diagnóstico del sistema
+ *     description: Endpoint público de auditoría que evalúa el estado del backend, conectividad con base de datos PostgreSQL local y conteo de vehículos/schedules.
+ *     tags:
+ *       - Sistema
+ *     responses:
+ *       200:
+ *         description: Diagnóstico detallado del sistema
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
  */
 router.get('/doctor', systemController.systemDoctor);
 /**
- * GET /api/health
- * Simple health check
+ * @openapi
+ * /api/health:
+ *   get:
+ *     summary: Health check
+ *     description: Comprobación de estado rápida del servidor.
+ *     tags:
+ *       - Sistema
+ *     responses:
+ *       200:
+ *         description: El servidor responde correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: OK
  */
 router.get('/health', systemController.healthCheck);
 /**
- * GET /api/version
- * Obtener versión
+ * @openapi
+ * /api/version:
+ *   get:
+ *     summary: Obtener versión
+ *     description: Retorna los detalles de versión y entorno actual del backend.
+ *     tags:
+ *       - Sistema
+ *     responses:
+ *       200:
+ *         description: Datos de versión del sistema
  */
 router.get('/version', systemController.getVersion);
 // ─── PROTEGIDAS (requieren autenticación) ─────────────────────────────────
@@ -130,13 +218,44 @@ router.get('/auth/me', auth_1.verifyAuth, authController.getCurrentUser);
 // si fuera un id de cartón y devuelve null/vacío).
 router.use('/cartones', cartones_routes_1.default);
 /**
- * GET /api/cartones
- * Obtener todos los cartones
+ * @openapi
+ * /api/cartones:
+ *   get:
+ *     summary: Obtener cartones de servicio
+ *     description: Lista todos los cartones de servicio cargados (requiere autenticación JWT).
+ *     tags:
+ *       - Cartones
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de cartones cargados
+ *       401:
+ *         description: No autorizado (Token faltante o inválido)
  */
 router.get('/cartones', auth_1.verifyAuth, cartonController.getAllCartones);
 /**
- * GET /api/cartones/:id
- * Obtener un cartón específico
+ * @openapi
+ * /api/cartones/{id}:
+ *   get:
+ *     summary: Obtener un cartón por ID
+ *     description: Retorna los detalles de un cartón específico (requiere autenticación JWT).
+ *     tags:
+ *       - Cartones
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Identificador del cartón
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Datos del cartón encontrado
+ *       404:
+ *         description: Cartón no encontrado
  */
 router.get('/cartones/:id', auth_1.verifyAuth, cartonController.getCartonById);
 /**
@@ -362,6 +481,8 @@ router.use('/stm-demanda', stmDemanda_routes_1.default);
 router.use('/stm-horarios', stmHorarios_routes_1.default);
 router.use('/conteo-vehicular', conteoVehicular_routes_1.default);
 router.use('/comando', comando_routes_1.default);
+router.use('/predictions', predictions_routes_1.default);
+router.use('/planning', planning_routes_1.default);
 /**
  * FASE 5 (2026-05-13) — Stubs honestos para CEODashboardV7 que consume
  * /historicOtp y /historicBunching (antes Cloud Functions). El cálculo

@@ -166,6 +166,7 @@ const SLAPage = lazy(() => import('./pages/public/SLAPage'));
 const CentroMandoUnificado = lazy(() => import('./pages/traffic/CentroMandoUnificado'));
 // Gantt Red Metropolitana — solo SUPERADMIN
 const GanttRedMetropolitana = lazy(() => import('./pages/traffic/GanttRedMetropolitana'));
+const NetworkEditor = lazy(() => import('./pages/traffic/NetworkEditor'));
 
 
 // Loading Component
@@ -327,8 +328,9 @@ function App() {
                     {/* Redirects legacy: nombres en español → rutas en inglés */}
                     <Route path="traffic/navegador" element={<Navigate to="/dashboard/traffic/navigation" replace />} />
                     <Route path="traffic/posicion" element={<Navigate to="/dashboard/traffic/map-hub?layer=buses" replace />} />
-                    {/* Nueva Consola de Inteligencia de Red (Fase 2) */}
+                     {/* Nueva Consola de Inteligencia de Red (Fase 2) */}
                     <Route path="traffic/intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><MarketIntelligenceConsole /></PrivateRoute>} />
+                    <Route path="traffic/network-editor" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><NetworkEditor /></PrivateRoute>} />
                     <Route path="traffic/live-map" element={<Navigate to="/dashboard/traffic/map-hub?layer=mapa" replace />} />
                     <Route path="traffic/shadow-radar" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
                     <Route path="traffic/competitor-intelligence" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />

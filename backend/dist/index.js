@@ -37,6 +37,9 @@ const conteoVehicularScheduler_1 = require("./utils/conteoVehicularScheduler");
 const cartonesHistorialScheduler_1 = require("./utils/cartonesHistorialScheduler");
 const cascadeAutoTriggerScheduler_1 = require("./utils/cascadeAutoTriggerScheduler");
 const alertasCaducidadScheduler_1 = require("./utils/alertasCaducidadScheduler");
+const mlRetrainScheduler_1 = require("./utils/mlRetrainScheduler");
+const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
+const swagger_jsdoc_1 = __importDefault(require("swagger-jsdoc"));
 // ═══════════════════════════════════════════════════════════════════════════
 // INICIALIZACIÓN
 // ═══════════════════════════════════════════════════════════════════════════
@@ -137,6 +140,35 @@ app.use((_req, res, next) => {
 // ═══════════════════════════════════════════════════════════════════════════
 // RUTAS
 // ═══════════════════════════════════════════════════════════════════════════
+// Documentación de API (OpenAPI 3.0 / Swagger UI)
+const swaggerOptions = {
+    definition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'SkillRoute API Documentation',
+            version: '2.0.0',
+            description: 'API del Sistema Inteligente de Gestión de Tránsito y Cobertura Metropolitana (Montevideo - UCOT)',
+        },
+        servers: [
+            {
+                url: 'http://localhost:3001',
+                description: 'Servidor Local (PM2)',
+            },
+        ],
+    },
+    apis: [
+        './src/routes/*.ts',
+        './dist/routes/*.js',
+        './src/routes/index.ts',
+        './dist/routes/index.js'
+    ],
+};
+const swaggerSpec = (0, swagger_jsdoc_1.default)(swaggerOptions);
+app.use('/api/docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swaggerSpec));
+app.get('/api/docs-json', (_req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(swaggerSpec);
+});
 // Prefijo /api
 app.use('/api', index_1.default);
 // Root
@@ -304,6 +336,13 @@ const server = httpServer.listen({ port: PORT_NUM, host: '0.0.0.0', exclusive: t
     }
     catch (err) {
         logger_1.default.error('[alertasCaducidad] error iniciando scheduler', { err: String(err) });
+    }
+    // FASE 3 Bloque 4 — Scheduler de re-entrenamiento automático de ML.
+    try {
+        (0, mlRetrainScheduler_1.startMlRetrainScheduler)();
+    }
+    catch (err) {
+        logger_1.default.error('[mlRetrain] error iniciando scheduler', { err: String(err) });
     }
 });
 exports.server = server;

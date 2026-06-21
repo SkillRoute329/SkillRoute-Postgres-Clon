@@ -72,6 +72,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         // Hub: Terminal Listero + Listero Cascada + Distribución
         { path: '/dashboard/traffic/listero',       label: 'Listero y Distribución', icon: Users        },
         { path: '/dashboard/traffic/navigation',    label: 'Navegador',           icon: Map           },
+        { path: '/dashboard/traffic/network-editor', label: 'Editor de Red (Remix)', icon: Network },
       ],
     },
 

@@ -54,6 +54,7 @@ import stmHorariosRoutes from './stmHorarios.routes';
 import conteoVehicularRoutes from './conteoVehicular.routes';
 import comandoRoutes from './comando.routes';
 import predictionsRoutes from './predictions.routes';
+import planningRoutes from './planning.routes';
 
 const router = Router();
 
@@ -495,6 +496,7 @@ router.use('/stm-horarios', stmHorariosRoutes);
 router.use('/conteo-vehicular', conteoVehicularRoutes);
 router.use('/comando', comandoRoutes);
 router.use('/predictions', predictionsRoutes);
+router.use('/planning', planningRoutes);
 
 /**
  * FASE 5 (2026-05-13) — Stubs honestos para CEODashboardV7 que consume
