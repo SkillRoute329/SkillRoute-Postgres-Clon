@@ -797,4 +797,33 @@ SkillRoute ahora opera 100% cross-operador desde el sidebar. Cualquier operador 
 - **33/33** tests E2E (Playwright) pasados con éxito (100% verde).
 - **0** errores de TypeScript con `npx tsc --noEmit`.
 
+---
 
+## 2026-06-21 — Editor de Red y Motor de Equidad (Sprints 7-8 Completados)
+
+**Duración:** ~2 horas (continuación y finalización de Fase 3 Bloque 5).
+
+**Features entregadas:**
+
+| Feature | Archivo(s) | Estado |
+|---|---|---|
+| Servicio de Planificación & Ray-Casting | [planningService.ts](file:///C:/SkillRoute_Master/repo/backend/src/services/planningService.ts) | ✅ prod |
+| Rutas del Motor de Planificación | [planning.routes.ts](file:///C:/SkillRoute_Master/repo/backend/src/routes/planning.routes.ts) | ✅ prod |
+| Registro de Planning en routes/index | [routes/index.ts](file:///C:/SkillRoute_Master/repo/backend/src/routes/index.ts) | ✅ prod |
+| Pruebas Unitarias Backend Planning | [planningService.test.ts](file:///C:/SkillRoute_Master/repo/backend/src/services/planningService.test.ts) | ✅ test |
+| UI Editor de Red Interactivo | [NetworkEditor.tsx](file:///C:/SkillRoute_Master/repo/frontend/src/pages/traffic/NetworkEditor.tsx) | ✅ prod |
+| Rutas y Sidebar Frontend | [App.tsx](file:///C:/SkillRoute_Master/repo/frontend/src/App.tsx), [Sidebar.tsx](file:///C:/SkillRoute_Master/repo/frontend/src/components/Sidebar.tsx) | ✅ prod |
+| Pruebas E2E Editor de Red Playwright | [network-editor.spec.ts](file:///C:/SkillRoute_Master/repo/tests/network-editor.spec.ts) | ✅ test |
+
+**Decisiones:**
+- Utilizar un algoritmo Ray-Casting nativo en TypeScript puro para asociar paradas con polígonos de censo de Montevideo sin requerir dependencias espaciales binarias nativas complicadas (evitando problemas de compilación).
+- Implementar un conmutador interactivo choropleth en el mapa Leaflet oscuro del `NetworkEditor` para superponer métricas de Población, Ingreso Medio y Edad Media por barrio de Montevideo con datos de censo INE Uruguay.
+- Integrar la exportación del diseño de red tanto en formato estructurado GTFS CSV como en reportes técnicos oficiales PDF "Service Equity Analysis" (Title VI) utilizando `jsPDF` y `jspdf-autotable`.
+- Corregir el selector en `network-editor.spec.ts` para usar `getByRole('heading')` sobre "Equidad Territorial Latam" previniendo violaciones de modo estricto de Playwright debido a menciones múltiples del mismo texto.
+
+**Métricas medidas:**
+- **100% verde** en pruebas unitarias del backend (`planningService.test.ts`).
+- **100% verde** en pruebas de integración E2E de Playwright (`tests/network-editor.spec.ts`).
+- **0 errores** en la compilación de TypeScript (`tsc --noEmit`) tanto en backend como en frontend.
+- **Vite build** de producción completada con éxito en 49 segundos.
+- Cambios locales confirmados, commiteados y subidos exitosamente a la rama remota `feat/soberania-auth-fase-0-1`.
