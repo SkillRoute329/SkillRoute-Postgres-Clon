@@ -55,6 +55,7 @@ interface CollectionMap {
   idAuto?: boolean;         // si true y no se manda id, autogenerar uuid
   /** Columnas que NO se exponen al frontend (ej. password_hash). */
   hiddenColumns?: string[];
+  fixedFilter?: Record<string, unknown>; // e.g. { tipo: 'parts' }
 }
 
 const COLLECTIONS: Record<string, CollectionMap> = {
@@ -237,6 +238,12 @@ const COLLECTIONS: Record<string, CollectionMap> = {
   // el motor GPS local empiece a escribir filas el dashboard las leerá sin
   // cambios. Schema: schema_fase5_39_otp_summary.sql.
   otp_summary:                { table: 'otp_summary',                pkCol: 'id', idAuto: false },
+
+  // EAM whitelist collections (Sprints 9-10)
+  parts:                      { table: 'universal',                  pkCol: 'id', idAuto: true, fixedFilter: { tipo: 'parts' } },
+  inventory:                  { table: 'universal',                  pkCol: 'id', idAuto: true, fixedFilter: { tipo: 'inventory' } },
+  work_orders:                { table: 'maintenance',                pkCol: 'id', idAuto: true },
+  assets:                     { table: 'vehiculos',                  pkCol: 'id', idAuto: false },
 };
 
 function resolveCollection(name: string): CollectionMap | null {
@@ -583,6 +590,139 @@ function addCamelCaseAliases<T extends Record<string, unknown>>(row: T, tableNam
   return out;
 }
 
+// ─── EAM Helpers ────────────────────────────────────────────────────────────
+
+export async function prepareRowForWrite(cfg: CollectionMap, body: Record<string, unknown>, id: string, isUpdate = false) {
+  const knownCols = await getRealColumns(cfg.table);
+  const row: Record<string, unknown> = {};
+
+  let existingDataJsonb: Record<string, unknown> = {};
+  if (isUpdate && knownCols.has('data_jsonb')) {
+    const existing = await sqlDb(cfg.table).select('data_jsonb').where(cfg.pkCol, id).first();
+    if (existing && existing.data_jsonb) {
+      existingDataJsonb = typeof existing.data_jsonb === 'string'
+        ? JSON.parse(existing.data_jsonb)
+        : existing.data_jsonb;
+    }
+  }
+
+  const extraFields: Record<string, unknown> = { ...existingDataJsonb };
+
+  for (const [key, val] of Object.entries(body)) {
+    const colName = mapCol(key, cfg.table);
+    if (knownCols.has(colName)) {
+      row[colName] = val;
+    } else if (knownCols.has('data_jsonb')) {
+      extraFields[key] = val;
+    }
+  }
+
+  const pkColMapped = mapCol(cfg.pkCol, cfg.table);
+  row[pkColMapped] = id;
+
+  if (cfg.fixedFilter) {
+    for (const [col, val] of Object.entries(cfg.fixedFilter)) {
+      const colMapped = mapCol(col, cfg.table);
+      if (knownCols.has(colMapped)) {
+        row[colMapped] = val;
+      }
+    }
+  }
+
+  if (knownCols.has('data_jsonb')) {
+    if (body.data_jsonb && typeof body.data_jsonb === 'object') {
+      row.data_jsonb = {
+        ...extraFields,
+        ...(body.data_jsonb as Record<string, unknown>),
+      };
+    } else {
+      row.data_jsonb = extraFields;
+    }
+  }
+
+  return row;
+}
+
+export async function handleStockDecrement(partsUsed: any[], ticketId: string, collectionName: string) {
+  logger.info(`[EAM] Procesando decremento de stock para ${partsUsed.length} repuestos del ticket ${ticketId} en ${collectionName}`);
+  for (const item of partsUsed) {
+    const partId = item.partId ?? item.id;
+    const qty = Number(item.quantity ?? item.qty ?? item.cantidad ?? 1);
+    if (!partId) continue;
+
+    try {
+      const partRow = await sqlDb('universal')
+        .where('id', partId)
+        .where('tipo', 'parts')
+        .first();
+
+      if (!partRow) {
+        logger.warn(`[EAM] Repuesto con ID "${partId}" no encontrado en universal`);
+        continue;
+      }
+
+      let data = partRow.data_jsonb;
+      if (typeof data === 'string') {
+        try {
+          data = JSON.parse(data);
+        } catch {
+          data = {};
+        }
+      }
+
+      const currentStock = Number(data.currentStock ?? 0);
+      const minStock = Number(data.minStock ?? 0);
+      const newStock = Math.max(0, currentStock - qty);
+
+      const updatedData = {
+        ...data,
+        currentStock: newStock,
+      };
+
+      await sqlDb('universal')
+        .where('id', partId)
+        .where('tipo', 'parts')
+        .update({
+          data_jsonb: updatedData,
+          updated_at: new Date(),
+        });
+
+      logger.info(`[EAM] Stock de ${data.sku} decrementado de ${currentStock} a ${newStock} (cantidad usada: ${qty})`);
+
+      busDbEvent('parts', 'updated', { id: partId, table: 'universal' });
+
+      if (newStock < minStock) {
+        logger.warn(`[EAM] ALERTA DE STOCK CRÍTICO: ${data.sku} está en ${newStock} (mínimo ${minStock})`);
+        const alertId = uuidv4();
+        const alertRow = {
+          id: alertId,
+          agency_id: '70', // UCOT
+          fecha: new Date().toISOString().slice(0, 10),
+          tipo: 'cobertura_critica',
+          urgencia: 'alta',
+          linea_id: null,
+          conductor_id: null,
+          vehiculo_id: null,
+          turno_id: null,
+          titulo: `Stock crítico — ${data.sku ?? partId}`,
+          mensaje: `El repuesto "${data.description ?? ''}" (SKU: ${data.sku ?? ''}) tiene stock insuficiente. Stock actual: ${newStock}. Stock mínimo: ${minStock}.`,
+          accion_sugerida: `Reponer stock en taller.`,
+          datos_extra: JSON.stringify({ partId, sku: data.sku, currentStock: newStock, minStock, ticketId, collectionName }),
+          atendida: false,
+          atendida_por: null,
+          hora_atendida: null,
+          impacto_ingresos_usd: null,
+          created_at: new Date(),
+        };
+        await sqlDb('alertas_operativas').insert(alertRow);
+        busDbEvent('alertas_operativas', 'created', { id: alertId, table: 'alertas_operativas' });
+      }
+    } catch (err) {
+      logger.error(`[EAM] Error decrementando stock para el repuesto "${partId}"`, err);
+    }
+  }
+}
+
 // ─── GET /api/db/:collection ───────────────────────────────────────────────
 
 export async function listCollection(req: Request, res: Response): Promise<void> {
@@ -600,6 +740,11 @@ export async function listCollection(req: Request, res: Response): Promise<void>
 
   try {
     let q = sqlDb(cfg.table).select('*');
+    if (cfg.fixedFilter) {
+      for (const [col, val] of Object.entries(cfg.fixedFilter)) {
+        q = q.where(col, val as any);
+      }
+    }
     // FASE 5.38 (2026-05-22): autodetect ahora se aplica a TODAS las tablas
     // (no solo las hardcoded). Cache de 5min en information_schema.
     const knownCols = await getRealColumns(cfg.table);
@@ -660,7 +805,13 @@ export async function getDoc(req: Request, res: Response): Promise<void> {
   if (!cfg) return fail(res, 404, `Collection '${collectionName}' no en whitelist`);
 
   try {
-    const row = await sqlDb(cfg.table).where(cfg.pkCol, id).first();
+    let q = sqlDb(cfg.table).where(cfg.pkCol, id);
+    if (cfg.fixedFilter) {
+      for (const [col, val] of Object.entries(cfg.fixedFilter)) {
+        q = q.where(col, val as any);
+      }
+    }
+    const row = await q.first();
     if (!row) return fail(res, 404, 'Documento no encontrado');
     ok(res, addCamelCaseAliases(maskHidden(flattenDataJsonb(row), cfg.hiddenColumns) as Record<string, unknown>, cfg.table));
   } catch (error: unknown) {
@@ -686,7 +837,7 @@ export async function createDoc(req: Request, res: Response): Promise<void> {
   }
 
   try {
-    const row: Record<string, unknown> = { ...body, [cfg.pkCol]: id };
+    const row = await prepareRowForWrite(cfg, body, id, false);
     await sqlDb(cfg.table).insert(row).onConflict(cfg.pkCol).merge();
     // FASE 5.30 (2026-05-21): emit al bus para que el frontend reciba la
     // propagación en vivo sin polling.
@@ -713,12 +864,36 @@ export async function updateDoc(req: Request, res: Response): Promise<void> {
 
   try {
     // Upsert idempotente: si no existe, inserta con merge. Comportamiento parecido a Firestore.set(merge:true).
-    const exists = await sqlDb(cfg.table).where(cfg.pkCol, id).first();
-    if (exists) {
-      await sqlDb(cfg.table).where(cfg.pkCol, id).update(body);
-    } else {
-      await sqlDb(cfg.table).insert({ ...body, [cfg.pkCol]: id });
+    let checkQuery = sqlDb(cfg.table).where(cfg.pkCol, id);
+    if (cfg.fixedFilter) {
+      for (const [col, val] of Object.entries(cfg.fixedFilter)) {
+        checkQuery = checkQuery.where(col, val as any);
+      }
     }
+    const exists = await checkQuery.first();
+    const row = await prepareRowForWrite(cfg, body, id, !!exists);
+    if (exists) {
+      await sqlDb(cfg.table).where(cfg.pkCol, id).update(row);
+    } else {
+      await sqlDb(cfg.table).insert(row);
+    }
+
+    // Interceptor de decremento de stock al cerrar ticket
+    if (
+      (collectionName === 'incidencias' || collectionName === 'maintenance' || collectionName === 'work_orders') &&
+      (body.status === 'CLOSED' || body.status === 'FINALIZADO' || body.estado === 'CLOSED' || body.estado === 'FINALIZADO')
+    ) {
+      let partsUsed = body.partsUsed ?? (body.data_jsonb as any)?.partsUsed;
+      if (typeof partsUsed === 'string') {
+        try {
+          partsUsed = JSON.parse(partsUsed);
+        } catch {}
+      }
+      if (Array.isArray(partsUsed) && partsUsed.length > 0) {
+        await handleStockDecrement(partsUsed, id, collectionName);
+      }
+    }
+
     busDbEvent(collectionName, exists ? 'updated' : 'created', { id, table: cfg.table });
     ok(res, { id, [cfg.pkCol]: id, updated: !!exists });
   } catch (error: unknown) {
@@ -737,7 +912,13 @@ export async function deleteDoc(req: Request, res: Response): Promise<void> {
   if (!cfg) return fail(res, 404, `Collection '${collectionName}' no en whitelist`);
 
   try {
-    const deleted = await sqlDb(cfg.table).where(cfg.pkCol, id).delete();
+    let deleteQuery = sqlDb(cfg.table).where(cfg.pkCol, id);
+    if (cfg.fixedFilter) {
+      for (const [col, val] of Object.entries(cfg.fixedFilter)) {
+        deleteQuery = deleteQuery.where(col, val as any);
+      }
+    }
+    const deleted = await deleteQuery.delete();
     if (deleted === 0) return fail(res, 404, 'Documento no encontrado');
     busDbEvent(collectionName, 'deleted', { id, table: cfg.table });
     ok(res, { id, [cfg.pkCol]: id, deleted: true });
