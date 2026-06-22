@@ -827,3 +827,33 @@ SkillRoute ahora opera 100% cross-operador desde el sidebar. Cualquier operador 
 - **0 errores** en la compilación de TypeScript (`tsc --noEmit`) tanto en backend como en frontend.
 - **Vite build** de producción completada con éxito en 49 segundos.
 - Cambios locales confirmados, commiteados y subidos exitosamente a la rama remota `feat/soberania-auth-fase-0-1`.
+
+---
+
+## 2026-06-22 — EAM Completo y Mapeo Genérico de Base de Datos (Sprints 9-10 Completados)
+
+**Duración:** ~2.5 horas.
+
+**Features entregadas:**
+
+| Feature | Archivo(s) | Estado |
+|---|---|---|
+| Whitelist EAM y Fixed Filter generic bridge | [dbBridgeController.ts](file:///C:/SkillRoute_Master/repo/backend/src/controllers/dbBridgeController.ts) | ✅ prod |
+| Decremento de Stock e Interceptores en Taller | [dbBridgeController.ts](file:///C:/SkillRoute_Master/repo/backend/src/controllers/dbBridgeController.ts) | ✅ prod |
+| Semillas SQL EAM | [schema_eam_seeds.sql](file:///C:/SkillRoute_Master/repo/backend/src/database/schema_eam_seeds.sql) | ✅ prod |
+| Test unitario/integración EAM | [eamBridge.test.ts](file:///C:/SkillRoute_Master/repo/backend/src/services/eamBridge.test.ts) | ✅ test |
+| UI Dashboard de Mantenimiento EAM | [MaintenanceDashboard.tsx](file:///C:/SkillRoute_Master/repo/frontend/src/pages/admin/MaintenanceDashboard.tsx) | ✅ prod |
+
+**Decisiones:**
+- Utilizar `universal` como tabla de almacenamiento genérico para colecciones EAM (`parts` e `inventory`) mediante `fixedFilter` para aislar el tipo de datos en la base de datos PostgreSQL, evitando tener que agregar tablas específicas redundantes.
+- En la serialización a base de datos en el Bridge Controller (`prepareRowForWrite`), empaquetar de forma automática todas las columnas no físicas de la base de datos dentro del campo `data_jsonb` preservando las claves existentes, garantizando que el bridge sea 100% genérico.
+- Interceptar la actualización de los documentos de incidencias/mantenimiento en `updateDoc` cuando pasan a estado `CLOSED` o `FINALIZADO` para decrementar la cantidad utilizada de cada parte en el inventario.
+- Lanzar alertas de stock crítico (`cobertura_critica`) con urgencia alta en `alertas_operativas` si el inventario cae por debajo de `minStock`.
+- Corregir el crash en el botón de cierre en `MaintenanceDashboard.tsx` sustituyendo la llamada inexistente de `MaintenanceService.solveReport` por `handleCloseTicket()`.
+
+**Métricas medidas:**
+- **100% verde** en pruebas unitarias del EAM Bridge (`eamBridge.test.ts`).
+- **34/34** endpoints de QA backend pasados con éxito (100% verde).
+- **0 errores** en la compilación de TypeScript (`tsc --noEmit`) tanto en backend como en frontend.
+- **Vite build** de producción completada con éxito en 1 minuto 12 segundos.
+- Cambios locales confirmados y commiteados exitosamente a la rama remota `feat/soberania-auth-fase-0-1`.

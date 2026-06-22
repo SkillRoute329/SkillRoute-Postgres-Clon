@@ -1,7 +1,7 @@
 # SESION ACTUAL — estado vivo
 
 ---
-## ESTADO ACTUAL — 2026-06-21 (Editor de Red y Motor de Equidad - Sprints 7-8 Completados)
+## ESTADO ACTUAL — 2026-06-22 (EAM Completo y Mapeo Genérico de Base de Datos - Sprints 9-10 Completados)
 
 ### Credenciales del clon
 - internalNumber: `329`
@@ -15,19 +15,20 @@
 - Postgres local `skillroute_master` en puerto 5432 (activo)
 - Cobertura GPS real activa (buses en servicio monitoreados en vivo)
 
-### Cambios hechos esta sesión (2026-06-21)
+### Cambios hechos esta sesión (2026-06-22)
 
-**Fase 3 Bloque 5: Planning Depth (Sprints 7-8) Finalizado:**
-- **Backend Service & Routes:** Implementado `planningService.ts` con algoritmo de punto en polígono (Ray-Casting), mapeo de 11 barrios principales de Montevideo con demografía del INE, cálculos financieros en vivo (ROI, costo mensual) y el motor de equidad social territorial (Social Coverage Index, Accessibility Score, Disproportionate Impact). Rutas registradas en `planning.routes.ts` y montadas bajo `/api/planning`.
-- **Frontend NetworkEditor:** Desarrollada la vista `NetworkEditor.tsx` en `frontend/src/pages/traffic/` con mapa Leaflet interactivo en tema oscuro, capas demográficas del INE, sidebar de impacto financiero y equidad territorial, conmutador de barrios, descarga de reportes PDF técnicos con `jsPDF` y exportación GTFS. Integrada la ruta en `App.tsx` y enlazada en `Sidebar.tsx`.
-- **Pruebas Unitarias y E2E:** Escripturado el test unitario `planningService.test.ts` (100% verde) y creada la suite Playwright `tests/network-editor.spec.ts` resolviendo restricciones de modo estricto en la visibilidad de elementos (100% verde).
-- **Compilación de Producción:** Frontend (`npm run build`) y backend (`npm run build`) compilan de manera limpia sin advertencias ni errores.
+**Fase 3 Bloque 6: EAM Completo (Sprints 9-10) Finalizado:**
+- **Backend generic database bridge:** Whitelisteado de colecciones `parts`, `inventory`, `work_orders`, `inspections` y `assets` en `dbBridgeController.ts`. Soporte de `fixedFilter` para separar datos sobre tablas genéricas compartidas (como `universal`). Empaquetado dinámico de columnas no físicas en `data_jsonb` respetando registros anteriores.
+- **Taller stock decrements & alerts:** Al marcar tickets de incidencias o mantenimiento como `CLOSED` o `FINALIZADO` con partes utilizadas (`partsUsed`), se descuenta automáticamente el stock en el inventario de `universal` (tipo `parts`). Si cae por debajo de `minStock`, se inserta una alerta de urgencia alta en la tabla `alertas_operativas`.
+- **Base de datos semillas:** Creadas semillas para pastillas de freno, filtros de aceite, neumáticos y baterías.
+- **Frontend MaintenanceDashboard:** Solucionado el crash crítico al presionar el botón "Cerrar reparación" reemplazando la llamada inexistente a `MaintenanceService.solveReport` por `handleCloseTicket()` y agregando lógica de limpieza de estados y permisos por rol.
+- **Pruebas y Verificación:** Desarrollado test de integración `eamBridge.test.ts` (100% verde) y completada la suite QA con 34/34 pruebas en verde. La compilación de producción con Vite finalizó exitosamente sin errores.
 
 ### EN CURSO
-- Ninguna tarea en curso. Todo el desarrollo programado para Sprints 7-8 ha sido finalizado y verificado.
+- Ninguna tarea en curso. Todo el desarrollo programado para Sprints 9-10 ha sido finalizado y verificado.
 
 ### PRÓXIMO PASO INMEDIATO
-- Iniciar la **Fase 3 Bloque 6: EAM completo (Sprints 9-10)**:
-  - Definir las colecciones Firestore de EAM (`assets`, `work_orders`, `inspections`, `parts`, `inventory`).
-  - Desarrollar la interfaz para creación y seguimiento de Órdenes de Trabajo (Work Orders) en el MaintenanceDashboard.
-  - Implementar el historial de ciclo de vida de los vehículos y reportes de confiabilidad (MTBF, MTTR).
+- Iniciar la **Fase 3 Bloque 7: Refinamiento + GenAI Preferences & Dossier (Sprints 11-12)**:
+  - Desarrollar la interfaz GenAI Preferences en español utilizando OpenAI/Anthropic API para la creación de reglas de turnos a partir de lenguaje natural.
+  - Refinar el Dashboard de Cobertura Cross-Op a nivel ejecutivo exportable en PDF.
+  - Construir el Dossier Ejecutivo "SkillRoute vs The World" v1.0 y Pitch Deck para CUTCSA.
