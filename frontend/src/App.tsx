@@ -121,6 +121,7 @@ const VehicleCheck = lazy(() => import('./pages/fleet/VehicleCheck'));
 const MarketIntelligenceConsole = lazy(() => import('./pages/traffic/MarketIntelligenceConsole'));
 const AnalisisCriticoCompetencia = lazy(() => import('./pages/traffic/AnalisisCriticoCompetencia'));
 const DiagnosticoEjecutivo = lazy(() => import('./pages/traffic/DiagnosticoEjecutivo'));
+const ExecutiveCoverage = lazy(() => import('./pages/traffic/ExecutiveCoverage'));
 const DigitalAgentsModule = lazy(() => import('./pages/traffic/DigitalAgentsModule'));
 const OTPDashboard = lazy(() => import('./pages/traffic/OTPDashboard'));
 const IncidentCommandCenter = lazy(() => import('./pages/traffic/IncidentCommandCenter'));
@@ -162,6 +163,7 @@ const OperatorComplianceView = lazy(() => import('./pages/traffic/OperatorCompli
 const PricingPage = lazy(() => import('./pages/public/PricingPage'));
 const OnboardingPage = lazy(() => import('./pages/public/OnboardingPage'));
 const SLAPage = lazy(() => import('./pages/public/SLAPage'));
+const LandingPage = lazy(() => import('./pages/public/LandingPage'));
 // Centro de Mando Unificado — solo SUPERADMIN
 const CentroMandoUnificado = lazy(() => import('./pages/traffic/CentroMandoUnificado'));
 // Gantt Red Metropolitana — solo SUPERADMIN
@@ -269,6 +271,7 @@ function App() {
                     <Route path="admin/shifts" element={<Navigate to="/dashboard/admin/rrhh" replace />} />
                     <Route path="admin/cross-op-coverage" element={<Navigate to="/dashboard/admin/regulatorio" replace />} />
                     <Route path="admin/ml-monitoring" element={<PrivateRoute roles={['ADMIN', 'SUPERADMIN']}><MlMonitoringPage /></PrivateRoute>} />
+                    <Route path="executive/coverage" element={<PrivateRoute roles={['ADMIN', 'SUPERADMIN', 'TRAFFIC']}><ExecutiveCoverage /></PrivateRoute>} />
 
                     {/* Super Admin Routes */}
                     <Route path="super-admin/tenants" element={<PrivateRoute roles={['SUPERADMIN']}><TenantsManager /></PrivateRoute>} />
@@ -405,7 +408,7 @@ function App() {
                     element={<Navigate to="/dashboard/driver/navigation" replace />}
                   />
 
-                  <Route path="/" element={<Navigate to="/login" replace />} />
+                  <Route path="/" element={<LandingPage />} />
                 </Routes>
               </Suspense>
             </div>

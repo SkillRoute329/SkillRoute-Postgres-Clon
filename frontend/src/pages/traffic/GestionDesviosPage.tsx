@@ -17,6 +17,7 @@ import { authReady } from '../../config/firebase';
 import { AlertTriangle, Bell, CheckCircle, Clock, MapPin, Send, X, RefreshCw, Navigation } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatHoraSegundosMvd } from '../../utils/formatTimestamp';
+import MapaDibujoDesvios from './components/MapaDibujoDesvios';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -48,7 +49,7 @@ interface AlertaRegulacion {
   creado_por?: string;
 }
 
-type Tab = 'eventos' | 'notificar' | 'historial';
+type Tab = 'eventos' | 'notificar' | 'crear_desvio' | 'historial';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -99,6 +100,11 @@ const GestionDesviosPage = () => {
   const [lineaId, setLineaId] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [tipoAlerta, setTipoAlerta] = useState<'DISPARO_MANUAL'>('DISPARO_MANUAL');
+
+  // Desvio Form State
+  const [waypoints, setWaypoints] = useState<[number, number][]>([]);
+  const [motivoDesvio, setMotivoDesvio] = useState('');
+  const [lineaAfectada, setLineaAfectada] = useState('');
 
   const sentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -202,6 +208,32 @@ const GestionDesviosPage = () => {
     }
   };
 
+  // ── Crear Desvío Dinámico Oficial ─────────────────────────────────────────
+  const activarDesvioOficial = async () => {
+    if (!lineaAfectada.trim() || waypoints.length < 2) return;
+    setSending(true);
+    try {
+      await addDoc(collection(db, 'desvios_activos'), {
+        linea_id: lineaAfectada.toUpperCase().trim(),
+        motivo: motivoDesvio || 'Desvío de Tránsito',
+        ruta_alternativa: waypoints.map(pt => ({ lat: pt[0], lng: pt[1] })),
+        estado: 'ACTIVO',
+        timestamp: serverTimestamp(),
+        creado_por: user?.email || 'despacho'
+      });
+      alert('¡Desvío Dinámico Oficial activado! La flota de la línea será notificada en vivo.');
+      setWaypoints([]);
+      setLineaAfectada('');
+      setMotivoDesvio('');
+      setTab('eventos');
+    } catch (e) {
+      console.error(e);
+      alert('Error publicando desvío.');
+    } finally {
+      setSending(false);
+    }
+  };
+
   // ── KPIs de cabecera ───────────────────────────────────────────────────────
   const eventosAbiertos = eventos.filter(e => !e.resuelto).length;
   const notificadosHoy = alertas.filter(a => {
@@ -254,6 +286,7 @@ const GestionDesviosPage = () => {
       <div className="flex gap-1 bg-slate-900 border border-slate-700/50 rounded-xl p-1 w-fit">
         {([
           { key: 'eventos', label: 'Eventos detectados', badge: eventosAbiertos },
+          { key: 'crear_desvio', label: 'Trazar Desvío (AI Rerouting)', badge: 0 },
           { key: 'notificar', label: 'Notificar conductor', badge: 0 },
           { key: 'historial', label: 'Historial', badge: 0 },
         ] as const).map(t => (
@@ -432,6 +465,70 @@ const GestionDesviosPage = () => {
             <p className="text-xs text-slate-500 leading-relaxed">
               <strong className="text-slate-400">Flujo de entrega:</strong> La alerta se guarda en Firestore → Cloud Function detecta el nuevo documento → busca el token FCM del conductor en <code>viajes_activos</code> → envía push notification → el dispositivo muestra un overlay de pantalla completa con su mensaje.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Tab: Trazar Desvío Oficial (AI Rerouting) ── */}
+      {tab === 'crear_desvio' && (
+        <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-6">
+          <div className="flex items-center gap-2 mb-5">
+            <Navigation className="w-5 h-5 text-red-500" />
+            <h2 className="text-sm font-semibold text-slate-200 uppercase tracking-widest">Trazar Desvío Dinámico Oficial</h2>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <MapaDibujoDesvios onWaypointsChange={setWaypoints} />
+            </div>
+            <div className="space-y-4">
+              <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Parámetros de Publicación</h3>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-slate-500 block mb-1">Línea Afectada *</label>
+                    <input
+                      type="text"
+                      placeholder="ej: 300, 142"
+                      value={lineaAfectada}
+                      onChange={e => setLineaAfectada(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:border-red-500 focus:outline-none uppercase"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 block mb-1">Motivo (Mensaje al Conductor)</label>
+                    <input
+                      type="text"
+                      placeholder="ej: Manifestación en 18 de Julio"
+                      value={motivoDesvio}
+                      onChange={e => setMotivoDesvio(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:border-red-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-700">
+                    <p className="text-xs text-slate-400 mb-3">
+                      Puntos en el mapa: <span className="font-bold text-red-400">{waypoints.length}</span>
+                    </p>
+                    <button
+                      onClick={() => void activarDesvioOficial()}
+                      disabled={sending || waypoints.length < 2 || !lineaAfectada.trim()}
+                      className="w-full flex justify-center items-center gap-2 px-4 py-3 bg-red-600 hover:bg-red-500 disabled:bg-slate-800 disabled:text-slate-600 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-red-900/20"
+                    >
+                      {sending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      Inyectar a la Flota
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 bg-red-900/20 border border-red-500/20 rounded-lg">
+                <p className="text-xs text-red-200/70 leading-relaxed">
+                  <strong className="text-red-400">Atención:</strong> Al inyectar un desvío oficial, el ruteo de la app del conductor se recalculará instantáneamente. El coche ya no reportará "Fuera de Ruta" si transita por esta nueva vía.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}

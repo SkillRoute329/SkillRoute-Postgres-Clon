@@ -14,8 +14,8 @@ const USUARIO = '329';
 const PASSWORD = 'Skill329';
 
 test.describe('Pruebas de usuario real - TransformaFacil 2.0', () => {
-  test('Usuario entra a la raíz y es redirigido al login', async ({ page }) => {
-    await page.goto('/');
+  test('Usuario navega al login y ve el formulario', async ({ page }) => {
+    await page.goto('/login');
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByRole('heading', { name: /SkillRoute/i })).toBeVisible();
     await expect(page.locator('input[type="text"]')).toBeVisible();

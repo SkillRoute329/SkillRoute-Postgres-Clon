@@ -174,6 +174,24 @@ export function hhmmAMin(hhmm: string): number {
   return (Number(h) || 0) * 60 + (Number(m) || 0);
 }
 
+/**
+ * Formato completo "DD/MM/YYYY HH:MM:SS" en Montevideo.
+ */
+export function formatTimestampMvd(input: unknown, fallback = '—'): string {
+  const d = toDate(input);
+  if (!d) return fallback;
+  return new Intl.DateTimeFormat(LOCALE, {
+    timeZone: TZ,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(d);
+}
+
 // ─── Export default para imports rápidos ─────────────────────────────────
 export default {
   hora: formatHoraMvd,
@@ -183,4 +201,5 @@ export default {
   relativo: formatRelativoMvd,
   iso: toIsoMvd,
   hhmmAMin,
+  timestamp: formatTimestampMvd,
 };

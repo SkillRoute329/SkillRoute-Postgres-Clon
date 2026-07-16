@@ -59,29 +59,6 @@ const OCUPACION_PICO = 0.85;
 const OCUPACION_VALLE = 0.45;
 const DIAS_PROYECCION = 30;
 
-/* ─── Tipo genérico de línea para cálculos económicos ──── */
-
-/* ── Pitch de Mercado STM — datos paramétricos cross-operador ── */
-// Inspectores estimados en proporción a flota (UCOT confirmado; resto estimado)
-const _COSTO_MES_INSPECTOR = calcularCostoTotalEmpleado(v(SALARIO_INSPECTOR_NOMINAL)).totalMensual;
-const _TASA_REEMPLAZO = 0.70; // 70 % del trabajo inspector reemplazable por SkillRoute
-
-const PITCH_OPERADORES = [
-  { codigo: 50, nombre: 'CUTCSA', inspectores: 35, licenciaUSD: 0 },  // licenciante
-  { codigo: 70, nombre: 'UCOT',   inspectores: 12, licenciaUSD: 990 },
-  { codigo: 20, nombre: 'COME',   inspectores: 8,  licenciaUSD: 490 },
-  { codigo: 10, nombre: 'COETC',  inspectores: 5,  licenciaUSD: 290 },
-].map((op) => ({
-  ...op,
-  costoActualMes: Math.round(op.inspectores * _COSTO_MES_INSPECTOR),
-  ahorroMes: Math.round(op.inspectores * _COSTO_MES_INSPECTOR * _TASA_REEMPLAZO),
-}));
-
-const PITCH_CUTCSA_AHORRO_ANUAL = PITCH_OPERADORES.find((o) => o.codigo === 50)!.ahorroMes * 12;
-const PITCH_SISTEMA_AHORRO_ANUAL = PITCH_OPERADORES.reduce((s, o) => s + o.ahorroMes, 0) * 12;
-const PITCH_LICENCIAS_USD_ANUAL  = PITCH_OPERADORES.filter((o) => o.codigo !== 50).reduce((s, o) => s + o.licenciaUSD, 0) * 12;
-const PITCH_TOTAL_INSPECTORES    = PITCH_OPERADORES.reduce((s, o) => s + o.inspectores, 0);
-
 interface LineaBase {
   id: string;
   nombre: string;
@@ -133,6 +110,7 @@ interface ParametrosCalculo {
   paxDefault: number;
   elasticidad: number;
   iva: number;
+  salarioInspector: number;
 }
 
 /* ─── Helpers ─────────────────────────────────────────── */
@@ -227,6 +205,7 @@ export default function EconomicProjectionsPage() {
     paxDefault: 28,
     elasticidad: 0.002,
     iva: 0,
+    salarioInspector: 35000,
   });
 
   useEffect(() => {
@@ -240,10 +219,31 @@ export default function EconomicProjectionsPage() {
         paxDefault: getParametroValor<number>('PASAJEROS_PROMEDIO_VIAJE') ?? 28,
         elasticidad: getParametroValor<number>('ELASTICIDAD_FLOTA_DEMANDA') ?? 0.002,
         iva: getParametroValor<number>('IVA_TRANSPORTE') ?? 0,
+        salarioInspector: getParametroValor<number>('SALARIO_INSPECTOR_NOMINAL') ?? 35000,
       });
     });
     return unsub;
   }, []);
+
+  /* ── Pitch de Mercado STM — datos paramétricos cross-operador reactivos ── */
+  const _COSTO_MES_INSPECTOR = calcularCostoTotalEmpleado(params.salarioInspector).totalMensual;
+  const _TASA_REEMPLAZO = 0.70; // 70 % del trabajo inspector reemplazable por SkillRoute
+
+  const PITCH_OPERADORES = [
+    { codigo: 50, nombre: 'CUTCSA', inspectores: 35, licenciaUSD: 0 },  // licenciante
+    { codigo: 70, nombre: 'UCOT',   inspectores: 12, licenciaUSD: 990 },
+    { codigo: 20, nombre: 'COME',   inspectores: 8,  licenciaUSD: 490 },
+    { codigo: 10, nombre: 'COETC',  inspectores: 5,  licenciaUSD: 290 },
+  ].map((op) => ({
+    ...op,
+    costoActualMes: Math.round(op.inspectores * _COSTO_MES_INSPECTOR),
+    ahorroMes: Math.round(op.inspectores * _COSTO_MES_INSPECTOR * _TASA_REEMPLAZO),
+  }));
+
+  const PITCH_CUTCSA_AHORRO_ANUAL = PITCH_OPERADORES.find((o) => o.codigo === 50)!.ahorroMes * 12;
+  const PITCH_SISTEMA_AHORRO_ANUAL = PITCH_OPERADORES.reduce((s, o) => s + o.ahorroMes, 0) * 12;
+  const PITCH_LICENCIAS_USD_ANUAL  = PITCH_OPERADORES.filter((o) => o.codigo !== 50).reduce((s, o) => s + o.licenciaUSD, 0) * 12;
+  const PITCH_TOTAL_INSPECTORES    = PITCH_OPERADORES.reduce((s, o) => s + o.inspectores, 0);
 
   const fetchData = useCallback(async () => {
     setLoading(true);

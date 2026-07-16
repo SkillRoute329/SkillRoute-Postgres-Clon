@@ -89,6 +89,7 @@ const conteoVehicular_routes_1 = __importDefault(require("./conteoVehicular.rout
 const comando_routes_1 = __importDefault(require("./comando.routes"));
 const predictions_routes_1 = __importDefault(require("./predictions.routes"));
 const planning_routes_1 = __importDefault(require("./planning.routes"));
+const storage_routes_1 = __importDefault(require("./storage.routes"));
 const router = (0, express_1.Router)();
 // ─── PÚBLICAS (sin autenticación) ─────────────────────────────────────────
 /**
@@ -483,6 +484,7 @@ router.use('/conteo-vehicular', conteoVehicular_routes_1.default);
 router.use('/comando', comando_routes_1.default);
 router.use('/predictions', predictions_routes_1.default);
 router.use('/planning', planning_routes_1.default);
+router.use('/storage', storage_routes_1.default);
 /**
  * FASE 5 (2026-05-13) — Stubs honestos para CEODashboardV7 que consume
  * /historicOtp y /historicBunching (antes Cloud Functions). El cálculo

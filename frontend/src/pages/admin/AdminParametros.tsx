@@ -9,7 +9,7 @@ import {
   ChevronDown, ChevronUp, Info,
 } from 'lucide-react';
 import {
-  PARAMETRO_IDS, PARAMETRO_META, VersionParametro,
+  PARAMETRO_IDS, PARAMETRO_META, type VersionParametro,
   getAllVersiones, agregarVersion, getValorActual,
   type ParametroId,
 } from '../../services/parametrosService';

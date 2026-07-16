@@ -94,6 +94,7 @@ const COLLECTIONS: Record<string, CollectionMap> = {
   assignment_conflicts:       { table: 'assignment_conflicts',       pkCol: 'id', idAuto: true },
   rotationRules:              { table: 'rotation_rules',             pkCol: 'id', idAuto: true },
   rotation_rules:             { table: 'rotation_rules',             pkCol: 'id', idAuto: true },
+  reglas_rotacion:            { table: 'rotation_rules',             pkCol: 'id', idAuto: true },
   personalRotation:           { table: 'personal_rotation',          pkCol: 'id', idAuto: true },
   personal_rotation:          { table: 'personal_rotation',          pkCol: 'id', idAuto: true },
   serviceMatrix:              { table: 'service_matrix',             pkCol: 'id', idAuto: true },

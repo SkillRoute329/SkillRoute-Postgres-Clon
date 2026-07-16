@@ -674,15 +674,22 @@ export async function getLineasUCOT(): Promise<LineaUCOTResumen[]> {
     const raw = await apiClient.get(`/api/db/${COL}`, { query: { limit: 5000 } }) as any[];
     const arr = Array.isArray(raw) ? raw : [];
     arr
-      .filter((d: any) => d.id || d.codigo)
+      .filter((d: any) => d.id || d.codigo || d.numero)
       .forEach((d: any) => {
-        const id = String(d.id ?? d.codigo ?? '');
+        const id = String(d.id ?? d.codigo ?? d.numero ?? '');
         if (!id) return;
+        
+        let empRaw = d.empresa ?? d.operador ?? d.agency_id ?? d.agencyId;
+        let empresa = empRaw != null ? String(empRaw).trim() : undefined;
+        if (empresa === '70') {
+          empresa = 'UCOT';
+        }
+
         firestoreMap.set(id, {
           id,
-          codigo: String(d?.codigo ?? id),
-          nombre: String(d?.nombre ?? d?.codigo ?? id),
-          empresa: d?.empresa != null ? String(d.empresa) : undefined,
+          codigo: String(d?.codigo ?? d?.numero ?? id),
+          nombre: String(d?.nombre ?? d?.codigo ?? d?.numero ?? id),
+          empresa,
           origen: d?.origen != null ? String(d.origen) : undefined,
           destino: d?.destino != null ? String(d.destino) : undefined,
           sentido: d?.sentido as SentidoLinea | undefined,

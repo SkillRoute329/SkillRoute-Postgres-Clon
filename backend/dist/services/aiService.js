@@ -19,6 +19,7 @@ exports.AIService = void 0;
 const node_fetch_1 = __importDefault(require("node-fetch"));
 const OLLAMA_BASE = process.env.OLLAMA_URL || 'http://localhost:11434';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const MODEL_MAP = {
     FAST: process.env.OLLAMA_MODEL_FAST || 'gemma3:4b',
     CODER: process.env.OLLAMA_MODEL_CODER || 'qwen2.5-coder:7b',
@@ -87,6 +88,40 @@ class AIService {
         return {
             text: json.content[0]?.text ?? '',
             model: 'claude-sonnet-4-6',
+            source: 'cloud',
+            latencyMs: Date.now() - t0,
+        };
+    }
+    /**
+     * Llama a OpenAI API. Solo si OPENAI_API_KEY está configurada.
+     */
+    static async callOpenAI(prompt, maxTokens = 500) {
+        if (!OPENAI_API_KEY) {
+            throw new Error('[AIService] OPENAI_API_KEY no configurada.');
+        }
+        const t0 = Date.now();
+        const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+        const res = await (0, node_fetch_1.default)('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`,
+            },
+            body: JSON.stringify({
+                model,
+                messages: [{ role: 'user', content: prompt }],
+                max_tokens: maxTokens,
+                temperature: 0.1,
+            }),
+        });
+        if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`[AIService] OpenAI API error ${res.status}: ${err}`);
+        }
+        const json = (await res.json());
+        return {
+            text: json.choices[0]?.message?.content ?? '',
+            model,
             source: 'cloud',
             latencyMs: Date.now() - t0,
         };

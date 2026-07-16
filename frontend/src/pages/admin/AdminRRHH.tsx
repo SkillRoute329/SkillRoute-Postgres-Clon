@@ -18,6 +18,7 @@ import {
   Save,
   CalendarDays,
   Settings2,
+  Sparkles,
 } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { useAuth } from '../../context/AuthContext';
@@ -25,10 +26,11 @@ import { DepartmentService, DiscountService, DataImportService } from '../../ser
 import clsx from 'clsx';
 import { JornalesTab } from './JornalesTab';
 import { ConfigSalarialTab } from './ConfigSalarialTab';
+import { PreferenciasTab } from './PreferenciasTab';
 
 const AdminRRHH = () => {
   const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
-  const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'discounts' | 'jornales' | 'salarios'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'discounts' | 'jornales' | 'salarios' | 'preferencias'>('users');
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto animate-fade-in-up pb-24">
@@ -102,6 +104,18 @@ const AdminRRHH = () => {
           <Settings2 className="w-3.5 h-3.5" />
           Config. Salarial
         </button>
+        <button
+          onClick={() => setActiveTab('preferencias')}
+          className={clsx(
+            'px-6 py-3 font-medium text-sm transition-colors border-b-2 flex items-center gap-1.5',
+            activeTab === 'preferencias'
+              ? 'border-blue-500 text-blue-400'
+              : 'border-transparent text-slate-400 hover:text-white',
+          )}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          Preferencias GenAI
+        </button>
       </div>
 
       <div className="min-h-[400px]">
@@ -110,6 +124,7 @@ const AdminRRHH = () => {
         {activeTab === 'discounts' && <DiscountsTab />}
         {activeTab === 'jornales' && <JornalesTab />}
         {activeTab === 'salarios' && <ConfigSalarialTab />}
+        {activeTab === 'preferencias' && <PreferenciasTab />}
       </div>
     </div>
   );

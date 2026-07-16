@@ -11,6 +11,26 @@ import { initMonitoring } from './services/monitoring';
 
 import { defineCustomElements } from '@ionic/pwa-elements/loader';
 
+// Global timezone overrides for America/Montevideo and locale es-UY
+const originalToLocaleString = Date.prototype.toLocaleString;
+const originalToLocaleDateString = Date.prototype.toLocaleDateString;
+const originalToLocaleTimeString = Date.prototype.toLocaleTimeString;
+
+Date.prototype.toLocaleString = function (locales?: string | string[], options?: Intl.DateTimeFormatOptions) {
+  const mergedOptions = { timeZone: 'America/Montevideo', ...options };
+  return originalToLocaleString.call(this, locales || 'es-UY', mergedOptions);
+};
+
+Date.prototype.toLocaleDateString = function (locales?: string | string[], options?: Intl.DateTimeFormatOptions) {
+  const mergedOptions = { timeZone: 'America/Montevideo', ...options };
+  return originalToLocaleDateString.call(this, locales || 'es-UY', mergedOptions);
+};
+
+Date.prototype.toLocaleTimeString = function (locales?: string | string[], options?: Intl.DateTimeFormatOptions) {
+  const mergedOptions = { timeZone: 'America/Montevideo', ...options };
+  return originalToLocaleTimeString.call(this, locales || 'es-UY', mergedOptions);
+};
+
 defineCustomElements(window);
 
 if (import.meta.env.MODE !== 'production') {

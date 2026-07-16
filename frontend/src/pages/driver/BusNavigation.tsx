@@ -179,16 +179,21 @@ const BusNavigation = () => {
       toast.error('Sin señal GPS');
       return;
     }
-    await TrafficService.reportAlert({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      type: type as any,
-      lat: position.lat,
-      lng: position.lng,
-      description: desc,
-      reportedBy: user?.uid || 'anon',
-      line: selectedLineCode,
-    });
-    toast.success('Reporte enviado');
+    try {
+      await TrafficService.reportAlert({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        type: type as any,
+        lat: position.lat,
+        lng: position.lng,
+        description: desc,
+        reportedBy: user?.uid || 'anon',
+        line: selectedLineCode,
+      });
+      toast.success('Reporte enviado');
+    } catch (err) {
+      console.error('[BusNavigation] Error enviando reporte:', err);
+      toast.error('Error al enviar reporte');
+    }
   };
 
   // Pre-CUTCSA #6 (2026-04-23): antes mostraba toast de éxito SIN escribir en

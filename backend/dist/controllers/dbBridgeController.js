@@ -37,6 +37,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.prepareRowForWrite = prepareRowForWrite;
+exports.handleStockDecrement = handleStockDecrement;
 exports.listCollection = listCollection;
 exports.getDoc = getDoc;
 exports.createDoc = createDoc;
@@ -82,6 +84,7 @@ const COLLECTIONS = {
     assignment_conflicts: { table: 'assignment_conflicts', pkCol: 'id', idAuto: true },
     rotationRules: { table: 'rotation_rules', pkCol: 'id', idAuto: true },
     rotation_rules: { table: 'rotation_rules', pkCol: 'id', idAuto: true },
+    reglas_rotacion: { table: 'rotation_rules', pkCol: 'id', idAuto: true },
     personalRotation: { table: 'personal_rotation', pkCol: 'id', idAuto: true },
     personal_rotation: { table: 'personal_rotation', pkCol: 'id', idAuto: true },
     serviceMatrix: { table: 'service_matrix', pkCol: 'id', idAuto: true },
@@ -215,6 +218,11 @@ const COLLECTIONS = {
     // el motor GPS local empiece a escribir filas el dashboard las leerá sin
     // cambios. Schema: schema_fase5_39_otp_summary.sql.
     otp_summary: { table: 'otp_summary', pkCol: 'id', idAuto: false },
+    // EAM whitelist collections (Sprints 9-10)
+    parts: { table: 'universal', pkCol: 'id', idAuto: true, fixedFilter: { tipo: 'parts' } },
+    inventory: { table: 'universal', pkCol: 'id', idAuto: true, fixedFilter: { tipo: 'inventory' } },
+    work_orders: { table: 'maintenance', pkCol: 'id', idAuto: true },
+    assets: { table: 'vehiculos', pkCol: 'id', idAuto: false },
 };
 function resolveCollection(name) {
     return COLLECTIONS[name] ?? null;
@@ -553,6 +561,125 @@ function addCamelCaseAliases(row, tableName) {
     }
     return out;
 }
+// ─── EAM Helpers ────────────────────────────────────────────────────────────
+async function prepareRowForWrite(cfg, body, id, isUpdate = false) {
+    const knownCols = await getRealColumns(cfg.table);
+    const row = {};
+    let existingDataJsonb = {};
+    if (isUpdate && knownCols.has('data_jsonb')) {
+        const existing = await (0, database_1.default)(cfg.table).select('data_jsonb').where(cfg.pkCol, id).first();
+        if (existing && existing.data_jsonb) {
+            existingDataJsonb = typeof existing.data_jsonb === 'string'
+                ? JSON.parse(existing.data_jsonb)
+                : existing.data_jsonb;
+        }
+    }
+    const extraFields = { ...existingDataJsonb };
+    for (const [key, val] of Object.entries(body)) {
+        const colName = mapCol(key, cfg.table);
+        if (knownCols.has(colName)) {
+            row[colName] = val;
+        }
+        else if (knownCols.has('data_jsonb')) {
+            extraFields[key] = val;
+        }
+    }
+    const pkColMapped = mapCol(cfg.pkCol, cfg.table);
+    row[pkColMapped] = id;
+    if (cfg.fixedFilter) {
+        for (const [col, val] of Object.entries(cfg.fixedFilter)) {
+            const colMapped = mapCol(col, cfg.table);
+            if (knownCols.has(colMapped)) {
+                row[colMapped] = val;
+            }
+        }
+    }
+    if (knownCols.has('data_jsonb')) {
+        if (body.data_jsonb && typeof body.data_jsonb === 'object') {
+            row.data_jsonb = {
+                ...extraFields,
+                ...body.data_jsonb,
+            };
+        }
+        else {
+            row.data_jsonb = extraFields;
+        }
+    }
+    return row;
+}
+async function handleStockDecrement(partsUsed, ticketId, collectionName) {
+    logger_1.default.info(`[EAM] Procesando decremento de stock para ${partsUsed.length} repuestos del ticket ${ticketId} en ${collectionName}`);
+    for (const item of partsUsed) {
+        const partId = item.partId ?? item.id;
+        const qty = Number(item.quantity ?? item.qty ?? item.cantidad ?? 1);
+        if (!partId)
+            continue;
+        try {
+            const partRow = await (0, database_1.default)('universal')
+                .where('id', partId)
+                .where('tipo', 'parts')
+                .first();
+            if (!partRow) {
+                logger_1.default.warn(`[EAM] Repuesto con ID "${partId}" no encontrado en universal`);
+                continue;
+            }
+            let data = partRow.data_jsonb;
+            if (typeof data === 'string') {
+                try {
+                    data = JSON.parse(data);
+                }
+                catch {
+                    data = {};
+                }
+            }
+            const currentStock = Number(data.currentStock ?? 0);
+            const minStock = Number(data.minStock ?? 0);
+            const newStock = Math.max(0, currentStock - qty);
+            const updatedData = {
+                ...data,
+                currentStock: newStock,
+            };
+            await (0, database_1.default)('universal')
+                .where('id', partId)
+                .where('tipo', 'parts')
+                .update({
+                data_jsonb: updatedData,
+                updated_at: new Date(),
+            });
+            logger_1.default.info(`[EAM] Stock de ${data.sku} decrementado de ${currentStock} a ${newStock} (cantidad usada: ${qty})`);
+            (0, socketBus_1.busDbEvent)('parts', 'updated', { id: partId, table: 'universal' });
+            if (newStock < minStock) {
+                logger_1.default.warn(`[EAM] ALERTA DE STOCK CRÍTICO: ${data.sku} está en ${newStock} (mínimo ${minStock})`);
+                const alertId = (0, uuid_1.v4)();
+                const alertRow = {
+                    id: alertId,
+                    agency_id: '70', // UCOT
+                    fecha: new Date().toISOString().slice(0, 10),
+                    tipo: 'cobertura_critica',
+                    urgencia: 'alta',
+                    linea_id: null,
+                    conductor_id: null,
+                    vehiculo_id: null,
+                    turno_id: null,
+                    titulo: `Stock crítico — ${data.sku ?? partId}`,
+                    mensaje: `El repuesto "${data.description ?? ''}" (SKU: ${data.sku ?? ''}) tiene stock insuficiente. Stock actual: ${newStock}. Stock mínimo: ${minStock}.`,
+                    accion_sugerida: `Reponer stock en taller.`,
+                    datos_extra: JSON.stringify({ partId, sku: data.sku, currentStock: newStock, minStock, ticketId, collectionName }),
+                    atendida: false,
+                    atendida_por: null,
+                    hora_atendida: null,
+                    impacto_ingresos_usd: null,
+                    created_at: new Date(),
+                };
+                await (0, database_1.default)('alertas_operativas').insert(alertRow);
+                (0, socketBus_1.busDbEvent)('alertas_operativas', 'created', { id: alertId, table: 'alertas_operativas' });
+            }
+        }
+        catch (err) {
+            logger_1.default.error(`[EAM] Error decrementando stock para el repuesto "${partId}"`, err);
+        }
+    }
+}
 // ─── GET /api/db/:collection ───────────────────────────────────────────────
 async function listCollection(req, res) {
     const collectionName = req.params.collection;
@@ -567,6 +694,11 @@ async function listCollection(req, res) {
     const orderBy = parseOrderBy(req.query.orderBy);
     try {
         let q = (0, database_1.default)(cfg.table).select('*');
+        if (cfg.fixedFilter) {
+            for (const [col, val] of Object.entries(cfg.fixedFilter)) {
+                q = q.where(col, val);
+            }
+        }
         // FASE 5.38 (2026-05-22): autodetect ahora se aplica a TODAS las tablas
         // (no solo las hardcoded). Cache de 5min en information_schema.
         const knownCols = await getRealColumns(cfg.table);
@@ -621,7 +753,13 @@ async function getDoc(req, res) {
     if (!cfg)
         return fail(res, 404, `Collection '${collectionName}' no en whitelist`);
     try {
-        const row = await (0, database_1.default)(cfg.table).where(cfg.pkCol, id).first();
+        let q = (0, database_1.default)(cfg.table).where(cfg.pkCol, id);
+        if (cfg.fixedFilter) {
+            for (const [col, val] of Object.entries(cfg.fixedFilter)) {
+                q = q.where(col, val);
+            }
+        }
+        const row = await q.first();
         if (!row)
             return fail(res, 404, 'Documento no encontrado');
         ok(res, addCamelCaseAliases(maskHidden(flattenDataJsonb(row), cfg.hiddenColumns), cfg.table));
@@ -647,7 +785,7 @@ async function createDoc(req, res) {
         id = (0, uuid_1.v4)();
     }
     try {
-        const row = { ...body, [cfg.pkCol]: id };
+        const row = await prepareRowForWrite(cfg, body, id, false);
         await (0, database_1.default)(cfg.table).insert(row).onConflict(cfg.pkCol).merge();
         // FASE 5.30 (2026-05-21): emit al bus para que el frontend reciba la
         // propagación en vivo sin polling.
@@ -673,12 +811,33 @@ async function updateDoc(req, res) {
         return fail(res, 400, 'Body vacío');
     try {
         // Upsert idempotente: si no existe, inserta con merge. Comportamiento parecido a Firestore.set(merge:true).
-        const exists = await (0, database_1.default)(cfg.table).where(cfg.pkCol, id).first();
+        let checkQuery = (0, database_1.default)(cfg.table).where(cfg.pkCol, id);
+        if (cfg.fixedFilter) {
+            for (const [col, val] of Object.entries(cfg.fixedFilter)) {
+                checkQuery = checkQuery.where(col, val);
+            }
+        }
+        const exists = await checkQuery.first();
+        const row = await prepareRowForWrite(cfg, body, id, !!exists);
         if (exists) {
-            await (0, database_1.default)(cfg.table).where(cfg.pkCol, id).update(body);
+            await (0, database_1.default)(cfg.table).where(cfg.pkCol, id).update(row);
         }
         else {
-            await (0, database_1.default)(cfg.table).insert({ ...body, [cfg.pkCol]: id });
+            await (0, database_1.default)(cfg.table).insert(row);
+        }
+        // Interceptor de decremento de stock al cerrar ticket
+        if ((collectionName === 'incidencias' || collectionName === 'maintenance' || collectionName === 'work_orders') &&
+            (body.status === 'CLOSED' || body.status === 'FINALIZADO' || body.estado === 'CLOSED' || body.estado === 'FINALIZADO')) {
+            let partsUsed = body.partsUsed ?? body.data_jsonb?.partsUsed;
+            if (typeof partsUsed === 'string') {
+                try {
+                    partsUsed = JSON.parse(partsUsed);
+                }
+                catch { }
+            }
+            if (Array.isArray(partsUsed) && partsUsed.length > 0) {
+                await handleStockDecrement(partsUsed, id, collectionName);
+            }
         }
         (0, socketBus_1.busDbEvent)(collectionName, exists ? 'updated' : 'created', { id, table: cfg.table });
         ok(res, { id, [cfg.pkCol]: id, updated: !!exists });
@@ -697,7 +856,13 @@ async function deleteDoc(req, res) {
     if (!cfg)
         return fail(res, 404, `Collection '${collectionName}' no en whitelist`);
     try {
-        const deleted = await (0, database_1.default)(cfg.table).where(cfg.pkCol, id).delete();
+        let deleteQuery = (0, database_1.default)(cfg.table).where(cfg.pkCol, id);
+        if (cfg.fixedFilter) {
+            for (const [col, val] of Object.entries(cfg.fixedFilter)) {
+                deleteQuery = deleteQuery.where(col, val);
+            }
+        }
+        const deleted = await deleteQuery.delete();
         if (deleted === 0)
             return fail(res, 404, 'Documento no encontrado');
         (0, socketBus_1.busDbEvent)(collectionName, 'deleted', { id, table: cfg.table });

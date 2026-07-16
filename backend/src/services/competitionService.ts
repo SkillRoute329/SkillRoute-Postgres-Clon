@@ -27,7 +27,18 @@ class CompetitionService {
    */
   private async getParametroValor(key: string, defaultValor: number): Promise<number> {
     try {
-      const row = await sqlDb('parametros_operativos').where('key', key).first();
+      const casingMap: Record<string, string> = {
+        tarifa_stm_comun_uyu: 'TARIFA_STM',
+        iva_transporte: 'IVA_TRANSPORTE',
+        pasajeros_promedio_bus_dia: 'PASAJEROS_PROMEDIO_DIA_COCHE',
+        factor_competencia_dro: 'FACTOR_COMPETENCIA_CORREDOR',
+        pasajeros_por_viaje_promedio: 'PASAJEROS_POR_VIAJE_IND',
+      };
+      const mappedKey = casingMap[key] || key;
+      let row = await sqlDb('parametros_operativos').where('key', mappedKey).first();
+      if (!row && mappedKey !== key) {
+        row = await sqlDb('parametros_operativos').where('key', key).first();
+      }
       if (row && row.value_jsonb && typeof row.value_jsonb.valor === 'number') {
         return row.value_jsonb.valor;
       }

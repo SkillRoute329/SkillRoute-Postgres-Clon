@@ -303,6 +303,8 @@ export async function seedFlota() {
       tipoFlota: v.tipoFlota,
       estado_operativo: 'ACTIVO',
       activo: true,
+      agencyId: 70,
+      empresa: 70,
       updatedAt: new Date().toISOString(),
     }, { merge: true });
     n++;

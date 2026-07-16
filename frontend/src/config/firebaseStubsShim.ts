@@ -11,6 +11,7 @@
  */
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import { apiClient } from '../clients/apiClient';
 
 // ─── firebase/app ──────────────────────────────────────────────────────────
 
@@ -60,12 +61,38 @@ export function ref(_storage: StorageShim, path?: string): StorageReferenceShim 
   return { __type: 'storage-ref', bucket: 'clone-minio', fullPath: path ?? '' };
 }
 
+// Mapa temporal para almacenar la URL obtenida tras la subida (para que getDownloadURL funcione)
+const _uploadCache = new Map<string, string>();
+
 export async function uploadBytes(
   _ref: StorageReferenceShim,
   _data: Blob | Uint8Array | ArrayBuffer,
   _metadata?: unknown,
 ): Promise<{ ref: StorageReferenceShim }> {
-  throw new Error('[firebaseStubsShim] uploadBytes no implementado todavía — FASE 5 migra storage a MinIO');
+  try {
+    const formData = new FormData();
+    let blob: Blob;
+    if (_data instanceof Uint8Array || _data instanceof ArrayBuffer) {
+      blob = new Blob([_data]);
+    } else {
+      blob = _data;
+    }
+    
+    // Le pasamos el path esperado al backend
+    formData.append('file', blob, 'image.jpg');
+    formData.append('path', _ref.fullPath);
+
+    const res = await apiClient.postFormData<{ url: string; objectName: string }>('/api/storage/upload', formData);
+    if (res.ok && res.data) {
+      // Guardar la url devuelta por el backend en el caché usando el fullPath como key
+      _uploadCache.set(_ref.fullPath, res.data.url);
+      return { ref: _ref };
+    }
+    throw new Error('Upload fallido: ' + (res.error || 'Respuesta inválida'));
+  } catch (err) {
+    console.error('[firebaseStubsShim] error en uploadBytes:', err);
+    throw err;
+  }
 }
 
 export async function uploadBytesResumable(
@@ -73,11 +100,16 @@ export async function uploadBytesResumable(
   _data: Blob | Uint8Array | ArrayBuffer,
   _metadata?: unknown,
 ): Promise<{ ref: StorageReferenceShim }> {
-  throw new Error('[firebaseStubsShim] uploadBytesResumable no implementado — FASE 5');
+  // uploadBytesResumable se puede mapear directamente a uploadBytes por ahora
+  return uploadBytes(_ref, _data, _metadata);
 }
 
 export async function getDownloadURL(_ref: StorageReferenceShim): Promise<string> {
-  return '';
+  const cachedUrl = _uploadCache.get(_ref.fullPath);
+  if (cachedUrl) return cachedUrl;
+  
+  // Si no está en cache (ej. lectura histórica), construimos la URL hacia el backend
+  return `/api/storage/download/${encodeURIComponent(_ref.fullPath)}`;
 }
 
 export async function deleteObject(_ref: StorageReferenceShim): Promise<void> {

@@ -57,4 +57,8 @@ export const RotationRulesService = {
       updatedAt: new Date().toISOString(),
     });
   },
+
+  async delete(id: string): Promise<void> {
+    await apiClient.delete(`/api/db/${COL}/${encodeURIComponent(id)}`);
+  },
 };

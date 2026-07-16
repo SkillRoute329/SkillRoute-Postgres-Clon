@@ -172,6 +172,64 @@ async function rawRequest<T = unknown>(
   return { ok: true, data: parsed as T };
 }
 
+async function formDataRequest<T = unknown>(
+  path: string,
+  body: FormData,
+  opts: RequestOptions = {},
+): Promise<ApiResponse<T>> {
+  const url = buildUrl(path, opts.query);
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    ...(opts.headers ?? {}),
+  };
+  if (!opts.anon) {
+    const token = getAuthToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const ctrl = opts.signal ? null : new AbortController();
+  const timeoutMs = opts.timeoutMs ?? 30000;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body,
+      signal: opts.signal ?? ctrl?.signal,
+      credentials: 'include',
+    });
+  } catch (err: unknown) {
+    if (timer) clearTimeout(timer);
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new ApiError(0, `Network: ${msg}`);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+
+  const text = await res.text();
+  let parsed: ApiResponse<T> | unknown = text;
+  if (text) {
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      /* no es JSON, devolver crudo */
+    }
+  }
+
+  if (!res.ok) {
+    const errBody = parsed as ApiResponse<T>;
+    const message = errBody?.error ?? errBody?.message ?? res.statusText;
+    throw new ApiError(res.status, message, parsed);
+  }
+
+  if (parsed && typeof parsed === 'object' && 'ok' in (parsed as object)) {
+    return parsed as ApiResponse<T>;
+  }
+  return { ok: true, data: parsed as T };
+}
+
 // ─── API pública ───────────────────────────────────────────────────────────
 
 export const apiClient = {
@@ -183,6 +241,10 @@ export const apiClient = {
 
   post<T = unknown>(path: string, body?: unknown, opts?: Omit<RequestOptions, 'method' | 'body'>): Promise<ApiResponse<T>> {
     return rawRequest<T>(path, { ...opts, method: 'POST', body });
+  },
+
+  postFormData<T = unknown>(path: string, body: FormData, opts?: Omit<RequestOptions, 'method' | 'body'>): Promise<ApiResponse<T>> {
+    return formDataRequest<T>(path, body, opts);
   },
 
   put<T = unknown>(path: string, body?: unknown, opts?: Omit<RequestOptions, 'method' | 'body'>): Promise<ApiResponse<T>> {

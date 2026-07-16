@@ -50,7 +50,18 @@ class ForecastService {
      */
     async getParametroValor(key, defaultValor) {
         try {
-            const row = await (0, database_1.default)('parametros_operativos').where('key', key).first();
+            const casingMap = {
+                tarifa_stm_comun_uyu: 'TARIFA_STM',
+                iva_transporte: 'IVA_TRANSPORTE',
+                pasajeros_promedio_bus_dia: 'PASAJEROS_PROMEDIO_DIA_COCHE',
+                factor_competencia_dro: 'FACTOR_COMPETENCIA_CORREDOR',
+                pasajeros_por_viaje_promedio: 'PASAJEROS_POR_VIAJE_IND',
+            };
+            const mappedKey = casingMap[key] || key;
+            let row = await (0, database_1.default)('parametros_operativos').where('key', mappedKey).first();
+            if (!row && mappedKey !== key) {
+                row = await (0, database_1.default)('parametros_operativos').where('key', key).first();
+            }
             if (row && row.value_jsonb && typeof row.value_jsonb.valor === 'number') {
                 return row.value_jsonb.valor;
             }
