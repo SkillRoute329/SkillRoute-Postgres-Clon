@@ -25,6 +25,13 @@ Actualmente, el proyecto se encuentra en un entorno **100% autónomo** y ha sido
      - **Mantenimiento y Taller:** (`MantenimientoMaster.tsx`) Mantenimiento Activo, Predictivo, Órdenes de Trabajo.
      - **Recursos y Confiabilidad:** (`ConfiabilidadRecursosMaster.tsx`) EAM, Combustible, Revisión Vehicular.
 
+4. **Consolidación Global de Interfaz (Financiero, Regulatorio, Motor):**
+   - Se aplicó el mismo patrón de componentes "Master" (`Grid-cols-2`, `lazy()`, `Suspense`) a los hubs restantes para erradicar la fragmentación de UI:
+     - **`FinancieroHub.tsx`:** Reducido de 6 pestañas sueltas a 3 paneles consolidados (`AnaliticaGestioFinancieraMaster`, `SimulacionProyeccionesMaster`, `ExportadorReportes`).
+     - **`RegulatorioHub.tsx`:** Reducido de 6 pestañas a 3 paneles (`AuditoriaCumplimientoMaster`, `TransparenciaSubsidiosMaster`, `AdminAuditLog`).
+     - **`MotorHub.tsx`:** Reducido de 4 pestañas a 2 paneles (`OperativaAuditoriaMaster`, `DiagnosticoConfiguracionMaster`).
+     - **Resultado Final:** Todo el sistema principal navega a través de Master Dashboards uniformes, eliminando la sobrecarga cognitiva.
+
 ## Reglas Críticas para la Próxima IA
 1. **Cero Nube Original:** No instales dependencias de Google Cloud ni intentes restaurar Firebase. El clon debe funcionar de manera offline/local respecto a los servicios cloud originales.
 2. **Priorizar Integraciones Locales:** Si el sistema necesita almacenar estados complejos o analítica (como las sugerencias de la IA o los eventos de desvío), asegúrate de que usen tablas en PostgreSQL.
