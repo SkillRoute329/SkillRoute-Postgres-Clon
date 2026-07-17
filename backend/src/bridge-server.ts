@@ -395,16 +395,23 @@ async function handleLineasByAgency(req: Request, res: Response, agencyId: strin
     // cache de 15s rara vez sirve datos obsoletos pero corta 90% del costo
     // cuando varios paneles del frontend piden lo mismo en paralelo.
     const payload = await cached(`bridge:lines:${agencyId}`, 15_000, async () => {
-    const rows = await sqlDb('bus_last_pos')
+    const activeBusesRows = await sqlDb('bus_last_pos')
       .where('agency_id', agencyId)
       .where('updated_at', '>', sqlDb.raw("NOW() - INTERVAL '5 minutes'"))
       .select(
         'linea',
         sqlDb.raw('COUNT(*)::int AS cantidad'),
-        sqlDb.raw('ARRAY_AGG(id_bus ORDER BY id_bus) AS buses'),
+        sqlDb.raw('ARRAY_AGG(id_bus ORDER BY id_bus) AS buses')
       )
       .groupBy('linea')
       .orderBy('linea');
+
+    // FASE 6: Autodescubrimiento dinamico. Obtenemos TODAS las lineas vistas en los ultimos 7 dias
+    const recentLines = await sqlDb('mv_cumplimiento_linea_diario')
+      .where('agency_id', agencyId)
+      .where('fecha', '>=', sqlDb.raw("CURRENT_DATE - INTERVAL '7 days'"))
+      .whereNotNull('linea')
+      .distinct('linea');
 
     // 2) Para UCOT enriquecemos con metadata de horarios (cargarLineas() scrap del STM).
     //    Para otros operadores no tenemos scrap todavia; solo devolvemos lo que
@@ -419,7 +426,16 @@ async function handleLineasByAgency(req: Request, res: Response, agencyId: strin
     }
 
     const lineasMap = new Map<string, LineaData>();
-    for (const r of rows) {
+    
+    // Primero registrar lineas historicas con 0 buses
+    for (const r of recentLines) {
+      const linea = String(r.linea ?? '').trim();
+      if (!linea || linea === '-' || linea === '—') continue;
+      lineasMap.set(linea, { linea, sublinea: null, cantidad: 0, buses: [] });
+    }
+
+    // Luego registrar/actualizar con buses en vivo
+    for (const r of activeBusesRows) {
       const linea = String(r.linea ?? '').trim();
       if (!linea || linea === '-' || linea === '—') continue;
       lineasMap.set(linea, {

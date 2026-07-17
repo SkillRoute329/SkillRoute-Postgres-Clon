@@ -25,10 +25,9 @@
 - **Pruebas y Verificación:** Desarrollado test de integración `eamBridge.test.ts` (100% verde) y completada la suite QA con 34/34 pruebas en verde. La compilación de producción con Vite finalizó exitosamente sin errores.
 
 ### EN CURSO
-- Ninguna tarea en curso. Todo el desarrollo programado para Sprints 9-10 ha sido finalizado y verificado.
+- Ninguna tarea en curso. Todo el desarrollo programado para Sprints 9-12 ha sido finalizado y verificado.
 
 ### PRÓXIMO PASO INMEDIATO
-- Iniciar la **Fase 3 Bloque 7: Refinamiento + GenAI Preferences & Dossier (Sprints 11-12)**:
-  - Desarrollar la interfaz GenAI Preferences en español utilizando OpenAI/Anthropic API para la creación de reglas de turnos a partir de lenguaje natural.
-  - Refinar el Dashboard de Cobertura Cross-Op a nivel ejecutivo exportable en PDF.
-  - Construir el Dossier Ejecutivo "SkillRoute vs The World" v1.0 y Pitch Deck para CUTCSA.
+- Iniciar la **Fase 4: Pilotaje y Pruebas a Escala (Pruebas E2E / Inyección de Flota)**:
+  - Ejecutar la suite de pruebas End-to-End (`run_e2e_test.mjs`) para certificar que el MVP completo no presenta regresiones.
+  - Opcional: Ejecutar `scripts/load_test_1500_buses.js` para simular la carga en el motor predictivo y EAM.

@@ -42,19 +42,19 @@ const lineasCache = new Map<string, { ts: number; data: LineaUCOTResumen[] }>();
 
 /**
  * Devuelve la lista de líneas resumida para el operador propio indicado.
- * Para UCOT delega al service legacy enriquecido. Para los demás operadores
- * lee de `shapes_cross_operator`.
+ * Utiliza Autodescubrimiento Dinámico desde el backend como fuente de verdad,
+ * complementado con metadatos del catálogo estático.
  */
 export async function getLineasByAgency(agencyId: number): Promise<LineaUCOTResumen[]> {
   const key = String(agencyId);
   const cached = lineasCache.get(key);
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
 
-  let data: LineaUCOTResumen[];
-
+  // 1. Obtener metadatos estáticos (nombres, orígenes, destinos)
+  let staticData: LineaUCOTResumen[] = [];
   if (agencyId === 70) {
     // UCOT: delegate al service histórico
-    data = await getLineasUCOT();
+    staticData = await getLineasUCOT();
   } else {
     // Cross-operador: leer de shapes_cross_operator
     try {
@@ -64,12 +64,10 @@ export async function getLineasByAgency(agencyId: number): Promise<LineaUCOTResu
       const arr = Array.isArray(raw) ? raw : [];
       
       if (arr.length === 0) {
-        // FALLBACK A INYECTOR ESTÁTICO LOCAL SI LA BD ESTÁ VACÍA
         const inyectadas = await import('../features/navigation/data/crossOpShapesInjector');
-        data = await inyectadas.listCrossOpLineasInyectadas(agencyId);
+        staticData = await inyectadas.listCrossOpLineasInyectadas(agencyId);
       } else {
         const seen = new Set<string>();
-        const result: LineaUCOTResumen[] = [];
         const empresaName = AGENCY_NAME[agencyId] ?? `EMP_${agencyId}`;
         arr.forEach((d: any) => {
           const codigo = String(d.linea ?? '').trim();
@@ -78,7 +76,7 @@ export async function getLineasByAgency(agencyId: number): Promise<LineaUCOTResu
           const key2 = `${codigo}_${sentido}`;
           if (seen.has(key2)) return;
           seen.add(key2);
-          result.push({
+          staticData.push({
             id: d.id,
             codigo,
             nombre:
@@ -91,9 +89,6 @@ export async function getLineasByAgency(agencyId: number): Promise<LineaUCOTResu
             sentido: sentido === 'VUELTA' ? 'VUELTA' : ('IDA' as SentidoLinea),
           });
         });
-        data = result.sort((a, b) =>
-          a.codigo.localeCompare(b.codigo, undefined, { numeric: true }),
-        );
       }
     } catch (err) {
       console.warn(
@@ -101,9 +96,50 @@ export async function getLineasByAgency(agencyId: number): Promise<LineaUCOTResu
         err,
       );
       const inyectadas = await import('../features/navigation/data/crossOpShapesInjector');
-      data = await inyectadas.listCrossOpLineasInyectadas(agencyId);
+      staticData = await inyectadas.listCrossOpLineasInyectadas(agencyId);
     }
   }
+
+  // 2. Obtener catálogo dinámico desde la IMM (fuente de verdad)
+  let dynamicCodes: Set<string> | null = null;
+  try {
+    const rawDyn = await apiClient.get(`/api/lines/${agencyId}`);
+    if (rawDyn && Array.isArray((rawDyn as any).lineas)) {
+      dynamicCodes = new Set((rawDyn as any).lineas.map((l: any) => String(l.linea).trim()));
+    }
+  } catch (err) {
+    console.warn(`[linesService] Autodescubrimiento falló para agencyId=${agencyId}:`, err);
+  }
+
+  let data: LineaUCOTResumen[] = [];
+
+  if (dynamicCodes && dynamicCodes.size > 0) {
+    // Intersección: Mantenemos solo líneas confirmadas operativamente
+    data = staticData.filter(l => dynamicCodes!.has(l.codigo));
+    
+    // Adición: Añadimos líneas que el operador circula pero no estaban en el catálogo estático
+    const staticCodes = new Set(staticData.map(l => l.codigo));
+    const empresaName = AGENCY_NAME[agencyId] ?? `EMP_${agencyId}`;
+    
+    for (const code of dynamicCodes) {
+      if (!staticCodes.has(code)) {
+        data.push({
+          id: `dyn_${code}`,
+          codigo: code,
+          nombre: `${code} (Detectada)`,
+          empresa: empresaName,
+          sentido: 'IDA',
+        });
+      }
+    }
+  } else {
+    // Fallback absoluto si el poller está caído
+    data = staticData;
+  }
+
+  data = data.sort((a, b) =>
+    a.codigo.localeCompare(b.codigo, undefined, { numeric: true }),
+  );
 
   lineasCache.set(key, { ts: Date.now(), data });
   return data;
