@@ -1,23 +1,18 @@
 import { lazy } from 'react';
-import { Shield, Network, ClipboardList, DollarSign, CheckSquare } from 'lucide-react';
+import { Shield, ClipboardList, CheckSquare } from 'lucide-react';
 import PageHub from '../../components/PageHub';
 
-const ComplianceHub          = lazy(() => import('./ComplianceHub'));
-const CrossOpCoverage        = lazy(() => import('./CrossOpCoverage'));
-const PanelRendicionCuentas  = lazy(() => import('./PanelRendicionCuentas'));
-const AdminAuditLog          = lazy(() => import('./AdminAuditLog'));
-const SubsidiosMTOP          = lazy(() => import('./SubsidiosMTOP'));
-const RegulatorComplianceView = lazy(() => import('../regulatorio/RegulatorComplianceView'));
+const AuditoriaCumplimientoMaster = lazy(() => import('./AuditoriaCumplimientoMaster'));
+const TransparenciaSubsidiosMaster = lazy(() => import('./TransparenciaSubsidiosMaster'));
+const AdminAuditLog = lazy(() => import('./AdminAuditLog'));
 
 const TABS = [
-  { key: 'sistema',   label: 'Cumplimiento del Sistema', icon: CheckSquare,    Component: RegulatorComplianceView },
-  { key: 'mtop',      label: 'Cumplimiento MTOP/IMM', icon: Shield,        Component: ComplianceHub },
-  { key: 'crossop',   label: 'Cobertura Cross-Op',    icon: Network,       Component: CrossOpCoverage },
-  { key: 'rendicion', label: 'Rendición de Cuentas',  icon: ClipboardList, Component: PanelRendicionCuentas },
-  { key: 'audit',     label: 'Audit Log',             icon: ClipboardList, Component: AdminAuditLog },
-  { key: 'subsidios', label: 'Subsidios MTOP',        icon: DollarSign,    Component: SubsidiosMTOP },
+  { key: 'auditoria',     label: 'Auditoría de Cumplimiento', icon: Shield,        Component: AuditoriaCumplimientoMaster },
+  { key: 'transparencia', label: 'Transparencia y Subsidios', icon: CheckSquare,   Component: TransparenciaSubsidiosMaster },
+  { key: 'audit',         label: 'Trazabilidad (Audit Log)',  icon: ClipboardList, Component: AdminAuditLog },
 ] as const;
 
 export default function RegulatorioHub() {
-  return <PageHub tabs={TABS} defaultTab="sistema" />;
+  return <PageHub tabs={TABS} defaultTab="auditoria" />;
 }
+
