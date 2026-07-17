@@ -1,14 +1,16 @@
 import { useState, lazy, Suspense } from 'react';
-import { Users, Route, RefreshCw, Info } from 'lucide-react';
+import { Users, Route, RefreshCw, Info, Crosshair } from 'lucide-react';
 
 const TerminalListero  = lazy(() => import('./TerminalListero'));
 const ListeroModule    = lazy(() => import('./ListeroModule'));
 const DistribucionDiaria = lazy(() => import('./DistribucionDiaria'));
+const AsistenteInspectorCalle = lazy(() => import('./AsistenteInspectorCalle'));
 
 const TABS = [
   { key: 'terminal',    label: 'Terminal Listero',  icon: Users  },
   { key: 'cascada',     label: 'Listero Cascada',   icon: Users  },
   { key: 'distribucion',label: 'Distribución Diaria', icon: Route },
+  { key: 'asistente',   label: 'Asistente Táctico', icon: Crosshair },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -53,7 +55,15 @@ export default function ListeroHub() {
       </div>
       <div className="flex-1">
         <Suspense fallback={<Loader />}>
-          {tab === 'terminal' ? <TerminalListero /> : tab === 'cascada' ? <ListeroModule /> : <DistribucionDiaria />}
+          {tab === 'terminal' ? (
+            <TerminalListero />
+          ) : tab === 'cascada' ? (
+            <ListeroModule />
+          ) : tab === 'distribucion' ? (
+            <DistribucionDiaria />
+          ) : (
+            <AsistenteInspectorCalle />
+          )}
         </Suspense>
       </div>
     </div>
