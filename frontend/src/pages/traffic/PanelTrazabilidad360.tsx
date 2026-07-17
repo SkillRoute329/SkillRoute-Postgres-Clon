@@ -12,38 +12,46 @@ import {
   ClipboardList
 } from 'lucide-react';
 
-export default function PanelTrazabilidad360() {
-  const [searchQuery, setSearchQuery] = useState('INC-4592');
+interface PanelTrazabilidad360Props {
+  incidentId?: string;
+}
+
+export default function PanelTrazabilidad360({ incidentId }: PanelTrazabilidad360Props) {
+  const [searchQuery, setSearchQuery] = useState(incidentId || 'INC-4592');
+
+  const isEmbedded = !!incidentId;
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 p-6 overflow-y-auto">
+    <div className={`flex flex-col h-full bg-slate-950 overflow-y-auto ${isEmbedded ? 'p-2' : 'p-6'}`}>
       
-      {/* HEADER DE BÚSQUEDA */}
-      <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
-            <GitMerge className="w-7 h-7 text-indigo-400" />
-            Trazabilidad Operativa 360° (Auditoría en Cascada)
-          </h1>
-          <p className="text-slate-400 mt-1 text-sm">
-            Rastrea el origen y el impacto en cadena de cualquier incidencia del sistema.
-          </p>
+      {/* HEADER DE BÚSQUEDA (Oculto si está embebido) */}
+      {!isEmbedded && (
+        <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
+              <GitMerge className="w-7 h-7 text-indigo-400" />
+              Trazabilidad Operativa 360° (Auditoría en Cascada)
+            </h1>
+            <p className="text-slate-400 mt-1 text-sm">
+              Rastrea el origen y el impacto en cadena de cualquier incidencia del sistema.
+            </p>
+          </div>
+          
+          <div className="relative w-full md:w-72">
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ID Incidencia o Matrícula..."
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-2 text-slate-200 focus:outline-none focus:border-indigo-500"
+            />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+          </div>
         </div>
-        
-        <div className="relative w-full md:w-72">
-          <input 
-            type="text" 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="ID Incidencia o Matrícula..."
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-2 text-slate-200 focus:outline-none focus:border-indigo-500"
-          />
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-        </div>
-      </div>
+      )}
 
       {/* ÁRBOL DE TRAZABILIDAD (Nodos) */}
-      <div className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl p-6 relative shadow-2xl">
+      <div className={`flex-1 bg-slate-900 border border-slate-800 rounded-2xl relative shadow-2xl ${isEmbedded ? 'p-4' : 'p-6'}`}>
         
         <div className="max-w-4xl mx-auto flex flex-col items-center relative">
           

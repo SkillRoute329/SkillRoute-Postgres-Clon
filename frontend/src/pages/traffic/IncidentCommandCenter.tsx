@@ -31,7 +31,9 @@ import {
   Bus,
   Shield,
   X,
+  GitMerge
 } from 'lucide-react';
+import PanelTrazabilidad360 from './PanelTrazabilidad360';
 
 /* ─── Types ───────────────────────────────────────────── */
 
@@ -400,14 +402,15 @@ export default function IncidentCommandCenter() {
                     )}
                   </div>
                 </div>
-                {/* Expanded */}
+                {/* Expanded - Trazabilidad 360 */}
                 {selected === inc.id && (
-                  <div className="mt-3 pt-3 border-t border-white/5 text-xs text-slate-400 grid grid-cols-2 gap-2">
-                    <div>
-                      Estado: <span className="text-white">{inc.status}</span>
+                  <div className="mt-4 pt-4 border-t border-white/10 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-2 mb-3 px-2 text-indigo-400">
+                      <GitMerge className="w-4 h-4" />
+                      <span className="text-xs font-bold uppercase tracking-wider">Trazabilidad 360° Activa</span>
                     </div>
-                    <div>
-                      ID: <span className="text-slate-500 font-mono">{inc.id.slice(0, 8)}…</span>
+                    <div className="bg-slate-950/50 rounded-xl overflow-hidden border border-white/5">
+                      <PanelTrazabilidad360 incidentId={inc.id} />
                     </div>
                   </div>
                 )}
