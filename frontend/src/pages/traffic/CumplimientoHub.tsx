@@ -1,54 +1,20 @@
 import { lazy } from 'react';
-import { Search, Bus, BarChart3, Activity, TrendingUp, Navigation, Database, Globe, GitCompare, Repeat, AlertTriangle, Lightbulb, FlaskConical, Route, Timer } from 'lucide-react';
+import { ShieldAlert, BarChart4, FileCheck } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { OPERADORES_ID_NOMBRE } from '../../utils/operadores';
 import PageHub from '../../components/PageHub';
 
-// Vista profesional con matriz puntos de control × coches por día (2026-05-04).
-// El componente legacy ./DiagnosticoCumplimiento se preserva como fallback.
-const DiagnosticoCumplimiento = lazy(() => import('./CumplimientoPorLineaPro'));
-const RankingCoches           = lazy(() => import('./RankingCoches'));
-const OTPDashboard            = lazy(() => import('./OTPDashboard'));
-const AutoStatsModule         = lazy(() => import('./AutoStatsModule'));
-const TendenciaTab            = lazy(() => import('./TendenciaTab'));
-const AnalisisEtapas          = lazy(() => import('./AnalisisEtapas'));
-// FASE 5.15 (2026-05-14): Demanda oficial IMM (catalogodatos.gub.uy).
-const DemandaOficialIMM       = lazy(() => import('./DemandaOficialIMM'));
-const MapaGlobalIMM           = lazy(() => import('./MapaGlobalIMM'));
-// FASE 5.17 (2026-05-16): comparación 3 columnas por tramo (IMM·cartón·GPS).
-const ComparacionServicioCoche = lazy(() => import('./ComparacionServicioCoche'));
-const RotacionSustituciones    = lazy(() => import('./RotacionSustituciones'));
-// FASE 5.17: panel de comando — problemas de toda la flota, carga sola.
-const PanelCumplimiento        = lazy(() => import('./PanelCumplimiento'));
-// FASE 5.18: motor prescriptivo + predictivo (recomendaciones/proyección).
-const CentroComando            = lazy(() => import('./CentroComando'));
-// FASE 5.19: simulador de escenarios (estimador de impacto transparente).
-const SimuladorEscenarios      = lazy(() => import('./SimuladorEscenarios'));
-
-// Real-Time Analytics Tabs (Sprint 3)
-const RunTimesTab              = lazy(() => import('./RunTimesTab'));
-const StopDwellTab             = lazy(() => import('./StopDwellTab'));
+const CentroComandoMaster = lazy(() => import('./CentroComandoMaster'));
+const AnalisisServicioMaster = lazy(() => import('./AnalisisServicioMaster'));
+const AuditoriaFlotaMaster = lazy(() => import('./AuditoriaFlotaMaster'));
 
 // FASE 5.16: fuente única utils/operadores.ts.
 const AGENCIAS = OPERADORES_ID_NOMBRE;
 
 const TABS = [
-  { key: 'panel',       label: 'Panel Cumplimiento', icon: AlertTriangle, Component: PanelCumplimiento },
-  { key: 'comando',     label: 'Recomendaciones & Proyección', icon: Lightbulb, Component: CentroComando },
-  { key: 'simulador',   label: 'Simulador de Escenarios', icon: FlaskConical, Component: SimuladorEscenarios },
-  { key: 'diagnostico', label: 'Por Línea',          icon: Search,     Component: DiagnosticoCumplimiento },
-  { key: 'ranking',     label: 'Ranking de Coches',  icon: Bus,        Component: RankingCoches },
-  { key: 'otp',         label: 'Puntualidad OTP',    icon: BarChart3,  Component: OTPDashboard },
-  { key: 'autostats',   label: 'Por Coche',          icon: Activity,   Component: AutoStatsModule },
-  { key: 'tendencia',   label: 'Semana vs Semana',   icon: TrendingUp, Component: TendenciaTab },
-  { key: 'etapas',      label: 'Análisis por Etapa', icon: Navigation, Component: AnalisisEtapas },
-  { key: 'run-times',   label: 'Tiempos de Viaje',   icon: Route,      Component: RunTimesTab },
-  { key: 'stop-dwell',  label: 'Tiempos de Parada',  icon: Timer,      Component: StopDwellTab },
-  { key: 'carton-gps',  label: 'Cartón vs GPS',      icon: GitCompare, Component: ComparacionServicioCoche },
-  { key: 'rotacion',    label: 'Rotación & Sustituciones', icon: Repeat, Component: RotacionSustituciones },
-  // FASE 5.15: nuevos tabs con validaciones oficiales IMM
-  { key: 'demanda-imm', label: 'Demanda IMM',        icon: Database,   Component: DemandaOficialIMM },
-  { key: 'mapa-global', label: 'Mapa global IMM',    icon: Globe,      Component: MapaGlobalIMM },
+  { key: 'comando',     label: 'Centro de Comando Interactivo', icon: ShieldAlert, Component: CentroComandoMaster },
+  { key: 'servicio',    label: 'Análisis Integral de Servicio', icon: BarChart4, Component: AnalisisServicioMaster },
+  { key: 'auditoria',   label: 'Auditoría y Flota',             icon: FileCheck, Component: AuditoriaFlotaMaster },
 ] as const;
 
 export default function CumplimientoHub() {
@@ -76,5 +42,5 @@ export default function CumplimientoHub() {
     </div>
   );
 
-  return <PageHub tabs={TABS} defaultTab="panel" headerExtra={operadorSelector} />;
+  return <PageHub tabs={TABS} defaultTab="comando" headerExtra={operadorSelector} />;
 }
