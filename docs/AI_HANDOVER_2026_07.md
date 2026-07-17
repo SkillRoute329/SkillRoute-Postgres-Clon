@@ -18,6 +18,13 @@ Actualmente, el proyecto se encuentra en un entorno **100% autónomo** y ha sido
      - **Análisis Integral de Servicio:** (`AnalisisServicioMaster.tsx`) Agrupa la puntualidad OTP, análisis por línea, tiempos de viaje, parada y análisis por etapas.
      - **Auditoría y Flota:** (`AuditoriaFlotaMaster.tsx`) Agrupa el ranking de vehículos, estadísticas individuales (AutoStats), validación externa IMM, Cartón vs GPS y rotaciones.
 
+3. **Consolidación de la UI (Módulo Gestión de Flota):**
+   - El módulo `GestionFlotaHub.tsx` tenía 9 pestañas distintas (Inventario, Mantenimiento, etc.).
+   - Se refactorizó agrupándolas en 3 *Dashboards Unificados* (Master Tabs) para mejor escalabilidad:
+     - **Operaciones de Flota:** (`OperacionesFlotaMaster.tsx`) Inventario, Disponibilidad, Alertas.
+     - **Mantenimiento y Taller:** (`MantenimientoMaster.tsx`) Mantenimiento Activo, Predictivo, Órdenes de Trabajo.
+     - **Recursos y Confiabilidad:** (`ConfiabilidadRecursosMaster.tsx`) EAM, Combustible, Revisión Vehicular.
+
 ## Reglas Críticas para la Próxima IA
 1. **Cero Nube Original:** No instales dependencias de Google Cloud ni intentes restaurar Firebase. El clon debe funcionar de manera offline/local respecto a los servicios cloud originales.
 2. **Priorizar Integraciones Locales:** Si el sistema necesita almacenar estados complejos o analítica (como las sugerencias de la IA o los eventos de desvío), asegúrate de que usen tablas en PostgreSQL.
