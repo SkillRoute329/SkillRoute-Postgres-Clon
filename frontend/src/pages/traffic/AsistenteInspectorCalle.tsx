@@ -8,9 +8,11 @@ import {
   ShieldAlert,
   Brain,
   Crosshair,
-  Timer
+  Timer,
+  Map as MapIcon
 } from 'lucide-react';
 import { getMasterLineas } from '../../data/ucotMaster';
+import InspectorTrainingMap from '../../components/InspectorTrainingMap';
 
 // Mock data para puntos de control
 const PUNTOS_CONTROL = [
@@ -25,6 +27,39 @@ export default function AsistenteInspectorCalle() {
   
   const [selectedLinea, setSelectedLinea] = useState(lineasUcot[0]?.linea || '17');
   const [selectedPunto, setSelectedPunto] = useState('pc_puntacarretas');
+  const [showMap, setShowMap] = useState(false);
+
+  // Mocks geográficos (solo para la demo visual del mapa educativo)
+  const ucotMockPath = [
+    { lat: -34.921, lng: -56.160 },
+    { lat: -34.919, lng: -56.155 },
+    { lat: -34.915, lng: -56.150 },
+    { lat: -34.910, lng: -56.148 },
+  ];
+  const rivalsMock = [
+    {
+      id: 'r1',
+      empresa: 'CUTCSA',
+      linea: '121',
+      color: '#f43f5e', // rose-500
+      path: [
+        { lat: -34.921, lng: -56.160 },
+        { lat: -34.919, lng: -56.155 },
+        { lat: -34.912, lng: -56.142 }, // Se desvía
+      ]
+    },
+    {
+      id: 'r2',
+      empresa: 'COME',
+      linea: '582',
+      color: '#10b981', // emerald-500
+      path: [
+        { lat: -34.915, lng: -56.150 },
+        { lat: -34.910, lng: -56.148 },
+        { lat: -34.905, lng: -56.145 },
+      ]
+    }
+  ];
 
   // Lógica de predicción e inteligencia táctica
   const tacticalIntel = useMemo(() => {
@@ -109,7 +144,29 @@ export default function AsistenteInspectorCalle() {
             </select>
           </div>
         </div>
+
+        {/* BOTÓN MODO EDUCATIVO */}
+        <div className="mt-4 flex justify-end">
+          <button 
+            onClick={() => setShowMap(!showMap)}
+            className="flex items-center gap-2 text-sm font-medium px-4 py-2 bg-blue-900/50 hover:bg-blue-800/60 text-blue-300 rounded-lg transition-colors border border-blue-800/50"
+          >
+            <MapIcon className="w-4 h-4" />
+            {showMap ? 'Ocultar Mapa Educativo' : 'Modo Educativo: Ver Mapa de Solapamiento'}
+          </button>
+        </div>
       </div>
+
+      {/* MAPA EDUCATIVO (TOGGLEABLE) */}
+      {showMap && (
+        <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+          <InspectorTrainingMap 
+            ucotPath={ucotMockPath}
+            ucotLinea={selectedLinea}
+            rivals={rivalsMock}
+          />
+        </div>
+      )}
 
       {/* RECOMENDACIÓN DE LA IA (PREDICCIÓN) */}
       <div className={`border-l-4 rounded-xl p-5 shadow-lg flex gap-4 items-start ${tacticalIntel.accion === 'ADELANTAR' ? 'bg-orange-950/40 border-orange-500' : 'bg-blue-950/40 border-blue-500'}`}>
