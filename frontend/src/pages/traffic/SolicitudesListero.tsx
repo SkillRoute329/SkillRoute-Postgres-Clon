@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileText, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
-import { api } from '../../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 interface Solicitud {
   id: string;

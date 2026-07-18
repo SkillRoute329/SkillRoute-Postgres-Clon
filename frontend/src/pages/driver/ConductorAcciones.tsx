@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Send, Wrench, X } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
-import { api } from '../../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 export default function ConductorAcciones() {
   const { user } = useAuth();

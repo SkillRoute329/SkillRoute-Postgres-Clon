@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getLineaData, getLineVariants } from '../services/ucotLinesService';
-import { on as socketOn, off as socketOff } from '../../clients/socketClient';
+import { on as socketOn } from '../clients/socketClient';
 import type { LineaUCOT } from '../types/lineasUcot';
 
 interface LiveBus {

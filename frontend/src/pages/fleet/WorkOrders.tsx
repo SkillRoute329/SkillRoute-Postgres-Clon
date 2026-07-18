@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { eamService, EamWorkOrder } from '../../services/eamService';
+import { eamService, type EamWorkOrder } from '../../services/eamService';
 import { FleetService } from '../../services/firestore/fleet';
 import {
   Wrench,

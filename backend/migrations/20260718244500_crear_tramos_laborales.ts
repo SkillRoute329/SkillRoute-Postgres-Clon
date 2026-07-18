@@ -37,7 +37,10 @@ export async function up(knex: Knex): Promise<void> {
     WHERE fecha_ingreso IS NOT NULL;
   `);
 
-  // 2. Reemplazar la función pl/sql para que opere sobre personal_periods
+  // 2. Recrear la vista v_legajo_laboral (depende de la función)
+  await knex.raw('DROP VIEW IF EXISTS v_legajo_laboral;');
+
+  // 2.1 Reemplazar la función pl/sql para que opere sobre personal_periods
   await knex.raw('DROP FUNCTION IF EXISTS fn_dias_licencia_grupo13(DATE);');
   
   // Nueva función que recibe el ID del trabajador
@@ -91,22 +94,20 @@ export async function up(knex: Knex): Promise<void> {
   `);
   
   // 3. Recrear la vista v_legajo_laboral para usar las nuevas funciones
-  await knex.raw('DROP VIEW IF EXISTS v_legajo_laboral;');
-  
   await knex.raw(`
     CREATE VIEW v_legajo_laboral AS
     SELECT 
       p.id,
-      p.full_name,
-      p.internal_number,
-      p.document_id,
-      p.email,
-      p.phone,
       p.agency_id,
+      p.internal_number,
+      p.full_name,
+      p.role,
       p.categoria_laboral,
       p.sueldo_jornal_base,
+      p.fecha_ingreso,
+      p.fecha_egreso,
       p.estado_hoy,
-      p.fecha_ingreso, -- fecha del último ingreso (para retrocompatibilidad)
+      p.motivo_ausencia,
       
       -- Antigüedad consolidada real (Años y Meses aproximados para visualización, usando la función)
       FLOOR(fn_antiguedad_anios(p.id))::TEXT || ' años, ' || 

@@ -63,94 +63,12 @@ const Sidebar = ({ onClose }: SidebarProps) => {
   };
 
   const menuGroups = [
-    // ── 1. Trabajo diario: planificación, despacho, navegación ──
     {
-      title: 'Operación Diaria',
+      title: 'Espacio Operativo',
       items: [
-        // Hub: Cartones + Matriz + Boletín + Asignación de Servicios
-        { path: '/dashboard/traffic/planificacion', label: 'Planificación',       icon: ClipboardList },
-        // Hub: Terminal Listero + Listero Cascada + Distribución
-        { path: '/dashboard/traffic/listero',       label: 'Listero y Distribución', icon: Users        },
-        { path: '/dashboard/traffic/navigation',    label: 'Navegador',           icon: Map           },
-        { path: '/dashboard/traffic/network-editor', label: 'Editor de Red (Remix)', icon: Network },
-      ],
-    },
-
-    // ── 2. Supervisión en turno: todo lo del despachante en una sección ──
-    {
-      title: 'Control y Monitoreo',
-      items: [
-        { path: '/dashboard/traffic/monitoreo',                label: 'Servicios en Vía',   icon: Activity },
-        { path: '/dashboard/traffic/map-hub',                  label: 'Map Hub Unificado',  icon: Map },
-        // Hub: Diagnóstico + Ranking + OTP + AutoStats GPS
-        { path: '/dashboard/traffic/diagnostico-cumplimiento', label: 'Cumplimiento',       icon: Search },
-        // Hub: Incidencias + Contingencia
-        { path: '/dashboard/traffic/incidents',                label: 'Incidencias',        icon: Siren  },
-      ],
-    },
-
-    // ── 3. Análisis estratégico y competitivo ──
-    {
-      title: 'Inteligencia Competitiva',
-      items: [
-        { path: '/dashboard/traffic/intelligence',            label: 'Inteligencia de Red',   icon: Target     },
-        { path: '/dashboard/traffic/diagnostico-ejecutivo',   label: 'Diagnóstico Ejecutivo',  icon: ClipboardList },
-        { path: '/dashboard/executive/coverage',              label: 'Cobertura Ejecutiva',   icon: ShieldCheck },
-        { path: '/dashboard/traffic/brt',                  label: 'BRT 2027',           icon: Train      },
-      ],
-    },
-
-    // ── 4. Financiero (todo en un hub) ──
-    {
-      title: 'Financiero',
-      items: [
-        // Hub: Proyecciones + Financiero Operativo + ROI
-        { path: '/dashboard/traffic/financiero', label: 'Análisis Financiero', icon: DollarSign },
-      ],
-    },
-
-    // ── 5. Flota y personal (2 hubs) ──
-    {
-      title: 'Flota y Personal',
-      items: [
-        // Hub: Inventario + Disponibilidad + Mantenimiento + Revisión + Alertas
-        { path: '/dashboard/fleet',       label: 'Gestión de Flota',    icon: Bus   },
-        // Hub: Personal + Fichas + Turnos + Rotación + Feriados
-        { path: '/dashboard/admin/rrhh',  label: 'Gestión de Personal', icon: Users },
-      ],
-    },
-
-    // ── 6. Administración del sistema (4 items) ──
-    {
-      title: 'Administración',
-      items: [
-        { path: '/dashboard/admin/asignacion-vehiculos', label: 'Asignación de Coches',    icon: Bus        },
-        // Hub: Control Inspectores + Captura Inspector
-        { path: '/dashboard/traffic/inspector-control',  label: 'Inspectores',             icon: Activity   },
-        // Hub: Estado Sistema + Monitor STM + Ingesta + Turnos OTP + Config + Setup + Seed
-        { path: '/dashboard/admin/sistema',              label: 'Sistema y Configuración', icon: ShieldCheck},
-        // Hub: Cumplimiento MTOP + Cross-Op + Rendición + Audit Log + Cumplimiento del Sistema
-        { path: '/dashboard/admin/regulatorio',          label: 'Reportes Regulatorios',   icon: Shield     },
-        { path: '/dashboard/admin/ml-monitoring',        label: 'Monitoreo ML',            icon: Cpu        },
-        // Centro de Mando Unificado — solo SUPERADMIN (guard en la página)
-        { path: '/dashboard/super-admin/centro-mando',   label: 'Monitoreo Metropolitano (SA)',    icon: ShieldAlert},
-        // Gantt Red Metropolitana — solo SUPERADMIN
-        { path: '/dashboard/super-admin/gantt-red',      label: 'Gantt Red (SA)',           icon: Network    },
-        // Hub: Simulación + Auditoría + Configuración + Salud del Motor
-        { path: '/dashboard/super-admin/motor',          label: 'Motor de Consecuencias (SA)', icon: Zap     },
-        { path: '/dashboard/super-admin/auditoria-imm',       label: 'Reporte IMM',         icon: FileText   },
-        { path: '/dashboard/super-admin/operadores',          label: 'Operadores',          icon: Building2  },
-      ],
-    },
-
-    // ── 7. Área personal del empleado ──
-    {
-      title: 'Mi Espacio',
-      items: [
-        { path: '/dashboard/driver/mi-linea',   label: 'Mi Línea',         icon: Bus          },
-        { path: '/dashboard/driver/compliance', label: 'Mi Rendimiento',  icon: Activity     },
-        { path: '/dashboard/market',            label: 'Bolsa de Trabajo', icon: ShoppingCart },
-        { path: '/dashboard/my-balance',        label: 'Mi Cuenta',        icon: Wallet       },
+        { path: '/dashboard/my-balance', label: 'Mi Balance y Jornales', icon: Wallet },
+        { path: '/dashboard/traffic/monitoreo', label: 'Consola de Operaciones', icon: Activity },
+        { path: '/dashboard/driver/mi-linea', label: 'Línea y Competencia', icon: Bus },
       ],
     },
   ];

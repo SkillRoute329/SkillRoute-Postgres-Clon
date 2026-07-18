@@ -11,7 +11,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, X, CheckCircle, RefreshCw, Radio } from 'lucide-react';
-import { apiClient } from '../../clients/apiClient';
+import api from '../services/api';
 import clsx from 'clsx';
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -46,7 +46,7 @@ const TrafficAlertsBanner = () => {
   const fetchAlertas = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get<{ ok: boolean; alertas: TrafficAlert[] }>(
+      const res = await api.get<{ ok: boolean; alertas: TrafficAlert[] }>(
         '/api/traffic-alerts?resuelta=false'
       );
       const data = (res.data as any)?.alertas ?? (res as any)?.alertas ?? [];
@@ -69,7 +69,7 @@ const TrafficAlertsBanner = () => {
   const resolverAlerta = async (id: string) => {
     setResolviendo((prev) => new Set(prev).add(id));
     try {
-      await apiClient.patch(`/api/traffic-alerts/${id}/resolver`, {});
+      await api.patch(`/api/traffic-alerts/${id}/resolver`, {});
       setAlertas((prev) => prev.filter((a) => a.id !== id));
     } catch (err) {
       console.error('[TrafficAlertsBanner] Error al resolver alerta:', err);

@@ -10,6 +10,7 @@ import type { LineaUCOT, ParadaUcot, PuntoLatLng, SentidoLinea } from '../../../
 import type { LineaUCOTResumen } from '../../../services/linesService';
 import { LINE_ARCHETYPES } from '../../../data/lineTemplates';
 import { distanciaMetros } from '../../../utils/geomath';
+import api from '../../../services/api';
 
 // ─── Tipos internos ──────────────────────────────────────────────────────────
 
@@ -24,18 +25,23 @@ interface ShapeEntry {
   paradas: Array<{ lat: number; lng: number; nombre: string | null }>;
 }
 
-// Lazy-loading cache — el JSON (9.7 MB) se descarga solo cuando se necesita,
-// no en el bundle inicial. La promesa se crea una sola vez y se reutiliza.
 let _shapesCache: Record<string, ShapeEntry> | null = null;
 let _shapesPromise: Promise<Record<string, ShapeEntry>> | null = null;
 
 function getShapes(): Promise<Record<string, ShapeEntry>> {
   if (_shapesCache) return Promise.resolve(_shapesCache);
   if (_shapesPromise) return _shapesPromise;
-  _shapesPromise = import('../../../data/shapesAllOperators.json').then((mod) => {
-    _shapesCache = mod.default as Record<string, ShapeEntry>;
-    return _shapesCache;
-  });
+  _shapesPromise = api.get<Record<string, ShapeEntry>>('/api/traffic/shapes')
+    .then((res) => {
+      // Axios response
+      _shapesCache = res.data;
+      return _shapesCache;
+    })
+    .catch((err) => {
+      console.error('[crossOpShapesInjector] Error fetching shapes:', err);
+      // Retorno resiliente para evitar caída del DOM
+      return {};
+    });
   return _shapesPromise;
 }
 
