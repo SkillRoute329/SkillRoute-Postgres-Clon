@@ -99,8 +99,10 @@ router.get('/timetable/single', async (req, res) => {
 router.get('/lines', async (req, res) => {
   try {
     const { agencyId } = req.query;
+    logger.info(`[GTFS Route] GET /lines for agencyId=${agencyId}`);
     if (!agencyId) return res.status(400).json({ success: false, error: 'Falta agencyId' });
     const lines = await gtfsService.listLinesForAgency(agencyId as string);
+    logger.info(`[GTFS Route] Returning ${lines.length} lines for agencyId=${agencyId}`);
     res.json({ success: true, count: lines.length, data: lines });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

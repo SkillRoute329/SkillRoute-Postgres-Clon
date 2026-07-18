@@ -101,6 +101,9 @@ export async function updatePersonal(req: Request, res: Response): Promise<void>
       motivo_ausencia: 'motivo_ausencia',
       ausencia_fecha: 'ausencia_fecha',
       es_conductor_reserva: 'es_conductor_reserva',
+      regimen_rotacion: 'regimen_rotacion',
+      is_en_lista: 'is_en_lista',
+      patron_descanso: 'patron_descanso',
     };
     const setTop: Record<string, unknown> = {};
     const setJson: Record<string, unknown> = {};

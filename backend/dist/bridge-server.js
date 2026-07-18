@@ -293,12 +293,18 @@ async function handleLineasByAgency(req, res, agencyId) {
         // cache de 15s rara vez sirve datos obsoletos pero corta 90% del costo
         // cuando varios paneles del frontend piden lo mismo en paralelo.
         const payload = await (0, responseCache_1.cached)(`bridge:lines:${agencyId}`, 15000, async () => {
-            const rows = await (0, database_1.default)('bus_last_pos')
+            const activeBusesRows = await (0, database_1.default)('bus_last_pos')
                 .where('agency_id', agencyId)
                 .where('updated_at', '>', database_1.default.raw("NOW() - INTERVAL '5 minutes'"))
                 .select('linea', database_1.default.raw('COUNT(*)::int AS cantidad'), database_1.default.raw('ARRAY_AGG(id_bus ORDER BY id_bus) AS buses'))
                 .groupBy('linea')
                 .orderBy('linea');
+            // FASE 6: Autodescubrimiento dinamico. Obtenemos TODAS las lineas vistas en los ultimos 7 dias
+            const recentLines = await (0, database_1.default)('mv_cumplimiento_linea_diario')
+                .where('agency_id', agencyId)
+                .where('fecha', '>=', database_1.default.raw("CURRENT_DATE - INTERVAL '7 days'"))
+                .whereNotNull('linea')
+                .distinct('linea');
             // 2) Para UCOT enriquecemos con metadata de horarios (cargarLineas() scrap del STM).
             //    Para otros operadores no tenemos scrap todavia; solo devolvemos lo que
             //    bus_last_pos reporta. Esto sigue siendo dato REAL (no inventado).
@@ -312,7 +318,15 @@ async function handleLineasByAgency(req, res, agencyId) {
                 }
             }
             const lineasMap = new Map();
-            for (const r of rows) {
+            // Primero registrar lineas historicas con 0 buses
+            for (const r of recentLines) {
+                const linea = String(r.linea ?? '').trim();
+                if (!linea || linea === '-' || linea === '—')
+                    continue;
+                lineasMap.set(linea, { linea, sublinea: null, cantidad: 0, buses: [] });
+            }
+            // Luego registrar/actualizar con buses en vivo
+            for (const r of activeBusesRows) {
                 const linea = String(r.linea ?? '').trim();
                 if (!linea || linea === '-' || linea === '—')
                     continue;

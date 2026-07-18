@@ -247,4 +247,57 @@ router.get('/resumen', auth_1.verifyAuth, wrap(async (req, res) => {
     const resumen = await listeroService.getResumenDiario(fecha);
     res.json({ ok: true, resumen });
 }));
+// ─── SOLICITUDES (PAPELITOS DIGITALES) ────────────────────────────────────────
+/** GET /api/listero/solicitudes?fecha=YYYY-MM-DD */
+router.get('/solicitudes', auth_1.verifyAuth, wrap(async (req, res) => {
+    const user = req.user;
+    const fecha = req.query.fecha;
+    const solicitudes = await listeroService.getSolicitudes(user?.agencyId ?? '70', fecha);
+    res.json({ ok: true, solicitudes });
+}));
+/** POST /api/listero/solicitudes */
+router.post('/solicitudes', auth_1.verifyAuth, wrap(async (req, res) => {
+    const user = req.user;
+    const data = req.body;
+    if (!data.tipoSolicitud || !data.fechaObjetivo) {
+        res.status(400).json({ ok: false, error: 'Faltan campos: tipoSolicitud, fechaObjetivo' });
+        return;
+    }
+    const id = await listeroService.createSolicitud({
+        agencyId: user?.agencyId ?? '70',
+        conductorId: user?.id,
+        tipoSolicitud: data.tipoSolicitud,
+        fechaObjetivo: data.fechaObjetivo,
+        turnoObjetivo: data.turnoObjetivo || null,
+        cocheObjetivo: data.cocheObjetivo || null,
+        notas: data.notas || null,
+    });
+    // Notificar al Listero en tiempo real
+    (0, socketBus_1.busOperation)('nueva-solicitud', { id, tipoSolicitud: data.tipoSolicitud, conductorId: user?.id, conductorNombre: user?.fullName });
+    res.status(201).json({ ok: true, id });
+}));
+/** PATCH /api/listero/solicitudes/:id/estado */
+router.patch('/solicitudes/:id/estado', auth_1.verifyAuth, wrap(async (req, res) => {
+    const user = req.user;
+    const { estado } = req.body;
+    if (!estado) {
+        res.status(400).json({ ok: false, error: 'Falta campo: estado' });
+        return;
+    }
+    await listeroService.updateSolicitudEstado(req.params.id, estado, user?.fullName ?? user?.id);
+    // Notificar al conductor del cambio de estado
+    (0, socketBus_1.busOperation)('solicitud-actualizada', { id: req.params.id, estado });
+    res.json({ ok: true });
+}));
+/** GET /api/listero/solicitudes/emparejamientos?fecha=YYYY-MM-DD */
+router.get('/solicitudes/emparejamientos', auth_1.verifyAuth, wrap(async (req, res) => {
+    const user = req.user;
+    const fecha = req.query.fecha;
+    if (!fecha) {
+        res.status(400).json({ ok: false, error: 'Falta parámetro: fecha' });
+        return;
+    }
+    const emparejamientos = await listeroService.analizarEmparejamientos(fecha, user?.agencyId ?? '70');
+    res.json({ ok: true, emparejamientos });
+}));
 exports.default = router;

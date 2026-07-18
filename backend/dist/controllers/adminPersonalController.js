@@ -109,6 +109,9 @@ async function updatePersonal(req, res) {
             motivo_ausencia: 'motivo_ausencia',
             ausencia_fecha: 'ausencia_fecha',
             es_conductor_reserva: 'es_conductor_reserva',
+            regimen_rotacion: 'regimen_rotacion',
+            is_en_lista: 'is_en_lista',
+            patron_descanso: 'patron_descanso',
         };
         const setTop = {};
         const setJson = {};

@@ -1,0 +1,1 @@
+import { sqlDb } from './src/config/database'; async function main() { try { const query = 'SELECT column_name FROM information_schema.columns WHERE table_schema = \\'gtfs\\' AND table_name = \\'routes\\''; const res = await sqlDb.raw(query); console.log(res.rows.map((r: any) =; } catch(e) { console.error(e); } finally { process.exit(0); } } main();  

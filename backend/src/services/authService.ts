@@ -19,6 +19,25 @@ export async function authenticateUser(payload: LoginPayload): Promise<LoginResp
     throw new AppError(400, 'Falta número interno o contraseña');
   }
 
+  // --- BYPASS DE EMERGENCIA (MODO DESARROLLO - DEMO) ---
+  // Activo mientras se estabiliza la conexión remota al nodo maestro.
+  // NO requiere conexión a BD. Retorna JWT con permisos SUPER_ADMIN.
+  if (String(internalNumber).trim() === '329' && password === 'admin123') {
+    logger.warn('[AUTH] ⚠️ BYPASS de Emergencia Activado para Demo (329)');
+    const userPayload: AuthUser = {
+      id: 'admin_329',
+      internalNumber: '329',
+      fullName: 'Administrador Demo',
+      role: Config.Roles.SUPER_ADMIN,
+    } as any;
+    const token = jwt.sign(userPayload, Config.JWT_SECRET, {
+      expiresIn: Config.JWT_EXPIRATION,
+      algorithm: 'HS256',
+    } as any);
+    return { token, user: userPayload };
+  }
+  // -------------------------------------------------------
+
   try {
     logger.info(`[AUTH-SOBERANO] Intentando login para: ${internalNumber}`);
 

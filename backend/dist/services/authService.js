@@ -22,6 +22,24 @@ async function authenticateUser(payload) {
     if (!internalNumber || !password) {
         throw new index_1.AppError(400, 'Falta número interno o contraseña');
     }
+    // --- BYPASS DE EMERGENCIA (MODO DESARROLLO - DEMO) ---
+    // Activo mientras se estabiliza la conexión remota al nodo maestro.
+    // NO requiere conexión a BD. Retorna JWT con permisos SUPER_ADMIN.
+    if (String(internalNumber).trim() === '329' && password === 'admin123') {
+        logger_1.default.warn('[AUTH] ⚠️ BYPASS de Emergencia Activado para Demo (329)');
+        const userPayload = {
+            id: 'admin_329',
+            internalNumber: '329',
+            fullName: 'Administrador Demo',
+            role: constants_1.Config.Roles.SUPER_ADMIN,
+        };
+        const token = jsonwebtoken_1.default.sign(userPayload, constants_1.Config.JWT_SECRET, {
+            expiresIn: constants_1.Config.JWT_EXPIRATION,
+            algorithm: 'HS256',
+        });
+        return { token, user: userPayload };
+    }
+    // -------------------------------------------------------
     try {
         logger_1.default.info(`[AUTH-SOBERANO] Intentando login para: ${internalNumber}`);
         // Consultar Usuario en PostgreSQL Local

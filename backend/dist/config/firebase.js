@@ -1,50 +1,42 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
+/**
+ * config/firebase.ts — Adaptador transparente del clon (AUTONOMO)
+ *
+ * Este archivo NO inicializa Firebase real. Reemplaza el SDK original con
+ * un stub para que los servicios que an importan `db` o `auth` fallen
+ * silenciosamente o sean atrapados por sus try/catch sin conectarse a la nube.
+ * REGLA: 100% autnomo. Cero vinculacin con Google Cloud o Firebase.
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.auth = exports.db = void 0;
-const admin = __importStar(require("firebase-admin"));
-const path_1 = __importDefault(require("path"));
-const serviceAccount = require(path_1.default.join(__dirname, '../config/firebase-admin.json'));
-if (!admin.apps.length) {
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        databaseURL: 'https://ucot-gestor-cloud.firebaseio.com',
-    });
+class MockDocRef {
+    constructor(id) { this.id = id || 'mock-id'; }
+    async get() { return { exists: false, data: () => ({}) }; }
+    async set() { }
+    async update() { }
+    async delete() { }
+    collection(path) { return new MockCollection(path); }
 }
-exports.db = admin.firestore();
-exports.auth = admin.auth();
+class MockCollection {
+    constructor(path) { this.path = path; }
+    doc(id) { return new MockDocRef(id || 'mock-id'); }
+    async get() { return { docs: [], empty: true, forEach: () => { } }; }
+    async add() { return new MockDocRef('mock-id'); }
+    where() { return this; }
+    orderBy() { return this; }
+    limit() { return this; }
+}
+exports.db = {
+    collection: (path) => new MockCollection(path),
+    batch: () => ({
+        set: () => { },
+        update: () => { },
+        delete: () => { },
+        commit: async () => { },
+    }),
+};
+exports.auth = {
+    verifyIdToken: async () => { throw new Error('Firebase Auth is disabled in this autonomous clone.'); },
+    getUser: async () => { throw new Error('Firebase Auth is disabled.'); },
+    createUser: async () => { throw new Error('Firebase Auth is disabled.'); },
+};

@@ -31,6 +31,10 @@ exports.marcarVehiculoEnTaller = marcarVehiculoEnTaller;
 exports.buscarVehiculosReserva = buscarVehiculosReserva;
 exports.registrarFirma = registrarFirma;
 exports.getResumenDiario = getResumenDiario;
+exports.getSolicitudes = getSolicitudes;
+exports.createSolicitud = createSolicitud;
+exports.updateSolicitudEstado = updateSolicitudEstado;
+exports.analizarEmparejamientos = analizarEmparejamientos;
 const database_1 = __importDefault(require("../config/database"));
 const index_1 = require("../types/index");
 const logger_1 = __importDefault(require("../config/logger"));
@@ -118,6 +122,9 @@ function rowToConductor(r, turno) {
         horaUltimoServicio: r.hora_ultimo_servicio,
         esConductorReserva: r.es_conductor_reserva ?? false,
         telefono: r.telefono,
+        regimenRotacion: r.regimen_rotacion ?? 'semanal',
+        isEnLista: r.is_en_lista ?? false,
+        patronDescanso: r.patron_descanso ?? 'sab_dom_alterno',
     };
 }
 function rowToVehiculoDia(r) {
@@ -430,5 +437,99 @@ async function getResumenDiario(fecha) {
     catch (error) {
         logger_1.default.error(`[LISTERO] Error getResumenDiario(${fecha})`, { error: String(error) });
         throw new index_1.AppError(500, 'Error al generar resumen diario');
+    }
+}
+async function getSolicitudes(agencyId, fechaFiltro) {
+    try {
+        let query = (0, database_1.default)('solicitudes_listero as s')
+            .join('personal as p', 's.conductor_id', 'p.id')
+            .select('s.*', 'p.full_name as conductor_nombre')
+            .where('s.agency_id', agencyId)
+            .orderBy('s.fecha_creacion', 'desc');
+        if (fechaFiltro) {
+            query = query.where('s.fecha_objetivo', fechaFiltro);
+        }
+        const rows = await query;
+        return rows.map((r) => ({
+            id: r.id,
+            agencyId: r.agency_id,
+            conductorId: r.conductor_id,
+            conductorNombre: r.conductor_nombre,
+            tipoSolicitud: r.tipo_solicitud,
+            fechaObjetivo: typeof r.fecha_objetivo === 'string' ? r.fecha_objetivo : r.fecha_objetivo?.toISOString().slice(0, 10),
+            turnoObjetivo: r.turno_objetivo,
+            cocheObjetivo: r.coche_objetivo,
+            estado: r.estado,
+            notas: r.notas,
+            createdAt: r.fecha_creacion,
+        }));
+    }
+    catch (error) {
+        logger_1.default.error('[LISTERO] Error getSolicitudes', { error: String(error) });
+        throw new index_1.AppError(500, 'Error al obtener solicitudes del listero');
+    }
+}
+async function createSolicitud(data) {
+    try {
+        const id = (0, uuid_1.v4)();
+        await (0, database_1.default)('solicitudes_listero').insert({
+            id,
+            agency_id: data.agencyId,
+            conductor_id: data.conductorId,
+            tipo_solicitud: data.tipoSolicitud,
+            fecha_objetivo: data.fechaObjetivo,
+            turno_objetivo: data.turnoObjetivo,
+            coche_objetivo: data.cocheObjetivo,
+            notas: data.notas,
+            estado: 'pendiente',
+        });
+        return id;
+    }
+    catch (error) {
+        logger_1.default.error('[LISTERO] Error createSolicitud', { error: String(error) });
+        throw new index_1.AppError(500, 'Error al crear solicitud');
+    }
+}
+async function updateSolicitudEstado(id, estado, resueltoPor) {
+    try {
+        await (0, database_1.default)('solicitudes_listero').where('id', id).update({
+            estado,
+            resuelto_por: resueltoPor,
+        });
+    }
+    catch (error) {
+        logger_1.default.error('[LISTERO] Error updateSolicitudEstado', { error: String(error) });
+        throw new index_1.AppError(500, 'Error al actualizar solicitud');
+    }
+}
+async function analizarEmparejamientos(fecha, agencyId) {
+    // Lógica inteligente para cruzar "papelitos" de la misma fecha
+    // Por ejemplo, buscar dos que pidan turno opuesto o coche opuesto y marcarlos.
+    try {
+        const solicitudes = await getSolicitudes(agencyId, fecha);
+        const pendientes = solicitudes.filter(s => s.estado === 'pendiente');
+        const emparejamientos = [];
+        for (let i = 0; i < pendientes.length; i++) {
+            for (let j = i + 1; j < pendientes.length; j++) {
+                const s1 = pendientes[i];
+                const s2 = pendientes[j];
+                if (s1.tipoSolicitud === 'correlativo' && s2.tipoSolicitud === 'cambio_turno') {
+                    // Lógica de compatibilidad si uno quiere dejar un turno y otro lo quiere tomar
+                    if (s1.turnoObjetivo === s2.turnoObjetivo) {
+                        emparejamientos.push({ s1: s1.id, s2: s2.id, tipo: 'cubrir_hueco' });
+                    }
+                }
+                else if (s1.tipoSolicitud === 'cambio_turno' && s2.tipoSolicitud === 'cambio_turno') {
+                    if (s1.turnoObjetivo !== s2.turnoObjetivo) {
+                        emparejamientos.push({ s1: s1.id, s2: s2.id, tipo: 'intercambio_directo' });
+                    }
+                }
+            }
+        }
+        return emparejamientos;
+    }
+    catch (error) {
+        logger_1.default.error('[LISTERO] Error analizarEmparejamientos', { error: String(error) });
+        throw new index_1.AppError(500, 'Error al analizar emparejamientos');
     }
 }

@@ -284,21 +284,16 @@ export const gtfsService = {
    */
   async listLinesForAgency(agencyId: string) {
     try {
-      let routeCondition = "1=1";
-      if (agencyId === '70') routeCondition = "route_short_name ~ '^(3[0-9]{2}|L)'";
-      else if (agencyId === '50') routeCondition = "route_short_name ~ '^(1[0-9]{2}|D10|G)'";
-      else if (agencyId === '20') routeCondition = "route_short_name ~ '^2[0-9]{2}'";
-      else if (agencyId === '60') routeCondition = "route_short_name ~ '^4[0-9]{2}'";
-
       const query = `
         SELECT DISTINCT 
-          route_short_name as codigo,
-          route_long_name as nombre
-        FROM gtfs.routes
-        WHERE ${routeCondition}
+          r.route_short_name as codigo,
+          r.route_long_name as nombre
+        FROM gtfs.routes r
+        JOIN gtfs.agency_routes ar ON r.route_short_name = ar.route_short_name
+        WHERE ar.agency_id = ? AND ar.detection_count >= 50
         ORDER BY codigo ASC
       `;
-      const raw = await sqlDb.raw(query);
+      const raw = await sqlDb.raw(query, [agencyId]);
       return raw.rows || raw;
     } catch (err) {
       logger.error(`[GTFS Service] Error listing lines for agency`, err);
