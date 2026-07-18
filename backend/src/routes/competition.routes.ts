@@ -1,102 +1,29 @@
 import { Router } from 'express';
 import { competitionController } from '../controllers/competitionController';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
-// Todas las rutas requieren autenticación
-router.use(requireAuth);
-
 /**
- * Análisis de Sobreposición
- * Obtiene líneas de competencia que se superponen con una línea UCOT
+ * Obtiene la matriz de fricción de forma dinámica bajo demanda, usando JOINs
+ * relacionales estrictos sobre la red de GTFS con soporte para dirección.
+ * GET /api/competition/solapamiento
  */
 router.get(
-  '/overlap/:lineaId',
-  requireRole('admin', 'manager'),
-  competitionController.getOverlapAnalysis
+  '/solapamiento',
+  requireAuth,
+  competitionController.getSolapamientoDinamico
 );
 
 /**
- * Detección de Conflictos
- * Identifica conflictos de horarios
- */
-router.get(
-  '/conflicts/:lineaId',
-  requireRole('admin', 'manager'),
-  competitionController.getConflicts
-);
-
-/**
- * Ingesta de Datos de Competencia
- * Permite ingresar manualmente horarios de competencia
+ * Hook de Adelanto Táctico (Webhook).
+ * Gatillado externamente por un CRON cuando detecta alteraciones
+ * en la matriz de catálogos oficiales IMM. Reanaliza fricción en background.
+ * POST /api/competition/webhook-mutacion
  */
 router.post(
-  '/ingress',
-  requireRole('admin'),
-  competitionController.ingressCompetitorData
-);
-
-/**
- * Análisis Completo de Competitividad
- * Análisis integral de una línea vs competencia
- */
-router.get(
-  '/analysis/:lineaId',
-  requireRole('admin', 'manager'),
-  competitionController.getCompetitivityAnalysis
-);
-
-/**
- * Reporte de Competencia
- * Reporte mensual/semanal/diario
- */
-router.get(
-  '/report',
-  requireRole('admin', 'manager'),
-  competitionController.getCompetitionReport
-);
-
-/**
- * Amenazas Principales
- * Líneas en mayor riesgo
- */
-router.get(
-  '/threats',
-  requireRole('admin', 'manager'),
-  competitionController.getMainThreats
-);
-
-/**
- * Recomendaciones por Línea
- * Acciones sugeridas para una línea específica
- */
-router.get(
-  '/recommendations/:lineaId',
-  requireRole('admin', 'manager'),
-  competitionController.getRecommendations
-);
-
-/**
- * Sync desde STM en vivo
- * Pulls GPS público de IMM, agrega por empresa y upsert en `competidores`.
- */
-router.post(
-  '/sync-from-stm',
-  requireRole('admin'),
-  competitionController.syncFromSTM
-);
-
-/**
- * Enriquecimiento de horarios reales por competidor.
- * Scrapea stm/horarios para cada línea del competidor y popula
- * `lineas[].horarios` y `lineas[].frecuencia` con datos reales.
- * Operación pesada (~5 round-trips × ~400ms × N líneas).
- */
-router.post(
-  '/enrich-horarios/:competidorId',
-  requireRole('admin'),
-  competitionController.enrichCompetidorHorarios
+  '/webhook-mutacion',
+  competitionController.triggerReanalisisMutacion
 );
 
 export default router;

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   MapContainer,
   TileLayer,
@@ -8,8 +8,8 @@ import {
   ZoomControl,
 } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import axios from 'axios';
 import type { PuntoLatLng } from '../types/lineasUcot';
-import { findFrictionZones } from '../utils/tacticalGeom';
 
 interface BusPosition {
   id: string;
@@ -22,21 +22,77 @@ interface BusPosition {
 
 interface TacticalWarMapProps {
   ucotPath: PuntoLatLng[];
-  rivalPath?: PuntoLatLng[];
   liveBuses: BusPosition[];
   selectedLineId?: string;
+  directionId?: number; // 0 para Ida, 1 para Vuelta
 }
 
 const TacticalWarMap: React.FC<TacticalWarMapProps> = ({
   ucotPath,
-  rivalPath = [],
   liveBuses,
   selectedLineId,
+  directionId = 0,
 }) => {
-  const frictionZones = useMemo(() => {
-    if (ucotPath.length === 0 || rivalPath.length === 0) return [];
-    return findFrictionZones(ucotPath, rivalPath, 60);
-  }, [ucotPath, rivalPath]);
+  const [dynamicRivalPaths, setDynamicRivalPaths] = useState<Record<string, PuntoLatLng[]>>({});
+  const [dynamicFrictionZones, setDynamicFrictionZones] = useState<PuntoLatLng[][]>([]);
+
+  // Efecto para buscar la geometría y zonas de fricción de forma asíncrona
+  useEffect(() => {
+    let active = true;
+
+    if (!selectedLineId) {
+      setDynamicRivalPaths({});
+      setDynamicFrictionZones([]);
+      return;
+    }
+
+    const fetchOverlap = async () => {
+      try {
+        const res = await axios.get(
+          `/api/competition/solapamiento?line_id=${selectedLineId}&direction_id=${directionId}`
+        );
+
+        if (!active) return;
+
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          const overlaps = res.data.data;
+          const pathsByRival: Record<string, PuntoLatLng[]> = {};
+          const frictionCoords: PuntoLatLng[] = [];
+
+          overlaps.forEach((item: any) => {
+            if (item.lat !== undefined && item.lng !== undefined) {
+              if (!pathsByRival[item.linea_rival_id]) {
+                pathsByRival[item.linea_rival_id] = [];
+              }
+              const pt = { lat: Number(item.lat), lng: Number(item.lng) };
+              pathsByRival[item.linea_rival_id].push(pt);
+
+              // Picardía Estadística: Si es ZONA_DE_BARRIDO_PREDICTIVA_ALTA, lo marcamos como fricción
+              if (item.efecto_barrido_alerta === 'ZONA_DE_BARRIDO_PREDICTIVA_ALTA') {
+                frictionCoords.push(pt);
+              }
+            }
+          });
+
+          setDynamicRivalPaths(pathsByRival);
+
+          if (frictionCoords.length > 0) {
+            setDynamicFrictionZones([frictionCoords]); // En un caso avanzado se agruparían por segmentos
+          } else {
+            setDynamicFrictionZones([]);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching dynamic overlap:', err);
+      }
+    };
+
+    fetchOverlap();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedLineId, directionId]);
 
   // Centro inicial del mapa (Montevideo centro si no hay path)
   const center = ucotPath.length > 0 ? [ucotPath[0].lat, ucotPath[0].lng] : [-34.9011, -56.1645];
@@ -71,21 +127,26 @@ const TacticalWarMap: React.FC<TacticalWarMapProps> = ({
           />
         )}
 
-        {/* 2. Recorrido Rival (Rojo) */}
-        {rivalPath.length > 0 && (
-          <Polyline
-            positions={rivalPath.map((p) => [p.lat, p.lng])}
-            pathOptions={{
-              color: '#ef4444',
-              weight: 3,
-              opacity: 0.4,
-              dashArray: '5, 10',
-            }}
-          />
-        )}
+        {/* 2. Recorridos Rivales Dinámicos (Rojo) */}
+        {Object.entries(dynamicRivalPaths).map(([rivalId, pathCoords]) => (
+          pathCoords.length > 0 && (
+            <Polyline
+              key={`rival-${rivalId}`}
+              positions={pathCoords.map((p) => [p.lat, p.lng])}
+              pathOptions={{
+                color: '#ef4444',
+                weight: 3,
+                opacity: 0.4,
+                dashArray: '5, 10',
+              }}
+            >
+              <Tooltip sticky>COMPETIDOR {rivalId}</Tooltip>
+            </Polyline>
+          )
+        ))}
 
-        {/* 3. Zonas de Fricción (Glow Púrpura) */}
-        {frictionZones.map((zone, idx) => (
+        {/* 3. Zonas de Fricción (Glow Púrpura basadas en comportamiento estadístico) */}
+        {dynamicFrictionZones.map((zone, idx) => (
           <Polyline
             key={`friction-${idx}`}
             positions={zone.map((p) => [p.lat, p.lng])}
@@ -96,11 +157,11 @@ const TacticalWarMap: React.FC<TacticalWarMapProps> = ({
               lineCap: 'round',
             }}
           >
-            <Tooltip sticky>ZONA DE FRICCIÓN DETECTADA</Tooltip>
+            <Tooltip sticky>ALERTA: BARRIDO PREDICTIVO ALTO</Tooltip>
           </Polyline>
         ))}
 
-        {/* 4. Buses en Tiempo Real - Marcadores Direccionales */}
+        {/* 4. Buses en Tiempo Real - Marcadores Direccionales (vía WebSockets desde parent) */}
         {liveBuses.map((bus) => {
           const isUCOT =
             bus.empresa === 'UCOT' || bus.empresa === 2 || bus.id?.includes('sim-ucot');
@@ -121,15 +182,12 @@ const TacticalWarMap: React.FC<TacticalWarMapProps> = ({
               {/* Tactical Label Overlay */}
               <Tooltip permanent direction="center" className="tactical-unit-label" opacity={1}>
                 <div className="flex flex-col items-center">
-                  {/* Arrow indicator */}
                   <div
                     ref={(el) => {
                       if (el) el.style.setProperty('--heading', `${bus.heading}deg`);
                     }}
                     className={`tactical-heading-arrow w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[10px] ${isUCOT ? 'border-b-cyan-200' : 'border-b-red-200'}`}
                   ></div>
-
-                  {/* High Visibility ID */}
                   <div
                     className={`mt-3 px-1.5 py-0.5 rounded-sm text-[8px] font-black tracking-tighter shadow-2xl ${
                       isUCOT
@@ -202,7 +260,7 @@ const TacticalWarMap: React.FC<TacticalWarMapProps> = ({
           <div className="flex items-center gap-3">
             <div className="w-6 h-1 bg-purple-500 shadow-[0_0_10px_#a855f7]"></div>
             <span className="text-[9px] font-black text-purple-400 uppercase tracking-tighter">
-              Zona de Fricción
+              Fricción Comercial
             </span>
           </div>
         </div>
