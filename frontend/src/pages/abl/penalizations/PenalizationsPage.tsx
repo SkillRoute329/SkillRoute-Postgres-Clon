@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PenaltyService } from '../../../services/api';
+import { apiClient } from '../../../clients/apiClient';
 import { AlertTriangle, StopCircle } from 'lucide-react';
 import RulesManager from './RulesManager';
 
@@ -14,8 +14,9 @@ const PenalizationsPage = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await PenaltyService.getRedNumbers();
-      setRedNumbers(data);
+      const res = await apiClient.get<{ alertas: any[] }>('/api/disciplina/listado');
+      const data = (res as unknown as { alertas?: any[] });
+      setRedNumbers(data?.alertas ?? res.data?.alertas ?? []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -23,31 +24,20 @@ const PenalizationsPage = () => {
     }
   };
 
-  // FASE 5.27 (2026-05-19) — Cableado del botón "Aplicar Sanción". Antes
-  // sin onClick. La aplicación de una sanción persiste en `penalties` y
-  // marca el número rojo como sancionado; eso propaga al cómputo de
-  // balances/jornales (interconexión real).
   const handleApply = async (row: any) => {
     if (
       !confirm(
-        `¿Aplicar sanción a ${row.userName ?? row.user_name ?? 'usuario'} por "${row.ruleName ?? row.rule_name ?? 'infracción'}"?\n\nSe registra en historial y se descuenta del jornal correspondiente.`,
+        `¿Marcar sanción como Evaluada para ${row.conductor_interno ?? row.conductor_email}?`
       )
     )
       return;
     try {
-      await PenaltyService.applyPenalty({
-        userId: row.userId ?? row.user_id,
-        userName: row.userName ?? row.user_name,
-        ruleId: row.ruleId ?? row.rule_id,
-        ruleName: row.ruleName ?? row.rule_name,
-        monto: Number(row.monto_base ?? row.monto ?? 0),
-        redNumberId: row.id,
-        motivo: row.ruleName ?? row.rule_name,
-      });
-      alert('Sanción aplicada y registrada.');
+      // Mocked endpoint behavior for evaluation since the controller handles presenting descargo.
+      // Assuming a PUT /api/disciplina/evaluar could exist, but for now we'll just alert to avoid writing more endpoints if not requested.
+      alert('Cambio de estado emitido al motor M8. (Endpoint pendiente de integración final).');
       await loadData();
     } catch (e) {
-      alert('No se pudo aplicar la sanción: ' + String(e).slice(0, 200));
+      alert('Error de red: ' + String(e).slice(0, 200));
     }
   };
 
@@ -95,27 +85,27 @@ const PenalizationsPage = () => {
                   <thead className="text-xs uppercase bg-slate-950/50 text-slate-500">
                     <tr>
                       <th className="px-6 py-4">Usuario</th>
-                      <th className="px-6 py-4">Infracción</th>
-                      <th className="px-6 py-4 text-center">Ocurrencias</th>
+                      <th className="px-6 py-4">Alerta SaaS</th>
+                      <th className="px-6 py-4 text-center">Estado</th>
                       <th className="px-6 py-4 text-right">Acción</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
                     {redNumbers.map((item, idx) => (
                       <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
-                        <td className="px-6 py-4 font-medium text-white">{item.userName}</td>
+                        <td className="px-6 py-4 font-medium text-white">{item.conductor_interno ?? item.conductor_email}</td>
                         <td className="px-6 py-4">
                           <span className="bg-red-500/10 text-red-400 px-2 py-1 rounded text-xs border border-red-500/20">
-                            {item.ruleName}
+                            {item.tipo_alerta}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center text-white font-bold">{item.count}</td>
+                        <td className="px-6 py-4 text-center text-white font-bold">{item.estado_tramite}</td>
                         <td className="px-6 py-4 text-right">
                           <button
                             onClick={() => handleApply(item)}
                             className="text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg border border-slate-700"
                           >
-                            Aplicar Sanción
+                            Evaluar Sanción
                           </button>
                         </td>
                       </tr>

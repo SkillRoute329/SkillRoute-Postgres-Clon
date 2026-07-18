@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { Bus, AlertTriangle, MapPin, Clock, RefreshCw, Activity, Network, TrendingDown, Wrench } from 'lucide-react';
+import { Bus, AlertTriangle, MapPin, Clock, RefreshCw, Activity, Network, TrendingDown, Wrench, ShieldAlert } from 'lucide-react';
 import { apiClient } from '../../clients/apiClient';
 import { on as socketOn } from '../../clients/socketClient';
 import { useAuth } from '../../context/AuthContext';
@@ -74,6 +74,11 @@ export default function MiLinea() {
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   
+  // Módulo 8: Disciplina EAM
+  const [misAlertas, setMisAlertas] = useState<any[]>([]);
+  const [alertaSeleccionada, setAlertaSeleccionada] = useState<any>(null);
+  const [descargoForm, setDescargoForm] = useState('');
+  
   // Módulo 7: Taller EAM
   const [bloqueoMecanico, setBloqueoMecanico] = useState<{ bloqueado: boolean, mensaje: string | null }>({ bloqueado: false, mensaje: null });
   const [showReportarAveria, setShowReportarAveria] = useState(false);
@@ -86,6 +91,15 @@ export default function MiLinea() {
       setTurno(data?.turno ?? res.data?.turno ?? null);
       setNota((data?.nota ?? res.data?.nota) ?? null);
       
+      // Módulo 8: Cargar Alertas Disciplinarias
+      try {
+        const alRes = await apiClient.get<{ alertas: any[] }>('/api/disciplina/mis-alertas');
+        const alData = (alRes as unknown as { alertas?: any[] });
+        setMisAlertas(alData?.alertas ?? alRes.data?.alertas ?? []);
+      } catch (err) {
+        console.warn('No se pudo validar alertas disciplinarias');
+      }
+
       // Chequear bloqueo de taller
       try {
         const estRes = await apiClient.get<{ bloqueado: boolean; mensaje: string }>('/api/conductor/estado-coche');
@@ -171,6 +185,23 @@ export default function MiLinea() {
       void refrescar();
     } catch (err) {
       alert('Error enviando avería.');
+    }
+  };
+
+  const handleDescargoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!alertaSeleccionada) return;
+    try {
+      await apiClient.post('/api/disciplina/descargo', {
+        alerta_id: alertaSeleccionada.id,
+        descargo: descargoForm
+      });
+      alert('Descargo presentado inmutablemente.');
+      setAlertaSeleccionada(null);
+      setDescargoForm('');
+      void refrescar();
+    } catch (err) {
+      alert('Error enviando descargo.');
     }
   };
 
@@ -263,6 +294,55 @@ export default function MiLinea() {
               <button type="submit" className="px-4 py-2 bg-blue-600 rounded text-white font-bold hover:bg-blue-500">Enviar Denuncia</button>
             </div>
           </form>
+        </div>
+      )}
+
+      {alertaSeleccionada && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <form onSubmit={handleDescargoSubmit} className="bg-slate-900 border border-red-900/50 rounded-xl p-6 w-full max-w-md space-y-4">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-red-400"/> Derecho a Descargo
+            </h2>
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-200">
+              Usted presenta descargo oficial para el acta: <b className="text-white">{alertaSeleccionada.tipo_alerta}</b>
+            </div>
+            
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Justificación (Quedará inmutable)</label>
+              <textarea required className="w-full bg-slate-800 border border-slate-700 p-2 rounded text-white h-32"
+                placeholder="Escriba su justificación..."
+                value={descargoForm} onChange={e => setDescargoForm(e.target.value)} />
+            </div>
+            
+            <div className="flex gap-3 justify-end pt-2">
+              <button type="button" onClick={() => { setAlertaSeleccionada(null); setDescargoForm(''); }} className="px-4 py-2 rounded text-slate-300">Cancelar</button>
+              <button type="submit" className="px-4 py-2 bg-red-600 rounded text-white font-bold hover:bg-red-500">Sellar Descargo</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Módulo 8: Alertas Activas */}
+      {misAlertas.length > 0 && (
+        <div className="bg-slate-900 border border-red-900/40 rounded-xl p-5 mb-6">
+          <h3 className="text-red-400 font-bold flex items-center gap-2 mb-3">
+            <ShieldAlert className="w-5 h-5" /> Alertas Disciplinarias de Calle
+          </h3>
+          <div className="space-y-2">
+            {misAlertas.map(a => (
+              <div key={a.id} className="flex justify-between items-center bg-slate-800 p-3 rounded">
+                <div>
+                  <div className="text-white font-bold">{a.tipo_alerta}</div>
+                  <div className="text-xs text-slate-400">Estado: {a.estado_tramite}</div>
+                </div>
+                {a.estado_tramite === 'PENDIENTE_DESCARGO' && (
+                  <button onClick={() => setAlertaSeleccionada(a)} className="text-xs bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded font-bold text-white">
+                    Presentar Descargo
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
