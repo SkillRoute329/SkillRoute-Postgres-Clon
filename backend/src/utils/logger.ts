@@ -30,6 +30,34 @@ export interface AuditLogEntry {
   details?: unknown;
 }
 
+const logQueue: string[] = [];
+let isWriting = false;
+
+function processQueue(): void {
+  if (isWriting || logQueue.length === 0) return;
+  isWriting = true;
+
+  function writeNext(): void {
+    if (logQueue.length === 0) {
+      isWriting = false;
+      return;
+    }
+    
+    const chunk = logQueue.shift() as string;
+    const canContinue = auditStream.write(chunk);
+    
+    if (canContinue) {
+      // Sin contrapresión, procesar el siguiente en el próximo ciclo
+      process.nextTick(writeNext);
+    } else {
+      // Contrapresión detectada: esperar el drenaje para evitar desbordamiento RAM
+      auditStream.once('drain', writeNext);
+    }
+  }
+
+  writeNext();
+}
+
 /**
  * Motor de Logs Forenses (Cumplimiento ISO 27001 / ISO 25010)
  * Registra eventos de seguridad en formato JSON estructurado rígido.
@@ -46,10 +74,7 @@ export function writeAuditLog(level: LogLevel, userId: string, operation: AuditO
 
   const jsonString = JSON.stringify(entry) + '\n';
   
-  // Flujo secuencial atómico (Write Stream) sin colisiones I/O
-  if (!auditStream.write(jsonString)) {
-    auditStream.once('drain', () => {
-      // Stream drained
-    });
-  }
+  // Amortiguación anti-colapso (Buffer Queue)
+  logQueue.push(jsonString);
+  processQueue();
 }
