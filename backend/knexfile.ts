@@ -13,6 +13,11 @@ export default {
     },
     migrations: {
       directory: './migrations'
+    },
+    pool: {
+      min: 10,
+      max: 100,
+      idleTimeoutMillis: 30000
     }
   },
   production: {
@@ -26,6 +31,11 @@ export default {
     },
     migrations: {
       directory: './migrations'
+    },
+    pool: {
+      min: 10,
+      max: 100,
+      idleTimeoutMillis: 30000
     }
   }
 };
