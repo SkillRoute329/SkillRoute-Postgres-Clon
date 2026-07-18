@@ -21,10 +21,6 @@ const ENV_BASE = (import.meta as any).env?.VITE_API_URL as string | undefined;
 //   2. http://localhost:3000 (backend directo del clon).
 //   3. window.location.origin si el frontend está servido por el bridge.
 function resolveBaseUrl(): string {
-  if (ENV_BASE && ENV_BASE.trim()) return ENV_BASE.replace(/\/+$/, '');
-  if (typeof window !== 'undefined' && window.location?.origin) {
-    return 'http://localhost:3001';
-  }
   return 'http://localhost:3001';
 }
 

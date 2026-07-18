@@ -27,9 +27,8 @@ const ENV_BRIDGE = (import.meta as any).env?.VITE_BRIDGE_URL as string | undefin
 const ENV_API = (import.meta as any).env?.VITE_API_URL as string | undefined;
 
 function resolveSocketUrl(): string {
-  // Debe apuntar al backend principal (donde corre el servidor socket.io)
-  const base = ENV_API || ENV_BRIDGE || 'http://localhost:3001';
-  return base.replace(/\/+$/, '');
+  // Debe apuntar estrictamente al backend local
+  return 'http://localhost:3001';
 }
 
 export const SOCKET_URL = resolveSocketUrl();
