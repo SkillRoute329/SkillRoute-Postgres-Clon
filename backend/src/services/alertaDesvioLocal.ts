@@ -1,6 +1,15 @@
-// Bypass de Firebase Cloud Messaging - Despacho nativo por Intranet vía WebSockets
+import { Knex } from 'knex';
+import { Server } from 'socket.io';
 
-export async function notificarInspectoresDesvio(db: any, io: any, cocheId: string, lineaId: string, lat: number, lng: number, metrosDistancia: number) {
+export async function notificarInspectoresDesvio(
+  db: Knex, 
+  io: Server, 
+  cocheId: string, 
+  lineaId: string, 
+  lat: number, 
+  lng: number, 
+  metrosDistancia: number
+): Promise<void> {
   const inspectores = await db('personnel_roster')
     .where('rol', 'INSPECTOR')
     .andWhere('estado', 'ACTIVO')
@@ -17,7 +26,7 @@ export async function notificarInspectoresDesvio(db: any, io: any, cocheId: stri
     timestamp: new Date().toISOString()
   };
 
-  inspectores.forEach((inspector: any) => {
+  inspectores.forEach((inspector: { id: string; socket_id: string | null }) => {
     if (inspector.socket_id) {
       io.to(inspector.socket_id).emit('alerta_trafico_urgente', payload);
     } else {

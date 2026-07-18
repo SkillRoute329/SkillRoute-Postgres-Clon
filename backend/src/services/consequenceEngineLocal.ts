@@ -1,7 +1,20 @@
-// Motor transaccional 100% offline (PostgreSQL)
+import { Knex } from 'knex';
 
-export async function propagarEventoLocal(db: any, evento: any) {
-    return await db.transaction(async (trx: any) => {
+export interface EventoOperativo {
+    cocheId: string;
+    tipo: string;
+    [key: string]: unknown;
+}
+
+export interface EfectoConsecuencia {
+    dominio: string;
+    severidad: string;
+    titulo: string;
+    requiereAccion: boolean;
+}
+
+export async function propagarEventoLocal(db: Knex, evento: EventoOperativo): Promise<EfectoConsecuencia[]> {
+    return await db.transaction(async (trx: Knex.Transaction) => {
         const [eventoDb] = await trx('vehicle_events').insert({
             coche_id: evento.cocheId,
             tipo_evento: evento.tipo,
@@ -9,7 +22,7 @@ export async function propagarEventoLocal(db: any, evento: any) {
             detalles: JSON.stringify(evento)
         }).returning('*');
 
-        const efectos = [
+        const efectos: EfectoConsecuencia[] = [
             { dominio: 'OTP', severidad: 'advertencia', titulo: 'Retraso de línea', requiereAccion: false }
         ];
 
