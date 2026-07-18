@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { Bus, AlertTriangle, MapPin, Clock, RefreshCw, Activity, Network, TrendingDown } from 'lucide-react';
+import { Bus, AlertTriangle, MapPin, Clock, RefreshCw, Activity, Network, TrendingDown, Wrench } from 'lucide-react';
 import { apiClient } from '../../clients/apiClient';
 import { on as socketOn } from '../../clients/socketClient';
 import { useAuth } from '../../context/AuthContext';
@@ -73,6 +73,11 @@ export default function MiLinea() {
   const [eventos, setEventos] = useState<FeedEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  
+  // Módulo 7: Taller EAM
+  const [bloqueoMecanico, setBloqueoMecanico] = useState<{ bloqueado: boolean, mensaje: string | null }>({ bloqueado: false, mensaje: null });
+  const [showReportarAveria, setShowReportarAveria] = useState(false);
+  const [averiaForm, setAveriaForm] = useState({ sector: 'MECANICA', gravedad: 'LEVE', desc: '' });
 
   const cargarTurno = useCallback(async () => {
     try {
@@ -80,6 +85,18 @@ export default function MiLinea() {
       const data = (res as unknown as { turno?: MiTurno | null; nota?: string });
       setTurno(data?.turno ?? res.data?.turno ?? null);
       setNota((data?.nota ?? res.data?.nota) ?? null);
+      
+      // Chequear bloqueo de taller
+      try {
+        const estRes = await apiClient.get<{ bloqueado: boolean; mensaje: string }>('/api/conductor/estado-coche');
+        const estData = (estRes as unknown as { bloqueado?: boolean; mensaje?: string });
+        setBloqueoMecanico({
+          bloqueado: estData?.bloqueado ?? (estRes.data?.bloqueado) ?? false,
+          mensaje: estData?.mensaje ?? (estRes.data?.mensaje) ?? null
+        });
+      } catch (err) {
+        console.warn('No se pudo validar estado de taller');
+      }
     } catch {
       setTurno(null);
       setNota('Error consultando turno del día.');
@@ -139,6 +156,24 @@ export default function MiLinea() {
     return off;
   }, [turno?.linea_id, turno?.agency_id, cargarLinea]);
 
+  const handleReportarAveriaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!turno?.vehiculo_id) return;
+    try {
+      await apiClient.post('/api/mantenimiento/ticket', {
+        vehiculo_id: turno.vehiculo_id,
+        sector_afectado: averiaForm.sector,
+        gravedad: averiaForm.gravedad,
+        descripcion: averiaForm.desc
+      });
+      alert('Avería reportada. Si es CRÍTICA, el coche quedará inmovilizado.');
+      setShowReportarAveria(false);
+      void refrescar();
+    } catch (err) {
+      alert('Error enviando avería.');
+    }
+  };
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   if (loading && !turno) {
@@ -180,6 +215,57 @@ export default function MiLinea() {
 
   return (
     <div className="space-y-6 animate-fade-in-up max-w-4xl">
+      {/* Módulo 7: Bloqueo Mecánico Definitivo */}
+      {bloqueoMecanico.bloqueado && (
+        <div className="bg-red-500 text-white p-4 rounded-xl flex items-center justify-between shadow-xl animate-pulse font-bold border-2 border-red-700">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-8 h-8 flex-shrink-0" />
+            <span className="text-xl uppercase tracking-wider">{bloqueoMecanico.mensaje}</span>
+          </div>
+          <button className="bg-white/20 px-4 py-2 rounded pointer-events-none opacity-50">VIAJE INMOVILIZADO</button>
+        </div>
+      )}
+
+      {showReportarAveria && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <form onSubmit={handleReportarAveriaSubmit} className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md space-y-4">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2"><Wrench className="w-5 h-5"/> Reportar Avería EAM</h2>
+            
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Sector Afectado</label>
+              <select className="w-full bg-slate-800 border border-slate-700 p-2 rounded text-white"
+                value={averiaForm.sector} onChange={e => setAveriaForm({...averiaForm, sector: e.target.value})}>
+                <option value="MECANICA">MECÁNICA</option>
+                <option value="ELECTRICIDAD">ELECTRICIDAD</option>
+                <option value="GOMERIA">GOMERÍA</option>
+                <option value="CARROCERIA">CARROCERÍA</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Gravedad (CRÍTICA inmoviliza el coche)</label>
+              <select className="w-full bg-slate-800 border border-slate-700 p-2 rounded text-white font-bold"
+                value={averiaForm.gravedad} onChange={e => setAveriaForm({...averiaForm, gravedad: e.target.value})}>
+                <option value="LEVE">LEVE (Permite Circular)</option>
+                <option value="CRITICA" className="text-red-400">CRÍTICA (Desafecta Listería)</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Descripción</label>
+              <textarea required className="w-full bg-slate-800 border border-slate-700 p-2 rounded text-white h-24"
+                placeholder="Falla de frenos, humo en motor..."
+                value={averiaForm.desc} onChange={e => setAveriaForm({...averiaForm, desc: e.target.value})} />
+            </div>
+            
+            <div className="flex gap-3 justify-end pt-2">
+              <button type="button" onClick={() => setShowReportarAveria(false)} className="px-4 py-2 rounded text-slate-300">Cancelar</button>
+              <button type="submit" className="px-4 py-2 bg-blue-600 rounded text-white font-bold hover:bg-blue-500">Enviar Denuncia</button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Cabecera: turno */}
       <div className="bg-gradient-to-br from-blue-900 to-slate-900 border-2 border-blue-500/30 rounded-2xl p-6 shadow-2xl shadow-blue-900/30">
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -203,13 +289,22 @@ export default function MiLinea() {
               </div>
             </div>
           </div>
-          <button
-            onClick={() => { void refrescar(); if (turno.linea_id) void cargarLinea(turno.linea_id, turno.agency_id ?? undefined); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold border border-slate-700"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refrescar
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowReportarAveria(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-600/80 hover:bg-orange-500 text-white text-sm font-bold border border-orange-500/50"
+            >
+              <Wrench className="w-4 h-4" />
+              Reportar Avería
+            </button>
+            <button
+              onClick={() => { void refrescar(); if (turno.linea_id) void cargarLinea(turno.linea_id, turno.agency_id ?? undefined); }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold border border-slate-700"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refrescar
+            </button>
+          </div>
         </div>
       </div>
 
