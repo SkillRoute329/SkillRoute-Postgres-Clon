@@ -7,10 +7,10 @@ import { writeAuditLog } from '../utils/logger';
  * Controlador de Telemetría no Bloqueante (Anti-Event Loop Freeze)
  */
 export async function procesarCoordenadaFlota(req: AuthenticatedRequest, res: Response): Promise<void> {
-  const { cocheId, lineaId, latitud, longitud } = req.body;
+  const { cocheId, lineaId, sentido, latitud, longitud } = req.body;
   const userId = req.user?.id;
 
-  if (!userId || !cocheId || !latitud || !longitud) {
+  if (!userId || !cocheId || !latitud || !longitud || !lineaId || !sentido) {
     res.status(400).json({ error: 'Faltan parámetros físicos o telemetría inválida.' });
     return;
   }
@@ -28,21 +28,51 @@ export async function procesarCoordenadaFlota(req: AuthenticatedRequest, res: Re
         return;
       }
 
-      // 2. Consulta Paginada/Limitada (Protección de Event Loop de Node.js)
-      // Delegamos el filtrado puro a PostgreSQL para no traer 12M de filas a la RAM
-      const geometriaMuestra = await trx('gtfs.shapes')
-        .join('gtfs.trips', 'gtfs.shapes.shape_id', 'gtfs.trips.shape_id')
-        .join('gtfs.routes', 'gtfs.trips.route_id', 'gtfs.routes.route_id')
-        .where('gtfs.routes.route_short_name', lineaId)
-        .select('shape_pt_lat', 'shape_pt_lon')
-        .limit(100); 
+      // 2. Consulta Relacional Dinámica (Fuente Única de Verdad)
+      const desvioActivo = await trx('route_deviations')
+        .where('linea_id', lineaId)
+        .andWhere('sentido_direccion', sentido)
+        .andWhere('activo', true)
+        .first();
 
-      // 3. Inyección de Desvíos Relacionales (AppSec y Forense)
-      // Simulamos la detección del desvío para el test de auditoría
-      const desvioConfirmado = geometriaMuestra.length > 0; 
-      
-      if (desvioConfirmado) {
-        // FK seguras que garantizan la integridad contra personal y vehiculos
+      let distanciaMinima = 0;
+
+      // 3. Algoritmo Haversine SQL Sincronizado (Cálculo de Distancia Esférica Real)
+      // Se delega 100% al motor PostgreSQL para no saturar el Hilo Principal de Node.js
+      if (desvioActivo) {
+        const haversineQuery = `
+          SELECT MIN(
+            6371000 * 2 * ASIN(SQRT(
+              POWER(SIN((? - CAST(pt.lat AS FLOAT)) * PI() / 180 / 2), 2) +
+              COS(? * PI() / 180) * COS(CAST(pt.lat AS FLOAT) * PI() / 180) *
+              POWER(SIN((? - CAST(pt.lng AS FLOAT)) * PI() / 180 / 2), 2)
+            ))
+          ) as dist_metros
+          FROM json_to_recordset(?::json) AS pt(lat text, lng text)
+        `;
+        const result = await trx.raw(haversineQuery, [latitud, latitud, longitud, desvioActivo.geometria_desvio]);
+        distanciaMinima = result.rows[0].dist_metros || 0;
+      } else {
+        // Usar la base de GTFS oficial
+        const haversineQuery = `
+          SELECT MIN(
+            6371000 * 2 * ASIN(SQRT(
+              POWER(SIN((? - CAST(s.shape_pt_lat AS FLOAT)) * PI() / 180 / 2), 2) +
+              COS(? * PI() / 180) * COS(CAST(s.shape_pt_lat AS FLOAT) * PI() / 180) *
+              POWER(SIN((? - CAST(s.shape_pt_lon AS FLOAT)) * PI() / 180 / 2), 2)
+            ))
+          ) as dist_metros
+          FROM gtfs.shapes s
+          JOIN gtfs.trips t ON s.shape_id = t.shape_id
+          JOIN gtfs.routes r ON t.route_id = r.route_id
+          WHERE r.route_short_name = ?
+        `;
+        const result = await trx.raw(haversineQuery, [latitud, latitud, longitud, lineaId]);
+        distanciaMinima = result.rows[0].dist_metros || 0;
+      }
+
+      // 4. Alerta de Infracción Inmune
+      if (distanciaMinima > 50) {
         await trx('incident_reports').insert({
           vehicle_id: cocheId,
           driver_id: asignacionActiva.driver_id,
@@ -50,15 +80,15 @@ export async function procesarCoordenadaFlota(req: AuthenticatedRequest, res: Re
           latitud,
           longitud,
           tipo_incidente: 'DESVIO',
-          mensaje: 'Alerta de telemetría: Desvío crítico detectado',
+          mensaje: `Alerta de telemetría: Desvío crítico detectado (${Math.round(distanciaMinima)} metros del trazado dinámico)`,
           estado: 'ACTIVO'
         });
 
         // Trazabilidad Estricta ISO 27001
-        writeAuditLog('WARN', userId, 'ROUTE_DEVIATION', { cocheId, driver_id: asignacionActiva.driver_id, latitud, longitud });
+        writeAuditLog('WARN', userId, 'ROUTE_DEVIATION', { cocheId, driver_id: asignacionActiva.driver_id, latitud, longitud, metros: Math.round(distanciaMinima) });
       }
 
-      res.status(200).json({ ok: true, message: 'Telemetría procesada sin bloqueo del Event Loop.' });
+      res.status(200).json({ ok: true, message: 'Coordenada procesada bajo validación espacial estricta SQL.' });
     });
   } catch (error) {
     writeAuditLog('ERROR', userId || 'SYSTEM', 'CONFIG_CHANGE', { action: 'TELEMETRY_CRASH', error: String(error) });

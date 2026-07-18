@@ -301,3 +301,11 @@ export function getConnectedUsers(): Array<{ userId: string; socketId: string }>
 export function getUserBySocket(socketId: string): AuthUser | undefined {
   return socketUsers.get(socketId);
 }
+
+/**
+ * Emitir actualización de trazado dinámico a las tablets de navegación a bordo
+ */
+export function broadcastRouteDeviation(io: Server, lineaId: string, payload: any): void {
+  io.to(`linea_${lineaId}`).emit('actualizarTrazadoNavegacion', payload);
+  logger.info(`[SOCKET] Navegación actualizada en caliente para la línea ${lineaId}`);
+}
