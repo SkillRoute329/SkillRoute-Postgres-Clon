@@ -1,6 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
 
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error("FATAL ERROR: JWT_SECRET is not defined. Halting execution to comply with ISO 27001 strict security.");
+  process.exit(1);
+}
+
+
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
@@ -26,10 +33,9 @@ export function requireRole(allowedRoles: string[]) {
       }
 
       const token = authHeader.split(' ')[1];
-      const secret = process.env.JWT_SECRET || 'skillroute-offline-secret';
 
       // Verificación local estricta
-      const decoded = jwt.verify(token, secret) as { id: string; role: string };
+      const decoded = jwt.verify(token, JWT_SECRET) as { id: string; role: string };
 
       if (revocadoUsersCache.has(decoded.id)) {
         res.status(401).json({ error: 'Acceso denegado: Token revocado activamente por seguridad' });
