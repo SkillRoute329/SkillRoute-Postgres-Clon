@@ -3,8 +3,8 @@ import { CartonService, InspectionService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { computeTimeDeltaMinutes } from '../../utils/inspectionTimeDelta';
 import { Timestamp } from '../../config/firestoreShim';
-import { ref, uploadBytes, getDownloadURL } from '../../config/firebaseStubsShim';
 import { storage } from '../../config/firebase';
+import axios from 'axios';
 import type { PassengerLoadCategory, Inspection } from '../../types/inspections';
 import { Clock, CheckCircle, Users, Loader2, Camera, Upload, X, Building2 } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
@@ -131,16 +131,27 @@ const InspectorCapture = () => {
     try {
       if (!selectedServiceId || !selectedLineId) throw new Error('No service selected');
 
-      await InspectionService.create({
-        cartonServiceId: selectedServiceId,
-        lineId: selectedLineId,
-        controlPointId: pointId,
-        serviceDate,
-        scheduledTime: point.scheduledTime,
-        actualPassedAt: Timestamp.fromDate(actualDate),
-        timeDeltaMinutes: delta,
-        passengerLoad: 'MEDIO', // Carga por defecto para carga masiva
-        inspectorId: (user as { uid?: string })?.uid ?? undefined,
+      // Hacemos el request a nuestra API real con el SRID
+      let lat = -34.9011; // fallback
+      let lon = -56.1645;
+      try {
+        if (typeof navigator !== 'undefined' && navigator.geolocation) {
+          const pos: GeolocationPosition = await new Promise((res, rej) => {
+            navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 5000 });
+          });
+          lat = pos.coords.latitude;
+          lon = pos.coords.longitude;
+        }
+      } catch (err) {}
+
+      await axios.post('http://192.168.1.11:3000/api/inspector/acta', {
+        agency_id: empresaCfg?.agency_id || 'ucot',
+        vehiculo_id: selectedServiceId,
+        lat, lon,
+        data_jsonb: {
+          timeDeltaMinutes: delta,
+          controlPointId: pointId
+        }
       });
 
       // Clear from captured state as it will be loaded via real-time subscription
@@ -220,21 +231,22 @@ const InspectorCapture = () => {
       } catch (geoErr) {
         console.warn('[InspectorCapture] geolocalización no disponible:', geoErr);
       }
-      await InspectionService.create({
-        cartonServiceId: selectedServiceId,
-        lineId: selectedLineId,
-        controlPointId: selectedPoint.id,
-        serviceDate,
-        scheduledTime: selectedPoint.scheduledTime,
-        actualPassedAt: Timestamp.fromMillis(capturedAt),
-        timeDeltaMinutes: timeDelta,
-        passengerLoad: load,
-        inspectorId: (user as { uid?: string })?.uid ?? undefined,
-        // Mes+1 #7: coordenadas GPS del inspector al momento de la captura
-        ...(capturedLat !== null && capturedLng !== null
-          ? { lat: capturedLat, lng: capturedLng }
-          : {}),
-        ...(photoUrl && { photoUrl }),
+      if (capturedLat === null || capturedLng === null) {
+        throw new Error("GEOLOCALIZACIÓN REQUERIDA. No se puede auditar sin GPS.");
+      }
+
+      await axios.post('http://192.168.1.11:3000/api/inspector/acta', {
+        agency_id: empresaCfg?.agency_id || 'ucot',
+        vehiculo_id: selectedServiceId,
+        lat: capturedLat,
+        lon: capturedLng,
+        data_jsonb: {
+          lineId: selectedLineId,
+          controlPointId: selectedPoint.id,
+          timeDeltaMinutes: timeDelta,
+          passengerLoad: load,
+          photoUrl
+        }
       });
       setLastSaved(true);
       setCapturedAt(null);
