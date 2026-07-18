@@ -64,11 +64,28 @@ const Sidebar = ({ onClose }: SidebarProps) => {
 
   const menuGroups = [
     {
-      title: 'Espacio Operativo',
+      title: 'Grupo Operaciones',
       items: [
-        { path: '/dashboard/my-balance', label: 'Mi Balance y Jornales', icon: Wallet },
-        { path: '/dashboard/traffic/monitoreo', label: 'Consola de Operaciones', icon: Activity },
+        { path: '/dashboard/operations/distribution', label: 'Distribución y Roster', icon: Users },
+        { path: '/dashboard/admin/cartones', label: 'Registro de Planillas', icon: ClipboardList },
+      ],
+    },
+    {
+      title: 'Grupo Fiscalización',
+      items: [
         { path: '/dashboard/driver/mi-linea', label: 'Línea y Competencia', icon: Bus },
+      ],
+    },
+    {
+      title: 'Grupo Taller',
+      items: [
+        { path: '/dashboard/driver/report', label: 'Denuncias de Cabina', icon: Wrench },
+      ],
+    },
+    {
+      title: 'Grupo Administración',
+      items: [
+        { path: '/dashboard/my-balance', label: 'Mi Balance y Legajo Laboral', icon: Wallet },
       ],
     },
   ];

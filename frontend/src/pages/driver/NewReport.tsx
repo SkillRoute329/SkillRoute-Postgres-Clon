@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Bus, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { MaintenanceService, FleetService } from '../../services/api';
+import api from '../../services/api';
+import { FleetService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { UniversalImageUploader } from '../../components/common/UniversalImageUploader';
 
@@ -13,28 +14,45 @@ const NewReport = () => {
 
   const [formData, setFormData] = useState({
     vehicleId: user?.assignedVehicleId?.toString() || '',
-    title: '',
+    sectorAfectado: 'Mecánica', // sub-canales de reporte
     description: '',
     priority: 'NORMAL',
     evidencePhotos: '',
+    lat: undefined as number | undefined,
+    lng: undefined as number | undefined,
   });
 
   useEffect(() => {
     FleetService.getVehicles().then(setVehicles).catch(console.error);
+    
+    // Obtener ubicación si es posible para el motor espacial (Incidencias en Calle)
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        setFormData((prev) => ({
+          ...prev,
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        }));
+      }, () => console.warn('Geolocalización no disponible'));
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.vehicleId || !formData.title || !formData.description) {
+    if (!formData.vehicleId || !formData.sectorAfectado || !formData.description) {
       alert('Por favor complete todos los campos obligatorios.');
       return;
     }
 
     setLoading(true);
     try {
-      await MaintenanceService.create({
-        ...formData,
-        vehicleId: Number(formData.vehicleId),
+      await api.post('/api/mantenimiento/ticket', {
+        vehiculo_id: formData.vehicleId,
+        sector_afectado: formData.sectorAfectado,
+        gravedad: formData.priority,
+        descripcion: formData.description,
+        lat: formData.lat,
+        lng: formData.lng,
       });
       alert('Reporte enviado correctamente. El equipo de mantenimiento ha sido notificado.');
       navigate('/dashboard');
@@ -58,9 +76,9 @@ const NewReport = () => {
       <header>
         <h1 className="text-3xl font-black text-white flex items-center gap-3">
           <AlertTriangle className="w-8 h-8 text-yellow-500" />
-          Reportar Novedad
+          Denuncias de Cabina
         </h1>
-        <p className="text-slate-400">Informe cualquier desperfecto técnico o de carrocería.</p>
+        <p className="text-slate-400">Informe novedades mecánicas, eléctricas o incidencias en calle.</p>
       </header>
 
       <div className="glass-panel p-6 md:p-8 rounded-[2rem] border border-slate-800">
@@ -88,19 +106,21 @@ const NewReport = () => {
             </div>
           </div>
 
-          {/* Título */}
+          {/* Sub-canal (Sector) */}
           <div>
             <label className="block text-sm font-bold text-slate-300 mb-2 uppercase tracking-widest text-[10px]">
-              ¿Qué sucedió? (Breve)
+              Sub-canal de Reporte
             </label>
-            <input
-              type="text"
-              placeholder="Ej: Aire acondicionado no enfría"
-              className="input-field w-full h-14"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            <select
+              className="input-field w-full h-14 text-lg font-bold"
+              value={formData.sectorAfectado}
+              onChange={(e) => setFormData({ ...formData, sectorAfectado: e.target.value })}
               required
-            />
+            >
+              <option value="Mecánica">Mecánica</option>
+              <option value="Electricidad">Electricidad</option>
+              <option value="Incidencias en Calle">Incidencias en Calle</option>
+            </select>
           </div>
 
           {/* Descripción */}
@@ -135,7 +155,7 @@ const NewReport = () => {
             <div className="grid grid-cols-3 gap-3">
               {[
                 {
-                  id: 'LOW',
+                  id: 'BAJA',
                   label: 'Leve',
                   color:
                     'peer-checked:bg-emerald-500/20 peer-checked:text-emerald-400 peer-checked:border-emerald-500',
@@ -147,7 +167,7 @@ const NewReport = () => {
                     'peer-checked:bg-blue-500/20 peer-checked:text-blue-400 peer-checked:border-blue-500',
                 },
                 {
-                  id: 'HIGH',
+                  id: 'CRITICA',
                   label: 'Urgente',
                   color:
                     'peer-checked:bg-red-500/20 peer-checked:text-red-400 peer-checked:border-red-500',
@@ -182,7 +202,7 @@ const NewReport = () => {
             ) : (
               <ShieldCheck className="w-6 h-6" />
             )}
-            ENVIAR REPORTE
+            ENVIAR DENUNCIA
           </button>
           <p className="text-center text-[10px] text-slate-500 uppercase tracking-widest font-bold">
             Esta información será recibida por el personal de taller inmediatamente.
@@ -194,3 +214,4 @@ const NewReport = () => {
 };
 
 export default NewReport;
+
