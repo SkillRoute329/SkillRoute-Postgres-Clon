@@ -134,9 +134,13 @@ export async function registrarYSincronizarSolicitud(req: AuthenticatedRequest, 
              let transbordoViable = true;
              
              if (asignacionOrigen.coche_id !== asignacionDestino.coche_id) {
-                const finOrigen = new Date(asignacionOrigen.hora_fin).getTime();
-                const inicioDestino = new Date(asignacionDestino.hora_inicio).getTime();
-                const ventanaMinutos = (inicioDestino - finOrigen) / (1000 * 60);
+                // Cálculo 100% PostgreSQL para evitar fisuras de reloj (Clock Skew)
+                const dbResult = await trx.raw<{ rows: { minutos: string }[] }>(
+                  "SELECT EXTRACT(EPOCH FROM (?::timestamp with time zone - ?::timestamp with time zone)) / 60 as minutos", 
+                  [asignacionDestino.hora_inicio, asignacionOrigen.hora_fin]
+                );
+                
+                const ventanaMinutos = parseFloat(dbResult.rows[0].minutos);
                 
                 if (ventanaMinutos < 45) {
                    transbordoViable = false; // Bloqueo físico: No hay tiempo para cambiar de coche
@@ -144,6 +148,21 @@ export async function registrarYSincronizarSolicitud(req: AuthenticatedRequest, 
              }
 
              if (transbordoViable) {
+                // Filtro de Exclusión Mutua contra Solapamientos
+                const solapamiento = await trx('roster_assignments')
+                  .where('driver_id', driver_id)
+                  .andWhere('estado', 'PROGRAMADO')
+                  .andWhere(function() {
+                    this.where('hora_inicio', '<', asignacionDestino.hora_fin)
+                        .andWhere('hora_fin', '>', asignacionDestino.hora_inicio);
+                  })
+                  .first();
+
+                if (solapamiento) {
+                  res.status(400).json({ error: 'Colisión temporal detectada: El conductor ya posee un cartón solapado en ese horario.' });
+                  return; // Rollback implícito
+                }
+
                 // Intercambio Atómico (Swap de Conductor)
                 await trx('roster_assignments').where('id', asignacionDestino.id).update({ driver_id });
                 
