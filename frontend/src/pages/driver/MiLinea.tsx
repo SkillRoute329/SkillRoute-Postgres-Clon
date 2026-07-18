@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { Bus, AlertTriangle, MapPin, Clock, RefreshCw, Activity, Network, TrendingDown, Wrench, ShieldAlert } from 'lucide-react';
+import { Bus, AlertTriangle, MapPin, Clock, RefreshCw, Activity, Network, TrendingDown, Wrench, ShieldAlert, Navigation } from 'lucide-react';
 import { apiClient } from '../../clients/apiClient';
 import { on as socketOn } from '../../clients/socketClient';
 import { useAuth } from '../../context/AuthContext';
@@ -78,6 +78,10 @@ export default function MiLinea() {
   const [misAlertas, setMisAlertas] = useState<any[]>([]);
   const [alertaSeleccionada, setAlertaSeleccionada] = useState<any>(null);
   const [descargoForm, setDescargoForm] = useState('');
+
+  // Módulo 9: Desvíos Proactivos
+  const [hasDetour, setHasDetour] = useState<boolean>(false);
+  const [detourMensaje, setDetourMensaje] = useState<string | null>(null);
   
   // Módulo 7: Taller EAM
   const [bloqueoMecanico, setBloqueoMecanico] = useState<{ bloqueado: boolean, mensaje: string | null }>({ bloqueado: false, mensaje: null });
@@ -86,10 +90,12 @@ export default function MiLinea() {
 
   const cargarTurno = useCallback(async () => {
     try {
-      const res = await apiClient.get<{ turno: MiTurno | null; nota?: string }>('/api/mi-turno');
-      const data = (res as unknown as { turno?: MiTurno | null; nota?: string });
+      const res = await apiClient.get<{ turno: MiTurno | null; nota?: string; has_detour?: boolean; detour_mensaje?: string }>('/api/mi-turno');
+      const data = (res as unknown as { turno?: MiTurno | null; nota?: string; has_detour?: boolean; detour_mensaje?: string });
       setTurno(data?.turno ?? res.data?.turno ?? null);
       setNota((data?.nota ?? res.data?.nota) ?? null);
+      setHasDetour((data?.has_detour ?? res.data?.has_detour) ?? false);
+      setDetourMensaje((data?.detour_mensaje ?? res.data?.detour_mensaje) ?? null);
       
       // Módulo 8: Cargar Alertas Disciplinarias
       try {
@@ -343,6 +349,18 @@ export default function MiLinea() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Módulo 9: Banner de Desvío Proactivo IMM */}
+      {hasDetour && (
+        <div className="bg-gradient-to-r from-orange-600 to-orange-800 border-2 border-orange-400 rounded-xl p-5 mb-6 shadow-xl shadow-orange-900/50 animate-pulse">
+          <h3 className="text-white font-bold flex items-center gap-2 mb-2 text-lg">
+            <Navigation className="w-6 h-6 text-orange-200" />
+            ¡ALERTA DE FAENA! DESVÍO DE TRÁNSITO
+          </h3>
+          <p className="text-orange-100 font-medium">{detourMensaje}</p>
+          <p className="text-sm text-orange-200 mt-2">Siga la traza alternativa dibujada en su radar M2. Evite la zona bacheada/feria.</p>
         </div>
       )}
 
