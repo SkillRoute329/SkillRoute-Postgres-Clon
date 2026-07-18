@@ -87,6 +87,11 @@ export default function MiLinea() {
   const [bloqueoMecanico, setBloqueoMecanico] = useState<{ bloqueado: boolean, mensaje: string | null }>({ bloqueado: false, mensaje: null });
   const [showReportarAveria, setShowReportarAveria] = useState(false);
   const [averiaForm, setAveriaForm] = useState({ sector: 'MECANICA', gravedad: 'LEVE', desc: '' });
+  // Módulo 10 (Ésc.2): Escudo de Jornal por Incidencia Espacial
+  const [escudoJornal, setEscudoJornal] = useState<{
+    activado: boolean;
+    desvio: string | null;
+  } | null>(null);
 
   const cargarTurno = useCallback(async () => {
     try {
@@ -180,13 +185,46 @@ export default function MiLinea() {
     e.preventDefault();
     if (!turno?.vehiculo_id) return;
     try {
-      await apiClient.post('/api/mantenimiento/ticket', {
+      // Módulo 10: capturar posición GPS del conductor para evaluación PostGIS
+      let lat: number | undefined;
+      let lng: number | undefined;
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 })
+        );
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      } catch {
+        // Si no hay GPS disponible, continuar sin coordenadas (flujo normal sin ST_DWithin)
+        console.warn('[MiLinea] GPS no disponible, reporte sin evaluación espacial.');
+      }
+
+      const payload: Record<string, unknown> = {
         vehiculo_id: turno.vehiculo_id,
         sector_afectado: averiaForm.sector,
         gravedad: averiaForm.gravedad,
-        descripcion: averiaForm.desc
-      });
-      alert('Avería reportada. Si es CRÍTICA, el coche quedará inmovilizado.');
+        descripcion: averiaForm.desc,
+        ...(lat !== undefined && lng !== undefined ? { lat, lng } : {}),
+      };
+
+      const res = await apiClient.post<{
+        success: boolean;
+        escudo_jornal_activado?: boolean;
+        desvio_detectado?: { desvio_id: string; nombre: string } | null;
+        message?: string;
+      }>('/api/mantenimiento/ticket', payload);
+
+      const data = (res as unknown as typeof res.data) ?? res.data;
+
+      if (data?.escudo_jornal_activado) {
+        // Escudo activado: mostrar banner de tranquilidad al trabajador
+        setEscudoJornal({
+          activado: true,
+          desvio: data?.desvio_detectado?.nombre ?? null,
+        });
+      } else {
+        alert(data?.message ?? 'Avería reportada. Si es CRÍTICA, el coche quedará inmovilizado.');
+      }
       setShowReportarAveria(false);
       void refrescar();
     } catch (err) {
@@ -260,6 +298,44 @@ export default function MiLinea() {
             <span className="text-xl uppercase tracking-wider">{bloqueoMecanico.mensaje}</span>
           </div>
           <button className="bg-white/20 px-4 py-2 rounded pointer-events-none opacity-50">VIAJE INMOVILIZADO</button>
+        </div>
+      )}
+
+      {/* Módulo 10 (Ésc.2): Banner de Escudo de Jornal por Incidencia Espacial */}
+      {escudoJornal?.activado && (
+        <div className="bg-gradient-to-r from-emerald-900/80 to-blue-900/60 border-2 border-emerald-500/70 rounded-xl p-5 shadow-xl shadow-emerald-950/40">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-emerald-300 font-bold text-base mb-1">
+                ✅ Incidencia Registrada — Jornal Protegido
+              </p>
+              <p className="text-emerald-200/90 text-sm leading-relaxed">
+                Tu jornal base de <strong>7:30 hs</strong> se encuentra totalmente protegido bajo el convenio de desvíos.
+                {escudoJornal.desvio && (
+                  <span className="block mt-1 text-emerald-300/80 text-xs">
+                    Desvío oficial confirmado: <strong>{escudoJornal.desvio}</strong>
+                  </span>
+                )}
+              </p>
+              <p className="text-xs text-emerald-500/70 mt-2">
+                El despachador fue notificado automáticamente. Permanecé en el vehículo hasta la llegada del auxilio mecánico.
+              </p>
+            </div>
+            <button
+              onClick={() => setEscudoJornal(null)}
+              className="text-emerald-500/60 hover:text-emerald-300 transition-colors shrink-0"
+              aria-label="Cerrar notificación"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
 
