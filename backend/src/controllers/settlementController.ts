@@ -7,7 +7,7 @@ export const settlementController = {
   /**
    * GET /api/settlement/jornal/:driver_id
    * Calcula la liquidación del jornal de un conductor sumando horas extras, nocturnidad
-   * y el kilometraje preciso obtenido vía PostGIS.
+   * y el kilometraje preciso obtenido vía PostGIS, dinamizado por tenant_configs (SaaS).
    */
   async calcularLiquidacionJornal(req: AuthRequest, res: Response): Promise<void> {
     try {
@@ -19,6 +19,23 @@ export const settlementController = {
         return;
       }
 
+      // Obtener la configuración del inquilino dinámicamente (SaaS)
+      // Idealmente agency_id viene en el token de autenticación (req.user?.agency_id)
+      const tenant = await sqlDb('tenant_configs').first();
+      
+      if (!tenant) {
+        res.status(500).json({ error: 'Falta configuración de inquilino (tenant_configs).' });
+        return;
+      }
+
+      const timezoneStr = tenant.timezone_string;
+      const laborRules = typeof tenant.labor_rules_jsonb === 'string' 
+        ? JSON.parse(tenant.labor_rules_jsonb) 
+        : tenant.labor_rules_jsonb;
+        
+      const nocturnityStart = laborRules?.nocturnity?.start_hour ?? 22;
+      const nocturnityEnd = laborRules?.nocturnity?.end_hour ?? 6;
+
       // 1. Obtener jornadas trabajadas (roster_assignments)
       const jornadas = await sqlDb('roster_assignments')
         .where('driver_id', driverId)
@@ -29,6 +46,15 @@ export const settlementController = {
 
       let totalHorasExtras = 0;
       let totalMinutosNocturnos = 0;
+
+      // Helper para extraer la hora determinista en la zona del inquilino
+      const getHourInTimezone = (ms: number, timeZone: string): number => {
+        return parseInt(new Intl.DateTimeFormat('en-US', {
+          timeZone,
+          hour: 'numeric',
+          hourCycle: 'h23'
+        }).format(new Date(ms)), 10);
+      };
 
       const resultadosJornadas = jornadas.map((jornada: any) => {
         const programadoInicio = new Date(jornada.hora_inicio).getTime();
@@ -46,14 +72,22 @@ export const settlementController = {
 
         totalHorasExtras += horasExtras;
 
-        // Calcular nocturnidad (22:00 a 06:00)
+        // Calcular nocturnidad (Parametrizada por tenant)
         let minutosNocturnos = 0;
         let currentTime = realInicio;
         while (currentTime < realFin) {
-          const currentDate = new Date(currentTime);
-          const hour = currentDate.getHours();
-          if (hour >= 22 || hour < 6) {
-            minutosNocturnos += 1;
+          const localHour = getHourInTimezone(currentTime, timezoneStr);
+          
+          if (nocturnityStart > nocturnityEnd) {
+            // Ejemplo: 22 a 6 (cruza medianoche)
+            if (localHour >= nocturnityStart || localHour < nocturnityEnd) {
+              minutosNocturnos += 1;
+            }
+          } else {
+            // Ejemplo: 20 a 23 (no cruza medianoche)
+            if (localHour >= nocturnityStart && localHour < nocturnityEnd) {
+              minutosNocturnos += 1;
+            }
           }
           // Avanzar 1 minuto
           currentTime += 60000;
@@ -71,22 +105,27 @@ export const settlementController = {
         };
       });
 
-      // 2. Cálculo de Kilometraje PostGIS Preciso
-      // Extraemos los IDs de coches que manejó el conductor
+      // 2. Cálculo de Kilometraje PostGIS Preciso e Internacionalizado
       const vehiculosManejados = Array.from(new Set(jornadas.map((j: any) => j.coche_id)));
       
       let kilometrajeTotal = 0;
       const kilometrajePorViaje = [];
 
       if (vehiculosManejados.length > 0) {
-        // Ejecutamos SQL crudo utilizando ST_Length y ST_Transform sobre la proyección UTM 21S (32721)
+        // Ejecutamos SQL crudo inyectando dinámicamente el SRID desde tenant_configs vía JOIN
         const kmQuery = await sqlDb.raw(`
-          SELECT id_bus, trip_id,
-            (ST_Length(ST_Transform(ST_MakeLine(geom ORDER BY timestamp_gps), 32721)) / 1000) AS km_recorridos
-          FROM vehicle_events
-          WHERE id_bus = ANY(?)
-            AND timestamp_gps BETWEEN ? AND ?
-          GROUP BY id_bus, trip_id
+          SELECT v.id_bus, v.trip_id,
+            (ST_Length(
+              ST_Transform(
+                ST_MakeLine(v.geom ORDER BY v.timestamp_gps), 
+                t.postgis_srid
+              )
+            ) / 1000) AS km_recorridos
+          FROM vehicle_events v
+          JOIN tenant_configs t ON v.agency_id = t.agency_id
+          WHERE v.id_bus = ANY(?)
+            AND v.timestamp_gps BETWEEN ? AND ?
+          GROUP BY v.id_bus, v.trip_id, t.postgis_srid
         `, [vehiculosManejados, fecha_inicio, fecha_fin]);
 
         for (const row of kmQuery.rows || kmQuery) {
