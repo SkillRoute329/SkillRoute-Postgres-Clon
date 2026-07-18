@@ -59,7 +59,7 @@ function persistSession(token: string, user: User): void {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
   // Empresa activa por defecto desde el JWT/user (UCOT=70 si no aplica).
   const agencyId = (user as User & { agencyId?: string | number }).agencyId;
-  if (agencyId && [10, 20, 50, 70].includes(Number(agencyId))) {
+  if (agencyId && [10, 20, 50, 70, 99].includes(Number(agencyId))) {
     localStorage.setItem(EMPRESA_KEY, String(agencyId));
     window.dispatchEvent(new CustomEvent('skillroute:empresaPropia-change', { detail: Number(agencyId) }));
   }

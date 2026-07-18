@@ -4,6 +4,7 @@ import { DriverService } from '../../services/api';
 import clsx from 'clsx';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import ConductorAcciones from './ConductorAcciones';
 
 interface ScheduleItem {
   id: number;
@@ -115,6 +116,9 @@ const DriverSchedule = () => {
           </button>
         </div>
       </div>
+      
+      {/* Botones de acción rápida: Papelito y Averías */}
+      <ConductorAcciones />
 
       {/* List */}
       {loading ? (

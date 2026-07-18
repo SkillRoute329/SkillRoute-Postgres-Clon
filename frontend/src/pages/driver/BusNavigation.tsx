@@ -9,7 +9,8 @@ import { db } from '../../config/firebase';
 import { collection, onSnapshot, query, where, Timestamp, limit, addDoc, serverTimestamp } from '../../config/firestoreShim';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
-import { getAllLines, getVariants, type GeoLine } from '../../data/geo/lines';
+import type { GeoLine } from '../../data/geo/lines';
+import { getNavigationLineas, getNavigationLineaData } from '../../features/navigation/services/navigationDataService';
 import { updateDoc, doc } from '../../config/firestoreShim';
 
 // Helper to center map on User
@@ -25,18 +26,77 @@ const BusNavigation = () => {
   const { user } = useAuth();
 
   // Selection State
-  const [selectedLineCode, setSelectedLineCode] = useState<string>('300');
-  const [currentGeo, setCurrentGeo] = useState<GeoLine>(getVariants('300')[0]);
+  const [selectedLineCode, setSelectedLineCode] = useState<string>('');
+  const [currentGeo, setCurrentGeo] = useState<GeoLine | null>(null);
   const [showLineSelector, setShowLineSelector] = useState(false);
+
+  // Dynamic Data State
+  const [availableLines, setAvailableLines] = useState<{code: string, label: string}[]>([]);
+  const [availableVariants, setAvailableVariants] = useState<GeoLine[]>([]);
 
   // Detour & Report State
   const [showReportMenu, setShowReportMenu] = useState(false);
   const [showDetourModal, setShowDetourModal] = useState(false);
   const [detourType, setDetourType] = useState<'EVENTUAL' | 'PROGRAMADO'>('EVENTUAL');
 
-  // Helpers
-  const availableLines = getAllLines();
-  const availableVariants = getVariants(selectedLineCode);
+  // --- DYNAMIC DATA FETCHING ---
+  useEffect(() => {
+    if (!user) return;
+    // agencyId 70 por defecto para UCOT si no está definido
+    const agencyId = Number(user.agencyId) || 70;
+    
+    getNavigationLineas(agencyId).then(lines => {
+      // deduplicar los códigos de línea para el selector (ya que vienen '300a', '300b')
+      const uniqueCodes = Array.from(new Set(lines.map(l => String(l.codigo).replace(/[ab]$/i, '')))).sort();
+      setAvailableLines(uniqueCodes.map(code => ({ code, label: `Línea ${code}` })));
+      if (uniqueCodes.length > 0 && !selectedLineCode) {
+        setSelectedLineCode(uniqueCodes[0]);
+      }
+    }).catch(e => console.error("Error fetching lines:", e));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !selectedLineCode) return;
+    const agencyId = Number(user.agencyId) || 70;
+    
+    // Fetch both IDA and VUELTA variants for the selected line
+    Promise.all([
+      getNavigationLineaData(agencyId, `${selectedLineCode}a`),
+      getNavigationLineaData(agencyId, `${selectedLineCode}b`)
+    ]).then(([ida, vuelta]) => {
+      const variants: GeoLine[] = [];
+      if (ida && ida.recorrido) {
+        variants.push({
+          line: selectedLineCode,
+          variant: 'IDA',
+          destination: ida.destino || '',
+          description: ida.nombre || '',
+          color: '#3b82f6',
+          type: 'URBANA',
+          path: ida.recorrido,
+          stops: ida.paradas.map(p => ({ id: Number(p.codigo), name: p.nombre, lat: p.lat, lng: p.lon })),
+          dangerZones: []
+        });
+      }
+      if (vuelta && vuelta.recorrido) {
+        variants.push({
+          line: selectedLineCode,
+          variant: 'VUELTA',
+          destination: vuelta.destino || '',
+          description: vuelta.nombre || '',
+          color: '#10b981',
+          type: 'URBANA',
+          path: vuelta.recorrido,
+          stops: vuelta.paradas.map(p => ({ id: Number(p.codigo), name: p.nombre, lat: p.lat, lng: p.lon })),
+          dangerZones: []
+        });
+      }
+      setAvailableVariants(variants);
+      if (variants.length > 0 && !currentGeo) {
+        setCurrentGeo(variants[0]);
+      }
+    }).catch(e => console.error("Error fetching variants:", e));
+  }, [user, selectedLineCode]);
 
   // Position & Sensors
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -463,24 +523,28 @@ const BusNavigation = () => {
           )}
 
           {/* Smoothed Route Geometry */}
-          <Polyline
-            positions={currentGeo.path as [number, number][]}
-            color="#000000"
-            weight={12}
-            opacity={0.6}
-            lineCap="round"
-          />
-          <Polyline
-            positions={currentGeo.path as [number, number][]}
-            color={currentGeo.color}
-            weight={6}
-            opacity={1}
-            lineCap="round"
-          />
+          {currentGeo && currentGeo.path && (
+            <>
+              <Polyline
+                positions={currentGeo.path as [number, number][]}
+                color="#000000"
+                weight={12}
+                opacity={0.6}
+                lineCap="round"
+              />
+              <Polyline
+                positions={currentGeo.path as [number, number][]}
+                color={currentGeo.color}
+                weight={6}
+                opacity={1}
+                lineCap="round"
+              />
+            </>
+          )}
 
           {/* Stops (Visible at High Zoom) */}
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {currentGeo.stops.map((stop: any) => (
+          {currentGeo && currentGeo.stops && currentGeo.stops.map((stop: any) => (
             <CircleMarker
               key={stop.id}
               center={[stop.lat, stop.lng]}

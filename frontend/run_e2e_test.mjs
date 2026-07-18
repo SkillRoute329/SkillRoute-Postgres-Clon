@@ -1,44 +1,51 @@
 import { chromium } from 'playwright';
 
+const TESTS = [
+  { name: 'UCOT', id: '329', pass: 'Skill329' },
+  { name: 'CUTCSA', id: '500', pass: 'SkillUser!' },
+  { name: 'IMM Regulador', id: '999', pass: 'SkillUser!' }
+];
+
 (async () => {
-  console.log('Iniciando prueba E2E (UCOT Pilot)...');
+  console.log('Iniciando prueba E2E Multi-Tenant (UCOT, CUTCSA, IMM)...');
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
-  const page = await context.newPage();
-
+  
   try {
-    // 1. Navegar al home
-    console.log('Navegando a http://localhost:3006 ...');
-    await page.goto('http://localhost:3006', { waitUntil: 'networkidle' });
+    for (const testUser of TESTS) {
+      console.log(`\n=== Testeando Login: ${testUser.name} ===`);
+      
+      const context = await browser.newContext();
+      const page = await context.newPage();
 
-    // Esperar a que renderice
-    await page.waitForTimeout(2000);
+      try {
+        console.log('Navegando a http://localhost:3006/login ...');
+        await page.goto('http://localhost:3006/login', { waitUntil: 'networkidle' });
+        await page.waitForTimeout(1000);
 
-    // 2. Login (vamos a usar un empleado admin de ucot)
-    // El seed de DB ya debería tener un user ucot admin si usamos AdminRRHH o ingresamos con pin maestro.
-    // Wait, si la BD está vacía, tal vez el login fallback funcione.
-    // Probemos con "329" (chofer normal) o un admin.
-    console.log('Intentando login como Admin (admin/admin o 329)...');
-    
-    // Si la pantalla pide internalNumber y password:
-    await page.fill('input[placeholder="Ej: 329"]', 'admin');
-    await page.fill('input[placeholder="••••••••"]', 'admin');
-    await page.click('button[type="submit"]');
+        console.log(`Ingresando credenciales de ${testUser.name}...`);
+        await page.fill('input[placeholder="Ej: 329"]', testUser.id);
+        await page.fill('input[placeholder="••••••••"]', testUser.pass);
+        await page.click('button[type="submit"]');
 
-    await page.waitForTimeout(3000);
-    
-    // Tomar screenshot para ver dónde estamos
-    await page.screenshot({ path: 'screenshot_after_login.png' });
-    console.log('Screenshot guardado en screenshot_after_login.png');
+        await page.waitForTimeout(3000);
+        
+        const url = page.url();
+        console.log(`URL post-login para ${testUser.name}: ${url}`);
+        
+        const screenshotName = `screenshot_after_login_${testUser.name.replace(' ', '_')}.png`;
+        await page.screenshot({ path: screenshotName });
+        console.log(`Screenshot guardado: ${screenshotName}`);
 
-    // 3. Verificamos si estamos en dashboard
-    const url = page.url();
-    console.log('URL post-login:', url);
-
+      } catch (e) {
+        console.error(`Error durante test de ${testUser.name}:`, e);
+      } finally {
+        await context.close();
+      }
+    }
   } catch (err) {
-    console.error('Error durante E2E:', err);
-    await page.screenshot({ path: 'screenshot_error.png' });
+    console.error('Error global durante E2E:', err);
   } finally {
     await browser.close();
+    console.log('\nPruebas E2E completadas.');
   }
 })();

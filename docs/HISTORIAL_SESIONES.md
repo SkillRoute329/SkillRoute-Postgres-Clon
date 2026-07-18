@@ -857,3 +857,4 @@ SkillRoute ahora opera 100% cross-operador desde el sidebar. Cualquier operador 
 - **0 errores** en la compilación de TypeScript (`tsc --noEmit`) tanto en backend como en frontend.
 - **Vite build** de producción completada con éxito en 1 minuto 12 segundos.
 - Cambios locales confirmados y commiteados exitosamente a la rama remota `feat/soberania-auth-fase-0-1`.
+  

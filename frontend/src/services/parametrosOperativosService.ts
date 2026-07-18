@@ -20,10 +20,8 @@
  */
 
 import { apiClient } from '../clients/apiClient';
-import {
-  TurnoPersonal,
-  TURNOS_DEFAULT_POR_OPERADOR,
-} from '../utils/franjasHorarias';
+import type { TurnoPersonal } from '../utils/franjasHorarias';
+import { TURNOS_DEFAULT_POR_OPERADOR } from '../utils/franjasHorarias';
 
 export interface ParametrosOperativos {
   agencyId: string;

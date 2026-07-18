@@ -18,6 +18,9 @@ interface Empleado {
   role?: string;
   telefono?: string;
   estado?: string;
+  regimen_rotacion?: string;
+  is_en_lista?: boolean;
+  patron_descanso?: string;
 }
 
 const ROL_LABEL: Record<string, string> = {
@@ -85,6 +88,8 @@ export default function PersonalUcot() {
   const [limite, setLimite] = useState(200);
   const [total, setTotal] = useState(0);
   const [seleccionado, setSeleccionado] = useState<Empleado | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState<Partial<Empleado>>({});
 
   const fetchPersonal = useCallback(async (rol: string, lim: number) => {
     if (!token) return;
@@ -289,12 +294,23 @@ export default function PersonalUcot() {
                 <div className="w-12 h-12 rounded-xl bg-primary-900/50 flex items-center justify-center border border-primary-700/50">
                   <Badge className="w-6 h-6 text-primary-400" />
                 </div>
-                <button
-                  onClick={() => setSeleccionado(null)}
-                  className="text-slate-500 hover:text-slate-300 text-xs"
-                >
-                  ✕
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setIsEditing(!isEditing);
+                      setEditData(seleccionado);
+                    }}
+                    className="text-blue-400 hover:text-blue-300 text-xs px-2 py-1 bg-blue-900/30 rounded"
+                  >
+                    {isEditing ? 'Cancelar' : 'Editar'}
+                  </button>
+                  <button
+                    onClick={() => { setSeleccionado(null); setIsEditing(false); }}
+                    className="text-slate-500 hover:text-slate-300 text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
 
               <h3 className="font-bold text-white text-lg leading-tight mb-1">
@@ -324,6 +340,85 @@ export default function PersonalUcot() {
                   <span className={`text-xs font-medium ${seleccionado.estado === 'activo' ? 'text-emerald-400' : 'text-slate-400'}`}>
                     {seleccionado.estado ?? 'activo'}
                   </span>
+                </div>
+
+                {/* Nuevos campos Listero */}
+                <div className="pt-4 border-t border-slate-800 mt-4">
+                  <h4 className="text-slate-400 text-xs font-semibold uppercase mb-3">Ajustes Listero</h4>
+                  
+                  {isEditing ? (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-slate-500 text-xs block mb-1">Régimen Rotación</label>
+                        <select 
+                          className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm text-white"
+                          value={editData.regimen_rotacion || 'semanal'}
+                          onChange={e => setEditData({...editData, regimen_rotacion: e.target.value})}
+                        >
+                          <option value="semanal">Semanal (Mañana/Tarde)</option>
+                          <option value="fijo_manana">Fijo Mañana</option>
+                          <option value="fijo_tarde">Fijo Tarde</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-slate-500 text-xs block mb-1">Patrón Descanso</label>
+                        <select 
+                          className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm text-white"
+                          value={editData.patron_descanso || 'sab_dom_alterno'}
+                          onChange={e => setEditData({...editData, patron_descanso: e.target.value})}
+                        >
+                          <option value="sab_dom_alterno">Alterno Sáb/Dom</option>
+                          <option value="sabado_fijo">Sábado Fijo</option>
+                          <option value="domingo_fijo">Domingo Fijo</option>
+                          <option value="entre_semana">Entre Semana</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <input 
+                          type="checkbox" 
+                          id="is_en_lista"
+                          checked={!!editData.is_en_lista}
+                          onChange={e => setEditData({...editData, is_en_lista: e.target.checked})}
+                        />
+                        <label htmlFor="is_en_lista" className="text-slate-300 text-sm">Personal "En Lista" (Reserva)</label>
+                      </div>
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/admin/personal/${seleccionado.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                              body: JSON.stringify(editData)
+                            });
+                            if (res.ok) {
+                              setIsEditing(false);
+                              fetchPersonal(rolFiltro, limite);
+                            }
+                          } catch(err) { console.error(err); }
+                        }}
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded py-1.5 mt-2 text-sm"
+                      >
+                        Guardar Cambios
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500 text-xs">Rotación</span>
+                        <span className="text-slate-300 text-xs capitalize">{(seleccionado.regimen_rotacion || 'semanal').replace('_', ' ')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500 text-xs">Descanso</span>
+                        <span className="text-slate-300 text-xs capitalize">{(seleccionado.patron_descanso || 'Alterno Sáb/Dom').replace(/_/g, ' ')}</span>
+                      </div>
+                      <div className="flex justify-between mt-1">
+                        <span className="text-slate-500 text-xs">En Lista</span>
+                        <span className={`text-xs px-2 py-0.5 rounded ${seleccionado.is_en_lista ? 'bg-orange-900/50 text-orange-400' : 'bg-slate-800 text-slate-500'}`}>
+                          {seleccionado.is_en_lista ? 'SÍ (Reserva)' : 'NO (Fijo)'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

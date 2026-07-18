@@ -5,12 +5,14 @@ const TerminalListero  = lazy(() => import('./TerminalListero'));
 const ListeroModule    = lazy(() => import('./ListeroModule'));
 const DistribucionDiaria = lazy(() => import('./DistribucionDiaria'));
 const AsistenteInspectorCalle = lazy(() => import('./AsistenteInspectorCalle'));
+const SolicitudesListero = lazy(() => import('./SolicitudesListero'));
 
 const TABS = [
   { key: 'terminal',    label: 'Terminal Listero',  icon: Users  },
   { key: 'cascada',     label: 'Listero Cascada',   icon: Users  },
   { key: 'distribucion',label: 'Distribución Diaria', icon: Route },
   { key: 'asistente',   label: 'Asistente Táctico', icon: Crosshair },
+  { key: 'solicitudes', label: 'Bandeja Papelitos', icon: Info },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -61,6 +63,8 @@ export default function ListeroHub() {
             <ListeroModule />
           ) : tab === 'distribucion' ? (
             <DistribucionDiaria />
+          ) : tab === 'solicitudes' ? (
+            <SolicitudesListero />
           ) : (
             <AsistenteInspectorCalle />
           )}
