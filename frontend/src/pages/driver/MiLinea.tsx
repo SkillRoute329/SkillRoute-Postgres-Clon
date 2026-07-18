@@ -1,19 +1,15 @@
 /**
- * MiLinea — Dashboard simplificado para el conductor con la información
- * en vivo de SU línea activa hoy (FASE 5.36, 2026-05-22).
+ * MiLinea — Dashboard del conductor con mapa en vivo de SU línea activa.
  *
- * Detecta el turno activo del usuario (GET /api/mi-turno), muestra:
- *   - Datos del turno (línea, coche, hora salida)
- *   - Inteligencia en vivo de la línea (/api/inteligencia/:linea)
- *   - Últimos eventos del motor relacionados con la línea (/api/cascade/feed)
- *
- * Pensado para usar en una pantalla del chofer mientras maneja: contraste
- * alto, tipografía grande, refresh cada 30s + suscripción al bus de
- * propagación para reaccionar al instante.
+ * FASE 5.36+: Se incorpora mapa Leaflet con posicionamiento real de buses
+ * desde /api/positions (poller IMM → bus_last_pos, refrescado cada 10s).
+ * Buses UCOT: marcador azul. Competidores: marcador naranja.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Bus, AlertTriangle, MapPin, Clock, RefreshCw, Activity, Network, TrendingDown, Wrench, ShieldAlert, Navigation } from 'lucide-react';
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import { apiClient } from '../../clients/apiClient';
 import { on as socketOn } from '../../clients/socketClient';
 import { useAuth } from '../../context/AuthContext';
@@ -65,6 +61,27 @@ const TIPO_LABEL: Record<string, string> = {
   VIAJE_CANCELADO: 'Viaje cancelado',
 };
 
+// ── Tipos de posición IMM ────────────────────────────────────────────────────
+interface BusPosition {
+  idBus: string;
+  linea: string;
+  empresa: string;
+  empresaId: number;
+  lat: number;
+  lng: number;
+  velocidad: number | null;
+  estado: string | null;
+  destino?: string;
+  timestamp: string;
+}
+
+// ── Sub-componente: re-centra el mapa cuando cambia la línea ─────────────────
+function MapRecenter({ lat, lng }: { lat: number; lng: number }) {
+  const map = useMap();
+  useEffect(() => { map.setView([lat, lng], 13); }, [lat, lng, map]);
+  return null;
+}
+
 export default function MiLinea() {
   const { user } = useAuth();
   const [turno, setTurno] = useState<MiTurno | null>(null);
@@ -95,6 +112,11 @@ export default function MiLinea() {
 
   const [geomAlternativa, setGeomAlternativa] = useState<any | null>(null);
   const [cargandoTurno, setCargandoTurno] = useState<boolean>(true);
+
+  // ── Mapa en vivo IMM ──────────────────────────────────────────────────────
+  const [busPositions, setBusPositions] = useState<BusPosition[]>([]);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([-34.9011, -56.1645]); // Montevideo
+  const posIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const cargarTurno = useCallback(async () => {
     setCargandoTurno(true);
@@ -159,7 +181,6 @@ export default function MiLinea() {
       const intelData = (intelRes as unknown as InteligenciaLinea);
       setIntel(intelData?.ok ? intelData : (intelRes.data ?? null));
       const events = (feedRes as unknown as { events?: FeedEvent[] }).events ?? feedRes.data?.events ?? [];
-      // Filtrar a eventos de esta línea
       const propios = (events || []).filter((e) => {
         const l = String((e.evento.lineaId as string) ?? (e.evento.linea as string) ?? '');
         return l === linea;
@@ -168,6 +189,29 @@ export default function MiLinea() {
       setLastUpdate(new Date());
     } catch (e) {
       console.error('[MiLinea] cargarLinea', e);
+    }
+  }, []);
+
+  // ── Carga de posiciones reales IMM ────────────────────────────────────────
+  const cargarPosiciones = useCallback(async (linea: string) => {
+    try {
+      const res = await apiClient.get<{ ok: boolean; buses: BusPosition[] }>('/api/positions');
+      const allBuses: BusPosition[] = (res as any)?.buses ?? (res as any)?.data?.buses ?? [];
+      // Filtrar por línea del turno — la IMM puede reportar la línea como número sin prefijo
+      const normalized = linea.replace(/^0+/, '');
+      const filtered = allBuses.filter((b) => {
+        const bl = String(b.linea).replace(/^0+/, '');
+        return bl === normalized || bl === linea;
+      });
+      setBusPositions(filtered);
+      // Centrar mapa en el primer bus propio encontrado
+      const propio = filtered.find((b) => b.empresaId === 70);
+      const primero = propio ?? filtered[0];
+      if (primero && primero.lat && primero.lng) {
+        setMapCenter([primero.lat, primero.lng]);
+      }
+    } catch (e) {
+      console.warn('[MiLinea] Error cargando posiciones IMM:', e);
     }
   }, []);
 
@@ -188,6 +232,16 @@ export default function MiLinea() {
     return () => clearInterval(id);
   }, [turno?.linea_id, turno?.agency_id, cargarLinea]);
 
+  // Polling de posiciones IMM cada 10s (igual que el poller backend)
+  useEffect(() => {
+    if (!turno?.linea_id) return;
+    void cargarPosiciones(turno.linea_id);
+    posIntervalRef.current = setInterval(() => { void cargarPosiciones(turno.linea_id); }, 10_000);
+    return () => {
+      if (posIntervalRef.current) clearInterval(posIntervalRef.current);
+    };
+  }, [turno?.linea_id, cargarPosiciones]);
+
   // Bus: refetch al instante cuando llega evento de la línea propia.
   useEffect(() => {
     if (!turno?.linea_id) return;
@@ -195,10 +249,11 @@ export default function MiLinea() {
       const l = data?.evento?.lineaId ?? data?.lineaId;
       if (l && String(l) === turno.linea_id) {
         void cargarLinea(turno.linea_id, turno.agency_id ?? undefined);
+        void cargarPosiciones(turno.linea_id);
       }
     });
     return off;
-  }, [turno?.linea_id, turno?.agency_id, cargarLinea]);
+  }, [turno?.linea_id, turno?.agency_id, cargarLinea, cargarPosiciones]);
 
   const handleReportarAveriaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -509,6 +564,84 @@ export default function MiLinea() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* ── MAPA EN VIVO IMM ─────────────────────────────────────────────── */}
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden">
+        <div className="px-4 py-3 flex items-center justify-between border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-blue-400" />
+            <span className="text-sm font-bold text-white">
+              Posicionamiento en Vivo — Línea {turno.linea_id}
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono">
+              Fuente: IMM STM-Online · refresh 10s
+            </span>
+          </div>
+          <div className="flex items-center gap-3 text-xs">
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" />
+              <span className="text-slate-400">UCOT ({busPositions.filter(b => b.empresaId === 70).length})</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full bg-orange-400 inline-block" />
+              <span className="text-slate-400">Rivales ({busPositions.filter(b => b.empresaId !== 70).length})</span>
+            </span>
+          </div>
+        </div>
+
+        {busPositions.length === 0 ? (
+          <div className="flex items-center justify-center h-48 text-slate-500 text-sm gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            Esperando posiciones GPS de la línea {turno.linea_id} desde la IMM…
+          </div>
+        ) : (
+          <div style={{ height: '380px' }}>
+            <MapContainer
+              center={mapCenter}
+              zoom={13}
+              style={{ height: '100%', width: '100%' }}
+              scrollWheelZoom={false}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <MapRecenter lat={mapCenter[0]} lng={mapCenter[1]} />
+              {busPositions.map((bus) => {
+                const esUcot = bus.empresaId === 70;
+                return (
+                  <CircleMarker
+                    key={bus.idBus}
+                    center={[bus.lat, bus.lng]}
+                    radius={esUcot ? 9 : 7}
+                    pathOptions={{
+                      fillColor: esUcot ? '#3b82f6' : '#fb923c',
+                      color: esUcot ? '#1d4ed8' : '#c2410c',
+                      weight: 2,
+                      fillOpacity: 0.85,
+                    }}
+                  >
+                    <Popup>
+                      <div style={{ minWidth: '160px' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                          {esUcot ? '🔵 UCOT' : '🟠 ' + (bus.empresa || 'Rival')}
+                        </div>
+                        <div>Línea: <b>{bus.linea}</b></div>
+                        {bus.destino && <div>Destino: {bus.destino}</div>}
+                        {bus.velocidad != null && <div>Velocidad: {bus.velocidad} km/h</div>}
+                        {bus.estado && <div>Estado: {bus.estado}</div>}
+                        <div style={{ fontSize: '10px', color: '#888', marginTop: '4px' }}>
+                          Bus #{bus.idBus} · {new Date(bus.timestamp).toLocaleTimeString('es-UY')}
+                        </div>
+                      </div>
+                    </Popup>
+                  </CircleMarker>
+                );
+              })}
+            </MapContainer>
+          </div>
+        )}
       </div>
 
       {/* KPIs en vivo de la línea */}
