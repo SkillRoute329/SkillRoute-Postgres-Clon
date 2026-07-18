@@ -4,6 +4,7 @@
  * Costos   = laboral + combustible + amortización + mant + seguro + admin
  */
 import React, { useMemo, useState } from 'react';
+import TrafficAlertsBanner from '../../components/TrafficAlertsBanner';
 import { TrendingUp, TrendingDown, AlertCircle, ChevronDown } from 'lucide-react';
 import { useEmpresaPropia, EMPRESAS_OPCIONES } from '../../hooks/useEmpresaPropia';
 import { useAuth } from '../../context/AuthContext';
@@ -144,6 +145,9 @@ export default function PLPorOperador() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-6 space-y-6">
+      {/* Banner de alertas críticas de tráfico — Módulo 10 */}
+      <TrafficAlertsBanner />
+
       {/* Glow ambiental */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-700/8 rounded-full blur-[160px]"/>

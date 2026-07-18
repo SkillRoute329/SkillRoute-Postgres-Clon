@@ -403,6 +403,41 @@ router.get('/users', verifyAuth, usersController.listUsers);
 
 router.get('/shifts/balance-oficial', verifyAuth, shiftsBalanceController.getBalanceOficialConductor);
 
+// Módulo 10 — Alertas de Tráfico Vacante (Escenario Falla 1: Quiebre de Retenes)
+router.get('/traffic-alerts', verifyAuth, async (req, res) => {
+  try {
+    const sqlDb = (await import('../config/database')).default;
+    const user = (req as any).user;
+    const agencyId = user?.agency_id;
+    if (!agencyId) { res.status(401).json({ ok: false }); return; }
+    const resuelta = req.query.resuelta === 'true';
+    const rows = await sqlDb('traffic_alerts')
+      .where('agency_id', agencyId)
+      .where('resuelta', resuelta)
+      .orderBy('created_at', 'desc')
+      .limit(50);
+    res.json({ ok: true, alertas: rows });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+router.patch('/traffic-alerts/:id/resolver', verifyAuth, async (req, res) => {
+  try {
+    const sqlDb = (await import('../config/database')).default;
+    const user = (req as any).user;
+    const agencyId = user?.agency_id;
+    if (!agencyId) { res.status(401).json({ ok: false }); return; }
+    await sqlDb('traffic_alerts')
+      .where('id', req.params.id)
+      .where('agency_id', agencyId)
+      .update({ resuelta: true });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+
 router.get('/tenants', verifyAuth, tenantsController.listTenants);
 router.post('/tenants', verifyAuth, requireAdmin, tenantsController.createTenant);
 

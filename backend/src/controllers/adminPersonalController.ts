@@ -266,24 +266,112 @@ export async function updatePersonal(req: Request, res: Response): Promise<void>
       return;
     }
 
-    // Bloqueo coercitivo: si el nuevo estado es bloqueante, cancelar turnos PROGRAMADOS
+    // Bloqueo coercitivo + Motor de Auto-Asignación de Contingencia (Escenario 1)
     const nuevoEstado = (setTop['estado_hoy'] ?? '') as string;
     let asignacionesCanceladas = 0;
+    let retenAsignado: string | null = null;
+    const alertasGeneradas: string[] = [];
 
     if (ESTADOS_BLOQUEANTES.includes(nuevoEstado as EstadoHoy)) {
-      asignacionesCanceladas = await trx('roster_assignments')
+      // 1. Recuperar la agencia del conductor ausente (necesaria para aislar retenes y alertas)
+      const conductorAusente = await trx('personal')
+        .where('id', id)
+        .select('agency_id', 'full_name', 'internal_number')
+        .first() as { agency_id: string; full_name: string; internal_number: string } | undefined;
+
+      const agencyId = conductorAusente?.agency_id ?? '';
+
+      // 2. Obtener todas las asignaciones PROGRAMADAS del conductor que falta
+      const asignacionesProgramadas = await trx('roster_assignments')
         .where('driver_id', id)
         .where('estado', 'PROGRAMADO')
-        .update({
-          estado: 'CANCELADO',
-          updated_at: trx.fn.now(),
-        });
+        .select('id', 'linea_id', 'hora_inicio', 'hora_fin', 'coche_id');
 
-      logger.warn('[admin/personal] BLOQUEO COERCITIVO de listería', {
-        driver_id: id,
-        nuevo_estado: nuevoEstado,
-        asignaciones_canceladas: asignacionesCanceladas,
-      });
+      if (asignacionesProgramadas.length > 0) {
+        // 3. Buscar el PRIMER conductor de retén disponible en la misma agencia
+        //    Criterio: categoria_laboral = 'RETEN' OR es_conductor_reserva = TRUE
+        //              AND estado_hoy = 'disponible'
+        const retenDisponible = await trx('personal')
+          .where('agency_id', agencyId)
+          .where('estado_hoy', 'disponible')
+          .where((b) => {
+            b.where('categoria_laboral', 'RETEN')
+             .orWhere('es_conductor_reserva', true);
+          })
+          .whereNull('fecha_egreso')
+          .select('id', 'full_name', 'internal_number')
+          .first() as { id: string; full_name: string; internal_number: string } | undefined;
+
+        for (const asignacion of asignacionesProgramadas) {
+          if (retenDisponible && !retenAsignado) {
+            // ── RAMA A: Retén disponible → Auto-asignación atómica ────────────
+            await trx('roster_assignments')
+              .where('id', asignacion.id)
+              .update({
+                driver_id:  retenDisponible.id,
+                estado:     'PROGRAMADO',           // se mantiene activa, nuevo conductor
+                updated_at: trx.fn.now(),
+              });
+
+            // Marcar al retén como en servicio para que no sea reasignado de nuevo
+            await trx('personal')
+              .where('id', retenDisponible.id)
+              .update({
+                estado_hoy: 'en_servicio',
+                updated_at: trx.fn.now(),
+              });
+
+            retenAsignado = retenDisponible.id;
+
+            logger.info('[admin/personal] RETEN AUTO-ASIGNADO', {
+              driver_ausente: id,
+              reten_id:       retenDisponible.id,
+              asignacion_id:  asignacion.id,
+              linea_id:       asignacion.linea_id,
+            });
+          } else {
+            // ── RAMA B: Sin retén → Cancelar + insertar alerta CRITICA ───────
+            await trx('roster_assignments')
+              .where('id', asignacion.id)
+              .update({
+                estado:     'CANCELADO',
+                updated_at: trx.fn.now(),
+              });
+
+            asignacionesCanceladas++;
+
+            const horaInicio = asignacion.hora_inicio
+              ? new Date(asignacion.hora_inicio as string).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })
+              : 'N/D';
+
+            const mensajeAlerta =
+              `VACANTE CRÍTICA — Línea ${asignacion.linea_id ?? '?'} a las ${horaInicio}. ` +
+              `El conductor ${conductorAusente?.full_name ?? id} (Int. ${conductorAusente?.internal_number ?? ''}) ` +
+              `marcado como "${nuevoEstado}". No hay retenes disponibles en la agencia.`;
+
+            const [alertaId] = await trx('traffic_alerts').insert({
+              agency_id:        agencyId,
+              linea_id:         asignacion.linea_id ?? null,
+              servicio_id:      asignacion.id,
+              tipo_alerta:      'VACANTE_SIN_RETEN',
+              nivel_gravedad:   'CRITICO',
+              mensaje:          mensajeAlerta,
+              driver_ausente_id: id,
+              reten_asignado_id: null,
+              resuelta:         false,
+            }).returning('id');
+
+            alertasGeneradas.push(alertaId as unknown as string);
+
+            logger.error('[admin/personal] ALERTA CRITICA VACANTE_SIN_RETEN', {
+              alerta_id:      alertaId,
+              agency_id:      agencyId,
+              linea_id:       asignacion.linea_id,
+              driver_ausente: id,
+            });
+          }
+        }
+      }
     }
 
     await trx.commit();
@@ -292,8 +380,11 @@ export async function updatePersonal(req: Request, res: Response): Promise<void>
       ok: true,
       id,
       updated: true,
-      bloqueo_coercitivo_aplicado: asignacionesCanceladas > 0,
-      asignaciones_canceladas: asignacionesCanceladas,
+      bloqueo_coercitivo_aplicado: asignacionesCanceladas > 0 || retenAsignado !== null,
+      asignaciones_canceladas:     asignacionesCanceladas,
+      reten_auto_asignado:         retenAsignado,
+      alertas_criticas_emitidas:   alertasGeneradas.length,
+      alertas_ids:                 alertasGeneradas,
     });
   } catch (err) {
     await trx.rollback();
@@ -301,3 +392,4 @@ export async function updatePersonal(req: Request, res: Response): Promise<void>
     res.status(500).json({ ok: false, error: 'Error actualizando personal' });
   }
 }
+
