@@ -400,10 +400,7 @@ router.put('/admin/personal/:id', verifyAuth, adminPersonalController.updatePers
  */
 router.get('/users', verifyAuth, usersController.listUsers);
 
-router.get('/shifts/balances', verifyAuth, shiftsBalanceController.getBalances);
-router.get('/shifts/unpaid/:userId', verifyAuth, shiftsBalanceController.getUnpaidShifts);
-router.post('/shifts/payment', verifyAuth, shiftsBalanceController.postPayment);
-router.post('/shifts/pay', verifyAuth, shiftsBalanceController.postPayAll);
+router.get('/shifts/balance-oficial', verifyAuth, shiftsBalanceController.getBalanceOficialConductor);
 
 router.get('/tenants', verifyAuth, tenantsController.listTenants);
 router.post('/tenants', verifyAuth, requireAdmin, tenantsController.createTenant);

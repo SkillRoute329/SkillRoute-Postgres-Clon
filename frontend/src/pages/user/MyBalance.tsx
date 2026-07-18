@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { ShiftService, type Shift } from '../../services/api';
 import {
   Wallet,
   CircleArrowUp,
@@ -9,391 +8,197 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import clsx from 'clsx';
+import { apiClient } from '../../clients/apiClient';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const MyBalance = () => {
   const { user: currentUser } = useAuth();
-  const [stats, setStats] = useState({
-    totalBalance: 0,
-    cededAmount: 0,
-    assignedAmount: 0,
-    totalShifts: 0,
-    completedShifts: 0,
-  });
-  const [displayShifts, setDisplayShifts] = useState<Shift[]>([]);
+  const [balanceData, setBalanceData] = useState<{
+    totalIngresos: number;
+    totalTaller: number;
+    totalSanciones: number;
+    totalDeducciones: number;
+    saldoNeto: number;
+    hashVerificacion: string;
+  } | null>(null);
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (currentUser) calculateBalance();
+    if (currentUser) {
+      loadOfficialBalance();
+    }
   }, [currentUser]);
 
-  const calculateBalance = async () => {
+  const loadOfficialBalance = async () => {
     try {
-      const allShifts = await ShiftService.getAll();
-
-      if (!currentUser) {
-        setError('No se pudo identificar al usuario');
-        return;
-      }
-
-      // 1. Turnos Asignados (Income): Shifts assigned to me (Public taken or Admin assigned)
-      const assignedShifts = allShifts.filter(
-        (s) =>
-          String(s.assignedTo) === String(currentUser.id) ||
-          String(s.assignedTo) === String(currentUser.internalNumber),
-      );
-
-      // 2. Turnos Cedidos (Outcome): Shifts created by me that were taken by someone else
-      const cededShifts = allShifts.filter(
-        (s) =>
-          String(s.createdBy) === String(currentUser.id) && // Created by me
-          s.assignedTo && // Becomes "taken" only if assignedTo exists
-          String(s.assignedTo) !== String(currentUser.id) && // And not assigned to myself
-          String(s.assignedTo) !== String(currentUser.internalNumber),
-      );
-
-      // Calculate totals
-      const assignedTotal = assignedShifts.reduce((sum, s) => sum + Number(s.totalValue || 0), 0);
-      const cededTotal = cededShifts.reduce((sum, s) => sum + Number(s.totalValue || 0), 0);
-
-      // 3. Balance Total = assignedTotal - cededTotal
-      const totalBalance = assignedTotal - cededTotal;
-
-      setStats({
-        totalBalance,
-        cededAmount: cededTotal,
-        assignedAmount: assignedTotal,
-        totalShifts: assignedShifts.length,
-        completedShifts: assignedShifts.filter((s) => s.status === 'Completed').length,
-      });
-
-      // Combine for table display, adding a 'type' property for the table logic if needed, or just handling it there
-      setDisplayShifts(
-        [...assignedShifts, ...cededShifts].sort(
-          (a, b) => new Date(b.date ?? '').getTime() - new Date(a.date ?? '').getTime(),
-        ),
-      );
+      setLoading(true);
+      const res = await apiClient.get<{ balance: any }>('/api/shifts/balance-oficial');
+      setBalanceData((res.data as any)?.balance || (res as any)?.balance);
     } catch (err) {
-      console.error('Error calculating balance:', err);
-      setError('Error al calcular el balance');
+      console.error('Error al cargar balance oficial:', err);
+      setError('Error al calcular el balance oficial');
     } finally {
       setLoading(false);
     }
   };
 
-  // FASE 5.27 (2026-05-19) — Cableado del botón "Descargar PDF" que estaba
-  // sin onClick. Genera un PDF con los datos REALES del balance del usuario
-  // logueado usando jsPDF (ya en deps).
   const handleDownloadPDF = () => {
+    if (!balanceData) return;
     try {
       const doc = new jsPDF();
-      const nombre = (currentUser as { fullName?: string; internalNumber?: string })?.fullName
-        ?? (currentUser as { internalNumber?: string })?.internalNumber
-        ?? 'Usuario';
-      const fechaStr = new Date().toLocaleDateString('es-UY');
+      const nombre = (currentUser as any)?.fullName ?? (currentUser as any)?.internalNumber ?? 'Usuario';
+      
       doc.setFontSize(16);
-      doc.text(`Mi Balance — ${nombre}`, 14, 18);
+      doc.text(`Balance Oficial — ${nombre}`, 14, 18);
+      
       doc.setFontSize(10);
       doc.setTextColor(120);
-      doc.text(`Emitido: ${fechaStr}`, 14, 25);
+      doc.text(`Fecha de emisión: ${new Date().toLocaleString()}`, 14, 25);
+      
       doc.setTextColor(0);
-      doc.setFontSize(11);
-      doc.text(`Balance total: $ ${stats.totalBalance.toLocaleString('es-UY')}`, 14, 36);
-      doc.text(`Asignados: $ ${stats.assignedAmount.toLocaleString('es-UY')}`, 14, 43);
-      doc.text(`Cedidos:   $ ${stats.cededAmount.toLocaleString('es-UY')}`, 14, 50);
-      doc.text(`Turnos: ${stats.totalShifts} (completados ${stats.completedShifts})`, 14, 57);
+      doc.setFontSize(12);
+      
       autoTable(doc, {
-        startY: 65,
-        head: [['Fecha', 'Servicio', 'Línea', 'Coche', 'Tipo', 'Monto']],
-        body: displayShifts.map((s) => {
-          const mine =
-            String(s.assignedTo) === String(currentUser?.id) ||
-            String(s.assignedTo) === String(currentUser?.internalNumber);
-          return [
-            String(s.date ?? ''),
-            String(s.serviceNumber ?? ''),
-            String(s.line ?? ''),
-            String(s.carNumber ?? ''),
-            mine ? 'Asignado' : 'Cedido',
-            '$ ' + Number(s.totalValue ?? 0).toLocaleString('es-UY'),
-          ];
-        }),
-        styles: { fontSize: 9 },
-        headStyles: { fillColor: [30, 41, 59] },
+        startY: 35,
+        head: [['Concepto', 'Monto']],
+        body: [
+          ['Ingresos por Turnos (M1)', `$${balanceData.totalIngresos}`],
+          ['Deducciones Taller (M7)', `-$${balanceData.totalTaller}`],
+          ['Deducciones Sanciones (M8)', `-$${balanceData.totalSanciones}`],
+          ['Saldo Neto a Cobrar', `$${balanceData.saldoNeto}`]
+        ],
+        theme: 'striped',
+        styles: { fontSize: 11 }
       });
-      const safe = nombre.replace(/[^\w-]+/g, '_');
-      doc.save(`MiBalance_${safe}_${fechaStr.replace(/\//g, '-')}.pdf`);
-    } catch (e) {
-      alert('No se pudo generar el PDF: ' + String(e).slice(0, 200));
+
+      // Insertar Hash de Verificación (Inmutabilidad)
+      const finalY = (doc as any).lastAutoTable.finalY || 80;
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`Firma Criptográfica (SHA-256): ${balanceData.hashVerificacion}`, 14, finalY + 15);
+      
+      doc.save('balance_oficial.pdf');
+    } catch (err) {
+      console.error('Error generando PDF:', err);
+      alert('Hubo un error al generar el PDF.');
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      <div className="flex items-center justify-center h-full min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-400 font-medium">Calculando Balance Oficial...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-red-500 font-medium">Error de cálculo</h3>
+            <p className="text-red-400 text-sm mt-1">{error}</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="max-w-4xl mx-auto p-4 md:p-6 pb-24">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Mi Balance</h1>
-          <p className="text-slate-400">Resumen financiero de tus turnos trabajados y cedidos.</p>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Wallet className="w-6 h-6 text-emerald-400" />
+            Balance Oficial
+          </h1>
+          <p className="text-slate-400 mt-1">Liquidación consolidada (M1, M7, M8)</p>
         </div>
-
-        <div className="flex gap-2">
-          {error && (
-            <div className="px-4 py-2 bg-red-500/10 border border-red-500/50 rounded-xl flex items-center gap-2 text-red-500 text-sm">
-              <AlertCircle className="w-4 h-4" />
-              {error}
-            </div>
-          )}
-          <button
-            onClick={handleDownloadPDF}
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl border border-slate-700 transition-all text-sm font-medium"
-          >
-            <Download className="w-4 h-4" /> Descargar PDF
-          </button>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="glass-panel p-6 rounded-2xl border border-slate-800">
-          <div className="flex items-center gap-3 text-emerald-400 mb-2">
-            <CircleArrowUp className="w-5 h-5" />
-            <span className="text-sm font-medium uppercase tracking-wider">Turnos Realizados</span>
-          </div>
-          <div className="text-3xl font-bold text-white">
-            ${stats.assignedAmount.toLocaleString('es-AR')}
-          </div>
-          <p className="text-slate-500 text-xs mt-2 font-medium">Dinero generado por trabajar</p>
-        </div>
-
-        <div className="glass-panel p-6 rounded-2xl border border-slate-800">
-          <div className="flex items-center gap-3 text-red-400 mb-2">
-            <CircleArrowDown className="w-5 h-5" />
-            <span className="text-sm font-medium uppercase tracking-wider">Turnos Cedidos</span>
-          </div>
-          <div className="text-3xl font-bold text-white">
-            ${stats.cededAmount.toLocaleString('es-AR')}
-          </div>
-          <p className="text-slate-500 text-xs mt-2 font-medium">Dinero descontado por ceder</p>
-        </div>
-
-        <div
-          className={clsx(
-            'p-6 rounded-2xl border shadow-xl relative overflow-hidden',
-            stats.totalBalance >= 0
-              ? 'bg-primary-600/10 border-primary-500/30'
-              : 'bg-red-900/10 border-red-500/30',
-          )}
+        
+        <button
+          onClick={handleDownloadPDF}
+          className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors border border-slate-700 w-full md:w-auto justify-center"
         >
-          <div className="flex items-center gap-3 text-slate-300 mb-2 relative z-10">
-            <Wallet className="w-5 h-5" />
-            <span className="text-sm font-medium uppercase tracking-wider">Balance Total</span>
-          </div>
-          <div className="text-4xl font-extrabold text-white relative z-10">
-            {stats.totalBalance >= 0 ? '+' : ''}
-            {stats.totalBalance.toLocaleString('es-AR')}
-          </div>
-          <div className="text-slate-400 text-xs mt-2 font-medium relative z-10">
-            Estado de cuenta con el administrador
-          </div>
-          {/* Decoration */}
-          <div className="absolute -right-4 -bottom-4 opacity-10">
-            <Wallet className="w-24 h-24 text-white" />
-          </div>
-        </div>
+          <Download className="w-4 h-4" />
+          Exportar PDF Certificado
+        </button>
       </div>
 
-      {/* History Table */}
-      <div className="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
-        <div className="p-6 border-b border-slate-800 flex justify-between items-center">
-          <h3 className="font-bold text-white">Historial de Transacciones</h3>
-          <div className="flex items-center gap-2 text-slate-500 text-sm">
-            <Calendar className="w-4 h-4" />
-            Este Mes
-          </div>
-        </div>
-
-        {/* Desktop Table */}
-        <div className="hidden md:block overflow-x-auto touch-pan-x">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-900/50 text-slate-500 text-xs uppercase font-bold">
-              <tr>
-                <th className="px-6 py-4">Fecha</th>
-                <th className="px-6 py-4">Detalle del Servicio</th>
-                <th className="px-6 py-4">Categoría</th>
-                <th className="px-6 py-4 text-right">Extras / Desc.</th>
-                <th className="px-6 py-4 text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {displayShifts.length === 0 && !loading && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-slate-500 text-sm">
-                    Aún no tenés turnos registrados. Cuando tomes o cedas un turno desde el módulo Listero, aparecerá acá con su valor.
-                  </td>
-                </tr>
-              )}
-              {displayShifts.map((shift) => {
-                // currentUser from useAuth()
-                const isAssignedToMe =
-                  String(shift.assignedTo) === String(currentUser?.id) ||
-                  String(shift.assignedTo) === String(currentUser?.internalNumber);
-                const isCanje = shift.transformaFacil;
-
-                return (
-                  <tr key={shift.id} className="hover:bg-white/5 transition-colors group">
-                    <td className="px-6 py-4 text-sm text-slate-400 font-mono">{shift.date}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {isAssignedToMe ? (
-                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        ) : (
-                          <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                        )}
-                        <div>
-                          <div className="text-sm font-bold text-white">
-                            {isCanje
-                              ? 'A Canje (A Favor)'
-                              : isAssignedToMe
-                                ? 'Servicio Realizado'
-                                : 'Servicio Cedido'}
-                          </div>
-                          <div className="text-xs text-slate-500">
-                            Coche {String((shift as Record<string, unknown>).carNumber ?? '---')} •
-                            Serv {String((shift as Record<string, unknown>).serviceNumber ?? '---')}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-300">
-                      <div className="font-medium">
-                        {(shift as Record<string, unknown>).category as React.ReactNode}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        Base: $
-                        {(shift as Record<string, unknown>).totalValue
-                          ? (
-                              Number((shift as Record<string, unknown>).totalValue)
-                            ).toLocaleString()
-                          : '---'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right text-sm">
-                      {Number((shift as Record<string, unknown>).extraHours ?? 0) > 0 && (
-                        <div className="text-yellow-400">
-                          +{Number((shift as Record<string, unknown>).extraHours)} Hrs Extra
-                        </div>
-                      )}
-                      {Number((shift as Record<string, unknown>).tipValue ?? 0) > 0 && (
-                        <div className="text-emerald-400">+Propina</div>
-                      )}
-                    </td>
-                    <td
-                      className={clsx(
-                        'px-6 py-4 text-right font-bold font-mono',
-                        isAssignedToMe ? 'text-emerald-400' : 'text-red-400',
-                      )}
-                    >
-                      {isAssignedToMe ? '+' : '-'}$
-                      {Number((shift as Record<string, unknown>).totalValue ?? 0).toLocaleString(
-                        'es-AR',
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile Feed View */}
-        <div className="md:hidden divide-y divide-slate-800">
-          {displayShifts.map((shift) => {
-            // currentUser from useAuth()
-            const isAssignedToMe =
-              String(shift.assignedTo) === String(currentUser?.id) ||
-              String(shift.assignedTo) === String(currentUser?.internalNumber);
-            const isCanje = shift.transformaFacil;
-
-            return (
-              <div key={shift.id} className="p-4 flex flex-col gap-2 hover:bg-white/5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={clsx(
-                        'w-10 h-10 rounded-full flex items-center justify-center border',
-                        isAssignedToMe
-                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                          : 'bg-red-500/10 border-red-500/30 text-red-400',
-                      )}
-                    >
-                      {isAssignedToMe ? (
-                        <CircleArrowUp className="w-5 h-5" />
-                      ) : (
-                        <CircleArrowDown className="w-5 h-5" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-white">
-                        {isCanje
-                          ? 'A Canje (A Favor)'
-                          : isAssignedToMe
-                            ? 'Servicio Realizado'
-                            : 'Servicio Cedido'}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {String((shift as Record<string, unknown>).date ?? '')} • Coche{' '}
-                        {(shift as Record<string, unknown>).carNumber as React.ReactNode}
-                      </div>
-                    </div>
-                  </div>
-                  <div
-                    className={clsx(
-                      'font-bold text-lg font-mono',
-                      isAssignedToMe ? 'text-emerald-400' : 'text-red-400',
-                    )}
-                  >
-                    {isAssignedToMe ? '+' : '-'}$
-                    {Number((shift as Record<string, unknown>).totalValue ?? 0).toLocaleString(
-                      'es-AR',
-                    )}
-                  </div>
-                </div>
-
-                {/* Details Block */}
-                <div className="ml-14 bg-slate-900/50 rounded p-2 text-xs text-slate-400 grid grid-cols-2 gap-2">
-                  <div>
-                    <span className="block text-slate-600 uppercase text-[10px]">Categoría</span>
-                    <span className="text-white">
-                      {(shift as Record<string, unknown>).category as React.ReactNode}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="block text-slate-600 uppercase text-[10px]">Extras</span>
-                    {Number((shift as Record<string, unknown>).extraHours ?? 0) > 0 ? (
-                      <span className="text-yellow-400">
-                        {Number((shift as Record<string, unknown>).extraHours)} Hrs
-                      </span>
-                    ) : (
-                      <span>-</span>
-                    )}
-                  </div>
-                </div>
+      {balanceData && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-slate-900 border border-slate-700 p-5 rounded-xl">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-slate-400 text-sm font-medium">Total Ingresos</p>
+                <p className="text-2xl font-bold text-emerald-400 mt-1">
+                  ${balanceData.totalIngresos}
+                </p>
               </div>
-            );
-          })}
+              <div className="p-2 bg-emerald-500/10 rounded-lg">
+                <CircleArrowUp className="w-5 h-5 text-emerald-500" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-700 p-5 rounded-xl">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-slate-400 text-sm font-medium">Costos Taller (M7)</p>
+                <p className="text-2xl font-bold text-red-400 mt-1">
+                  ${balanceData.totalTaller}
+                </p>
+              </div>
+              <div className="p-2 bg-red-500/10 rounded-lg">
+                <CircleArrowDown className="w-5 h-5 text-red-500" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-700 p-5 rounded-xl">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-slate-400 text-sm font-medium">Sanciones (M8)</p>
+                <p className="text-2xl font-bold text-red-400 mt-1">
+                  ${balanceData.totalSanciones}
+                </p>
+              </div>
+              <div className="p-2 bg-red-500/10 rounded-lg">
+                <CircleArrowDown className="w-5 h-5 text-red-500" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-emerald-900/50 to-slate-900 border border-emerald-500/30 p-5 rounded-xl">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-emerald-200/70 text-sm font-medium">Saldo Neto a Cobrar</p>
+                <p className="text-3xl font-bold text-emerald-400 mt-1">
+                  ${balanceData.saldoNeto}
+                </p>
+              </div>
+              <div className="p-2 bg-emerald-500/20 rounded-lg">
+                <Wallet className="w-6 h-6 text-emerald-400" />
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {balanceData && (
+        <div className="bg-slate-900 border border-slate-700 rounded-xl p-4">
+          <p className="text-xs text-slate-500 break-all font-mono">
+            HASH VALIDACIÓN: {balanceData.hashVerificacion}
+          </p>
+        </div>
+      )}
     </div>
   );
 };
