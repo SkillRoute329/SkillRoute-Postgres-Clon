@@ -63,6 +63,14 @@ app.use(cors({
   credentials: true,
 }));
 
+// Módulo Anti-Caché Global Severo
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 logger.info(`🔒 CORS configurado`, {
   modo: isDev ? 'DESARROLLO (todos los orígenes)' : 'PRODUCCIÓN (restringido)',
   origenesPermitidos: isDev ? '*' : corsOrigins,

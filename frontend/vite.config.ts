@@ -24,7 +24,7 @@ const FIREBASE_SHIM_ALIASES = {
   'firebase/analytics': path.resolve(__dirname, 'src/config/firebaseStubsShim.ts'),
 };
 
-const CACHE_BUST = Date.now();
+const CACHE_BUST = `v${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
 // ── STM Relay Middleware Plugin ─────────────────────────────────────
 // This MUST be a configureServer plugin so it runs BEFORE Vite's
