@@ -53,6 +53,11 @@ interface LegajoData {
     hora_fin: string;
     linea_id: string;
   }>;
+  tramos_laborales: Array<{
+    id: string;
+    fecha_ingreso: string;
+    fecha_egreso: string | null;
+  }>;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -204,13 +209,14 @@ const LegajoLaboral = ({ empleadoId }: LegajoLaboralProps) => {
             <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">Antigüedad</p>
           </div>
           <p className="text-3xl font-black text-white">
-            {legajo.antiguedad_anios}
+            {legajo.antiguedad_anios ?? 0}
             <span className="text-lg font-semibold text-slate-400"> a </span>
-            {legajo.antiguedad_meses}
+            {legajo.antiguedad_meses ?? 0}
             <span className="text-lg font-semibold text-slate-400"> m</span>
           </p>
-          <p className="text-xs text-slate-500 mt-1">
-            Ingreso: {new Date(legajo.fecha_ingreso).toLocaleDateString('es-UY')}
+          <p className="text-xs text-emerald-400 mt-1 font-semibold flex items-center gap-1">
+            <CheckCircle className="w-3 h-3" />
+            Certificado por sumatoria histórica
           </p>
         </div>
 
@@ -245,9 +251,55 @@ const LegajoLaboral = ({ empleadoId }: LegajoLaboralProps) => {
         </div>
       </div>
 
+      {/* ── Tramos Laborales Históricos (Escenario 3) ────────────────────── */}
+      <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden mt-6">
+        <div className="bg-slate-800/50 px-5 py-3 border-b border-slate-700 flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-slate-400" />
+          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Historial de Tramos Laborales (Aportes Efectivos)</h2>
+        </div>
+        <div className="p-0">
+          {legajo.tramos_laborales && legajo.tramos_laborales.length > 0 ? (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-800/30 text-xs text-slate-400 uppercase tracking-wider">
+                  <th className="p-4 font-medium border-b border-slate-700/50">Alta (Ingreso)</th>
+                  <th className="p-4 font-medium border-b border-slate-700/50">Baja (Egreso)</th>
+                  <th className="p-4 font-medium border-b border-slate-700/50 text-right">Estado</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm divide-y divide-slate-700/50">
+                {legajo.tramos_laborales.map((tramo) => (
+                  <tr key={tramo.id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="p-4 font-mono text-slate-300">
+                      {new Date(tramo.fecha_ingreso).toLocaleDateString('es-UY')}
+                    </td>
+                    <td className="p-4 font-mono text-slate-400">
+                      {tramo.fecha_egreso ? new Date(tramo.fecha_egreso).toLocaleDateString('es-UY') : '—'}
+                    </td>
+                    <td className="p-4 text-right">
+                      {!tramo.fecha_egreso ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
+                          <CheckCircle className="w-3 h-3" /> ACTIVO
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-500/10 text-slate-400 text-xs font-semibold border border-slate-500/20">
+                          CERRADO
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="p-6 text-center text-slate-500 text-sm">No hay tramos registrados.</div>
+          )}
+        </div>
+      </div>
+
       {/* ── Asignaciones activas bloqueadas ──────────────────────────────── */}
       {legajo.asignaciones_activas.length > 0 && (
-        <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
+        <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden mt-6">
           <div className="px-5 py-3 border-b border-slate-700 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-slate-400" />
             <p className="text-sm font-semibold text-slate-300">

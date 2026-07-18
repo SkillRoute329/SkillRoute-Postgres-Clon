@@ -173,11 +173,17 @@ export async function getDetalleLaboralEmpleado(req: Request, res: Response): Pr
       .whereNotIn('estado', ['FINALIZADO', 'CANCELADO'])
       .select('id', 'estado', 'hora_inicio', 'hora_fin', 'linea_id');
 
+    // Recuperar el historial de tramos laborales para certificar antigüedad
+    const tramosLaborales = await sqlDb('personal_periods')
+      .where('personal_id', id)
+      .orderBy('fecha_ingreso', 'desc');
+
     res.json({
       ok: true,
       legajo: {
         ...stripSensitive(legajo as unknown as Record<string, unknown>),
         asignaciones_activas: asignacionesActivas,
+        tramos_laborales: tramosLaborales,
         esta_bloqueado: ESTADOS_BLOQUEANTES.includes(legajo.estado_hoy as EstadoHoy),
       },
     });
