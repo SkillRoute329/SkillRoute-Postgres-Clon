@@ -62,13 +62,21 @@ export const inspectorController = {
 
         const distancia = parseFloat(distQuery.rows[0].distancia_metros);
 
-        let estado_verificacion = 'FISCALIZADO_REAL';
+        let estado_verificacion = 'VERIFICADO_A_BORDO';
 
-        if (distancia > 30) {
-          estado_verificacion = 'RECHAZADO_POR_FRAUDE';
-          // Se requiere "lanzar un RAISE EXCEPTION impidiendo el fraude en frío."
-          // Lanzamos error en la transacción Node.js que hará rollback.
-          throw new Error(`Validación Antifraude: El inspector se encuentra a ${distancia.toFixed(2)}m del vehículo (límite 30m).`);
+        if (distancia > 300) {
+          estado_verificacion = 'ALERTA_DISCORDANCIA';
+          // Inyecta alerta de auditoría interna en paralelo
+          await trx('alertas_auditoria').insert({
+            id: uuidv4(),
+            agency_id,
+            inspector_id,
+            driver_id,
+            tipo_alerta: 'ALERTA_DISCORDANCIA',
+            mensaje: `El inspector registró un acta a ${distancia.toFixed(2)}m del vehículo (límite > 300m).`
+          });
+        } else if (distancia > 30) {
+          estado_verificacion = 'VERIFICADO_EN_CORREDOR';
         }
 
         // 4. Inserción del Acta
@@ -89,6 +97,47 @@ export const inspectorController = {
     } catch (error: any) {
       logger.error(`Error en registrarActaInspeccion: ${error?.message || error}`);
       res.status(403).json({ error: error?.message || 'Error de validación espacial.' });
+    }
+  },
+
+  /**
+   * GET /api/conductor/historial
+   * Autoevaluación transparente para el conductor ante Comisión de Disciplina.
+   */
+  async getHistorialConductor(req: AuthRequest, res: Response): Promise<void> {
+    // Simulamos que el driver_id autenticado viaja en el req.user
+    const driver_id = req.user?.id;
+    const { agency_id } = req.query; // Lo tomamos del query params para no romper el tipo AuthUser
+
+    if (!driver_id || !agency_id) {
+      res.status(400).json({ error: 'Falta driver_id o agency_id.' });
+      return;
+    }
+
+    try {
+      // Consulta inmutable indexada (roster_assignments no requiere PostGIS aggregation)
+      const historial = await sqlDb('roster_assignments as ra')
+        .select(
+          'ra.coche_id',
+          'ra.linea_id',
+          'ra.hora_login_real',
+          'ra.hora_logoff_real',
+          sqlDb.raw('COUNT(i.id) as total_actas'),
+          sqlDb.raw('AVG((i.data_jsonb->>\'timeDeltaMinutes\')::numeric) as promedio_desvio')
+        )
+        .leftJoin('inspecciones as i', function() {
+          this.on('i.vehiculo_id', '=', 'ra.coche_id')
+              .andOn('i.driver_id', '=', 'ra.driver_id')
+        })
+        .where('ra.driver_id', driver_id)
+        .groupBy('ra.coche_id', 'ra.linea_id', 'ra.hora_login_real', 'ra.hora_logoff_real')
+        .orderBy('ra.hora_login_real', 'desc')
+        .limit(100);
+
+      res.status(200).json({ success: true, data: historial });
+    } catch (error: any) {
+      logger.error(`Error en getHistorialConductor: ${error?.message || error}`);
+      res.status(500).json({ error: 'Error interno al obtener historial del conductor.' });
     }
   }
 };
