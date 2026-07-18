@@ -457,16 +457,24 @@ export const TIPO_CAMBIO_UYU_USD: ParametroEconomico = {
   editableByAdmin: true,
 };
 
-export function calcularCostoTotalEmpleado(salarioNominal: number) {
-  const aportesPatronales = salarioNominal * 0.1265;
-  const aguinaldo = salarioNominal / 12;
-  const salarioVacacional = salarioNominal / 12;
-  const totalMensual = salarioNominal + aportesPatronales + aguinaldo + salarioVacacional;
-  return {
-    salarioNominal,
-    totalMensual: Math.round(totalMensual),
-  };
+/**
+ * @deprecated MÓDULO 10 (2026-07-18) — Esta función ha sido DEPRECADA y
+ * neutralizada. El cálculo de costo total del empleado, días de licencia,
+ * aguinaldo y cargas sociales Grupo 13 se computa exclusivamente en
+ * PostgreSQL mediante fn_dias_licencia_grupo13() y v_legajo_laboral.
+ *
+ * Usar el endpoint: GET /api/admin/personal/:id/legajo
+ * que devuelve provision_aguinaldo_mensual calculada server-side.
+ *
+ * @throws Error en entorno de desarrollo para detectar llamadas residuales.
+ */
+export function calcularCostoTotalEmpleado(_salarioNominal: number): never {
+  throw new Error(
+    '[MÓDULO 10] calcularCostoTotalEmpleado() está DEPRECADA. ' +
+    'Consumir GET /api/admin/personal/:id/legajo para obtener datos de v_legajo_laboral.'
+  );
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // REGISTRO COMPLETO (para UI de Super Admin)

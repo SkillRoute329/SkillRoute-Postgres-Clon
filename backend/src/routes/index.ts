@@ -385,6 +385,7 @@ router.get('/positions', positionsController.getAllPositions);
  * `personal` (879 registros UCOT) con paginación y filtros.
  */
 router.get('/admin/personal', verifyAuth, adminPersonalController.listPersonal);
+router.get('/admin/personal/:id/legajo', verifyAuth, adminPersonalController.getDetalleLaboralEmpleado);
 router.put('/admin/personal/:id', verifyAuth, adminPersonalController.updatePersonal);
 
 /**

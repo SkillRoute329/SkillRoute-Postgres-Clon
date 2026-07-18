@@ -50,7 +50,6 @@ import {
   KM_PROMEDIO_VIAJE as KM_PARAM,
   PASAJEROS_PROMEDIO_VIAJE as PAX_PARAM,
   ELASTICIDAD_FLOTA_DEMANDA as ELASTICIDAD_PARAM,
-  calcularCostoTotalEmpleado,
   SALARIO_INSPECTOR_NOMINAL,
 } from '../../config/parametros-operativos';
 import { subscribeAll, getParametroValor } from '../../services/firestore/parametrosOperativos';
@@ -226,7 +225,9 @@ export default function EconomicProjectionsPage() {
   }, []);
 
   /* ── Pitch de Mercado STM — datos paramétricos cross-operador reactivos ── */
-  const _COSTO_MES_INSPECTOR = calcularCostoTotalEmpleado(params.salarioInspector).totalMensual;
+  // MÓDULO 10: costo inspector calculado directamente (jornal × 1.1265 aportes + 2/12 extras)
+  // La lógica detallada ahora vive en fn_dias_licencia_grupo13() de PostgreSQL.
+  const _COSTO_MES_INSPECTOR = Math.round(params.salarioInspector * (1 + 0.1265 + 1/12 + 1/12));
   const _TASA_REEMPLAZO = 0.70; // 70 % del trabajo inspector reemplazable por SkillRoute
 
   const PITCH_OPERADORES = [
