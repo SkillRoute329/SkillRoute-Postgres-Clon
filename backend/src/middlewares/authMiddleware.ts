@@ -9,6 +9,9 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
+// Caché en memoria RAM nativa para filtro de revocación instantáneo sin latencia de DB
+export const revocadoUsersCache = new Set<string>();
+
 /**
  * Middleware estricto para validar firma JWT local y aplicar control de acceso basado en roles (RBAC).
  * Elimina cualquier dependencia de validación en la nube (ej. Firebase Admin).
@@ -27,6 +30,11 @@ export function requireRole(allowedRoles: string[]) {
 
       // Verificación local estricta
       const decoded = jwt.verify(token, secret) as { id: string; role: string };
+
+      if (revocadoUsersCache.has(decoded.id)) {
+        res.status(401).json({ error: 'Acceso denegado: Token revocado activamente por seguridad' });
+        return;
+      }
 
       if (!decoded.role || !allowedRoles.includes(decoded.role)) {
         res.status(403).json({ 

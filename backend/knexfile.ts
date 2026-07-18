@@ -17,7 +17,9 @@ export default {
     pool: {
       min: 10,
       max: 100,
-      idleTimeoutMillis: 30000
+      acquireTimeoutMillis: 5000,
+      createTimeoutMillis: 8000,
+      idleTimeoutMillis: 10000
     }
   },
   production: {
@@ -35,7 +37,9 @@ export default {
     pool: {
       min: 10,
       max: 100,
-      idleTimeoutMillis: 30000
+      acquireTimeoutMillis: 5000,
+      createTimeoutMillis: 8000,
+      idleTimeoutMillis: 10000
     }
   }
 };
