@@ -55,18 +55,7 @@ export function initializeSocket(io: Server): void {
     const user = socket.handshake.auth.user as AuthUser | null;
 
     if (!user) {
-      // En desarrollo, permitir conexión anónima
-      if (process.env.NODE_ENV === 'development') {
-        socket.handshake.auth.user = {
-          id: 'dev-user',
-          internalNumber: '0000',
-          fullName: 'Developer',
-          role: 'SuperAdmin',
-        };
-        return next();
-      }
-
-      return next(new AppError(401, 'Authentication required'));
+      return next(new AppError(401, 'Authentication required: Acceso denegado por políticas de AppSec'));
     }
 
     next();
