@@ -93,14 +93,30 @@ export default function MiLinea() {
     desvio: string | null;
   } | null>(null);
 
+  const [geomAlternativa, setGeomAlternativa] = useState<any | null>(null);
+  const [cargandoTurno, setCargandoTurno] = useState<boolean>(true);
+
   const cargarTurno = useCallback(async () => {
+    setCargandoTurno(true);
     try {
-      const res = await apiClient.get<{ turno: MiTurno | null; nota?: string; has_detour?: boolean; detour_mensaje?: string }>('/api/mi-turno');
-      const data = (res as unknown as { turno?: MiTurno | null; nota?: string; has_detour?: boolean; detour_mensaje?: string });
+      const res = await apiClient.get<{ turno: MiTurno | null; nota?: string; has_detour?: boolean; detour_mensaje?: string; geom_alternativa?: string }>('/api/mi-turno');
+      const data = (res as unknown as { turno?: MiTurno | null; nota?: string; has_detour?: boolean; detour_mensaje?: string; geom_alternativa?: string });
       setTurno(data?.turno ?? res.data?.turno ?? null);
       setNota((data?.nota ?? res.data?.nota) ?? null);
       setHasDetour((data?.has_detour ?? res.data?.has_detour) ?? false);
       setDetourMensaje((data?.detour_mensaje ?? res.data?.detour_mensaje) ?? null);
+      
+      const geomStr = data?.geom_alternativa ?? res.data?.geom_alternativa;
+      if (geomStr) {
+        try {
+          setGeomAlternativa(typeof geomStr === 'string' ? JSON.parse(geomStr) : geomStr);
+        } catch (e) {
+          console.warn('[MiLinea] Error parseando geom_alternativa:', e);
+          setGeomAlternativa(null);
+        }
+      } else {
+        setGeomAlternativa(null);
+      }
       
       // Módulo 8: Cargar Alertas Disciplinarias
       try {
@@ -122,9 +138,12 @@ export default function MiLinea() {
       } catch (err) {
         console.warn('No se pudo validar estado de taller');
       }
-    } catch {
+    } catch (error) {
+      console.error('[MiLinea] Error de conexión cargando turno:', error);
       setTurno(null);
-      setNota('Error consultando turno del día.');
+      setNota('Error consultando turno del día. Servidor inaccesible. Verificá tu conexión a la red de SkillRoute.');
+    } finally {
+      setCargandoTurno(false);
     }
   }, []);
 
@@ -250,6 +269,16 @@ export default function MiLinea() {
   };
 
   // ── Render ───────────────────────────────────────────────────────────────
+
+  if (cargandoTurno) {
+    return (
+      <div className="text-center py-16 text-slate-500">
+        <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-3 text-blue-500" />
+        <p className="text-lg font-medium text-slate-300">Conectando con Dispatcher Central...</p>
+        <p className="text-sm mt-2">Buscando tu vehículo y línea asignada</p>
+      </div>
+    );
+  }
 
   if (loading && !turno) {
     return (

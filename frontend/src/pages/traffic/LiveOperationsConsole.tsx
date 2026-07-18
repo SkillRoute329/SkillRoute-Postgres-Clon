@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { updateDoc, doc } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
+import TrafficAlertsBanner from '../../components/TrafficAlertsBanner';
 
 const EMPRESA_COLORES: Record<string, string> = {
   UCOT:   '#eab308', // Amarillo
@@ -148,7 +149,8 @@ export default function LiveOperationsConsole() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] bg-slate-950 text-slate-100 overflow-hidden">
-      
+      <TrafficAlertsBanner />
+
       {/* ── Header Unificado ────────────────────────────────────────────────── */}
       <header className="flex-none px-6 py-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-4 flex-wrap z-10 shadow-lg">
         <div className="flex items-center gap-3">

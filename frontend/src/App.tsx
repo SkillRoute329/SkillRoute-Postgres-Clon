@@ -58,6 +58,7 @@ const DriverSchedule = lazy(() => import('./pages/driver/DriverSchedule'));
 const DriverServiceView = lazy(() => import('./pages/driver/DriverServiceView'));
 const DriverNavigation = lazy(() => import('./pages/driver/DriverNavigation'));
 const NewReport = lazy(() => import('./pages/driver/NewReport'));
+const LegajoLaboral = lazy(() => import('./pages/user/LegajoLaboral'));
 const DriverCompliance = DriverSchedule;
 const ABLPage = lazy(() => import('./pages/abl/ABLPage'));
 const PenalizationsPage = lazy(() => import('./pages/abl/penalizations/PenalizationsPage'));
@@ -389,7 +390,7 @@ function App() {
                     <Route path="abl" element={<PrivateRoute roles={['ADMIN','TRAFFIC','ABL']}><ABLPage /></PrivateRoute>} />
                     <Route path="abl/penalizations" element={<PrivateRoute roles={['ADMIN','TRAFFIC','ABL']}><PenalizationsPage /></PrivateRoute>} />
                     <Route path="my-shifts" element={<PrivateRoute><MyShifts /></PrivateRoute>} />
-                    <Route path="my-balance" element={<PrivateRoute><MyBalance /></PrivateRoute>} />
+                    <Route path="my-balance" element={<PrivateRoute><LegajoLaboral /></PrivateRoute>} />
                     <Route path="driver/schedule" element={<PrivateRoute roles={['ADMIN','DRIVER','CONDUCTOR']}><DriverSchedule /></PrivateRoute>} />
                     <Route path="driver/mi-servicio" element={<PrivateRoute roles={['ADMIN','DRIVER','CONDUCTOR']}><DriverServiceView /></PrivateRoute>} />
                     <Route path="driver/navigation" element={<PrivateRoute roles={['ADMIN','DRIVER','CONDUCTOR']}><DriverNavigation /></PrivateRoute>} />
