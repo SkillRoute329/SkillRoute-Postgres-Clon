@@ -1,10 +1,6 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { exec } from 'child_process';
 import { logger } from '../config/logger';
-
-const DOWNLOADS_DIR = 'C:/Users/Usuario/Desktop/SkillRoute clon/ucot_downloads';
-const DOWNLOADER_SCRIPT = 'C:/Users/Usuario/Desktop/SkillRoute clon/ucot_fleet_downloader.js';
+import { immApiClient } from '../ingestion/ImmApiClient';
+import { dataUploader } from '../ingestion/DataUploader';
 
 export interface CocheServicioMap {
   [coche: string]: {
@@ -15,85 +11,57 @@ export interface CocheServicioMap {
 
 class UcotIntranetService {
   private isRunningSync = false;
+  private memoryCache: CocheServicioMap = {};
 
   /**
-   * Genera un mapeo dinámico Coche -> Servicio leyendo los JSONs descargados.
-   * Filtra para devolver únicamente registros recientes (últimas 24 horas por rotación).
+   * Retorna el mapeo Coche -> Servicio (Linea/Variante) desde la memoria caché.
+   * La fuente de verdad es la API oficial de la IMM.
    */
   public getActiveSchedules(): CocheServicioMap {
-    const map: CocheServicioMap = {};
-    try {
-      if (!fs.existsSync(DOWNLOADS_DIR)) {
-        logger.warn(`[UcotIntranet] Directorio de descargas no existe: ${DOWNLOADS_DIR}`);
-        return map;
-      }
-
-      const files = fs.readdirSync(DOWNLOADS_DIR);
-      const now = Date.now();
-      const hours24 = 24 * 60 * 60 * 1000;
-
-      for (const file of files) {
-        if (file.endsWith('.json')) {
-          try {
-            const filePath = path.join(DOWNLOADS_DIR, file);
-            const stats = fs.statSync(filePath);
-            
-            // Solo considerar archivos leídos o modificados en las últimas 24 horas para la rotación diaria
-            if (now - stats.mtimeMs > hours24) {
-              continue; 
-            }
-
-            const raw = fs.readFileSync(filePath, 'utf-8');
-            const json = JSON.parse(raw);
-            
-            if (json.coche && json.servicio) {
-              map[String(json.coche)] = {
-                servicio: String(json.servicio),
-                timestamp: json.timestamp || new Date(stats.mtimeMs).toISOString()
-              };
-            }
-          } catch (err) {
-            // Ignorar fallos individuales de parseo
-          }
-        }
-      }
-    } catch (error) {
-      logger.error('[UcotIntranet] Error leyendo cartones descargados:', error);
-    }
-    return map;
+    return this.memoryCache;
   }
 
   /**
-   * Inicia el Puppeteer Scraper en segundo plano para descargar cartones del día.
+   * Renombrado de triggerDownloader según Plan Estratégico.
+   * Hace una llamada síncrona a la API IMM y carga los datos de forma atómica en BD.
    */
-  public triggerDownloader(): { success: boolean; message: string } {
+  public async syncWithImmApi(): Promise<{ success: boolean; message: string }> {
     if (this.isRunningSync) {
-      return { success: false, message: 'La sincronización de cartones ya está en progreso.' };
-    }
-
-    if (!fs.existsSync(DOWNLOADER_SCRIPT)) {
-      logger.error(`[UcotIntranet] Script de descarga no encontrado en: ${DOWNLOADER_SCRIPT}`);
-      return { success: false, message: 'El motor de descarga no está instalado en la ruta correcta.' };
+      return { success: false, message: 'La sincronización con la API IMM ya está en progreso.' };
     }
 
     this.isRunningSync = true;
-    logger.info('[UcotIntranet] Iniciando ejecución asíncrona de ucot_fleet_downloader.js');
+    logger.info('[UcotIntranet] Iniciando sincronización con API oficial IMM...');
 
-    // Ejecución desacoplada en background
-    const child = exec(`node "${DOWNLOADER_SCRIPT}"`, { cwd: path.dirname(DOWNLOADER_SCRIPT) }, (error, stdout, stderr) => {
+    try {
+      // 1. Consumir JSON oficial desde IMM
+      const buses = await immApiClient.fetchBusesWithBackoff(3, 1000);
+      
+      // 2. Actualizar caché en memoria instantáneamente
+      this.memoryCache = {};
+      buses.filter(b => b.company.toUpperCase().includes('UCOT')).forEach(bus => {
+        this.memoryCache[String(bus.busId)] = {
+          servicio: String(bus.lineVariantId || bus.line),
+          timestamp: bus.timestamp
+        };
+      });
+
+      // 3. Persistencia Atómica
+      const inserted = await dataUploader.uploadToCartonesCompletados(buses, 'UCOT');
+      
       this.isRunningSync = false;
-      if (error) {
-        logger.error('[UcotIntranet] Error en ejecución de downloader:', error);
-        return;
-      }
-      logger.info('[UcotIntranet] Downloader finalizado exitosamente.');
-    });
-
-    // No esperamos a que termine la ejecución (toma varios minutos) para no bloquear Express
-    return { 
-      success: true, 
-      message: 'Sincronización UCOT iniciada en segundo plano. Los cartones se cargarán progresivamente.' 
-    };
+      return {
+        success: true,
+        message: `Sincronización exitosa con IMM. ${inserted} registros actualizados atómicamente.`
+      };
+    } catch (error) {
+      this.isRunningSync = false;
+      logger.error('[UcotIntranet] Fallo en sincronización con API IMM:', error);
+      return {
+        success: false,
+        message: `Fallo al sincronizar: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
   }
 
   public getSyncStatus(): { isRunning: boolean } {

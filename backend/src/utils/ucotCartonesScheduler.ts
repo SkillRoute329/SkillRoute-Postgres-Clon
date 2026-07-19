@@ -32,7 +32,7 @@ function horaMvd(): number {
   return Number(h.replace(/\D/g, '')) || 0;
 }
 
-function tick(): void {
+async function tick(): Promise<void> {
   const [hIni, hFin] = (process.env.UCOT_DOWNLOADER_HORAS || '5-23')
     .split('-')
     .map((x) => Number(x));
@@ -40,7 +40,7 @@ function tick(): void {
   if (h < (hIni ?? 5) || h >= (hFin ?? 23)) {
     return; // fuera de horario de servicio
   }
-  const r = ucotIntranetService.triggerDownloader();
+  const r = await ucotIntranetService.syncWithImmApi();
   if (r.success) logger.info(`[ucotCartones] disparo programado: ${r.message}`);
   else logger.warn(`[ucotCartones] disparo omitido: ${r.message}`);
 }

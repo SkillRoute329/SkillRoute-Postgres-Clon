@@ -298,8 +298,12 @@ const server = httpServer.listen({ port: PORT_NUM, host: '0.0.0.0', exclusive: t
   // Controlado por env POLLER_ENABLED. Si falla, no afecta el resto del
   // backend: el setInterval interno se reintenta solo.
   // ═══════════════════════════════════════════════════════════════════════
+  // START BACKGROUND WORKERS
+  // ═══════════════════════════════════════════════════════════════════════
   try {
-    startPoller();
+    if (process.env.POLLER_ENABLED === 'true') {
+      startPoller();
+    }
   } catch (err) {
     logger.error('[Poller] error arrancando, el backend sigue arriba igual', { err: String(err) });
   }

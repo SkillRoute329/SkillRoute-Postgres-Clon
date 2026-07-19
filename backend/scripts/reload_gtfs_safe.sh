@@ -13,8 +13,8 @@ set -euo pipefail
 
 DIR="${1:?Falta directorio con los .txt de GTFS}"
 PSQL='/c/Program Files/PostgreSQL/15/bin/psql.exe'
-export PGPASSWORD='I0SAv9zhoQDUfTPc7L+KmkAw'
-PG=(-U postgres -d skillroute_master -h 127.0.0.1 -v ON_ERROR_STOP=1)
+export PGPASSWORD="${DB_PASS:-I0SAv9zhoQDUfTPc7L+KmkAw}"
+PG=(-U "${DB_USER:-postgres}" -d "${DB_NAME:-skillroute_master}" -h "${DB_HOST:-127.0.0.1}" -p "${DB_PORT:-5432}" -v ON_ERROR_STOP=1)
 
 for f in agency calendar routes trips stops shapes stop_times; do
   [ -f "$DIR/$f.txt" ] || { echo "FALTA $DIR/$f.txt"; exit 1; }
@@ -40,3 +40,13 @@ echo "[reload_gtfs_safe] ANALYZE…"
 "$PSQL" "${PG[@]}" -c "ANALYZE gtfs.stop_times; ANALYZE gtfs.stops; ANALYZE gtfs.routes; ANALYZE gtfs.trips;" >/dev/null
 "$PSQL" "${PG[@]}" -c "SELECT 'routes' t, count(*) FROM gtfs.routes UNION ALL SELECT 'trips', count(*) FROM gtfs.trips UNION ALL SELECT 'stop_times', count(*) FROM gtfs.stop_times;"
 echo "[reload_gtfs_safe] OK — vista 'lineas' preservada."
+
+# Regenerar schedule_index.json para que el motor de compliance (scheduleComplianceEngine.ts)
+# use los datos GTFS recién cargados. Sin esto, el poller sigue leyendo el JSON viejo
+# y clasifica todos los buses como SIN_HORARIO hasta el próximo reinicio del backend.
+BACKEND_DIR="$(dirname "$0")/.."
+echo "[reload_gtfs_safe] Regenerando schedule_index.json…"
+node "$BACKEND_DIR/scripts/regenerate_schedule_index.js" && \
+  echo "[reload_gtfs_safe] schedule_index.json actualizado OK." || \
+  echo "[reload_gtfs_safe] WARN: falló la regeneración de schedule_index.json (gtfs DB ok, JSON pendiente)."
+

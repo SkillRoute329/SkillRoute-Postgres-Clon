@@ -18,16 +18,17 @@
  * horario de una línea aplica al bus que la opere, independiente del operador.
  */
 
-const { Client } = require('c:/SkillRoute_Master/repo/backend/node_modules/pg');
+require('dotenv').config({ path: require('path').resolve(__dirname, '..', '.env') });
+const { Client } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
 const PG = {
-  host: 'localhost',
-  port: 5432,
-  database: 'skillroute_master',
-  user: 'postgres',
-  password: 'I0SAv9zhoQDUfTPc7L+KmkAw',
+  host: process.env.DB_HOST || '192.168.1.11',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  database: process.env.DB_NAME || 'skillroute_master',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASS,
 };
 
 const AGENCIES = {

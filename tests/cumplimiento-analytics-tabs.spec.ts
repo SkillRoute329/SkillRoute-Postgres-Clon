@@ -19,24 +19,15 @@ test.describe('E2E Cumplimiento Analytics Tabs', () => {
     await page.goto(`${BASE}/dashboard/traffic/diagnostico-cumplimiento`);
     await expect(page).toHaveURL(/traffic\/diagnostico-cumplimiento/);
 
-    // 1. Validar y navegar a la pestaña "Tiempos de Viaje"
-    const runTimesTabBtn = page.getByRole('button', { name: /Tiempos de Viaje/i });
-    await expect(runTimesTabBtn).toBeVisible({ timeout: 15000 });
-    await runTimesTabBtn.click();
+    // 1. Click en la tab superior "Análisis Integral de Servicio"
+    await page.getByRole('button', { name: /Análisis Integral de Servicio/i }).click();
 
-    // Validar título y presencia de filtros en la pestaña
-    await expect(page.getByRole('heading', { name: 'Análisis de Tiempos de Viaje (Run Times)' })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('Sentido', { exact: true })).toBeVisible();
-    await expect(page.getByText('Rango de Días', { exact: true })).toBeVisible();
-
-    // 2. Validar y navegar a la pestaña "Tiempos de Parada"
-    const stopDwellTabBtn = page.getByRole('button', { name: /Tiempos de Parada/i });
-    await expect(stopDwellTabBtn).toBeVisible({ timeout: 15000 });
-    await stopDwellTabBtn.click();
-
-    // Validar título y presencia de filtros y controles
-    await expect(page.getByRole('heading', { name: 'Tiempos de Detención en Paradas (Stop Dwell Times)' })).toBeVisible({ timeout: 15000 });
+    // 2. Validar que las secciones están visibles en el layout vertical (ya no hay sub-pestañas)
+    await expect(page.getByText('Tiempos de Viaje (Run Times)', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Sentido', { exact: true }).first()).toBeVisible();
+    
+    // 3. Validar presencia de la sección de Paradas
+    await expect(page.getByText('Tiempos en Parada (Dwell Times)', { exact: true })).toBeVisible({ timeout: 15000 });
     await expect(page.getByPlaceholder('Buscar parada por nombre...')).toBeVisible();
-    await expect(page.getByText('Dwell Medio', { exact: true })).toBeVisible();
   });
 });

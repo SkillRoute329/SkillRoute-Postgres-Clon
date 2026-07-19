@@ -207,11 +207,11 @@ router.get('/ucot/active-schedules', async (_req, res) => {
 
 /**
  * POST /api/stm/ucot/sync-cartones
- * Ejecuta el Puppeteer Scraper ucot_fleet_downloader.js para refrescar cartones en background.
+ * Ejecuta el sincronizador de la API IMM en background (ahora síncrono).
  */
 router.post('/ucot/sync-cartones', async (_req, res) => {
   try {
-    const triggerResult = ucotIntranetService.triggerDownloader();
+    const triggerResult = await ucotIntranetService.syncWithImmApi();
     res.json(triggerResult);
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || 'Error ejecutando motor de descarga.' });
