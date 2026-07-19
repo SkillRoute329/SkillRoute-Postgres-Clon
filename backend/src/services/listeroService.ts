@@ -424,6 +424,79 @@ export async function updateVehiculo(vehiculoId: string, cambios: Partial<Vehicu
   }
 }
 
+// ─── Gestión Maestra de Personal (Nuevo) ────────────────────────────────────
+
+export async function getPersonalMaestro(): Promise<ConductorDia[]> {
+  try {
+    const rows = await sqlDb<PersonalRow>('personal')
+      .whereNotNull('data_jsonb')
+      .orderBy('full_name', 'asc');
+    
+    return rows.map((r) => rowToConductor(r));
+  } catch (error) {
+    logger.error('[LISTERO] Error getPersonalMaestro', { error: String(error) });
+    throw new AppError(500, 'Error al obtener personal maestro');
+  }
+}
+
+export async function updatePersonalMaestro(id: string, cambios: Record<string, any>): Promise<void> {
+  try {
+    const personal = await sqlDb('personal').where('id', id).first();
+    if (!personal) throw new AppError(404, 'Personal no encontrado');
+
+    const updateData: any = {};
+    if (cambios.fullName) updateData.full_name = cambios.fullName;
+    if (cambios.internalNumber) updateData.internal_number = cambios.internalNumber;
+    if (cambios.telefono) updateData.telefono = cambios.telefono;
+    if (cambios.rol) updateData.role = cambios.rol;
+
+    if (cambios.data_jsonb) {
+      const existingJson = personal.data_jsonb || {};
+      updateData.data_jsonb = JSON.stringify({ ...existingJson, ...cambios.data_jsonb });
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await sqlDb('personal').where('id', id).update(updateData);
+    }
+  } catch (error) {
+    logger.error(`[LISTERO] Error updatePersonalMaestro(${id})`, { error: String(error) });
+    throw new AppError(500, 'Error al actualizar personal maestro');
+  }
+}
+
+export async function rotarSemana(tipo: 'semanal' | 'quincenal'): Promise<{ actualizados: number }> {
+  try {
+    const rows = await sqlDb('personal').whereNotNull('data_jsonb');
+    let actualizados = 0;
+
+    for (const p of rows) {
+      const data = p.data_jsonb || {};
+      
+      // Filtramos solo los fijos que corresponden a este tipo de rotación
+      if (data.tipo_vinculo === 'fijo') {
+        const rotacionAsignada = data.tipo_rotacion || 'semanal'; // Por defecto semanal
+        
+        if (rotacionAsignada === tipo) {
+          const actual = data.rotacion_semana_actual;
+          if (actual === 'mañana' || actual === 'tarde') {
+            const nueva = actual === 'mañana' ? 'tarde' : 'mañana';
+            data.rotacion_semana_actual = nueva;
+            
+            await sqlDb('personal').where('id', p.id).update({
+              data_jsonb: JSON.stringify(data)
+            });
+            actualizados++;
+          }
+        }
+      }
+    }
+    return { actualizados };
+  } catch (error) {
+    logger.error(`[LISTERO] Error rotarSemana(${tipo})`, { error: String(error) });
+    throw new AppError(500, 'Error al rotar semana');
+  }
+}
+
 // ─── Conductores del día ──────────────────────────────────────────────────────
 
 export async function getConductoresDia(fecha: string): Promise<ConductorDia[]> {

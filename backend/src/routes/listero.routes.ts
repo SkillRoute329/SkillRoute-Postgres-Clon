@@ -67,7 +67,40 @@ router.delete(
   }),
 );
 
-// ─── CONDUCTORES ──────────────────────────────────────────────────────────────
+// ─── GESTIÓN MAESTRA DE PERSONAL ──────────────────────────────────────────────
+
+/** GET /api/listero/personal-maestro */
+router.get(
+  '/personal-maestro',
+  verifyAuth,
+  wrap(async (req, res) => {
+    const personal = await listeroService.getPersonalMaestro();
+    res.json({ ok: true, personal });
+  }),
+);
+
+/** PATCH /api/listero/personal-maestro/:id */
+router.patch(
+  '/personal-maestro/:id',
+  verifyAuth,
+  wrap(async (req, res) => {
+    await listeroService.updatePersonalMaestro(req.params.id, req.body);
+    res.json({ ok: true, mensaje: 'Personal maestro actualizado' });
+  }),
+);
+
+/** POST /api/listero/rotar-semana */
+router.post(
+  '/rotar-semana',
+  verifyAuth,
+  wrap(async (req, res) => {
+    const tipo = req.body.tipo || 'semanal';
+    const resultado = await listeroService.rotarSemana(tipo);
+    res.json({ ok: true, actualizados: resultado.actualizados });
+  }),
+);
+
+// ─── CONDUCTORES DEL DÍA ────────────────────────────────────────────────────
 
 /** GET /api/listero/conductores?fecha=YYYY-MM-DD */
 router.get(

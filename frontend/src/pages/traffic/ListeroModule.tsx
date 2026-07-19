@@ -22,6 +22,7 @@ import { getToken } from '../../utils/tokenStore';
 import { ConsolaCorrelativos } from './components/ConsolaCorrelativos';
 import { ModalEditarTurno } from './components/ModalEditarTurno';
 import { ModalEditarConductor } from './components/ModalEditarConductor';
+import { ModalGestionPersonal } from './components/ModalGestionPersonal';
 
 // ─── Tipos (espejo del backend) ───────────────────────────────────────────────
 
@@ -170,6 +171,7 @@ export default function ListeroModule() {
   const [modalAusencia, setModalAusencia] = useState<TurnoDia | null>(null);
   const [modalEditarTurno, setModalEditarTurno] = useState<TurnoDia | null>(null);
   const [modalEditarConductor, setModalEditarConductor] = useState<ConductorDia | null>(null);
+  const [showGestionPersonal, setShowGestionPersonal] = useState(false);
   const [motivoAusencia, setMotivoAusencia] = useState('');
   const [procesando, setProcesando] = useState(false);
   const [panelAlertas, setPanelAlertas] = useState(true);
@@ -351,6 +353,7 @@ export default function ListeroModule() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] bg-slate-950 overflow-hidden">
+      {showGestionPersonal && <ModalGestionPersonal onClose={() => setShowGestionPersonal(false)} />}
 
       {/* Header */}
       <div className="flex-none px-5 py-3 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between gap-4">
@@ -794,6 +797,12 @@ export default function ListeroModule() {
           conductor={modalEditarConductor}
           onClose={() => setModalEditarConductor(null)}
           onSuccess={() => { setModalEditarConductor(null); cargarDatos(); }}
+        />
+      )}
+
+      {showGestionPersonal && (
+        <ModalGestionPersonal
+          onClose={() => setShowGestionPersonal(false)}
         />
       )}
     </div>
