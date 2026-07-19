@@ -14,6 +14,9 @@ export default {
     migrations: {
       directory: './migrations'
     },
+    seeds: {
+      directory: './seeds'
+    },
     pool: {
       min: 10,
       max: 100,
@@ -33,6 +36,9 @@ export default {
     },
     migrations: {
       directory: './migrations'
+    },
+    seeds: {
+      directory: './seeds'
     },
     pool: {
       min: 10,
