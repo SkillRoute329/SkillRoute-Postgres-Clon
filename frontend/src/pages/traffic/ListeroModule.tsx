@@ -373,6 +373,13 @@ export default function ListeroModule() {
             className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white"
           />
           <button
+            onClick={() => setShowGestionPersonal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors text-xs font-bold"
+          >
+            <Users className="w-3.5 h-3.5" />
+            Gestión de Personal
+          </button>
+          <button
             onClick={generarProgramacion}
             disabled={procesando}
             title="Generar programación automática del día"
