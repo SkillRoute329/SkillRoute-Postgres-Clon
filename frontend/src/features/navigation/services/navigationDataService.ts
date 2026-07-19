@@ -424,12 +424,13 @@ export async function getNavigationLineas(agencyId: number): Promise<LineaUCOTRe
     legacy = await getLineasByAgency(agencyId).catch(() => []);
   }
 
-  // Merge con deduplicación por codigo (prioridad crossOp > inyectadas > legacy)
+  // Merge con deduplicación por codigo Y nombre (para preservar variantes/destinos)
   const result: LineaUCOTResumen[] = [];
   const seen = new Set<string>();
   for (const lst of [crossOp, inyectadas, legacy]) {
     for (const l of lst) {
-      const key = String(l.codigo).toLowerCase();
+      // Use the codigo + nombre as the unique key to keep variants (e.g. 17 Casabo vs 17 Casabo TC)
+      const key = `${String(l.codigo).toLowerCase()}_${String(l.nombre).toLowerCase().trim()}`;
       if (seen.has(key)) continue;
       seen.add(key);
       result.push(l);

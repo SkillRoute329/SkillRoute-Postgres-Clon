@@ -37,6 +37,7 @@ import { startMlRetrainScheduler } from './utils/mlRetrainScheduler';
 import { seedDatabase } from './utils/seedDatabase';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJSDoc from 'swagger-jsdoc';
+import { IMMDataPipeline } from './modules/gtfs-core/jobs/immDataPipeline';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INICIALIZACIÓN
@@ -387,6 +388,13 @@ const server = httpServer.listen({ port: PORT_NUM, host: '0.0.0.0', exclusive: t
     startMlRetrainScheduler();
   } catch (err) {
     logger.error('[mlRetrain] error iniciando scheduler', { err: String(err) });
+  }
+
+  // FASE 7 — Inteligencia Competitiva: Pipeline de Censo Mensual de IMM.
+  try {
+    IMMDataPipeline.init();
+  } catch (err) {
+    logger.error('[IMMDataPipeline] error iniciando scheduler', { err: String(err) });
   }
 });
 

@@ -72,7 +72,6 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         // Hub: Terminal Listero + Listero Cascada + Distribución
         { path: '/dashboard/traffic/listero',       label: 'Listero y Distribución', icon: Users        },
         { path: '/dashboard/traffic/navigation',    label: 'Navegador',           icon: Map           },
-        { path: '/dashboard/traffic/network-editor', label: 'Editor de Red (Remix)', icon: Network },
       ],
     },
 
@@ -93,6 +92,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     {
       title: 'Inteligencia Competitiva',
       items: [
+        { path: '/dashboard/intelligence/network-editor',     label: 'Editor de Red (Remix)', icon: Network },
         { path: '/dashboard/traffic/intelligence',            label: 'Inteligencia de Red',   icon: Target     },
         { path: '/dashboard/traffic/diagnostico-ejecutivo',   label: 'Diagnóstico Ejecutivo',  icon: ClipboardList },
         { path: '/dashboard/executive/coverage',              label: 'Cobertura Ejecutiva',   icon: ShieldCheck },

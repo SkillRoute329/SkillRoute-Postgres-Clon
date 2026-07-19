@@ -333,7 +333,7 @@ function App() {
                     <Route path="traffic/posicion" element={<Navigate to="/dashboard/traffic/map-hub?layer=buses" replace />} />
                      {/* Nueva Consola de Inteligencia de Red (Fase 2) */}
                     <Route path="traffic/intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><MarketIntelligenceConsole /></PrivateRoute>} />
-                    <Route path="traffic/network-editor" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><NetworkEditor /></PrivateRoute>} />
+                    <Route path="intelligence/network-editor" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><NetworkEditor /></PrivateRoute>} />
                     <Route path="traffic/live-map" element={<Navigate to="/dashboard/traffic/map-hub?layer=mapa" replace />} />
                     <Route path="traffic/shadow-radar" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
                     <Route path="traffic/competitor-intelligence" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />

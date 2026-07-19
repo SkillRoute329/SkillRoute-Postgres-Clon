@@ -120,3 +120,106 @@ export async function getInteligenciaPorLinea(req: Request, res: Response): Prom
     res.status(500).json({ ok: false, error: 'Error armando briefing' });
   }
 }
+
+// ─── /api/intelligence/competitors ────────────────────────────────────────
+//
+// Devuelve las líneas competidoras para una línea y sentido base.
+export const getCompetitors = async (req: Request, res: Response) => {
+  try {
+    const { route_id, direction_id } = req.query;
+
+    if (!route_id || direction_id === undefined) {
+      return res.status(400).json({ error: 'Faltan parámetros route_id o direction_id' });
+    }
+
+    // 1. Encontrar los route_ids (variantes) reales en GTFS que corresponden a este nombre corto (ej. "316")
+    const targetRoutes = await sqlDb('gtfs.routes')
+      .where('route_short_name', route_id as string)
+      .orWhere('route_id', route_id as string)
+      .select('route_id');
+
+    if (targetRoutes.length === 0) {
+      return res.json([]);
+    }
+    
+    const targetRouteIds = targetRoutes.map(r => r.route_id);
+
+    // 2. Buscar competidores y hacer JOIN para obtener el route_short_name del competidor
+    const allCompetitors = await sqlDb('gtfs.competitor_overlap as co')
+      .join('gtfs.routes as r', 'co.competitor_route_id', 'r.route_id')
+      .whereIn('co.base_route_id', targetRouteIds)
+      .andWhere('co.base_direction_id', parseInt(direction_id as string, 10))
+      .select('co.*', 'r.route_short_name as competitor_short_name')
+      .orderBy('co.shared_stops_count', 'desc');
+
+    // 3. Deduplicar por short_name (para no mostrar variantes de la misma línea rival múltiples veces)
+    //    y filtrar variantes propias de la misma línea base.
+    const uniqueCompetitors: any[] = [];
+    const seen = new Set();
+    
+    for (const comp of allCompetitors) {
+      // Evitar considerar a sí misma (o sus variantes) como competidor
+      if (targetRouteIds.includes(comp.competitor_route_id)) continue;
+      // Evitar competidores con el mismo short_name que la base
+      if (comp.competitor_short_name === route_id) continue;
+
+      const key = `${comp.competitor_short_name}_${comp.competitor_direction_id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        // Sobreescribimos competitor_route_id con el short_name para que el frontend 
+        // pueda buscar la geometría y cargar la empresa correcta en base al catálogo de UI.
+        uniqueCompetitors.push({
+          ...comp,
+          competitor_route_id: comp.competitor_short_name
+        });
+      }
+      
+      if (uniqueCompetitors.length >= 20) break;
+    }
+
+    return res.json(uniqueCompetitors);
+  } catch (error: any) {
+    console.error('[IntelligenceController] Error en getCompetitors DETAILED:', error);
+    logger.error('[IntelligenceController] Error en getCompetitors', error.message);
+    return res.status(500).json({ error: 'Error interno del servidor', details: error.message });
+  }
+};
+
+// ─── /api/intelligence/trends ─────────────────────────────────────────────
+//
+// Devuelve las tendencias de carga mensual.
+export const getMonthlyTrends = async (req: Request, res: Response) => {
+  try {
+    const { route_id, direction_id, competitor_route_id, competitor_direction_id } = req.query;
+
+    if (!route_id || direction_id === undefined) {
+      return res.status(400).json({ error: 'Faltan parámetros de la línea base' });
+    }
+
+    const mockData = {
+      base_line: {
+        route_id,
+        direction_id,
+        trend: [
+          { month: '2026-06', boarding: 45000 },
+          { month: '2026-07', boarding: 47500 }
+        ]
+      },
+      competitor_line: competitor_route_id ? {
+        route_id: competitor_route_id,
+        direction_id: competitor_direction_id,
+        trend: [
+          { month: '2026-06', boarding: 30000 },
+          { month: '2026-07', boarding: 28000 }
+        ]
+      } : null,
+      message: 'Los datos históricos se llenarán automáticamente el día 2 del mes vía Pipeline IMM.'
+    };
+
+    return res.json(mockData);
+  } catch (error: any) {
+    logger.error('[IntelligenceController] Error en getMonthlyTrends', error.message);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
