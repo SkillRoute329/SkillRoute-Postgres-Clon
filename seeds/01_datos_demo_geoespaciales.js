@@ -472,62 +472,43 @@ async function obtenerParadasDesdeGTFS(bearerToken = null) {
 }
 
 /**
- * Obtiene posiciones GTFS-RT en tiempo real con autenticación OAuth.
- * Reutiliza el Bearer Token obtenido en la misma sesión de seed.
- * Si el endpoint falla (403, timeout, formato inesperado), retorna
- * los vehículos de referencia STM sin posiciones en tiempo real.
- *
- * @param {string|null} bearerToken - Token OAuth obtenido previamente (puede ser null)
+ * Obtiene posiciones GTFS-RT en tiempo real con autenticacion OAuth.
+ * Reutiliza el Bearer Token obtenido en la misma sesion de seed.
+ * @param {string|null} bearerToken
  */
-async function obtenerPosicionesGTFSRT(bearerToken = null) {
-  console.log('\n[SEED] 🚌 Intentando obtener posiciones GTFS-RT en tiempo real...');
-
-  const authHeaders = bearerToken
-    ? { 'Authorization': `Bearer ${bearerToken}` }
-    : {};
-
-  if (bearerToken) {
-    console.log('[SEED] 🔑 GTFS-RT: usando autenticación Bearer Token.');
-  } else {
-    console.log('[SEED] 🔓 GTFS-RT: intento anónimo.');
-  }
+async function obtenerPosicionesGTFSRT(bearerToken) {
+  if (bearerToken === undefined) bearerToken = null;
+  console.log('\n[SEED] Intentando obtener posiciones GTFS-RT en tiempo real...');
+  var authHeaders = bearerToken ? { 'Authorization': 'Bearer ' + bearerToken } : {};
 
   try {
-    const rawJson = await fetchText(GTFS_RT_VEHICLES_URL, authHeaders);
-    const data = JSON.parse(rawJson);
-
+    var rawJson = await fetchText(GTFS_RT_VEHICLES_URL, authHeaders);
+    var data = JSON.parse(rawJson);
     if (!data || !data.entity || !Array.isArray(data.entity)) {
       throw new Error('Formato GTFS-RT inesperado');
     }
 
-    // Filtrar vehículos del corredor 300
-    const vehiculosCorredor = data.entity.filter((e) => {
-      const routeId = e.vehicle?.trip?.route_id || '';
+    var vehiculosCorredor = data.entity.filter(function(e) {
+      var routeId = (e.vehicle && e.vehicle.trip) ? (e.vehicle.trip.route_id || '') : '';
       return routeId.startsWith('300') || routeId.startsWith('305') || routeId.startsWith('310');
     });
 
-    if (vehiculosCorredor.length === 0) {
-      throw new Error('Sin vehículos del corredor 300 en GTFS-RT');
-    }
+    if (vehiculosCorredor.length === 0) throw new Error('Sin vehiculos del corredor 300 en GTFS-RT');
+    console.log('[SEED] ' + vehiculosCorredor.length + ' vehiculos del corredor 300 desde GTFS-RT.');
 
-    console.log(`[SEED] ✅ ${vehiculosCorredor.length} vehículos activos del corredor 300 desde GTFS-RT.`);
-
-    // Enriquecer los vehículos estáticos con posiciones reales
-    const vehiculosEnriquecidos = VEHICULOS_CORREDOR_300.map((v) => {
-      const rtVehicle = vehiculosCorredor.find(
-        (e) => e.vehicle?.vehicle?.id === v.vehicle_id || e.vehicle?.trip?.route_id === v.linea_habitual
-      );
-      if (rtVehicle && rtVehicle.vehicle?.position) {
-        return {
-          ...v,
-          ultima_lat: rtVehicle.vehicle.position.latitude,
-          ultima_lon: rtVehicle.vehicle.position.longitude,
-          velocidad_kmh: rtVehicle.vehicle.position.speed
-            ? (rtVehicle.vehicle.position.speed * 3.6).toFixed(2)
-            : null,
+    var vehiculosEnriquecidos = VEHICULOS_CORREDOR_300.map(function(v) {
+      var rt = vehiculosCorredor.find(function(e) {
+        return (e.vehicle && e.vehicle.vehicle && e.vehicle.vehicle.id === v.vehicle_id) ||
+               (e.vehicle && e.vehicle.trip && e.vehicle.trip.route_id === v.linea_habitual);
+      });
+      if (rt && rt.vehicle && rt.vehicle.position) {
+        return Object.assign({}, v, {
+          ultima_lat: rt.vehicle.position.latitude,
+          ultima_lon: rt.vehicle.position.longitude,
+          velocidad_kmh: rt.vehicle.position.speed ? (rt.vehicle.position.speed * 3.6).toFixed(2) : null,
           ultima_pos_at: new Date().toISOString(),
-          ultima_linea_activa: rtVehicle.vehicle?.trip?.route_id || v.linea_habitual,
-        };
+          ultima_linea_activa: (rt.vehicle.trip ? rt.vehicle.trip.route_id : null) || v.linea_habitual,
+        });
       }
       return v;
     });
@@ -535,183 +516,153 @@ async function obtenerPosicionesGTFSRT(bearerToken = null) {
     return { vehiculos: vehiculosEnriquecidos, fuente: 'gtfs_rt' };
 
   } catch (err) {
-    console.warn(`[SEED] ⚠️  GTFS-RT no disponible: ${err.message}`);
-    console.warn('[SEED]    Usando flota de referencia STM sin posiciones en tiempo real.');
+    console.warn('[SEED] GTFS-RT no disponible: ' + err.message + ' - usando referencia STM.');
     return { vehiculos: VEHICULOS_CORREDOR_300, fuente: 'referencia' };
   }
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Seed principal
-// ──────────────────────────────────────────────────────────────────────────────
+// =============================================================================
+// Seed principal - resiliente: usa hasTable() antes de cada INSERT
+// =============================================================================
 
 exports.seed = async function (knex) {
-  console.log('\n═══════════════════════════════════════════════════════════════');
-  console.log(' SEED: Datos geoespaciales IMM/STM Montevideo — Corredor 300');
-  console.log('═══════════════════════════════════════════════════════════════\n');
+  console.log('\n=================================================================');
+  console.log(' SEED: Datos geoespaciales IMM/STM Montevideo - Corredor 300');
+  console.log('=================================================================\n');
 
-  // ── 0. Obtener Bearer Token OAuth UNA VEZ para toda la sesión de seed ────────
-  // Se reutiliza en la descarga del ZIP y en el GTFS-RT para evitar
-  // múltiples roundtrips al endpoint de autenticación de la IMM.
-  const sharedBearerToken = await obtenerBearerTokenIMM();
+  // 0. Token OAuth reutilizado en toda la sesion
+  var sharedBearerToken = await obtenerBearerTokenIMM();
 
-  // ── 1. Insertar polígono del corredor 300 ──────────────────────────────────
-  console.log('[SEED] 🗺️  Insertando polígono del Corredor Estructural 300...');
+  // 0b. Verificar existencia de tablas antes de cualquier INSERT
+  var tienePoligonos = await knex.schema.hasTable('poligonos_operativos');
+  var tieneParadas   = await knex.schema.hasTable('paradas_gtfs');
+  var tieneVehiculos = await knex.schema.hasTable('vehiculos_flota');
 
-  const existePoligono = await knex('poligonos_operativos')
-    .where({ codigo_externo: 'CE-300' })
-    .first();
+  console.log('[SEED] Verificacion de tablas en la base de datos:');
+  console.log('[SEED]   poligonos_operativos : ' + (tienePoligonos ? 'EXISTE' : 'NO EXISTE - se omitira'));
+  console.log('[SEED]   paradas_gtfs         : ' + (tieneParadas   ? 'EXISTE' : 'NO EXISTE - se omitira'));
+  console.log('[SEED]   vehiculos_flota      : ' + (tieneVehiculos  ? 'EXISTE' : 'NO EXISTE - se omitira'));
 
-  if (!existePoligono) {
-    await knex('poligonos_operativos').insert(POLIGONO_CORREDOR_300);
-    console.log('[SEED] ✅ Polígono CE-300 insertado.');
+  if (!tienePoligonos && !tieneParadas && !tieneVehiculos) {
+    console.error('[SEED] ERROR: ninguna tabla geoespacial existe. Ejecuta npm run db:migrate primero.');
+    return;
+  }
+
+  var totalPoligonosResult = { total: 0 };
+  var totalParadasResult   = { total: 0 };
+  var totalVehiculosResult = { total: 0 };
+  var fuenteParadas        = 'omitido';
+  var fuenteVehiculos      = 'omitido';
+
+  // 1. Poligono del corredor 300
+  if (!tienePoligonos) {
+    console.log('[SEED] Omitiendo poligono CE-300 - tabla poligonos_operativos no existe.');
   } else {
-    await knex('poligonos_operativos')
-      .where({ codigo_externo: 'CE-300' })
-      .update({
-        geojson_geom: POLIGONO_CORREDOR_300.geojson_geom,
-        updated_at: new Date(),
-      });
-    console.log('[SEED] ℹ️  Polígono CE-300 ya existía, actualizado.');
-  }
-
-  // Actualizar geometría PostGIS si está disponible
-  try {
-    await knex.raw(`
-      UPDATE poligonos_operativos
-      SET geom = ST_Force2D(ST_GeomFromGeoJSON(geojson_geom::text))
-      WHERE codigo_externo = 'CE-300' AND geom IS NULL
-    `);
-    console.log('[SEED] ✅ Geometría PostGIS de polígono sincronizada.');
-  } catch (_) {
-    // PostGIS no disponible — continuar con JSONB
-  }
-
-  // ── 2. Descargar e insertar paradas GTFS ──────────────────────────────────
-  const { paradas, fuente: fuenteParadas } = await obtenerParadasDesdeGTFS(sharedBearerToken);
-
-  console.log(`\n[SEED] 🚏 Insertando ${paradas.length} paradas (fuente: ${fuenteParadas})...`);
-
-  let paradasInsertadas = 0;
-  let paradasActualizadas = 0;
-
-  for (const parada of paradas) {
-    const registro = {
-      stop_id: parada.stop_id,
-      stop_code: parada.stop_code || null,
-      stop_name: parada.stop_name,
-      stop_desc: parada.stop_desc || null,
-      stop_lat: parada.stop_lat,
-      stop_lon: parada.stop_lon,
-      zone_id: parada.zone_id || null,
-      barrio: parada.barrio || null,
-      agency_id: parada.agency_id || 1,
-      activo: true,
-      rutas_que_pasan: Array.isArray(parada.rutas_que_pasan)
-        ? JSON.stringify(parada.rutas_que_pasan)
-        : (parada.rutas_que_pasan || '[]'),
-      meta: JSON.stringify({ fuente: fuenteParadas, seed_at: new Date().toISOString() }),
-    };
-
-    const existe = await knex('paradas_gtfs').where({ stop_id: parada.stop_id }).first();
-
-    if (!existe) {
-      await knex('paradas_gtfs').insert(registro);
-      paradasInsertadas++;
-    } else {
-      await knex('paradas_gtfs')
-        .where({ stop_id: parada.stop_id })
-        .update({ ...registro, updated_at: new Date() });
-      paradasActualizadas++;
-    }
-  }
-
-  // Sincronizar geometría PostGIS de paradas
-  try {
-    await knex.raw(`
-      UPDATE paradas_gtfs
-      SET geom = ST_SetSRID(ST_MakePoint(stop_lon, stop_lat), 4326)
-      WHERE geom IS NULL AND stop_lat IS NOT NULL AND stop_lon IS NOT NULL
-    `);
-    console.log('[SEED] ✅ Geometría PostGIS de paradas sincronizada.');
-  } catch (_) {
-    // PostGIS no disponible
-  }
-
-  console.log(`[SEED] ✅ Paradas: ${paradasInsertadas} nuevas, ${paradasActualizadas} actualizadas.`);
-
-  // ── 3. Insertar vehículos de flota ─────────────────────────────────────────
-  const { vehiculos, fuente: fuenteVehiculos } = await obtenerPosicionesGTFSRT(sharedBearerToken);
-
-  console.log(`\n[SEED] 🚌 Insertando ${vehiculos.length} vehículos (fuente: ${fuenteVehiculos})...`);
-
-  let vehiculosInsertados = 0;
-  let vehiculosActualizados = 0;
-
-  for (const v of vehiculos) {
-    const registro = {
-      vehicle_id: v.vehicle_id,
-      bus_numero: v.bus_numero || null,
-      patente: v.patente || null,
-      agency_id: v.agency_id,
-      empresa: v.empresa || null,
-      linea_habitual: v.linea_habitual || null,
-      estado: 'ACTIVO',
-      tipo_vehiculo: v.tipo_vehiculo || 'OMNIBUS',
-      capacidad_pasajeros: v.capacidad_pasajeros || null,
-      tiene_rampa: v.tiene_rampa || false,
-      tiene_wifi: v.tiene_wifi || false,
-      ultima_lat: v.ultima_lat || null,
-      ultima_lon: v.ultima_lon || null,
-      ultima_pos_at: v.ultima_pos_at ? new Date(v.ultima_pos_at) : null,
-      velocidad_kmh: v.velocidad_kmh || null,
-      ultima_linea_activa: v.ultima_linea_activa || v.linea_habitual || null,
-      modelo: v.modelo || null,
-      anio_fabricacion: v.anio_fabricacion || null,
-      meta: JSON.stringify({ fuente: fuenteVehiculos, seed_at: new Date().toISOString() }),
-    };
-
-    const existe = await knex('vehiculos_flota').where({ vehicle_id: v.vehicle_id }).first();
-
-    if (!existe) {
-      await knex('vehiculos_flota').insert(registro);
-      vehiculosInsertados++;
-    } else {
-      await knex('vehiculos_flota')
-        .where({ vehicle_id: v.vehicle_id })
-        .update({ ...registro, updated_at: new Date() });
-      vehiculosActualizados++;
-    }
-
-    // Actualizar geometría PostGIS de posición
-    if (v.ultima_lat && v.ultima_lon) {
-      try {
-        await knex.raw(
-          `UPDATE vehiculos_flota
-           SET ultima_pos = ST_SetSRID(ST_MakePoint(?, ?), 4326)
-           WHERE vehicle_id = ?`,
-          [v.ultima_lon, v.ultima_lat, v.vehicle_id]
-        );
-      } catch (_) {
-        // PostGIS no disponible
+    console.log('[SEED] Insertando poligono del Corredor Estructural 300...');
+    try {
+      var existePoligono = await knex('poligonos_operativos').where({ codigo_externo: 'CE-300' }).first();
+      if (!existePoligono) {
+        await knex('poligonos_operativos').insert(POLIGONO_CORREDOR_300);
+        console.log('[SEED] Poligono CE-300 insertado.');
+      } else {
+        await knex('poligonos_operativos').where({ codigo_externo: 'CE-300' }).update({
+          geojson_geom: POLIGONO_CORREDOR_300.geojson_geom, updated_at: new Date(),
+        });
+        console.log('[SEED] Poligono CE-300 actualizado.');
       }
-    }
+      try {
+        var qPoly = "UPDATE poligonos_operativos SET geom = ST_Force2D(ST_GeomFromGeoJSON(geojson_geom::text)) WHERE codigo_externo = 'CE-300' AND geom IS NULL";
+        await knex.raw(qPoly);
+        console.log('[SEED] Geometria PostGIS de poligono sincronizada.');
+      } catch (ignorePostGIS) {}
+      var rPoly = await knex('poligonos_operativos').count('id as total').first();
+      totalPoligonosResult = rPoly || { total: 0 };
+    } catch (err) { console.warn('[SEED] Error en poligono: ' + err.message + ' - continuando.'); }
   }
 
-  console.log(`[SEED] ✅ Vehículos: ${vehiculosInsertados} nuevos, ${vehiculosActualizados} actualizados.`);
+  // 2. Paradas GTFS
+  if (!tieneParadas) {
+    console.log('[SEED] Omitiendo paradas GTFS - tabla paradas_gtfs no existe.');
+  } else {
+    var resParadas = await obtenerParadasDesdeGTFS(sharedBearerToken);
+    var paradas = resParadas.paradas;
+    fuenteParadas = resParadas.fuente;
+    console.log('[SEED] Insertando ' + paradas.length + ' paradas (fuente: ' + fuenteParadas + ')...');
+    var paradasInsertadas = 0, paradasActualizadas = 0;
+    for (var i = 0; i < paradas.length; i++) {
+      var parada = paradas[i];
+      try {
+        var regParada = {
+          stop_id: parada.stop_id, stop_code: parada.stop_code || null,
+          stop_name: parada.stop_name, stop_desc: parada.stop_desc || null,
+          stop_lat: parada.stop_lat, stop_lon: parada.stop_lon,
+          zone_id: parada.zone_id || null, barrio: parada.barrio || null,
+          agency_id: parada.agency_id || 1, activo: true,
+          rutas_que_pasan: Array.isArray(parada.rutas_que_pasan) ? JSON.stringify(parada.rutas_que_pasan) : (parada.rutas_que_pasan || '[]'),
+          meta: JSON.stringify({ fuente: fuenteParadas, seed_at: new Date().toISOString() }),
+        };
+        var existeParada = await knex('paradas_gtfs').where({ stop_id: parada.stop_id }).first();
+        if (!existeParada) { await knex('paradas_gtfs').insert(regParada); paradasInsertadas++; }
+        else { regParada.updated_at = new Date(); await knex('paradas_gtfs').where({ stop_id: parada.stop_id }).update(regParada); paradasActualizadas++; }
+      } catch (err) { console.warn('[SEED] Error en parada ' + parada.stop_id + ': ' + err.message); }
+    }
+    try {
+      await knex.raw('UPDATE paradas_gtfs SET geom = ST_SetSRID(ST_MakePoint(stop_lon, stop_lat), 4326) WHERE geom IS NULL AND stop_lat IS NOT NULL AND stop_lon IS NOT NULL');
+      console.log('[SEED] Geometria PostGIS de paradas sincronizada.');
+    } catch (ignorePostGIS) {}
+    console.log('[SEED] Paradas: ' + paradasInsertadas + ' nuevas, ' + paradasActualizadas + ' actualizadas.');
+    var rParadas = await knex('paradas_gtfs').count('id as total').first();
+    totalParadasResult = rParadas || { total: 0 };
+  }
 
-  // ── 4. Resumen final ────────────────────────────────────────────────────────
-  const totalParadas = await knex('paradas_gtfs').count('id as total').first();
-  const totalVehiculos = await knex('vehiculos_flota').count('id as total').first();
-  const totalPoligonos = await knex('poligonos_operativos').count('id as total').first();
+  // 3. Vehiculos de flota
+  if (!tieneVehiculos) {
+    console.log('[SEED] Omitiendo vehiculos - tabla vehiculos_flota no existe.');
+  } else {
+    var resVehiculos = await obtenerPosicionesGTFSRT(sharedBearerToken);
+    var vehiculos = resVehiculos.vehiculos;
+    fuenteVehiculos = resVehiculos.fuente;
+    console.log('[SEED] Insertando ' + vehiculos.length + ' vehiculos (fuente: ' + fuenteVehiculos + ')...');
+    var vehiculosInsertados = 0, vehiculosActualizados = 0;
+    for (var j = 0; j < vehiculos.length; j++) {
+      var v = vehiculos[j];
+      try {
+        var regV = {
+          vehicle_id: v.vehicle_id, bus_numero: v.bus_numero || null, patente: v.patente || null,
+          agency_id: v.agency_id, empresa: v.empresa || null, linea_habitual: v.linea_habitual || null,
+          estado: 'ACTIVO', tipo_vehiculo: v.tipo_vehiculo || 'OMNIBUS', capacidad_pasajeros: v.capacidad_pasajeros || null,
+          tiene_rampa: v.tiene_rampa || false, tiene_wifi: v.tiene_wifi || false,
+          ultima_lat: v.ultima_lat || null, ultima_lon: v.ultima_lon || null,
+          ultima_pos_at: v.ultima_pos_at ? new Date(v.ultima_pos_at) : null,
+          velocidad_kmh: v.velocidad_kmh || null, ultima_linea_activa: v.ultima_linea_activa || v.linea_habitual || null,
+          modelo: v.modelo || null, anio_fabricacion: v.anio_fabricacion || null,
+          meta: JSON.stringify({ fuente: fuenteVehiculos, seed_at: new Date().toISOString() }),
+        };
+        var existeV = await knex('vehiculos_flota').where({ vehicle_id: v.vehicle_id }).first();
+        if (!existeV) { await knex('vehiculos_flota').insert(regV); vehiculosInsertados++; }
+        else { regV.updated_at = new Date(); await knex('vehiculos_flota').where({ vehicle_id: v.vehicle_id }).update(regV); vehiculosActualizados++; }
+        if (v.ultima_lat && v.ultima_lon) {
+          try { await knex.raw('UPDATE vehiculos_flota SET ultima_pos = ST_SetSRID(ST_MakePoint(?, ?), 4326) WHERE vehicle_id = ?', [v.ultima_lon, v.ultima_lat, v.vehicle_id]); }
+          catch (ignorePostGIS) {}
+        }
+      } catch (err) { console.warn('[SEED] Error en vehiculo ' + v.vehicle_id + ': ' + err.message); }
+    }
+    console.log('[SEED] Vehiculos: ' + vehiculosInsertados + ' nuevos, ' + vehiculosActualizados + ' actualizados.');
+    var rVehiculos = await knex('vehiculos_flota').count('id as total').first();
+    totalVehiculosResult = rVehiculos || { total: 0 };
+  }
 
-  console.log('\n═══════════════════════════════════════════════════════════════');
-  console.log(' SEED COMPLETADO — Resumen');
-  console.log('═══════════════════════════════════════════════════════════════');
-  console.log(` ✅ poligonos_operativos : ${totalPoligonos?.total ?? '?'} registros`);
-  console.log(` ✅ paradas_gtfs         : ${totalParadas?.total ?? '?'} registros`);
-  console.log(` ✅ vehiculos_flota      : ${totalVehiculos?.total ?? '?'} registros`);
-  console.log(` 🌐 Fuente paradas       : ${fuenteParadas}`);
-  console.log(` 🚌 Fuente vehículos     : ${fuenteVehiculos}`);
-  console.log('═══════════════════════════════════════════════════════════════\n');
+  // 4. Resumen final
+  console.log('\n=================================================================');
+  console.log(' SEED COMPLETADO - Resumen');
+  console.log('=================================================================');
+  console.log(' ' + (tienePoligonos ? 'OK  ' : 'SKIP') + ' poligonos_operativos : ' + (tienePoligonos ? String(totalPoligonosResult.total) + ' registros' : 'tabla no existe'));
+  console.log(' ' + (tieneParadas   ? 'OK  ' : 'SKIP') + ' paradas_gtfs         : ' + (tieneParadas   ? String(totalParadasResult.total)   + ' registros' : 'tabla no existe'));
+  console.log(' ' + (tieneVehiculos ? 'OK  ' : 'SKIP') + ' vehiculos_flota      : ' + (tieneVehiculos ? String(totalVehiculosResult.total)  + ' registros' : 'tabla no existe'));
+  console.log(' Fuente paradas   : ' + fuenteParadas);
+  console.log(' Fuente vehiculos : ' + fuenteVehiculos);
+  if (!tienePoligonos || !tieneParadas || !tieneVehiculos) {
+    console.log('[SEED] Tablas faltantes. Para completar: npm run db:migrate && npm run db:seed');
+  }
+  console.log('=================================================================\n');
 };
