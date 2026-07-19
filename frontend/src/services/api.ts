@@ -52,14 +52,16 @@ export async function apiFetch(path: string, opts?: RequestInit) {
 // FASE 5.16: authHeader() del tokenStore único (no más getItem('tf_token')).
 const api = {
   get: async (path: string) => {
-    const response = await fetch(`${API_URL}${path}`, {
+    const url = path.startsWith('/api') ? path : `${API_URL}${path}`;
+    const response = await fetch(url, {
       headers: { ...authHeader() },
     });
     if (!response.ok) throw new Error(`API Error: ${response.status}`);
     return { data: await response.json() };
   },
   post: async (path: string, data: Record<string, unknown>) => {
-    const response = await fetch(`${API_URL}${path}`, {
+    const url = path.startsWith('/api') ? path : `${API_URL}${path}`;
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         ...authHeader(),

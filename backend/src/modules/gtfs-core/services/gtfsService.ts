@@ -296,16 +296,35 @@ export const gtfsService = {
    */
   async listLinesForAgency(agencyId: string) {
     try {
+      const validRoutes = Object.keys(agencyMapping).filter(route => String(agencyMapping[route]) === String(agencyId));
+      
+      // Líneas compartidas explícitas para evitar mezclar operadores (UCOT = 70, CUTCSA = 50, etc.)
+      const sharedLines: Record<string, string[]> = {
+        '70': ['CE1', 'DM1'], // UCOT: CE1 y DM1 (si existe) son compartidas
+        '50': ['CE1', 'DM1']
+      };
+
+      if (sharedLines[String(agencyId)]) {
+        for (const line of sharedLines[String(agencyId)]) {
+          if (!validRoutes.includes(line)) validRoutes.push(line);
+        }
+      }
+
+      if (validRoutes.length === 0) {
+        logger.warn(`[GTFS Service] listLinesForAgency: No se encontraron líneas para agencyId=${agencyId} en agency_mapping.json`);
+        return [];
+      }
+      
+      const routesList = validRoutes.map(r => `'${r.toUpperCase()}'`).join(', ');
       const query = `
         SELECT DISTINCT 
           r.route_short_name as codigo,
           r.route_long_name as nombre
         FROM gtfs.routes r
-        JOIN gtfs.agency_routes ar ON r.route_short_name = ar.route_short_name
-        WHERE ar.agency_id = ? AND ar.detection_count >= 50
+        WHERE UPPER(r.route_short_name) IN (${routesList})
         ORDER BY codigo ASC
       `;
-      const raw = await sqlDb.raw(query, [agencyId]);
+      const raw = await sqlDb.raw(query);
       return raw.rows || raw;
     } catch (err) {
       logger.error(`[GTFS Service] Error listing lines for agency`, err);

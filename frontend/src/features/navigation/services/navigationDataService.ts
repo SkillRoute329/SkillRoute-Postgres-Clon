@@ -368,13 +368,9 @@ async function firestoreLineaData(agencyId: number, codigo: string): Promise<Lin
 export async function getNavigationLineas(agencyId: number): Promise<LineaUCOTResumen[]> {
   // SOBERANIA TOTAL: Fuente 1: Backend SQL local (Exacto y Seguro)
   try {
-    const token = getToken();
-    const resRaw = await fetch(`${ABSOLUTE_API_URL}/gtfs/lines?agencyId=${agencyId}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (resRaw.ok) {
-      const resData = await resRaw.json();
-      const lines = resData.data || [];
+    const resRaw = await api.get(`/gtfs/lines?agencyId=${agencyId}`);
+    if (resRaw.data && Array.isArray(resRaw.data.data)) {
+      const lines = resRaw.data.data;
       if (lines.length > 0) {
         const sqlResult: LineaUCOTResumen[] = [];
         for (const l of lines) {
@@ -405,6 +401,8 @@ export async function getNavigationLineas(agencyId: number): Promise<LineaUCOTRe
         }
         return sqlResult;
       }
+    } else {
+      console.warn(`[NavigationDataService] Absolute SQL backend unexpected response:`, resRaw);
     }
   } catch (err) {
     console.warn('[NavigationDataService] Failed fetching lines via absolute fetch:', err);
@@ -438,9 +436,15 @@ export async function getNavigationLineas(agencyId: number): Promise<LineaUCOTRe
     }
   }
 
-  return result.sort((a, b) =>
-    a.codigo.localeCompare(b.codigo, undefined, { numeric: true }),
-  );
+  return result.sort((a, b) => {
+    const aIsLocal = /^[A-Za-z]/.test(a.codigo);
+    const bIsLocal = /^[A-Za-z]/.test(b.codigo);
+
+    if (aIsLocal && !bIsLocal) return -1;
+    if (!aIsLocal && bIsLocal) return 1;
+
+    return a.codigo.localeCompare(b.codigo, undefined, { numeric: true });
+  });
 }
 
 /**
@@ -457,16 +461,12 @@ export async function getNavigationLineaData(
     const sentidoStr: 'IDA' | 'VUELTA' = String(codigo).toLowerCase().endsWith('b') ? 'VUELTA' : 'IDA';
     const directionId = sentidoStr === 'VUELTA' ? 1 : 0;
 
-    const token = getToken();
-    const resRaw = await fetch(`${ABSOLUTE_API_URL}/gtfs/geometry?agencyId=${agencyId}&linea=${baseCodigo}&directionId=${directionId}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const resRaw = await api.get(`/gtfs/geometry?agencyId=${agencyId}&linea=${baseCodigo}&directionId=${directionId}`);
 
-    if (resRaw.ok) {
-      const resData = await resRaw.json();
-      const data = resData.data;
+    if (resRaw.data) {
+      const data = resRaw.data.data;
       if (data && data.recorrido && data.recorrido.length >= 2) {
-        console.warn('[DEBUG NAV DATA] Loaded PostgreSQL geometry via Direct Pipe:', baseCodigo);
+        console.warn('[DEBUG NAV DATA] Loaded PostgreSQL geometry via API instance:', baseCodigo);
         const ahora = new Date();
         return {
           codigo,
