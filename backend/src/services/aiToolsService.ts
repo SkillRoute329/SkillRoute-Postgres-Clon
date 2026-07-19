@@ -13,7 +13,7 @@ import { getAllVehicles, getVehicleById } from './fleetService';
 import type { ToolSpec } from './aiService';
 import { createSuggestion } from './aiOrdersService';
 import { analizarCompetenciaLinea } from './stmPublicDataScraper';
-import { gtfsService } from './gtfsService';
+import { gtfsService } from '../modules/gtfs-core';
 import axios from 'axios';
 import logger from '../config/logger';
 

@@ -49,7 +49,7 @@ async function getToken() {
 
 async function downloadFile(token) {
   console.log("🚀 Descargando el Catálogo Supremo (GTFS Oficial)...");
-  const destPath = path.join('C:\\SkillRoute_Master\\data_imports', 'google_transit_premium.zip');
+  const destPath = path.join('C:\\Users\\jonat\\Desktop\\PROYECTOS\\SkillRoute-Postgres-Remoto', 'google_transit.zip');
   const file = fs.createWriteStream(destPath);
 
   return new Promise((resolve, reject) => {

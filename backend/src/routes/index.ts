@@ -44,7 +44,7 @@ import stmRoutes from './stm.routes';
 import aiRoutes from './ai.routes';
 import listeroRoutes from './listero.routes';
 import autoStatsRoutes from './autoStats.routes';
-import gtfsRoutes from './gtfs.routes';
+import { gtfsRoutes } from '../modules/gtfs-core';
 import auditRoutes from './audit.routes';
 import dbBridgeRoutes from './dbBridge.routes';
 import etapaStatsRoutes from './etapaStats.routes';
