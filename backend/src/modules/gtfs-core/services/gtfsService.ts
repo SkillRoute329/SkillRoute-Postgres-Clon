@@ -1,5 +1,5 @@
-import sqlDb from '../config/database';
-import { logger } from '../config/logger';
+import sqlDb from '../../../config/database';
+import { logger } from '../../../config/logger';
 import fs from 'fs';
 import path from 'path';
 

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { gtfsService } from '../services/gtfsService';
-import { requireAuth } from '../middleware/auth';
-import { logger } from '../config/logger';
+import { requireAuth } from '../../../middleware/auth';
+import { logger } from '../../../config/logger';
 
 const router = Router();
 
