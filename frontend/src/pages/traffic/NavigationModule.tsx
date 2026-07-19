@@ -58,7 +58,7 @@ import IncidenciaRapida from '../../components/traffic/IncidenciaRapida';
 import type { DesvioGuardado } from '../../services/desviosService';
 import { contarDesviosLocal, getDesviosPorLinea } from '../../services/desviosService';
 import { contarIncidenciasAbiertas } from '../../services/incidenciasService';
-
+import { filterDesviosVigentes } from '../../services/desviosService';
 const VIAJES_ACTIVOS_COL = 'viajes_activos';
 const PROXIMITY_METERS = 100;
 
@@ -533,10 +533,7 @@ export default function NavigationModule() {
     }
   };
 
-  const desviosActivos = [
-    ...(linea?.desviosFijos.filter((d) => d.activo) ?? []),
-    ...(linea?.desviosTemporales.filter((d) => d.activo) ?? []),
-  ];
+  const desviosActivos = filterDesviosVigentes(desviosEnMapa);
   const affectedStopIds = new Set<string>();
 
   /** Hitos teóricos del JSON Maestro cuando no hay coordenadas (línea sin datos en Firestore). */
@@ -576,8 +573,6 @@ export default function NavigationModule() {
     // Pero solo consideramos paradas que tengan coordenadas válidas para calcular la distancia.
     paradasRestantes.forEach((p, idx) => {
       if (p.lat === 0 || p.lng === 0) {
-        // Si no tiene coordenadas (está en Null Island / fallback), no la tomamos como mínimo.
-        // Pero si es la única, deberíamos decir N/A
         return;
       }
       const d = haversineDistanceMeters(currentPos.lat, currentPos.lng, p.lat, p.lng);
@@ -586,6 +581,11 @@ export default function NavigationModule() {
         closestIndex = idx;
       }
     });
+
+    // Fallback: si ninguna parada tiene coordenadas (minDist sigue siendo Infinity), elegimos la primera pendiente
+    if (minDist === Infinity && paradasRestantes.length > 0) {
+      closestIndex = 0;
+    }
 
     return {
       parada: paradasRestantes[closestIndex],
@@ -978,7 +978,7 @@ export default function NavigationModule() {
         <div className="shrink-0 mx-4 mt-2 p-3 rounded-xl bg-amber-900/30 border border-amber-600/50 flex items-start gap-2">
           <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
           <div className="text-sm text-amber-200">
-            <strong>Desvíos activos:</strong> {desviosActivos.map((d) => d.descripcion).join(' — ')}
+            <strong>Desvíos activos:</strong> {desviosActivos.map((d) => d.nombre).join(' — ')}
           </div>
         </div>
       )}
