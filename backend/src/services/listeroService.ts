@@ -350,6 +350,15 @@ export async function updateTurno(turnoId: string, cambios: Partial<TurnoDia>): 
     if (cambios.horaFirma !== undefined) dbCambios.hora_firma = cambios.horaFirma;
     if (cambios.observaciones !== undefined) dbCambios.observaciones = cambios.observaciones;
 
+    // FASE 3: Edición manual de turnos por el Listero
+    if (cambios.conductorId !== undefined) dbCambios.conductor_id = cambios.conductorId;
+    if (cambios.conductorNombre !== undefined) dbCambios.conductor_nombre = cambios.conductorNombre;
+    if (cambios.conductorInterno !== undefined) dbCambios.conductor_interno = cambios.conductorInterno;
+    if (cambios.vehiculoId !== undefined) dbCambios.vehiculo_id = cambios.vehiculoId;
+    if (cambios.vehiculoInterno !== undefined) dbCambios.vehiculo_interno = cambios.vehiculoInterno;
+    if (cambios.lineaId !== undefined) dbCambios.linea_id = cambios.lineaId;
+    if (cambios.horaSalida !== undefined) dbCambios.hora_salida = cambios.horaSalida;
+
     if (Object.keys(dbCambios).length > 0) {
       await sqlDb('turnos_dia').where('id', turnoId).update(dbCambios);
     }
@@ -365,6 +374,43 @@ export async function deleteTurno(turnoId: string): Promise<void> {
   } catch (error) {
     logger.error(`[LISTERO] Error deleteTurno(${turnoId})`, { error: String(error) });
     throw new AppError(500, 'Error al eliminar turno');
+  }
+}
+
+// ─── Edición Manual de Maestros (Conductores / Vehículos) ───────────────────
+
+export async function updateConductor(conductorId: string, cambios: Partial<ConductorDia>): Promise<void> {
+  try {
+    const updateData: Record<string, unknown> = {};
+    if (cambios.estadoHoy !== undefined) updateData.estado_hoy = cambios.estadoHoy;
+    if (cambios.regimenRotacion !== undefined) updateData.regimen_rotacion = cambios.regimenRotacion;
+    if (cambios.patronDescanso !== undefined) updateData.patron_descanso = cambios.patronDescanso;
+    if (cambios.telefono !== undefined) updateData.telefono = cambios.telefono;
+
+    // Update data_jsonb for custom fields like tipo_vinculo, coche_fijo_id
+    if (Object.keys(updateData).length > 0) {
+       await sqlDb('personal').where('id', conductorId).update(updateData);
+    }
+  } catch (error) {
+    logger.error(`[LISTERO] Error updateConductor(${conductorId})`, { error: String(error) });
+    throw new AppError(500, 'Error al actualizar conductor');
+  }
+}
+
+export async function updateVehiculo(vehiculoId: string, cambios: Partial<VehiculoDia>): Promise<void> {
+  try {
+    const vehiculo = await sqlDb('vehiculos').where('id', vehiculoId).first();
+    if (!vehiculo) return;
+    
+    const existingData = vehiculo.data_jsonb || {};
+    const newData = { ...existingData, ...cambios };
+    
+    await sqlDb('vehiculos').where('id', vehiculoId).update({
+       data_jsonb: JSON.stringify(newData)
+    });
+  } catch (error) {
+    logger.error(`[LISTERO] Error updateVehiculo(${vehiculoId})`, { error: String(error) });
+    throw new AppError(500, 'Error al actualizar vehículo');
   }
 }
 
@@ -763,3 +809,67 @@ export async function analizarEmparejamientos(fecha: string, agencyId: string) {
     throw new AppError(500, 'Error al analizar emparejamientos');
   }
 }
+
+// ─── Motor de Correlativos (Validación 45 minutos) ──────────────────────────
+
+export async function procesarCorrelativoDirecto(internoA: string, internoB: string, fecha: string): Promise<{ ok: boolean, message: string }> {
+  try {
+    // 1. Obtener los conductores por interno
+    const choferA = await sqlDb('personal').where('internal_number', internoA).first();
+    const choferB = await sqlDb('personal').where('internal_number', internoB).first();
+
+    if (!choferA || !choferB) {
+      throw new AppError(404, `No se encontraron los internos especificados.`);
+    }
+
+    // 2. Obtener los turnos asignados a cada uno para la fecha
+    const turnosA = await sqlDb('turnos_dia').where('conductor_id', choferA.id).where('fecha', fecha).orderBy('hora_salida', 'asc');
+    const turnosB = await sqlDb('turnos_dia').where('conductor_id', choferB.id).where('fecha', fecha).orderBy('hora_salida', 'asc');
+
+    if (turnosA.length === 0 || turnosB.length === 0) {
+      throw new AppError(400, `Uno o ambos choferes no tienen turnos asignados para el ${fecha}.`);
+    }
+
+    // Para un correlativo, asumimos que A quiere tomar el turno de B DESPUES de terminar el suyo.
+    const turnoOriginalA = turnosA[turnosA.length - 1]; // El último turno de A
+    const turnoObjetivoB = turnosB[0]; // El primer turno de B
+
+    // 3. Regla matemática de 45 minutos
+    // hora_llegada_estimada del Turno A vs hora_salida del Turno B
+    const finA = horaAMinutos(turnoOriginalA.hora_llegada_estimada);
+    const inicioB = horaAMinutos(turnoObjetivoB.hora_salida);
+    
+    // Si B empieza al día siguiente, ajustamos
+    let diff = inicioB - finA;
+    if (diff < 0) {
+      diff += 24 * 60; // Cruzó la medianoche
+    }
+
+    if (diff < 45) {
+      return { 
+        ok: false, 
+        message: `Correlativo inválido. El turno en el coche ${turnoOriginalA.vehiculo_interno} finaliza a las ${turnoOriginalA.hora_llegada_estimada} y el coche ${turnoObjetivoB.vehiculo_interno} sale a las ${turnoObjetivoB.hora_salida}. Solo hay ${diff} minutos de descanso (mínimo 45).`
+      };
+    }
+
+    // 4. Aprobado - Reasignar el turno de B hacia A
+    await updateTurno(turnoObjetivoB.id, { 
+      conductorId: choferA.id,
+      conductorNombre: choferA.full_name,
+      conductorInterno: choferA.internal_number
+    });
+
+    // TODO: La lógica del optimizador podría evaluar si es posible intercambiar los coches enteros si son de la misma línea, pero requiere validaciones más profundas.
+    
+    return {
+      ok: true,
+      message: `Correlativo aprobado. Descanso: ${diff} mins. El chofer ${internoA} ahora realizará también el turno del coche ${turnoObjetivoB.vehiculo_interno}.`
+    };
+
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    logger.error('[LISTERO] Error procesarCorrelativoDirecto', { error: String(error) });
+    throw new AppError(500, 'Error interno procesando correlativo.');
+  }
+}
+

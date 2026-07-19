@@ -5,11 +5,11 @@ export default {
   development: {
     client: 'pg',
     connection: {
-      host: '192.168.1.11',
-      port: 5432,
-      database: 'skillroute_master',
+      host: process.env.DB_HOST || '127.0.0.1',
+      port: Number(process.env.DB_PORT) || 5433,
+      database: process.env.DB_NAME || 'skillroute_soberano',
       user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASS || 'postgres'
+      password: process.env.DB_PASS || 'Skill329'
     },
     migrations: {
       directory: './migrations'
@@ -28,11 +28,11 @@ export default {
   production: {
     client: 'pg',
     connection: {
-      host: '192.168.1.11',
-      port: 5432,
-      database: 'skillroute_master',
+      host: process.env.DB_HOST || '127.0.0.1',
+      port: Number(process.env.DB_PORT) || 5433,
+      database: process.env.DB_NAME || 'skillroute_soberano',
       user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASS || 'postgres'
+      password: process.env.DB_PASS || 'Skill329'
     },
     migrations: {
       directory: './migrations'

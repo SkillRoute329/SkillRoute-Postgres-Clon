@@ -19,6 +19,9 @@ import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import toast from 'react-hot-toast';
 import { formatHoraMvd } from '../../utils/formatTimestamp';
 import { getToken } from '../../utils/tokenStore';
+import { ConsolaCorrelativos } from './components/ConsolaCorrelativos';
+import { ModalEditarTurno } from './components/ModalEditarTurno';
+import { ModalEditarConductor } from './components/ModalEditarConductor';
 
 // ─── Tipos (espejo del backend) ───────────────────────────────────────────────
 
@@ -62,6 +65,11 @@ interface ConductorDia {
   vehiculoAsignado: string | null;
   esConductorReserva: boolean;
   telefono: string | null;
+}
+
+interface VehiculoDia {
+  id: string;
+  interno: string;
 }
 
 interface AlertaOperativa {
@@ -159,9 +167,12 @@ export default function ListeroModule() {
   const [searchConductor, setSearchConductor] = useState('');
   const [filtroTurno, setFiltroTurno] = useState<TurnoNombre | 'todos'>('todos');
   const [modalAusencia, setModalAusencia] = useState<TurnoDia | null>(null);
+  const [modalEditarTurno, setModalEditarTurno] = useState<TurnoDia | null>(null);
+  const [modalEditarConductor, setModalEditarConductor] = useState<ConductorDia | null>(null);
   const [motivoAusencia, setMotivoAusencia] = useState('');
   const [procesando, setProcesando] = useState(false);
   const [panelAlertas, setPanelAlertas] = useState(true);
+  const [vehiculos, setVehiculos] = useState<VehiculoDia[]>([]);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ─── Carga de datos ─────────────────────────────────────────────────────────
@@ -187,20 +198,23 @@ export default function ListeroModule() {
   const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
-      const [turnosData, conductoresData, alertasData, resumenData] = await Promise.all([
+      const [turnosData, conductoresData, alertasData, resumenData, vehiculosData] = await Promise.all([
         apiFetch(`/api/listero/turnos?fecha=${fecha}`),
         apiFetch(`/api/listero/conductores?fecha=${fecha}`),
         apiFetch(`/api/listero/alertas?fecha=${fecha}`),
         apiFetch(`/api/listero/resumen?fecha=${fecha}`),
+        apiFetch(`/api/listero/vehiculos-reserva?fecha=${fecha}`),
       ]);
       setTurnos(turnosData.turnos ?? []);
       setConductores(conductoresData.conductores ?? []);
       setAlertas(alertasData.alertas ?? []);
       setResumen(resumenData.resumen ?? null);
+      setVehiculos(vehiculosData.vehiculos ?? []);
     } catch {
       setTurnos([]);
       setConductores([]);
       setAlertas([]);
+      setVehiculos([]);
     } finally {
       setLoading(false);
     }
@@ -506,6 +520,11 @@ export default function ListeroModule() {
             </div>
             <span className="text-[10px] text-slate-500">{turnosFiltrados.length} servicios</span>
           </div>
+          
+          {/* Consola de correlativos opcional */}
+          <div className="px-4 pt-2">
+             <ConsolaCorrelativos fecha={fecha} onSuccess={cargarDatos} />
+          </div>
 
           {/* Tabla de turnos */}
           <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -610,6 +629,14 @@ export default function ListeroModule() {
 
                       {/* Acciones */}
                       <div className="flex items-center gap-1">
+                        <button
+                          title="Editar manualmente"
+                          onClick={() => setModalEditarTurno(turno)}
+                          className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
+                        >
+                           {/* Icono de lápiz genérico (lucide-react no siempre lo tiene importado, usar texto o Wrench) */}
+                          <Wrench className="w-3.5 h-3.5" />
+                        </button>
                         {turno.conductorNombre && !turno.firmaConductor && turno.estado !== 'completado' && (
                           <button
                             title="Registrar firma del cartón"
@@ -672,7 +699,8 @@ export default function ListeroModule() {
             {conductoresDisponibles.map((c) => (
               <div
                 key={c.id}
-                className={`rounded-lg border p-2 ${c.estadoHoy === 'reserva' ? 'border-indigo-500/30 bg-indigo-900/10' : 'border-slate-700/50 bg-slate-800/40'}`}
+                onClick={() => setModalEditarConductor(c)}
+                className={`rounded-lg border p-2 cursor-pointer hover:bg-slate-700/50 transition-colors ${c.estadoHoy === 'reserva' ? 'border-indigo-500/30 bg-indigo-900/10' : 'border-slate-700/50 bg-slate-800/40'}`}
               >
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-bold text-white truncate">{c.fullName}</p>
@@ -747,6 +775,25 @@ export default function ListeroModule() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modales de edición */}
+      {modalEditarTurno && (
+        <ModalEditarTurno
+          turno={modalEditarTurno}
+          conductores={conductores}
+          vehiculos={vehiculos}
+          onClose={() => setModalEditarTurno(null)}
+          onSuccess={() => { setModalEditarTurno(null); cargarDatos(); }}
+        />
+      )}
+      
+      {modalEditarConductor && (
+        <ModalEditarConductor
+          conductor={modalEditarConductor}
+          onClose={() => setModalEditarConductor(null)}
+          onSuccess={() => { setModalEditarConductor(null); cargarDatos(); }}
+        />
       )}
     </div>
   );

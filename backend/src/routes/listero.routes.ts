@@ -80,6 +80,16 @@ router.get(
   }),
 );
 
+/** PATCH /api/listero/conductores/:id — actualización manual de estado o datos */
+router.patch(
+  '/conductores/:id',
+  verifyAuth,
+  wrap(async (req, res) => {
+    await listeroService.updateConductor(req.params.id, req.body);
+    res.json({ ok: true, mensaje: 'Conductor actualizado' });
+  }),
+);
+
 /** POST /api/listero/ausencia — registrar ausencia y disparar cascada */
 router.post(
   '/ausencia',
@@ -141,6 +151,16 @@ router.post(
 );
 
 // ─── VEHÍCULOS ────────────────────────────────────────────────────────────────
+
+/** PATCH /api/listero/vehiculos/:id — actualización manual de datos de vehículo */
+router.patch(
+  '/vehiculos/:id',
+  verifyAuth,
+  wrap(async (req, res) => {
+    await listeroService.updateVehiculo(req.params.id, req.body);
+    res.json({ ok: true, mensaje: 'Vehículo actualizado' });
+  }),
+);
 
 /** GET /api/listero/vehiculos-reserva?fecha=YYYY-MM-DD */
 router.get(
@@ -218,24 +238,44 @@ router.post(
       res.json({ ok: true, created: 0, existing: 0, fecha, nota: 'No hay vehículos configurados.' });
       return;
     }
+    
+    // Obtener todo el personal para mapear choferes fijos
+    const personalRows = await sqlDb('personal').whereNotNull('data_jsonb');
+    const choferesPorCoche = new Map();
+    for (const p of personalRows) {
+       const data = p.data_jsonb || {};
+       if (data.tipo_vinculo === 'fijo' && data.coche_fijo_id) {
+          choferesPorCoche.set(data.coche_fijo_id, {
+             id: p.id,
+             nombre: p.full_name,
+             interno: p.internal_number,
+             rotacion: data.rotacion_semana_actual || 'mañana'
+          });
+       }
+    }
+
     let created = 0;
     for (const r of rows) {
       const line = r.data_jsonb?.linea_habitual ?? '300';
+      const choferFijo = choferesPorCoche.get(r.id);
+      
+      const turnoAsignado = choferFijo ? choferFijo.rotacion : 'mañana';
+      const horaSalida = turnoAsignado === 'mañana' ? '06:00' : turnoAsignado === 'tarde' ? '14:00' : '22:00';
+      const horaLlegada = turnoAsignado === 'mañana' ? '14:00' : turnoAsignado === 'tarde' ? '22:00' : '06:00';
+
       try {
-        // conductor_id es FK a personal(id); si no hay asignación aún,
-        // dejamos null (FK lo permite). El listero asigna después.
         await listeroService.createTurno({
           fecha,
           vehiculoId: r.id,
           vehiculoInterno: r.id,
           lineaId: line,
-          turno: 'mañana',
-          horaSalida: '06:00',
-          horaLlegadaEstimada: '14:00',
-          conductorId: null,
-          conductorNombre: null,
-          conductorInterno: null,
-          servicioId: null,
+          turno: turnoAsignado,
+          horaSalida,
+          horaLlegadaEstimada: horaLlegada,
+          conductorId: choferFijo ? choferFijo.id : null,
+          conductorNombre: choferFijo ? choferFijo.nombre : null,
+          conductorInterno: choferFijo ? choferFijo.interno : null,
+          servicioId: null, // Scraper UCOT lo actualizará luego
         } as never);
         created += 1;
       } catch (e) {
@@ -380,6 +420,27 @@ router.get(
     }
     const emparejamientos = await listeroService.analizarEmparejamientos(fecha, user?.agencyId ?? '70');
     res.json({ ok: true, emparejamientos });
+  }),
+);
+
+/** POST /api/listero/correlativos — Motor de reglas 45 minutos */
+router.post(
+  '/correlativos',
+  verifyAuth,
+  wrap(async (req, res) => {
+    const { internoA, internoB, fecha } = req.body;
+    if (!internoA || !internoB || !fecha) {
+      res.status(400).json({ ok: false, error: 'Faltan campos: internoA, internoB, fecha' });
+      return;
+    }
+    const resultado = await listeroService.procesarCorrelativoDirecto(internoA, internoB, fecha);
+    
+    // Notificar al listero para actualizar UI
+    if (resultado.ok) {
+       busOperation('correlativo-aprobado', { internoA, internoB, fecha, message: resultado.message });
+    }
+    
+    res.json(resultado); // Devuelve {ok: boolean, message: string} (puede ser ok=false si hay menos de 45m)
   }),
 );
 
