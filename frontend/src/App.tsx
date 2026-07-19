@@ -71,9 +71,9 @@ const CartonManager = lazy(() => import('./pages/traffic/CartonManager'));
 const CartonDetail = lazy(() => import('./pages/traffic/CartonDetail'));
 const NavigationModule = lazy(() => import('./pages/traffic/NavigationModule'));
 const CUTCSAFleetDashboard = lazy(() => import('./pages/traffic/CUTCSAFleetDashboard'));
-const TerminalListero = lazy(() => import('./pages/traffic/TerminalListero'));
+
 const ListeroModule = lazy(() => import('./pages/traffic/ListeroModule'));
-const DistribucionDiaria = lazy(() => import('./pages/traffic/DistribucionDiaria'));
+
 const BoletinInspeccion = lazy(() => import('./pages/traffic/BoletinInspeccion'));
 const PersonalUcot = lazy(() => import('./pages/traffic/PersonalUcot'));
 const CEODashboard = lazy(() => import('./pages/traffic/CEODashboard'));
@@ -148,7 +148,6 @@ const AnalisisEtapas = lazy(() => import('./pages/traffic/AnalisisEtapas'));
 const CumplimientoHub      = lazy(() => import('./pages/traffic/CumplimientoHub'));
 const IncidenciasHub       = lazy(() => import('./pages/traffic/IncidenciasHub'));
 const LiveOperationsConsole = lazy(() => import('./pages/traffic/LiveOperationsConsole'));
-const ListeroHub           = lazy(() => import('./pages/traffic/ListeroHub'));
 const PlanificacionHub     = lazy(() => import('./pages/traffic/PlanificacionHub'));
 const FinancieroHub        = lazy(() => import('./pages/traffic/FinancieroHub'));
 const GestionFlotaHub      = lazy(() => import('./pages/fleet/GestionFlotaHub'));
@@ -316,7 +315,7 @@ function App() {
                     <Route path="traffic/fleet-monitor" element={<Navigate to="/dashboard/traffic/map-hub?layer=buses" replace />} />
                     <Route path="traffic/monitoreo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><LiveOperationsConsole /></PrivateRoute>} />
                     <Route path="traffic/cutcsa-fleet" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CUTCSAFleetDashboard /></PrivateRoute>} />
-                    <Route path="traffic/listero" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><ListeroHub /></PrivateRoute>} />
+                    <Route path="traffic/listero" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><ListeroModule /></PrivateRoute>} />
                     <Route path="traffic/listero-cascada" element={<Navigate to="/dashboard/traffic/listero" replace />} />
                     <Route path="traffic/distribucion" element={<Navigate to="/dashboard/traffic/listero" replace />} />
                     <Route path="traffic/boletin" element={<Navigate to="/dashboard/traffic/planificacion" replace />} />

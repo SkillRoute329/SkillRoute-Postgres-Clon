@@ -1,19 +1,8 @@
-/**
- * ListeroModule — Terminal Digital del Listero — {empresaCfg.label}
- *
- * Reemplaza el proceso manual de papel/WhatsApp con:
- * - Grilla diaria: conductor + vehículo + línea + turno + hora salida
- * - Marcado de ausencias con cascada automática (busca reserva, alerta inspector)
- * - Firma digital del cartón (conductor confirma su servicio)
- * - Panel de alertas en tiempo real (Socket.io)
- * - Resumen del día: cobertura, impacto ingresos, riesgo IMM
- */
-
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
-  Users, Bus, AlertTriangle, CheckCircle, Search, Clock,
+  Users, Bus, CheckCircle, Search, Clock,
   UserCheck, Wrench, RefreshCw,
-  ShieldAlert, TrendingDown, Bell, UserX, ArrowRight, CalendarPlus,
+  UserX, CalendarPlus,
 } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import toast from 'react-hot-toast';
@@ -24,12 +13,10 @@ import { ModalEditarTurno } from './components/ModalEditarTurno';
 import { ModalEditarConductor } from './components/ModalEditarConductor';
 import { ModalGestionPersonal } from './components/ModalGestionPersonal';
 
-// ─── Tipos (espejo del backend) ───────────────────────────────────────────────
-
+// ─── Tipos ────────────────────────────────────────────────────────────────
 type EstadoTurno = 'programado' | 'activo' | 'completado' | 'cancelado' | 'sin_conductor' | 'cubierto_reserva';
 type TurnoNombre = 'madrugada' | 'mañana' | 'tarde' | 'noche';
 type EstadoConductorHoy = 'disponible' | 'en_servicio' | 'ausente' | 'reserva' | 'franco' | 'licencia' | 'enfermo';
-type UrgenciaAlerta = 'baja' | 'media' | 'alta' | 'critica';
 
 interface TurnoDia {
   id: string;
@@ -74,20 +61,6 @@ interface VehiculoDia {
   interno: string;
 }
 
-interface AlertaOperativa {
-  id: string;
-  tipo: string;
-  urgencia: UrgenciaAlerta;
-  lineaId: string | null;
-  titulo: string;
-  mensaje: string;
-  accionSugerida: string | null;
-  impactoIngresosUSD: number | null;
-  atendida: boolean;
-  datosExtra: Record<string, unknown>;
-  createdAt: { seconds: number } | null;
-}
-
 interface ResumenDiario {
   fecha: string;
   turnosTotal: number;
@@ -98,13 +71,11 @@ interface ResumenDiario {
   conductoresReservaLibres: number;
   vehiculosEnTaller: number;
   coberturaFlota: number;
-  alertasActivas: number;
   impactoIngresosRiesgoUSD: number;
   lineasEnRiesgoIMM: string[];
 }
 
-// ─── Helpers visuales ────────────────────────────────────────────────────────
-
+// ─── Helpers visuales ──────────────────────────────────────────────────────
 const TURNO_COLORS: Record<TurnoNombre, string> = {
   madrugada: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30',
   mañana: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
@@ -121,13 +92,6 @@ const ESTADO_COLORS: Record<EstadoTurno, { bg: string; border: string; text: str
   cubierto_reserva: { bg: 'bg-sky-900/20',        border: 'border-sky-500/40', text: 'text-sky-300' },
 };
 
-const URGENCIA_COLORS: Record<UrgenciaAlerta, { ring: string; badge: string; icon: string }> = {
-  baja:    { ring: 'border-slate-600',   badge: 'bg-slate-700 text-slate-300',   icon: 'text-slate-400' },
-  media:   { ring: 'border-amber-500/50', badge: 'bg-amber-900/40 text-amber-300', icon: 'text-amber-400' },
-  alta:    { ring: 'border-orange-500/60', badge: 'bg-orange-900/40 text-orange-300', icon: 'text-orange-400' },
-  critica: { ring: 'border-red-500/70',   badge: 'bg-red-900/40 text-red-300',   icon: 'text-red-400' },
-};
-
 const ESTADO_CONDUCTOR_LABEL: Record<EstadoConductorHoy, string> = {
   disponible: 'Disponible',
   en_servicio: 'En servicio',
@@ -137,14 +101,6 @@ const ESTADO_CONDUCTOR_LABEL: Record<EstadoConductorHoy, string> = {
   licencia: 'Licencia',
   enfermo: 'Enfermo',
 };
-
-// ─── Hook de datos ────────────────────────────────────────────────────────────
-
-function useFecha() {
-  const hoy = new Date().toISOString().split('T')[0];
-  const [fecha, setFecha] = useState(hoy);
-  return { fecha, setFecha, hoy };
-}
 
 async function apiFetch(path: string, opts?: RequestInit) {
   const token = getToken() ?? '';
@@ -156,81 +112,51 @@ async function apiFetch(path: string, opts?: RequestInit) {
   return res.json();
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
-
+// ─── Componente Principal ─────────────────────────────────────────────────
 export default function ListeroModule() {
-  const { fecha, setFecha } = useFecha();
-  const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
-    const [turnos, setTurnos] = useState<TurnoDia[]>([]);
+  const hoy = new Date().toISOString().split('T')[0];
+  const [fecha, setFecha] = useState(hoy);
+  const [turnos, setTurnos] = useState<TurnoDia[]>([]);
   const [conductores, setConductores] = useState<ConductorDia[]>([]);
-  const [alertas, setAlertas] = useState<AlertaOperativa[]>([]);
   const [resumen, setResumen] = useState<ResumenDiario | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchConductor, setSearchConductor] = useState('');
   const [filtroTurno, setFiltroTurno] = useState<TurnoNombre | 'todos'>('todos');
-  const [modalAusencia, setModalAusencia] = useState<TurnoDia | null>(null);
+  
   const [modalEditarTurno, setModalEditarTurno] = useState<TurnoDia | null>(null);
   const [modalEditarConductor, setModalEditarConductor] = useState<ConductorDia | null>(null);
   const [showGestionPersonal, setShowGestionPersonal] = useState(false);
-  const [motivoAusencia, setMotivoAusencia] = useState('');
   const [procesando, setProcesando] = useState(false);
-  const [panelAlertas, setPanelAlertas] = useState(true);
   const [vehiculos, setVehiculos] = useState<VehiculoDia[]>([]);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ─── Carga de datos ─────────────────────────────────────────────────────────
-
-  const cargarAlertas = useCallback(async () => {
-    try {
-      const data = await apiFetch(`/api/listero/alertas?fecha=${fecha}`);
-      setAlertas((prev) => {
-        const nuevas = (data.alertas ?? []) as AlertaOperativa[];
-        // Notificar alertas nuevas
-        const prevIds = new Set(prev.map((a) => a.id));
-        for (const a of nuevas) {
-          if (!prevIds.has(a.id)) {
-            const emo = { critica: '🔴', alta: '🟠', media: '🟡', baja: '⚪' }[a.urgencia] ?? '';
-            toast(`${emo} ${a.titulo}`, { duration: a.urgencia === 'critica' ? 8000 : 5000 });
-          }
-        }
-        return nuevas;
-      });
-    } catch { /* silencioso — red caída */ }
-  }, [fecha]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { empresaPropia } = useEmpresaPropia();
 
   const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
-      const [turnosData, conductoresData, alertasData, resumenData, vehiculosData] = await Promise.all([
+      const [turnosData, conductoresData, resumenData, vehiculosData] = await Promise.all([
         apiFetch(`/api/listero/turnos?fecha=${fecha}`),
         apiFetch(`/api/listero/conductores?fecha=${fecha}`),
-        apiFetch(`/api/listero/alertas?fecha=${fecha}`),
         apiFetch(`/api/listero/resumen?fecha=${fecha}`),
         apiFetch(`/api/listero/vehiculos-reserva?fecha=${fecha}`),
       ]);
       setTurnos(turnosData.turnos ?? []);
       setConductores(conductoresData.conductores ?? []);
-      setAlertas(alertasData.alertas ?? []);
       setResumen(resumenData.resumen ?? null);
       setVehiculos(vehiculosData.vehiculos ?? []);
     } catch {
       setTurnos([]);
       setConductores([]);
-      setAlertas([]);
       setVehiculos([]);
     } finally {
       setLoading(false);
     }
   }, [fecha]);
 
-  // Carga inicial + polling de alertas cada 15s
   useEffect(() => {
     cargarDatos();
-    pollRef.current = setInterval(cargarAlertas, 15_000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [cargarDatos, cargarAlertas]);
-
-  // ─── Acciones ──────────────────────────────────────────────────────────────
+  }, [cargarDatos]);
 
   const generarProgramacion = async () => {
     setProcesando(true);
@@ -252,74 +178,6 @@ export default function ListeroModule() {
     }
   };
 
-  const registrarAusencia = async () => {
-    if (!modalAusencia || !motivoAusencia.trim()) {
-      toast.error('Ingresá el motivo de la ausencia');
-      return;
-    }
-    setProcesando(true);
-    try {
-      await apiFetch('/api/listero/ausencia', {
-        method: 'POST',
-        body: JSON.stringify({
-          conductorId: modalAusencia.conductorId,
-          conductorNombre: modalAusencia.conductorNombre,
-          fecha,
-          motivo: motivoAusencia,
-        }),
-      });
-      toast.success('Ausencia registrada. Sistema buscando reservas...');
-      setModalAusencia(null);
-      setMotivoAusencia('');
-      setTimeout(cargarDatos, 1500);
-    } catch {
-      toast.error('Error al registrar ausencia');
-    } finally {
-      setProcesando(false);
-    }
-  };
-
-  const asignarReserva = async (turnoId: string, reservaId: string, reservaNombre: string) => {
-    setProcesando(true);
-    try {
-      await apiFetch('/api/listero/reserva', {
-        method: 'POST',
-        body: JSON.stringify({ turnoId, conductorReservaId: reservaId, conductorReservaNombre: reservaNombre }),
-      });
-      toast.success(`${reservaNombre} asignado como reserva`);
-      cargarDatos();
-    } catch {
-      toast.error('Error al asignar reserva');
-    } finally {
-      setProcesando(false);
-    }
-  };
-
-  const marcarVehiculoTaller = async (turno: TurnoDia, motivo: string) => {
-    setProcesando(true);
-    try {
-      await apiFetch('/api/listero/vehiculo-taller', {
-        method: 'POST',
-        body: JSON.stringify({ vehiculoId: turno.vehiculoId, vehiculoInterno: turno.vehiculoInterno, motivo, fecha }),
-      });
-      toast.success(`Coche ${turno.vehiculoInterno} enviado a taller`);
-      cargarDatos();
-    } catch {
-      toast.error('Error al registrar vehículo en taller');
-    } finally {
-      setProcesando(false);
-    }
-  };
-
-  const atenderAlerta = async (alertaId: string) => {
-    try {
-      await apiFetch(`/api/listero/alertas/${alertaId}/atender`, { method: 'PATCH' });
-      setAlertas((prev) => prev.map((a) => (a.id === alertaId ? { ...a, atendida: true } : a)));
-    } catch {
-      toast.error('Error al marcar alerta como atendida');
-    }
-  };
-
   const firmarCarton = async (turnoId: string) => {
     try {
       const hora = formatHoraMvd(new Date());
@@ -334,8 +192,7 @@ export default function ListeroModule() {
     }
   };
 
-  // ─── Derivados ─────────────────────────────────────────────────────────────
-
+  // ─── Derivados ────────────────────────────────────────────────────────────
   const turnosFiltrados = turnos.filter((t) =>
     filtroTurno === 'todos' || t.turno === filtroTurno,
   );
@@ -347,21 +204,16 @@ export default function ListeroModule() {
         c.internalNumber.includes(searchConductor)),
   );
 
-  const alertasActivas = alertas.filter((a) => !a.atendida);
-
-  // ─── Render ────────────────────────────────────────────────────────────────
-
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] bg-slate-950 overflow-hidden">
-      {showGestionPersonal && <ModalGestionPersonal onClose={() => setShowGestionPersonal(false)} />}
-
       {/* Header */}
       <div className="flex-none px-5 py-3 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Users className="w-6 h-6 text-indigo-400" />
           <div>
             <h1 className="text-lg font-black text-white leading-tight">Terminal del Listero</h1>
-            <p className="text-[10px] text-slate-500">Programación diaria · Ausencias · Cascada operativa</p>
+            <p className="text-[10px] text-slate-500">Programación Diaria & Asignación de Turnos</p>
           </div>
         </div>
 
@@ -394,17 +246,6 @@ export default function ListeroModule() {
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button
-            onClick={() => setPanelAlertas((v) => !v)}
-            className={`relative p-2 rounded-lg border transition-colors ${alertasActivas.length > 0 ? 'bg-red-900/30 border-red-500/50 text-red-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
-          >
-            <Bell className="w-4 h-4" />
-            {alertasActivas.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
-                {alertasActivas.length > 9 ? '9+' : alertasActivas.length}
-              </span>
-            )}
-          </button>
         </div>
       </div>
 
@@ -428,93 +269,14 @@ export default function ListeroModule() {
               </div>
             ))}
           </div>
-          {resumen.lineasEnRiesgoIMM.length > 0 && (
-            <div className="mt-1.5 flex items-center gap-2 text-[10px] text-red-400">
-              <ShieldAlert className="w-3 h-3" />
-              Líneas en riesgo IMM: <strong>{resumen.lineasEnRiesgoIMM.join(', ')}</strong>
-            </div>
-          )}
         </div>
       )}
 
+      {/* Main Body */}
       <div className="flex-1 flex overflow-hidden">
-
-        {/* Panel de alertas (izquierda, colapsable) */}
-        {panelAlertas && (
-          <div className="w-72 flex-none border-r border-slate-800 flex flex-col bg-slate-900/60">
-            <div className="flex-none px-3 py-2 border-b border-slate-800 flex items-center justify-between">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                <Bell className="w-3 h-3" />
-                Alertas activas ({alertasActivas.length})
-              </span>
-              <button onClick={cargarDatos} className="text-slate-600 hover:text-slate-400">
-                <RefreshCw className="w-3 h-3" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
-              {alertasActivas.length === 0 && (
-                <div className="text-center text-slate-600 text-xs mt-8">
-                  <CheckCircle className="w-6 h-6 mx-auto mb-2 text-slate-700" />
-                  Sin alertas activas
-                </div>
-              )}
-              {alertasActivas.map((alerta) => {
-                const uc = URGENCIA_COLORS[alerta.urgencia];
-                return (
-                  <div key={alerta.id} className={`rounded-xl border p-2.5 ${uc.ring}`}>
-                    <div className="flex items-start justify-between gap-1 mb-1">
-                      <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${uc.badge}`}>
-                        {alerta.urgencia}
-                      </span>
-                      {alerta.lineaId && (
-                        <span className="text-[9px] text-slate-500">L{alerta.lineaId}</span>
-                      )}
-                    </div>
-                    <p className="text-[10px] font-bold text-white leading-snug">{alerta.titulo}</p>
-                    <p className="text-[9px] text-slate-400 mt-1 leading-relaxed">{alerta.mensaje}</p>
-                    {alerta.accionSugerida && (
-                      <p className="text-[9px] text-indigo-300 mt-1.5 leading-relaxed border-t border-slate-700 pt-1.5">
-                        <strong>Acción:</strong> {alerta.accionSugerida}
-                      </p>
-                    )}
-                    {alerta.impactoIngresosUSD != null && alerta.impactoIngresosUSD > 0 && (
-                      <p className="text-[9px] text-red-400 mt-1 flex items-center gap-1">
-                        <TrendingDown className="w-2.5 h-2.5" />
-                        Impacto: USD {alerta.impactoIngresosUSD}
-                      </p>
-                    )}
-                    {/* Acción rápida: asignar reserva desde alerta */}
-                    {alerta.tipo === 'reserva_disponible' && alerta.datosExtra?.reservaId && (
-                      <button
-                        onClick={() => {
-                          const turnoId = String(alerta.datosExtra.turnoId ?? '');
-                          if (turnoId) asignarReserva(
-                            turnoId,
-                            String(alerta.datosExtra.reservaId),
-                            String(alerta.datosExtra.reservaNombre ?? ''),
-                          );
-                        }}
-                        className="mt-2 w-full text-[9px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-lg py-1 hover:bg-indigo-500/30 transition-colors"
-                      >
-                        Asignar {String(alerta.datosExtra.reservaNombre ?? 'reserva')}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => atenderAlerta(alerta.id)}
-                      className="mt-1.5 w-full text-[9px] text-slate-500 hover:text-slate-300 border border-slate-700/50 rounded-lg py-0.5 transition-colors"
-                    >
-                      Marcar atendida
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
+        
         {/* Grilla central de turnos */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Filtros */}
           <div className="flex-none px-4 py-2 border-b border-slate-800 flex items-center gap-3">
             <div className="flex items-center gap-1 bg-slate-800/50 rounded-lg p-1">
               {(['todos', 'madrugada', 'mañana', 'tarde', 'noche'] as const).map((t) => (
@@ -532,13 +294,11 @@ export default function ListeroModule() {
             <span className="text-[10px] text-slate-500">{turnosFiltrados.length} servicios</span>
           </div>
           
-          {/* Consola de correlativos opcional */}
           <div className="px-4 pt-2">
              <ConsolaCorrelativos fecha={fecha} onSuccess={cargarDatos} />
           </div>
 
-          {/* Tabla de turnos */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
             {loading ? (
               <div className="flex items-center justify-center h-48">
                 <RefreshCw className="w-6 h-6 animate-spin text-indigo-400" />
@@ -547,11 +307,10 @@ export default function ListeroModule() {
               <div className="flex flex-col items-center justify-center h-48 text-slate-600">
                 <Bus className="w-10 h-10 mb-3 text-slate-700" />
                 <p className="text-sm">No hay servicios programados para este día/turno.</p>
-                <p className="text-xs text-slate-700 mt-1">Usá "Generar día" para crear la programación automáticamente.</p>
+                <p className="text-xs text-slate-700 mt-1">Usá "Generar día" para crear la programación.</p>
               </div>
             ) : (
-              <div className="p-4 space-y-2">
-                {/* Encabezado de columnas */}
+              <>
                 <div className="grid grid-cols-[1fr_2fr_1.5fr_1fr_1fr_auto] gap-2 px-3 text-[9px] font-black text-slate-600 uppercase tracking-widest">
                   <span>Turno / Salida</span>
                   <span>Conductor</span>
@@ -560,7 +319,6 @@ export default function ListeroModule() {
                   <span>Estado</span>
                   <span>Acciones</span>
                 </div>
-
                 {turnosFiltrados.map((turno) => {
                   const col = ESTADO_COLORS[turno.estado];
                   const tc = TURNO_COLORS[turno.turno];
@@ -571,7 +329,6 @@ export default function ListeroModule() {
                       key={turno.id}
                       className={`grid grid-cols-[1fr_2fr_1.5fr_1fr_1fr_auto] gap-2 items-center px-3 py-2.5 rounded-xl border transition-all ${col.bg} ${col.border} ${esCritico ? 'ring-1 ring-red-500/40' : ''}`}
                     >
-                      {/* Turno + hora */}
                       <div>
                         <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${tc}`}>
                           {turno.turno.toUpperCase()}
@@ -582,7 +339,6 @@ export default function ListeroModule() {
                         </p>
                       </div>
 
-                      {/* Conductor */}
                       <div className="min-w-0">
                         {turno.conductorNombre ? (
                           <div>
@@ -610,77 +366,44 @@ export default function ListeroModule() {
                         )}
                       </div>
 
-                      {/* Línea + terminal */}
                       <div>
                         <p className="text-sm font-black text-white">L{turno.lineaId}</p>
                         <p className="text-[9px] text-slate-500 truncate">{turno.terminal}</p>
-                        {turno.importanciaLinea >= 4 && (
-                          <span className="text-[8px] font-black text-red-400 uppercase">alta prioridad</span>
-                        )}
                       </div>
 
-                      {/* Coche */}
                       <div className="flex items-center gap-1 text-slate-300">
                         <Bus className="w-3.5 h-3.5 text-slate-500" />
                         <span className="text-xs font-bold">{turno.vehiculoInterno}</span>
                       </div>
 
-                      {/* Estado */}
                       <div>
                         <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${col.border} ${col.text} border`}>
                           {turno.estado.replace(/_/g, ' ')}
                         </span>
-                        {turno.impactoIngresosEstimado != null && turno.estado === 'sin_conductor' && (
-                          <p className="text-[8px] text-red-400 mt-0.5 flex items-center gap-0.5">
-                            <TrendingDown className="w-2 h-2" />
-                            -USD {turno.impactoIngresosEstimado}
-                          </p>
-                        )}
                       </div>
 
-                      {/* Acciones */}
                       <div className="flex items-center gap-1">
                         <button
-                          title="Editar manualmente"
+                          title="Editar"
                           onClick={() => setModalEditarTurno(turno)}
                           className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
                         >
-                           {/* Icono de lápiz genérico (lucide-react no siempre lo tiene importado, usar texto o Wrench) */}
                           <Wrench className="w-3.5 h-3.5" />
                         </button>
                         {turno.conductorNombre && !turno.firmaConductor && turno.estado !== 'completado' && (
                           <button
-                            title="Registrar firma del cartón"
+                            title="Firmar"
                             onClick={() => firmarCarton(turno.id)}
                             className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
                           >
                             <UserCheck className="w-3.5 h-3.5" />
                           </button>
                         )}
-                        {turno.conductorNombre && turno.estado !== 'sin_conductor' && (
-                          <button
-                            title="Registrar ausencia"
-                            onClick={() => { setModalAusencia(turno); setMotivoAusencia(''); }}
-                            className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
-                          >
-                            <UserX className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        <button
-                          title="Enviar coche a taller"
-                          onClick={() => {
-                            const motivo = prompt(`Motivo del ingreso a taller — Coche ${turno.vehiculoInterno}:`);
-                            if (motivo) marcarVehiculoTaller(turno, motivo);
-                          }}
-                          className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500/20 transition-colors"
-                        >
-                          <Wrench className="w-3.5 h-3.5" />
-                        </button>
                       </div>
                     </div>
                   );
                 })}
-              </div>
+              </>
             )}
           </div>
         </div>
@@ -727,68 +450,10 @@ export default function ListeroModule() {
             ))}
           </div>
         </div>
+
       </div>
 
-      {/* Modal de ausencia */}
-      {modalAusencia && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-sm">
-            <h3 className="font-black text-white text-base mb-1 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-400" />
-              Registrar ausencia
-            </h3>
-            <p className="text-sm text-slate-400 mb-3">
-              <strong className="text-white">{modalAusencia.conductorNombre}</strong> — L{modalAusencia.lineaId} salida {modalAusencia.horaSalida}, coche {modalAusencia.vehiculoInterno}
-            </p>
-
-            <label className="block text-xs text-slate-400 mb-1">Motivo *</label>
-            <div className="grid grid-cols-2 gap-1.5 mb-3">
-              {['Enfermedad', 'Accidente', 'Franco extra', 'Sin aviso', 'Licencia', 'Otro'].map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMotivoAusencia(m)}
-                  className={`text-xs py-1.5 px-2 rounded-lg border transition-all ${motivoAusencia === m ? 'bg-amber-500/20 border-amber-500/60 text-amber-300' : 'border-slate-700 text-slate-400 hover:border-slate-500'}`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-            <input
-              type="text"
-              placeholder="Detalle adicional..."
-              value={motivoAusencia.length > 0 && !['Enfermedad','Accidente','Franco extra','Sin aviso','Licencia','Otro'].includes(motivoAusencia) ? motivoAusencia : ''}
-              onChange={(e) => setMotivoAusencia(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mb-4"
-            />
-
-            {modalAusencia.importanciaLinea >= 4 && (
-              <div className="mb-3 p-2.5 bg-red-900/20 border border-red-500/30 rounded-xl text-xs text-red-300 flex items-start gap-2">
-                <ShieldAlert className="w-3.5 h-3.5 flex-none mt-0.5" />
-                <span>Línea de alta prioridad — ausencia sin cobertura puede generar infracción IMM.</span>
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setModalAusencia(null)}
-                className="flex-1 py-2 rounded-xl border border-slate-700 text-slate-400 hover:text-white transition-colors text-sm"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={registrarAusencia}
-                disabled={procesando || !motivoAusencia.trim()}
-                className="flex-1 py-2 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 disabled:opacity-50 transition-colors flex items-center justify-center gap-1"
-              >
-                {procesando ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                Confirmar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modales de edición */}
+      {/* Modales */}
       {modalEditarTurno && (
         <ModalEditarTurno
           turno={modalEditarTurno}
