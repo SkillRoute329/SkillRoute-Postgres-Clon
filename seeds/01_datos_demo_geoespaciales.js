@@ -2,18 +2,25 @@
  * Seed dinámico: 01_datos_demo_geoespaciales.js
  *
  * FUENTE DE DATOS: API GTFS real de la IMM/STM — Montevideo, Uruguay
- * Endpoint público: https://datos.gub.uy (Catálogo Datos Abiertos Uruguay)
- * GTFS Feed STM:   https://mvdtransporte.montevideo.gub.uy/gtfs/
+ * Endpoint oficial: https://mvdtransporte.montevideo.gub.uy/
+ *
+ * AUTENTICACIÓN OAuth 2.0 (Client Credentials):
+ *   La API de la IMM requiere un Bearer Token obtenido previamente.
+ *   Variables de entorno requeridas en .env:
+ *     IMM_CLIENT_ID     — Client ID de la aplicación registrada en la IMM
+ *     IMM_CLIENT_SECRET — Client Secret de la aplicación registrada en la IMM
+ *     IMM_TOKEN_URL     — (Opcional) URL del endpoint OAuth. Por defecto:
+ *                         https://mvdtransporte.montevideo.gub.uy/oauth/token
+ *
+ *   Si las credenciales no están configuradas o la API está caída, el script
+ *   cae automáticamente en datos de referencia STM verificados (fallback).
  *
  * Este script:
- *  1. Descarga el feed GTFS público de Montevideo (stops.txt, routes.txt, trips.txt).
- *  2. Filtra el Corredor 300 (líneas 300-399 del área metropolitana) y paradas asociadas.
- *  3. Inyecta paradas reales en la tabla paradas_gtfs con geometría PostGIS.
- *  4. Inyecta vehículos de flota del corredor (del endpoint STM Vehicles GTFS-RT).
- *  5. Inyecta el polígono del corredor estructural 300.
- *
- * GTFS Realtime de STM Montevideo:
- *   Vehicle positions: https://mvdtransporte.montevideo.gub.uy/serve-gtfs-rt-api/v1/vehicle-positions
+ *  1. Obtiene Bearer Token desde el endpoint OAuth de la IMM.
+ *  2. Descarga el feed GTFS estático (google_transit.zip) con Authorization header.
+ *  3. Filtra el Corredor 300 y paradas asociadas.
+ *  4. Descarga posiciones GTFS-RT autenticadas.
+ *  5. Inyecta todo en PostgreSQL con geometría PostGIS.
  *
  * Ejecutar: npm run db:seed
  *            npx knex seed:run
@@ -21,28 +28,55 @@
 
 'use strict';
 
+require('dotenv').config();
+
 const https = require('https');
 const http = require('http');
 const { URL } = require('url');
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Helpers de descarga HTTP/HTTPS
+// Configuración OAuth — leída desde variables de entorno
+// ──────────────────────────────────────────────────────────────────────────────
+const IMM_CLIENT_ID     = process.env.IMM_CLIENT_ID     || '';
+const IMM_CLIENT_SECRET = process.env.IMM_CLIENT_SECRET || '';
+const IMM_TOKEN_URL     = process.env.IMM_TOKEN_URL     ||
+  'https://mvdtransporte.montevideo.gub.uy/oauth/token';
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Helpers de descarga HTTP/HTTPS con soporte para Authorization headers
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * Descarga el contenido de una URL como texto plano.
- * Soporta redirecciones (hasta 5 saltos).
+ * Realiza una petición HTTP/HTTPS con headers opcionales.
+ * Soporta redirecciones (hasta 5 saltos) y devuelve el body como string.
+ *
+ * @param {string} rawUrl   - URL a descargar
+ * @param {object} headers  - Headers HTTP adicionales (ej: Authorization)
+ * @param {number} redirects - Contador interno de redirecciones
  */
-function fetchText(rawUrl, redirects = 0) {
+function fetchText(rawUrl, headers = {}, redirects = 0) {
   return new Promise((resolve, reject) => {
     if (redirects > 5) return reject(new Error('Demasiadas redirecciones: ' + rawUrl));
 
     const parsedUrl = new URL(rawUrl);
     const lib = parsedUrl.protocol === 'https:' ? https : http;
 
-    lib.get(rawUrl, { timeout: 30000 }, (res) => {
+    const options = {
+      hostname: parsedUrl.hostname,
+      path: parsedUrl.pathname + parsedUrl.search,
+      port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+      method: 'GET',
+      timeout: 30000,
+      headers: {
+        'Accept': 'application/json, text/plain, */*',
+        'User-Agent': 'SkillRoute-Seed/1.0 (contact@skillroute.uy)',
+        ...headers,
+      },
+    };
+
+    const req = lib.request(options, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return resolve(fetchText(res.headers.location, redirects + 1));
+        return resolve(fetchText(res.headers.location, headers, redirects + 1));
       }
       if (res.statusCode !== 200) {
         return reject(new Error(`HTTP ${res.statusCode} al descargar ${rawUrl}`));
@@ -51,23 +85,47 @@ function fetchText(rawUrl, redirects = 0) {
       res.on('data', (chunk) => chunks.push(chunk));
       res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
       res.on('error', reject);
-    }).on('error', reject).on('timeout', () => reject(new Error('Timeout al descargar: ' + rawUrl)));
+    });
+
+    req.on('error', reject);
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Timeout al descargar: ' + rawUrl));
+    });
+    req.end();
   });
 }
 
 /**
- * Descarga una URL como Buffer binario (para ZIPs).
+ * Descarga una URL como Buffer binario (para ZIPs) con soporte de headers.
+ *
+ * @param {string} rawUrl  - URL a descargar
+ * @param {object} headers - Headers HTTP adicionales (ej: Authorization)
+ * @param {number} redirects - Contador interno de redirecciones
  */
-function fetchBuffer(rawUrl, redirects = 0) {
+function fetchBuffer(rawUrl, headers = {}, redirects = 0) {
   return new Promise((resolve, reject) => {
     if (redirects > 5) return reject(new Error('Demasiadas redirecciones: ' + rawUrl));
 
     const parsedUrl = new URL(rawUrl);
     const lib = parsedUrl.protocol === 'https:' ? https : http;
 
-    lib.get(rawUrl, { timeout: 60000 }, (res) => {
+    const options = {
+      hostname: parsedUrl.hostname,
+      path: parsedUrl.pathname + parsedUrl.search,
+      port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+      method: 'GET',
+      timeout: 60000,
+      headers: {
+        'Accept': 'application/zip, application/octet-stream, */*',
+        'User-Agent': 'SkillRoute-Seed/1.0 (contact@skillroute.uy)',
+        ...headers,
+      },
+    };
+
+    const req = lib.request(options, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return resolve(fetchBuffer(res.headers.location, redirects + 1));
+        return resolve(fetchBuffer(res.headers.location, headers, redirects + 1));
       }
       if (res.statusCode !== 200) {
         return reject(new Error(`HTTP ${res.statusCode} al descargar buffer de ${rawUrl}`));
@@ -76,7 +134,64 @@ function fetchBuffer(rawUrl, redirects = 0) {
       res.on('data', (chunk) => chunks.push(chunk));
       res.on('end', () => resolve(Buffer.concat(chunks)));
       res.on('error', reject);
-    }).on('error', reject).on('timeout', () => reject(new Error('Timeout buffer: ' + rawUrl)));
+    });
+
+    req.on('error', reject);
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Timeout buffer: ' + rawUrl));
+    });
+    req.end();
+  });
+}
+
+/**
+ * Realiza un POST con body url-encoded y devuelve el body como string.
+ * Usado para el endpoint OAuth de la IMM (grant_type=client_credentials).
+ *
+ * @param {string} rawUrl  - URL del endpoint OAuth
+ * @param {string} body    - Body en formato application/x-www-form-urlencoded
+ */
+function postForm(rawUrl, body) {
+  return new Promise((resolve, reject) => {
+    const parsedUrl = new URL(rawUrl);
+    const lib = parsedUrl.protocol === 'https:' ? https : http;
+    const bodyBuffer = Buffer.from(body, 'utf8');
+
+    const options = {
+      hostname: parsedUrl.hostname,
+      path: parsedUrl.pathname + parsedUrl.search,
+      port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+      method: 'POST',
+      timeout: 15000,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': bodyBuffer.length,
+        'Accept': 'application/json',
+        'User-Agent': 'SkillRoute-Seed/1.0 (contact@skillroute.uy)',
+      },
+    };
+
+    const req = lib.request(options, (res) => {
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => {
+        const text = Buffer.concat(chunks).toString('utf8');
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          return reject(new Error(`OAuth POST ${res.statusCode}: ${text.slice(0, 200)}`));
+        }
+        resolve(text);
+      });
+      res.on('error', reject);
+    });
+
+    req.on('error', reject);
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Timeout en POST OAuth: ' + rawUrl));
+    });
+    req.write(bodyBuffer);
+    req.end();
   });
 }
 
@@ -100,19 +215,64 @@ function parseCSV(text) {
 // Fuentes de datos GTFS — STM / IMM Montevideo
 // ──────────────────────────────────────────────────────────────────────────────
 
-// URL del feed GTFS estático publicado por el Sistema de Transporte Metropolitano
-// Fuente oficial: https://datos.gub.uy/dataset/gtfs-stm
+// URL del feed GTFS estático (requiere Bearer Token de la IMM)
 const GTFS_STATIC_URL =
+  process.env.IMM_GTFS_URL ||
   'https://mvdtransporte.montevideo.gub.uy/serve-stm-api/static/gtfs.zip';
 
-// URL alternativa del catálogo Datos Abiertos Uruguay (CKAN)
-const GTFS_FALLBACK_URL =
-  'https://catalogodatos.gub.uy/dataset/intendencia-montevideo-sistema-de-transporte-metropolitano/resource/gtfs-stm-zip';
-
-// URL del GTFS-RT de posiciones de vehículos en tiempo real
-// Requiere aceptar JSON — el endpoint devuelve GeoJSON de posiciones activas
+// URL del GTFS-RT de posiciones de vehículos en tiempo real (requiere Bearer Token)
 const GTFS_RT_VEHICLES_URL =
+  process.env.IMM_GTFS_RT_URL ||
   'https://mvdtransporte.montevideo.gub.uy/serve-gtfs-rt-api/v1/vehicle-positions?format=json';
+
+// ──────────────────────────────────────────────────────────────────────────────
+// PASO 0: Obtener Bearer Token desde el endpoint OAuth de la IMM
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Obtiene un Bearer Token de la IMM usando OAuth 2.0 Client Credentials.
+ *
+ * Lee IMM_CLIENT_ID e IMM_CLIENT_SECRET desde process.env.
+ * Si alguna variable falta o la petición falla, devuelve null.
+ *
+ * @returns {Promise<string|null>} Bearer token o null si no disponible
+ */
+async function obtenerBearerTokenIMM() {
+  if (!IMM_CLIENT_ID || !IMM_CLIENT_SECRET) {
+    console.warn('[SEED] ⚠️  IMM_CLIENT_ID / IMM_CLIENT_SECRET no configurados en .env.');
+    console.warn('[SEED]    El seed intentará acceso anónimo. Si falla, usará datos de referencia.');
+    return null;
+  }
+
+  console.log('[SEED] 🔐 Obteniendo Bearer Token OAuth de la IMM...');
+  console.log(`[SEED]    URL Token: ${IMM_TOKEN_URL}`);
+  console.log(`[SEED]    Client ID: ${IMM_CLIENT_ID.substring(0, 6)}...`);
+
+  try {
+    const body = [
+      'grant_type=client_credentials',
+      `client_id=${encodeURIComponent(IMM_CLIENT_ID)}`,
+      `client_secret=${encodeURIComponent(IMM_CLIENT_SECRET)}`,
+      'scope=gtfs:read',
+    ].join('&');
+
+    const responseText = await postForm(IMM_TOKEN_URL, body);
+    const tokenData = JSON.parse(responseText);
+
+    if (!tokenData.access_token) {
+      throw new Error('El endpoint OAuth no devolvió access_token. Respuesta: ' + responseText.slice(0, 300));
+    }
+
+    const expiresIn = tokenData.expires_in ? `(expira en ${tokenData.expires_in}s)` : '';
+    console.log(`[SEED] ✅ Bearer Token obtenido correctamente ${expiresIn}`);
+    return tokenData.access_token;
+
+  } catch (err) {
+    console.warn(`[SEED] ⚠️  Error obteniendo token OAuth: ${err.message}`);
+    console.warn('[SEED]    Continuando sin autenticación (posible 403 en el ZIP).');
+    return null;
+  }
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Polígono del Corredor Estructural 300 (BRT/Metrobús)
@@ -204,16 +364,34 @@ const PARADAS_REFERENCIA_300 = [
 ];
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Función principal: intenta descargar GTFS real, cae en datos de referencia
+// Función principal: autenticación OAuth + descarga GTFS + fallback de referencia
 // ──────────────────────────────────────────────────────────────────────────────
 
-async function obtenerParadasDesdeGTFS() {
+/**
+ * Descarga el feed GTFS de la IMM usando autenticación OAuth Bearer Token.
+ * Estrategia de 3 capas:
+ *   1. Descarga autenticada (IMM_CLIENT_ID + IMM_CLIENT_SECRET → Bearer Token)
+ *   2. Descarga anónima (si no hay credenciales, algunos endpoints permiten acceso público)
+ *   3. Datos de referencia STM hardcodeados (fallback garantizado)
+ */
+async function obtenerParadasDesdeGTFS(bearerToken = null) {
   console.log('\n[SEED] 🌐 Intentando descargar feed GTFS real de STM Montevideo...');
   console.log('[SEED]    URL:', GTFS_STATIC_URL);
 
+  // Paso 1: Construir headers con el token ya obtenido (no volver a pedirlo)
+  const authHeaders = bearerToken
+    ? { 'Authorization': `Bearer ${bearerToken}` }
+    : {};
+
+  if (bearerToken) {
+    console.log('[SEED] 🔑 Usando autenticación OAuth Bearer Token.');
+  } else {
+    console.log('[SEED] 🔓 Sin token OAuth — intentando acceso anónimo.');
+  }
+
   try {
-    // Intentar descargar el ZIP del GTFS
-    const zipBuffer = await fetchBuffer(GTFS_STATIC_URL);
+    // Paso 2: Descargar el ZIP del GTFS con headers de autenticación
+    const zipBuffer = await fetchBuffer(GTFS_STATIC_URL, authHeaders);
     console.log(`[SEED] ✅ GTFS descargado correctamente. Tamaño: ${(zipBuffer.length / 1024).toFixed(1)} KB`);
 
     // Descomprimir el ZIP para obtener stops.txt
@@ -294,14 +472,28 @@ async function obtenerParadasDesdeGTFS() {
 }
 
 /**
- * Intenta obtener posiciones en tiempo real del GTFS-RT de STM.
- * Si falla, devuelve las posiciones estáticas de los vehículos de referencia.
+ * Obtiene posiciones GTFS-RT en tiempo real con autenticación OAuth.
+ * Reutiliza el Bearer Token obtenido en la misma sesión de seed.
+ * Si el endpoint falla (403, timeout, formato inesperado), retorna
+ * los vehículos de referencia STM sin posiciones en tiempo real.
+ *
+ * @param {string|null} bearerToken - Token OAuth obtenido previamente (puede ser null)
  */
-async function obtenerPosicionesGTFSRT() {
+async function obtenerPosicionesGTFSRT(bearerToken = null) {
   console.log('\n[SEED] 🚌 Intentando obtener posiciones GTFS-RT en tiempo real...');
 
+  const authHeaders = bearerToken
+    ? { 'Authorization': `Bearer ${bearerToken}` }
+    : {};
+
+  if (bearerToken) {
+    console.log('[SEED] 🔑 GTFS-RT: usando autenticación Bearer Token.');
+  } else {
+    console.log('[SEED] 🔓 GTFS-RT: intento anónimo.');
+  }
+
   try {
-    const rawJson = await fetchText(GTFS_RT_VEHICLES_URL);
+    const rawJson = await fetchText(GTFS_RT_VEHICLES_URL, authHeaders);
     const data = JSON.parse(rawJson);
 
     if (!data || !data.entity || !Array.isArray(data.entity)) {
@@ -358,6 +550,11 @@ exports.seed = async function (knex) {
   console.log(' SEED: Datos geoespaciales IMM/STM Montevideo — Corredor 300');
   console.log('═══════════════════════════════════════════════════════════════\n');
 
+  // ── 0. Obtener Bearer Token OAuth UNA VEZ para toda la sesión de seed ────────
+  // Se reutiliza en la descarga del ZIP y en el GTFS-RT para evitar
+  // múltiples roundtrips al endpoint de autenticación de la IMM.
+  const sharedBearerToken = await obtenerBearerTokenIMM();
+
   // ── 1. Insertar polígono del corredor 300 ──────────────────────────────────
   console.log('[SEED] 🗺️  Insertando polígono del Corredor Estructural 300...');
 
@@ -391,7 +588,7 @@ exports.seed = async function (knex) {
   }
 
   // ── 2. Descargar e insertar paradas GTFS ──────────────────────────────────
-  const { paradas, fuente: fuenteParadas } = await obtenerParadasDesdeGTFS();
+  const { paradas, fuente: fuenteParadas } = await obtenerParadasDesdeGTFS(sharedBearerToken);
 
   console.log(`\n[SEED] 🚏 Insertando ${paradas.length} paradas (fuente: ${fuenteParadas})...`);
 
@@ -444,7 +641,7 @@ exports.seed = async function (knex) {
   console.log(`[SEED] ✅ Paradas: ${paradasInsertadas} nuevas, ${paradasActualizadas} actualizadas.`);
 
   // ── 3. Insertar vehículos de flota ─────────────────────────────────────────
-  const { vehiculos, fuente: fuenteVehiculos } = await obtenerPosicionesGTFSRT();
+  const { vehiculos, fuente: fuenteVehiculos } = await obtenerPosicionesGTFSRT(sharedBearerToken);
 
   console.log(`\n[SEED] 🚌 Insertando ${vehiculos.length} vehículos (fuente: ${fuenteVehiculos})...`);
 
