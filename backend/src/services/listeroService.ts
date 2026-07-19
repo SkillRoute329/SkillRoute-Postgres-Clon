@@ -81,9 +81,10 @@ export interface ConductorDia {
   horaUltimoServicio: string | null;
   esConductorReserva: boolean;
   telefono: string | null;
-  regimenRotacion: string;
-  isEnLista: boolean;
-  patronDescanso: string;
+  regimenRotacion?: string;
+  isEnLista?: boolean;
+  patronDescanso?: string;
+  data_jsonb?: Record<string, unknown>;
 }
 
 export interface VehiculoDia {
@@ -259,6 +260,7 @@ function rowToConductor(r: PersonalRow, turno?: TurnoDia): ConductorDia {
     regimenRotacion: r.regimen_rotacion ?? 'semanal',
     isEnLista: r.is_en_lista ?? false,
     patronDescanso: r.patron_descanso ?? 'sab_dom_alterno',
+    data_jsonb: r.data_jsonb || {},
   };
 }
 
@@ -381,13 +383,21 @@ export async function deleteTurno(turnoId: string): Promise<void> {
 
 export async function updateConductor(conductorId: string, cambios: Partial<ConductorDia>): Promise<void> {
   try {
+    const personalRow = await sqlDb('personal').where('id', conductorId).first();
+    if (!personalRow) return;
+
     const updateData: Record<string, unknown> = {};
     if (cambios.estadoHoy !== undefined) updateData.estado_hoy = cambios.estadoHoy;
     if (cambios.regimenRotacion !== undefined) updateData.regimen_rotacion = cambios.regimenRotacion;
     if (cambios.patronDescanso !== undefined) updateData.patron_descanso = cambios.patronDescanso;
     if (cambios.telefono !== undefined) updateData.telefono = cambios.telefono;
 
-    // Update data_jsonb for custom fields like tipo_vinculo, coche_fijo_id
+    // Actualizar campos personalizados en data_jsonb (tipo_vinculo, coche_fijo, rotacion)
+    if (cambios.data_jsonb) {
+       const existingJson = personalRow.data_jsonb || {};
+       updateData.data_jsonb = JSON.stringify({ ...existingJson, ...cambios.data_jsonb });
+    }
+
     if (Object.keys(updateData).length > 0) {
        await sqlDb('personal').where('id', conductorId).update(updateData);
     }

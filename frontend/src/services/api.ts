@@ -30,6 +30,23 @@ import { authHeader } from '../utils/tokenStore';
 export const API_URL = '/api';
 
 /**
+ * Función fetch estandarizada para uso con la API backend 2.0.
+ * Inyecta automáticamente los headers de autorización.
+ */
+export async function apiFetch(path: string, opts?: RequestInit) {
+  const url = path.startsWith('/api') ? path : `${API_URL}${path}`;
+  const res = await fetch(url, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeader(),
+      ...opts?.headers,
+    },
+  });
+  return await res.json();
+}
+
+/**
  * API Client real para llamar al Backend 2.0 Hardened.
  */
 // FASE 5.16: authHeader() del tokenStore único (no más getItem('tf_token')).

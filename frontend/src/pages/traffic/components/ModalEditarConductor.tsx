@@ -8,6 +8,7 @@ interface Conductor {
   estadoHoy: string;
   regimenRotacion?: string;
   patronDescanso?: string;
+  data_jsonb?: any;
 }
 
 interface Props {
@@ -18,6 +19,9 @@ interface Props {
 
 export const ModalEditarConductor: React.FC<Props> = ({ conductor, onClose, onSuccess }) => {
   const [estadoHoy, setEstadoHoy] = useState(conductor.estadoHoy || 'disponible');
+  const [tipoVinculo, setTipoVinculo] = useState(conductor.data_jsonb?.tipo_vinculo || 'flotante');
+  const [cocheFijoId, setCocheFijoId] = useState(conductor.data_jsonb?.coche_fijo_id || '');
+  const [rotacionSemanal, setRotacionSemanal] = useState(conductor.data_jsonb?.rotacion_semana_actual || 'mañana');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,7 +31,14 @@ export const ModalEditarConductor: React.FC<Props> = ({ conductor, onClose, onSu
     try {
       await apiFetch(`/listero/conductores/${conductor.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ estadoHoy })
+        body: JSON.stringify({
+          estadoHoy,
+          data_jsonb: {
+            tipo_vinculo: tipoVinculo,
+            coche_fijo_id: cocheFijoId,
+            rotacion_semana_actual: rotacionSemanal
+          }
+        })
       });
       onSuccess();
     } catch (error) {
@@ -64,9 +75,46 @@ export const ModalEditarConductor: React.FC<Props> = ({ conductor, onClose, onSu
               <option value="enfermo">Parte de Enfermo</option>
               <option value="ausente">Ausente Sin Aviso</option>
             </select>
-            <p className="text-xs text-gray-500 mt-2">
               Nota: Cambiar el estado a "Ausente" aquí no disparará alertas automáticas ni buscará suplentes. Use el botón "Registrar Ausencia" en la grilla para eso.
             </p>
+          </div>
+          
+          <div className="border-t border-gray-700 pt-3">
+            <h3 className="text-sm font-bold text-gray-300 mb-2">Configuración Operativa</h3>
+            
+            <label className="block text-sm text-gray-400 mb-1 mt-2">Tipo de Vínculo</label>
+            <select
+              value={tipoVinculo}
+              onChange={(e) => setTipoVinculo(e.target.value)}
+              className="w-full bg-[#2a2a2a] text-white border border-gray-600 rounded px-3 py-2"
+            >
+              <option value="flotante">Flotante (Retén / Rotativo)</option>
+              <option value="fijo">Coche Fijo</option>
+            </select>
+            
+            {tipoVinculo === 'fijo' && (
+              <>
+                <label className="block text-sm text-gray-400 mb-1 mt-3">ID Coche Fijo (Interno / ID)</label>
+                <input
+                  type="text"
+                  value={cocheFijoId}
+                  onChange={(e) => setCocheFijoId(e.target.value)}
+                  placeholder="Ej: 329 o id-uuid"
+                  className="w-full bg-[#2a2a2a] text-white border border-gray-600 rounded px-3 py-2"
+                />
+                
+                <label className="block text-sm text-gray-400 mb-1 mt-3">Turno Actual (Semana / Quincena)</label>
+                <select
+                  value={rotacionSemanal}
+                  onChange={(e) => setRotacionSemanal(e.target.value)}
+                  className="w-full bg-[#2a2a2a] text-white border border-gray-600 rounded px-3 py-2"
+                >
+                  <option value="mañana">Mañana</option>
+                  <option value="tarde">Tarde</option>
+                  <option value="noche">Noche</option>
+                </select>
+              </>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

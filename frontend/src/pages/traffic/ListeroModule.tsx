@@ -65,6 +65,7 @@ interface ConductorDia {
   vehiculoAsignado: string | null;
   esConductorReserva: boolean;
   telefono: string | null;
+  data_jsonb?: any;
 }
 
 interface VehiculoDia {
