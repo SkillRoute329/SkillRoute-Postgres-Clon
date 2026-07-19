@@ -100,6 +100,33 @@ router.post(
   }),
 );
 
+// ─── FLOTA MAESTRA ────────────────────────────────────────────────────────────
+
+/** GET /api/listero/flota-maestra */
+router.get(
+  '/flota-maestra',
+  verifyAuth,
+  wrap(async (req, res) => {
+    const flota = await listeroService.getFlotaMaestra();
+    res.json({ ok: true, flota });
+  }),
+);
+
+/** POST /api/listero/asignar-titular */
+router.post(
+  '/asignar-titular',
+  verifyAuth,
+  wrap(async (req, res) => {
+    const { vehiculoId, turno, conductorId, tipoRotacion } = req.body;
+    if (!vehiculoId || !turno) {
+      res.status(400).json({ ok: false, error: 'Faltan campos obligatorios' });
+      return;
+    }
+    await listeroService.asignarTitularCoche(vehiculoId, turno, conductorId, tipoRotacion || 'semanal');
+    res.json({ ok: true, mensaje: 'Titular asignado exitosamente' });
+  }),
+);
+
 // ─── CONDUCTORES DEL DÍA ────────────────────────────────────────────────────
 
 /** GET /api/listero/conductores?fecha=YYYY-MM-DD */
@@ -260,11 +287,18 @@ router.post(
       res.status(400).json({ ok: false, error: 'Formato esperado: fecha=YYYY-MM-DD' });
       return;
     }
-    const existentes = await listeroService.getTurnosByFecha(fecha);
-    if (existentes.length > 0) {
-      res.json({ ok: true, created: 0, existing: existentes.length, fecha });
-      return;
+    // Si se pasa ?force=true o body.force, borramos los existentes para regenerar
+    if (req.body?.force || req.query?.force) {
+      const sqlDb = (await import('../config/database')).default;
+      await sqlDb('turnos_dia').where({ fecha }).delete();
+    } else {
+      const existentes = await listeroService.getTurnosByFecha(fecha);
+      if (existentes.length > 0) {
+        res.json({ ok: true, created: 0, existing: existentes.length, fecha });
+        return;
+      }
     }
+
     const sqlDb = (await import('../config/database')).default;
     const rows: Array<{ id: string; agency_id: string; data_jsonb: any }> = await sqlDb('vehiculos');
     if (rows.length === 0) {
@@ -278,41 +312,66 @@ router.post(
     for (const p of personalRows) {
        const data = p.data_jsonb || {};
        if (data.tipo_vinculo === 'fijo' && data.coche_fijo_id) {
-          choferesPorCoche.set(data.coche_fijo_id, {
+          if (!choferesPorCoche.has(data.coche_fijo_id)) {
+            choferesPorCoche.set(data.coche_fijo_id, { manana: null, tarde: null });
+          }
+          const cocheMap = choferesPorCoche.get(data.coche_fijo_id);
+          const rotacion = data.rotacion_semana_actual || 'mañana';
+          const choferData = {
              id: p.id,
              nombre: p.full_name,
-             interno: p.internal_number,
-             rotacion: data.rotacion_semana_actual || 'mañana'
-          });
+             interno: p.internal_number
+          };
+          if (rotacion === 'mañana') cocheMap.manana = choferData;
+          else if (rotacion === 'tarde') cocheMap.tarde = choferData;
        }
     }
 
     let created = 0;
     for (const r of rows) {
-      const line = r.data_jsonb?.linea_habitual ?? '300';
-      const choferFijo = choferesPorCoche.get(r.id);
+      const d = r.data_jsonb || {};
+      const line = d.linea_habitual || '300';
+      const internoStr = d.interno || r.id; // r.id sometimes is UUID
+      const choferesFijos = choferesPorCoche.get(r.id) || { manana: null, tarde: null };
       
-      const turnoAsignado = choferFijo ? choferFijo.rotacion : 'mañana';
-      const horaSalida = turnoAsignado === 'mañana' ? '06:00' : turnoAsignado === 'tarde' ? '14:00' : '22:00';
-      const horaLlegada = turnoAsignado === 'mañana' ? '14:00' : turnoAsignado === 'tarde' ? '22:00' : '06:00';
-
+      // Crear turno mañana
       try {
         await listeroService.createTurno({
           fecha,
           vehiculoId: r.id,
-          vehiculoInterno: r.id,
+          vehiculoInterno: internoStr,
           lineaId: line,
-          turno: turnoAsignado,
-          horaSalida,
-          horaLlegadaEstimada: horaLlegada,
-          conductorId: choferFijo ? choferFijo.id : null,
-          conductorNombre: choferFijo ? choferFijo.nombre : null,
-          conductorInterno: choferFijo ? choferFijo.interno : null,
-          servicioId: null, // Scraper UCOT lo actualizará luego
+          turno: 'mañana',
+          horaSalida: '06:00',
+          horaLlegadaEstimada: '14:00',
+          conductorId: choferesFijos.manana ? choferesFijos.manana.id : null,
+          conductorNombre: choferesFijos.manana ? choferesFijos.manana.nombre : null,
+          conductorInterno: choferesFijos.manana ? choferesFijos.manana.interno : null,
+          servicioId: null,
         } as never);
         created += 1;
       } catch (e) {
-        logger.warn('[listero/generar-programacion] turno no creado', { error: String(e) });
+        logger.warn('[listero/generar-programacion] turno mañana no creado', { error: String(e) });
+      }
+
+      // Crear turno tarde
+      try {
+        await listeroService.createTurno({
+          fecha,
+          vehiculoId: r.id,
+          vehiculoInterno: internoStr,
+          lineaId: line,
+          turno: 'tarde',
+          horaSalida: '14:00',
+          horaLlegadaEstimada: '22:00',
+          conductorId: choferesFijos.tarde ? choferesFijos.tarde.id : null,
+          conductorNombre: choferesFijos.tarde ? choferesFijos.tarde.nombre : null,
+          conductorInterno: choferesFijos.tarde ? choferesFijos.tarde.interno : null,
+          servicioId: null,
+        } as never);
+        created += 1;
+      } catch (e) {
+        logger.warn('[listero/generar-programacion] turno tarde no creado', { error: String(e) });
       }
     }
     res.json({ ok: true, created, existing: 0, fecha });

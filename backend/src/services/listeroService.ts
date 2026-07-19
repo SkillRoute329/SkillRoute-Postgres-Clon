@@ -956,3 +956,91 @@ export async function procesarCorrelativoDirecto(internoA: string, internoB: str
   }
 }
 
+// ─── GESTIÓN DE FLOTA Y ASIGNACIÓN (ROSTERING INTEGRADO) ────────────────────
+
+export async function getFlotaMaestra() {
+  try {
+    // Obtenemos todos los coches
+    const coches = await sqlDb<VehiculoRow>('vehiculos').select('*').orderBy('id', 'asc');
+    
+    // Obtenemos todos los choferes fijos (los que tienen coche_fijo_id)
+    const personalFijo = await sqlDb('personal')
+      .whereRaw("data_jsonb->>'tipo_vinculo' = 'fijo'");
+      
+    // Armamos el diccionario de coches con sus asignaciones
+    const flota = coches.map(c => {
+       const cocheId = c.id;
+       const d = (c.data_jsonb ?? {}) as Record<string, any>;
+       
+       // Buscar choferes asignados a este coche
+       const asignados = personalFijo.filter(p => (p.data_jsonb as any)?.coche_fijo_id === cocheId);
+       
+       const choferManana = asignados.find(p => (p.data_jsonb as any)?.rotacion_semana_actual === 'mañana');
+       const choferTarde = asignados.find(p => (p.data_jsonb as any)?.rotacion_semana_actual === 'tarde');
+       
+       return {
+         id: c.id,
+         interno: c.internal_number ?? d.interno ?? c.id,
+         lineaHabitual: d.linea_habitual || '',
+         marca: d.marca || '',
+         patente: d.patente || '',
+         categoria: d.categoria || 'Normal',
+         choferManana: choferManana ? {
+           id: choferManana.id,
+           fullName: choferManana.full_name,
+           internalNumber: choferManana.internal_number,
+           tipoRotacion: (choferManana.data_jsonb as any)?.tipo_rotacion || 'semanal'
+         } : null,
+         choferTarde: choferTarde ? {
+           id: choferTarde.id,
+           fullName: choferTarde.full_name,
+           internalNumber: choferTarde.internal_number,
+           tipoRotacion: (choferTarde.data_jsonb as any)?.tipo_rotacion || 'semanal'
+         } : null,
+       };
+    });
+    
+    return flota;
+  } catch (error) {
+    logger.error('[LISTERO] Error getFlotaMaestra', { error: String(error) });
+    throw new AppError(500, 'Error al obtener la flota maestra');
+  }
+}
+
+export async function asignarTitularCoche(vehiculoId: string, turno: 'mañana' | 'tarde', conductorId: string | null, tipoRotacion: 'fijo' | 'semanal' | 'quincenal' = 'semanal') {
+  try {
+    return await sqlDb.transaction(async (trx) => {
+      // 1. Si alguien más estaba asignado a este coche en este turno, lo pasamos a flotante
+      const previos = await trx('personal')
+        .whereRaw("data_jsonb->>'coche_fijo_id' = ?", [vehiculoId])
+        .whereRaw("data_jsonb->>'rotacion_semana_actual' = ?", [turno]);
+        
+      for (const prev of previos) {
+        if (prev.id !== conductorId) {
+           const newData = { ...(prev.data_jsonb as any), tipo_vinculo: 'flotante', coche_fijo_id: null, rotacion_semana_actual: null, tipo_rotacion: null };
+           await trx('personal').where('id', prev.id).update({ data_jsonb: newData });
+        }
+      }
+      
+      // 2. Asignar el nuevo conductor si no es null
+      if (conductorId) {
+        const chofer = await trx('personal').where('id', conductorId).first();
+        if (chofer) {
+           const newData = {
+              ...((chofer.data_jsonb as any) || {}),
+              tipo_vinculo: 'fijo',
+              coche_fijo_id: vehiculoId,
+              rotacion_semana_actual: turno,
+              tipo_rotacion: tipoRotacion
+           };
+           await trx('personal').where('id', conductorId).update({ data_jsonb: newData });
+        }
+      }
+      
+      return { ok: true };
+    });
+  } catch (error) {
+    logger.error('[LISTERO] Error asignarTitularCoche', { error: String(error) });
+    throw new AppError(500, 'Error al asignar titular al coche');
+  }
+}
