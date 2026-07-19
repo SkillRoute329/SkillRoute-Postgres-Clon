@@ -17,7 +17,10 @@
     "deploy": "firebase deploy",
     "test:e2e": "playwright test tests/usuario-real.spec.ts",
     "verificar": "node scripts/verificar-login.js",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "db:migrate": "knex migrate:latest",
+    "db:seed": "knex seed:run",
+    "db:setup": "npm run db:migrate && npm run db:seed"
   },
   "engines": {
     "node": ">=20.0.0"
