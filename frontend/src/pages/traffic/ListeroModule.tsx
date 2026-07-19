@@ -18,6 +18,7 @@ import {
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import toast from 'react-hot-toast';
 import { formatHoraMvd } from '../../utils/formatTimestamp';
+import { getToken } from '../../utils/tokenStore';
 
 // ─── Tipos (espejo del backend) ───────────────────────────────────────────────
 
@@ -136,7 +137,7 @@ function useFecha() {
 }
 
 async function apiFetch(path: string, opts?: RequestInit) {
-  const token = localStorage.getItem('token') ?? '';
+  const token = getToken() ?? '';
   const res = await fetch(path, {
     ...opts,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(opts?.headers ?? {}) },

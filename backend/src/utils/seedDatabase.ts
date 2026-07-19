@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import sqlDb from '../src/config/database';
+import sqlDb from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
-import logger from '../src/config/logger';
+import logger from '../config/logger';
 
 export async function seedDatabase(force = false) {
   try {

@@ -25,7 +25,7 @@ const Loader = () => (
 );
 
 export default function ListeroHub() {
-  const [tab, setTab] = useState<TabKey>('terminal');
+  const [tab, setTab] = useState<TabKey>('cascada');
   return (
     <div className="bg-slate-950 min-h-screen flex flex-col">
       <div className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur border-b border-slate-800 px-6 pt-5">

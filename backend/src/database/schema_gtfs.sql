@@ -67,6 +67,7 @@ CREATE TABLE gtfs.stops (
     stop_id varchar(100) PRIMARY KEY,
     stop_name varchar(255),
     stop_code varchar(50),
+    stop_desc text,
     stop_lat double precision,
     stop_lon double precision,
     location_type int,

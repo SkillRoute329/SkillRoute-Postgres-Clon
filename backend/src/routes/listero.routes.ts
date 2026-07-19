@@ -212,32 +212,30 @@ router.post(
       res.json({ ok: true, created: 0, existing: existentes.length, fecha });
       return;
     }
-    // Leer rotación del día desde cartones_historial.
     const sqlDb = (await import('../config/database')).default;
-    const rows: Array<{ vehiculo_id: string; service_number: string | null; line: string | null }>
-      = await sqlDb('cartones_historial')
-        .select('vehiculo_id', 'service_number', 'line')
-        .where('fecha', fecha);
+    const rows: Array<{ id: string; agency_id: string; data_jsonb: any }> = await sqlDb('vehiculos');
     if (rows.length === 0) {
-      res.json({ ok: true, created: 0, existing: 0, fecha, nota: 'No hay rotación capturada para esa fecha.' });
+      res.json({ ok: true, created: 0, existing: 0, fecha, nota: 'No hay vehículos configurados.' });
       return;
     }
     let created = 0;
     for (const r of rows) {
+      const line = r.data_jsonb?.linea_habitual ?? '300';
       try {
         // conductor_id es FK a personal(id); si no hay asignación aún,
         // dejamos null (FK lo permite). El listero asigna después.
         await listeroService.createTurno({
           fecha,
-          vehiculoId: r.vehiculo_id,
-          vehiculoInterno: r.vehiculo_id,
-          lineaId: r.line ?? '',
-          horaSalida: '00:00',
-          horaLlegadaEstimada: '00:00',
+          vehiculoId: r.id,
+          vehiculoInterno: r.id,
+          lineaId: line,
+          turno: 'mañana',
+          horaSalida: '06:00',
+          horaLlegadaEstimada: '14:00',
           conductorId: null,
           conductorNombre: null,
           conductorInterno: null,
-          servicioId: r.service_number ?? null,
+          servicioId: null,
         } as never);
         created += 1;
       } catch (e) {

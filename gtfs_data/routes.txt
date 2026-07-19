@@ -1,372 +1,322 @@
-"route_id","agency_id","route_short_name","route_long_name","route_type"
-5002,13,"6R6","MDEO./SAUCE (x 6,33,17m)",3
-5003,13,"6R6","SAUCE/MDEO. (x 6,33,17m)",3
-5004,13,"6R6","MDEO./SAUCE (x R.6,Toledo)",3
-5005,13,"6R6","SAUCE/MDEO. (x R.6,Toledo)",3
-5006,13,"6R6","MDEO./SAUCE (x 17m, Toledo)",3
-5007,13,"6R6","SAUCE/MDEO. (x 17m, Toledo)",3
-5008,13,"6A","MDEO./SAUCE (x G.Flores, 33)",3
-5009,13,"6A","SAUCE/MDEO. (x G.Flores, 33)",3
-5010,13,"6A","MDEO./SAUCE (x 8 de Oct.,R.33)",3
-5011,13,"6A","SAUCE/MDEO. (x 8 de Oct.,R.33)",3
-5014,13,"15B","MDEO./SAN ANTONIO (x Toledo)",3
-5015,13,"15B","SAN ANTONIO/MDEO. (x Toledo)",3
-5016,13,"15B","MDEO./SAN ANTONIO (x 17m)",3
-5017,13,"15B","SAN ANTONIO/MDEO. (x 17m)",3
-5018,13,"15B","MDEO./SAN ANTONIO (x 17m, Toledo)",3
-5019,13,"15B","SAN ANTONIO/MDEO. (x 17m, Toledo)",3
-5028,29,"2K","MDEO./SANTA LUCIA(Directo)",3
-5029,29,"2K","SANTA LUCIA/MDEO.(Directo)",3
-5034,10,"4D","MDEO./LAS PIEDRAS",3
-5035,10,"4D","LAS PIEDRAS/MDEO.",3
-5036,10,"4A","MDEO./LAS PIEDRAS",3
-5037,10,"4A","LAS PIEDRAS/MDEO.",3
-5038,10,"4A","MDEO./LAS PIEDRAS (x Por Santo)",3
-5039,10,"4A","LAS PIEDRAS/MDEO. (x Por Santo)",3
-5050,10,"5D","MDEO./SAUCE",3
-5051,10,"5D","SAUCE/MDEO.",3
-5054,10,"4AD","MDEO./LAS PIEDRAS",3
-5055,10,"4AD","LAS PIEDRAS/MDEO.",3
-5056,18,"700","MDEO./PINAR",3
-5057,18,"700","PINAR/MDEO.",3
-5058,18,"701","MDEO./PANDO",3
-5059,18,"701","PANDO/MDEO.",3
-5068,18,"705","MDEO./PINAR",3
-5069,18,"705","PINAR/MDEO.",3
-5070,18,"705","MDEO./COLINAS SOLYMAR",3
-5071,18,"705","COLINAS SOLYMAR/MDEO.",3
-5072,18,"706","MDEO./PANDO",3
-5073,18,"706","PANDO/MDEO.",3
-5075,18,"707","MDEO./SOLYMAR",3
-5076,18,"707","REP.HIGUERAS/MDEO.",3
-5077,18,"707","SOLYMAR/MDEO.",3
-5078,18,"708","MDEO./SOLYMAR",3
-5081,18,"708","SOLYMAR/MDEO.",3
-5084,18,"709","MDEO./MARINDIA",3
-5086,18,"709","MARINDIA/MDEO.",3
-5087,18,"709","MARINDIA/MDEO. (Directo)",3
-5088,18,"710","MDEO./P.DEL PLATA (x Interbalnearia)",3
-5089,18,"710","P.DEL PLATA/MDEO. (x Interbalnearia)",3
-5090,18,"710","MDEO./P.DEL PLATA (Directo-Interbalnearia)",3
-5091,18,"710","P.DEL PLATA/MDEO. (Directo-Interbalnearia)",3
-5092,18,"710","MDEO./P.DEL PLATA (x Giannattasio)",3
-5093,18,"710","P.DEL PLATA/MDEO. (x Giannattasio)",3
-5102,18,"710","MDEO./EST.ATLANTIDA (x Interbalnearia)",3
-5103,18,"710","EST.ATLANTIDA/MDEO. (x Interbalnearia)",3
-5104,18,"710","MDEO./EST.ATLANTIDA (x Giannattassio)",3
-5105,18,"710","EST.ATLANTIDA/MDEO. (x Giannattassio)",3
-5106,18,"711","MDEO./B.HORIZONTE",3
-5107,18,"711","B.HORIZONTE/MDEO.",3
-5108,18,"711","MDEO./B.HORIZONTE (Directo-Interbalnearia)",3
-5109,18,"711","B.HORIZONTE/MDEO. (Directo-Interbalnearia)",3
-5110,18,"711","MDEO./B.HORIZONTE (x Giannattasio)",3
-5111,18,"711","B.HORIZONTE/MDEO. (x Giannattasio,P.P.Norte)",3
-5112,18,"711","MDEO./GUAZUVIRA",3
-5113,18,"711","GUAZUVIRA/MDEO.",3
-5114,18,"711","MDEO./EST.FLORESTA (x Giannattasio)",3
-5115,18,"711","EST.FLORESTA/MDEO. (x Giannattasio)",3
-5116,18,"714","MDEO./PINAR",3
-5117,18,"714","PINAR/MDEO.",3
-5118,18,"724","MDEO./PANDO",3
-5119,18,"724","PANDO/MDEO.",3
-5120,18,"750","MDEO./BARRIO OBRERO (x Andaluz)",3
-5124,18,"751","MDEO./SUAREZ (x Andaluz)",3
-5125,18,"751","SUAREZ/MDEO. (x Andaluz)",3
-5126,18,"751","MDEO./SUAREZ (x Repetto)",3
-5127,18,"751","SUAREZ/MDEO. (x Repetto)",3
-5128,18,"751","MDEO./SUAREZ (x Directo)",3
-5129,18,"751","SUAREZ/MDEO. (x Directo)",3
-5130,18,"752","MDEO./V.HADITA (x Andaluz)",3
-5131,18,"752","V.HADITA/MDEO. (x Andaluz)",3
-5132,18,"752","MDEO./V.HADITA (x Repetto)",3
-5133,18,"752","V.HADITA/MDEO. (x Repetto)",3
-5146,18,"803","MDEO./SANTA LUCIA (x Parador Tajes)",3
-5147,18,"803","SANTA LUCIA/MDEO. (x Parador Tajes)",3
-5148,18,"803","MDEO./SANTA LUCIA (x C.MILITAR)",3
-5149,18,"803","SANTA LUCIA/MDEO. (x C.MILITAR)",3
-5150,18,"804","MDEO./SANTA LUCIA",3
-5151,18,"804","SANTA LUCIA/MDEO.",3
-5152,18,"804","MDEO./SANTA LUCIA (Directo)",3
-5153,18,"804","SANTA LUCIA/MDEO.(Directo)",3
-5158,18,"807","MDEO./V.ALEGRIA",3
-5159,18,"807","V.ALEGRIA/MDEO.",3
-5160,18,"808","MDEO./ALM.CALCAGNO",3
-5161,18,"808","ALM.CALCAGNO/MDEO.",3
-5162,18,"809","MDEO./PROGRESO",3
-5163,18,"809","PROGRESO/MDEO.",3
-5164,18,"809","MDEO./PROGRESO (x Eliseo Argentino)",3
-5165,18,"809","PROGRESO/MDEO. (x Eliseo Argentino)",3
-5166,18,"809","MDEO./PROGRESO (Directo)",3
-5167,18,"809","PROGRESO/MDEO. (Directo)",3
-5175,18,"7E5","COLINAS SOLYMAR/MDEO.",3
-5178,18,"1A","MDEO./CANELONES (Directo)",3
-5179,18,"1A","CANELONES/MDEO. (Directo)",3
-5180,18,"1A","MDEO./CANELONES",3
-5181,18,"1A","CANELONES/MDEO.",3
-5182,18,"2A","MDEO./SANTA LUCIA (x Margat)",3
-5183,18,"2A","SANTA LUCIA/MDEO. (x Margat)",3
-5184,18,"2A","MDEO./SANTA LUCIA (x Empalme)",3
-5185,18,"2A","SANTA LUCIA/MDEO. (x Empalme)",3
-5186,18,"2A","MDEO./SANTA LUCIA (x Represa)",3
-5187,18,"2A","SANTA LUCIA/MDEO. (x Represa)",3
-5188,18,"2A","MDEO./SANTA LUCIA (Directo)",3
-5189,18,"2A","SANTA LUCIA/MDEO. (Directo)",3
-5190,18,"7A","MDEO./PANDO",3
-5191,18,"7A","PANDO/MDEO.",3
-5192,18,"7A","MDEO./PANDO (x Pancovi)",3
-5193,18,"7A","PANDO/MDEO. (x Pancovi)",3
-5194,18,"7A","MDEO./PANDO (Directo)",3
-5195,18,"7A","PANDO/MDEO. (Directo)",3
-5196,18,"7A","MDEO./KM 26,500 R.8 (x Cno.Ventura, Los Aromos)",3
-5197,18,"7A","KM 26,500 R.8/MDEO. (x Cno.Ventura, Los Aromos)",3
-5199,18,"7A","KM 40 BARRERAS/MDEO. (x Azulejos)",3
-5204,18,"7E7R","MDEO./PINAR (Directo)",3
-5205,18,"7E7R","PINAR/MDEO. (Directo)",3
-5208,18,"7E8R","MDEO./PINAR",3
-5209,18,"7E8R","PINAR/MDEO.",3
-5210,18,"7H","LAS PIEDRAS/PANDO",3
-5211,18,"7H","PANDO/PROGRESO",3
-5212,18,"7H","PROGRESO/PANDO",3
-5213,18,"7H","PANDO/LAS PIEDRAS",3
-5216,18,"8E7R","MDEO./SOLYMAR NORTE",3
-5217,18,"8E7R","SOLYMAR NORTE/MDEO.",3
-5218,18,"8E8R","MDEO./SOLYMAR NORTE",3
-5219,18,"8E8R","SOLYMAR NORTE/MDEO.",3
-5224,50,"214","MDEO./PINAR (Club Tenis)",3
-5225,50,"214","PINAR/MDEO.(Club Tenis)",3
-5230,50,"227","MDEO./SANTA MONICA",3
-5231,50,"227","SANTA MONICA/MDEO.",3
-5232,50,"227","MDEO./PLAYA PASCUAL",3
-5233,50,"227","PLAYA PASCUAL/MDEO.",3
-5234,50,"227","MDEO./PLAYA PASCUAL (x Penino,V.Olimpica)",3
-5235,50,"227","PLAYA PASCUAL/MDEO. (x Penino,V.Olimpica)",3
-5237,50,"227","PLAYA PASCUAL/MDEO. (x V.Olimpica)",3
-5238,50,"230","MDEO./LAS PIEDRAS",3
-5239,50,"230","LAS PIEDRAS/MDEO.",3
-5240,50,"268","MDEO./SUAREZ",3
-5241,50,"268","SUAREZ/MDEO.",3
-5250,50,"C2","MDEO./SALINAS",3
-5251,50,"C2","SALINAS/MDEO.",3
-5253,50,"C2","SALINAS/MDEO. (x Por Remanso)",3
-5256,50,"C4","MDEO./P.DEL PLATA",3
-5257,50,"C4","P.DEL PLATA/MDEO.",3
-5258,70,"11A","MDEO./SAN BAUTISTA (x 17m)",3
-5259,70,"11A","SAN BAUTISTA/MDEO. (x Toledo)",3
-5264,13,"15A","MDEO./SAN ANTONIO",3
-5265,13,"15A","SAN ANTONIO/MDEO.",3
-5266,70,"221","MDEO./PINAR",3
-5267,70,"221","PINAR/MDEO.",3
-5268,18,"2A","MDEO./SANTA LUCIA (x Empalme-Esc.255)",3
-5269,18,"2A","SANTA LUCIA/MDEO. (x Empalme-Esc.255)",3
-5270,18,"7E7R","MDEO./PINAR (x Av.Transversal)",3
-5271,18,"7E7R","PINAR/MDEO. (x Av.Transversal)",3
-5272,18,"7E7R","MDEO./PINAR (x Av.Americas,Transv.)",3
-5273,18,"7E7R","PINAR/MDEO. (x Av.Americas,Transv.)",3
-5290,35,"14AB","MDEO./PANDO (MAZUCHI Y VIA)",3
-5291,35,"14AB","PANDO (MAZUCHI Y VIA)/MDEO.",3
-5294,35,"14AR","MDEO./PANDO",3
-5295,35,"14AR","PANDO/MDEO.",3
-5302,35,"14A","MDEO./SAN JACINTO",3
-5303,35,"14A","SAN JACINTO/MDEO.",3
-5312,35,"14A","MDEO./SAN JACINTO (x TOT.VILLA SERENA)",3
-5313,35,"14A","SAN JACINTO/MDEO. (x TOT.VILLA SERENA)",3
-5326,35,"14A","MDEO./SAN JACINTO (x MAT.PANDO,TOT.VILLA SERENA)",3
-5377,35,"14A","PANTANOSO/MDEO. (x TOT.VILLA SERENA)",3
-5378,35,"14A","MDEO./RUTA 7 KM 40 (x TOT.VILLA SERENA)",3
-5379,35,"14A","RUTA 7 KM 40/MDEO. (x TOT.VILLA SERENA)",3
-5385,35,"14A","RUTA 7 KM 40/MDEO.",3
-5409,35,"10A","TALA/MDEO. (x REC.NORMAL)",3
-5412,18,"747","MDEO./PANDO (x Andaluz)",3
-5413,18,"747","PANDO/MDEO.(x Andaluz)",3
-5414,18,"747","MDEO./PANDO (x Reppeto)",3
-5415,18,"747","PANDO/MDEO. (x Reppeto)",3
-5416,35,"10A","MDEO./TALA (x REC.NORMAL)",3
-5417,35,"10A","TALA/MDEO. (x REC.NORMAL)",3
-5427,18,"748","PANDO/MDEO. (x Reppeto)",3
-5428,35,"10A","MDEO./TALA (x TOT.VILLA SERENA)",3
-5429,35,"10A","TALA/MDEO. (x TOT.VILLA SERENA)",3
-5446,18,"748","MDEO./PANDO (x Suarez,CEM)",3
-5447,18,"748","PANDO/MDEO. (x CEM,SUAREZ)",3
-5449,18,"748","PANDO/MDEO. (x CEM,SUAREZ)",3
-5464,10,"4A","MDEO./V.FORESTI",3
-5465,10,"4A","V.FORESTI/MDEO.",3
-5484,70,"8SR","MDEO./SAN RAMON (x 8 Oct.,17 m)",3
-5485,70,"8SR","SAN RAMON/MDEO. (x 8 Oct.,17 m)",3
-5499,70,"11A","SANTA ROSA/MDEO.",3
-5504,70,"11A","MDEO./SANTA ROSA (x 17 m)",3
-5505,70,"11A","SANTA ROSA/MDEO. (x 17 m)",3
-5506,70,"11A","MDEO./SAN BAUTISTA",3
-5507,70,"11A","SAN BAUTISTA/MDEO.",3
-5508,70,"11A","MDEO./SAN RAMON",3
-5509,70,"11A","SAN RAMON/MDEO.",3
-5514,70,"11A","MDEO./SAN RAMON (x 17 m)",3
-5515,70,"11A","SAN RAMON/MDEO. (x 17 m)",3
-5517,70,"11A","CHAMIZO/MDEO.",3
-5518,70,"11A","MDEO./CHAMIZO (x 17 m)",3
-5519,70,"11A","CHAMIZO/MDEO. (x 17 m)",3
-5520,70,"8SR","MDEO./SANTA ROSA (x 8 Oct.,17 m)",3
-5521,70,"8SR","SANTA ROSA/MDEO. (x 8 Oct.,17 m)",3
-5524,70,"11A","MDEO./SAUCE (x Toledo)",3
-5525,70,"11A","SAUCE/MDEO. (x Toledo)",3
-5526,70,"11A","MDEO./SAUCE (x 17 m)",3
-5527,70,"11A","SAUCE/MDEO. (x 17 m)",3
-5528,70,"11A","MDEO./SAUCE (x 17 m, Toledo)",3
-5529,70,"11A","SAUCE/MDEO. (x 17 m, Toledo)",3
-5536,10,"5D","GARZoN Y ARIEL/SAUCE",3
-5548,50,"227","MDEO./PLAYA PASCUAL (x Delta)",3
-5549,50,"227","PLAYA PASCUAL/MDEO. (x Delta)",3
-5554,50,"227","MDEO./PLAYA PASCUAL (Rapido)",3
-5555,50,"227","PLAYA PASCUAL/MDEO. (Rapido)",3
-5557,50,"227","R.1 KM 28/MDEO. (x Delta)",3
-5558,50,"268","MDEO./SUAREZ (x Cordon)",3
-5559,50,"268","SUAREZ/MDEO. (x Cordon)",3
-5568,18,"751","MDEO./C.E.M. (x Andaluz)",3
-5569,18,"751","C.E.M./MDEO. (x Andaluz)",3
-5570,18,"751","MDEO./C.E.M. (x Repetto)",3
-5576,18,"802","MDEO./SANTA LUCIA (x Emp.R.48 y 49)",3
-5586,18,"1A","MDEO./CARCEL CANELONES",3
-5587,18,"1A","CARCEL CANELONES/MDEO.",3
-5597,18,"7A","KM 26,500 R.8/MDEO. (x V.Guadalupe, V.Manuela)",3
-5624,18,"701","MDEO./PANDO (x Zonamerica)",3
-5625,18,"701","PANDO/MDEO. (x Por Zonamerica)",3
-5628,50,"C5","MDEO./EST.ATLANTIDA",3
-5647,70,"11A","SAN RAMON/MDEO. (x Toledo)",3
-5662,50,"C5","MDEO./EST.ATLANTIDA",3
-5663,50,"C5","EST.ATLANTIDA/MDEO.",3
-5664,50,"C4","MDEO./P.PLATA(PORTUARIOS)",3
-5665,50,"C4","P.PLATA(PORTUARIOS/MDEO.",3
-5668,13,"6R6","MDEO./SAUCE (x Barrio Blanco,Toledo)",3
-5669,13,"6R6","SAUCE/MDEO. (x Barrio Blanco,Toledo)",3
-5670,13,"6R6","MDEO./SAUCE (x Barrio Blanco,17m,Toledo)",3
-5687,13,"6R6","SAUCE/MDEO. (Por Barrio Blanco,17m)",3
-5697,50,"C4","MDEO./P.DEL PLATA (Directo)",3
-5698,50,"C4","P.DEL PLATA/MDEO. (Directo)",3
-5703,50,"227","3 CRUCES/PLAYA PASCUAL",3
-5704,50,"227","PLAYA PASCUAL/3 CRUCES",3
-5705,50,"227","3 CRUCES/PLAYA PASCUAL",3
-5706,50,"227","PLAYA PASCUAL/3 CRUCES",3
-5710,20,"1M11","MDEO./DELTA EL TIGRE",3
-5711,20,"1M11","DELTA EL TIGRE/MDEO.",3
-5712,20,"1M4","MDEO./P.PASCUAL x PENINO",3
-5713,20,"1M4","PLAYA PENINO/MDEO.",3
-5714,20,"1M12","MDEO./R1N K29.5 (x DELTA)",3
-5715,20,"1M12","R1 K29.5/MDEO. (x DELTA)",3
-5716,20,"1M13","MDEO./SANTA MONICA (x DELTA)",3
-5717,20,"1M13","SANTA MONICA/MDEO. (x DELTA)",3
-5718,20,"1M1","MDEO./PLAYA PASCUAL",3
-5719,20,"1M1","PLAYA PASCUAL/MDEO.",3
-5720,20,"1M2","MDEO./PLAYA PASCUAL (x DELTA)",3
-5721,20,"1M2","PLAYA PASCUAL/MDEO. (x DELTA)",3
-5723,20,"1M5","PLAYA PASCUAL/MDEO. (x V.Olimpica)",3
-5728,20,"1M6","MDEO./PLAYA PASCUAL (x Penino y V.Olimpica)",3
-5729,20,"1M6","PLAYA PASCUAL/MDEO. (x V.Olimpica y Penino)",3
-5730,20,"1M7","TRES CRUCES/PLAYA PASCUAL",3
-5731,20,"1M7","PLAYA PASCUAL/TRES CRUCES",3
-5732,20,"1M15","MDEO./COLONIA WILSON",3
-5733,20,"1M15","COLONIA WILSON/MDEO.",3
-5736,20,"1M1","MDEO./PLAYA PASCUAL (Rapido)",3
-5737,20,"1M1","PLAYA PASCUAL/MDEO. (Rapido)",3
-5738,20,"1M6","MDEO./PLAYA PASCUAL (Rapido x Penino)",3
-5740,20,"1M7","TRES CRUCES/PLAYA PASCUAL (Rapido)",3
-5741,20,"1M7","PLAYA PASCUAL/TRES CRUCES (Rapido)",3
-5754,20,"1M14","MDEO./SANTA MONICA (x Delta y Monte Grande)",3
-5755,20,"1M14","SANTA MONICA/MDEO. (x Monte Grande y Delta)",3
-5757,20,"1M16","RUTA 1N k29.5/MDEO. (x R.1 Vieja y Delta)",3
-5763,50,"C3","P.PLATA(PORTUARIOS/MDEO.",3
-5772,35,"14AR","VILLA JARDINES/MDEO.",3
-5775,50,"214","MDEO./PINAR (SEMI-DIRECTO)",3
-5776,50,"214","PINAR/MDEO. (SEMI-DIRECTO)",3
-5777,29,"2K","MDEO./SANTA LUCIA(Semi Directo)",3
-5778,29,"2K","SANTA LUCIA/MDEO.(Semi Directo)",3
-5779,18,"701","MDEO./PANDO (SEMI-DIRECTO)",3
-5780,18,"701","PANDO/MDEO. (SEMI-DIRECTO)",3
-5783,20,"1M8","PLAYA PASCUAL/TRES CRUCES(D)",3
-5784,10,"4AC","MDEO./LAS PIEDRAS (x Campisteguy)",3
-5785,10,"4AC","LAS PIEDRAS/MDEO. (x Campisteguy)",3
-5788,10,"48D","MDEO./LAS PIEDRAS (DIRECTO)",3
-5789,10,"48D","LAS PIEDRAS/MDEO. (DIRECTO)",3
-5790,50,"230D","MDEO./LAS PIEDRAS (DIRECTO)",3
-5791,50,"230D","LAS PIEDRAS/MDEO. (DIRECTO)",3
-5798,50,"C1","SALINAS/MDEO. (SEMIDIRECTO x Remanso)",3
-5799,70,"11A","MDEO./SAN RAMON (x 17m,Toledo)",3
-5800,70,"11A","SAN RAMON/MDEO. (x Toledo,17m)",3
-5803,70,"11A","MDEO./SANTA ROSA(x 17m y Toledo)",3
-5808,50,"C2","SALINAS/MDEO.",3
-5820,18,"711","B.HORIZONTE/MDEO. (711-710 x P.Plata)",3
-5832,70,"221","MDEO./SOLYMAR",3
-5833,70,"221","SOLYMAR/MDEO.",3
-5836,10,"222","MDEO./P.DEL PLATA",3
-5837,10,"222","P.DEL PLATA/MDEO.",3
-5838,10,"D222","MDEO./P.DEL PLATA",3
-5839,10,"D222","P.DEL PLATA/MDEO.",3
-5840,20,"2M1","MDEO./LIBERTAD",3
-5841,20,"2M1","LIBERTAD/MDEO.",3
-5846,20,"2M3","MDEO./LIBERTAD",3
-5847,20,"2M3","LIBERTAD/MDEO.",3
-5849,20,"2M5","PENAL LIBERTAD/MDEO.",3
-5851,20,"2M6","PENAL LIBERTAD/MDEO.",3
-5855,18,"7E8D","MDEO./PINAR (SEMIDIRECTO)",3
-5856,18,"7E8D","PINAR/MDEO. (SEMIDIRECTO)",3
-5857,18,"701","MDEO./V.EL TATO",3
-5858,18,"701","V.EL TATO/MDEO.",3
-5869,50,"227","MDEO./TNAL.STA.MONICA (x Monte Grande)",3
-5870,50,"227","TNAL.STA.MONICA/MDEO. (x Monte Grande)",3
-5871,18,"802","MDEO./CERRILLOS (x Shopping Las Piedras)",3
-5872,18,"802","CERRILLOS/MDEO. (x Shopping Las Piedras)",3
-5873,18,"807","MDEO./V.ALEGRIA (x Shopping Las Piedras)",3
-5875,20,"2M7","TRES CRUCES/LIBERTAD",3
-5876,20,"2M7","LIBERTAD/TRES CRUCES",3
-5877,18,"8A","MDEO./SOCA",3
-5878,18,"8A","SOCA/MDEO.",3
-5881,18,"709","MDEO./MARINDIA SUR (x Giann,Neptunia Norte)",3
-5882,18,"709","MARINDIA SUR/MDEO. (x Giann,Neptunia Norte)",3
-5883,50,"C1","MDEO./SALINAS",3
-5884,50,"C1","SALINAS/MDEO.",3
-5885,50,"C1","MDEO./SALINAS (x Remanso)",3
-5886,50,"C1","SALINAS/MDEO. (x Remanso)",3
-5887,50,"C3","MDEO./P.DEL PLATA",3
-5888,50,"C3","P.DEL PLATA/MDEO.",3
-5894,10,"4AC","MDEO./LAS PIEDRAS",3
-5895,10,"4AC","LAS PIEDRAS/MDEO.",3
-5901,20,"2M8","MDEO./COLONIA WILSON UTE",3
-5902,20,"2M8","COLONIA WILSON UTE/MDEO.",3
-5905,18,"757","TNAL.ZONAMERICA/PINAR",3
-5906,18,"757","PINAR/ZONAMERICA",3
-5909,18,"757","LAS PIEDRAS/PINAR (x Tnal.Colon)",3
-5910,18,"757","PINAR/LAS PIEDRAS (x Tnal.Colon)",3
-5916,10,"4DR","SANTA ISABEL/MDEO.",3
-5917,10,"4DR","MDEO./CANELON CHICO",3
-5918,10,"4DR","CANELON CHICO/MDEO.",3
-5921,10,"4DR","MDEO./CANELON CHICO",3
-5922,10,"4DR","CANELON CHICO/MDEO.",3
-5923,50,"227","PASO DE LA ARENA/PLAYA PASCUAL (x Delta)",3
-5925,50,"C1","MDEO./SALINAS (SEMIDIRECTO)",3
-5927,18,"804","MDEO./SANTA LUCIA",3
-5928,18,"804","SANTA LUCIA/MDEO.",3
-5931,18,"709","MARINDIA SUR/MDEO. (x Giann,Neptunia Norte)",3
-5933,18,"712","MDEO./STA.LUCIA ESTE",3
-5934,18,"712","STA.LUCIA ESTE/MDEO.",3
-5935,18,"712","MDEO./JAUREGUIBERRY",3
-5936,18,"712","JAUREGUIBERRY/MDEO.",3
-5937,18,"750","BARRIO OBRERO/MDEO. (x R.84,Andaluz)",3
-5938,18,"2A","MDEO./STA.LUCIA (x Accesos)",3
-5939,18,"2A","STA.LUCIA/MDEO. (x Accesos)",3
-5940,18,"703","MDEO./AEROPUERTO",3
-5942,18,"704","MDEO./AEROPUERTO",3
-5944,18,"711","GUAZUVIRA/MDEO. (711-710 x P.PLATA)",3
-5947,50,"276","SIRI/ALDABALDE Y R.5",3
-5948,50,"276","ALDABALDE Y R.5/SIRI",3
-5949,18,"704","AEROPUERTO/MDEO.",3
-5950,18,"703","AEROPUERTO/MDEO.",3
-5951,50,"276","SIRI/ALDABALDE Y R.5 (x Escuela 89 La Paz)",3
-5952,50,"276","ALDABALDE Y R.5/SIRI (x Escuela 89 La Paz)",3
-19000,20,"ML1","SANTIAGO VAZQUEZ/P.PASCUAL (x BARRIOS)",3
-19001,20,"ML1","PLAYA PASCUAL/S.VAZQUEZ (x BARRIOS)",3
-19002,20,"ML1","SGO.VAZQUEZ/PLAYA PASCUAL.(x BARRIOS y TORYAL)",3
-19003,20,"ML1","PLAYA PASCUAL/SGO.VAZQUEZ (x TORYAL Y BARRIOS)",3
-19004,20,"ML2","PASO DE LA ARENA/PLAYA PASCUAL",3
-19005,20,"ML2","PLAYA PASCUAL/PASO DE LA ARENA",3
-19007,20,"ML2","SANTIAGO VAZQUEZ/PLAYA PASCUAL(C)",3
-19008,20,"ML2","PLAYA PASCUAL/DELTA EL TIGRE",3
-19015,20,"ML2","LICEO 43/PLAYA PASCUAL",3
-19016,20,"ML2","PLAYA PASCUAL/LICEO 43",3
+route_id,agency_id,route_short_name,route_long_name,route_desc,route_type
+2302398,"STM-MVD","100","Plaza Independencia - Villa Farre",,3
+2300027,"STM-MVD","100","Pza.españa - V.farre",,3
+2600277,"STM-MVD","102","Plaza España - Gruta De Lourdes.",,3
+2600275,"STM-MVD","102","Plaza Independencia - Gruta De Lourdes",,3
+2601174,"STM-MVD","102","Aduana - Gruta De Lourdes (noc)",,3
+2700039,"STM-MVD","103","Pza. España - Los Aromos",,3
+2701005,"STM-MVD","103","Plaza Espana - Punta De Rieles",,3
+2702400,"STM-MVD","103","Ruta 8 Km21 -- Plaza Independencia",,3
+2701164,"STM-MVD","103","Plaza España - Los Aromos (por Br Artigas)",,3
+2701175,"STM-MVD","103","Aduana - Los Aromos(noc)",,3
+2702399,"STM-MVD","103","Los Aromos -- Pza. Independencia",,3
+2702409,"STM-MVD","103","Plaza España -- Por Barrio Monarca",,3
+2702405,"STM-MVD","103","Plaza Indpendencia -- Punta De Rieles",,3
+2800762,"STM-MVD","104","Pza. Independencia - Rbla Costanera",,3
+2801176,"STM-MVD","104","Aduana - Pque Roosevelt (noc)",,3
+2801177,"STM-MVD","104","Aduana - Rbla Costanera (noc)",,3
+2800044,"STM-MVD","104","Pza. Independencia - Pque. Roosevelt",,3
+2900045,"STM-MVD","105","Plaza Independencia - Pque. Roosevelt",,3
+2900860,"STM-MVD","105","Plaza España - Parque Roosevelt",,3
+2901178,"STM-MVD","105","Aduana - Pque Roosevelt",,3
+3001179,"STM-MVD","106","Aduana - Hipodromo",,3
+3101185,"STM-MVD","109","Pza Independencia --- Pso Carrasco",,3
+3101186,"STM-MVD","109","Plaza España - Paso Carrasco",,3
+3100286,"STM-MVD","109","Plaza España - Parque Roosevelt (noc_2)",,3
+3100053,"STM-MVD","109","Pza Independencia - Parque Roosvelt",,3
+3102302,"STM-MVD","109","Plaza España - Barrio Obrero (racine)",,3
+3200057,"STM-MVD","110","Pza.españa - P. Macadam",,3
+3201106,"STM-MVD","110","Plaza España  - Manga (espadaña)",,3
+3202402,"STM-MVD","110","Pza. Independencia -- Manga",,3
+3302243,"STM-MVD","111","Aduana -- Malvin (noc)",,3
+3301059,"STM-MVD","111","Plaza España - Malvin",,3
+3300991,"STM-MVD","111","Tres Cruces -- Malvin",,3
+3400063,"STM-MVD","112","Plaza España - Punta Gorda",,3
+3401189,"STM-MVD","112","Portones - Luis Alberto De Herrera (pta Gorda)",,3
+3401181,"STM-MVD","112","Aduana -punta Gorda (noc)",,3
+3402279,"STM-MVD","112","Portones - Garibaldi",,3
+3400981,"STM-MVD","112","Intercambiador Belloni - Punta Gorda",,3
+3500933,"STM-MVD","113","Plaza Independencia - Malvin",,3
+3500064,"STM-MVD","113","Plaza España- Malvin",,3
+3500961,"STM-MVD","113","Tres Cruces - Malvin",,3
+3702213,"STM-MVD","115","Vista Linda --- Tres Cruces",,3
+3702326,"STM-MVD","115","Vista Linda - Tres Cruces (por Utu)",,3
+3800069,"STM-MVD","116","Ciudad Vieja - Pocitos",,3
+3802313,"STM-MVD","116","Pocitos - Uruguay Y Florida",,3
+3802331,"STM-MVD","116","Pocitos - Ciudad Vieja-teatro Solis",,3
+3902332,"STM-MVD","117","Punta Carretas-ciudad Vieja /teatro Solis",,3
+3900072,"STM-MVD","117","Plaza Independencia - Punta Carretas",,3
+3900719,"STM-MVD","117","Ciudad Vieja - Punta Carretas",,3
+4002333,"STM-MVD","121","Pta Carretas - Ciudad Vieja/teatro Solis",,3
+4000952,"STM-MVD","121","Pta. Carretas - C. Vieja /por Colonia",,3
+4102301,"STM-MVD","124","Ciudadela - Santa Catalina",,3
+4102347,"STM-MVD","124","Santa Catalina - Ciudad Vieja/teatro Solis",,3
+4100702,"STM-MVD","124","Ciudad Vieja - Sta. Catalina-noct",,3
+4100079,"STM-MVD","124","Ciudad Vieja - Sta.catalina",,3
+50402407,"STM-MVD","124 Sd","Ciudad Vieja - Santa Catalina",,3
+50402351,"STM-MVD","124 Sd","Santa Catalina - Teatro Solis",,3
+4300083,"STM-MVD","125","Ciudad Vieja -   Dique Nacional",,3
+4302348,"STM-MVD","125","Dique Nacional - Teatro Solis",,3
+4302267,"STM-MVD","125","Ciudadela -- Playa Del Cerro_1",,3
+4301091,"STM-MVD","125","Playa Del Cerro - Paso Molino",,3
+4501143,"STM-MVD","127","Aduana - Delta Del Tigre (noc.)",,3
+4501149,"STM-MVD","127","Aduana - Ruta 1 Km 26(por Penal)",,3
+4501094,"STM-MVD","127","Ruta 1 Km 26 - Paso Molino",,3
+4502268,"STM-MVD","127","Ciudadela -- Delta Del Tigre",,3
+4501148,"STM-MVD","127","Aduana - Ruta 1 Km 26",,3
+4502270,"STM-MVD","127","Ciudadela -- Ruta 1/km 26",,3
+4501092,"STM-MVD","127","Delta Del Tigre - Paso Molino",,3
+4502269,"STM-MVD","127","Ciudadela -- Delta Del Tigre (por Penal)",,3
+4501095,"STM-MVD","127","Ruta 1 Km 26 - Paso Molino (penal)",,3
+4501093,"STM-MVD","127","Delta Del Tigre - Paso Molino (penal)",,3
+4501144,"STM-MVD","127","Aduana - Delta Del Tigre(por Penal)",,3
+4502271,"STM-MVD","127","Ciudadela -- Ruta 1/km 26 (por Penal)",,3
+4601097,"STM-MVD","128","Paso De La Arena - Paso Molino",,3
+4601194,"STM-MVD","128","Pocitos --- P. De La Arena",,3
+4601196,"STM-MVD","128","Pocitos --- Uam",,3
+49602334,"STM-MVD","130","La Paz - Ciudad Vieja/teatro Solis",,3
+49601129,"STM-MVD","130","Ciudad Vieja - - La Paz",,3
+49602276,"STM-MVD","130","Ciudadela --- La Paz",,3
+5001151,"STM-MVD","133","Aduana - Pajas Blancas",,3
+5001101,"STM-MVD","133","Pajas Blancas - Paso Molino",,3
+5000291,"STM-MVD","133","Ciudad Vieja - Pajas Blancas (4:30-9:00)",,3
+5001142,"STM-MVD","133","Aduana - La Colorada",,3
+5000760,"STM-MVD","133","Ciudad Vieja - La Colorada",,3
+5001156,"STM-MVD","133","Aduana - Pajas Blancas(especial)",,3
+5302250,"STM-MVD","135","Ciudadela -- Punta Espinillo",,3
+5501154,"STM-MVD","137","Aduana - Paso De La Arena(tc)",,3
+5500789,"STM-MVD","137","Plaza España - Paso De La Arena  (tc)",,3
+5501104,"STM-MVD","137","Paso De La Arena - Paso Molino",,3
+5501105,"STM-MVD","137","Uam - Paso Molino",,3
+5501146,"STM-MVD","137","Aduana - Paso De La Arena (noc)",,3
+5501061,"STM-MVD","137","Plaza España - Uam (tc)",,3
+5500108,"STM-MVD","137","Plaza España - Paso De La Arena",,3
+5600953,"STM-MVD","140","Ciudadela - Portones(colonia - Mercedes)",,3
+5600986,"STM-MVD","140","Portones - Ciudadela",,3
+5700927,"STM-MVD","141","Pza. España - 8 De Octubre (circuito)",,3
+5900960,"STM-MVD","142","Plaza Espana - Rbla Costanera",,3
+5900959,"STM-MVD","142","Plaza Espana - Punta Gorda",,3
+6102251,"STM-MVD","143","Ciudadela --- Jose Batlle Y Ordoñez (circuito)",,3
+6200123,"STM-MVD","144","Teatro Solis - Ctrio. Del Norte",,3
+44301060,"STM-MVD","145","Plaza España - - Complejo America",,3
+44301066,"STM-MVD","145","Pza España - Uam (noc.)",,3
+44402369,"STM-MVD","147","Complejo America -- Millan",,3
+44402370,"STM-MVD","147","Complejo America -- Aduana",,3
+44402367,"STM-MVD","147","Complejo America - Ciudadela",,3
+44502379,"STM-MVD","148","Aviacion - Aduana",,3
+44502381,"STM-MVD","148","Aviacion - Ciudadela",,3
+44502380,"STM-MVD","148","Fauquet Melilla - Aduana",,3
+44502382,"STM-MVD","148","Fauquet --- Ciudadela",,3
+44502378,"STM-MVD","148","Terminal Colon - Aduana",,3
+44502377,"STM-MVD","148","Fauquet (pque  Ambientalista)- Aduana",,3
+44502385,"STM-MVD","148","Fauquet (pque  Ambientalista) - Ciudadela",,3
+44502384,"STM-MVD","148","Aviacion (pque Ambientalista) - Ciudadela",,3
+44502383,"STM-MVD","148","Terminal Colon - Ciudadela",,3
+44502376,"STM-MVD","148","Aviacion (pque Ambientalista) - Aduana",,3
+6702205,"STM-MVD","149","Pocitos --- Manga (casavalle)",,3
+6702208,"STM-MVD","149","Pocitos -- Instr Y Mendoza",,3
+6701199,"STM-MVD","149","Pocitos --- Gta De Lourdes",,3
+6802252,"STM-MVD","150","Ciudadela --- La Pilarica",,3
+44602386,"STM-MVD","151","Verdisol - Portones",,3
+44602387,"STM-MVD","151","Complejo America - Portones",,3
+7002417,"STM-MVD","155","Punta Rieles - Ciudadela",,3
+7002416,"STM-MVD","155","Punta Rieles - Cementerio Del Norte",,3
+7102254,"STM-MVD","156","Ciudadela -- Hipodromo",,3
+7101150,"STM-MVD","156","Aduana - Hipodromo (noc)",,3
+7202346,"STM-MVD","157","Paso De La Arena - Tres Cruces",,3
+7202239,"STM-MVD","157","Paso De La Arena - Bvar Artigas Y Rivera",,3
+7302256,"STM-MVD","158","Ciudadela --- Mendoza",,3
+7301136,"STM-MVD","158","Ciudad Vieja - Gruta De Lourdes",,3
+7302338,"STM-MVD","158","Gruta De Lourdes - Ciudad Vieja/teatro Solis",,3
+7301153,"STM-MVD","158","Aduana - Gruta De Lourdes",,3
+7301135,"STM-MVD","158","Ciudad Vieja - Mendoza",,3
+7301155,"STM-MVD","158","Aduana - Mendoza",,3
+7302339,"STM-MVD","158","Mendoza - Ciudad Vieja/teatro Solis",,3
+7302255,"STM-MVD","158","Ciudadela -- Gruta De Lourdes",,3
+7602206,"STM-MVD","163","Pocitos --- Paso De La Arena",,3
+7600790,"STM-MVD","163","Pocitos - Paso De La Arena Por (tc)",,3
+7802261,"STM-MVD","169","Ciudadela --- Manga",,3
+7800335,"STM-MVD","169","Ciudad Vieja - Toledo Chico",,3
+7802260,"STM-MVD","169","Ciudadela ---toledo Chico",,3
+7801159,"STM-MVD","169","Aduana - Manga",,3
+7801158,"STM-MVD","169","Aduana - Toledo Chico",,3
+47700869,"STM-MVD","17","Punta Carretas--casabo (tc)",,3
+47700868,"STM-MVD","17","Punta Carretas -- Casabo",,3
+44701114,"STM-MVD","174","Punta Carretas - - - Aviacion (s Bois)",,3
+44701113,"STM-MVD","174","Punta Carretas  - - - Aviacion",,3
+8302262,"STM-MVD","175","Ciudadela --- Las Piedras",,3
+8400164,"STM-MVD","180","Ciudad Vieja - Pza Gerardo Cuesta",,3
+8400746,"STM-MVD","180","Plaza España - Pza Gerardo Cuesta",,3
+8400865,"STM-MVD","180","Plaza Independencia-pza. Gerardo Cuesta",,3
+8402340,"STM-MVD","180","Pza Gerardo Cuesta - Ciudad Vieja/teatro Solis",,3
+8502341,"STM-MVD","181","Paso Molino - Luis A Herrera/rivera",,3
+8500918,"STM-MVD","181","Pocitos - Paso Molino",,3
+8502395,"STM-MVD","181","Paso Molino - 8 De Octubre",,3
+8601055,"STM-MVD","182","Pque Rodo - - Paso Molino",,3
+8600783,"STM-MVD","182","P. Rodo - Paso Molino Por Añon",,3
+8701056,"STM-MVD","183","Pocitos - - Paso Molino",,3
+8701057,"STM-MVD","183","Pocitos - - Paso Molino (planta Añon)",,3
+8702345,"STM-MVD","183","Paso Molino - Br España",,3
+8800873,"STM-MVD","185","Pocitos - Casabo (tc)",,3
+8801197,"STM-MVD","185","Pocitos - Frig Nacional",,3
+8800874,"STM-MVD","185","Pocitos-casabo",,3
+8902207,"STM-MVD","186","Pocitos - Santa Catalina",,3
+8900799,"STM-MVD","186","Pocitos - Santa Catalina (06:00 A 20:00)",,3
+9002343,"STM-MVD","187","Palacio De La Luz - Ciudad Vieja/teatro Solis",,3
+9002289,"STM-MVD","187","C. Vieja --- Palacio De La Luz",,3
+9002290,"STM-MVD","187","Plaza Independencia---palacio De La Luz",,3
+9102344,"STM-MVD","188","Palacio De La Luz - Ciudad Vieja/teatro Solis",,3
+9102291,"STM-MVD","188","C. Vieja---palacio De La Luz",,3
+9102292,"STM-MVD","188","Plaza Independencia---palacio De La Luz",,3
+9202322,"STM-MVD","191","Palacio De La Luz - Punta Carretas",,3
+9202263,"STM-MVD","191","Ciudadela --- Punta Carretas",,3
+9301110,"STM-MVD","192","Parque Rodo - Manga(espadaña)",,3
+9402428,"STM-MVD","195","Buceo/donizetti -- Pya Cerro/dique",,3
+9400179,"STM-MVD","195","Buceo - Playa Cerro (dique)",,3
+9500181,"STM-MVD","199","Pta.carretas - Crio.del Norte",,3
+48500915,"STM-MVD","2","Portones - Saint Bois",,3
+48500200,"STM-MVD","2","Buceo - Saint Bois",,3
+48500916,"STM-MVD","2","Portones - Terminal Colon",,3
+47802216,"STM-MVD","21","Plaza Indepen -- P. Roosevelt (fac. Ciencias)",,3
+47800071,"STM-MVD","21","Plaza Independencia-portones (liceo Por Fac. Ciencias)",,3
+47802219,"STM-MVD","21","Plaza Independencia  -- Parque Roosevelt",,3
+47802217,"STM-MVD","21","Ciudad Vieja -- Portones(fac. Ciencias)",,3
+47802218,"STM-MVD","21","C. Vieja -- Parque Roosevelt",,3
+47802215,"STM-MVD","21","Plaza Independencia  -- Portones (fac. Ciencias)",,3
+12801052,"STM-MVD","300","Instrucciones - Plaza Zitarrosa",,3
+12900870,"STM-MVD","306","Casabo--puente Carrasco",,3
+12900888,"STM-MVD","306","Parque Roosevelt--casabó",,3
+12900875,"STM-MVD","306","Parque Roosevelt-- Casabó Por (tc)",,3
+13000235,"STM-MVD","316","C.mald. Km. 16 - Pocitos",,3
+13001002,"STM-MVD","316","Facultad De Veterinaria - Pocitos",,3
+13101076,"STM-MVD","328","Mendoza - Punta Carretas (plan Abc)",,3
+44802308,"STM-MVD","329","Punta Carretas --- Melilla",,3
+44802309,"STM-MVD","329","Pta Carretas --- Fauquet(pque Ambientalista)",,3
+44802311,"STM-MVD","329","Punta Carretas --- Melilla (pque Ambientalista)",,3
+44802310,"STM-MVD","329","Pta Carretas --- S Bois (pque)",,3
+13302274,"STM-MVD","330","Instrucciones --- Ciudadela",,3
+13302225,"STM-MVD","330","Instrucciones -- Ciudadela (circ.)",,3
+13402293,"STM-MVD","370","Portones ---playa Del Cerro/dique",,3
+13402212,"STM-MVD","370","Portones -- Playa Del Cerro Dique (liceo 11)",,3
+13502275,"STM-MVD","396","Instrucciones -- Ciudadela (plan Abc)",,3
+100995,"STM-MVD","402","Ciudad Vieja --malvin",,3
+100001,"STM-MVD","402","Ciudad Vieja - Malvin",,3
+102241,"STM-MVD","402","Ciudadela -- Malvin",,3
+202304,"STM-MVD","404","Palacio De La Luz -- Cjo Juana De America",,3
+300003,"STM-MVD","405","Peñarol - Parque Rodó",,3
+301122,"STM-MVD","405","Parque Rodo - Casavalle",,3
+400004,"STM-MVD","407","Portones - Plaza España",,3
+500006,"STM-MVD","409","Plaza España - Saint Bois",,3
+500005,"STM-MVD","409","Plaza España - Aviacion Civil",,3
+501188,"STM-MVD","409","Plaza España - Uam",,3
+701062,"STM-MVD","427","Portones - Los Bulevares (uam)",,3
+701069,"STM-MVD","427","Fac. De Ciencias - Los Bulevares (uam)",,3
+700091,"STM-MVD","427","Buceo - Los Bulevares (uam)",,3
+801183,"STM-MVD","456","Ciudad Vieja - Instrucc Y Mendoza",,3
+802242,"STM-MVD","456","Ciudadela -- Instrucciones",,3
+14802434,"STM-MVD","468","Portones - Ctrio. La Paz",,3
+14802435,"STM-MVD","468","Cementerio Del Buceo - La Paz",,3
+1002221,"STM-MVD","494","Buceo -- Delta Del Tigre (por Comcar)",,3
+1002229,"STM-MVD","494","Buceo -- Uam -- Barra Sta Lucia",,3
+1002220,"STM-MVD","494","Buceo -- Ruta 1 Km26",,3
+1002214,"STM-MVD","494","Buceo -- Delta Del Tigre",,3
+1002228,"STM-MVD","494","Cementerio -- Ruta 1 Km 26 (por Comcar)",,3
+1102230,"STM-MVD","495","Buceo -- Pajas Blancas (4:30-9:00)",,3
+1501160,"STM-MVD","505","Andaluz - Aduana",,3
+1502266,"STM-MVD","505","Terminal Ciudadela -- Andaluz/pso. Española",,3
+1600336,"STM-MVD","522","Pocitos - Sayago",,3
+1600018,"STM-MVD","522","Pocitos - Sayago (planta)",,3
+1701184,"STM-MVD","524","C Vieja --- Tres Ombues",,3
+1701118,"STM-MVD","524","Plaza España - Tres Ombues",,3
+44902365,"STM-MVD","526","Complejo America -- Malvin",,3
+1901003,"STM-MVD","538","Plaza España - Buceo",,3
+1901004,"STM-MVD","538","Plaza España - Cementerio Buceo",,3
+2000022,"STM-MVD","546","Belvedere - Portones",,3
+2102364,"STM-MVD","582","Punta Carretas -- Peñarol",,3
+9800331,"STM-MVD","60","Ciudad Vieja - Portones",,3
+9802329,"STM-MVD","60","Portones - Teatro Solis",,3
+9800185,"STM-MVD","60","Plaza Independencia - Portones",,3
+9902203,"STM-MVD","62","Pza Independencia - Pocitos",,3
+9902202,"STM-MVD","62","Ciudad Vieja -- Pocitos",,3
+10002232,"STM-MVD","64","Portones -- Tres Cruces",,3
+10002231,"STM-MVD","64","Plaza Independencia -- Portones",,3
+47901054,"STM-MVD","71","Mendoza - Pocitos.",,3
+48002427,"STM-MVD","76","Pta. Carretas -- Playa Cerro/dique",,3
+48002426,"STM-MVD","76","Punta Carretas -- Playa Cerro/dique (liceo 11)",,3
+48002294,"STM-MVD","76","Playa Del Cerro--punta Carretas",,3
+48200998,"STM-MVD","79","Inter. Belloni - Ciudadela Circuito",,3
+14102314,"STM-MVD","Bt1","Circuito Central",,3
+14202321,"STM-MVD","Bt2","Circuito Rambla Parque Rodo-malvin",,3
+50001033,"STM-MVD","Ce1","Tres Cruces - Plaza Independencia",,3
+50001029,"STM-MVD","Ce1","Tres Cruces - Ciudad Vieja",,3
+50002352,"STM-MVD","Ce1","Tres Cruces - Teatro Solis",,3
+14002300,"STM-MVD","Ce2","Palacio De La Luz - Ciudad Vieja",,3
+14602393,"STM-MVD","D1","Carrasco - Plaza Independencia",,3
+14602394,"STM-MVD","D1","Carrasco - Ciudad Vieja",,3
+14602392,"STM-MVD","D1","Carrasco - Teatro Solis",,3
+48302354,"STM-MVD","D10","Parque Roosevelt - Teatro Solis",,3
+48302233,"STM-MVD","D10","Ciudad Vieja -- Parque Roosevelt",,3
+2201134,"STM-MVD","D11","Ciudad Vieja - - Geant",,3
+45002371,"STM-MVD","D5","La Paz - Ciudad Vieja",,3
+45002372,"STM-MVD","D5","La Paz - Teatro Solis",,3
+10602355,"STM-MVD","D8","Ruta 8 Km 21 - Teatro Solis",,3
+10601096,"STM-MVD","D8","Ciudad Vieja - Cno. Maldonado",,3
+10600704,"STM-MVD","D8","Plaza Independencia - Camino Maldonado",,3
+1202234,"STM-MVD","D9","Ciudad Vieja-paso Carrasco (monterrey)",,3
+49901028,"STM-MVD","E14","Pocitos - Ciudad Vieja",,3
+49901032,"STM-MVD","E14","Pocitos  - Plaza Independencia",,3
+49902357,"STM-MVD","E14","Pocitos - Teatro Solis",,3
+43800827,"STM-MVD","G10","Terminal Colon - Melilla_(cir)",,3
+43800811,"STM-MVD","G10","Terminal Colon - Melilla",,3
+43800841,"STM-MVD","G10","Terminal Colon - Melilla (azarola Y Red)",,3
+43900828,"STM-MVD","G11","Terminal Colon - Melilla (circular)",,3
+43900812,"STM-MVD","G11","Terminal Colon - Melilla",,3
+43601020,"STM-MVD","G3","Conciliacion - Terminal Colon",,3
+43200883,"STM-MVD","G6","Terminal Colón - Barrio 25 De Agosto",,3
+43701021,"STM-MVD","G8","Terminal Colon - Hipodromo Las Piedras",,3
+43701022,"STM-MVD","G8","T Colon - Hipodrom Las Piedras (escuela)",,3
+10700319,"STM-MVD","L1","Paso Arena - Pajas Blancas (especial)",,3
+10700202,"STM-MVD","L1","Paso Arena - Pajas Blancas",,3
+48402295,"STM-MVD","L12","Puntas De Sayago--dique Nacional",,3
+48402296,"STM-MVD","L12","Dique Nacional--puntas De Sayago",,3
+13700244,"STM-MVD","L13","Mendoza E Instrucc -toledo",,3
+1400015,"STM-MVD","L14","Paso De La Arena - Paso Molino",,3
+16000893,"STM-MVD","L15","T. Del Cerro - La Colorada (circular)",,3
+16000280,"STM-MVD","L15","Terminal Del Cerro - Pajas Blancas",,3
+16000343,"STM-MVD","L15","Terminal Cerro - Pajas Blancas(especial)",,3
+15801141,"STM-MVD","L16","Paso De La Arena -- Pajas Blancas",,3
+16300283,"STM-MVD","L19","Los Cilindros - Paso De La Arena",,3
+16300733,"STM-MVD","L19","Pajas Blancas - Pso De La Arena",,3
+11000983,"STM-MVD","L2","Camino Maldonado Km 16 - Av Gral Flores",,3
+11102360,"STM-MVD","L20","Servando Gomez-portones (liceo 20)",,3
+11102358,"STM-MVD","L20","Servando Gomez - Portones",,3
+11300211,"STM-MVD","L22","Gr.lourdes-cno.maldonado Km16",,3
+16400284,"STM-MVD","L23","Terminal Del Cerro - Santa Catalina",,3
+44000813,"STM-MVD","L24","Belvedere - Sayago Norte",,3
+50301081,"STM-MVD","L25","Nuevos Rumbos - Belloni",,3
+16502236,"STM-MVD","L26","Terminal Cerro -- Belvedere",,3
+40302282,"STM-MVD","L28","Paso Molino - Nuevo Paris (liceo 51 Y Utu)",,3
+44100253,"STM-MVD","L29","Paso Molino -- La Carbonera",,3
+44100252,"STM-MVD","L29","Paso Molino --  Complejo America",,3
+45202281,"STM-MVD","L3","Paso Molino - Terminal Colon (liceo 51 Y Utu)",,3
+42702406,"STM-MVD","L30","Punta De Rieles -- Carcel Punta De Rieles",,3
+48901120,"STM-MVD","L31","Instrucciones Y Mendoza - Belloni",,3
+50601116,"STM-MVD","L32","La Aljaba - Transatlantico (por Berges)",,3
+50701117,"STM-MVD","L33","La Aljaba - Transatlantico (por Antares)",,3
+11500213,"STM-MVD","L35","Paso De La Arena - Pta.espinillo",,3
+49302363,"STM-MVD","L36","Intercambiador Belloni - Rafael",,3
+50501115,"STM-MVD","L38","Tres Ombues - Terminal Del Cerro",,3
+50801119,"STM-MVD","L39","Paso De La Arena - Pauru",,3
+11602318,"STM-MVD","L4","Terminal Cerro -- La Boyada",,3
+13902235,"STM-MVD","L40","Buceo - 8 De Oct Y Comercio",,3
+13801121,"STM-MVD","L41","Intercambiador  Belloni - Vista Linda",,3
+13802327,"STM-MVD","L41","Int. Belloni -- Vista Linda (por Utu)",,3
+49400237,"STM-MVD","L46","Interc. Belloni -- Intercc. Belloni",,3
+11702359,"STM-MVD","L5","Paso De La Arena - Los Camalotes -paso De La Arena",,3
+11801083,"STM-MVD","L6","Terminal Cerro --paso De La Arena (abc)",,3
+1301125,"STM-MVD","L7","Terminal Cerro - Saint Bois",,3
+1302418,"STM-MVD","L7","Terminal Cerro -- Saint Bois",,3
+14702419,"STM-MVD","L77","Terminal Del Cerro - Paso De La Arena (por Escuela)",,3
+14702421,"STM-MVD","L77","Terminal Del Cerro -- Paso De La Arena",,3
+14502388,"STM-MVD","L8","Sta. Catalina - Tnal. Cerro",,3
+5800271,"STM-MVD","L9","Interc. Belloni - Villa Farre",,3
