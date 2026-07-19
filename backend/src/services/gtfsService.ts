@@ -1,5 +1,16 @@
 import sqlDb from '../config/database';
 import { logger } from '../config/logger';
+import fs from 'fs';
+import path from 'path';
+
+// Cargar el mapping maestro de lineas -> empresa
+const agencyMappingPath = path.join(__dirname, '../data/gtfs/agency_mapping.json');
+let agencyMapping: Record<string, string> = {};
+try {
+  agencyMapping = JSON.parse(fs.readFileSync(agencyMappingPath, 'utf8'));
+} catch (e) {
+  logger.warn('No se pudo cargar agency_mapping.json, usando heuristica vacia.');
+}
 
 /**
  * Servicio de acceso ultrarrápido a la base de datos GTFS Local
@@ -199,12 +210,13 @@ export const gtfsService = {
       if (serviceType === 'SABADO') dayFilter = 'saturday = 1';
       if (serviceType === 'DOMINGO') dayFilter = 'sunday = 1';
 
-      // Heurística de rangos de línea por empresa si el dataset GTFS es consolidado
-      let routeCondition = '';
-      if (agencyId === '70') routeCondition = "AND r.route_short_name ~ '^(3[0-9]{2}|L)'"; // UCOT (300s + Locales)
-      else if (agencyId === '50') routeCondition = "AND r.route_short_name ~ '^(1[0-9]{2}|D10|G)'"; // CUTCSA
-      else if (agencyId === '20') routeCondition = "AND r.route_short_name ~ '^2[0-9]{2}'"; // COME
-      else if (agencyId === '60') routeCondition = "AND r.route_short_name ~ '^4[0-9]{2}'"; // COETC
+      // Filtro estricto consultando el diccionario oficial en memoria
+      const validRoutes = Object.keys(agencyMapping).filter(route => agencyMapping[route] === agencyId);
+      let routeCondition = "AND 1=0"; // fallback si no hay líneas
+      if (validRoutes.length > 0) {
+        const routesList = validRoutes.map(r => `'${r}'`).join(', ');
+        routeCondition = `AND r.route_short_name IN (${routesList})`;
+      }
 
       const query = `
         WITH Timestamps AS (

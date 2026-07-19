@@ -22,6 +22,7 @@ require('dotenv').config({ path: require('path').resolve(__dirname, '..', '.env'
 const { Client } = require('pg');
 const fs = require('fs');
 const path = require('path');
+const agencyMapping = require('../src/data/gtfs/agency_mapping.json');
 
 const PG = {
   host: process.env.DB_HOST || '192.168.1.11',
@@ -53,7 +54,7 @@ async function run() {
   //    consistentemente. Si el GTFS tiene varios calendars, tomamos todos.
   console.log('Loading routes...');
   const routesRes = await c.query(`
-    SELECT route_id, route_short_name, route_long_name
+    SELECT route_id, route_short_name, route_long_name, agency_id
     FROM gtfs.routes
     WHERE route_short_name IS NOT NULL AND route_short_name != ''
     ORDER BY route_short_name
@@ -138,6 +139,12 @@ async function run() {
     const routes = {};
     for (const r of routesRes.rows) {
       const shortName = r.route_short_name;
+      
+      const mappedAgencyId = agencyMapping[shortName];
+      if (mappedAgencyId !== agencyId) {
+        continue;
+      }
+      
       if (!routes[shortName]) {
         routes[shortName] = {
           route_long_name: r.route_long_name || `Línea ${shortName}`,
