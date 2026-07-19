@@ -34,6 +34,7 @@ import { startCartonesHistorialScheduler } from './utils/cartonesHistorialSchedu
 import { startCascadeAutoTrigger } from './utils/cascadeAutoTriggerScheduler';
 import { startAlertasCaducidad } from './utils/alertasCaducidadScheduler';
 import { startMlRetrainScheduler } from './utils/mlRetrainScheduler';
+import { seedDatabase } from './utils/seedDatabase';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJSDoc from 'swagger-jsdoc';
 
@@ -292,6 +293,9 @@ const server = httpServer.listen({ port: PORT_NUM, host: '0.0.0.0', exclusive: t
   AIService.prewarm('HEAVY');
   AIService.prewarm('FAST');
   AIService.prewarm('CODER');
+  
+  // FASE: Auto-seed on startup (silent unless it does work)
+  seedDatabase(false).catch(err => logger.error('[SEED] Failed auto-seed on startup', err));
 
   // ═══════════════════════════════════════════════════════════════════════
   // FASE 3.5 — Arrancar poller autónomo IMM → Postgres.

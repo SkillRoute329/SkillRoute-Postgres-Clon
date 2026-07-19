@@ -1,0 +1,5180 @@
+{
+  "vehiculos": [
+    {
+      "interno": "1",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "2",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "3",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "4",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "5",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "6",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "7",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "8",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "9",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "10",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "11",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "12",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "13",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "14",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "15",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "16",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "17",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "18",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "19",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "20",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "21",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "22",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "23",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "24",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "25",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "26",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "27",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "28",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "29",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "30",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "31",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "32",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "33",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "34",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "35",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "36",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "37",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "38",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "39",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "40",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "41",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "42",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "43",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "44",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "45",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "46",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "47",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "48",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "49",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "50",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "51",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "52",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "53",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "54",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "55",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "56",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "57",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "58",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "59",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "60",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "61",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "62",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "63",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "64",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "65",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "66",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "67",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "68",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "69",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "70",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "71",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "72",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "73",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "74",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "75",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "76",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "77",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "78",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "79",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "80",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "81",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "82",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "83",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "84",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "85",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "86",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "87",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "88",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "89",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "90",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "91",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "92",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "93",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "94",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "95",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "96",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "97",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "98",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "99",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "100",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "101",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "102",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "103",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "104",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "105",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "106",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "107",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "108",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "109",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "110",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "111",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "112",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "113",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "114",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "115",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "116",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "117",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "118",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "119",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "120",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "121",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "122",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "123",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "124",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "125",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "126",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "127",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "128",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "129",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "130",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "131",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "132",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "133",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "134",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "135",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "136",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "137",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "138",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "139",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "140",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "141",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "142",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "143",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "144",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "145",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "146",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "147",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "148",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "149",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "150",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "151",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "152",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "153",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "154",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "155",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "156",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "157",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "158",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "159",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "160",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "161",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "162",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "163",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "164",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "165",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "166",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "167",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "168",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "169",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "201",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "202",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "203",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "204",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "205",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "206",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "207",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "208",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "209",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "210",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "211",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "212",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "213",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "214",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "215",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "221",
+      "marca": "Mercedes Benz"
+    },
+    {
+      "interno": "222",
+      "marca": "Mercedes Benz"
+    },
+    {
+      "interno": "223",
+      "marca": "Mercedes Benz"
+    },
+    {
+      "interno": "224",
+      "marca": "Mercedes Benz"
+    },
+    {
+      "interno": "226",
+      "marca": "Mercedes Benz"
+    },
+    {
+      "interno": "228",
+      "marca": "Mercedes Benz"
+    },
+    {
+      "interno": "230",
+      "marca": "Mercedes Benz"
+    },
+    {
+      "interno": "231",
+      "marca": "Mercedes Benz"
+    },
+    {
+      "interno": "232",
+      "marca": "Mercedes Benz"
+    },
+    {
+      "interno": "233",
+      "marca": "Mercedes Benz"
+    },
+    {
+      "interno": "234",
+      "marca": "Mercedes Benz"
+    },
+    {
+      "interno": "235",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "236",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "237",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "238",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "239",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "240",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "241",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "242",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "243",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "244",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "245",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "246",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "247",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "248",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "249",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "250",
+      "marca": "Agrale"
+    },
+    {
+      "interno": "251",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "252",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "253",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "254",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "255",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "256",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "257",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "258",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "259",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "260",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "261",
+      "marca": "Agrale-Cummins"
+    },
+    {
+      "interno": "262",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "263",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "264",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "265",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "266",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "267",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "268",
+      "marca": "Yutong"
+    },
+    {
+      "interno": "903",
+      "marca": "Mitsubishi"
+    },
+    {
+      "interno": "909",
+      "marca": "Fiat"
+    },
+    {
+      "interno": "912",
+      "marca": "Mitsubishi"
+    },
+    {
+      "interno": "915",
+      "marca": "Volkswagen"
+    },
+    {
+      "interno": "916",
+      "marca": "Fiat"
+    },
+    {
+      "interno": "917",
+      "marca": "Fiat"
+    },
+    {
+      "interno": "918",
+      "marca": "Volkswagen"
+    },
+    {
+      "interno": "919",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "920",
+      "marca": "Fiat"
+    },
+    {
+      "interno": "921",
+      "marca": "Volkswagen"
+    },
+    {
+      "interno": "922",
+      "marca": "Volkswagen"
+    },
+    {
+      "interno": "923",
+      "marca": "Byd"
+    },
+    {
+      "interno": "924",
+      "marca": "Byd"
+    },
+    {
+      "interno": "925",
+      "marca": "Byd"
+    },
+    {
+      "interno": "926",
+      "marca": "Byd"
+    },
+    {
+      "interno": "927",
+      "marca": "Byd"
+    },
+    {
+      "interno": "1009",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "1014",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "1016",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "1021",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "1050",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "1053",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "1055",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "1057",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "1064",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "1096",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "1098",
+      "marca": "Volvo"
+    },
+    {
+      "interno": "1110",
+      "marca": "Volvo"
+    }
+  ],
+  "personal": [
+    {
+      "interno": "1",
+      "nombre": "SERGIO SOSA",
+      "cargo": "MANTENIMIENTO",
+      "telefono": "097346078."
+    },
+    {
+      "interno": "2",
+      "nombre": "NERY MARTINEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097416235."
+    },
+    {
+      "interno": "3",
+      "nombre": "EDUARDO MINTEGUI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097400445."
+    },
+    {
+      "interno": "4",
+      "nombre": "PABLO MIGUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120348."
+    },
+    {
+      "interno": "5",
+      "nombre": "RUBEN FLORES",
+      "cargo": "PLATAFORMA",
+      "telefono": "097959225."
+    },
+    {
+      "interno": "7",
+      "nombre": "PABLO VERGARA",
+      "cargo": "ASPIRANTE A INSPECTOR",
+      "telefono": "096135326."
+    },
+    {
+      "interno": "8",
+      "nombre": "JULIO OLIVERA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120969."
+    },
+    {
+      "interno": "9",
+      "nombre": "DAMIAN GARCIA",
+      "cargo": "PLATAFORMA/C. FISCAL",
+      "telefono": "096140806."
+    },
+    {
+      "interno": "11",
+      "nombre": "MARIO ALVARELLOS",
+      "cargo": "DIRECTOR PRESIDENTE",
+      "telefono": "096196301."
+    },
+    {
+      "interno": "12",
+      "nombre": "WILKES NOBLE",
+      "cargo": "PLATAFORMA",
+      "telefono": "097016131."
+    },
+    {
+      "interno": "13",
+      "nombre": "MARCOS GINZA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097991172."
+    },
+    {
+      "interno": "15",
+      "nombre": "NICOLAS RODRIGUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097258082."
+    },
+    {
+      "interno": "17",
+      "nombre": "JOSE CICCIA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055131."
+    },
+    {
+      "interno": "18",
+      "nombre": "JUAN PEDRO RIVERO",
+      "cargo": "INSPECTOR",
+      "telefono": "096127796."
+    },
+    {
+      "interno": "20",
+      "nombre": "DOMINGO BONINI",
+      "cargo": "PLATAFORMA",
+      "telefono": "096342908."
+    },
+    {
+      "interno": "21",
+      "nombre": "PABLO PEDEMONTE",
+      "cargo": "PLATAFORMA",
+      "telefono": "097310008."
+    },
+    {
+      "interno": "23",
+      "nombre": "CLAUDIO RUAN",
+      "cargo": "PLATAFORMA",
+      "telefono": "097072251."
+    },
+    {
+      "interno": "24",
+      "nombre": "MIRIAM DUCRET",
+      "cargo": "INSPECTORA",
+      "telefono": "096120457."
+    },
+    {
+      "interno": "26",
+      "nombre": "JORGE RODRIGUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096127193."
+    },
+    {
+      "interno": "28",
+      "nombre": "SERGIO ANZA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096150591."
+    },
+    {
+      "interno": "29",
+      "nombre": "UBER PLADA",
+      "cargo": "PLATAFORMA/C. de DISCIPLINA",
+      "telefono": "096122327."
+    },
+    {
+      "interno": "30",
+      "nombre": "MIGUEL PIRIZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096244167."
+    },
+    {
+      "interno": "32",
+      "nombre": "ALEJANDRO MAZZONE",
+      "cargo": "PLATAFORMA",
+      "telefono": "097232733."
+    },
+    {
+      "interno": "33",
+      "nombre": "CONRADO PERDOMO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055138."
+    },
+    {
+      "interno": "35",
+      "nombre": "MARCELO GONZALEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096122527."
+    },
+    {
+      "interno": "36",
+      "nombre": "FERNANDO GONZALEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120349."
+    },
+    {
+      "interno": "37",
+      "nombre": "RAFAEL PEREYRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097088152."
+    },
+    {
+      "interno": "38",
+      "nombre": "PABLO UMPIERREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096142191."
+    },
+    {
+      "interno": "39",
+      "nombre": "ENRIQUE HERNANDEZ",
+      "cargo": "ADMINISTRATIVO TALLER",
+      "telefono": "097326214."
+    },
+    {
+      "interno": "40",
+      "nombre": "SERGIO FERNANDEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097974377."
+    },
+    {
+      "interno": "42",
+      "nombre": "JOSE DA SILVA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124086."
+    },
+    {
+      "interno": "44",
+      "nombre": "EMMANUEL VILA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097494656."
+    },
+    {
+      "interno": "45",
+      "nombre": "CRISTIAN STARAKON",
+      "cargo": "PLATAFORMA",
+      "telefono": "096342930."
+    },
+    {
+      "interno": "47",
+      "nombre": "GONZALO ARRILLAGA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096130886."
+    },
+    {
+      "interno": "48",
+      "nombre": "RICARDO ALVAREZ",
+      "cargo": "ALMACENES",
+      "telefono": "096120453."
+    },
+    {
+      "interno": "49",
+      "nombre": "ALVARO ASCURREIN",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124793."
+    },
+    {
+      "interno": "50",
+      "nombre": "ADOLFO VAZQUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055155."
+    },
+    {
+      "interno": "51",
+      "nombre": "ANIBAL CASTILLO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124097."
+    },
+    {
+      "interno": "52",
+      "nombre": "SEBASTIAN FONTORA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097075134."
+    },
+    {
+      "interno": "53",
+      "nombre": "ALVARO PICARDO",
+      "cargo": "PLATAFORMA C/FISCAL",
+      "telefono": "096120472."
+    },
+    {
+      "interno": "54",
+      "nombre": "LUIS MACIEL",
+      "cargo": "PLATAFORMA",
+      "telefono": "097312900."
+    },
+    {
+      "interno": "55",
+      "nombre": "NICOLAS MARTINEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120455."
+    },
+    {
+      "interno": "56",
+      "nombre": "HECTOR GARCIA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120489."
+    },
+    {
+      "interno": "57",
+      "nombre": "JULIO BARRETO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096243883."
+    },
+    {
+      "interno": "58",
+      "nombre": "FERNANDO AYALA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120469."
+    },
+    {
+      "interno": "59",
+      "nombre": "VICTOR BELEDA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096122520."
+    },
+    {
+      "interno": "60",
+      "nombre": "GERARDO ERBA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120646."
+    },
+    {
+      "interno": "61",
+      "nombre": "MARCELO ESCOBAR",
+      "cargo": "PLATAFORMA",
+      "telefono": "096988955."
+    },
+    {
+      "interno": "62",
+      "nombre": "MARCELO ESCOBAR",
+      "cargo": "PLATAFORMA/ASCOT",
+      "telefono": "096124932."
+    },
+    {
+      "interno": "64",
+      "nombre": "MARCELO ESCOBAR",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055150."
+    },
+    {
+      "interno": "65",
+      "nombre": "MARCELO ESCOBAR",
+      "cargo": "PLATAFORMA",
+      "telefono": "096125543."
+    },
+    {
+      "interno": "66",
+      "nombre": "MARCELO ESCOBAR",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120485."
+    },
+    {
+      "interno": "67",
+      "nombre": "MARCELO ESCOBAR",
+      "cargo": "PLATAFORMA",
+      "telefono": "096133678."
+    },
+    {
+      "interno": "68",
+      "nombre": "MARCELO ESCOBAR",
+      "cargo": "PLATAFORMA",
+      "telefono": "097224816."
+    },
+    {
+      "interno": "69",
+      "nombre": "MARCELO ESCOBAR",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055142."
+    },
+    {
+      "interno": "70",
+      "nombre": "MARCELO ESCOBAR",
+      "cargo": "INSPECTOR",
+      "telefono": "096113400."
+    },
+    {
+      "interno": "71",
+      "nombre": "MARCELO ESCOBAR",
+      "cargo": "PLATAFORMA",
+      "telefono": "096131114."
+    },
+    {
+      "interno": "72",
+      "nombre": "MARCELO ESCOBAR",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055171."
+    },
+    {
+      "interno": "73",
+      "nombre": "MARCELO ESCOBAR",
+      "cargo": "PLATAFORMA",
+      "telefono": "096158827."
+    },
+    {
+      "interno": "74",
+      "nombre": "MARCELO ESCOBAR",
+      "cargo": "TECNOLOGÍA",
+      "telefono": "097325033."
+    },
+    {
+      "interno": "75",
+      "nombre": "ALEX GODOY",
+      "cargo": "PLATAFORMA",
+      "telefono": "096404931."
+    },
+    {
+      "interno": "76",
+      "nombre": "JULIAN ACOSTA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097474524."
+    },
+    {
+      "interno": "77",
+      "nombre": "EDUARDO SILVEIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096408262."
+    },
+    {
+      "interno": "80",
+      "nombre": "NESTOR PIÑA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097503048."
+    },
+    {
+      "interno": "81",
+      "nombre": "CARLOS GUTIERREZ",
+      "cargo": "LARGADOR CENTRAL",
+      "telefono": "096342911."
+    },
+    {
+      "interno": "82",
+      "nombre": "NESTOR GOMEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097225266."
+    },
+    {
+      "interno": "83",
+      "nombre": "PABLO DOPEREIRO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097197863."
+    },
+    {
+      "interno": "84",
+      "nombre": "FERNANDO MUÑIZ",
+      "cargo": "DIRECTOR VICEPRESIDENTE",
+      "telefono": "097493599."
+    },
+    {
+      "interno": "85",
+      "nombre": "ROBERT ROBAINA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120911."
+    },
+    {
+      "interno": "87",
+      "nombre": "LETICIA NUÑEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096162313."
+    },
+    {
+      "interno": "88",
+      "nombre": "JUAN ZAMORA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120342."
+    },
+    {
+      "interno": "90",
+      "nombre": "FERNANDO LARRAÑAGA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097083277."
+    },
+    {
+      "interno": "91",
+      "nombre": "GONZALO LOPEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097122528."
+    },
+    {
+      "interno": "92",
+      "nombre": "NATALIA MUNHOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "097323341."
+    },
+    {
+      "interno": "93",
+      "nombre": "EDUARDO ALVARADO",
+      "cargo": "C/ HOGAR VACACIONAL",
+      "telefono": "096127488."
+    },
+    {
+      "interno": "94",
+      "nombre": "MARTIN ESPONDABURU",
+      "cargo": "PLATAFORMA",
+      "telefono": "096123379."
+    },
+    {
+      "interno": "95",
+      "nombre": "JULIO MENENDEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120916."
+    },
+    {
+      "interno": "96",
+      "nombre": "OMAR LUZ",
+      "cargo": "INSPECTOR",
+      "telefono": "096342922."
+    },
+    {
+      "interno": "97",
+      "nombre": "GRACIELA URCION",
+      "cargo": "INSPECTOR",
+      "telefono": "096404344."
+    },
+    {
+      "interno": "98",
+      "nombre": "FEDERICO FERRARO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096282336."
+    },
+    {
+      "interno": "99",
+      "nombre": "DIEGO GONZALEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097503045."
+    },
+    {
+      "interno": "100",
+      "nombre": "JOSE STEFFANO",
+      "cargo": "LARGADOR CENTRAL",
+      "telefono": "096342938."
+    },
+    {
+      "interno": "101",
+      "nombre": "JULIA RODRIGUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055154."
+    },
+    {
+      "interno": "102",
+      "nombre": "MARTIN BURGUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096427650."
+    },
+    {
+      "interno": "104",
+      "nombre": "FEDERICO CURBELO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096106427."
+    },
+    {
+      "interno": "105",
+      "nombre": "DANIEL PEBE",
+      "cargo": "PLATAFORMA",
+      "telefono": "097992963."
+    },
+    {
+      "interno": "106",
+      "nombre": "MIRIAM TAY",
+      "cargo": "AGENCIERA",
+      "telefono": "096342910."
+    },
+    {
+      "interno": "107",
+      "nombre": "NICHOLAS PELUAS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096409671."
+    },
+    {
+      "interno": "108",
+      "nombre": "NICOLAS BERROSTEGUIETA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097122083."
+    },
+    {
+      "interno": "110",
+      "nombre": "KENY FAGUNDEZ",
+      "cargo": "PLATAFORMA/C. SEGURIDAD",
+      "telefono": "096125189."
+    },
+    {
+      "interno": "111",
+      "nombre": "MARTIN MACEDO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096113700."
+    },
+    {
+      "interno": "112",
+      "nombre": "FERNANDO RODRIGUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096410821."
+    },
+    {
+      "interno": "113",
+      "nombre": "HORACIO MOYANO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097303021."
+    },
+    {
+      "interno": "114",
+      "nombre": "MIGUEL MOZEJKO",
+      "cargo": "INSPECTOR",
+      "telefono": "096124335."
+    },
+    {
+      "interno": "115",
+      "nombre": "ALVARO COUSELO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097137947."
+    },
+    {
+      "interno": "116",
+      "nombre": "ENRIQUE TIMAR",
+      "cargo": "PLATAFORMA",
+      "telefono": "096407038."
+    },
+    {
+      "interno": "117",
+      "nombre": "VICENTE VIVA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120449."
+    },
+    {
+      "interno": "118",
+      "nombre": "DIEGO RAMOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "097325433."
+    },
+    {
+      "interno": "119",
+      "nombre": "HECTOR MATO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097330215."
+    },
+    {
+      "interno": "120",
+      "nombre": "ANGEL DE PATTI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097018106."
+    },
+    {
+      "interno": "121",
+      "nombre": "VERONICA SANTOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120169."
+    },
+    {
+      "interno": "123",
+      "nombre": "SERGIO OLID",
+      "cargo": "PLATAFORMA",
+      "telefono": "097477481."
+    },
+    {
+      "interno": "124",
+      "nombre": "JESUS CAL",
+      "cargo": "PLATAFORMA",
+      "telefono": "096141505."
+    },
+    {
+      "interno": "126",
+      "nombre": "ALEJANDRO MOZEJKO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135341."
+    },
+    {
+      "interno": "128",
+      "nombre": "RUBEN MARRERO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096127410."
+    },
+    {
+      "interno": "129",
+      "nombre": "ANGEL ALVAREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096413729."
+    },
+    {
+      "interno": "131",
+      "nombre": "SERGIO ABALO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096131232."
+    },
+    {
+      "interno": "132",
+      "nombre": "ROBERTO LOPEZ",
+      "cargo": "ADMINISTRTIVO /OF. PERSONAL",
+      "telefono": "096126009."
+    },
+    {
+      "interno": "133",
+      "nombre": "ROBERT WALTER",
+      "cargo": "PLATAFORMA",
+      "telefono": "097951574."
+    },
+    {
+      "interno": "134",
+      "nombre": "GUSTAVO LANDEYRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097235760."
+    },
+    {
+      "interno": "135",
+      "nombre": "RICARDO LANDONI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097972422."
+    },
+    {
+      "interno": "138",
+      "nombre": "PEDRO CORREA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120466."
+    },
+    {
+      "interno": "140",
+      "nombre": "LUIS SEOANE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096412967."
+    },
+    {
+      "interno": "142",
+      "nombre": "ANDRES ALONSO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097416361."
+    },
+    {
+      "interno": "143",
+      "nombre": "HECTOR FRANCO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096122318."
+    },
+    {
+      "interno": "144",
+      "nombre": "CARLOS FREIRE",
+      "cargo": "ADMINISTRTIVO /OF. PERSONAL",
+      "telefono": "096120747."
+    },
+    {
+      "interno": "145",
+      "nombre": "FERNANDO PERAZZA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124079."
+    },
+    {
+      "interno": "147",
+      "nombre": "ALEXIS BORREANI",
+      "cargo": "TALLER",
+      "telefono": "097337054."
+    },
+    {
+      "interno": "148",
+      "nombre": "ENRIQUE CANOSA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097963343."
+    },
+    {
+      "interno": "150",
+      "nombre": "GUSTAVO VELAZQUEZ",
+      "cargo": "ALMACENERO",
+      "telefono": "096123186."
+    },
+    {
+      "interno": "151",
+      "nombre": "JUAN GIMENEZ",
+      "cargo": "TRANSITO Conductor Movil de Transito",
+      "telefono": "096123860."
+    },
+    {
+      "interno": "152",
+      "nombre": "NESTOR SILVEIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097316777."
+    },
+    {
+      "interno": "153",
+      "nombre": "OSCAR FERRAZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096134456."
+    },
+    {
+      "interno": "155",
+      "nombre": "RODRIGO BENTANCOR",
+      "cargo": "PLATAFORMA",
+      "telefono": "096127762."
+    },
+    {
+      "interno": "156",
+      "nombre": "ENRIQUE AMILIVIA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097258098."
+    },
+    {
+      "interno": "159",
+      "nombre": "DANIEL PONZONI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097474358."
+    },
+    {
+      "interno": "160",
+      "nombre": "ALVARO CONTTE",
+      "cargo": "INSPECTOR",
+      "telefono": "096120307."
+    },
+    {
+      "interno": "161",
+      "nombre": "SALVADOR CARDOZO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097073003."
+    },
+    {
+      "interno": "162",
+      "nombre": "JULIO VIÑAS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096113498."
+    },
+    {
+      "interno": "163",
+      "nombre": "RAMIRO SICCO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096415286."
+    },
+    {
+      "interno": "164",
+      "nombre": "SERGIO KRUTULIS",
+      "cargo": "PLATAFORMA",
+      "telefono": "097094994."
+    },
+    {
+      "interno": "165",
+      "nombre": "JUAN MIGUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096264547."
+    },
+    {
+      "interno": "166",
+      "nombre": "DOUGLAS AMICONE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096400050."
+    },
+    {
+      "interno": "167",
+      "nombre": "CARLOS RODRIGUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096165761."
+    },
+    {
+      "interno": "168",
+      "nombre": "JORGE SUAREZ",
+      "cargo": "PLATAFORMA / ASCOT",
+      "telefono": "096342909."
+    },
+    {
+      "interno": "169",
+      "nombre": "ALEX CUTURIA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097314118."
+    },
+    {
+      "interno": "171",
+      "nombre": "ALEXIS GUTIERREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096113787."
+    },
+    {
+      "interno": "172",
+      "nombre": "ROBERTO FORTES",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135335."
+    },
+    {
+      "interno": "173",
+      "nombre": "YENNIFER SALVATIDINO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096133388."
+    },
+    {
+      "interno": "174",
+      "nombre": "RICHARD PEREIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096130115."
+    },
+    {
+      "interno": "175",
+      "nombre": "ALEJANDRO TRIGO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120170."
+    },
+    {
+      "interno": "176",
+      "nombre": "ANDRES GONZALEZ",
+      "cargo": "ENCARGADO LAVADERO",
+      "telefono": "096120480."
+    },
+    {
+      "interno": "177",
+      "nombre": "FEDERICO SEQUEIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097474353."
+    },
+    {
+      "interno": "178",
+      "nombre": "JOSE MARTORANO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096125330."
+    },
+    {
+      "interno": "179",
+      "nombre": "WILSON TABAREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096127267."
+    },
+    {
+      "interno": "181",
+      "nombre": "NICOLAS BRUNO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096133309."
+    },
+    {
+      "interno": "183",
+      "nombre": "PABLO ALDECOA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120668."
+    },
+    {
+      "interno": "184",
+      "nombre": "RODRIGO SOÑORA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096240475."
+    },
+    {
+      "interno": "186",
+      "nombre": "JORGE FERREIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097137421."
+    },
+    {
+      "interno": "187",
+      "nombre": "MARCOS CESCHI",
+      "cargo": "PLATAFORMA",
+      "telefono": "096127231."
+    },
+    {
+      "interno": "188",
+      "nombre": "ALEJANDRO FLEITAS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120451."
+    },
+    {
+      "interno": "189",
+      "nombre": "HECTOR PAZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096342920."
+    },
+    {
+      "interno": "190",
+      "nombre": "NOELIA NUÑEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096127668."
+    },
+    {
+      "interno": "191",
+      "nombre": "MATHIAS RODRIGUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096244504."
+    },
+    {
+      "interno": "192",
+      "nombre": "JUAN CODESAL",
+      "cargo": "INSPECTOR",
+      "telefono": "096442965."
+    },
+    {
+      "interno": "194",
+      "nombre": "HUGO FERNANDEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097258086."
+    },
+    {
+      "interno": "195",
+      "nombre": "JOSE BELEDA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097258088."
+    },
+    {
+      "interno": "196",
+      "nombre": "DAMIAN CANCELA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096127116."
+    },
+    {
+      "interno": "197",
+      "nombre": "ANDREA NUÑEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096163366."
+    },
+    {
+      "interno": "198",
+      "nombre": "DIEGO SARMIENTO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096128218."
+    },
+    {
+      "interno": "199",
+      "nombre": "JAVIER MONTGOMERY",
+      "cargo": "PLATAFORMA",
+      "telefono": "097323418."
+    },
+    {
+      "interno": "200",
+      "nombre": "LUIS ESCUDERO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096402765."
+    },
+    {
+      "interno": "202",
+      "nombre": "SERGIO HERNANDEZ",
+      "cargo": "INSPECTOR",
+      "telefono": "096113364."
+    },
+    {
+      "interno": "206",
+      "nombre": "ANALI UMPIERREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097092240."
+    },
+    {
+      "interno": "207",
+      "nombre": "MONICA RAMIREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097125524."
+    },
+    {
+      "interno": "208",
+      "nombre": "DANIEL SABECH",
+      "cargo": "PLATAFORMA/C de DISCIPLINA",
+      "telefono": "097470161."
+    },
+    {
+      "interno": "209",
+      "nombre": "LUIS FREIRE",
+      "cargo": "TECNOLOGIA",
+      "telefono": "096124096."
+    },
+    {
+      "interno": "226",
+      "nombre": "LUIS GRASSO",
+      "cargo": "DIRECTOR TESORERO",
+      "telefono": "096113444."
+    },
+    {
+      "interno": "231",
+      "nombre": "GUSTAVO SOÑORA",
+      "cargo": "DIRECTOR SECRETARIO",
+      "telefono": "096414692."
+    },
+    {
+      "interno": "232",
+      "nombre": "SERGIO TRUJILLO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055163."
+    },
+    {
+      "interno": "234",
+      "nombre": "GUSTAVO CAYMARIS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096424661."
+    },
+    {
+      "interno": "235",
+      "nombre": "CARLOS CONZE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120346."
+    },
+    {
+      "interno": "236",
+      "nombre": "MARIELA PEREIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096131939."
+    },
+    {
+      "interno": "237",
+      "nombre": "HUGO MUGNANI",
+      "cargo": "MANIOBRISTA",
+      "telefono": "096120165."
+    },
+    {
+      "interno": "238",
+      "nombre": "SERGIO ROSADILLA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097080790."
+    },
+    {
+      "interno": "300",
+      "nombre": "FEDERICO LUCAS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120495."
+    },
+    {
+      "interno": "301",
+      "nombre": "GERARDO REYMUNDE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096433926."
+    },
+    {
+      "interno": "302",
+      "nombre": "ALVARO FURTADO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135324."
+    },
+    {
+      "interno": "303",
+      "nombre": "HUGO MEDINA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055147."
+    },
+    {
+      "interno": "305",
+      "nombre": "GASTON VARGAS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096126164."
+    },
+    {
+      "interno": "306",
+      "nombre": "JULIO KLEIN",
+      "cargo": "INSPECTOR",
+      "telefono": "096342921."
+    },
+    {
+      "interno": "307",
+      "nombre": "JAVIER VISCONDE",
+      "cargo": "INSPECTOR",
+      "telefono": "096342907."
+    },
+    {
+      "interno": "317",
+      "nombre": "JOSE LUIS PIREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096406619."
+    },
+    {
+      "interno": "319",
+      "nombre": "JORGE LA LUZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097337870."
+    },
+    {
+      "interno": "323",
+      "nombre": "JUAN VARELA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096125692."
+    },
+    {
+      "interno": "325",
+      "nombre": "MARTIN IGARZABAL",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055149."
+    },
+    {
+      "interno": "328",
+      "nombre": "OMAR CURBELO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120468."
+    },
+    {
+      "interno": "329",
+      "nombre": "ANTONIO SCAFIEZZO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096127719."
+    },
+    {
+      "interno": "401",
+      "nombre": "DANIEL AROCENA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096446673."
+    },
+    {
+      "interno": "403",
+      "nombre": "ALBA DIAZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096127677."
+    },
+    {
+      "interno": "405",
+      "nombre": "JAVIER FERREYRA",
+      "cargo": "MANIOBRISTA",
+      "telefono": "096161131."
+    },
+    {
+      "interno": "410",
+      "nombre": "HEBERT SILVA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120782."
+    },
+    {
+      "interno": "412",
+      "nombre": "ALEJANDRO VAZQUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096253415."
+    },
+    {
+      "interno": "414",
+      "nombre": "JUAN TOLEDO",
+      "cargo": "MANIOBRISTA",
+      "telefono": "096403397."
+    },
+    {
+      "interno": "415",
+      "nombre": "PABLO MANGIAROTTI",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124864."
+    },
+    {
+      "interno": "416",
+      "nombre": "LUIS ESTRELLA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135328."
+    },
+    {
+      "interno": "421",
+      "nombre": "MARCELO BERRONDO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055133."
+    },
+    {
+      "interno": "422",
+      "nombre": "DIEGO BENTANCOR",
+      "cargo": "PLATAFORMA",
+      "telefono": "096125207."
+    },
+    {
+      "interno": "500",
+      "nombre": "JAVIER GIACOSA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "097992830."
+    },
+    {
+      "interno": "501",
+      "nombre": "RICARDO VILLALBA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096342939."
+    },
+    {
+      "interno": "502",
+      "nombre": "MATIHAS ALMADA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "097091380."
+    },
+    {
+      "interno": "503",
+      "nombre": "MARIO GOYETCHE",
+      "cargo": "DPTO. TRANSITO ENCARGADO SUB-URBANO",
+      "telefono": "097015837."
+    },
+    {
+      "interno": "504",
+      "nombre": "CARLOS CARDOZO",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096437503."
+    },
+    {
+      "interno": "505",
+      "nombre": "ANTHONY GIMENEZ",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096124078."
+    },
+    {
+      "interno": "506",
+      "nombre": "JUAN CAMEJO",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "097055139."
+    },
+    {
+      "interno": "507",
+      "nombre": "RAFAEL PERDOMO",
+      "cargo": "INSP.  SUB-URBANO CONTRATO",
+      "telefono": "096168431."
+    },
+    {
+      "interno": "509",
+      "nombre": "FABIAN MAYO",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096124080."
+    },
+    {
+      "interno": "510",
+      "nombre": "ESBERT MARTINEZ",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096124081."
+    },
+    {
+      "interno": "511",
+      "nombre": "PEDRO DELGADO",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096124082."
+    },
+    {
+      "interno": "512",
+      "nombre": "GUSTAVO MARTINEZ",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "097496084."
+    },
+    {
+      "interno": "513",
+      "nombre": "SILVIO DE LEON",
+      "cargo": "ENCARGADO DE TALLER SUB-URBANO",
+      "telefono": "096442946."
+    },
+    {
+      "interno": "514",
+      "nombre": "CARLOS COLLA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096124083."
+    },
+    {
+      "interno": "517",
+      "nombre": "DANIEL MARTINEZ",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096124084."
+    },
+    {
+      "interno": "518",
+      "nombre": "ALEXIS CLAVIJO",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "097258087."
+    },
+    {
+      "interno": "519",
+      "nombre": "GUILDO REGUEIRA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096401641."
+    },
+    {
+      "interno": "520",
+      "nombre": "VICTOR CIANI",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096412261."
+    },
+    {
+      "interno": "521",
+      "nombre": "ROLAND ARBELO",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096121590."
+    },
+    {
+      "interno": "522",
+      "nombre": "GUILLERMO  BENTANCOR",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096124085."
+    },
+    {
+      "interno": "523",
+      "nombre": "YAMANDU CLAVIJO",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096124093."
+    },
+    {
+      "interno": "524",
+      "nombre": "GONZALO RIGALI",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096442967."
+    },
+    {
+      "interno": "525",
+      "nombre": "MARIO PEREYRA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096124088."
+    },
+    {
+      "interno": "527",
+      "nombre": "RAMIRO GUTIERREZ",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096122082."
+    },
+    {
+      "interno": "529",
+      "nombre": "JAVIER AMARAL",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096414072."
+    },
+    {
+      "interno": "531",
+      "nombre": "MAURICIO CARABALLO",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096113665."
+    },
+    {
+      "interno": "532",
+      "nombre": "DIEGO DENES",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096124095."
+    },
+    {
+      "interno": "533",
+      "nombre": "EDGARDO GONZALEZ",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096124073."
+    },
+    {
+      "interno": "535",
+      "nombre": "RUBEN TEJERA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096342914."
+    },
+    {
+      "interno": "536",
+      "nombre": "FREDDY DUARTE",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "097197145."
+    },
+    {
+      "interno": "537",
+      "nombre": "FABRICIO RODRIGUEZ",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096126123."
+    },
+    {
+      "interno": "538",
+      "nombre": "DIEGO MASAGUEZ",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096126330."
+    },
+    {
+      "interno": "539",
+      "nombre": "MARIO FONTES",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096126725."
+    },
+    {
+      "interno": "540",
+      "nombre": "ALBERTO MARTINEZ",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "097013871."
+    },
+    {
+      "interno": "542",
+      "nombre": "HENRY MARTINEZ",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096126751."
+    },
+    {
+      "interno": "543",
+      "nombre": "FRANCISCO BICA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096129514."
+    },
+    {
+      "interno": "544",
+      "nombre": "HECTOR IRALDE",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096126784."
+    },
+    {
+      "interno": "545",
+      "nombre": "MAURICIO PEREYRA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096126858."
+    },
+    {
+      "interno": "547",
+      "nombre": "RICHARD QUESADA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096159003."
+    },
+    {
+      "interno": "548",
+      "nombre": "DIEGO PEREYRA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096120494."
+    },
+    {
+      "interno": "549",
+      "nombre": "CLEBERT BARONE",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096120486."
+    },
+    {
+      "interno": "550",
+      "nombre": "DIEGO METEDIERA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096126862."
+    },
+    {
+      "interno": "551",
+      "nombre": "CARLOS REYES",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "097250962."
+    },
+    {
+      "interno": "553",
+      "nombre": "JOSE ENRIQUE FURLAN",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096407718."
+    },
+    {
+      "interno": "556",
+      "nombre": "OSCAR FALERO",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096120467."
+    },
+    {
+      "interno": "557",
+      "nombre": "MARCOS CAYEUX",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096124072."
+    },
+    {
+      "interno": "559",
+      "nombre": "GONZALO FUENTES",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096126885."
+    },
+    {
+      "interno": "560",
+      "nombre": "ADRIAN PEÑA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096126898."
+    },
+    {
+      "interno": "561",
+      "nombre": "ALBERTO OLIVERA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096125955."
+    },
+    {
+      "interno": "564",
+      "nombre": "LUIS BONILLA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096124487."
+    },
+    {
+      "interno": "565",
+      "nombre": "RAUL FERNANDEZ",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "097332889."
+    },
+    {
+      "interno": "566",
+      "nombre": "SERGIO GUERRA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "097471966."
+    },
+    {
+      "interno": "568",
+      "nombre": "DAVID MAYO",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096435347."
+    },
+    {
+      "interno": "569",
+      "nombre": "FABIAN ZABALA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096431269."
+    },
+    {
+      "interno": "570",
+      "nombre": "JOSE LUIS RECOBA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096407398."
+    },
+    {
+      "interno": "571",
+      "nombre": "FERNANDO REY",
+      "cargo": "INSP. SUB-URBANO CONTRATO",
+      "telefono": "096989163."
+    },
+    {
+      "interno": "574",
+      "nombre": "PATRICIA DAVEZAC",
+      "cargo": "ADMINISTRATIVA OF. CENTRAL",
+      "telefono": "096127029."
+    },
+    {
+      "interno": "575",
+      "nombre": "ALEXANDRO GONZALEZ",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "097980904."
+    },
+    {
+      "interno": "576",
+      "nombre": "MARIO NOVA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "097496905."
+    },
+    {
+      "interno": "578",
+      "nombre": "MATHIAS DUARTE",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "097503047."
+    },
+    {
+      "interno": "579",
+      "nombre": "ANGEL MINETTI",
+      "cargo": "INSPECTOR SUB-URBANO",
+      "telefono": "096442942."
+    },
+    {
+      "interno": "580",
+      "nombre": "MARTIN VIGO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124328."
+    },
+    {
+      "interno": "581",
+      "nombre": "CRISTIAN MORALES",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096342936."
+    },
+    {
+      "interno": "582",
+      "nombre": "EBER ALMEIDA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096442945."
+    },
+    {
+      "interno": "583",
+      "nombre": "OSCAR CABRERA",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096989143."
+    },
+    {
+      "interno": "585",
+      "nombre": "ANTONIA AQUINO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097337367."
+    },
+    {
+      "interno": "586",
+      "nombre": "MAXIMILIANO NEGRI",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096147575."
+    },
+    {
+      "interno": "587",
+      "nombre": "GUILLERMO GONZALEZ",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096135323."
+    },
+    {
+      "interno": "588",
+      "nombre": "JOSE LUIS FERNANDEZ",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "097328425."
+    },
+    {
+      "interno": "590",
+      "nombre": "DARIO PASTORINO",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096127268."
+    },
+    {
+      "interno": "591",
+      "nombre": "DIMAR RODRIGUEZ",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "097325071."
+    },
+    {
+      "interno": "592",
+      "nombre": "JORGE ANTONACCI",
+      "cargo": "PLATAFORMA SUB-URBANO",
+      "telefono": "096442966."
+    },
+    {
+      "interno": "600",
+      "nombre": "JORGE FERREIRA",
+      "cargo": "ADMINISTRATIVO TECNOLOGIA",
+      "telefono": "096342904."
+    },
+    {
+      "interno": "601",
+      "nombre": "IGNACIO HERNANDEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097300521."
+    },
+    {
+      "interno": "602",
+      "nombre": "GIORGIO MARTORANO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096143402."
+    },
+    {
+      "interno": "603",
+      "nombre": "DIEGO MOREIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096264049."
+    },
+    {
+      "interno": "604",
+      "nombre": "PABLO SUCHE",
+      "cargo": "PLATAFORMA",
+      "telefono": "097496061."
+    },
+    {
+      "interno": "605",
+      "nombre": "LUCIA PASCALE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096276250."
+    },
+    {
+      "interno": "606",
+      "nombre": "DIEGO DE LEON",
+      "cargo": "TALLER SECC. CARROCERIA",
+      "telefono": "096442954."
+    },
+    {
+      "interno": "607",
+      "nombre": "RICHARD FERNANDEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097081982."
+    },
+    {
+      "interno": "608",
+      "nombre": "JOSE RISSO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135330."
+    },
+    {
+      "interno": "609",
+      "nombre": "EDUARDO NUÑEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097954290."
+    },
+    {
+      "interno": "610",
+      "nombre": "MONICA DEROSSI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055153."
+    },
+    {
+      "interno": "611",
+      "nombre": "RUBEN FRANCO",
+      "cargo": "PLATAFORMA / FISCAL",
+      "telefono": "096113394."
+    },
+    {
+      "interno": "612",
+      "nombre": "JUAN CARLOS RAMOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096146070."
+    },
+    {
+      "interno": "613",
+      "nombre": "ANDREA ACOSTA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097338052."
+    },
+    {
+      "interno": "614",
+      "nombre": "GABRIEL TRONCOSO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120301."
+    },
+    {
+      "interno": "615",
+      "nombre": "RICHARD RODRIGUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120339."
+    },
+    {
+      "interno": "616",
+      "nombre": "JOSE BERNARDO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096161084."
+    },
+    {
+      "interno": "617",
+      "nombre": "RICARDO SANCHEZ",
+      "cargo": "TALLER",
+      "telefono": "097326964."
+    },
+    {
+      "interno": "619",
+      "nombre": "GABRIEL DOCHEFF",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055152."
+    },
+    {
+      "interno": "621",
+      "nombre": "JUAN  ANDRE NUÑEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096414204."
+    },
+    {
+      "interno": "622",
+      "nombre": "LETICIA SURRACO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120478."
+    },
+    {
+      "interno": "623",
+      "nombre": "WENDELT RAMOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "097258083."
+    },
+    {
+      "interno": "625",
+      "nombre": "PABLO OLIVERA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055158."
+    },
+    {
+      "interno": "626",
+      "nombre": "CARLOS CANCELA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096413342."
+    },
+    {
+      "interno": "627",
+      "nombre": "CARLOS MARTINEZ",
+      "cargo": "INSPECTOR",
+      "telefono": "096342913."
+    },
+    {
+      "interno": "628",
+      "nombre": "ANGEL QUESADA",
+      "cargo": "MANIOBRISTA",
+      "telefono": "096121571."
+    },
+    {
+      "interno": "629",
+      "nombre": "YOEL PEREYRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124750."
+    },
+    {
+      "interno": "630",
+      "nombre": "ALEJANDRO PIÑEYRO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135329."
+    },
+    {
+      "interno": "631",
+      "nombre": "ALVARO ALBERTO PIÑOL BORGHI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097128673."
+    },
+    {
+      "interno": "632",
+      "nombre": "ALBERTO KEYMETLIAN",
+      "cargo": "PLATAFORMA",
+      "telefono": "096152209."
+    },
+    {
+      "interno": "633",
+      "nombre": "JOSE RAMELA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096342926."
+    },
+    {
+      "interno": "634",
+      "nombre": "LUCIANO FIGUEROA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097084827."
+    },
+    {
+      "interno": "635",
+      "nombre": "ALEJANDRO MARCOFF",
+      "cargo": "PLATAFORMA",
+      "telefono": "097503044."
+    },
+    {
+      "interno": "636",
+      "nombre": "GERARDO BERROSTEGUIETA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096157575."
+    },
+    {
+      "interno": "637",
+      "nombre": "FABIAN OLIVERA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055134."
+    },
+    {
+      "interno": "638",
+      "nombre": "FEDERICO MEDINA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097137417."
+    },
+    {
+      "interno": "639",
+      "nombre": "CARLOS VESPA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120147."
+    },
+    {
+      "interno": "640",
+      "nombre": "JAVIER PERDIGON",
+      "cargo": "PLATAFORMA",
+      "telefono": "097324801."
+    },
+    {
+      "interno": "641",
+      "nombre": "ALVIS TARELA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096160204."
+    },
+    {
+      "interno": "642",
+      "nombre": "ERNESTO POSE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120471."
+    },
+    {
+      "interno": "643",
+      "nombre": "WILLIAM DIAZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097438003."
+    },
+    {
+      "interno": "644",
+      "nombre": "RUDY LAGOS",
+      "cargo": "INSPECTOR",
+      "telefono": "096342927."
+    },
+    {
+      "interno": "645",
+      "nombre": "ESTEBAN ALVAREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096196309."
+    },
+    {
+      "interno": "646",
+      "nombre": "DIEGO BAEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096442959."
+    },
+    {
+      "interno": "647",
+      "nombre": "MARTIN GUTIERREZ",
+      "cargo": "ENCARGADO DE TALLER  URBANO",
+      "telefono": "097997855."
+    },
+    {
+      "interno": "648",
+      "nombre": "MILTON SASSONE",
+      "cargo": "TECNOLOGÍA",
+      "telefono": "096988041."
+    },
+    {
+      "interno": "649",
+      "nombre": "MARCELO GIOVANELLI",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124858."
+    },
+    {
+      "interno": "650",
+      "nombre": "WALTER MACHADO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096436724."
+    },
+    {
+      "interno": "651",
+      "nombre": "RAMON IGUINI",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120461."
+    },
+    {
+      "interno": "652",
+      "nombre": "MARCELO DELGADO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055160."
+    },
+    {
+      "interno": "653",
+      "nombre": "MARIO ALONSO",
+      "cargo": "TALLER SECC. ELECTRICIDAD",
+      "telefono": "096120353."
+    },
+    {
+      "interno": "654",
+      "nombre": "OSCAR BATISTA",
+      "cargo": "ADMINISTARTIVO OF.CENTRAL",
+      "telefono": "096145910."
+    },
+    {
+      "interno": "655",
+      "nombre": "GARY MARTINEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096342933."
+    },
+    {
+      "interno": "656",
+      "nombre": "ARIEL CARDOZO",
+      "cargo": "CONDUCTOR MOVIL DE TRANSITO",
+      "telefono": "096120182."
+    },
+    {
+      "interno": "657",
+      "nombre": "PABLO CIOSEK",
+      "cargo": "PLATAFORMA",
+      "telefono": "096123686."
+    },
+    {
+      "interno": "658",
+      "nombre": "JOSE MANUEL CALDERON",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135340."
+    },
+    {
+      "interno": "659",
+      "nombre": "GIOVANNI PRIORE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120190."
+    },
+    {
+      "interno": "660",
+      "nombre": "MILTON UHALDE DE SANTIS",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055166."
+    },
+    {
+      "interno": "661",
+      "nombre": "FERNANDO CHITTARA",
+      "cargo": "DPTO. TRANSITO ENCARGADO URBANO",
+      "telefono": "096196305."
+    },
+    {
+      "interno": "664",
+      "nombre": "LUIS MIERES",
+      "cargo": "PLATAFORMA /  C. SEGURIDAD",
+      "telefono": "097015792."
+    },
+    {
+      "interno": "665",
+      "nombre": "JORGE RAVIOLO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097056784."
+    },
+    {
+      "interno": "666",
+      "nombre": "JORGE DE LEON",
+      "cargo": "ENCARGADO DE ALMACENES URBANO /SUTU",
+      "telefono": "096404178."
+    },
+    {
+      "interno": "667",
+      "nombre": "MARCELO REGUEIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097338169."
+    },
+    {
+      "interno": "668",
+      "nombre": "PATRICIA PERA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120304."
+    },
+    {
+      "interno": "669",
+      "nombre": "CARLOS MOSQUEIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120186."
+    },
+    {
+      "interno": "670",
+      "nombre": "LUCIANO PASCALE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096390723."
+    },
+    {
+      "interno": "671",
+      "nombre": "JAVIER GUTIERREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055736."
+    },
+    {
+      "interno": "672",
+      "nombre": "GABRIEL OTERO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097012898."
+    },
+    {
+      "interno": "673",
+      "nombre": "JOSE ANGERIZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096123668."
+    },
+    {
+      "interno": "674",
+      "nombre": "LUIS SCANDROGLIO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097450796."
+    },
+    {
+      "interno": "675",
+      "nombre": "SEBASTIAN  GONZALEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120473."
+    },
+    {
+      "interno": "676",
+      "nombre": "JORGE VARELA",
+      "cargo": "ADMINISTRATIVO URBANO / SUTU",
+      "telefono": "096442958."
+    },
+    {
+      "interno": "677",
+      "nombre": "SERGIO ROCCA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096196304."
+    },
+    {
+      "interno": "678",
+      "nombre": "DANIELO CABRERA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096121724."
+    },
+    {
+      "interno": "679",
+      "nombre": "ALVARO VIERA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097995160."
+    },
+    {
+      "interno": "680",
+      "nombre": "ALEJANDRO ALVAREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097210897."
+    },
+    {
+      "interno": "681",
+      "nombre": "RAFAEL MARTINEZ",
+      "cargo": "TANQUERO",
+      "telefono": "097084704."
+    },
+    {
+      "interno": "682",
+      "nombre": "CAROLINA CUADRA",
+      "cargo": "INSPECTORA",
+      "telefono": "096130286."
+    },
+    {
+      "interno": "683",
+      "nombre": "EDUARDO ALVAREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135337."
+    },
+    {
+      "interno": "684",
+      "nombre": "VICTOR LEMOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120667."
+    },
+    {
+      "interno": "685",
+      "nombre": "EDUARDO LANDONI",
+      "cargo": "PLATAFORMA",
+      "telefono": "096242793."
+    },
+    {
+      "interno": "686",
+      "nombre": "ROBERTO LOPEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096121228."
+    },
+    {
+      "interno": "688",
+      "nombre": "FERNANDO FAJARDO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096438628."
+    },
+    {
+      "interno": "689",
+      "nombre": "ERNESTO CALCAGNO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096125907."
+    },
+    {
+      "interno": "690",
+      "nombre": "ANGEL FUSCO",
+      "cargo": "JEFE DEL DPTO. DE TRANSITO",
+      "telefono": "096342932."
+    },
+    {
+      "interno": "692",
+      "nombre": "FLAVIO LOPEZ",
+      "cargo": "JEFE DE ADMINISTRACION",
+      "telefono": "096442969."
+    },
+    {
+      "interno": "693",
+      "nombre": "DANIEL ALFONSO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097050945."
+    },
+    {
+      "interno": "694",
+      "nombre": "NICOLAS BRUGNOLI",
+      "cargo": "PLATAFORMA",
+      "telefono": "096232950."
+    },
+    {
+      "interno": "695",
+      "nombre": "MARCELO BENTANCOR",
+      "cargo": "PLATAFORMA",
+      "telefono": "096150007."
+    },
+    {
+      "interno": "696",
+      "nombre": "EDUARDO LEIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096123987."
+    },
+    {
+      "interno": "697",
+      "nombre": "SERGIO VELAZQUEZ",
+      "cargo": "INSPECTOR",
+      "telefono": "096127775."
+    },
+    {
+      "interno": "699",
+      "nombre": "ANDREA PINASCO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120341."
+    },
+    {
+      "interno": "700",
+      "nombre": "JUAN PABLO VIDAL",
+      "cargo": "PLATAFORMA",
+      "telefono": "096125038."
+    },
+    {
+      "interno": "701",
+      "nombre": "ADRIAN GUGLIUCCI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055144."
+    },
+    {
+      "interno": "703",
+      "nombre": "JUAN MARTINEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096146498."
+    },
+    {
+      "interno": "704",
+      "nombre": "GONZALO DA ROSA",
+      "cargo": "ADMINISTRATIVO",
+      "telefono": "096123845."
+    },
+    {
+      "interno": "707",
+      "nombre": "RICARDO BARRETO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096149783."
+    },
+    {
+      "interno": "708",
+      "nombre": "PABLO GOMEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120166."
+    },
+    {
+      "interno": "709",
+      "nombre": "JUAN OLAZABAL",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124065."
+    },
+    {
+      "interno": "710",
+      "nombre": "JUAN PABLO ARRILLAGA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120481."
+    },
+    {
+      "interno": "711",
+      "nombre": "EDGARDO GUIGOU",
+      "cargo": "INSPECTOR",
+      "telefono": "097474961."
+    },
+    {
+      "interno": "712",
+      "nombre": "HECTOR PIEDRABUENA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096150268."
+    },
+    {
+      "interno": "713",
+      "nombre": "ORLANDO SANTOS",
+      "cargo": "INSPECTOR",
+      "telefono": "097258109."
+    },
+    {
+      "interno": "714",
+      "nombre": "MIGUEL INZAURRALDE",
+      "cargo": "INSPECTOR",
+      "telefono": "096342924."
+    },
+    {
+      "interno": "716",
+      "nombre": "CRISTIAN SOTO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097344701."
+    },
+    {
+      "interno": "718",
+      "nombre": "OSCAR GALLO",
+      "cargo": "PORTERIA / GDIA.",
+      "telefono": "097092707."
+    },
+    {
+      "interno": "719",
+      "nombre": "ADRIAN GROMPONE",
+      "cargo": "INSPECTOR",
+      "telefono": "097055169."
+    },
+    {
+      "interno": "721",
+      "nombre": "DANIEL VENEZIANI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097490243."
+    },
+    {
+      "interno": "722",
+      "nombre": "JOSE GULARTE",
+      "cargo": "RECAUDACION / SUTU/ C. CLUB UCOT",
+      "telefono": "096120417."
+    },
+    {
+      "interno": "724",
+      "nombre": "MARCELO NUÑEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096127274."
+    },
+    {
+      "interno": "725",
+      "nombre": "JORGE SCHIAFFINO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096128102."
+    },
+    {
+      "interno": "726",
+      "nombre": "CARLOS ANDRADE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096121509."
+    },
+    {
+      "interno": "728",
+      "nombre": "EDWIN KOSYDAR",
+      "cargo": "PLATAFORMA",
+      "telefono": "096162521."
+    },
+    {
+      "interno": "729",
+      "nombre": "CARLOS GUGLIUCCI",
+      "cargo": "PLATAFROMA",
+      "telefono": "096120699."
+    },
+    {
+      "interno": "730",
+      "nombre": "LEONARDO SOLIMANO",
+      "cargo": "PLATAFROMA",
+      "telefono": "097055159."
+    },
+    {
+      "interno": "732",
+      "nombre": "RAFAEL PERAZA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097080358."
+    },
+    {
+      "interno": "733",
+      "nombre": "SEBASTIAN SAN ROMAN",
+      "cargo": "PLATAFORMA",
+      "telefono": "096441364."
+    },
+    {
+      "interno": "734",
+      "nombre": "MATILDE DANZI",
+      "cargo": "INSPECTORA",
+      "telefono": "096123977."
+    },
+    {
+      "interno": "735",
+      "nombre": "LUIS FERNANDEZ",
+      "cargo": "INSPECTOR",
+      "telefono": "096140101."
+    },
+    {
+      "interno": "736",
+      "nombre": "JOSE MIGLIONICO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120302."
+    },
+    {
+      "interno": "737",
+      "nombre": "CARLOS NUÑEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096229444."
+    },
+    {
+      "interno": "739",
+      "nombre": "ULICES VALLES",
+      "cargo": "PLATAFORMA",
+      "telefono": "096121840."
+    },
+    {
+      "interno": "740",
+      "nombre": "JAIMEN SUAREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096125228."
+    },
+    {
+      "interno": "741",
+      "nombre": "CARLOS CASINI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097338215."
+    },
+    {
+      "interno": "742",
+      "nombre": "LORENZO BRUNO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120303."
+    },
+    {
+      "interno": "743",
+      "nombre": "ALVARO VARGAS",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055145."
+    },
+    {
+      "interno": "744",
+      "nombre": "CARLOS LLADO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135336."
+    },
+    {
+      "interno": "745",
+      "nombre": "WASHINGTON CARDOZO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055135."
+    },
+    {
+      "interno": "747",
+      "nombre": "MARCELO HERNANDEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096245869."
+    },
+    {
+      "interno": "748",
+      "nombre": "JORGE OLIVERA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096142616."
+    },
+    {
+      "interno": "749",
+      "nombre": "NICOLAS LOPEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096122426."
+    },
+    {
+      "interno": "750",
+      "nombre": "CESAR BENITEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096130821."
+    },
+    {
+      "interno": "751",
+      "nombre": "DIEGO JORGE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096406757."
+    },
+    {
+      "interno": "752",
+      "nombre": "RODRIGO TEXEIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055143."
+    },
+    {
+      "interno": "754",
+      "nombre": "MARTIN VIDAL",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124833."
+    },
+    {
+      "interno": "756",
+      "nombre": "MARCEL GENTIEU",
+      "cargo": "ADMINISTRATIVO CAJERO CENTRAL",
+      "telefono": "097985978."
+    },
+    {
+      "interno": "758",
+      "nombre": "SEBASTIAN DORREGO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096417151."
+    },
+    {
+      "interno": "759",
+      "nombre": "RUY RAMOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096157702."
+    },
+    {
+      "interno": "760",
+      "nombre": "JUAN  ENRIQUE NUÑEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124060."
+    },
+    {
+      "interno": "761",
+      "nombre": "JORGE PEREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055127."
+    },
+    {
+      "interno": "762",
+      "nombre": "HECTOR PALLAS",
+      "cargo": "PLATAFORMA",
+      "telefono": "097327793."
+    },
+    {
+      "interno": "763",
+      "nombre": "JUAN JOSE LORENZO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096293193."
+    },
+    {
+      "interno": "764",
+      "nombre": "WILSON SANTO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097138919."
+    },
+    {
+      "interno": "765",
+      "nombre": "JUAN MANUEL VARELA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097458453."
+    },
+    {
+      "interno": "768",
+      "nombre": "CECILIA FRODELLA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096401184."
+    },
+    {
+      "interno": "769",
+      "nombre": "VICTOR MUELA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096196303."
+    },
+    {
+      "interno": "770",
+      "nombre": "FREDDY CASTAÑO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120492."
+    },
+    {
+      "interno": "771",
+      "nombre": "HERNAN STEFANI",
+      "cargo": "PLATAFORMA",
+      "telefono": "096127330."
+    },
+    {
+      "interno": "772",
+      "nombre": "JUAN ALTEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124077."
+    },
+    {
+      "interno": "773",
+      "nombre": "GONZALO FABRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120225."
+    },
+    {
+      "interno": "774",
+      "nombre": "JOSE SANTA CRUZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135327."
+    },
+    {
+      "interno": "775",
+      "nombre": "JOSE SANTA CRUZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097054393."
+    },
+    {
+      "interno": "776",
+      "nombre": "JOSE SANTA CRUZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120146."
+    },
+    {
+      "interno": "778",
+      "nombre": "JOSE SANTA CRUZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097081914."
+    },
+    {
+      "interno": "779",
+      "nombre": "JORGE MARTINEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096410122."
+    },
+    {
+      "interno": "780",
+      "nombre": "CARLOS QUINTANA",
+      "cargo": "ADMINISTRATIVO OF. DE PERSONAL",
+      "telefono": "096196302."
+    },
+    {
+      "interno": "781",
+      "nombre": "MAURICIO CASTAÑO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097138678."
+    },
+    {
+      "interno": "782",
+      "nombre": "LEONARDO LARROSA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096402182."
+    },
+    {
+      "interno": "783",
+      "nombre": "GUSTAVO GONZALEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096130822."
+    },
+    {
+      "interno": "784",
+      "nombre": "MIGUEL ARRILLAGA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135338."
+    },
+    {
+      "interno": "785",
+      "nombre": "JORGE CACERES",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055170."
+    },
+    {
+      "interno": "786",
+      "nombre": "SEBASTIAN GONZALEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097228212."
+    },
+    {
+      "interno": "787",
+      "nombre": "LUIS ORQUEBI",
+      "cargo": "MANIOBRISTA",
+      "telefono": "097418106."
+    },
+    {
+      "interno": "788",
+      "nombre": "DANIEL MOSQUEIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097338082."
+    },
+    {
+      "interno": "789",
+      "nombre": "ALBERTO LLADO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097102512."
+    },
+    {
+      "interno": "791",
+      "nombre": "ZOA FLEITAS",
+      "cargo": "INSPECTORA",
+      "telefono": "097417586."
+    },
+    {
+      "interno": "792",
+      "nombre": "ANDRES RODRIGUEZ BARCA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097503046."
+    },
+    {
+      "interno": "794",
+      "nombre": "DANI CAPRETTI",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120180."
+    },
+    {
+      "interno": "795",
+      "nombre": "ALEJANDRO SOSA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055161."
+    },
+    {
+      "interno": "796",
+      "nombre": "DANIEL RODRIGUEZ",
+      "cargo": "ENCARGADO DPTO. DE ACCIDENTES",
+      "telefono": "096342902."
+    },
+    {
+      "interno": "799",
+      "nombre": "FEDERICO ALFONSO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096125049."
+    },
+    {
+      "interno": "800",
+      "nombre": "DIEGO ECHETO",
+      "cargo": "PLATAFORMA/RECAUDADOR",
+      "telefono": "097405715."
+    },
+    {
+      "interno": "802",
+      "nombre": "RICHARD MONTEIRO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097329990."
+    },
+    {
+      "interno": "803",
+      "nombre": "DAMIAN  PASCALE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120669."
+    },
+    {
+      "interno": "804",
+      "nombre": "JORGE GEPNER",
+      "cargo": "INSPECTOR",
+      "telefono": "097072124."
+    },
+    {
+      "interno": "805",
+      "nombre": "PATRICIA OLIVERA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120414."
+    },
+    {
+      "interno": "806",
+      "nombre": "FREDDY GARCIA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096460540."
+    },
+    {
+      "interno": "808",
+      "nombre": "OSCAR ROSA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135331."
+    },
+    {
+      "interno": "809",
+      "nombre": "GABRIEL DA COSTA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096249297."
+    },
+    {
+      "interno": "810",
+      "nombre": "GUSTAVO ARISMENDI",
+      "cargo": "DPTO. TRANSITO ENCARGADO URBANO",
+      "telefono": "096196307."
+    },
+    {
+      "interno": "811",
+      "nombre": "GUSTAVO FALCHI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055162."
+    },
+    {
+      "interno": "812",
+      "nombre": "MATIAS MOLINARI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097192868."
+    },
+    {
+      "interno": "813",
+      "nombre": "MARIO HERNANDEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096404092."
+    },
+    {
+      "interno": "814",
+      "nombre": "CAROLINA DOS SANTOS",
+      "cargo": "ASISTENTE DE TRANSITO",
+      "telefono": "097055146."
+    },
+    {
+      "interno": "815",
+      "nombre": "PABLO MEDINA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096133624."
+    },
+    {
+      "interno": "816",
+      "nombre": "CARMEN MACHADO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096157576."
+    },
+    {
+      "interno": "818",
+      "nombre": "PABLO LEON",
+      "cargo": "DIRECTOR VOCAL",
+      "telefono": "096342918."
+    },
+    {
+      "interno": "819",
+      "nombre": "CLAUDIO DONSION",
+      "cargo": "SECRETARIO ADMINISTRATIVO CONSEJO DIRECTIVO",
+      "telefono": "096125564."
+    },
+    {
+      "interno": "821",
+      "nombre": "LUIS CASTRO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135343."
+    },
+    {
+      "interno": "822",
+      "nombre": "ALVARO ZORNOZA",
+      "cargo": "PLATAFROMA /COMISION CLUB UCOT",
+      "telefono": "097055132."
+    },
+    {
+      "interno": "824",
+      "nombre": "GUSTAVO CALABUIG",
+      "cargo": "PLATAFORMA",
+      "telefono": "097081557."
+    },
+    {
+      "interno": "825",
+      "nombre": "JORGE WALTER  FERNANDEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096113483."
+    },
+    {
+      "interno": "826",
+      "nombre": "ANIBAL SANTA CRUZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096153834."
+    },
+    {
+      "interno": "827",
+      "nombre": "MARCELO GONZALEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096237859."
+    },
+    {
+      "interno": "828",
+      "nombre": "ROBERTO ZAMBON",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120305."
+    },
+    {
+      "interno": "829",
+      "nombre": "PABLO DENES",
+      "cargo": "PLATAFORMA",
+      "telefono": "097223516."
+    },
+    {
+      "interno": "831",
+      "nombre": "GERARDO JAUREGUI",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124076."
+    },
+    {
+      "interno": "832",
+      "nombre": "JORGE CAMPAÑA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097994645."
+    },
+    {
+      "interno": "833",
+      "nombre": "WALTER SILVA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096413372."
+    },
+    {
+      "interno": "834",
+      "nombre": "ADHEMAR SILVA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097337276."
+    },
+    {
+      "interno": "835",
+      "nombre": "VLADIMIR GOMEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096123986."
+    },
+    {
+      "interno": "836",
+      "nombre": "GASTON LATOUR",
+      "cargo": "PLATAFORMA",
+      "telefono": "097975943."
+    },
+    {
+      "interno": "838",
+      "nombre": "FERNANDO ESPINOSA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096125474."
+    },
+    {
+      "interno": "839",
+      "nombre": "WILDER MARQUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097415279."
+    },
+    {
+      "interno": "840",
+      "nombre": "DAVID MOZEJKO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055156."
+    },
+    {
+      "interno": "841",
+      "nombre": "MARIA JOSE NUÑEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120488."
+    },
+    {
+      "interno": "842",
+      "nombre": "JOSE LUIS MENDOZA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055141."
+    },
+    {
+      "interno": "846",
+      "nombre": "ANDRES SILVA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124064."
+    },
+    {
+      "interno": "847",
+      "nombre": "ALEJANDRO MATEO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096121793."
+    },
+    {
+      "interno": "849",
+      "nombre": "SERGIO VILARIÑO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120474."
+    },
+    {
+      "interno": "850",
+      "nombre": "GABRIEL SALVATIDINO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120355."
+    },
+    {
+      "interno": "851",
+      "nombre": "ARIEL FERNANDEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096140517."
+    },
+    {
+      "interno": "854",
+      "nombre": "IUNES COSTA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096132838."
+    },
+    {
+      "interno": "855",
+      "nombre": "SEBASTIAN MOLINARI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097337758."
+    },
+    {
+      "interno": "856",
+      "nombre": "GONZALO OURENS",
+      "cargo": "PLATAFORMA",
+      "telefono": "097405277."
+    },
+    {
+      "interno": "857",
+      "nombre": "RODRIGO LAGOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096123229."
+    },
+    {
+      "interno": "858",
+      "nombre": "EDGAR BOGNI",
+      "cargo": "INSPECTOR",
+      "telefono": "096127061."
+    },
+    {
+      "interno": "859",
+      "nombre": "WASHINGTON WILKINS",
+      "cargo": "PLATAFORMA",
+      "telefono": "097318549."
+    },
+    {
+      "interno": "861",
+      "nombre": "SANDRA CASCO",
+      "cargo": "PORTERIA / GDIA.",
+      "telefono": "096120484."
+    },
+    {
+      "interno": "862",
+      "nombre": "RUBEN BRIOZZO",
+      "cargo": "MANIOBRISTA",
+      "telefono": "096415610."
+    },
+    {
+      "interno": "864",
+      "nombre": "LEVINGTON DE BRUM",
+      "cargo": "MANIOBRISTA",
+      "telefono": "096229426."
+    },
+    {
+      "interno": "865",
+      "nombre": "MAURICIO RODRIGUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096140305."
+    },
+    {
+      "interno": "866",
+      "nombre": "RICHARD GADEA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096244302."
+    },
+    {
+      "interno": "867",
+      "nombre": "RAFAEL SABECH",
+      "cargo": "PLATAFORMA",
+      "telefono": "096414269."
+    },
+    {
+      "interno": "868",
+      "nombre": "WILMAR CAMPEON",
+      "cargo": "PLATAFORMA",
+      "telefono": "096262017."
+    },
+    {
+      "interno": "869",
+      "nombre": "MIGUEL CHAPARRO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097419986."
+    },
+    {
+      "interno": "870",
+      "nombre": "PATRICIA MORETTO",
+      "cargo": "PORTERIA / GDIA.",
+      "telefono": "096113500."
+    },
+    {
+      "interno": "875",
+      "nombre": "RICHARD MARCOFF",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055140."
+    },
+    {
+      "interno": "877",
+      "nombre": "SERGIO ALBARENQUE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096355339."
+    },
+    {
+      "interno": "878",
+      "nombre": "EDUARDO RODRIGUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097121371."
+    },
+    {
+      "interno": "879",
+      "nombre": "ALEJANDRO SANTOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096125062."
+    },
+    {
+      "interno": "880",
+      "nombre": "PABLO TIRONI",
+      "cargo": "MANIOBRISTA",
+      "telefono": "096125736."
+    },
+    {
+      "interno": "882",
+      "nombre": "RUBEN ETCHEBARNE",
+      "cargo": "ADMINISTRATIVO DPTO. TRANSITO",
+      "telefono": "096342901."
+    },
+    {
+      "interno": "883",
+      "nombre": "ADRIAN CERVIÑO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097982318."
+    },
+    {
+      "interno": "884",
+      "nombre": "MARTIN PERALTA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124863."
+    },
+    {
+      "interno": "885",
+      "nombre": "CARLOS MARTINEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096125847."
+    },
+    {
+      "interno": "887",
+      "nombre": "SERGIO LOPEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096211310."
+    },
+    {
+      "interno": "889",
+      "nombre": "HERNAN RAMÓN NUÑEZ BRUN",
+      "cargo": "PLATAFORMA",
+      "telefono": "097090940."
+    },
+    {
+      "interno": "890",
+      "nombre": "FREDERICK WASEN DE LEON",
+      "cargo": "PLATAFORMA",
+      "telefono": "097103883."
+    },
+    {
+      "interno": "891",
+      "nombre": "CARLOS HERNANDEZ",
+      "cargo": "INSPECTOR",
+      "telefono": "097234702."
+    },
+    {
+      "interno": "892",
+      "nombre": "GONZALO SAN ROMAN",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120477."
+    },
+    {
+      "interno": "893",
+      "nombre": "NESTOR BALCON",
+      "cargo": "PLATAFORMA",
+      "telefono": "097311894."
+    },
+    {
+      "interno": "894",
+      "nombre": "FERNANDO PEREYRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055167."
+    },
+    {
+      "interno": "895",
+      "nombre": "GABRIEL ACOSTA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120475."
+    },
+    {
+      "interno": "896",
+      "nombre": "DIEGO ISNARDI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097337230."
+    },
+    {
+      "interno": "897",
+      "nombre": "OSCAR GARABEDIAN",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120487."
+    },
+    {
+      "interno": "898",
+      "nombre": "VICTOR SANCHEZ",
+      "cargo": "INSPECTOR",
+      "telefono": "096442944."
+    },
+    {
+      "interno": "900",
+      "nombre": "ANGEL QUINTEROS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096127174."
+    },
+    {
+      "interno": "901",
+      "nombre": "ADRIAN ECHETTO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096418037."
+    },
+    {
+      "interno": "902",
+      "nombre": "JUAN SANTOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135325."
+    },
+    {
+      "interno": "904",
+      "nombre": "JUAN SANTOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096129759."
+    },
+    {
+      "interno": "905",
+      "nombre": "JUAN SANTOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096400908."
+    },
+    {
+      "interno": "906",
+      "nombre": "JUAN SANTOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "097418102."
+    },
+    {
+      "interno": "907",
+      "nombre": "JUAN SANTOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120665."
+    },
+    {
+      "interno": "908",
+      "nombre": "LEONARDO DELGADO",
+      "cargo": "ADMINISTRATIVO  DPTO. DE TRANSITO",
+      "telefono": "096124330."
+    },
+    {
+      "interno": "909",
+      "nombre": "FABIAN BATALLA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097199719."
+    },
+    {
+      "interno": "910",
+      "nombre": "LEONARDO MALLADA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120575."
+    },
+    {
+      "interno": "911",
+      "nombre": "WASHINGTON CARRASCO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097477984."
+    },
+    {
+      "interno": "912",
+      "nombre": "FERNANDO VAZQUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120168."
+    },
+    {
+      "interno": "913",
+      "nombre": "RAMON ALBERTE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120450."
+    },
+    {
+      "interno": "914",
+      "nombre": "EMILIO SAMPIL",
+      "cargo": "PLATAFORMA",
+      "telefono": "096342916."
+    },
+    {
+      "interno": "915",
+      "nombre": "WALTER PAEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097989020."
+    },
+    {
+      "interno": "916",
+      "nombre": "ESTEBAN URRUTIA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097342621."
+    },
+    {
+      "interno": "917",
+      "nombre": "NICOLAS CLAVIJO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096342912."
+    },
+    {
+      "interno": "1865",
+      "nombre": "ENRIQUE GARABATO",
+      "cargo": "JEFE DE TALLERES",
+      "telefono": "096196306."
+    },
+    {
+      "interno": "3000",
+      "nombre": "MARCELO SIERRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096342935."
+    },
+    {
+      "interno": "3001",
+      "nombre": "HECTOR BESADA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096024481."
+    },
+    {
+      "interno": "3002",
+      "nombre": "GUSTAVO CARDOSO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096409651."
+    },
+    {
+      "interno": "3003",
+      "nombre": "HEBER HUQUE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096442964."
+    },
+    {
+      "interno": "3004",
+      "nombre": "EDUARDO GARCIA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055168."
+    },
+    {
+      "interno": "3005",
+      "nombre": "SANDRA DO  CARMO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336799."
+    },
+    {
+      "interno": "3006",
+      "nombre": "JOSE GALLARETO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096143401."
+    },
+    {
+      "interno": "3007",
+      "nombre": "RICARDO GAMARRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096442941."
+    },
+    {
+      "interno": "3008",
+      "nombre": "PABLO AGUERRE",
+      "cargo": "PLATAFORMA",
+      "telefono": "097011696."
+    },
+    {
+      "interno": "3009",
+      "nombre": "SANDRA DE LEON",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336622."
+    },
+    {
+      "interno": "3010",
+      "nombre": "ALVARO PEREIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096415013."
+    },
+    {
+      "interno": "3013",
+      "nombre": "VICTOR MONZILLO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336471."
+    },
+    {
+      "interno": "3014",
+      "nombre": "HENDERSON DELGADO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097412402."
+    },
+    {
+      "interno": "3015",
+      "nombre": "ELMER PEREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097095196."
+    },
+    {
+      "interno": "3016",
+      "nombre": "CIPRIANO FERNANDEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097477909."
+    },
+    {
+      "interno": "3017",
+      "nombre": "CARLOS FERREIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336160."
+    },
+    {
+      "interno": "3018",
+      "nombre": "JOSE DE LOS SANTOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096442943."
+    },
+    {
+      "interno": "3019",
+      "nombre": "OSCAR BRAZEIRO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097013875."
+    },
+    {
+      "interno": "3020",
+      "nombre": "GABRIEL PENCE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096122589."
+    },
+    {
+      "interno": "3021",
+      "nombre": "EDISON RETAMAR",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120748."
+    },
+    {
+      "interno": "3022",
+      "nombre": "LUIS MARTINEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097983599."
+    },
+    {
+      "interno": "3023",
+      "nombre": "ALVARO PEREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120344."
+    },
+    {
+      "interno": "3024",
+      "nombre": "NORBERTO TAÑO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097337374."
+    },
+    {
+      "interno": "3025",
+      "nombre": "SERGIO NUÑEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097054486."
+    },
+    {
+      "interno": "3026",
+      "nombre": "CARLOS BONE",
+      "cargo": "PLATAFORMA",
+      "telefono": "097491591."
+    },
+    {
+      "interno": "3027",
+      "nombre": "DIEGO OLIVERA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096151104."
+    },
+    {
+      "interno": "3028",
+      "nombre": "ALEJANDRO RUIZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097982381."
+    },
+    {
+      "interno": "3029",
+      "nombre": "JAVIER PARDO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096981680."
+    },
+    {
+      "interno": "3030",
+      "nombre": "RICARDO O CAMPO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097478056."
+    },
+    {
+      "interno": "3031",
+      "nombre": "GUSTAVO DOLDAN",
+      "cargo": "PLATAFORMA",
+      "telefono": "096402638."
+    },
+    {
+      "interno": "3032",
+      "nombre": "EDUARDO LOSNO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124075."
+    },
+    {
+      "interno": "3033",
+      "nombre": "LUIS TEJERIA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097255208."
+    },
+    {
+      "interno": "3034",
+      "nombre": "ANA CEBALLE",
+      "cargo": "PLATAFORMA",
+      "telefono": "097496989."
+    },
+    {
+      "interno": "3035",
+      "nombre": "HECTOR CABEZAS",
+      "cargo": "PLATAFORMA",
+      "telefono": "097993926."
+    },
+    {
+      "interno": "3036",
+      "nombre": "GUSTAVO DUDOK",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120452."
+    },
+    {
+      "interno": "3039",
+      "nombre": "CARLOS MIGLIARINI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055130."
+    },
+    {
+      "interno": "3040",
+      "nombre": "PABLO POMBO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096129554."
+    },
+    {
+      "interno": "3041",
+      "nombre": "IGNACIO BALDOVINO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336109."
+    },
+    {
+      "interno": "3042",
+      "nombre": "ADROALDO MORA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096113800."
+    },
+    {
+      "interno": "3043",
+      "nombre": "NESTOR ALVAREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097982207."
+    },
+    {
+      "interno": "3044",
+      "nombre": "CARLOS MORAES",
+      "cargo": "PLATAFORMA",
+      "telefono": "096442950."
+    },
+    {
+      "interno": "3045",
+      "nombre": "GERRADO ACOSTA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096342905."
+    },
+    {
+      "interno": "3046",
+      "nombre": "RICHARD CONTE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096197303."
+    },
+    {
+      "interno": "3047",
+      "nombre": "GUSTAVO DIAZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096127730."
+    },
+    {
+      "interno": "3048",
+      "nombre": "GUSTAVO MUSTO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135322."
+    },
+    {
+      "interno": "3049",
+      "nombre": "JUAN COLMAN",
+      "cargo": "PLATAFORMA",
+      "telefono": "096342903."
+    },
+    {
+      "interno": "3050",
+      "nombre": "LUIS TRONCONI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097337736."
+    },
+    {
+      "interno": "3051",
+      "nombre": "SERGIO DAMIAN",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336798."
+    },
+    {
+      "interno": "3052",
+      "nombre": "ANDRES RODRIGUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096144321."
+    },
+    {
+      "interno": "3053",
+      "nombre": "SANDRA GARMENDIA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336554."
+    },
+    {
+      "interno": "3054",
+      "nombre": "CARLOS FURTADO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097337753."
+    },
+    {
+      "interno": "3055",
+      "nombre": "SERGIO PEREIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096427590."
+    },
+    {
+      "interno": "3056",
+      "nombre": "ALBERTO MACHADO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096122739."
+    },
+    {
+      "interno": "3057",
+      "nombre": "MARCOS  RODRIGUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096417431."
+    },
+    {
+      "interno": "3058",
+      "nombre": "JAVIER CELESTINO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097054461."
+    },
+    {
+      "interno": "3059",
+      "nombre": "ALEJANDRO VILLEMUR",
+      "cargo": "PLATAFORMA",
+      "telefono": "096342928."
+    },
+    {
+      "interno": "3060",
+      "nombre": "GUSTAVO BARRERA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120351."
+    },
+    {
+      "interno": "3061",
+      "nombre": "CARLOS MANCEBO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336085."
+    },
+    {
+      "interno": "3062",
+      "nombre": "RAFAEL VICENTE",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336401."
+    },
+    {
+      "interno": "3063",
+      "nombre": "ERNESTO PEREYRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096196312."
+    },
+    {
+      "interno": "3064",
+      "nombre": "LEANDRO RODAS",
+      "cargo": "PLATAFORMA",
+      "telefono": "097474826."
+    },
+    {
+      "interno": "3065",
+      "nombre": "FABIAN CORREA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336284."
+    },
+    {
+      "interno": "3066",
+      "nombre": "RICHARD FERNADEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097332297."
+    },
+    {
+      "interno": "3067",
+      "nombre": "ALEJANDRA MARTINEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096135332."
+    },
+    {
+      "interno": "3068",
+      "nombre": "LUCIA MONETTA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336791."
+    },
+    {
+      "interno": "3069",
+      "nombre": "MARCELO SCAVONE",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120456."
+    },
+    {
+      "interno": "3070",
+      "nombre": "ALVARO MARTEGANI",
+      "cargo": "PLATAFORMA",
+      "telefono": "096342923."
+    },
+    {
+      "interno": "3071",
+      "nombre": "ANTONIO SCOLA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120483."
+    },
+    {
+      "interno": "3073",
+      "nombre": "NATALIA GARCIA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336586."
+    },
+    {
+      "interno": "3074",
+      "nombre": "MARTIN GUIDOBONO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120753."
+    },
+    {
+      "interno": "3075",
+      "nombre": "MARIANA MARQUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336133."
+    },
+    {
+      "interno": "3076",
+      "nombre": "JOSE VARELA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096987792."
+    },
+    {
+      "interno": "3077",
+      "nombre": "MARCELO SAURINA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336343."
+    },
+    {
+      "interno": "3078",
+      "nombre": "WILMER BOLLAZZI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097992467."
+    },
+    {
+      "interno": "3079",
+      "nombre": "FEDERICO PEREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097474527."
+    },
+    {
+      "interno": "3080",
+      "nombre": "LEONARDO SUM",
+      "cargo": "PLATAFORMA",
+      "telefono": "096121794."
+    },
+    {
+      "interno": "3081",
+      "nombre": "LUIS MARTINEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096125848."
+    },
+    {
+      "interno": "3082",
+      "nombre": "STIVEN MONTIEL",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120347."
+    },
+    {
+      "interno": "3083",
+      "nombre": "HECTOR VERGA",
+      "cargo": "TALLER",
+      "telefono": "096120306."
+    },
+    {
+      "interno": "3084",
+      "nombre": "DIEGO MALDONADO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096342940."
+    },
+    {
+      "interno": "3085",
+      "nombre": "PABLO FERNANDEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120354."
+    },
+    {
+      "interno": "3086",
+      "nombre": "LUIS RODRIGUEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120345."
+    },
+    {
+      "interno": "3087",
+      "nombre": "ESTEBAN DE LIMA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097990695."
+    },
+    {
+      "interno": "3088",
+      "nombre": "ALEJANDRA COSTA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120416."
+    },
+    {
+      "interno": "3089",
+      "nombre": "JUAN COPPOLA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120418."
+    },
+    {
+      "interno": "3090",
+      "nombre": "GUSTAVO ESPINDOLA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096125992."
+    },
+    {
+      "interno": "3091",
+      "nombre": "CARLOS LOPEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120338."
+    },
+    {
+      "interno": "3092",
+      "nombre": "LEANDRO ANTUNEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336844."
+    },
+    {
+      "interno": "3093",
+      "nombre": "SERGIO SARACHO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336850."
+    },
+    {
+      "interno": "3094",
+      "nombre": "GUSTAVO  GONZALEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336123."
+    },
+    {
+      "interno": "3095",
+      "nombre": "CHRISITAN GAGLIARDI",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120415."
+    },
+    {
+      "interno": "3096",
+      "nombre": "HOMERO ANTELO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120343."
+    },
+    {
+      "interno": "3097",
+      "nombre": "CARLOS COSTA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120163."
+    },
+    {
+      "interno": "3098",
+      "nombre": "WILSON GONZALEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097993114."
+    },
+    {
+      "interno": "3099",
+      "nombre": "MIGUEL SCARONE",
+      "cargo": "PLATAFORMA",
+      "telefono": "097256791."
+    },
+    {
+      "interno": "3100",
+      "nombre": "ELSO PEREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120356."
+    },
+    {
+      "interno": "3101",
+      "nombre": "GERMAN VAEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336532."
+    },
+    {
+      "interno": "3102",
+      "nombre": "DIEGO CAMBON",
+      "cargo": "PLATAFORMA",
+      "telefono": "096342917."
+    },
+    {
+      "interno": "3103",
+      "nombre": "PABLO AGUIRREZABAL",
+      "cargo": "PLATAFORMA",
+      "telefono": "097337318."
+    },
+    {
+      "interno": "3104",
+      "nombre": "DIEGO DO AMARAL",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120454."
+    },
+    {
+      "interno": "3105",
+      "nombre": "CARLOS GIMENEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097337796."
+    },
+    {
+      "interno": "3106",
+      "nombre": "BRUNO FEBRERO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097337792."
+    },
+    {
+      "interno": "3107",
+      "nombre": "WALDEMAR PEREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120698."
+    },
+    {
+      "interno": "3108",
+      "nombre": "2+00+0",
+      "cargo": "PLATAFORMA",
+      "telefono": "097992640."
+    },
+    {
+      "interno": "3109",
+      "nombre": "MAURICIO CAMPOY",
+      "cargo": "PLATAFORMA",
+      "telefono": "097050756."
+    },
+    {
+      "interno": "3111",
+      "nombre": "FEDERICO PANIZZA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096121278."
+    },
+    {
+      "interno": "3112",
+      "nombre": "RAFFAELE PASCALE",
+      "cargo": "PLATAFORMA",
+      "telefono": "097476105."
+    },
+    {
+      "interno": "3113",
+      "nombre": "WILLIAM BERAZATEGUI",
+      "cargo": "PLATAFORMA",
+      "telefono": "097991546."
+    },
+    {
+      "interno": "3114",
+      "nombre": "NELSON YANIBELLI",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120459."
+    },
+    {
+      "interno": "3115",
+      "nombre": "DIEGO PEREIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097993215."
+    },
+    {
+      "interno": "3116",
+      "nombre": "ADRIAN CLIMENT",
+      "cargo": "PLATAFORMA",
+      "telefono": "097051141."
+    },
+    {
+      "interno": "3117",
+      "nombre": "NESTOR PEREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336472."
+    },
+    {
+      "interno": "3118",
+      "nombre": "DIEGO GONZALEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120460."
+    },
+    {
+      "interno": "3119",
+      "nombre": "LORENA HOBINCHET",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120458."
+    },
+    {
+      "interno": "3120",
+      "nombre": "FRANCISCO CARABALLO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097088655."
+    },
+    {
+      "interno": "3121",
+      "nombre": "MIGUEL FERREIRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336263."
+    },
+    {
+      "interno": "3122",
+      "nombre": "JOSE GARBUIO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097337791."
+    },
+    {
+      "interno": "3123",
+      "nombre": "ALEJANDRO ALANIS",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336788."
+    },
+    {
+      "interno": "3124",
+      "nombre": "VICTOR FEIPPE",
+      "cargo": "PLATAFORMA",
+      "telefono": "097013869."
+    },
+    {
+      "interno": "3125",
+      "nombre": "DANIEL HERNADEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124089."
+    },
+    {
+      "interno": "3126",
+      "nombre": "MARTIN ROMERO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097250670."
+    },
+    {
+      "interno": "3127",
+      "nombre": "JAVIER RUSSO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124087."
+    },
+    {
+      "interno": "3128",
+      "nombre": "JOSE ROMA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124092."
+    },
+    {
+      "interno": "3129",
+      "nombre": "LEONARDO SECADAS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124071."
+    },
+    {
+      "interno": "3130",
+      "nombre": "AGUSTIN RUIZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120745."
+    },
+    {
+      "interno": "3131",
+      "nombre": "FERNANDO PEREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097991114."
+    },
+    {
+      "interno": "3132",
+      "nombre": "MARCELO FERNADEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120482."
+    },
+    {
+      "interno": "3133",
+      "nombre": "ALBERTO SCABADOS",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124062."
+    },
+    {
+      "interno": "3134",
+      "nombre": "ALEXANDER MUCCI",
+      "cargo": "PLATAFORMA",
+      "telefono": "096121792."
+    },
+    {
+      "interno": "3135",
+      "nombre": "ALDO DEMICHELI",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120479."
+    },
+    {
+      "interno": "3136",
+      "nombre": "RAUL GARCIA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097336475."
+    },
+    {
+      "interno": "3137",
+      "nombre": "JAVIER PRESA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120647."
+    },
+    {
+      "interno": "3138",
+      "nombre": "NANACY GUEVARA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120644."
+    },
+    {
+      "interno": "3140",
+      "nombre": "DIEGO EIRIZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120645."
+    },
+    {
+      "interno": "3141",
+      "nombre": "JESUS PEREZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096120493."
+    },
+    {
+      "interno": "3142",
+      "nombre": "ROBERTO BINTOR",
+      "cargo": "PLATAFORMA",
+      "telefono": "096121790."
+    },
+    {
+      "interno": "3144",
+      "nombre": "MIGUEL LOPEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097337616."
+    },
+    {
+      "interno": "3145",
+      "nombre": "VANESSA ORIZIO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096121931."
+    },
+    {
+      "interno": "3147",
+      "nombre": "LUIS PEREYRA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097991108."
+    },
+    {
+      "interno": "3148",
+      "nombre": "CARLOS MENDOZA",
+      "cargo": "PLATAFORMA",
+      "telefono": "097337793."
+    },
+    {
+      "interno": "3149",
+      "nombre": "YOSELEM SOCA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096123290."
+    },
+    {
+      "interno": "3151",
+      "nombre": "FERNANDO PIÑA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124067."
+    },
+    {
+      "interno": "3152",
+      "nombre": "GERMAN COLOMBO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124063."
+    },
+    {
+      "interno": "3153",
+      "nombre": "ANTONIO CALAFAT",
+      "cargo": "PLATAFORMA",
+      "telefono": "096415023."
+    },
+    {
+      "interno": "3154",
+      "nombre": "RODRIGO LOPEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097475624."
+    },
+    {
+      "interno": "3155",
+      "nombre": "PABLO DANIEL GONZALEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "097982253."
+    },
+    {
+      "interno": "3156",
+      "nombre": "SERGIO BARREIRO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097055136."
+    },
+    {
+      "interno": "3159",
+      "nombre": "ERNESTO PEÑA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096125871."
+    },
+    {
+      "interno": "3160",
+      "nombre": "ARIEL FERNANDEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096124094."
+    },
+    {
+      "interno": "3161",
+      "nombre": "ALBERTO CALVELO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096403022."
+    },
+    {
+      "interno": "3162",
+      "nombre": "MARCELO MILANO",
+      "cargo": "PLATAFORMA",
+      "telefono": "096425852."
+    },
+    {
+      "interno": "3163",
+      "nombre": "EFRAIN ESQUIVO",
+      "cargo": "PLATAFORMA",
+      "telefono": "097994204."
+    },
+    {
+      "interno": "3165",
+      "nombre": "DIEGO ARIAS",
+      "cargo": "PLATAFORMA",
+      "telefono": "097474262."
+    },
+    {
+      "interno": "3167",
+      "nombre": "WINCLER NOBLE",
+      "cargo": "GDIA.",
+      "telefono": "097051805."
+    },
+    {
+      "interno": "3169",
+      "nombre": "LUIS FERNANDEZ GABA",
+      "cargo": "PLATAFORMA",
+      "telefono": "096126024."
+    },
+    {
+      "interno": "3170",
+      "nombre": "DANIEL LOPEZ",
+      "cargo": "PLATAFORMA",
+      "telefono": "096142617."
+    }
+  ]
+}
