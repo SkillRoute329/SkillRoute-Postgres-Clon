@@ -75,6 +75,7 @@ export const ModalEditarConductor: React.FC<Props> = ({ conductor, onClose, onSu
               <option value="enfermo">Parte de Enfermo</option>
               <option value="ausente">Ausente Sin Aviso</option>
             </select>
+            <p className="text-xs text-gray-500 mt-2">
               Nota: Cambiar el estado a "Ausente" aquí no disparará alertas automáticas ni buscará suplentes. Use el botón "Registrar Ausencia" en la grilla para eso.
             </p>
           </div>
