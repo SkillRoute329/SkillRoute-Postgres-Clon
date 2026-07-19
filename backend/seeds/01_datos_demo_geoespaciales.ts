@@ -52,11 +52,15 @@ export async function seed(knex: Knex): Promise<void> {
       })));
     }
 
-    // 4. Procesar Rutas
-    logger.info('[SEED] Insertando Rutas...');
-    const routes = await parseCSV('routes.txt');
+    // 4. Procesar Rutas (Filtrando subconjunto real: corredor 300)
+    logger.info('[SEED] Insertando Rutas (Filtro: Corredor Estructural 300)...');
+    const allRoutes = await parseCSV('routes.txt');
+    const routes = allRoutes.filter(r => r.route_short_name === '300' || r.route_short_name === '103' || r.route_id === '300');
+    
+    // Extraer route_ids válidos para filtrar paradas más adelante (idealmente vía trips, pero simplificamos)
+    const validRouteIds = new Set(routes.map(r => r.route_id));
+
     if (routes.length > 0) {
-      // Inserción en lotes (batch) por si son muchas
       const chunkSize = 500;
       for (let i = 0; i < routes.length; i += chunkSize) {
         const chunk = routes.slice(i, i + chunkSize).map(r => ({
