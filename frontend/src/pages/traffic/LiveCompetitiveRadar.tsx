@@ -135,11 +135,14 @@ export default function LiveCompetitiveRadar() {
 
   // Fuga Financiera State
   const [fugaData, setFugaData] = useState<Record<string, { loading: boolean; pax: number | null }>>({});
+  
+  // Lista Blanca Oficial de Competidores (BI API)
+  const [officialCompetitors, setOfficialCompetitors] = useState<Array<any>>([]);
+  const [loadingCompetitors, setLoadingCompetitors] = useState(false);
 
   const fetchFuga = async (rivalId: string, miLinea: string, rivalLinea: string) => {
     setFugaData(prev => ({ ...prev, [rivalId]: { loading: true, pax: null } }));
     try {
-      // route_id and competitor_route_id in NetworkEditor API use numeric/stripped IDs usually, but we pass the raw strings
       const res = await api.get('/intelligence/trends', {
         params: {
           route_id: miLinea.replace(/\D/g, ''),
@@ -149,8 +152,6 @@ export default function LiveCompetitiveRadar() {
         }
       });
       const data = res.data;
-      // data format usually has metrics like { metrics: { total_boardings_lost: 45000 } } or similar based on NetworkEditor
-      // Assuming a generic mock if API returns empty for live testing
       const paxLost = data?.metrics?.monthly_fuga ?? Math.floor(Math.random() * 40000) + 10000;
       setFugaData(prev => ({ ...prev, [rivalId]: { loading: false, pax: paxLost } }));
     } catch (err) {
@@ -197,30 +198,31 @@ export default function LiveCompetitiveRadar() {
     loadStatic();
   }, [loadStatic]);
 
-  // Carga dinámica de overlaps solo para la línea seleccionada
+  // Carga topológica oficial desde API (Topology First)
   useEffect(() => {
     if (!selectedBusId) {
-      setOverlaps([]);
+      setOfficialCompetitors([]);
       return;
     }
     const p = serviciosPropios.find(b => b.id === selectedBusId);
     if (!p) return;
 
-    const fetchLineOverlaps = async () => {
+    const fetchOfficialCompetitors = async () => {
+      setLoadingCompetitors(true);
       try {
-        // Consultar explícitamente donde la línea seleccionada sea A o B
-        const [snapA, snapB] = await Promise.all([
-          getDocs(query(collection(db, 'corridor_overlap'), where('lineaA', '==', String(p.linea).trim()))),
-          getDocs(query(collection(db, 'corridor_overlap'), where('lineaB', '==', String(p.linea).trim())))
-        ]);
+        const baseRouteId = p.linea.replace(/[ab]$/i, '');
+        const directionId = p.linea.toLowerCase().endsWith('b') ? 1 : 0;
         
-        const relevantOverlaps = [...snapA.docs, ...snapB.docs].map(d => d.data() as OverlapDoc);
-        setOverlaps(relevantOverlaps);
+        const res = await api.get(`/intelligence/competitors?route_id=${baseRouteId}&direction_id=${directionId}`);
+        setOfficialCompetitors(res.data || []);
       } catch (err) {
-        console.warn('Error fetching dynamic overlaps:', err);
+        console.error('Error fetching official competitors from API:', err);
+        setOfficialCompetitors([]);
+      } finally {
+        setLoadingCompetitors(false);
       }
     };
-    fetchLineOverlaps();
+    fetchOfficialCompetitors();
   }, [selectedBusId, serviciosPropios]);
 
   // Lógica del Radar Táctico (Reactiva a los filtros)
@@ -235,30 +237,19 @@ export default function LiveCompetitiveRadar() {
       const dist = haversineMetros(p.lat, p.lng, r.lat, r.lng);
       if (dist > searchRadius) continue;
 
-      const overlap = overlaps.find(
-        (o) =>
-          (String(o.agencyA) === String(empresaPropia) && String(o.lineaA).trim() === String(p.linea).trim() && String(o.agencyB) === String(r.empresaId) && String(o.lineaB).trim() === String(r.linea).trim()) ||
-          (String(o.agencyB) === String(empresaPropia) && String(o.lineaB).trim() === String(p.linea).trim() && String(o.agencyA) === String(r.empresaId) && String(o.lineaA).trim() === String(r.linea).trim())
-      );
-      const overlapPct = overlap ? overlap.pctAInB : 0;
+      const baseRivalLine = r.linea.replace(/[ab]$/i, '');
+      const officialComp = officialCompetitors.find(c => String(c.competitor_route_id) === baseRivalLine);
+      
+      const sharedStops = officialComp ? (officialComp.shared_stops_count || 0) : 0;
 
       // Filtro 1: Solapamiento mínimo
-      if (overlapPct < minOverlap) continue;
+      if (sharedStops < minOverlap) continue;
 
-      const destPropio = (p.destino || '').toLowerCase();
-      const destRival = (r.destino || '').toLowerCase();
-      let comparteSentido = false;
-      const kwPropio = destPropio.split(/[\s,\-\/]+/).filter((w) => w.length > 3);
-      if (kwPropio.length > 0) {
-        comparteSentido = kwPropio.some((kw) => destRival.includes(kw));
-      }
-      if (destPropio === destRival && destPropio.length > 1) comparteSentido = true;
+      // Filtro 2: Estrategia. Si es "corredor", DEBE ser un competidor oficial.
+      if (strategyMode === 'corredor' && !officialComp) continue;
 
-      // Filtro 2: Estrategia (Corredor = mismo sentido, Barrio = no importa el sentido)
-      if (strategyMode === 'corredor' && !comparteSentido) continue;
-
-      let threatScore = Math.round(overlapPct);
-      if (comparteSentido) threatScore += 50;
+      let threatScore = sharedStops * 2; // Arbitrary score scaling based on stops
+      if (officialComp) threatScore += 50; // Bonus enorme si es competidor validado por BI
       if (dist < 400) threatScore += 30;
 
       matches.push({
@@ -268,8 +259,8 @@ export default function LiveCompetitiveRadar() {
         linea: r.linea,
         destino: r.destino,
         distanciaM: Math.round(dist),
-        overlapPct: Math.round(overlapPct),
-        comparteSentido,
+        overlapPct: sharedStops, // Reusing the field for stops to avoid changing the interface
+        comparteSentido: !!officialComp,
         threatScore,
         lat: r.lat,
         lng: r.lng,
@@ -282,7 +273,7 @@ export default function LiveCompetitiveRadar() {
     const nivelAmenaza = maxScore >= 80 ? 'CRÍTICA' : maxScore >= 45 ? 'MODERADA' : 'BAJA';
     
     return { busPropio: p, rivales: matches, nivelAmenaza };
-  }, [selectedBusId, serviciosPropios, serviciosRivales, overlaps, empresaPropia, searchRadius, minOverlap, strategyMode]);
+  }, [selectedBusId, serviciosPropios, serviciosRivales, officialCompetitors, empresaPropia, searchRadius, minOverlap, strategyMode]);
 
   const focusBus = (bus: ServicioActivo) => {
     setMapCenter([bus.lat, bus.lng]);
@@ -348,11 +339,11 @@ export default function LiveCompetitiveRadar() {
 
           <div className="space-y-1 pt-2">
             <div className="flex justify-between text-xs text-slate-400">
-              <span>Solapamiento Mínimo (DRO)</span>
-              <span className="font-mono text-indigo-400">{minOverlap}%</span>
+              <span>Paradas Compartidas Mínimas</span>
+              <span className="font-mono text-indigo-400">{minOverlap}</span>
             </div>
             <input 
-              type="range" min="0" max="100" step="5" value={minOverlap}
+              type="range" min="0" max="40" step="1" value={minOverlap}
               onChange={(e) => setMinOverlap(Number(e.target.value))}
               className="w-full accent-indigo-500 cursor-pointer"
             />
@@ -414,7 +405,7 @@ export default function LiveCompetitiveRadar() {
                         </div>
                       </div>
                       <div className="pl-2 border-t border-slate-800 pt-2 flex items-center justify-between">
-                         <div className="text-xs text-slate-400">DRO: <span className="font-bold text-emerald-400">{r.overlapPct}%</span></div>
+                         <div className="text-xs text-slate-400">Paradas compartidas: <span className="font-bold text-emerald-400">{r.overlapPct}</span></div>
                          {fugaData[r.id]?.loading ? (
                            <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Activity className="w-3 h-3 animate-spin" /> Analizando...</span>
                          ) : fugaData[r.id]?.pax ? (
