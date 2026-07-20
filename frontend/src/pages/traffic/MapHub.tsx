@@ -25,7 +25,7 @@ import 'leaflet.heat';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { useLiveData } from '../../context/LiveDataContext';
 import { useLiveOperations, type ServicioActivo, type DesvioReportado, type IncidenciaReportada } from '../../hooks/useLiveOperations';
-import { collection, getDocs, query, limit } from '../../config/firestoreShim';
+import { collection, getDocs, query, limit, addDoc } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import {
   Map as MapIcon,
@@ -50,7 +50,12 @@ import {
   User,
   Heart,
   TrendingUp,
+  Zap,
+  Target,
+  Send,
+  Shield,
 } from 'lucide-react';
+import { haversineMetros } from '../../utils/geomath';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import toast from 'react-hot-toast';
 
@@ -182,10 +187,115 @@ export default function MapHub() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedShape, setSelectedShape] = useState<ShapeDoc | null>(null);
 
+  // Radar Táctico State
+  const [selectedBusId, setSelectedBusId] = useState<string | null>(null);
+  const [manualCocheId, setManualCocheId] = useState('');
+  const [manualMensaje, setManualMensaje] = useState('🚨 REGULACIÓN: Coche rival pisando turno a 200m. Modere velocidad.');
+  const [sendingManual, setSendingManual] = useState(false);
+
+
   // Mapa viewport focus
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [mapZoom, setMapZoom] = useState(13);
   const markersRef = useRef<Record<string, L.Marker>>({});
+
+
+  // ─── Lógica de Radar Táctico ────────────────────────────────────────────────
+  const activeDisputas = useMemo(() => {
+    if (!selectedBusId || sidebarTab !== 'flota') return null;
+    const p = serviciosPropios.find(b => b.id === selectedBusId);
+    if (!p) return null;
+
+    const matches: Array<{
+      codigoBus: string;
+      empresa: string;
+      linea: string;
+      destino: string;
+      distanciaM: number;
+      overlapPct: number;
+      comparteSentido: boolean;
+      threatScore: number;
+      lat: number;
+      lng: number;
+      codigoEmpresa: number;
+      id: string;
+    }> = [];
+
+    for (const r of serviciosRivales) {
+      const dist = haversineMetros(p.lat, p.lng, r.lat, r.lng);
+      if (dist > 1500) continue;
+
+      const overlap = overlaps.find(
+        (o) =>
+          (o.agencyA === String(empresaPropia) && o.lineaA === p.linea && o.agencyB === String(r.empresaId) && o.lineaB === r.linea) ||
+          (o.agencyB === String(empresaPropia) && o.lineaB === p.linea && o.agencyA === String(r.empresaId) && o.lineaA === r.linea)
+      );
+      const overlapPct = overlap ? overlap.pctAInB : 0;
+
+      const destPropio = (p.destino || '').toLowerCase();
+      const destRival = (r.destino || '').toLowerCase();
+      let comparteSentido = false;
+      const kwPropio = destPropio.split(/[\s,\-\/]+/).filter((w) => w.length > 3);
+      if (kwPropio.length > 0) {
+        comparteSentido = kwPropio.some((kw) => destRival.includes(kw));
+      }
+      if (destPropio === destRival && destPropio.length > 1) comparteSentido = true;
+
+      let threatScore = Math.round(overlapPct);
+      if (comparteSentido) threatScore += 50;
+      if (dist < 400) threatScore += 30;
+
+      matches.push({
+        id: r.id,
+        codigoBus: r.codigoBus,
+        empresa: r.empresa,
+        linea: r.linea,
+        destino: r.destino,
+        distanciaM: Math.round(dist),
+        overlapPct: Math.round(overlapPct),
+        comparteSentido,
+        threatScore,
+        lat: r.lat,
+        lng: r.lng,
+        codigoEmpresa: r.empresaId,
+      });
+    }
+
+    matches.sort((a, b) => b.threatScore - a.threatScore);
+    const maxScore = matches.length > 0 ? matches[0].threatScore : 0;
+    const nivelAmenaza = maxScore >= 80 ? 'CRÍTICA' : maxScore >= 45 ? 'MODERADA' : 'BAJA';
+    
+    return {
+      busPropio: p,
+      rivales: matches,
+      nivelAmenaza
+    };
+  }, [selectedBusId, sidebarTab, serviciosPropios, serviciosRivales, overlaps, empresaPropia]);
+
+  const handleSendManualAlert = async () => {
+    if (!manualCocheId) {
+      toast.error('Ingrese el ID del coche de destino.');
+      return;
+    }
+    setSendingManual(true);
+    try {
+      await addDoc(collection(db, 'alertas_regulacion'), {
+        tipo: 'DISPARO_TACTICO',
+        coche_id: manualCocheId,
+        empresa_id: empresaPropia,
+        instruccion: 'REGULACION_MARCHA',
+        mensaje_chofer: manualMensaje,
+        timestamp: new Date().toISOString(),
+        leido: false,
+      });
+      toast.success(`Alerta de regulación enviada al chofer del Coche #${manualCocheId}`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al emitir directiva manual.');
+    } finally {
+      setSendingManual(false);
+    }
+  };
 
   // Sincronizar filtro global
   useEffect(() => {
@@ -321,6 +431,14 @@ export default function MapHub() {
   const focusBus = (bus: ServicioActivo) => {
     setMapCenter([bus.lat, bus.lng]);
     setMapZoom(15);
+    
+    if (selectedBusId === bus.id) {
+       setSelectedBusId(null);
+    } else {
+       setSelectedBusId(bus.id);
+       setManualCocheId(bus.codigoBus);
+    }
+
     setTimeout(() => {
       const marker = markersRef.current[bus.id];
       if (marker) {
@@ -688,11 +806,10 @@ export default function MapHub() {
                   return (
                     <div
                       key={b.id}
-                      onClick={() => focusBus(b)}
-                      className={`p-3 rounded-xl border bg-slate-900/30 hover:bg-slate-900/60 cursor-pointer transition flex items-center justify-between ${
-                        isOwn ? 'border-amber-500/20 hover:border-amber-500/40' : 'border-slate-800'
-                      }`}
+                      className={`rounded-xl border bg-slate-900/30 hover:bg-slate-900/60 transition ${isOwn ? 'border-amber-500/20 hover:border-amber-500/40' : 'border-slate-800'}`}
                     >
+                      <div onClick={() => focusBus(b)} className="cursor-pointer p-3 flex items-center justify-between"
+
                       <div className="flex items-center gap-3">
                         <div
                           className="w-2 h-8 rounded"
@@ -713,6 +830,77 @@ export default function MapHub() {
                         <span className="text-xs font-bold text-white block">{b.velocidad} km/h</span>
                         <span className="text-[9px] text-slate-500 font-mono">STM GPS</span>
                       </div>
+                      </div>
+
+                      {/* Radar Táctico (Acordeón) */}
+                      {selectedBusId === b.id && activeDisputas && (
+                         <div className="mt-3 border-t border-slate-800 pt-3" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex justify-between items-center mb-2">
+                               <span className="text-[10px] font-bold uppercase text-slate-500">Radar Táctico (1.5km)</span>
+                               <span className={`text-[9px] px-1.5 py-0.5 rounded font-black border uppercase ${
+                                  activeDisputas.nivelAmenaza === 'CRÍTICA'
+                                    ? 'bg-red-500/10 text-red-400 border-red-500/30 animate-pulse'
+                                    : activeDisputas.nivelAmenaza === 'MODERADA'
+                                      ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                                      : 'bg-slate-800 text-slate-400 border-slate-700'
+                                }`}>
+                                  Amenaza {activeDisputas.nivelAmenaza}
+                                </span>
+                            </div>
+
+                            {activeDisputas.rivales.length === 0 ? (
+                               <div className="bg-slate-950/50 p-4 rounded-lg text-center text-[10px] text-slate-500">
+                                 Sin rivales directos en el perímetro.
+                               </div>
+                            ) : (
+                               <div className="space-y-2">
+                                  {activeDisputas.rivales.map(r => (
+                                      <div key={r.id} className="bg-slate-950/80 border border-slate-800 rounded-lg p-2 flex items-center justify-between text-[11px]">
+                                        <div>
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="font-extrabold text-amber-400">L{r.linea}</span>
+                                            <span className="text-[9px] text-slate-400">({r.empresa} #{r.codigoBus})</span>
+                                          </div>
+                                          <div className="flex gap-1 mt-1">
+                                            {r.comparteSentido && <span className="text-[8px] bg-red-500/10 text-red-400 border border-red-500/20 px-1 rounded font-bold">MISMO SENTIDO</span>}
+                                            {r.overlapPct > 0 && <span className="text-[8px] bg-slate-900 text-amber-400/80 border border-slate-800 px-1 rounded">{r.overlapPct}% DRO</span>}
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                           <span className="font-mono font-bold text-white block">{r.distanciaM}m</span>
+                                           <span className="text-[9px] text-slate-500 font-mono">Score: {r.threatScore}</span>
+                                        </div>
+                                      </div>
+                                  ))}
+                               </div>
+                            )}
+
+                            {/* Disparo de Regulación */}
+                            <div className="mt-3 pt-3 border-t border-slate-800 flex gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="Coche"
+                                  value={manualCocheId}
+                                  onChange={(e) => setManualCocheId(e.target.value)}
+                                  className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[10px] text-white w-16 focus:border-indigo-500 focus:outline-none"
+                                />
+                                <input
+                                  type="text"
+                                  value={manualMensaje}
+                                  onChange={(e) => setManualMensaje(e.target.value)}
+                                  className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[10px] text-white focus:border-indigo-500 focus:outline-none"
+                                />
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleSendManualAlert(); }}
+                                  disabled={sendingManual}
+                                  className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-2 py-1 flex items-center justify-center disabled:opacity-50"
+                                >
+                                  <Send className="w-3 h-3" />
+                                </button>
+                            </div>
+                         </div>
+                      )}
+
                     </div>
                   );
                 })}

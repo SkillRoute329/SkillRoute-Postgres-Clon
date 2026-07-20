@@ -119,7 +119,7 @@ const BusNavigation = lazy(() => import('./pages/driver/BusNavigation'));
 const Distribution = lazy(() => import('./pages/operations/Distribution'));
 const RotationMatrix = lazy(() => import('./pages/traffic/RotationMatrix'));
 const VehicleCheck = lazy(() => import('./pages/fleet/VehicleCheck'));
-const MarketIntelligenceConsole = lazy(() => import('./pages/traffic/MarketIntelligenceConsole'));
+// Intelligence Console merged into MapHub
 const AnalisisCriticoCompetencia = lazy(() => import('./pages/traffic/AnalisisCriticoCompetencia'));
 const DiagnosticoEjecutivo = lazy(() => import('./pages/traffic/DiagnosticoEjecutivo'));
 const ExecutiveCoverage = lazy(() => import('./pages/traffic/ExecutiveCoverage'));
@@ -330,19 +330,19 @@ function App() {
                     {/* Redirects legacy: nombres en español → rutas en inglés */}
                     <Route path="traffic/navegador" element={<Navigate to="/dashboard/traffic/navigation" replace />} />
                     <Route path="traffic/posicion" element={<Navigate to="/dashboard/traffic/map-hub?layer=buses" replace />} />
-                     {/* Nueva Consola de Inteligencia de Red (Fase 2) */}
-                    <Route path="traffic/intelligence" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><MarketIntelligenceConsole /></PrivateRoute>} />
+                     {/* Intelligence Console merged into MapHub */}
+                    <Route path="traffic/intelligence" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
                     <Route path="intelligence/network-editor" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><NetworkEditor /></PrivateRoute>} />
                     <Route path="traffic/live-map" element={<Navigate to="/dashboard/traffic/map-hub?layer=mapa" replace />} />
-                    <Route path="traffic/shadow-radar" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
-                    <Route path="traffic/competitor-intelligence" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
+                    <Route path="traffic/shadow-radar" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
+                    <Route path="traffic/competitor-intelligence" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
                     <Route path="traffic/analisis-critico" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><AnalisisCriticoCompetencia /></PrivateRoute>} />
                     <Route path="traffic/diagnostico-ejecutivo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><DiagnosticoEjecutivo /></PrivateRoute>} />
-                    <Route path="traffic/corridor-intelligence" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
-                    <Route path="traffic/market-share" element={<Navigate to="/dashboard/traffic/intelligence?tab=market" replace />} />
-                    <Route path="traffic/corridor-map" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
-                    <Route path="traffic/shadow-analytics" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
-                    <Route path="traffic/penetration" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
+                    <Route path="traffic/corridor-intelligence" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
+                    <Route path="traffic/market-share" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
+                    <Route path="traffic/corridor-map" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
+                    <Route path="traffic/shadow-analytics" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
+                    <Route path="traffic/penetration" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
                     <Route path="traffic/roi-calculator" element={<Navigate to="/dashboard/traffic/financiero" replace />} />
                     <Route path="traffic/desvios" element={<Navigate to="/dashboard/traffic/monitoreo" replace />} />
                     <Route path="traffic/centro-turno" element={<Navigate to="/dashboard/traffic/monitoreo" replace />} />
@@ -356,7 +356,7 @@ function App() {
                     <Route path="traffic/scraper-status" element={<Navigate to="/dashboard/admin/sistema" replace />} />
                     <Route path="traffic/headway-insights" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />
                     <Route path="traffic/gps-playback" element={<Navigate to="/dashboard/traffic/corridor-map" replace />} />
-                    <Route path="traffic/agents" element={<Navigate to="/dashboard/traffic/intelligence" replace />} />
+                    <Route path="traffic/agents" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
                     <Route path="traffic/brt" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><BRTCorridorDashboard /></PrivateRoute>} />
                     <Route path="traffic/otp" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><OTPDashboard /></PrivateRoute>} />
                     <Route path="traffic/incidents" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><IncidenciasHub /></PrivateRoute>} />
