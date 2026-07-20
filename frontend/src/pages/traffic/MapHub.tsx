@@ -232,17 +232,18 @@ export default function MapHub() {
       );
       const overlapPct = overlap ? overlap.pctAInB : 0;
 
-      // ¡FILTRO CRÍTICO! Solo considerar competidores reales (con solapamiento de ruta)
-      if (overlapPct < 15) continue;
-
       const destPropio = (p.destino || '').toLowerCase();
       const destRival = (r.destino || '').toLowerCase();
+      
       let comparteSentido = false;
       const kwPropio = destPropio.split(/[\s,\-\/]+/).filter((w) => w.length > 3);
       if (kwPropio.length > 0) {
         comparteSentido = kwPropio.some((kw) => destRival.includes(kw));
       }
       if (destPropio === destRival && destPropio.length > 1) comparteSentido = true;
+
+      // ¡FILTRO CRÍTICO! Solo considerar competidores si van hacia el mismo destino (mismo sentido)
+      if (!comparteSentido) continue;
 
       let threatScore = Math.round(overlapPct);
       if (comparteSentido) threatScore += 50;
