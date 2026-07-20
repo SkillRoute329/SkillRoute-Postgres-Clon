@@ -205,6 +205,9 @@ export default function LiveCompetitiveRadar() {
       setOfficialCompetitors([]);
       return;
     }
+    
+    let isActive = true;
+    
     const fetchOfficialCompetitors = async () => {
       setLoadingCompetitors(true);
       try {
@@ -216,6 +219,8 @@ export default function LiveCompetitiveRadar() {
           api.get(`/intelligence/competitors?route_id=${baseRouteId}&direction_id=1`)
         ]);
         
+        if (!isActive) return;
+        
         // Combinamos ambas respuestas para tener la topología de la línea entera en ambos sentidos
         const combined = [...(resIda.data || []), ...(resVuelta.data || [])];
         
@@ -224,13 +229,19 @@ export default function LiveCompetitiveRadar() {
 
         setOfficialCompetitors(unique);
       } catch (err) {
+        if (!isActive) return;
         console.error('Error fetching official competitors from API:', err);
         setOfficialCompetitors([]);
       } finally {
-        setLoadingCompetitors(false);
+        if (isActive) {
+          setLoadingCompetitors(false);
+        }
       }
     };
+    
     fetchOfficialCompetitors();
+    
+    return () => { isActive = false; };
   }, [selectedLinea]);
 
   // Derivados para UI
@@ -244,6 +255,17 @@ export default function LiveCompetitiveRadar() {
     if (!selectedLinea) return [];
     return serviciosPropios.filter(b => b.linea === selectedLinea);
   }, [selectedLinea, serviciosPropios]);
+
+  // Protección contra "Coche Fantasma": si el bus seleccionado desaparece de la flota (ej. fin de turno), deseleccionarlo
+  useEffect(() => {
+    if (selectedBusId) {
+      const exists = busesDeLineaSeleccionada.some(b => b.id === selectedBusId);
+      if (!exists) {
+        setSelectedBusId(null);
+        setMapZoom(13); // Volver al zoom macro
+      }
+    }
+  }, [selectedBusId, busesDeLineaSeleccionada]);
 
   // Lógica de filtrado de Rivales (MACRO vs MICRO)
   const rivalesVisibles = useMemo(() => {
@@ -372,11 +394,21 @@ export default function LiveCompetitiveRadar() {
 
 function MapCenterController({ center, zoom, isActive }: { center: [number, number], zoom: number, isActive: boolean }) {
   const map = useMap();
+  
+  // Solución a "Baldosas Grises" de Leaflet: Forzar el recálculo del tamaño del mapa cuando se monta o cambia el contenedor
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [map]);
+
   useEffect(() => {
     if (isActive) {
       map.setView(center, zoom, { animate: true });
     }
   }, [center, zoom, map, isActive]);
+  
   return null;
 }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useEmpresaPropia } from './useEmpresaPropia';
 import { fetchSTMPosiciones, type BusSTM } from '../services/stmLiveService';
 import { ServicioEstadoService, type ServicioEstadoRecord } from '../services/firestore/servicioEstado';
@@ -202,74 +202,78 @@ export function useLiveOperations() {
   }, []);
 
   // 5. Fusión profunda de datos en memoria (Reactiva)
-  const propios: ServicioActivo[] = [];
-  const rivales: ServicioActivo[] = [];
-  
-  // Deduplicar buses para evitar colisión de keys en React que congela la UI
-  const uniqueBuses = new Map<string, typeof busesRaw[0]>();
-  busesRaw.forEach(bus => {
-    uniqueBuses.set(`${bus.codigoEmpresa}-${bus.codigoBus}`, bus);
-  });
-
-  Array.from(uniqueBuses.values()).forEach(bus => {
-    const esPropio = bus.codigoEmpresa === empresaPropia;
+  const { propios, rivales } = useMemo(() => {
+    const arrPropios: ServicioActivo[] = [];
+    const arrRivales: ServicioActivo[] = [];
     
-    // Buscar listero/turno asignado
-    const stringCoche = String(bus.codigoBus);
-    const turno = listeroRaw.find(t => String(t.cocheActual) === stringCoche);
-    
-    // Buscar conductor
-    let choferNombre = undefined;
-    let choferLegajo = undefined;
-    if (turno?.choferActual) {
-      const chofer = personal.find(p => p.id === turno.choferActual);
-      choferNombre = chofer?.fullName ?? chofer?.apodo ?? 'Conductor no registrado';
-      choferLegajo = chofer?.internalNumber ?? chofer?.legajo ?? undefined;
-    }
+    // Deduplicar buses para evitar colisión de keys en React que congela la UI
+    const uniqueBuses = new Map<string, typeof busesRaw[0]>();
+    busesRaw.forEach(bus => {
+      uniqueBuses.set(`${bus.codigoEmpresa}-${bus.codigoBus}`, bus);
+    });
 
-    // Buscar desvío activo del coche (Match por coche_id y linea_id para evitar colisión cruzada)
-    const desvio = desviosRaw.find(d => 
-      String(d.coche_id) === stringCoche && 
-      (d.linea_id ? String(d.linea_id) === bus.linea : true) &&
-      !d.resuelto
-    );
+    Array.from(uniqueBuses.values()).forEach(bus => {
+      const esPropio = bus.codigoEmpresa === empresaPropia;
+      
+      // Buscar listero/turno asignado
+      const stringCoche = String(bus.codigoBus);
+      const turno = listeroRaw.find(t => String(t.cocheActual) === stringCoche);
+      
+      // Buscar conductor
+      let choferNombre = undefined;
+      let choferLegajo = undefined;
+      if (turno?.choferActual) {
+        const chofer = personal.find(p => p.id === turno.choferActual);
+        choferNombre = chofer?.fullName ?? chofer?.apodo ?? 'Conductor no registrado';
+        choferLegajo = chofer?.internalNumber ?? chofer?.legajo ?? undefined;
+      }
 
-    // Buscar incidencia activa del coche o línea
-    const incidencia = incidenciasRaw.find(
-      i => i.estado !== 'cerrada' &&
-           ((String(i.coche_id) === stringCoche && (i.linea_id ? String(i.linea_id) === bus.linea : true)) || 
-           (i.linea_id && !i.coche_id && String(i.linea_id) === bus.linea))
-    );
+      // Buscar desvío activo del coche (Match por coche_id y linea_id para evitar colisión cruzada)
+      const desvio = desviosRaw.find(d => 
+        String(d.coche_id) === stringCoche && 
+        (d.linea_id ? String(d.linea_id) === bus.linea : true) &&
+        !d.resuelto
+      );
 
-    const servicio: ServicioActivo = {
-      id: `${bus.codigoEmpresa}-${stringCoche}`, // Globally unique to prevent map marker collisions
-      codigoBus: stringCoche,
-      empresa: bus.empresa,
-      empresaId: bus.codigoEmpresa,
-      linea: bus.linea,
-      sublinea: bus.sublinea,
-      destino: bus.destinoDesc,
-      lat: bus.lat,
-      lng: bus.lng,
-      velocidad: bus.velocidad,
-      // Fusión de Listero
-      servicioId: turno?.servicioId,
-      horaInicio: turno?.horaInicio,
-      choferId: turno?.choferActual ?? undefined,
-      choferNombre,
-      choferLegajo,
-      estadoTurno: turno?.status,
-      // Fusión de Alertas
-      desvio,
-      incidencia,
-    };
+      // Buscar incidencia activa del coche o línea
+      const incidencia = incidenciasRaw.find(
+        i => i.estado !== 'cerrada' &&
+             ((String(i.coche_id) === stringCoche && (i.linea_id ? String(i.linea_id) === bus.linea : true)) || 
+             (i.linea_id && !i.coche_id && String(i.linea_id) === bus.linea))
+      );
 
-    if (esPropio) {
-      propios.push(servicio);
-    } else {
-      rivales.push(servicio);
-    }
-  });
+      const servicio: ServicioActivo = {
+        id: `${bus.codigoEmpresa}-${stringCoche}`, // Globally unique to prevent map marker collisions
+        codigoBus: stringCoche,
+        empresa: bus.empresa,
+        empresaId: bus.codigoEmpresa,
+        linea: bus.linea,
+        sublinea: bus.sublinea,
+        destino: bus.destinoDesc,
+        lat: bus.lat,
+        lng: bus.lng,
+        velocidad: bus.velocidad,
+        // Fusión de Listero
+        servicioId: turno?.servicioId,
+        horaInicio: turno?.horaInicio,
+        choferId: turno?.choferActual ?? undefined,
+        choferNombre,
+        choferLegajo,
+        estadoTurno: turno?.status,
+        // Fusión de Alertas
+        desvio,
+        incidencia,
+      };
+
+      if (esPropio) {
+        arrPropios.push(servicio);
+      } else {
+        arrRivales.push(servicio);
+      }
+    });
+
+    return { propios: arrPropios, rivales: arrRivales };
+  }, [busesRaw, empresaPropia, listeroRaw, personal, desviosRaw, incidenciasRaw]);
 
   // Detección de bunching y KPIs unificados
   const bunchingAlertas = calcularBunching(propios);
