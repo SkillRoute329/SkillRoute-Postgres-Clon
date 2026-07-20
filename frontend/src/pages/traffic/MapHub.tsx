@@ -540,6 +540,48 @@ export default function MapHub() {
             );
           })}
 
+          {/* Capa 1.5: Rutas en Disputa (Radar Táctico) */}
+          {activeDisputas && activeDisputas.busPropio && layers.vehicles && (
+            <>
+              {/* Ruta base del coche propio */}
+              {(() => {
+                const baseShape = shapes.find(s => s.linea === activeDisputas.busPropio!.linea && String(s.agencyId) === String(empresaPropia));
+                if (!baseShape) return null;
+                return (
+                  <Polyline
+                    positions={baseShape.points.map((p) => [p.lat, p.lon]) as [number, number][]}
+                    pathOptions={{ color: '#6366f1', weight: 6, opacity: 0.9 }}
+                  />
+                );
+              })()}
+              
+              {/* Rutas de los rivales acechando */}
+              {activeDisputas.rivales.map(rival => {
+                const rivalShape = shapes.find(s => s.linea === rival.linea && String(s.agencyId) === String(rival.codigoEmpresa));
+                if (!rivalShape) return null;
+                return (
+                  <Polyline
+                    key={`rival-shape-${rival.id}`}
+                    positions={rivalShape.points.map((p) => [p.lat, p.lon]) as [number, number][]}
+                    pathOptions={{ 
+                      color: rival.threatScore >= 80 ? '#e11d48' : '#d97706', 
+                      weight: 4, 
+                      opacity: 0.8, 
+                      dashArray: '10, 10' 
+                    }}
+                  >
+                    <LeafletTooltip sticky>
+                      <div className="text-xs font-semibold p-1">
+                        <span className="font-bold text-white uppercase">{rival.empresa} - L{rival.linea}</span>
+                        <p className="text-amber-400 text-[10px] font-bold mt-1">DRO: {rival.overlapPct}%</p>
+                      </div>
+                    </LeafletTooltip>
+                  </Polyline>
+                );
+              })}
+            </>
+          )}
+
           {/* Capa 2: Heatmap de Demanda */}
           {layers.demanda && <HeatmapLayer points={demandPoints} />}
 
