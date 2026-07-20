@@ -6,12 +6,13 @@ services:
     container_name: skillroute_db
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASS:-tu_password_aqui}
-      POSTGRES_DB: ${DB_NAME:-skillroute_master}
+      POSTGRES_PASSWORD: ${DB_PASS:-Skill329}
+      POSTGRES_DB: ${DB_NAME:-skillroute_soberano}
     ports:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./backend/database:/docker-entrypoint-initdb.d
     restart: unless-stopped
 
 volumes:

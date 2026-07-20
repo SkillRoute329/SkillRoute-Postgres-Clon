@@ -185,6 +185,44 @@ export const getCompetitors = async (req: Request, res: Response) => {
   }
 };
 
+// ─── /api/intelligence/variants/:route_short_name ───────────────────────────
+//
+// Mapea los números de variante (shape_id) del GPS a direction_id oficiales del GTFS.
+export const getLineVariantsDirection = async (req: Request, res: Response) => {
+  try {
+    const { route_short_name } = req.params;
+    
+    if (!route_short_name) {
+      return res.status(400).json({ error: 'Falta parámetro route_short_name' });
+    }
+
+    // Buscamos todas las variantes (shape_id) que pertenecen a la línea base
+    const variants = await sqlDb('gtfs.trips as t')
+      .join('gtfs.routes as r', 't.route_id', 'r.route_id')
+      .where('r.route_short_name', route_short_name)
+      .select('t.shape_id', 't.direction_id')
+      .distinct();
+
+    // Convertimos la respuesta en un diccionario rápido { "8385": 0, "8398": 1 }
+    const mapping: Record<string, number> = {};
+    for (const v of variants) {
+      if (v.shape_id != null && v.direction_id != null) {
+        mapping[String(v.shape_id)] = Number(v.direction_id);
+      }
+    }
+
+    return res.json({
+      ok: true,
+      route: route_short_name,
+      mapping
+    });
+
+  } catch (error: any) {
+    logger.error('[IntelligenceController] Error en getLineVariantsDirection', error.message);
+    return res.status(500).json({ error: 'Error interno del servidor', details: error.message });
+  }
+};
+
 // ─── /api/intelligence/trends ─────────────────────────────────────────────
 //
 // Devuelve las tendencias de carga mensual.

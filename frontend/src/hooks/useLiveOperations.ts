@@ -49,6 +49,7 @@ export interface ServicioActivo {
   lat: number;
   lng: number;
   velocidad: number;
+  variante: number;
   // Fusión con listero / turnos
   servicioId?: string;
   horaInicio?: string;
@@ -253,6 +254,7 @@ export function useLiveOperations() {
         lat: bus.lat,
         lng: bus.lng,
         velocidad: bus.velocidad,
+        variante: bus.variante,
         // Fusión de Listero
         servicioId: turno?.servicioId,
         horaInicio: turno?.horaInicio,

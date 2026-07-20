@@ -130,32 +130,13 @@ export default function LiveCompetitiveRadar() {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>([-34.8833, -56.1667]);
   const [mapZoom, setMapZoom] = useState(13);
 
-  // Fuga Financiera State
-  const [fugaData, setFugaData] = useState<Record<string, { loading: boolean; pax: number | null }>>({});
+  // Direcciones Oficiales de Variantes (GTFS)
+  const [variantDirections, setVariantDirections] = useState<Record<number, number>>({});
   
   // Lista Blanca Oficial de Competidores (BI API)
   const [officialCompetitors, setOfficialCompetitors] = useState<Array<any>>([]);
   const [loadingCompetitors, setLoadingCompetitors] = useState(false);
 
-  const fetchFuga = async (rivalId: string, miLinea: string, rivalLinea: string) => {
-    setFugaData(prev => ({ ...prev, [rivalId]: { loading: true, pax: null } }));
-    try {
-      const res = await api.get('/intelligence/trends', {
-        params: {
-          route_id: miLinea.replace(/\D/g, ''),
-          direction_id: 0,
-          competitor_route_id: rivalLinea.replace(/\D/g, ''),
-          competitor_direction_id: 0
-        }
-      });
-      const data = res.data;
-      const paxLost = data?.metrics?.monthly_fuga ?? Math.floor(Math.random() * 40000) + 10000;
-      setFugaData(prev => ({ ...prev, [rivalId]: { loading: false, pax: paxLost } }));
-    } catch (err) {
-      console.error(err);
-      setFugaData(prev => ({ ...prev, [rivalId]: { loading: false, pax: null } }));
-    }
-  };
   // Carga de ruta propia al seleccionar una línea
   useEffect(() => {
     if (!selectedLinea) {
@@ -213,14 +194,19 @@ export default function LiveCompetitiveRadar() {
       try {
         const baseRouteId = selectedLinea.replace(/[ab]$/i, '');
         
-        // Ejecutar paralelamente la búsqueda para Ida (0) y Vuelta (1)
-        const [resIda, resVuelta] = await Promise.all([
+        const [resIda, resVuelta, resVariants] = await Promise.all([
           api.get(`/intelligence/competitors?route_id=${baseRouteId}&direction_id=0`),
-          api.get(`/intelligence/competitors?route_id=${baseRouteId}&direction_id=1`)
+          api.get(`/intelligence/competitors?route_id=${baseRouteId}&direction_id=1`),
+          api.get(`/intelligence/variants/${baseRouteId}`)
         ]);
         
         if (!isActive) return;
         
+        // Guardar mapeo de variantes
+        if (resVariants.data?.mapping) {
+          setVariantDirections(resVariants.data.mapping);
+        }
+
         // Combinamos ambas respuestas para tener la topología de la línea entera en ambos sentidos
         const combined = [...(resIda.data || []), ...(resVuelta.data || [])];
         
@@ -266,6 +252,54 @@ export default function LiveCompetitiveRadar() {
       }
     }
   }, [selectedBusId, busesDeLineaSeleccionada]);
+
+  // ── LÓGICA DE DESTINOS (IDA/VUELTA) CON DIRECCIONES GTFS ──
+  const { busesIda, busesVuelta, destinoIda, destinoVuelta, isIda, isVuelta } = useMemo(() => {
+    const isIdaFn = (bus: ServicioActivo) => {
+      if (variantDirections[bus.variante] !== undefined) {
+        return variantDirections[bus.variante] === 0;
+      }
+      return (bus.destino || '').trim().toUpperCase() === destinoIdaFallback;
+    };
+    
+    const isVueltaFn = (bus: ServicioActivo) => {
+      if (variantDirections[bus.variante] !== undefined) {
+        return variantDirections[bus.variante] === 1;
+      }
+      return (bus.destino || '').trim().toUpperCase() === destinoVueltaFallback;
+    };
+
+    const destCounts: Record<string, number> = {};
+    busesDeLineaSeleccionada.forEach(b => {
+      const d = (b.destino || '').trim().toUpperCase();
+      if (d) destCounts[d] = (destCounts[d] || 0) + 1;
+    });
+    const sortedDests = Object.entries(destCounts).sort((a, b) => b[1] - a[1]).map(e => e[0]);
+    const destinoIdaFallback = sortedDests[0] || 'IDA';
+    const destinoVueltaFallback = sortedDests.length > 1 ? sortedDests[1] : 'VUELTA';
+
+    const ida = busesDeLineaSeleccionada.filter(isIdaFn);
+    const vuelta = busesDeLineaSeleccionada.filter(isVueltaFn);
+
+    const getMostCommonDest = (buses: ServicioActivo[], fallback: string) => {
+      const counts: Record<string, number> = {};
+      buses.forEach(b => {
+        const d = (b.destino || '').trim().toUpperCase();
+        if (d) counts[d] = (counts[d] || 0) + 1;
+      });
+      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(e => e[0]);
+      return sorted[0] || fallback;
+    };
+
+    return {
+      busesIda: ida,
+      busesVuelta: vuelta,
+      destinoIda: getMostCommonDest(ida, destinoIdaFallback),
+      destinoVuelta: getMostCommonDest(vuelta, destinoVueltaFallback),
+      isIda: isIdaFn,
+      isVuelta: isVueltaFn
+    };
+  }, [busesDeLineaSeleccionada, variantDirections]);
 
   // Lógica de filtrado de Rivales (MACRO vs MICRO)
   const rivalesVisibles = useMemo(() => {
@@ -314,17 +348,10 @@ export default function LiveCompetitiveRadar() {
     
     // Nivel Macro: Filtrado a nivel corredor (Toda la línea)
     const macroMatches: CompetitorInfo[] = [];
-    
-    // Calcular los destinos base para poder asignar los rivales por cercanía
-    const destinosSet = new Set(busesDeLineaSeleccionada.map(b => (b.destino || '').trim().toUpperCase()).filter(d => d !== ''));
-    const destinosArr = Array.from(destinosSet);
-    const destinoIda = destinosArr[0] || 'IDA';
-    const destinoVuelta = destinosArr.length > 1 ? destinosArr.filter(d => d !== destinoIda)[0] : 'VUELTA';
-    const isIda = (dest: string) => (dest || '').trim().toUpperCase() === destinoIda;
 
     for (const r of serviciosRivales) {
       const baseRivalLine = r.linea.replace(/[ab]$/i, '');
-      const officialComp = officialCompetitors.find(c => String(c.competitor_route_id) === baseRivalLine);
+      const officialComp = officialCompetitors.find(c => String(c.competitor_short_name || c.competitor_route_id) === baseRivalLine);
       const sharedStops = officialComp ? (officialComp.shared_stops_count || 0) : 0;
       
       // Filtro de Solapamiento
@@ -340,7 +367,7 @@ export default function LiveCompetitiveRadar() {
       for (const miBus of busesDeLineaSeleccionada) {
         const d = haversineMetros(miBus.lat, miBus.lng, r.lat, r.lng);
         if (d < minDistance) minDistance = d;
-        if (isIda(miBus.destino)) {
+        if (isIda(miBus)) {
           if (d < minIdaDist) minIdaDist = d;
         } else {
           if (d < minVueltaDist) minVueltaDist = d;
@@ -355,7 +382,12 @@ export default function LiveCompetitiveRadar() {
       
       // Asignar al mapa correcto basado en proximidad física a nuestra flota
       // Si está más cerca de un coche de Ida, va al mapa de Ida, sino al de Vuelta.
-      const assignedDestino = minIdaDist <= minVueltaDist ? destinoIda : destinoVuelta;
+      let assignedDestino = minIdaDist <= minVueltaDist ? destinoIda : destinoVuelta;
+      
+      // Si no pudimos determinarlo por cercanía (ej: no hay coches propios activos), usamos el sentido base de la competencia oficial si existe
+      if (minIdaDist === Infinity && minVueltaDist === Infinity && officialComp && officialComp.base_direction_id !== undefined) {
+        assignedDestino = officialComp.base_direction_id === 0 ? destinoIda : destinoVuelta;
+      }
       
       macroMatches.push({
         id: r.id,
@@ -374,7 +406,7 @@ export default function LiveCompetitiveRadar() {
       });
     }
     return macroMatches;
-  }, [selectedLinea, selectedBusId, serviciosPropios, serviciosRivales, searchRadius, minOverlap, strategyMode, officialCompetitors, busesDeLineaSeleccionada]);
+  }, [selectedLinea, selectedBusId, serviciosPropios, serviciosRivales, searchRadius, minOverlap, strategyMode, officialCompetitors, busesDeLineaSeleccionada, isIda, destinoIda, destinoVuelta]);
 
   const maxScore = rivalesVisibles.length > 0 ? rivalesVisibles[0].threatScore : 0;
   const nivelAmenaza = maxScore >= 80 ? 'CRÍTICA' : maxScore >= 45 ? 'MODERADA' : 'BAJA';
@@ -429,17 +461,6 @@ function MapCenterController({ center, zoom, isActive }: { center: [number, numb
 
 // ... (El resto del componente, desde los imports hasta antes del return, se mantiene)
 
-  // ── LÓGICA DE DESTINOS (IDA/VUELTA) PARA EL LAYOUT SIMÉTRICO ──
-  const destinosSet = new Set(busesDeLineaSeleccionada.map(b => (b.destino || '').trim().toUpperCase()).filter(d => d !== ''));
-  const destinosArr = Array.from(destinosSet);
-  const destinoIda = destinosArr[0] || 'IDA';
-  const destinoVuelta = destinosArr.length > 1 ? destinosArr.filter(d => d !== destinoIda)[0] : 'VUELTA';
-  
-  const isIda = (dest: string) => (dest || '').trim().toUpperCase() === destinoIda;
-  const isVuelta = (dest: string) => (dest || '').trim().toUpperCase() === destinoVuelta;
-
-  const busesIda = busesDeLineaSeleccionada.filter(b => isIda(b.destino));
-  const busesVuelta = busesDeLineaSeleccionada.filter(b => isVuelta(b.destino));
 
   // Helper para renderizar paneles laterales
   const renderSidebar = (buses: ServicioActivo[], destinoName: string, isIdaSidebar: boolean) => {

@@ -142,3 +142,4 @@ verify.env
 *.csv
 *.zip
 temp_stm_data/
+dump.sql

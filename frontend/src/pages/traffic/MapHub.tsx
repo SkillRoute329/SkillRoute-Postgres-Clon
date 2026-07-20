@@ -81,7 +81,7 @@ interface ShapeDoc {
   empresa: string;
   linea: string;
   sentido: string;
-  points: Array<{ lat: number; lon: number }>;
+  points: Array<{ lat: number; lon?: number; lng?: number }>;
   lengthMeters: number;
 }
 
@@ -329,7 +329,7 @@ export default function MapHub() {
             empresa: String(data.empresa),
             linea: String(data.linea),
             sentido: String(data.sentido || 'IDA'),
-            points: data.points as Array<{ lat: number; lon: number }>,
+            points: data.points as Array<{ lat: number; lon?: number; lng?: number }>,
             lengthMeters: Number(data.lengthMeters ?? 0),
           });
         }
@@ -519,7 +519,7 @@ export default function MapHub() {
             return (
               <Polyline
                 key={s.key}
-                positions={s.points.map((p) => [p.lat, p.lon]) as [number, number][]}
+                positions={s.points.map((p) => [p.lat, p.lng ?? p.lon]) as [number, number][]}
                 pathOptions={{
                   color: EMPRESA_COLOR[s.agencyId] ?? '#64748b',
                   weight: isSelected ? 6 : hasDro ? 4.5 : 2,
@@ -553,7 +553,7 @@ export default function MapHub() {
                 if (!baseShape) return null;
                 return (
                   <Polyline
-                    positions={baseShape.points.map((p) => [p.lat, p.lon]) as [number, number][]}
+                    positions={baseShape.points.map((p) => [p.lat, p.lng ?? p.lon]) as [number, number][]}
                     pathOptions={{ color: '#6366f1', weight: 6, opacity: 0.9 }}
                   />
                 );
@@ -566,7 +566,7 @@ export default function MapHub() {
                 return (
                   <Polyline
                     key={`rival-shape-${rival.id}`}
-                    positions={rivalShape.points.map((p) => [p.lat, p.lon]) as [number, number][]}
+                    positions={rivalShape.points.map((p) => [p.lat, p.lng ?? p.lon]) as [number, number][]}
                     pathOptions={{ 
                       color: rival.threatScore >= 80 ? '#e11d48' : '#d97706', 
                       weight: 4, 
