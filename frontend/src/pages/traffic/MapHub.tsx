@@ -227,10 +227,13 @@ export default function MapHub() {
 
       const overlap = overlaps.find(
         (o) =>
-          (o.agencyA === String(empresaPropia) && o.lineaA === p.linea && o.agencyB === String(r.empresaId) && o.lineaB === r.linea) ||
-          (o.agencyB === String(empresaPropia) && o.lineaB === p.linea && o.agencyA === String(r.empresaId) && o.lineaA === r.linea)
+          (String(o.agencyA) === String(empresaPropia) && String(o.lineaA).trim() === String(p.linea).trim() && String(o.agencyB) === String(r.empresaId) && String(o.lineaB).trim() === String(r.linea).trim()) ||
+          (String(o.agencyB) === String(empresaPropia) && String(o.lineaB).trim() === String(p.linea).trim() && String(o.agencyA) === String(r.empresaId) && String(o.lineaA).trim() === String(r.linea).trim())
       );
       const overlapPct = overlap ? overlap.pctAInB : 0;
+
+      // ¡FILTRO CRÍTICO! Solo considerar competidores reales (con solapamiento de ruta)
+      if (overlapPct < 15) continue;
 
       const destPropio = (p.destino || '').toLowerCase();
       const destRival = (r.destino || '').toLowerCase();
@@ -545,7 +548,7 @@ export default function MapHub() {
             <>
               {/* Ruta base del coche propio */}
               {(() => {
-                const baseShape = shapes.find(s => s.linea === activeDisputas.busPropio!.linea && String(s.agencyId) === String(empresaPropia));
+                const baseShape = shapes.find(s => String(s.linea).trim() === String(activeDisputas.busPropio!.linea).trim() && String(s.agencyId) === String(empresaPropia));
                 if (!baseShape) return null;
                 return (
                   <Polyline
@@ -557,7 +560,7 @@ export default function MapHub() {
               
               {/* Rutas de los rivales acechando */}
               {activeDisputas.rivales.map(rival => {
-                const rivalShape = shapes.find(s => s.linea === rival.linea && String(s.agencyId) === String(rival.codigoEmpresa));
+                const rivalShape = shapes.find(s => String(s.linea).trim() === String(rival.linea).trim() && String(s.agencyId) === String(rival.codigoEmpresa));
                 if (!rivalShape) return null;
                 return (
                   <Polyline
