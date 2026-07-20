@@ -339,348 +339,314 @@ export default function LiveCompetitiveRadar() {
     setMapZoom(16);
   };
 
+function MapCenterController({ center, zoom, isActive }: { center: [number, number], zoom: number, isActive: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (isActive) {
+      map.setView(center, zoom, { animate: true });
+    }
+  }, [center, zoom, map, isActive]);
+  return null;
+}
+
+// ... (El resto del componente, desde los imports hasta antes del return, se mantiene)
+
+  // ── LÓGICA DE DESTINOS (IDA/VUELTA) PARA EL LAYOUT SIMÉTRICO ──
+  const destinosSet = new Set(busesDeLineaSeleccionada.map(b => (b.destino || '').trim().toUpperCase()).filter(d => d !== ''));
+  const destinosArr = Array.from(destinosSet);
+  const destinoIda = destinosArr[0] || 'IDA';
+  const destinoVuelta = destinosArr.length > 1 ? destinosArr.filter(d => d !== destinoIda)[0] : 'VUELTA';
+  
+  const isIda = (dest: string) => (dest || '').trim().toUpperCase() === destinoIda;
+  const isVuelta = (dest: string) => (dest || '').trim().toUpperCase() === destinoVuelta;
+
+  const busesIda = busesDeLineaSeleccionada.filter(b => isIda(b.destino));
+  const busesVuelta = busesDeLineaSeleccionada.filter(b => isVuelta(b.destino));
+
+  // Helper para renderizar paneles laterales
+  const renderSidebar = (buses: ServicioActivo[], destinoName: string, isIdaSidebar: boolean) => {
+    const isSelectedSide = selectedBusId && buses.some(b => b.id === selectedBusId);
+    
+    return (
+      <div className={`w-72 flex-none bg-[#111827]/95 flex flex-col z-[1001] shadow-2xl overflow-y-auto custom-scrollbar ${isIdaSidebar ? 'border-r border-slate-800' : 'border-l border-slate-800'}`}>
+         {/* Cabecera del panel de sentido */}
+         <div className={`p-3 text-center border-b shadow-inner ${isIdaSidebar ? 'border-emerald-500/30 bg-emerald-900/20' : 'border-blue-500/30 bg-blue-900/20'}`}>
+           <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+             <div className={`w-2 h-2 rounded-full animate-pulse ${isIdaSidebar ? 'bg-emerald-500' : 'bg-blue-500'}`}></div>
+             SENTIDO HACIA
+           </div>
+           <div className={`text-sm font-black truncate ${isIdaSidebar ? 'text-emerald-400' : 'text-blue-400'}`}>{destinoName}</div>
+         </div>
+
+         {/* Contenido Dinámico: Micro (Radar) vs Macro (Lista) */}
+         {isSelectedSide ? (
+           <div className="flex-1 flex flex-col">
+              <div className="p-3 bg-slate-800/30 border-b border-slate-700/50">
+                <button onClick={volverAMacro} className="text-slate-400 hover:text-white flex items-center gap-1 text-[10px] font-bold mb-3 transition-colors">
+                  <ChevronLeft className="w-3 h-3" /> Volver a Flota {destinoName}
+                </button>
+                <div className="flex items-center justify-between p-2 bg-slate-800 rounded-lg border border-slate-700 shadow-sm">
+                   <div className="flex items-center gap-2">
+                     <span className="bg-rose-500/20 text-rose-400 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">Radar Activo</span>
+                   </div>
+                   <span className="font-bold text-white text-sm">Coche #{serviciosPropios.find(b => b.id === selectedBusId)?.codigoBus}</span>
+                </div>
+              </div>
+
+              <div className="p-2 border-b border-slate-800 bg-slate-900/50">
+                <div className="flex items-center justify-between px-2">
+                  <span className="text-[10px] uppercase text-slate-500 font-bold">Rivales en Perímetro</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${nivelAmenaza === 'CRÍTICA' ? 'bg-rose-500/20 text-rose-400' : nivelAmenaza === 'MODERADA' ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                    Nivel: {nivelAmenaza}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="p-2 space-y-2 flex-1 overflow-y-auto custom-scrollbar">
+                 {rivalesVisibles.length > 0 ? (
+                   rivalesVisibles.map(r => (
+                     <div key={r.id} className="bg-slate-800/80 border border-slate-700/50 rounded-lg p-3 relative overflow-hidden group hover:border-indigo-500/50 transition-colors">
+                       <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: r.threatScore >= 80 ? '#ef4444' : r.threatScore >= 45 ? '#f59e0b' : '#10b981' }}></div>
+                       
+                       <div className="flex justify-between items-start mb-2 pl-2">
+                         <div>
+                           <div className="flex items-center gap-1.5">
+                             <h4 className="font-bold text-white text-md leading-none">L{r.linea}</h4>
+                             <span className="text-[9px] uppercase font-bold text-slate-400 leading-none">({r.empresa} #{r.codigoBus})</span>
+                           </div>
+                           <div className="mt-1">
+                             <span className={`text-[8px] uppercase font-bold px-1.5 py-0.5 rounded inline-block ${r.comparteSentido ? 'bg-rose-500/20 text-rose-400' : 'bg-slate-700 text-slate-300'}`}>
+                               {r.comparteSentido ? 'Ruta Oficial' : 'Incursión Barrio'}
+                             </span>
+                           </div>
+                         </div>
+                         <div className="text-right flex flex-col items-end">
+                           <div className="text-xs font-black font-mono text-white bg-slate-900 px-1.5 py-0.5 rounded">{r.distanciaM}m</div>
+                           <div className="text-[9px] text-slate-500 uppercase font-bold mt-1">Score: {r.threatScore}</div>
+                         </div>
+                       </div>
+                       
+                       <div className="pl-2 pt-2 border-t border-slate-700/50 flex items-center justify-between">
+                         <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                           <Activity className="w-3 h-3" /> Solape: <span className="font-bold text-emerald-400">{r.overlapPct}</span>
+                         </div>
+                         <button onClick={() => locateCompetitor(r)} className="text-indigo-400 hover:text-indigo-300 transition-colors">
+                           <Crosshair className="w-4 h-4" />
+                         </button>
+                       </div>
+                     </div>
+                   ))
+                 ) : (
+                   <div className="text-center p-6 text-slate-500">
+                     <Activity className="w-6 h-6 mx-auto mb-2 opacity-30" />
+                     <p className="text-xs">No hay competidores acechando a este coche.</p>
+                   </div>
+                 )}
+              </div>
+           </div>
+         ) : (
+           <div className="p-3 space-y-2">
+             <div className="text-[10px] uppercase text-slate-500 font-bold px-2 mb-2">Coches Activos ({buses.length})</div>
+             {buses.length > 0 ? (
+               buses.map(bus => (
+                 <button
+                    key={bus.id}
+                    onClick={() => focusBus(bus)}
+                    className="w-full text-left bg-slate-800/40 hover:bg-slate-700/80 border border-slate-700/50 rounded-lg p-2.5 transition-all group flex justify-between items-center shadow-sm hover:shadow"
+                 >
+                    <div>
+                      <span className="font-bold text-slate-200 text-sm group-hover:text-white transition-colors">Coche #{bus.codigoBus}</span>
+                      <div className="text-[9px] text-slate-500 truncate mt-0.5 max-w-[150px]">{bus.destino}</div>
+                    </div>
+                    <div className="bg-slate-900 p-1.5 rounded-md group-hover:bg-indigo-500/20 transition-colors">
+                      <Crosshair className="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 transition-colors" />
+                    </div>
+                 </button>
+               ))
+             ) : (
+               <div className="text-center p-4 text-slate-600 text-xs italic">
+                 No hay coches circulando hacia este destino en este momento.
+               </div>
+             )}
+           </div>
+         )}
+      </div>
+    )
+  };
+
+  // Helper para renderizar los mapas simétricos
+  const renderMap = (buses: ServicioActivo[], destinoName: string, isIdaMap: boolean) => {
+    const isSelectedSide = selectedBusId && buses.some(b => b.id === selectedBusId);
+    const mapKey = isIdaMap ? 'map-ida' : 'map-vuelta';
+    
+    return (
+      <div className={`flex-1 relative bg-[#0e131f] ${isIdaMap ? 'border-r border-slate-700' : ''}`}>
+         <MapContainer key={mapKey} center={[-34.8833, -56.1667]} zoom={13} style={{ height: '100%', width: '100%', background: '#0e131f' }} zoomControl={false}>
+           <TileLayer attribution='&copy; CARTO' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
+           
+           <MapCenterController center={mapCenter} zoom={mapZoom} isActive={!selectedBusId || !!isSelectedSide} />
+           
+           {baseRouteCoords.length > 0 && <Polyline positions={baseRouteCoords} pathOptions={{ color: EMPRESA_COLOR[String(empresaPropia)] ?? '#3b82f6', weight: 5, opacity: 0.8 }} />}
+           {selectedCompetitor && isSelectedSide && compRouteCoords.length > 0 && <Polyline positions={compRouteCoords} pathOptions={{ color: EMPRESA_COLOR[String(selectedCompetitor.codigoEmpresa)] ?? '#f97316', weight: 4, opacity: 0.9, dashArray: '10, 10' }} />}
+
+           {/* Coches Propios */}
+           {buses.map(b => {
+              let markerColor = EMPRESA_COLOR[String(b.empresaId)] ?? '#3b82f6';
+              if (selectedBusId && b.id !== selectedBusId) markerColor = '#475569'; // Dim non-selected
+              return (
+                <Marker key={b.id} position={[b.lat, b.lng]} icon={makeBusDivIcon(markerColor, b.linea, b.codigoBus, b.velocidad, b.destino)} zIndexOffset={b.id === selectedBusId ? 1000 : 500}>
+                  <Popup><div className="text-xs font-sans p-1">Línea {b.linea} - #{b.codigoBus}</div></Popup>
+                </Marker>
+              )
+           })}
+
+           {/* Rivales */}
+           {isSelectedSide ? (
+             // MICRO: Mostrar todos los rivales del radar de este coche
+             rivalesVisibles.map(r => (
+               <Marker key={r.id} position={[r.lat, r.lng]} icon={makeBusDivIcon(EMPRESA_COLOR[String(r.codigoEmpresa)] ?? '#94a3b8', r.linea, r.codigoBus, r.velocidad, r.destino)} zIndexOffset={1000}>
+                 <Popup><div className="text-xs font-sans p-1">Línea {r.linea} (Rival)</div></Popup>
+               </Marker>
+             ))
+           ) : !selectedBusId ? (
+             // MACRO: Mostrar rivales estrictamente filtrados por destino
+             rivalesVisibles.map(r => {
+               const rDest = (r.destino || '').trim().toUpperCase();
+               if (rDest !== (destinoName || '').toUpperCase()) return null;
+               return (
+                 <Marker key={r.id} position={[r.lat, r.lng]} icon={makeBusDivIcon(EMPRESA_COLOR[String(r.codigoEmpresa)] ?? '#94a3b8', r.linea, r.codigoBus, r.velocidad, r.destino)} zIndexOffset={700}>
+                   <Popup><div className="text-xs font-sans p-1">Línea {r.linea} (Rival)</div></Popup>
+                 </Marker>
+               )
+             })
+           ) : null}
+         </MapContainer>
+      </div>
+    )
+  };
+
   return (
-    <div className="flex h-screen bg-[#0b0f19] text-slate-200 overflow-hidden font-sans">
-      {/* ── PANEL LATERAL ── */}
-      <div className="w-96 flex-none bg-[#111827]/90 backdrop-blur-xl border-r border-slate-800/50 flex flex-col z-[1001] shadow-2xl">
-        <div className="p-5 border-b border-slate-800 bg-slate-900/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-500/20 rounded-lg">
+    <div className="flex flex-col h-screen bg-[#0b0f19] text-slate-200 overflow-hidden font-sans">
+      
+      {/* ── BARRA SUPERIOR (HEADER TÁCTICO) ── */}
+      <div className="h-20 bg-[#111827]/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 shrink-0 shadow-lg z-[1002]">
+        
+        {/* Izquierda: Branding y Selector de Corredor */}
+        <div className="flex items-center h-full">
+          <div className="flex items-center gap-3 pr-6 border-r border-slate-700/50 h-full">
+            <div className="p-2 bg-indigo-500/20 rounded-lg shadow-inner">
               <Crosshair className="w-5 h-5 text-indigo-400" />
             </div>
-            <h1 className="text-xl font-bold text-white tracking-tight">Radar de Disputas</h1>
+            <div>
+              <h1 className="text-lg font-black text-white tracking-tight leading-none">Radar Disputas</h1>
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mt-1 block">Nivel Macro / Micro</span>
+            </div>
           </div>
-          <p className="text-xs text-slate-400 mt-2">Inteligencia competitiva en vivo. Nivel Macro (Corredor) y Micro (Radar).</p>
-        </div>
-
-        {/* Controles Dinámicos del Panel */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
           
-          {/* PASO 1: Seleccionar Línea */}
-          {!selectedLinea && (
-            <div className="p-3 space-y-2">
-              <div className="text-xs uppercase text-slate-500 font-bold px-2 py-2">Paso 1: Seleccionar Corredor</div>
+          <div className="flex items-center pl-6 h-full">
+            <span className="text-[10px] uppercase text-slate-500 font-bold mr-4">Corredor:</span>
+            <div className="flex gap-2 max-w-[500px] overflow-x-auto custom-scrollbar items-center py-2">
               {lineasActivas.map(linea => (
                 <button
                   key={linea}
                   onClick={() => focusLinea(linea)}
-                  className="w-full text-left bg-slate-800/40 hover:bg-slate-700 border border-slate-700 rounded-lg p-4 transition-colors flex justify-between items-center"
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all shadow-sm ${selectedLinea === linea ? 'bg-indigo-600 text-white shadow-indigo-500/20 scale-105' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700/50'}`}
                 >
-                  <span className="font-bold text-white text-lg">Línea {linea}</span>
-                  <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded">
-                    {serviciosPropios.filter(b => b.linea === linea).length} coches
-                  </span>
+                  Línea {linea}
+                  {selectedLinea !== linea && <span className="ml-2 text-[9px] bg-slate-900 px-1.5 py-0.5 rounded-full opacity-70">{serviciosPropios.filter(b => b.linea === linea).length}</span>}
                 </button>
               ))}
             </div>
-          )}
-
-          {/* PASO 2: Línea Seleccionada -> Vista Macro y Selección de Coche */}
-          {selectedLinea && (
-            <>
-              <div className="p-3 bg-indigo-900/20 border-b border-indigo-500/30">
-                <button onClick={volverAFlota} className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 text-xs font-bold mb-2">
-                  <ChevronLeft className="w-4 h-4" /> Volver a todas las líneas
-                </button>
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-black text-white">Corredor Línea {selectedLinea}</h2>
-                  <span className="bg-indigo-500/20 text-indigo-300 text-[10px] uppercase font-bold px-2 py-1 rounded">
-                    {loadingCompetitors ? 'Cargando Inteligencia...' : `${officialCompetitors.length} Rutas Enemigas`}
-                  </span>
-                </div>
-              </div>
-
-              {!selectedBusId ? (
-                // Vista MACRO: Lista de coches de la línea
-                <div className="p-3 space-y-2 flex-1">
-                  <div className="text-xs uppercase text-slate-500 font-bold px-2 py-1">Paso 2: Seleccionar Coche para Radar</div>
-                  {busesDeLineaSeleccionada.map(bus => (
-                    <button
-                      key={bus.id}
-                      onClick={() => focusBus(bus)}
-                      className="w-full text-left bg-slate-800/40 hover:bg-slate-700 border border-slate-700 rounded-lg p-3 transition-colors"
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-white text-md">Coche #{bus.codigoBus}</span>
-                      </div>
-                      <div className="text-xs text-slate-400 mt-1 truncate">{bus.destino}</div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                // Vista MICRO: Filtros del radar y resultados
-                <div className="flex flex-col flex-1">
-                  <div className="p-3 bg-slate-800/50 border-b border-slate-700">
-                     <button onClick={volverAMacro} className="text-slate-400 hover:text-white flex items-center gap-1 text-xs font-bold mb-3">
-                        <ChevronLeft className="w-4 h-4" /> Volver al Corredor {selectedLinea}
-                     </button>
-                     <div className="flex items-center gap-2 mb-2">
-                       <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-1 rounded font-bold">RADAR ACTIVO</span>
-                       <span className="font-bold text-white">Coche #{serviciosPropios.find(b => b.id === selectedBusId)?.codigoBus}</span>
-                     </div>
-                  </div>
-
-                  {/* Panel de Filtros Tácticos (Solo en Micro) */}
-                  <div className="p-5 border-b border-slate-800/50 bg-slate-900/30 space-y-4">
-                    <div className="flex items-center gap-2 text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">
-                      <Sliders className="w-4 h-4" /> Filtros Tácticos
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs text-slate-400">
-                        <span>Estrategia de Intercepción</span>
-                      </div>
-                      <div className="flex bg-slate-800 rounded-lg p-1">
-                        <button
-                          onClick={() => setStrategyMode('corredor')}
-                          className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${strategyMode === 'corredor' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-                        >
-                          Corredor Oficial
-                        </button>
-                        <button
-                          onClick={() => setStrategyMode('barrio')}
-                          className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${strategyMode === 'barrio' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-                        >
-                          Cualquier Dirección
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1 pt-2">
-                      <div className="flex justify-between text-xs text-slate-400">
-                        <span>Radio de Búsqueda</span>
-                        <span className="font-mono text-indigo-400">{searchRadius}m</span>
-                      </div>
-                      <input 
-                        type="range" min="100" max="3000" step="100" value={searchRadius}
-                        onChange={(e) => setSearchRadius(Number(e.target.value))}
-                        className="w-full accent-indigo-500 cursor-pointer"
-                      />
-                    </div>
-
-                    <div className="space-y-1 pt-2">
-                      <div className="flex justify-between text-xs text-slate-400">
-                        <span>Paradas Compartidas Mínimas</span>
-                        <span className="font-mono text-indigo-400">{minOverlap}</span>
-                      </div>
-                      <input 
-                        type="range" min="0" max="40" step="1" value={minOverlap}
-                        onChange={(e) => setMinOverlap(Number(e.target.value))}
-                        className="w-full accent-indigo-500 cursor-pointer"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Resultados del Radar */}
-                  <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                    {rivalesVisibles.length > 0 ? (
-                      <>
-                        <div className="flex items-center justify-between px-2">
-                          <span className="text-xs uppercase text-slate-500 font-bold">Rivales Detectados</span>
-                          <span className="bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded text-[10px] font-bold">
-                            {nivelAmenaza}
-                          </span>
-                        </div>
-                        {rivalesVisibles.map(r => (
-                          <div key={r.id} className="bg-slate-900 border border-slate-700/50 rounded-xl p-4 shadow-lg relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: r.threatScore >= 80 ? '#ef4444' : '#f59e0b' }}></div>
-                            <div className="flex justify-between items-start mb-3 pl-2">
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-bold text-white text-lg">L{r.linea}</h4>
-                                  <span className="text-[10px] uppercase font-bold text-slate-400">({r.empresa} #{r.codigoBus})</span>
-                                </div>
-                                <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${r.comparteSentido ? 'bg-rose-500/20 text-rose-400' : 'bg-slate-700 text-slate-300'}`}>
-                                  {r.comparteSentido ? 'Competidor Oficial' : 'Rival de Barrio'}
-                                </span>
-                              </div>
-                              <div className="text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <div className="text-sm font-black font-mono text-white">{r.distanciaM}m</div>
-                                  <button onClick={() => locateCompetitor(r)} className="bg-slate-700/50 hover:bg-indigo-600 text-slate-300 hover:text-white rounded p-1 transition-colors" title="Localizar coche en el mapa">
-                                    <Crosshair className="w-3 h-3" />
-                                  </button>
-                                </div>
-                                <div className="text-[10px] text-slate-500 uppercase font-bold mt-1">Score: {r.threatScore}</div>
-                              </div>
-                            </div>
-                            <div className="pl-2 border-t border-slate-800 pt-2 flex items-center justify-between">
-                              <div className="text-xs text-slate-400">Paradas compartidas: <span className="font-bold text-emerald-400">{r.overlapPct}</span></div>
-                              {fugaData[r.id]?.loading ? (
-                                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Activity className="w-3 h-3 animate-spin" /> Analizando...</span>
-                              ) : fugaData[r.id]?.pax ? (
-                                <div className="flex items-center gap-1 text-rose-400 bg-rose-500/10 px-2 py-1 rounded">
-                                  <DollarSign className="w-3 h-3" />
-                                  <span className="text-xs font-bold font-mono">-{fugaData[r.id].pax?.toLocaleString()} pax/mes</span>
-                                </div>
-                              ) : (
-                                <button 
-                                  onClick={() => fetchFuga(r.id, selectedLinea!, r.linea)}
-                                  className="text-[10px] font-bold bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
-                                >
-                                  <DollarSign className="w-3 h-3" /> Ver Fuga
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </>
-                    ) : (
-                      <div className="text-center p-6 text-slate-500 text-sm">
-                        <Activity className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                        No hay competidores acechando en este perímetro.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+            {selectedLinea && (
+              <button onClick={volverAFlota} className="ml-4 p-1.5 rounded-full bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors border border-slate-700/50" title="Limpiar selección">
+                <Activity className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Derecha: Filtros Tácticos (Solo visibles si hay línea seleccionada) */}
+        {selectedLinea && (
+          <div className="flex items-center gap-6 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/50 shadow-inner">
+            
+            <div className="flex flex-col border-r border-slate-700/50 pr-6">
+               <span className="text-[9px] uppercase text-slate-500 font-bold mb-1">Estrategia</span>
+               <div className="flex bg-slate-800 rounded-md p-0.5 border border-slate-700/50">
+                 <button
+                   onClick={() => setStrategyMode('corredor')}
+                   className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${strategyMode === 'corredor' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                 >
+                   Corredor
+                 </button>
+                 <button
+                   onClick={() => setStrategyMode('barrio')}
+                   className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${strategyMode === 'barrio' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                 >
+                   Barrio
+                 </button>
+               </div>
+            </div>
+            
+            <div className="flex flex-col w-36 border-r border-slate-700/50 pr-6">
+              <div className="flex justify-between text-[9px] text-slate-400 font-bold mb-1.5">
+                <span>RADAR ACTIVO</span>
+                <span className="text-indigo-400 bg-indigo-500/10 px-1 rounded">{searchRadius}m</span>
+              </div>
+              <input type="range" min="100" max="3000" step="100" value={searchRadius} onChange={(e) => setSearchRadius(Number(e.target.value))} className="w-full accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer" />
+            </div>
+            
+            <div className="flex flex-col w-36">
+              <div className="flex justify-between text-[9px] text-slate-400 font-bold mb-1.5">
+                <span>TOLERANCIA (PARADAS)</span>
+                <span className="text-indigo-400 bg-indigo-500/10 px-1 rounded">≥ {minOverlap}</span>
+              </div>
+              <input type="range" min="0" max="40" step="1" value={minOverlap} onChange={(e) => setMinOverlap(Number(e.target.value))} className="w-full accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer" />
+            </div>
+            
+          </div>
+        )}
       </div>
 
-      {/* ── MAPA PRINCIPAL ── */}
-      <div className="flex-1 relative bg-[#0e131f] flex">
-        {(() => {
-          // 1. MODO MICRO: Si hay un coche seleccionado, volvemos a UN SOLO MAPA focalizado (Radar)
-          if (selectedBusId) {
-            const bus = serviciosPropios.find(b => b.id === selectedBusId);
-            return (
-              <div className="flex-1 relative">
-                <MapContainer center={[-34.8833, -56.1667]} zoom={13} style={{ height: '100%', width: '100%', background: '#0e131f' }} zoomControl={false}>
-                  <TileLayer attribution='&copy; CARTO' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
-                  <MapCenterController center={mapCenter} zoom={mapZoom} />
-                  
-                  {baseRouteCoords.length > 0 && <Polyline positions={baseRouteCoords} pathOptions={{ color: EMPRESA_COLOR[String(empresaPropia)] ?? '#3b82f6', weight: 5, opacity: 0.8 }} />}
-                  {selectedCompetitor && compRouteCoords.length > 0 && <Polyline positions={compRouteCoords} pathOptions={{ color: EMPRESA_COLOR[String(selectedCompetitor.codigoEmpresa)] ?? '#f97316', weight: 4, opacity: 0.9, dashArray: '10, 10' }} />}
-                  
-                  {bus && (
-                    <Marker position={[bus.lat, bus.lng]} icon={makeBusDivIcon(EMPRESA_COLOR[String(bus.empresaId)] ?? '#3b82f6', bus.linea, bus.codigoBus, bus.velocidad, bus.destino)} zIndexOffset={1000}>
-                      <Popup><div className="text-xs font-sans p-1">MI COCHE #{bus.codigoBus}</div></Popup>
-                    </Marker>
-                  )}
-
-                  {/* En Micro, mostramos TODOS los rivales en el radar sin importar su destino, porque están cerca físicamente */}
-                  {rivalesVisibles.map((r) => {
-                    let markerColor = EMPRESA_COLOR[String(r.codigoEmpresa)] ?? '#94a3b8';
-                    return (
-                      <Marker key={r.id} position={[r.lat, r.lng]} icon={makeBusDivIcon(markerColor, r.linea, r.codigoBus, r.velocidad, r.destino)} zIndexOffset={500}>
-                        <Popup><div className="text-xs font-sans p-1">Línea {r.linea} (Rival)</div></Popup>
-                      </Marker>
-                    );
-                  })}
-                </MapContainer>
-              </div>
-            );
-          }
-
-          // 2. MODO FLOTA (Sin línea seleccionada)
-          if (!selectedLinea) {
-            return (
-              <div className="flex-1 relative">
-                <MapContainer center={[-34.8833, -56.1667]} zoom={13} style={{ height: '100%', width: '100%', background: '#0e131f' }} zoomControl={false}>
-                  <TileLayer attribution='&copy; CARTO' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
-                  <MapCenterController center={mapCenter} zoom={mapZoom} />
-                  {serviciosPropios.map((b) => {
-                    let markerColor = EMPRESA_COLOR[String(b.empresaId)] ?? '#3b82f6';
-                    return (
-                      <Marker key={b.id} position={[b.lat, b.lng]} icon={makeBusDivIcon(markerColor, b.linea, b.codigoBus, b.velocidad, b.destino)} zIndexOffset={500}>
-                        <Popup><div className="text-xs font-sans p-1">Línea {b.linea} - #{b.codigoBus}</div></Popup>
-                      </Marker>
-                    );
-                  })}
-                </MapContainer>
-              </div>
-            );
-          }
-
-          // 3. MODO MACRO (Línea Seleccionada): PANTALLA PARTIDA IDA/VUELTA
-          const destinosSet = new Set(busesDeLineaSeleccionada.map(b => (b.destino || '').trim().toUpperCase()).filter(d => d !== ''));
-          const destinosArr = Array.from(destinosSet);
-          const destinoIda = destinosArr[0] || 'IDA';
-          const destinoVuelta = destinosArr.length > 1 ? destinosArr.filter(d => d !== destinoIda)[0] : 'VUELTA';
-          
-          const isIda = (dest: string) => (dest || '').trim().toUpperCase() === destinoIda;
-          const isVuelta = (dest: string) => (dest || '').trim().toUpperCase() === destinoVuelta;
-
-          return (
-            <>
-              {/* MAPA 1: SENTIDO IDA */}
-              <div className="flex-1 border-r border-slate-700 relative">
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/90 text-white px-4 py-1.5 rounded-full font-bold text-sm border border-slate-700 shadow-xl flex items-center gap-2 backdrop-blur-sm">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                  HACIA: {destinoIda}
+      {/* ── ÁREA PRINCIPAL ── */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Modo 1: Sin línea seleccionada (Mapa Único Fullscreen) */}
+        {!selectedLinea && (
+           <div className="flex-1 relative">
+             <MapContainer center={[-34.8833, -56.1667]} zoom={13} style={{ height: '100%', width: '100%', background: '#0e131f' }} zoomControl={false}>
+               <TileLayer attribution='&copy; CARTO' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
+               <MapCenterController center={mapCenter} zoom={mapZoom} isActive={true} />
+               {serviciosPropios.map((b) => (
+                 <Marker key={b.id} position={[b.lat, b.lng]} icon={makeBusDivIcon(EMPRESA_COLOR[String(b.empresaId)] ?? '#3b82f6', b.linea, b.codigoBus, b.velocidad, b.destino)} zIndexOffset={500}>
+                   <Popup><div className="text-xs font-sans p-1">Línea {b.linea} - #{b.codigoBus}</div></Popup>
+                 </Marker>
+               ))}
+             </MapContainer>
+             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div className="bg-slate-900/80 backdrop-blur-md px-6 py-4 rounded-2xl border border-slate-700 shadow-2xl flex flex-col items-center">
+                   <Crosshair className="w-12 h-12 text-indigo-500 mb-3 opacity-80" />
+                   <h2 className="text-xl font-bold text-white">Seleccione un Corredor</h2>
+                   <p className="text-sm text-slate-400 mt-1">Utilice la barra superior para desplegar el panel táctico.</p>
                 </div>
-                <MapContainer center={[-34.8833, -56.1667]} zoom={13} style={{ height: '100%', width: '100%', background: '#0e131f' }} zoomControl={false}>
-                  <TileLayer attribution='&copy; CARTO' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
-                  <MapCenterController center={mapCenter} zoom={mapZoom} />
-                  
-                  {baseRouteCoords.length > 0 && <Polyline positions={baseRouteCoords} pathOptions={{ color: EMPRESA_COLOR[String(empresaPropia)] ?? '#3b82f6', weight: 5, opacity: 0.8 }} />}
-                  {selectedCompetitor && compRouteCoords.length > 0 && <Polyline positions={compRouteCoords} pathOptions={{ color: EMPRESA_COLOR[String(selectedCompetitor.codigoEmpresa)] ?? '#f97316', weight: 4, opacity: 0.9, dashArray: '10, 10' }} />}
-                  
-                  {/* Coches Propios Ida */}
-                  {busesDeLineaSeleccionada.map((b) => {
-                    if (!b || !isIda(b.destino)) return null;
-                    let markerColor = EMPRESA_COLOR[String(b.empresaId)] ?? '#3b82f6';
-                    return (
-                      <Marker key={b.id} position={[b.lat, b.lng]} icon={makeBusDivIcon(markerColor, b.linea, b.codigoBus, b.velocidad, b.destino)} zIndexOffset={500}>
-                        <Popup><div className="text-xs font-sans p-1">Línea {b.linea} - #{b.codigoBus}</div></Popup>
-                      </Marker>
-                    );
-                  })}
+             </div>
+           </div>
+        )}
 
-                  {/* Rivales Ida (Solo los que coinciden EXACTAMENTE con el destino de Ida para evitar basura) */}
-                  {rivalesVisibles.map((r) => {
-                    if (!isIda(r.destino)) return null;
-                    let markerColor = EMPRESA_COLOR[String(r.codigoEmpresa)] ?? '#94a3b8';
-                    return (
-                      <Marker key={r.id} position={[r.lat, r.lng]} icon={makeBusDivIcon(markerColor, r.linea, r.codigoBus, r.velocidad, r.destino)} zIndexOffset={1000}>
-                        <Popup><div className="text-xs font-sans p-1">Línea {r.linea} (Rival)</div></Popup>
-                      </Marker>
-                    );
-                  })}
-                </MapContainer>
-              </div>
-
-              {/* MAPA 2: SENTIDO VUELTA */}
-              <div className="flex-1 relative">
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/90 text-white px-4 py-1.5 rounded-full font-bold text-sm border border-slate-700 shadow-xl flex items-center gap-2 backdrop-blur-sm">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                  HACIA: {destinoVuelta}
-                </div>
-                <MapContainer center={[-34.8833, -56.1667]} zoom={13} style={{ height: '100%', width: '100%', background: '#0e131f' }} zoomControl={false}>
-                  <TileLayer attribution='&copy; CARTO' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
-                  <MapCenterController center={mapCenter} zoom={mapZoom} />
-                  
-                  {baseRouteCoords.length > 0 && <Polyline positions={baseRouteCoords} pathOptions={{ color: EMPRESA_COLOR[String(empresaPropia)] ?? '#3b82f6', weight: 5, opacity: 0.8 }} />}
-                  {selectedCompetitor && compRouteCoords.length > 0 && <Polyline positions={compRouteCoords} pathOptions={{ color: EMPRESA_COLOR[String(selectedCompetitor.codigoEmpresa)] ?? '#f97316', weight: 4, opacity: 0.9, dashArray: '10, 10' }} />}
-                  
-                  {/* Coches Propios Vuelta */}
-                  {busesDeLineaSeleccionada.map((b) => {
-                    if (!b || !isVuelta(b.destino)) return null;
-                    let markerColor = EMPRESA_COLOR[String(b.empresaId)] ?? '#3b82f6';
-                    return (
-                      <Marker key={b.id} position={[b.lat, b.lng]} icon={makeBusDivIcon(markerColor, b.linea, b.codigoBus, b.velocidad, b.destino)} zIndexOffset={500}>
-                        <Popup><div className="text-xs font-sans p-1">Línea {b.linea} - #{b.codigoBus}</div></Popup>
-                      </Marker>
-                    );
-                  })}
-
-                  {/* Rivales Vuelta (Solo los que coinciden EXACTAMENTE con el destino de Vuelta) */}
-                  {rivalesVisibles.map((r) => {
-                    if (!isVuelta(r.destino)) return null;
-                    let markerColor = EMPRESA_COLOR[String(r.codigoEmpresa)] ?? '#94a3b8';
-                    return (
-                      <Marker key={r.id} position={[r.lat, r.lng]} icon={makeBusDivIcon(markerColor, r.linea, r.codigoBus, r.velocidad, r.destino)} zIndexOffset={1000}>
-                        <Popup><div className="text-xs font-sans p-1">Línea {r.linea} (Rival)</div></Popup>
-                      </Marker>
-                    );
-                  })}
-                </MapContainer>
-              </div>
-            </>
-          );
-        })()}
+        {/* Modo 2: Línea Seleccionada (4 Columnas Simétricas) */}
+        {selectedLinea && (
+          <>
+             {/* COLUMNA 1: Coches Ida */}
+             {renderSidebar(busesIda, destinoIda, true)}
+             
+             {/* COLUMNA 2: Mapa Ida */}
+             {renderMap(busesIda, destinoIda, true)}
+             
+             {/* COLUMNA 3: Mapa Vuelta */}
+             {renderMap(busesVuelta, destinoVuelta, false)}
+             
+             {/* COLUMNA 4: Coches Vuelta */}
+             {renderSidebar(busesVuelta, destinoVuelta, false)}
+          </>
+        )}
       </div>
     </div>
   );
