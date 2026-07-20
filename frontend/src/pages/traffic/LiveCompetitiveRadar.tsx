@@ -209,10 +209,20 @@ export default function LiveCompetitiveRadar() {
       setLoadingCompetitors(true);
       try {
         const baseRouteId = selectedLinea.replace(/[ab]$/i, '');
-        const directionId = selectedLinea.toLowerCase().endsWith('b') ? 1 : 0;
         
-        const res = await api.get(`/intelligence/competitors?route_id=${baseRouteId}&direction_id=${directionId}`);
-        setOfficialCompetitors(res.data || []);
+        // Ejecutar paralelamente la búsqueda para Ida (0) y Vuelta (1)
+        const [resIda, resVuelta] = await Promise.all([
+          api.get(`/intelligence/competitors?route_id=${baseRouteId}&direction_id=0`),
+          api.get(`/intelligence/competitors?route_id=${baseRouteId}&direction_id=1`)
+        ]);
+        
+        // Combinamos ambas respuestas para tener la topología de la línea entera en ambos sentidos
+        const combined = [...(resIda.data || []), ...(resVuelta.data || [])];
+        
+        // Deduplicar por si un competidor aparece idéntico en ambos (aunque intelligenceController usa keys)
+        const unique = Array.from(new Map(combined.map(c => [`${c.competitor_route_id}_${c.competitor_direction_id}`, c])).values());
+
+        setOfficialCompetitors(unique);
       } catch (err) {
         console.error('Error fetching official competitors from API:', err);
         setOfficialCompetitors([]);
