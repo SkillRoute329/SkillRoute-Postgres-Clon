@@ -359,8 +359,8 @@ const CompetitiveAnalysis: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col relative bg-[#1a1c23]">
-          <div className="h-1/2 relative">
+        <div className="flex-1 flex flex-col relative bg-[#1a1c23] min-h-0">
+          <div className="flex-none h-[40%] min-h-[300px] relative">
             <MapContainer center={[-34.8833, -56.1667]} zoom={13} zoomControl={false} className="h-full w-full">
               <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
               {routeCoordinates.length > 0 && (
@@ -415,14 +415,14 @@ const CompetitiveAnalysis: React.FC = () => {
             </div>
           </div>
 
-          <div className="h-1/2 border-t border-slate-700 bg-slate-900 p-6 flex flex-col">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-6 flex items-center gap-2">
+          <div className="flex-1 border-t border-slate-700 bg-slate-900 p-6 flex flex-col overflow-y-auto custom-scrollbar">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 flex-none mb-6 flex items-center gap-2">
               <Activity className="w-4 h-4" />
               3. Tendencias de Censo (Mensual)
             </h2>
 
             {trends ? (
-              <div className="flex-1 flex gap-6">
+              <div className="flex flex-col xl:flex-row gap-6 min-h-min pb-6">
                 <div className="flex-1 bg-slate-800/50 rounded-xl border border-slate-700 p-6 flex flex-col">
                   <div className="text-sm text-slate-400 mb-1">Impacto en Nuestra Línea</div>
                   <div className="text-2xl font-bold text-white mb-4">
