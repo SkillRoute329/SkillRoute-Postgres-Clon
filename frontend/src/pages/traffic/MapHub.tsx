@@ -808,7 +808,7 @@ export default function MapHub() {
                       key={b.id}
                       className={`rounded-xl border bg-slate-900/30 hover:bg-slate-900/60 transition ${isOwn ? 'border-amber-500/20 hover:border-amber-500/40' : 'border-slate-800'}`}
                     >
-                      <div onClick={() => focusBus(b)} className="cursor-pointer p-3 flex items-center justify-between"
+                      <div onClick={() => focusBus(b)} className="cursor-pointer p-3 flex items-center justify-between">
 
                       <div className="flex items-center gap-3">
                         <div
