@@ -80,6 +80,38 @@ const renderEvolution = (trendList: MonthlyTrend[]) => {
   );
 };
 
+const renderHeaderEvolution = (trendList: MonthlyTrend[], label: string) => {
+  if (!trendList || trendList.length < 1) return null;
+  const last = trendList[trendList.length - 1].boarding;
+  
+  if (trendList.length < 2) {
+     return (
+       <div className="flex items-center gap-2 bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-700/50">
+         <span className="text-xs text-slate-400 font-semibold">{label}</span>
+         <span className="text-sm font-bold text-white">{last.toLocaleString()}</span>
+       </div>
+     );
+  }
+
+  const prev = trendList[trendList.length - 2].boarding;
+  const diff = last - prev;
+  const pct = prev === 0 ? 0 : (diff / prev) * 100;
+  const isPos = diff >= 0; // Consider 0 or positive as green
+
+  return (
+    <div className="flex items-center gap-3 bg-slate-900/80 px-4 py-2 rounded-full border border-slate-700/50 shadow-sm">
+      <div className="flex items-center gap-2 border-r border-slate-700/50 pr-3">
+         <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{label}</span>
+         <span className="text-sm font-bold text-white">{last.toLocaleString()} <span className="text-[10px] text-slate-500 font-normal">pax</span></span>
+      </div>
+      <div className={`text-sm font-bold font-mono flex items-center gap-1 ${isPos ? 'text-emerald-400' : 'text-rose-400'}`}>
+        {isPos ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+        <span>{isPos ? '+' : ''}{diff.toLocaleString()} ({isPos ? '+' : ''}{pct.toFixed(1)}%)</span>
+      </div>
+    </div>
+  );
+};
+
 const formatMonthName = (yyyyMm: string) => {
   if (!yyyyMm) return '';
   const [year, month] = yyyyMm.split('-');
@@ -252,14 +284,23 @@ const CompetitiveAnalysis: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-slate-900 text-slate-200">
-      <div className="flex-none p-6 border-b border-slate-700 bg-slate-800/50 backdrop-blur">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-indigo-500/20 rounded-lg">
-            <Network className="w-6 h-6 text-indigo-400" />
+      <div className="flex-none p-6 border-b border-slate-700 bg-slate-800/50 backdrop-blur flex justify-between items-center">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-indigo-500/20 rounded-lg">
+              <Network className="w-6 h-6 text-indigo-400" />
+            </div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Inteligencia Competitiva</h1>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Inteligencia Competitiva</h1>
+          <p className="text-sm text-slate-400">Análisis de solapamiento espacial y carga de boletos mensual entre operadores del STM.</p>
         </div>
-        <p className="text-sm text-slate-400">Análisis de solapamiento espacial y carga de boletos mensual entre operadores del STM.</p>
+
+        {trends && (
+          <div className="flex items-center gap-4 animate-in fade-in slide-in-from-right-4 duration-500">
+            {renderHeaderEvolution(trends.base_line.trend_total, `Línea ${trends.base_line.route_id} (Total)`)}
+            {trends.competitor_line && renderHeaderEvolution(trends.competitor_line.trend, `Fuga a ${trends.competitor_line.route_id}`)}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 flex overflow-hidden">
