@@ -122,8 +122,7 @@ const VehicleCheck = lazy(() => import('./pages/fleet/VehicleCheck'));
 // Intelligence Console merged into MapHub
 const LiveCompetitiveRadar = lazy(() => import('./pages/traffic/LiveCompetitiveRadar'));
 const AnalisisCriticoCompetencia = lazy(() => import('./pages/traffic/AnalisisCriticoCompetencia'));
-const DiagnosticoEjecutivo = lazy(() => import('./pages/traffic/DiagnosticoEjecutivo'));
-const ExecutiveCoverage = lazy(() => import('./pages/traffic/ExecutiveCoverage'));
+
 const DigitalAgentsModule = lazy(() => import('./pages/traffic/DigitalAgentsModule'));
 const OTPDashboard = lazy(() => import('./pages/traffic/OTPDashboard'));
 const IncidentCommandCenter = lazy(() => import('./pages/traffic/IncidentCommandCenter'));
@@ -271,7 +270,6 @@ function App() {
                     <Route path="admin/shifts" element={<Navigate to="/dashboard/admin/rrhh" replace />} />
                     <Route path="admin/cross-op-coverage" element={<Navigate to="/dashboard/admin/regulatorio" replace />} />
                     <Route path="admin/ml-monitoring" element={<PrivateRoute roles={['ADMIN', 'SUPERADMIN']}><MlMonitoringPage /></PrivateRoute>} />
-                    <Route path="executive/coverage" element={<PrivateRoute roles={['ADMIN', 'SUPERADMIN', 'TRAFFIC']}><ExecutiveCoverage /></PrivateRoute>} />
 
                     {/* Super Admin Routes */}
                     <Route path="super-admin/tenants" element={<PrivateRoute roles={['SUPERADMIN']}><TenantsManager /></PrivateRoute>} />
@@ -339,7 +337,6 @@ function App() {
                     <Route path="traffic/shadow-radar" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
                     <Route path="traffic/competitor-intelligence" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
                     <Route path="traffic/analisis-critico" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><AnalisisCriticoCompetencia /></PrivateRoute>} />
-                    <Route path="traffic/diagnostico-ejecutivo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><DiagnosticoEjecutivo /></PrivateRoute>} />
                     <Route path="traffic/corridor-intelligence" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
                     <Route path="traffic/market-share" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
                     <Route path="traffic/corridor-map" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
