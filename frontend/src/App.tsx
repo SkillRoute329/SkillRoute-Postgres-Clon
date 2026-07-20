@@ -82,7 +82,7 @@ const TalentCenter = lazy(() => import('./pages/talento/TalentCenter'));
 const AdminStressTest = lazy(() => import('./pages/admin/AdminStressTest'));
 const SystemParamsPage = lazy(() => import('./pages/admin/SystemParamsPage'));
 const RoadAlertsPage = lazy(() => import('./pages/alerts/RoadAlertsPage'));
-
+const BRTCorridorDashboard = lazy(() => import('./pages/traffic/BRTCorridorDashboard'));
 const EVChargeOptimizer = lazy(() => import('./pages/fleet/EVChargeOptimizer'));
 const ComplianceHub = lazy(() => import('./pages/admin/ComplianceHub'));
 const ServiceCategoryPage = lazy(() => import('./pages/admin/ServiceCategoryPage'));
@@ -356,7 +356,7 @@ function App() {
                     <Route path="traffic/headway-insights" element={<Navigate to="/dashboard/traffic/corridor-intelligence" replace />} />
                     <Route path="traffic/gps-playback" element={<Navigate to="/dashboard/traffic/corridor-map" replace />} />
                     <Route path="traffic/agents" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
-
+                    <Route path="traffic/brt" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><BRTCorridorDashboard /></PrivateRoute>} />
                     <Route path="traffic/otp" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><OTPDashboard /></PrivateRoute>} />
                     <Route path="traffic/incidents" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><IncidenciasHub /></PrivateRoute>} />
                     <Route path="traffic/projections" element={<Navigate to="/dashboard/traffic/financiero" replace />} />
