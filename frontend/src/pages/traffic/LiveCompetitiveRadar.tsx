@@ -5,18 +5,16 @@ import {
   Marker,
   Popup,
   Polyline,
-  Tooltip as LeafletTooltip,
   useMap,
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Activity, AlertTriangle, Bus, Crosshair, Map as MapIcon, Sliders, DollarSign } from 'lucide-react';
+import { Activity, Crosshair, Sliders, DollarSign, ChevronLeft } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { useLiveOperations, type ServicioActivo } from '../../hooks/useLiveOperations';
 import { collection, getDocs, query, limit } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import api from '../../services/api';
-import toast from 'react-hot-toast';
 
 // -- Tipos --
 interface ShapeDoc {
@@ -27,15 +25,6 @@ interface ShapeDoc {
   sentido: string;
   points: { lat: number; lon: number }[];
   lengthMeters: number;
-}
-interface OverlapDoc {
-  key: string;
-  agencyA: string;
-  lineaA: string;
-  agencyB: string;
-  lineaB: string;
-  pctAInB: number;
-  pctBInA: number;
 }
 interface CompetitorInfo {
   id: string;
@@ -50,7 +39,6 @@ interface CompetitorInfo {
   lat: number;
   lng: number;
   codigoEmpresa: number;
-  fugaMensual?: number;
 }
 
 const EMPRESA_COLOR: Record<string, string> = {
@@ -98,7 +86,6 @@ const haversineMetros = (lat1: number, lon1: number, lat2: number, lon2: number)
   return R * c;
 };
 
-// Componente para auto-centrar el mapa
 function MapCenterController({ center, zoom }: { center: [number, number] | null; zoom: number }) {
   const map = useMap();
   useEffect(() => {
@@ -119,19 +106,20 @@ export default function LiveCompetitiveRadar() {
 
   // Estados Estáticos
   const [shapes, setShapes] = useState<ShapeDoc[]>([]);
-  const [overlaps, setOverlaps] = useState<OverlapDoc[]>([]);
   const [loadingStatic, setLoadingStatic] = useState(true);
 
-  // Estados UI y Filtros
+  // Estados UI y Jerarquía
+  const [selectedLinea, setSelectedLinea] = useState<string | null>(null);
   const [selectedBusId, setSelectedBusId] = useState<string | null>(null);
-  const [searchRadius, setSearchRadius] = useState<number>(1500); // Metros
-  const [minOverlap, setMinOverlap] = useState<number>(0); // Porcentaje permisivo por defecto
+
+  // Filtros
+  const [searchRadius, setSearchRadius] = useState<number>(1500);
+  const [minOverlap, setMinOverlap] = useState<number>(0);
   const [strategyMode, setStrategyMode] = useState<'corredor' | 'barrio'>('barrio');
   
   // Mapa
   const [mapCenter, setMapCenter] = useState<[number, number] | null>([-34.8833, -56.1667]);
   const [mapZoom, setMapZoom] = useState(13);
-  const markersRef = useRef<Record<string, L.Marker>>({});
 
   // Fuga Financiera State
   const [fugaData, setFugaData] = useState<Record<string, { loading: boolean; pax: number | null }>>({});
@@ -161,57 +149,53 @@ export default function LiveCompetitiveRadar() {
   };
 
   // Carga de catálogo estático (solo shapes)
-  const loadStatic = useCallback(async () => {
-    setLoadingStatic(true);
-    try {
-      const [s70, s50, s20, s10] = await Promise.all([
-        getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
-        getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
-        getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
-        getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
-      ]);
-      const loadedShapes: ShapeDoc[] = [];
-      const rawDocs = [...s70.docs, ...s50.docs, ...s20.docs, ...s10.docs];
-      for (const d of rawDocs) {
-        const data = d.data();
-        if (Array.isArray(data.points) && data.points.length > 1) {
-          loadedShapes.push({
-            key: String(data.key),
-            agencyId: String(data.agencyId),
-            empresa: String(data.empresa),
-            linea: String(data.linea),
-            sentido: String(data.sentido || 'IDA'),
-            points: data.points as Array<{ lat: number; lon: number }>,
-            lengthMeters: Number(data.lengthMeters ?? 0),
-          });
+  useEffect(() => {
+    const loadStatic = async () => {
+      setLoadingStatic(true);
+      try {
+        const [s70, s50, s20, s10] = await Promise.all([
+          getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
+          getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
+          getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
+          getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
+        ]);
+        const loadedShapes: ShapeDoc[] = [];
+        const rawDocs = [...s70.docs, ...s50.docs, ...s20.docs, ...s10.docs];
+        for (const d of rawDocs) {
+          const data = d.data();
+          if (Array.isArray(data.points) && data.points.length > 1) {
+            loadedShapes.push({
+              key: String(data.key),
+              agencyId: String(data.agencyId),
+              empresa: String(data.empresa),
+              linea: String(data.linea),
+              sentido: String(data.sentido || 'IDA'),
+              points: data.points as Array<{ lat: number; lon: number }>,
+              lengthMeters: Number(data.lengthMeters ?? 0),
+            });
+          }
         }
+        setShapes(loadedShapes);
+      } catch (err) {
+        console.warn('Error al precargar shapes:', err);
+      } finally {
+        setLoadingStatic(false);
       }
-      setShapes(loadedShapes);
-    } catch (err) {
-      console.warn('Error al precargar shapes:', err);
-    } finally {
-      setLoadingStatic(false);
-    }
+    };
+    loadStatic();
   }, []);
 
+  // Carga topológica oficial desde API basada en la LÍNEA seleccionada (MACRO)
   useEffect(() => {
-    loadStatic();
-  }, [loadStatic]);
-
-  // Carga topológica oficial desde API (Topology First)
-  useEffect(() => {
-    if (!selectedBusId) {
+    if (!selectedLinea) {
       setOfficialCompetitors([]);
       return;
     }
-    const p = serviciosPropios.find(b => b.id === selectedBusId);
-    if (!p) return;
-
     const fetchOfficialCompetitors = async () => {
       setLoadingCompetitors(true);
       try {
-        const baseRouteId = p.linea.replace(/[ab]$/i, '');
-        const directionId = p.linea.toLowerCase().endsWith('b') ? 1 : 0;
+        const baseRouteId = selectedLinea.replace(/[ab]$/i, '');
+        const directionId = selectedLinea.toLowerCase().endsWith('b') ? 1 : 0;
         
         const res = await api.get(`/intelligence/competitors?route_id=${baseRouteId}&direction_id=${directionId}`);
         setOfficialCompetitors(res.data || []);
@@ -223,71 +207,119 @@ export default function LiveCompetitiveRadar() {
       }
     };
     fetchOfficialCompetitors();
-  }, [selectedBusId, serviciosPropios]);
+  }, [selectedLinea]);
 
-  // Lógica del Radar Táctico (Reactiva a los filtros)
-  const activeDisputas = useMemo(() => {
-    if (!selectedBusId) return null;
-    const p = serviciosPropios.find(b => b.id === selectedBusId);
-    if (!p) return null;
+  // Derivados para UI
+  const lineasActivas = useMemo(() => {
+    const lineas = new Set<string>();
+    serviciosPropios.forEach(b => lineas.add(b.linea));
+    return Array.from(lineas).sort();
+  }, [serviciosPropios]);
 
-    const matches: CompetitorInfo[] = [];
+  const busesDeLineaSeleccionada = useMemo(() => {
+    if (!selectedLinea) return [];
+    return serviciosPropios.filter(b => b.linea === selectedLinea);
+  }, [selectedLinea, serviciosPropios]);
 
+  // Lógica de filtrado de Rivales (MACRO vs MICRO)
+  const rivalesVisibles = useMemo(() => {
+    if (!selectedLinea) return []; // Si no hay línea, no dibujamos rivales para no saturar
+    
+    // Nivel Micro: Filtrado de Radar sobre un coche específico
+    if (selectedBusId) {
+      const p = serviciosPropios.find(b => b.id === selectedBusId);
+      if (!p) return [];
+
+      const matches: CompetitorInfo[] = [];
+      for (const r of serviciosRivales) {
+        const dist = haversineMetros(p.lat, p.lng, r.lat, r.lng);
+        if (dist > searchRadius) continue;
+
+        const baseRivalLine = r.linea.replace(/[ab]$/i, '');
+        const officialComp = officialCompetitors.find(c => String(c.competitor_route_id) === baseRivalLine);
+        
+        const sharedStops = officialComp ? (officialComp.shared_stops_count || 0) : 0;
+        if (sharedStops < minOverlap) continue;
+        if (strategyMode === 'corredor' && !officialComp) continue;
+
+        let threatScore = sharedStops * 2; 
+        if (officialComp) threatScore += 50; 
+        if (dist < 400) threatScore += 30;
+
+        matches.push({
+          id: r.id,
+          codigoBus: r.codigoBus,
+          empresa: r.empresa,
+          linea: r.linea,
+          destino: r.destino,
+          distanciaM: Math.round(dist),
+          overlapPct: sharedStops,
+          comparteSentido: !!officialComp,
+          threatScore,
+          lat: r.lat,
+          lng: r.lng,
+          codigoEmpresa: r.empresaId,
+        });
+      }
+      matches.sort((a, b) => b.threatScore - a.threatScore);
+      return matches;
+    } 
+    
+    // Nivel Macro: Filtrado a nivel corredor (Toda la línea)
+    // Mostramos todos los coches rivales cuya línea sea competidora de selectedLinea
+    const macroMatches: CompetitorInfo[] = [];
     for (const r of serviciosRivales) {
-      const dist = haversineMetros(p.lat, p.lng, r.lat, r.lng);
-      if (dist > searchRadius) continue;
-
       const baseRivalLine = r.linea.replace(/[ab]$/i, '');
       const officialComp = officialCompetitors.find(c => String(c.competitor_route_id) === baseRivalLine);
       
-      const sharedStops = officialComp ? (officialComp.shared_stops_count || 0) : 0;
-
-      // Filtro 1: Solapamiento mínimo
-      if (sharedStops < minOverlap) continue;
-
-      // Filtro 2: Estrategia. Si es "corredor", DEBE ser un competidor oficial.
-      if (strategyMode === 'corredor' && !officialComp) continue;
-
-      let threatScore = sharedStops * 2; // Arbitrary score scaling based on stops
-      if (officialComp) threatScore += 50; // Bonus enorme si es competidor validado por BI
-      if (dist < 400) threatScore += 30;
-
-      matches.push({
+      if (!officialComp) continue; // En vista Macro solo mostramos competidores comprobados
+      
+      macroMatches.push({
         id: r.id,
         codigoBus: r.codigoBus,
         empresa: r.empresa,
         linea: r.linea,
         destino: r.destino,
-        distanciaM: Math.round(dist),
-        overlapPct: sharedStops, // Reusing the field for stops to avoid changing the interface
-        comparteSentido: !!officialComp,
-        threatScore,
+        distanciaM: 0,
+        overlapPct: officialComp.shared_stops_count || 0,
+        comparteSentido: true,
+        threatScore: 0,
         lat: r.lat,
         lng: r.lng,
         codigoEmpresa: r.empresaId,
       });
     }
+    return macroMatches;
+  }, [selectedLinea, selectedBusId, serviciosPropios, serviciosRivales, officialCompetitors, searchRadius, minOverlap, strategyMode]);
 
-    matches.sort((a, b) => b.threatScore - a.threatScore);
-    const maxScore = matches.length > 0 ? matches[0].threatScore : 0;
-    const nivelAmenaza = maxScore >= 80 ? 'CRÍTICA' : maxScore >= 45 ? 'MODERADA' : 'BAJA';
-    
-    return { busPropio: p, rivales: matches, nivelAmenaza };
-  }, [selectedBusId, serviciosPropios, serviciosRivales, officialCompetitors, empresaPropia, searchRadius, minOverlap, strategyMode]);
+  const maxScore = rivalesVisibles.length > 0 ? rivalesVisibles[0].threatScore : 0;
+  const nivelAmenaza = maxScore >= 80 ? 'CRÍTICA' : maxScore >= 45 ? 'MODERADA' : 'BAJA';
+
+  const focusLinea = (linea: string) => {
+    setSelectedLinea(linea);
+    setSelectedBusId(null);
+    setMapZoom(13);
+  };
 
   const focusBus = (bus: ServicioActivo) => {
     setMapCenter([bus.lat, bus.lng]);
     setMapZoom(15);
-    if (selectedBusId === bus.id) {
-       setSelectedBusId(null);
-    } else {
-       setSelectedBusId(bus.id);
-    }
+    setSelectedBusId(bus.id);
+  };
+
+  const volverAMacro = () => {
+    setSelectedBusId(null);
+    setMapZoom(13);
+  };
+
+  const volverAFlota = () => {
+    setSelectedLinea(null);
+    setSelectedBusId(null);
   };
 
   return (
     <div className="flex h-screen bg-[#0b0f19] text-slate-200 overflow-hidden font-sans">
-      {/* ── PANEL LATERAL (LISTA Y FILTROS) ── */}
+      {/* ── PANEL LATERAL ── */}
       <div className="w-96 flex-none bg-[#111827]/90 backdrop-blur-xl border-r border-slate-800/50 flex flex-col z-[1001] shadow-2xl">
         <div className="p-5 border-b border-slate-800 bg-slate-900/50">
           <div className="flex items-center gap-3">
@@ -296,142 +328,186 @@ export default function LiveCompetitiveRadar() {
             </div>
             <h1 className="text-xl font-bold text-white tracking-tight">Radar de Disputas</h1>
           </div>
-          <p className="text-xs text-slate-400 mt-2">Búsqueda activa de competidores por proximidad y solapamiento.</p>
+          <p className="text-xs text-slate-400 mt-2">Inteligencia competitiva en vivo. Nivel Macro (Corredor) y Micro (Radar).</p>
         </div>
 
-        {/* Panel de Filtros */}
-        <div className="p-5 border-b border-slate-800/50 bg-slate-900/30 space-y-4">
-          <div className="flex items-center gap-2 text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">
-            <Sliders className="w-4 h-4" /> Filtros Tácticos
-          </div>
+        {/* Controles Dinámicos del Panel */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
           
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs text-slate-400">
-              <span>Estrategia de Intercepción</span>
-            </div>
-            <div className="flex bg-slate-800 rounded-lg p-1">
-              <button
-                onClick={() => setStrategyMode('corredor')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${strategyMode === 'corredor' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-              >
-                Corredor (Mismo Sentido)
-              </button>
-              <button
-                onClick={() => setStrategyMode('barrio')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${strategyMode === 'barrio' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-              >
-                Barrio (Todo Sentido)
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-1 pt-2">
-            <div className="flex justify-between text-xs text-slate-400">
-              <span>Radio de Búsqueda</span>
-              <span className="font-mono text-indigo-400">{searchRadius}m</span>
-            </div>
-            <input 
-              type="range" min="100" max="3000" step="100" value={searchRadius}
-              onChange={(e) => setSearchRadius(Number(e.target.value))}
-              className="w-full accent-indigo-500 cursor-pointer"
-            />
-          </div>
-
-          <div className="space-y-1 pt-2">
-            <div className="flex justify-between text-xs text-slate-400">
-              <span>Paradas Compartidas Mínimas</span>
-              <span className="font-mono text-indigo-400">{minOverlap}</span>
-            </div>
-            <input 
-              type="range" min="0" max="40" step="1" value={minOverlap}
-              onChange={(e) => setMinOverlap(Number(e.target.value))}
-              className="w-full accent-indigo-500 cursor-pointer"
-            />
-          </div>
-        </div>
-
-        {/* Lista de Flota o Resultados del Radar */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
-          {!selectedBusId ? (
-            <>
-              <div className="text-xs uppercase text-slate-500 font-bold px-2 py-1">Seleccione un coche para activar el radar</div>
-              {serviciosPropios.map(bus => (
+          {/* PASO 1: Seleccionar Línea */}
+          {!selectedLinea && (
+            <div className="p-3 space-y-2">
+              <div className="text-xs uppercase text-slate-500 font-bold px-2 py-2">Paso 1: Seleccionar Corredor</div>
+              {lineasActivas.map(linea => (
                 <button
-                  key={bus.id}
-                  onClick={() => focusBus(bus)}
-                  className="w-full text-left bg-slate-800/40 hover:bg-slate-700 border border-slate-700 rounded-lg p-3 transition-colors"
+                  key={linea}
+                  onClick={() => focusLinea(linea)}
+                  className="w-full text-left bg-slate-800/40 hover:bg-slate-700 border border-slate-700 rounded-lg p-4 transition-colors flex justify-between items-center"
                 >
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-white text-lg">Línea {bus.linea}</span>
-                    <span className="bg-indigo-500/20 text-indigo-300 text-xs px-2 py-0.5 rounded font-mono">#{bus.codigoBus}</span>
-                  </div>
-                  <div className="text-xs text-slate-400 mt-1 truncate">{bus.destino}</div>
+                  <span className="font-bold text-white text-lg">Línea {linea}</span>
+                  <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded">
+                    {serviciosPropios.filter(b => b.linea === linea).length} coches
+                  </span>
                 </button>
               ))}
-            </>
-          ) : (
-            <div className="space-y-3">
-              <button 
-                onClick={() => setSelectedBusId(null)}
-                className="w-full text-xs font-bold text-slate-400 hover:text-white py-2 flex items-center justify-center gap-2 bg-slate-800 rounded-lg border border-slate-700"
-              >
-                Volver a la Flota
-              </button>
-              
-              {activeDisputas && activeDisputas.rivales.length > 0 ? (
-                <>
-                  <div className="flex items-center justify-between px-2">
-                    <span className="text-xs uppercase text-slate-500 font-bold">Rivales en el Radar</span>
-                    <span className="bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded text-[10px] font-bold">
-                      {activeDisputas.nivelAmenaza}
-                    </span>
-                  </div>
-                  {activeDisputas.rivales.map(r => (
-                    <div key={r.id} className="bg-slate-900 border border-slate-700/50 rounded-xl p-4 shadow-lg relative overflow-hidden">
-                      <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: r.threatScore >= 80 ? '#ef4444' : '#f59e0b' }}></div>
-                      <div className="flex justify-between items-start mb-3 pl-2">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-bold text-white text-lg">L{r.linea}</h4>
-                            <span className="text-[10px] uppercase font-bold text-slate-400">({r.empresa} #{r.codigoBus})</span>
-                          </div>
-                          <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${r.comparteSentido ? 'bg-rose-500/20 text-rose-400' : 'bg-slate-700 text-slate-300'}`}>
-                            {r.comparteSentido ? 'Mismo Sentido' : 'Diferente Sentido'}
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-black font-mono text-white">{r.distanciaM}m</div>
-                          <div className="text-[10px] text-slate-500 uppercase font-bold">Score: {r.threatScore}</div>
-                        </div>
+            </div>
+          )}
+
+          {/* PASO 2: Línea Seleccionada -> Vista Macro y Selección de Coche */}
+          {selectedLinea && (
+            <>
+              <div className="p-3 bg-indigo-900/20 border-b border-indigo-500/30">
+                <button onClick={volverAFlota} className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 text-xs font-bold mb-2">
+                  <ChevronLeft className="w-4 h-4" /> Volver a todas las líneas
+                </button>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-black text-white">Corredor Línea {selectedLinea}</h2>
+                  <span className="bg-indigo-500/20 text-indigo-300 text-[10px] uppercase font-bold px-2 py-1 rounded">
+                    {loadingCompetitors ? 'Cargando Inteligencia...' : `${officialCompetitors.length} Rutas Enemigas`}
+                  </span>
+                </div>
+              </div>
+
+              {!selectedBusId ? (
+                // Vista MACRO: Lista de coches de la línea
+                <div className="p-3 space-y-2 flex-1">
+                  <div className="text-xs uppercase text-slate-500 font-bold px-2 py-1">Paso 2: Seleccionar Coche para Radar</div>
+                  {busesDeLineaSeleccionada.map(bus => (
+                    <button
+                      key={bus.id}
+                      onClick={() => focusBus(bus)}
+                      className="w-full text-left bg-slate-800/40 hover:bg-slate-700 border border-slate-700 rounded-lg p-3 transition-colors"
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-white text-md">Coche #{bus.codigoBus}</span>
                       </div>
-                      <div className="pl-2 border-t border-slate-800 pt-2 flex items-center justify-between">
-                         <div className="text-xs text-slate-400">Paradas compartidas: <span className="font-bold text-emerald-400">{r.overlapPct}</span></div>
-                         {fugaData[r.id]?.loading ? (
-                           <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Activity className="w-3 h-3 animate-spin" /> Analizando...</span>
-                         ) : fugaData[r.id]?.pax ? (
-                           <div className="flex items-center gap-1 text-rose-400 bg-rose-500/10 px-2 py-1 rounded">
-                             <DollarSign className="w-3 h-3" />
-                             <span className="text-xs font-bold font-mono">-{fugaData[r.id].pax?.toLocaleString()} pax/mes</span>
-                           </div>
-                         ) : (
-                           <button 
-                             onClick={() => fetchFuga(r.id, activeDisputas.busPropio!.linea, r.linea)}
-                             className="text-[10px] font-bold bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
-                           >
-                             <DollarSign className="w-3 h-3" /> Ver Fuga
-                           </button>
-                         )}
+                      <div className="text-xs text-slate-400 mt-1 truncate">{bus.destino}</div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                // Vista MICRO: Filtros del radar y resultados
+                <div className="flex flex-col flex-1">
+                  <div className="p-3 bg-slate-800/50 border-b border-slate-700">
+                     <button onClick={volverAMacro} className="text-slate-400 hover:text-white flex items-center gap-1 text-xs font-bold mb-3">
+                        <ChevronLeft className="w-4 h-4" /> Volver al Corredor {selectedLinea}
+                     </button>
+                     <div className="flex items-center gap-2 mb-2">
+                       <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-1 rounded font-bold">RADAR ACTIVO</span>
+                       <span className="font-bold text-white">Coche #{serviciosPropios.find(b => b.id === selectedBusId)?.codigoBus}</span>
+                     </div>
+                  </div>
+
+                  {/* Panel de Filtros Tácticos (Solo en Micro) */}
+                  <div className="p-5 border-b border-slate-800/50 bg-slate-900/30 space-y-4">
+                    <div className="flex items-center gap-2 text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">
+                      <Sliders className="w-4 h-4" /> Filtros Tácticos
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs text-slate-400">
+                        <span>Estrategia de Intercepción</span>
+                      </div>
+                      <div className="flex bg-slate-800 rounded-lg p-1">
+                        <button
+                          onClick={() => setStrategyMode('corredor')}
+                          className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${strategyMode === 'corredor' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                        >
+                          Corredor Oficial
+                        </button>
+                        <button
+                          onClick={() => setStrategyMode('barrio')}
+                          className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${strategyMode === 'barrio' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                        >
+                          Cualquier Dirección
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </>
-              ) : (
-                <div className="text-center p-6 text-slate-500 text-sm">
-                  <Activity className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                  No hay competidores acechando con los filtros actuales.
+
+                    <div className="space-y-1 pt-2">
+                      <div className="flex justify-between text-xs text-slate-400">
+                        <span>Radio de Búsqueda</span>
+                        <span className="font-mono text-indigo-400">{searchRadius}m</span>
+                      </div>
+                      <input 
+                        type="range" min="100" max="3000" step="100" value={searchRadius}
+                        onChange={(e) => setSearchRadius(Number(e.target.value))}
+                        className="w-full accent-indigo-500 cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="space-y-1 pt-2">
+                      <div className="flex justify-between text-xs text-slate-400">
+                        <span>Paradas Compartidas Mínimas</span>
+                        <span className="font-mono text-indigo-400">{minOverlap}</span>
+                      </div>
+                      <input 
+                        type="range" min="0" max="40" step="1" value={minOverlap}
+                        onChange={(e) => setMinOverlap(Number(e.target.value))}
+                        className="w-full accent-indigo-500 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Resultados del Radar */}
+                  <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                    {rivalesVisibles.length > 0 ? (
+                      <>
+                        <div className="flex items-center justify-between px-2">
+                          <span className="text-xs uppercase text-slate-500 font-bold">Rivales Detectados</span>
+                          <span className="bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded text-[10px] font-bold">
+                            {nivelAmenaza}
+                          </span>
+                        </div>
+                        {rivalesVisibles.map(r => (
+                          <div key={r.id} className="bg-slate-900 border border-slate-700/50 rounded-xl p-4 shadow-lg relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: r.threatScore >= 80 ? '#ef4444' : '#f59e0b' }}></div>
+                            <div className="flex justify-between items-start mb-3 pl-2">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-bold text-white text-lg">L{r.linea}</h4>
+                                  <span className="text-[10px] uppercase font-bold text-slate-400">({r.empresa} #{r.codigoBus})</span>
+                                </div>
+                                <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${r.comparteSentido ? 'bg-rose-500/20 text-rose-400' : 'bg-slate-700 text-slate-300'}`}>
+                                  {r.comparteSentido ? 'Competidor Oficial' : 'Rival de Barrio'}
+                                </span>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-sm font-black font-mono text-white">{r.distanciaM}m</div>
+                                <div className="text-[10px] text-slate-500 uppercase font-bold">Score: {r.threatScore}</div>
+                              </div>
+                            </div>
+                            <div className="pl-2 border-t border-slate-800 pt-2 flex items-center justify-between">
+                              <div className="text-xs text-slate-400">Paradas compartidas: <span className="font-bold text-emerald-400">{r.overlapPct}</span></div>
+                              {fugaData[r.id]?.loading ? (
+                                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Activity className="w-3 h-3 animate-spin" /> Analizando...</span>
+                              ) : fugaData[r.id]?.pax ? (
+                                <div className="flex items-center gap-1 text-rose-400 bg-rose-500/10 px-2 py-1 rounded">
+                                  <DollarSign className="w-3 h-3" />
+                                  <span className="text-xs font-bold font-mono">-{fugaData[r.id].pax?.toLocaleString()} pax/mes</span>
+                                </div>
+                              ) : (
+                                <button 
+                                  onClick={() => fetchFuga(r.id, selectedLinea!, r.linea)}
+                                  className="text-[10px] font-bold bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                                >
+                                  <DollarSign className="w-3 h-3" /> Ver Fuga
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      <div className="text-center p-6 text-slate-500 text-sm">
+                        <Activity className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                        No hay competidores acechando en este perímetro.
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -445,12 +521,12 @@ export default function LiveCompetitiveRadar() {
           />
           <MapCenterController center={mapCenter} zoom={mapZoom} />
 
-          {/* Rutas (Solo visibles si hay coche seleccionado) */}
-          {activeDisputas && activeDisputas.busPropio && (
+          {/* Polilíneas de Rutas (Macro y Micro) */}
+          {selectedLinea && (
             <>
-              {/* Ruta Propia */}
+              {/* Ruta Propia Base */}
               {(() => {
-                const baseShape = shapes.find(s => String(s.linea).trim() === String(activeDisputas.busPropio!.linea).trim() && String(s.agencyId) === String(empresaPropia));
+                const baseShape = shapes.find(s => String(s.linea).trim() === selectedLinea && String(s.agencyId) === String(empresaPropia));
                 if (baseShape) {
                   return (
                     <Polyline
@@ -463,14 +539,14 @@ export default function LiveCompetitiveRadar() {
               })()}
               
               {/* Rutas Rivales */}
-              {activeDisputas.rivales.map(r => {
-                const rivalShape = shapes.find(s => String(s.linea).trim() === String(r.linea).trim() && String(s.agencyId) === String(r.codigoEmpresa));
+              {officialCompetitors.map(comp => {
+                const rivalShape = shapes.find(s => String(s.linea).trim() === String(comp.competitor_route_id).trim());
                 if (rivalShape) {
                   return (
                     <Polyline
-                      key={`shape-${r.id}`}
+                      key={`shape-${comp.competitor_route_id}`}
                       positions={rivalShape.points.map(p => [p.lat, p.lon]) as [number, number][]}
-                      pathOptions={{ color: r.threatScore >= 80 ? '#e11d48' : '#d97706', weight: 4, opacity: 0.8, dashArray: '10, 10' }}
+                      pathOptions={{ color: '#d97706', weight: 3, opacity: 0.5, dashArray: '5, 5' }}
                     />
                   );
                 }
@@ -479,8 +555,13 @@ export default function LiveCompetitiveRadar() {
             </>
           )}
 
-          {/* Marcadores */}
-          {(!selectedBusId ? serviciosPropios : [serviciosPropios.find(b => b.id === selectedBusId)!]).map((b) => {
+          {/* Marcadores Propios */}
+          {(selectedBusId 
+              ? [serviciosPropios.find(b => b.id === selectedBusId)!] 
+              : selectedLinea 
+                 ? busesDeLineaSeleccionada 
+                 : serviciosPropios
+          ).map((b) => {
             if (!b) return null;
             let markerColor = EMPRESA_COLOR[String(b.empresaId)] ?? '#94a3b8';
             return (
@@ -489,9 +570,6 @@ export default function LiveCompetitiveRadar() {
                 position={[b.lat, b.lng]}
                 icon={makeBusDivIcon(markerColor, b.linea)}
                 zIndexOffset={500}
-                ref={(ref) => {
-                  if (ref) markersRef.current[b.id] = ref;
-                }}
               >
                 <Popup>
                   <div className="text-xs font-sans p-1">Línea {b.linea} - #{b.codigoBus}</div>
@@ -500,8 +578,8 @@ export default function LiveCompetitiveRadar() {
             );
           })}
 
-          {/* Marcadores Rivales */}
-          {activeDisputas && activeDisputas.rivales.map((r) => {
+          {/* Marcadores Rivales Visibles */}
+          {rivalesVisibles.map((r) => {
             let markerColor = EMPRESA_COLOR[String(r.codigoEmpresa)] ?? '#94a3b8';
             return (
               <Marker
