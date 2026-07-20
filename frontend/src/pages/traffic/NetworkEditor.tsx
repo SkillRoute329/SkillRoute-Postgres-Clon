@@ -8,7 +8,7 @@ import {
   useMap,
 } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { AlertTriangle, MapPin, Activity, Search, Check, Route, Network } from 'lucide-react';
+import { AlertTriangle, MapPin, Activity, Search, Check, Route, Network, TrendingUp, TrendingDown } from 'lucide-react';
 import api from '../../services/api';
 import { getNavigationLineas, getNavigationLineaData } from '../../features/navigation/services/navigationDataService';
 import { calculateTotalDistance, calculateSharedDistance } from '../../utils/geoUtils';
@@ -57,6 +57,34 @@ interface TrendData {
 }
 
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
+
+const renderEvolution = (trendList: MonthlyTrend[]) => {
+  if (!trendList || trendList.length < 2) return null;
+  const last = trendList[trendList.length - 1].boarding;
+  const prev = trendList[trendList.length - 2].boarding;
+  const diff = last - prev;
+  if (prev === 0) return null;
+  const pct = (diff / prev) * 100;
+  const isPos = diff > 0;
+  
+  return (
+    <div className="flex-1 pl-4">
+      <div className="text-xs uppercase text-slate-500 font-semibold mb-1">Evolución Mes a Mes</div>
+      <div className={`text-lg font-bold font-mono flex items-center gap-2 ${isPos ? 'text-emerald-400' : 'text-rose-400'}`}>
+        {isPos ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+        <span>{isPos ? '+' : ''}{diff.toLocaleString()} ({isPos ? '+' : ''}{pct.toFixed(2)}%)</span>
+      </div>
+    </div>
+  );
+};
+
+const formatMonthName = (yyyyMm: string) => {
+  if (!yyyyMm) return '';
+  const [year, month] = yyyyMm.split('-');
+  const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+  const monthName = date.toLocaleString('es-UY', { month: 'long' });
+  return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}`;
+};
 
 const CompetitiveAnalysis: React.FC = () => {
   const [allLineas, setAllLineas] = useState<any[]>([]);
@@ -402,19 +430,20 @@ const CompetitiveAnalysis: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex gap-4 mb-6 p-3 bg-slate-900/50 rounded-lg border border-slate-700/50">
-                    <div className="flex-1">
+                    <div className="flex-1 border-r border-slate-700/50 pr-4">
                       <div className="text-[10px] uppercase text-slate-500 font-semibold mb-1">Total Recorrido</div>
                       <div className="text-sm font-mono text-white flex items-center gap-1.5">
                         <Route className="w-3.5 h-3.5 text-indigo-400" />
                         {baseDistance.toFixed(1)} km
                       </div>
                     </div>
+                    {renderEvolution(trends.base_line.trend)}
                   </div>
-                  <div className="flex-1 flex flex-col justify-end gap-2">
-                    {trends.base_line.trend.map((t) => (
+                  <div className="flex-1 flex flex-col justify-start gap-2">
+                    {[...trends.base_line.trend].reverse().map((t) => (
                       <div key={t.month} className="w-full">
                         <div className="flex justify-between text-xs mb-1">
-                          <span className="text-slate-400">{t.month}</span>
+                          <span className="text-slate-400">{formatMonthName(t.month)}</span>
                           <span className="font-mono text-indigo-400">{t.boarding.toLocaleString()} pax</span>
                         </div>
                         <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
@@ -450,20 +479,21 @@ const CompetitiveAnalysis: React.FC = () => {
                             {compDistance.toFixed(1)} km
                           </div>
                         </div>
-                        <div className="flex-1 pl-2">
+                        <div className="flex-1 pl-2 border-r border-slate-700/50 pr-4">
                           <div className="text-[10px] uppercase text-slate-500 font-semibold mb-1">Solapamiento</div>
                           <div className="text-sm font-mono text-emerald-400 flex items-center gap-1.5">
                             <MapPin className="w-3.5 h-3.5" />
                             {sharedDistance.toFixed(1)} km
                           </div>
                         </div>
+                        {renderEvolution(trends.competitor_line.trend)}
                       </div>
                       
-                      <div className="flex-1 flex flex-col justify-end gap-2">
-                      {trends.competitor_line.trend.map((t) => (
+                      <div className="flex-1 flex flex-col justify-start gap-2">
+                      {[...trends.competitor_line.trend].reverse().map((t) => (
                         <div key={t.month} className="w-full">
                           <div className="flex justify-between text-xs mb-1">
-                            <span className="text-slate-400">{t.month}</span>
+                            <span className="text-slate-400">{formatMonthName(t.month)}</span>
                             <span className="font-mono text-rose-400">{t.boarding.toLocaleString()} pax</span>
                           </div>
                           <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
