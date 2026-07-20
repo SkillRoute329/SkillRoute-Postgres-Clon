@@ -648,7 +648,6 @@ export default function LiveCompetitiveRadar() {
           );
         })()}
       </div>
-      </div>
     </div>
   );
 }
