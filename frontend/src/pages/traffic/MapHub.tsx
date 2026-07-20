@@ -170,6 +170,7 @@ export default function MapHub() {
   const [shapes, setShapes] = useState<ShapeDoc[]>([]);
   const [overlaps, setOverlaps] = useState<OverlapDoc[]>([]);
   const [stops, setStops] = useState<GTFSStop[]>([]);
+  const [demandPoints, setDemandPoints] = useState<[number, number, number][]>([]);
   const [loadingStatic, setLoadingStatic] = useState(true);
 
   // Tab lateral: 'alertas' | 'flota' | 'bunching' | 'dro'
@@ -251,27 +252,30 @@ export default function MapHub() {
     loadStatic();
   }, [loadStatic]);
 
-  // Heatmap estático de demanda histórica de Montevideo
-  const demandHeatmapPoints = useMemo<[number, number, number][]>(() => {
-    return [
-      [-34.896, -56.166, 1.0], // Tres Cruces
-      [-34.895, -56.164, 0.9],
-      [-34.893, -56.16, 0.8],
-      [-34.888, -56.151, 0.9], // 8 de Octubre y Garibaldi
-      [-34.885, -56.142, 0.8],
-      [-34.881, -56.134, 1.0], // 8 de Octubre y Propios
-      [-34.877, -56.125, 0.7],
-      [-34.873, -56.115, 0.9], // 8 de Octubre y Pan de Azucar
-      [-34.869, -56.108, 0.8],
-      [-34.862, -56.096, 0.7], // Curva de Maroñas
-      [-34.905, -56.195, 0.8], // 18 de Julio y Ejido
-      [-34.905, -56.185, 0.9], // 18 de Julio y Minas
-      [-34.901, -56.175, 0.7], // 18 y Bvar Artigas
-      [-34.884, -56.082, 0.6], // Portones
-      [-34.885, -56.08, 0.8],
-      [-34.832, -56.162, 0.7], // Casavalle
-    ];
-  }, []);
+  // Carga bajo demanda del Heatmap (Lazy load con datos reales de stm_validaciones_mensual)
+  useEffect(() => {
+    if (!layers.demanda || demandPoints.length > 0) return;
+    const token = localStorage.getItem('tf_token');
+    fetch('/api/stm-demanda/mapa-global?top=1000', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok && Array.isArray(data.items)) {
+          // Normalize the total validations to a 0.2-1.0 intensity scale
+          const maxVal = Math.max(...data.items.map((i: any) => i.total), 1);
+          const points = data.items
+            .filter((i: any) => i.lat && i.lon)
+            .map((i: any): [number, number, number] => [
+              i.lat, 
+              i.lon, 
+              Math.max(0.2, i.total / maxVal)
+            ]);
+          setDemandPoints(points);
+        }
+      })
+      .catch((err) => console.warn('[MapHub] Error cargando demanda:', err));
+  }, [layers.demanda, demandPoints]);
 
   // Filtrado de Buses
   const allBusesCombined = useMemo(() => {
@@ -417,7 +421,7 @@ export default function MapHub() {
           })}
 
           {/* Capa 2: Heatmap de Demanda */}
-          {layers.demanda && <HeatmapLayer points={demandHeatmapPoints} />}
+          {layers.demanda && <HeatmapLayer points={demandPoints} />}
 
           {/* Capa 3: Paradas GTFS */}
           {layers.paradas && stops.map((stop) => (
