@@ -38,6 +38,7 @@ interface CompetitorInfo {
   threatScore: number;
   lat: number;
   lng: number;
+  velocidad: number;
   codigoEmpresa: number;
 }
 
@@ -48,28 +49,32 @@ const EMPRESA_COLOR: Record<string, string> = {
   '70': '#eab308', // UCOT (Amarillo)
 };
 
-function makeBusDivIcon(color: string, label: string) {
+function makeBusDivIcon(color: string, linea: string, codigoBus: string, velocidad: number) {
+  const isZero = velocidad === 0 || !velocidad;
   return L.divIcon({
     html: `
       <div style="
         background: ${color};
-        color: #000;
-        padding: 3px 6px;
+        color: #fff;
+        padding: 4px;
         border-radius: 6px;
-        font-size: 10px;
-        font-weight: 900;
-        white-space: nowrap;
         font-family: sans-serif;
         text-align: center;
-        border: 2px solid rgba(255,255,255,0.2);
+        border: 2px solid rgba(255,255,255,0.3);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+        line-height: 1.1;
       ">
-        ${label}
+        <div style="font-weight: 900; font-size: 11px;">L${linea}</div>
+        <div style="font-size: 9px; font-weight: 700; opacity: 0.9;">#${codigoBus}</div>
+        <div style="font-size: 8px; font-weight: 600; color: ${isZero ? '#fca5a5' : '#86efac'}; margin-top: 1px;">
+          ${Math.round(velocidad || 0)}km/h
+        </div>
       </div>
     `,
     className: '',
-    iconSize: [44, 22],
-    iconAnchor: [22, 11],
-    popupAnchor: [0, -12],
+    iconSize: [46, 44],
+    iconAnchor: [23, 22],
+    popupAnchor: [0, -24],
   });
 }
 
@@ -258,10 +263,11 @@ export default function LiveCompetitiveRadar() {
           threatScore,
           lat: r.lat,
           lng: r.lng,
+          velocidad: r.velocidad,
           codigoEmpresa: r.empresaId,
         });
       }
-      matches.sort((a, b) => b.threatScore - a.threatScore);
+      matches.sort((a, b) => a.distanciaM - b.distanciaM);
       return matches;
     } 
     
@@ -286,6 +292,7 @@ export default function LiveCompetitiveRadar() {
         threatScore: 0,
         lat: r.lat,
         lng: r.lng,
+        velocidad: r.velocidad,
         codigoEmpresa: r.empresaId,
       });
     }
@@ -315,6 +322,11 @@ export default function LiveCompetitiveRadar() {
   const volverAFlota = () => {
     setSelectedLinea(null);
     setSelectedBusId(null);
+  };
+
+  const locateCompetitor = (lat: number, lng: number) => {
+    setMapCenter([lat, lng]);
+    setMapZoom(16);
   };
 
   return (
@@ -473,8 +485,13 @@ export default function LiveCompetitiveRadar() {
                                 </span>
                               </div>
                               <div className="text-right">
-                                <div className="text-sm font-black font-mono text-white">{r.distanciaM}m</div>
-                                <div className="text-[10px] text-slate-500 uppercase font-bold">Score: {r.threatScore}</div>
+                                <div className="flex items-center justify-end gap-2">
+                                  <div className="text-sm font-black font-mono text-white">{r.distanciaM}m</div>
+                                  <button onClick={() => locateCompetitor(r.lat, r.lng)} className="bg-slate-700/50 hover:bg-indigo-600 text-slate-300 hover:text-white rounded p-1 transition-colors" title="Localizar coche en el mapa">
+                                    <Crosshair className="w-3 h-3" />
+                                  </button>
+                                </div>
+                                <div className="text-[10px] text-slate-500 uppercase font-bold mt-1">Score: {r.threatScore}</div>
                               </div>
                             </div>
                             <div className="pl-2 border-t border-slate-800 pt-2 flex items-center justify-between">
@@ -568,7 +585,7 @@ export default function LiveCompetitiveRadar() {
               <Marker
                 key={b.id}
                 position={[b.lat, b.lng]}
-                icon={makeBusDivIcon(markerColor, b.linea)}
+                icon={makeBusDivIcon(markerColor, b.linea, b.codigoBus, b.velocidad)}
                 zIndexOffset={500}
               >
                 <Popup>
@@ -585,7 +602,7 @@ export default function LiveCompetitiveRadar() {
               <Marker
                 key={r.id}
                 position={[r.lat, r.lng]}
-                icon={makeBusDivIcon(markerColor, r.linea)}
+                icon={makeBusDivIcon(markerColor, r.linea, r.codigoBus, r.velocidad)}
                 zIndexOffset={1000}
               >
                 <Popup>
