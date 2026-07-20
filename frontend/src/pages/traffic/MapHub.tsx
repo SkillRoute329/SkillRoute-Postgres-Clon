@@ -325,6 +325,16 @@ export default function MapHub() {
     }, 150);
   };
 
+  // Enfocar pares de Bunching en el mapa
+  const focusBunching = (b: import('../../hooks/useLiveOperations').AlertaBunching) => {
+    const midLat = (b.bus1Coords[0] + b.bus2Coords[0]) / 2;
+    const midLng = (b.bus1Coords[1] + b.bus2Coords[1]) / 2;
+    setMapCenter([midLat, midLng]);
+    setMapZoom(15);
+    // Optionally set line filter to easily see both
+    setLineFilter(b.linea);
+  };
+
   // Switch de capa individual
   const toggleLayer = (layerName: keyof typeof layers) => {
     setLayers((prev) => ({ ...prev, [layerName]: !prev[layerName] }));
@@ -784,7 +794,11 @@ export default function MapHub() {
                 </div>
               ) : (
                 bunching.map((b, idx) => (
-                  <div key={idx} className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-3 flex justify-between items-center text-xs">
+                  <div 
+                    key={idx} 
+                    onClick={() => focusBunching(b)}
+                    className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-3 flex justify-between items-center text-xs cursor-pointer hover:bg-amber-500/20 transition-colors"
+                  >
                     <div>
                       <span className="font-bold text-white block">Línea {b.linea}</span>
                       <span className="text-[10px] text-slate-400">Pares: Coche {b.bus1} ↔ Coche {b.bus2}</span>

@@ -14,6 +14,8 @@ export interface AlertaBunching {
   bus1: string;
   bus2: string;
   distanciaKm: number;
+  bus1Coords: [number, number];
+  bus2Coords: [number, number];
 }
 
 export interface IncidenciaReportada {
@@ -72,7 +74,15 @@ function calcularBunching(propios: ServicioActivo[]): AlertaBunching[] {
   const alertas: AlertaBunching[] = [];
   for (let i = 0; i < propios.length; i++) {
     for (let j = i + 1; j < propios.length; j++) {
+      // Must be same line
       if (propios[i].linea !== propios[j].linea) continue;
+      
+      // Prevent comparing a bus with itself (duplicate GPS points)
+      if (propios[i].codigoBus === propios[j].codigoBus) continue;
+
+      // Must be going in the same direction (same destino)
+      if (propios[i].destino !== propios[j].destino) continue;
+
       const dist = haversineKm(propios[i].lat, propios[i].lng, propios[j].lat, propios[j].lng);
       if (dist < 0.8) { // BUNCHING_UMBRAL_KM = 0.8
         alertas.push({
@@ -80,6 +90,8 @@ function calcularBunching(propios: ServicioActivo[]): AlertaBunching[] {
           bus1: propios[i].codigoBus,
           bus2: propios[j].codigoBus,
           distanciaKm: Math.round(dist * 1000) / 1000,
+          bus1Coords: [propios[i].lat, propios[i].lng],
+          bus2Coords: [propios[j].lat, propios[j].lng]
         });
       }
     }
