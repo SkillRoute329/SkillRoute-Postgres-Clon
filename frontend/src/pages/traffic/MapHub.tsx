@@ -177,7 +177,7 @@ export default function MapHub() {
   // Filtros
   const [lineFilter, setLineFilter] = useState<string>(selectedLine ?? 'todas');
   const [searchQuery, setSearchQuery] = useState('');
-  const [operatorVisibility, setOperatorVisibility] = useState<Set<string>>(new Set(['70', '50', '20', '10']));
+  const [operatorVisibility, setOperatorVisibility] = useState<Set<string>>(new Set([String(empresaPropia)]));
   const [selectedShape, setSelectedShape] = useState<ShapeDoc | null>(null);
 
   // Mapa viewport focus
@@ -303,11 +303,14 @@ export default function MapHub() {
     });
   }, [allBusesCombined, operatorVisibility, lineFilter, searchQuery]);
 
-  // Líneas únicas del operador propio para el filtro
-  const ownLines = useMemo(() => {
-    const list = serviciosPropios.map((b) => b.linea).filter(Boolean);
-    return [...new Set(list)].sort();
-  }, [serviciosPropios]);
+  // Líneas únicas basadas en los operadores actualmente visibles
+  const availableLines = useMemo(() => {
+    const list = allBusesCombined
+      .filter(b => operatorVisibility.has(String(b.empresaId)))
+      .map((b) => b.linea)
+      .filter(Boolean);
+    return [...new Set(list)].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+  }, [allBusesCombined, operatorVisibility]);
 
   // Enfocar un bus en el mapa y abrir su popup
   const focusBus = (bus: ServicioActivo) => {
@@ -629,7 +632,7 @@ export default function MapHub() {
               className="bg-transparent text-xs text-white outline-none border-none pr-1"
             >
               <option value="todas" className="bg-slate-900 text-white">Todas las líneas</option>
-              {ownLines.map((l) => (
+              {availableLines.map((l) => (
                 <option key={l} value={l} className="bg-slate-900 text-white">L{l}</option>
               ))}
             </select>
