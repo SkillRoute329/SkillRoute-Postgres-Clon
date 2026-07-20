@@ -49,8 +49,9 @@ const EMPRESA_COLOR: Record<string, string> = {
   '70': '#eab308', // UCOT (Amarillo)
 };
 
-function makeBusDivIcon(color: string, linea: string, codigoBus: string, velocidad: number) {
+function makeBusDivIcon(color: string, linea: string, codigoBus: string, velocidad: number, destino: string) {
   const isZero = velocidad === 0 || !velocidad;
+  const safeDestino = destino ? destino.substring(0, 10) : 'S/D';
   return L.divIcon({
     html: `
       <div style="
@@ -69,12 +70,15 @@ function makeBusDivIcon(color: string, linea: string, codigoBus: string, velocid
         <div style="font-size: 8px; font-weight: 600; color: ${isZero ? '#fca5a5' : '#86efac'}; margin-top: 1px;">
           ${Math.round(velocidad || 0)}km/h
         </div>
+        <div style="font-size: 7px; font-weight: 900; margin-top: 1px; color: #f8fafc; text-transform: uppercase; letter-spacing: -0.2px;">
+          ${safeDestino}
+        </div>
       </div>
     `,
     className: '',
-    iconSize: [46, 44],
-    iconAnchor: [23, 22],
-    popupAnchor: [0, -24],
+    iconSize: [50, 56],
+    iconAnchor: [25, 28],
+    popupAnchor: [0, -28],
   });
 }
 
@@ -585,7 +589,7 @@ export default function LiveCompetitiveRadar() {
               <Marker
                 key={b.id}
                 position={[b.lat, b.lng]}
-                icon={makeBusDivIcon(markerColor, b.linea, b.codigoBus, b.velocidad)}
+                icon={makeBusDivIcon(markerColor, b.linea, b.codigoBus, b.velocidad, b.destino)}
                 zIndexOffset={500}
               >
                 <Popup>
@@ -602,7 +606,7 @@ export default function LiveCompetitiveRadar() {
               <Marker
                 key={r.id}
                 position={[r.lat, r.lng]}
-                icon={makeBusDivIcon(markerColor, r.linea, r.codigoBus, r.velocidad)}
+                icon={makeBusDivIcon(markerColor, r.linea, r.codigoBus, r.velocidad, r.destino)}
                 zIndexOffset={1000}
               >
                 <Popup>
