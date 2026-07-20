@@ -634,6 +634,41 @@ export default function MapHub() {
               </Marker>
             );
           })}
+
+          {/* Capa 6: Radar Táctico Rivales */}
+          {layers.vehicles && activeDisputas?.rivales.map((r) => {
+            let markerColor = EMPRESA_COLOR[String(r.codigoEmpresa)] ?? '#94a3b8';
+            return (
+              <Marker
+                key={`rival-${r.id}`}
+                position={[r.lat, r.lng]}
+                icon={makeBusDivIcon(markerColor, r.linea, false, false)}
+                zIndexOffset={1000} // Keep competitors on top
+              >
+                <Popup>
+                  <div className="text-xs min-w-[220px] font-sans text-slate-900 space-y-2">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                      <span className="font-black text-sm text-slate-800">Línea {r.linea}</span>
+                      <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                        {r.empresa}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5 text-[11px] text-slate-600">
+                      <div><strong>Interno:</strong> #{r.codigoBus}</div>
+                      <div><strong>Distancia:</strong> {r.distanciaM}m</div>
+                      <div className="col-span-2 truncate"><strong>Destino:</strong> {r.destino}</div>
+                    </div>
+
+                    <div className={`p-2 rounded-lg text-[10px] font-bold mt-2 border ${r.threatScore >= 80 ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                      <span className="flex items-center gap-1">⚠️ Amenaza {r.threatScore >= 80 ? 'CRÍTICA' : 'MODERADA'}</span>
+                      <p className="mt-1 font-normal">Threat Score: {r.threatScore} | DRO: {r.overlapPct}%</p>
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
         </MapContainer>
 
         {/* Flotante: Conmutador de Capas (Layers Panel) */}
