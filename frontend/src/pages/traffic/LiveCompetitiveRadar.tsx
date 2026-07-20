@@ -5,6 +5,7 @@ import {
   Marker,
   Popup,
   Polyline,
+  Circle,
   useMap,
 } from 'react-leaflet';
 import L from 'leaflet';
@@ -147,6 +148,16 @@ export default function LiveCompetitiveRadar() {
       setFugaData(prev => ({ ...prev, [rivalId]: { loading: false, pax: null } }));
     }
   };
+
+  // Auto-track the selected bus as GPS coordinates update
+  useEffect(() => {
+    if (selectedBusId) {
+      const p = serviciosPropios.find(b => b.id === selectedBusId);
+      if (p) {
+        setMapCenter([p.lat, p.lng]);
+      }
+    }
+  }, [selectedBusId, serviciosPropios]);
 
   // Carga de catálogo estático (solo shapes)
   useEffect(() => {
@@ -520,6 +531,23 @@ export default function LiveCompetitiveRadar() {
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
           />
           <MapCenterController center={mapCenter} zoom={mapZoom} />
+
+          {/* Círculo de Radar (Nivel Micro) */}
+          {(() => {
+            if (selectedBusId) {
+              const p = serviciosPropios.find(b => b.id === selectedBusId);
+              if (p) {
+                return (
+                  <Circle 
+                    center={[p.lat, p.lng]} 
+                    radius={searchRadius} 
+                    pathOptions={{ color: '#6366f1', fillColor: '#6366f1', fillOpacity: 0.05, weight: 1, dashArray: '4 4' }} 
+                  />
+                );
+              }
+            }
+            return null;
+          })()}
 
           {/* Polilíneas de Rutas (Macro y Micro) */}
           {selectedLinea && (
