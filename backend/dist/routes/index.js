@@ -78,7 +78,7 @@ const stm_routes_1 = __importDefault(require("./stm.routes"));
 const ai_routes_1 = __importDefault(require("./ai.routes"));
 const listero_routes_1 = __importDefault(require("./listero.routes"));
 const autoStats_routes_1 = __importDefault(require("./autoStats.routes"));
-const gtfs_routes_1 = __importDefault(require("./gtfs.routes"));
+const gtfs_core_1 = require("../modules/gtfs-core");
 const audit_routes_1 = __importDefault(require("./audit.routes"));
 const dbBridge_routes_1 = __importDefault(require("./dbBridge.routes"));
 const etapaStats_routes_1 = __importDefault(require("./etapaStats.routes"));
@@ -90,6 +90,7 @@ const comando_routes_1 = __importDefault(require("./comando.routes"));
 const predictions_routes_1 = __importDefault(require("./predictions.routes"));
 const planning_routes_1 = __importDefault(require("./planning.routes"));
 const storage_routes_1 = __importDefault(require("./storage.routes"));
+const intelligenceRoutes_1 = __importDefault(require("./intelligenceRoutes"));
 const router = (0, express_1.Router)();
 // ─── PÚBLICAS (sin autenticación) ─────────────────────────────────────────
 /**
@@ -205,7 +206,7 @@ router.get('/version', systemController.getVersion);
  * GET /api/gtfs/stops/:stopId/departures
  * Este módulo tiene prioridad absoluta para evitar colisiones.
  */
-router.use('/gtfs', gtfs_routes_1.default);
+router.use('/gtfs', gtfs_core_1.gtfsRoutes);
 /**
  * GET /api/auth/me
  * Obtener usuario actual autenticado
@@ -387,6 +388,7 @@ router.get('/positions', positionsController.getAllPositions);
  * `personal` (879 registros UCOT) con paginación y filtros.
  */
 router.get('/admin/personal', auth_1.verifyAuth, adminPersonalController.listPersonal);
+router.get('/admin/personal/:id/legajo', auth_1.verifyAuth, adminPersonalController.getDetalleLaboralEmpleado);
 router.put('/admin/personal/:id', auth_1.verifyAuth, adminPersonalController.updatePersonal);
 /**
  * FASE 5.28 (2026-05-19) — Pase 2 de cierre de auditoría.
@@ -400,10 +402,48 @@ router.put('/admin/personal/:id', auth_1.verifyAuth, adminPersonalController.upd
  * /api/admin/config-salarial          → turnos + descuentos (ConfigSalarialTab)
  */
 router.get('/users', auth_1.verifyAuth, usersController.listUsers);
-router.get('/shifts/balances', auth_1.verifyAuth, shiftsBalanceController.getBalances);
-router.get('/shifts/unpaid/:userId', auth_1.verifyAuth, shiftsBalanceController.getUnpaidShifts);
-router.post('/shifts/payment', auth_1.verifyAuth, shiftsBalanceController.postPayment);
-router.post('/shifts/pay', auth_1.verifyAuth, shiftsBalanceController.postPayAll);
+router.get('/shifts/balance-oficial', auth_1.verifyAuth, shiftsBalanceController.getBalanceOficialConductor);
+// Módulo 10 — Alertas de Tráfico Vacante (Escenario Falla 1: Quiebre de Retenes)
+router.get('/traffic-alerts', auth_1.verifyAuth, async (req, res) => {
+    try {
+        const sqlDb = (await Promise.resolve().then(() => __importStar(require('../config/database')))).default;
+        const user = req.user;
+        const agencyId = user?.agency_id;
+        if (!agencyId) {
+            res.status(401).json({ ok: false });
+            return;
+        }
+        const resuelta = req.query.resuelta === 'true';
+        const rows = await sqlDb('traffic_alerts')
+            .where('agency_id', agencyId)
+            .where('resuelta', resuelta)
+            .orderBy('created_at', 'desc')
+            .limit(50);
+        res.json({ ok: true, alertas: rows });
+    }
+    catch (err) {
+        res.status(500).json({ ok: false, error: String(err) });
+    }
+});
+router.patch('/traffic-alerts/:id/resolver', auth_1.verifyAuth, async (req, res) => {
+    try {
+        const sqlDb = (await Promise.resolve().then(() => __importStar(require('../config/database')))).default;
+        const user = req.user;
+        const agencyId = user?.agency_id;
+        if (!agencyId) {
+            res.status(401).json({ ok: false });
+            return;
+        }
+        await sqlDb('traffic_alerts')
+            .where('id', req.params.id)
+            .where('agency_id', agencyId)
+            .update({ resuelta: true });
+        res.json({ ok: true });
+    }
+    catch (err) {
+        res.status(500).json({ ok: false, error: String(err) });
+    }
+});
 router.get('/tenants', auth_1.verifyAuth, tenantsController.listTenants);
 router.post('/tenants', auth_1.verifyAuth, auth_1.requireAdmin, tenantsController.createTenant);
 router.get('/admin/config-salarial', auth_1.verifyAuth, configSalarialController.getConfigSalarial);
@@ -484,7 +524,10 @@ router.use('/conteo-vehicular', conteoVehicular_routes_1.default);
 router.use('/comando', comando_routes_1.default);
 router.use('/predictions', predictions_routes_1.default);
 router.use('/planning', planning_routes_1.default);
+// FASE 5: Storage
 router.use('/storage', storage_routes_1.default);
+// FASE 7: Inteligencia Competitiva
+router.use('/intelligence', auth_1.verifyAuth, intelligenceRoutes_1.default);
 /**
  * FASE 5 (2026-05-13) — Stubs honestos para CEODashboardV7 que consume
  * /historicOtp y /historicBunching (antes Cloud Functions). El cálculo

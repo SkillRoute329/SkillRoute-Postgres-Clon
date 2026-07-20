@@ -38,8 +38,10 @@ const cartonesHistorialScheduler_1 = require("./utils/cartonesHistorialScheduler
 const cascadeAutoTriggerScheduler_1 = require("./utils/cascadeAutoTriggerScheduler");
 const alertasCaducidadScheduler_1 = require("./utils/alertasCaducidadScheduler");
 const mlRetrainScheduler_1 = require("./utils/mlRetrainScheduler");
+const seedDatabase_1 = require("./utils/seedDatabase");
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swagger_jsdoc_1 = __importDefault(require("swagger-jsdoc"));
+const immDataPipeline_1 = require("./modules/gtfs-core/jobs/immDataPipeline");
 // ═══════════════════════════════════════════════════════════════════════════
 // INICIALIZACIÓN
 // ═══════════════════════════════════════════════════════════════════════════
@@ -61,6 +63,13 @@ app.use((0, cors_1.default)({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
 }));
+// Módulo Anti-Caché Global Severo
+app.use((req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    next();
+});
 logger_1.default.info(`🔒 CORS configurado`, {
     modo: isDev ? 'DESARROLLO (todos los orígenes)' : 'PRODUCCIÓN (restringido)',
     origenesPermitidos: isDev ? '*' : corsOrigins,
@@ -257,13 +266,19 @@ const server = httpServer.listen({ port: PORT_NUM, host: '0.0.0.0', exclusive: t
     aiService_1.AIService.prewarm('HEAVY');
     aiService_1.AIService.prewarm('FAST');
     aiService_1.AIService.prewarm('CODER');
+    // FASE: Auto-seed on startup (silent unless it does work)
+    (0, seedDatabase_1.seedDatabase)(false).catch(err => logger_1.default.error('[SEED] Failed auto-seed on startup', err));
     // ═══════════════════════════════════════════════════════════════════════
     // FASE 3.5 — Arrancar poller autónomo IMM → Postgres.
     // Controlado por env POLLER_ENABLED. Si falla, no afecta el resto del
     // backend: el setInterval interno se reintenta solo.
     // ═══════════════════════════════════════════════════════════════════════
+    // START BACKGROUND WORKERS
+    // ═══════════════════════════════════════════════════════════════════════
     try {
-        (0, pollerService_1.startPoller)();
+        if (process.env.POLLER_ENABLED === 'true') {
+            (0, pollerService_1.startPoller)();
+        }
     }
     catch (err) {
         logger_1.default.error('[Poller] error arrancando, el backend sigue arriba igual', { err: String(err) });
@@ -343,6 +358,13 @@ const server = httpServer.listen({ port: PORT_NUM, host: '0.0.0.0', exclusive: t
     }
     catch (err) {
         logger_1.default.error('[mlRetrain] error iniciando scheduler', { err: String(err) });
+    }
+    // FASE 7 — Inteligencia Competitiva: Pipeline de Censo Mensual de IMM.
+    try {
+        immDataPipeline_1.IMMDataPipeline.init();
+    }
+    catch (err) {
+        logger_1.default.error('[IMMDataPipeline] error iniciando scheduler', { err: String(err) });
     }
 });
 exports.server = server;

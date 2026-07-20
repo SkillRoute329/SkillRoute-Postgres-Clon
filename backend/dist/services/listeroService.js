@@ -23,6 +23,11 @@ exports.getTurnosByFecha = getTurnosByFecha;
 exports.createTurno = createTurno;
 exports.updateTurno = updateTurno;
 exports.deleteTurno = deleteTurno;
+exports.updateConductor = updateConductor;
+exports.updateVehiculo = updateVehiculo;
+exports.getPersonalMaestro = getPersonalMaestro;
+exports.updatePersonalMaestro = updatePersonalMaestro;
+exports.rotarSemana = rotarSemana;
 exports.getConductoresDia = getConductoresDia;
 exports.marcarAusencia = marcarAusencia;
 exports.buscarReservasDisponibles = buscarReservasDisponibles;
@@ -35,6 +40,9 @@ exports.getSolicitudes = getSolicitudes;
 exports.createSolicitud = createSolicitud;
 exports.updateSolicitudEstado = updateSolicitudEstado;
 exports.analizarEmparejamientos = analizarEmparejamientos;
+exports.procesarCorrelativoDirecto = procesarCorrelativoDirecto;
+exports.getFlotaMaestra = getFlotaMaestra;
+exports.asignarTitularCoche = asignarTitularCoche;
 const database_1 = __importDefault(require("../config/database"));
 const index_1 = require("../types/index");
 const logger_1 = __importDefault(require("../config/logger"));
@@ -125,6 +133,7 @@ function rowToConductor(r, turno) {
         regimenRotacion: r.regimen_rotacion ?? 'semanal',
         isEnLista: r.is_en_lista ?? false,
         patronDescanso: r.patron_descanso ?? 'sab_dom_alterno',
+        data_jsonb: r.data_jsonb || {},
     };
 }
 function rowToVehiculoDia(r) {
@@ -209,6 +218,21 @@ async function updateTurno(turnoId, cambios) {
             dbCambios.hora_firma = cambios.horaFirma;
         if (cambios.observaciones !== undefined)
             dbCambios.observaciones = cambios.observaciones;
+        // FASE 3: Edición manual de turnos por el Listero
+        if (cambios.conductorId !== undefined)
+            dbCambios.conductor_id = cambios.conductorId;
+        if (cambios.conductorNombre !== undefined)
+            dbCambios.conductor_nombre = cambios.conductorNombre;
+        if (cambios.conductorInterno !== undefined)
+            dbCambios.conductor_interno = cambios.conductorInterno;
+        if (cambios.vehiculoId !== undefined)
+            dbCambios.vehiculo_id = cambios.vehiculoId;
+        if (cambios.vehiculoInterno !== undefined)
+            dbCambios.vehiculo_interno = cambios.vehiculoInterno;
+        if (cambios.lineaId !== undefined)
+            dbCambios.linea_id = cambios.lineaId;
+        if (cambios.horaSalida !== undefined)
+            dbCambios.hora_salida = cambios.horaSalida;
         if (Object.keys(dbCambios).length > 0) {
             await (0, database_1.default)('turnos_dia').where('id', turnoId).update(dbCambios);
         }
@@ -225,6 +249,120 @@ async function deleteTurno(turnoId) {
     catch (error) {
         logger_1.default.error(`[LISTERO] Error deleteTurno(${turnoId})`, { error: String(error) });
         throw new index_1.AppError(500, 'Error al eliminar turno');
+    }
+}
+// ─── Edición Manual de Maestros (Conductores / Vehículos) ───────────────────
+async function updateConductor(conductorId, cambios) {
+    try {
+        const personalRow = await (0, database_1.default)('personal').where('id', conductorId).first();
+        if (!personalRow)
+            return;
+        const updateData = {};
+        if (cambios.estadoHoy !== undefined)
+            updateData.estado_hoy = cambios.estadoHoy;
+        if (cambios.regimenRotacion !== undefined)
+            updateData.regimen_rotacion = cambios.regimenRotacion;
+        if (cambios.patronDescanso !== undefined)
+            updateData.patron_descanso = cambios.patronDescanso;
+        if (cambios.telefono !== undefined)
+            updateData.telefono = cambios.telefono;
+        // Actualizar campos personalizados en data_jsonb (tipo_vinculo, coche_fijo, rotacion)
+        if (cambios.data_jsonb) {
+            const existingJson = personalRow.data_jsonb || {};
+            updateData.data_jsonb = JSON.stringify({ ...existingJson, ...cambios.data_jsonb });
+        }
+        if (Object.keys(updateData).length > 0) {
+            await (0, database_1.default)('personal').where('id', conductorId).update(updateData);
+        }
+    }
+    catch (error) {
+        logger_1.default.error(`[LISTERO] Error updateConductor(${conductorId})`, { error: String(error) });
+        throw new index_1.AppError(500, 'Error al actualizar conductor');
+    }
+}
+async function updateVehiculo(vehiculoId, cambios) {
+    try {
+        const vehiculo = await (0, database_1.default)('vehiculos').where('id', vehiculoId).first();
+        if (!vehiculo)
+            return;
+        const existingData = vehiculo.data_jsonb || {};
+        const newData = { ...existingData, ...cambios };
+        await (0, database_1.default)('vehiculos').where('id', vehiculoId).update({
+            data_jsonb: JSON.stringify(newData)
+        });
+    }
+    catch (error) {
+        logger_1.default.error(`[LISTERO] Error updateVehiculo(${vehiculoId})`, { error: String(error) });
+        throw new index_1.AppError(500, 'Error al actualizar vehículo');
+    }
+}
+// ─── Gestión Maestra de Personal (Nuevo) ────────────────────────────────────
+async function getPersonalMaestro() {
+    try {
+        const rows = await (0, database_1.default)('personal')
+            .whereNotNull('data_jsonb')
+            .orderBy('full_name', 'asc');
+        return rows.map((r) => rowToConductor(r));
+    }
+    catch (error) {
+        logger_1.default.error('[LISTERO] Error getPersonalMaestro', { error: String(error) });
+        throw new index_1.AppError(500, 'Error al obtener personal maestro');
+    }
+}
+async function updatePersonalMaestro(id, cambios) {
+    try {
+        const personal = await (0, database_1.default)('personal').where('id', id).first();
+        if (!personal)
+            throw new index_1.AppError(404, 'Personal no encontrado');
+        const updateData = {};
+        if (cambios.fullName)
+            updateData.full_name = cambios.fullName;
+        if (cambios.internalNumber)
+            updateData.internal_number = cambios.internalNumber;
+        if (cambios.telefono)
+            updateData.telefono = cambios.telefono;
+        if (cambios.rol)
+            updateData.role = cambios.rol;
+        if (cambios.data_jsonb) {
+            const existingJson = personal.data_jsonb || {};
+            updateData.data_jsonb = JSON.stringify({ ...existingJson, ...cambios.data_jsonb });
+        }
+        if (Object.keys(updateData).length > 0) {
+            await (0, database_1.default)('personal').where('id', id).update(updateData);
+        }
+    }
+    catch (error) {
+        logger_1.default.error(`[LISTERO] Error updatePersonalMaestro(${id})`, { error: String(error) });
+        throw new index_1.AppError(500, 'Error al actualizar personal maestro');
+    }
+}
+async function rotarSemana(tipo) {
+    try {
+        const rows = await (0, database_1.default)('personal').whereNotNull('data_jsonb');
+        let actualizados = 0;
+        for (const p of rows) {
+            const data = p.data_jsonb || {};
+            // Filtramos solo los fijos que corresponden a este tipo de rotación
+            if (data.tipo_vinculo === 'fijo') {
+                const rotacionAsignada = data.tipo_rotacion || 'semanal'; // Por defecto semanal
+                if (rotacionAsignada === tipo) {
+                    const actual = data.rotacion_semana_actual;
+                    if (actual === 'mañana' || actual === 'tarde') {
+                        const nueva = actual === 'mañana' ? 'tarde' : 'mañana';
+                        data.rotacion_semana_actual = nueva;
+                        await (0, database_1.default)('personal').where('id', p.id).update({
+                            data_jsonb: JSON.stringify(data)
+                        });
+                        actualizados++;
+                    }
+                }
+            }
+        }
+        return { actualizados };
+    }
+    catch (error) {
+        logger_1.default.error(`[LISTERO] Error rotarSemana(${tipo})`, { error: String(error) });
+        throw new index_1.AppError(500, 'Error al rotar semana');
     }
 }
 // ─── Conductores del día ──────────────────────────────────────────────────────
@@ -531,5 +669,136 @@ async function analizarEmparejamientos(fecha, agencyId) {
     catch (error) {
         logger_1.default.error('[LISTERO] Error analizarEmparejamientos', { error: String(error) });
         throw new index_1.AppError(500, 'Error al analizar emparejamientos');
+    }
+}
+// ─── Motor de Correlativos (Validación 45 minutos) ──────────────────────────
+async function procesarCorrelativoDirecto(internoA, internoB, fecha) {
+    try {
+        // 1. Obtener los conductores por interno
+        const choferA = await (0, database_1.default)('personal').where('internal_number', internoA).first();
+        const choferB = await (0, database_1.default)('personal').where('internal_number', internoB).first();
+        if (!choferA || !choferB) {
+            throw new index_1.AppError(404, `No se encontraron los internos especificados.`);
+        }
+        // 2. Obtener los turnos asignados a cada uno para la fecha
+        const turnosA = await (0, database_1.default)('turnos_dia').where('conductor_id', choferA.id).where('fecha', fecha).orderBy('hora_salida', 'asc');
+        const turnosB = await (0, database_1.default)('turnos_dia').where('conductor_id', choferB.id).where('fecha', fecha).orderBy('hora_salida', 'asc');
+        if (turnosA.length === 0 || turnosB.length === 0) {
+            throw new index_1.AppError(400, `Uno o ambos choferes no tienen turnos asignados para el ${fecha}.`);
+        }
+        // Para un correlativo, asumimos que A quiere tomar el turno de B DESPUES de terminar el suyo.
+        const turnoOriginalA = turnosA[turnosA.length - 1]; // El último turno de A
+        const turnoObjetivoB = turnosB[0]; // El primer turno de B
+        // 3. Regla matemática de 45 minutos
+        // hora_llegada_estimada del Turno A vs hora_salida del Turno B
+        const finA = horaAMinutos(turnoOriginalA.hora_llegada_estimada);
+        const inicioB = horaAMinutos(turnoObjetivoB.hora_salida);
+        // Si B empieza al día siguiente, ajustamos
+        let diff = inicioB - finA;
+        if (diff < 0) {
+            diff += 24 * 60; // Cruzó la medianoche
+        }
+        if (diff < 45) {
+            return {
+                ok: false,
+                message: `Correlativo inválido. El turno en el coche ${turnoOriginalA.vehiculo_interno} finaliza a las ${turnoOriginalA.hora_llegada_estimada} y el coche ${turnoObjetivoB.vehiculo_interno} sale a las ${turnoObjetivoB.hora_salida}. Solo hay ${diff} minutos de descanso (mínimo 45).`
+            };
+        }
+        // 4. Aprobado - Reasignar el turno de B hacia A
+        await updateTurno(turnoObjetivoB.id, {
+            conductorId: choferA.id,
+            conductorNombre: choferA.full_name,
+            conductorInterno: choferA.internal_number
+        });
+        // TODO: La lógica del optimizador podría evaluar si es posible intercambiar los coches enteros si son de la misma línea, pero requiere validaciones más profundas.
+        return {
+            ok: true,
+            message: `Correlativo aprobado. Descanso: ${diff} mins. El chofer ${internoA} ahora realizará también el turno del coche ${turnoObjetivoB.vehiculo_interno}.`
+        };
+    }
+    catch (error) {
+        if (error instanceof index_1.AppError)
+            throw error;
+        logger_1.default.error('[LISTERO] Error procesarCorrelativoDirecto', { error: String(error) });
+        throw new index_1.AppError(500, 'Error interno procesando correlativo.');
+    }
+}
+// ─── GESTIÓN DE FLOTA Y ASIGNACIÓN (ROSTERING INTEGRADO) ────────────────────
+async function getFlotaMaestra() {
+    try {
+        // Obtenemos todos los coches
+        const coches = await (0, database_1.default)('vehiculos').select('*').orderBy('id', 'asc');
+        // Obtenemos todos los choferes fijos (los que tienen coche_fijo_id)
+        const personalFijo = await (0, database_1.default)('personal')
+            .whereRaw("data_jsonb->>'tipo_vinculo' = 'fijo'");
+        // Armamos el diccionario de coches con sus asignaciones
+        const flota = coches.map(c => {
+            const cocheId = c.id;
+            const d = (c.data_jsonb ?? {});
+            // Buscar choferes asignados a este coche
+            const asignados = personalFijo.filter(p => p.data_jsonb?.coche_fijo_id === cocheId);
+            const choferManana = asignados.find(p => p.data_jsonb?.rotacion_semana_actual === 'mañana');
+            const choferTarde = asignados.find(p => p.data_jsonb?.rotacion_semana_actual === 'tarde');
+            return {
+                id: c.id,
+                interno: c.internal_number ?? d.interno ?? c.id,
+                lineaHabitual: d.linea_habitual || '',
+                marca: d.marca || '',
+                patente: d.patente || '',
+                categoria: d.categoria || 'Normal',
+                choferManana: choferManana ? {
+                    id: choferManana.id,
+                    fullName: choferManana.full_name,
+                    internalNumber: choferManana.internal_number,
+                    tipoRotacion: choferManana.data_jsonb?.tipo_rotacion || 'semanal'
+                } : null,
+                choferTarde: choferTarde ? {
+                    id: choferTarde.id,
+                    fullName: choferTarde.full_name,
+                    internalNumber: choferTarde.internal_number,
+                    tipoRotacion: choferTarde.data_jsonb?.tipo_rotacion || 'semanal'
+                } : null,
+            };
+        });
+        return flota;
+    }
+    catch (error) {
+        logger_1.default.error('[LISTERO] Error getFlotaMaestra', { error: String(error) });
+        throw new index_1.AppError(500, 'Error al obtener la flota maestra');
+    }
+}
+async function asignarTitularCoche(vehiculoId, turno, conductorId, tipoRotacion = 'semanal') {
+    try {
+        return await database_1.default.transaction(async (trx) => {
+            // 1. Si alguien más estaba asignado a este coche en este turno, lo pasamos a flotante
+            const previos = await trx('personal')
+                .whereRaw("data_jsonb->>'coche_fijo_id' = ?", [vehiculoId])
+                .whereRaw("data_jsonb->>'rotacion_semana_actual' = ?", [turno]);
+            for (const prev of previos) {
+                if (prev.id !== conductorId) {
+                    const newData = { ...prev.data_jsonb, tipo_vinculo: 'flotante', coche_fijo_id: null, rotacion_semana_actual: null, tipo_rotacion: null };
+                    await trx('personal').where('id', prev.id).update({ data_jsonb: newData });
+                }
+            }
+            // 2. Asignar el nuevo conductor si no es null
+            if (conductorId) {
+                const chofer = await trx('personal').where('id', conductorId).first();
+                if (chofer) {
+                    const newData = {
+                        ...(chofer.data_jsonb || {}),
+                        tipo_vinculo: 'fijo',
+                        coche_fijo_id: vehiculoId,
+                        rotacion_semana_actual: turno,
+                        tipo_rotacion: tipoRotacion
+                    };
+                    await trx('personal').where('id', conductorId).update({ data_jsonb: newData });
+                }
+            }
+            return { ok: true };
+        });
+    }
+    catch (error) {
+        logger_1.default.error('[LISTERO] Error asignarTitularCoche', { error: String(error) });
+        throw new index_1.AppError(500, 'Error al asignar titular al coche');
     }
 }

@@ -196,30 +196,49 @@ export const getMonthlyTrends = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Faltan parámetros de la línea base' });
     }
 
-    const mockData = {
-      base_line: {
-        route_id,
-        direction_id,
-        trend: [
-          { month: '2026-06', boarding: 45000 },
-          { month: '2026-07', boarding: 47500 }
-        ]
-      },
-      competitor_line: competitor_route_id ? {
-        route_id: competitor_route_id,
-        direction_id: competitor_direction_id,
-        trend: [
-          { month: '2026-06', boarding: 30000 },
-          { month: '2026-07', boarding: 28000 }
-        ]
-      } : null,
-      message: 'Los datos históricos se llenarán automáticamente el día 2 del mes vía Pipeline IMM.'
+    const fetchTrend = async (shortName: string, dir: number) => {
+      const rows = await sqlDb.raw(`
+        SELECT month, passenger_count as boarding
+        FROM gtfs.stm_passenger_trends
+        WHERE route_id = ? AND direction_id = ?
+        ORDER BY month ASC
+      `, [shortName, dir]);
+      
+      return rows.rows.map((r: any) => ({
+        month: r.month,
+        boarding: Number(r.boarding)
+      }));
     };
 
-    return res.json(mockData);
+    const baseTrend = await fetchTrend(route_id as string, parseInt(direction_id as string, 10));
+    
+    let compTrend = null;
+    if (competitor_route_id && competitor_direction_id !== undefined) {
+      const compData = await fetchTrend(competitor_route_id as string, parseInt(competitor_direction_id as string, 10));
+      compTrend = {
+        route_id: competitor_route_id,
+        direction_id: parseInt(competitor_direction_id as string, 10),
+        trend: compData
+      };
+    }
+
+    const responseData = {
+      base_line: {
+        route_id,
+        direction_id: parseInt(direction_id as string, 10),
+        trend: baseTrend
+      },
+      competitor_line: compTrend,
+      message: baseTrend.length === 0 
+        ? 'Aún no hay datos cargados de la IMM para estas líneas.' 
+        : 'Datos auditables procesados directamente del Catálogo Abierto IMM.'
+    };
+
+    return res.json(responseData);
   } catch (error: any) {
     logger.error('[IntelligenceController] Error en getMonthlyTrends', error.message);
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
+
 

@@ -77,12 +77,50 @@ router.delete('/turnos/:id', auth_1.verifyAuth, wrap(async (req, res) => {
     await listeroService.deleteTurno(req.params.id);
     res.json({ ok: true });
 }));
-// ─── CONDUCTORES ──────────────────────────────────────────────────────────────
+// ─── GESTIÓN MAESTRA DE PERSONAL ──────────────────────────────────────────────
+/** GET /api/listero/personal-maestro */
+router.get('/personal-maestro', auth_1.verifyAuth, wrap(async (req, res) => {
+    const personal = await listeroService.getPersonalMaestro();
+    res.json({ ok: true, personal });
+}));
+/** PATCH /api/listero/personal-maestro/:id */
+router.patch('/personal-maestro/:id', auth_1.verifyAuth, wrap(async (req, res) => {
+    await listeroService.updatePersonalMaestro(req.params.id, req.body);
+    res.json({ ok: true, mensaje: 'Personal maestro actualizado' });
+}));
+/** POST /api/listero/rotar-semana */
+router.post('/rotar-semana', auth_1.verifyAuth, wrap(async (req, res) => {
+    const tipo = req.body.tipo || 'semanal';
+    const resultado = await listeroService.rotarSemana(tipo);
+    res.json({ ok: true, actualizados: resultado.actualizados });
+}));
+// ─── FLOTA MAESTRA ────────────────────────────────────────────────────────────
+/** GET /api/listero/flota-maestra */
+router.get('/flota-maestra', auth_1.verifyAuth, wrap(async (req, res) => {
+    const flota = await listeroService.getFlotaMaestra();
+    res.json({ ok: true, flota });
+}));
+/** POST /api/listero/asignar-titular */
+router.post('/asignar-titular', auth_1.verifyAuth, wrap(async (req, res) => {
+    const { vehiculoId, turno, conductorId, tipoRotacion } = req.body;
+    if (!vehiculoId || !turno) {
+        res.status(400).json({ ok: false, error: 'Faltan campos obligatorios' });
+        return;
+    }
+    await listeroService.asignarTitularCoche(vehiculoId, turno, conductorId, tipoRotacion || 'semanal');
+    res.json({ ok: true, mensaje: 'Titular asignado exitosamente' });
+}));
+// ─── CONDUCTORES DEL DÍA ────────────────────────────────────────────────────
 /** GET /api/listero/conductores?fecha=YYYY-MM-DD */
 router.get('/conductores', auth_1.verifyAuth, wrap(async (req, res) => {
     const fecha = req.query.fecha || new Date().toISOString().split('T')[0];
     const conductores = await listeroService.getConductoresDia(fecha);
     res.json({ ok: true, conductores });
+}));
+/** PATCH /api/listero/conductores/:id — actualización manual de estado o datos */
+router.patch('/conductores/:id', auth_1.verifyAuth, wrap(async (req, res) => {
+    await listeroService.updateConductor(req.params.id, req.body);
+    res.json({ ok: true, mensaje: 'Conductor actualizado' });
 }));
 /** POST /api/listero/ausencia — registrar ausencia y disparar cascada */
 router.post('/ausencia', auth_1.verifyAuth, wrap(async (req, res) => {
@@ -125,6 +163,11 @@ router.post('/reserva', auth_1.verifyAuth, wrap(async (req, res) => {
     res.json({ ok: true, mensaje: 'Reserva asignada correctamente.' });
 }));
 // ─── VEHÍCULOS ────────────────────────────────────────────────────────────────
+/** PATCH /api/listero/vehiculos/:id — actualización manual de datos de vehículo */
+router.patch('/vehiculos/:id', auth_1.verifyAuth, wrap(async (req, res) => {
+    await listeroService.updateVehiculo(req.params.id, req.body);
+    res.json({ ok: true, mensaje: 'Vehículo actualizado' });
+}));
 /** GET /api/listero/vehiculos-reserva?fecha=YYYY-MM-DD */
 router.get('/vehiculos-reserva', auth_1.verifyAuth, wrap(async (req, res) => {
     const fecha = req.query.fecha || new Date().toISOString().split('T')[0];
@@ -172,41 +215,91 @@ router.post('/generar-programacion', auth_1.verifyAuth, wrap(async (req, res) =>
         res.status(400).json({ ok: false, error: 'Formato esperado: fecha=YYYY-MM-DD' });
         return;
     }
-    const existentes = await listeroService.getTurnosByFecha(fecha);
-    if (existentes.length > 0) {
-        res.json({ ok: true, created: 0, existing: existentes.length, fecha });
+    // Si se pasa ?force=true o body.force, borramos los existentes para regenerar
+    if (req.body?.force || req.query?.force) {
+        const sqlDb = (await Promise.resolve().then(() => __importStar(require('../config/database')))).default;
+        await sqlDb('turnos_dia').where({ fecha }).delete();
+    }
+    else {
+        const existentes = await listeroService.getTurnosByFecha(fecha);
+        if (existentes.length > 0) {
+            res.json({ ok: true, created: 0, existing: existentes.length, fecha });
+            return;
+        }
+    }
+    const sqlDb = (await Promise.resolve().then(() => __importStar(require('../config/database')))).default;
+    const rows = await sqlDb('vehiculos');
+    if (rows.length === 0) {
+        res.json({ ok: true, created: 0, existing: 0, fecha, nota: 'No hay vehículos configurados.' });
         return;
     }
-    // Leer rotación del día desde cartones_historial.
-    const sqlDb = (await Promise.resolve().then(() => __importStar(require('../config/database')))).default;
-    const rows = await sqlDb('cartones_historial')
-        .select('vehiculo_id', 'service_number', 'line')
-        .where('fecha', fecha);
-    if (rows.length === 0) {
-        res.json({ ok: true, created: 0, existing: 0, fecha, nota: 'No hay rotación capturada para esa fecha.' });
-        return;
+    // Obtener todo el personal para mapear choferes fijos
+    const personalRows = await sqlDb('personal').whereNotNull('data_jsonb');
+    const choferesPorCoche = new Map();
+    for (const p of personalRows) {
+        const data = p.data_jsonb || {};
+        if (data.tipo_vinculo === 'fijo' && data.coche_fijo_id) {
+            if (!choferesPorCoche.has(data.coche_fijo_id)) {
+                choferesPorCoche.set(data.coche_fijo_id, { manana: null, tarde: null });
+            }
+            const cocheMap = choferesPorCoche.get(data.coche_fijo_id);
+            const rotacion = data.rotacion_semana_actual || 'mañana';
+            const choferData = {
+                id: p.id,
+                nombre: p.full_name,
+                interno: p.internal_number
+            };
+            if (rotacion === 'mañana')
+                cocheMap.manana = choferData;
+            else if (rotacion === 'tarde')
+                cocheMap.tarde = choferData;
+        }
     }
     let created = 0;
     for (const r of rows) {
+        const d = r.data_jsonb || {};
+        const line = d.linea_habitual || '300';
+        const internoStr = d.interno || r.id; // r.id sometimes is UUID
+        const choferesFijos = choferesPorCoche.get(r.id) || { manana: null, tarde: null };
+        // Crear turno mañana
         try {
-            // conductor_id es FK a personal(id); si no hay asignación aún,
-            // dejamos null (FK lo permite). El listero asigna después.
             await listeroService.createTurno({
                 fecha,
-                vehiculoId: r.vehiculo_id,
-                vehiculoInterno: r.vehiculo_id,
-                lineaId: r.line ?? '',
-                horaSalida: '00:00',
-                horaLlegadaEstimada: '00:00',
-                conductorId: null,
-                conductorNombre: null,
-                conductorInterno: null,
-                servicioId: r.service_number ?? null,
+                vehiculoId: r.id,
+                vehiculoInterno: internoStr,
+                lineaId: line,
+                turno: 'mañana',
+                horaSalida: '06:00',
+                horaLlegadaEstimada: '14:00',
+                conductorId: choferesFijos.manana ? choferesFijos.manana.id : null,
+                conductorNombre: choferesFijos.manana ? choferesFijos.manana.nombre : null,
+                conductorInterno: choferesFijos.manana ? choferesFijos.manana.interno : null,
+                servicioId: null,
             });
             created += 1;
         }
         catch (e) {
-            logger_1.default.warn('[listero/generar-programacion] turno no creado', { error: String(e) });
+            logger_1.default.warn('[listero/generar-programacion] turno mañana no creado', { error: String(e) });
+        }
+        // Crear turno tarde
+        try {
+            await listeroService.createTurno({
+                fecha,
+                vehiculoId: r.id,
+                vehiculoInterno: internoStr,
+                lineaId: line,
+                turno: 'tarde',
+                horaSalida: '14:00',
+                horaLlegadaEstimada: '22:00',
+                conductorId: choferesFijos.tarde ? choferesFijos.tarde.id : null,
+                conductorNombre: choferesFijos.tarde ? choferesFijos.tarde.nombre : null,
+                conductorInterno: choferesFijos.tarde ? choferesFijos.tarde.interno : null,
+                servicioId: null,
+            });
+            created += 1;
+        }
+        catch (e) {
+            logger_1.default.warn('[listero/generar-programacion] turno tarde no creado', { error: String(e) });
         }
     }
     res.json({ ok: true, created, existing: 0, fecha });
@@ -299,5 +392,19 @@ router.get('/solicitudes/emparejamientos', auth_1.verifyAuth, wrap(async (req, r
     }
     const emparejamientos = await listeroService.analizarEmparejamientos(fecha, user?.agencyId ?? '70');
     res.json({ ok: true, emparejamientos });
+}));
+/** POST /api/listero/correlativos — Motor de reglas 45 minutos */
+router.post('/correlativos', auth_1.verifyAuth, wrap(async (req, res) => {
+    const { internoA, internoB, fecha } = req.body;
+    if (!internoA || !internoB || !fecha) {
+        res.status(400).json({ ok: false, error: 'Faltan campos: internoA, internoB, fecha' });
+        return;
+    }
+    const resultado = await listeroService.procesarCorrelativoDirecto(internoA, internoB, fecha);
+    // Notificar al listero para actualizar UI
+    if (resultado.ok) {
+        (0, socketBus_1.busOperation)('correlativo-aprobado', { internoA, internoB, fecha, message: resultado.message });
+    }
+    res.json(resultado); // Devuelve {ok: boolean, message: string} (puede ser ok=false si hay menos de 45m)
 }));
 exports.default = router;

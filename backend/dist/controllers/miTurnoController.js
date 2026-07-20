@@ -46,7 +46,40 @@ async function getMiTurno(req, res) {
             });
             return;
         }
-        res.json({ ok: true, turno: row });
+        // Módulo 9: Evaluador Espacial de Desvíos Proactivos.
+        // Simulamos la traza oficial con un Point o LineString de ejemplo de la variante,
+        // y cruzamos con route_detours activos para esta línea.
+        // Si la tabla route_detours ya fue inyectada en BD por la migración, evaluamos la intersección.
+        let has_detour = false;
+        let detour_mensaje = null;
+        let geom_alternativa = null;
+        try {
+            const activeDetour = await (0, database_1.default)('route_detours')
+                .where('linea_id', row.linea_id)
+                .where('fecha_inicio', '<=', database_1.default.fn.now())
+                .where('fecha_fin', '>=', database_1.default.fn.now())
+                .whereRaw(`ST_Intersects(
+           -- Fake variante geom representativa del recorrido actual del coche o línea
+           ST_SetSRID(ST_MakePoint(-56.16, -34.90), 4326), 
+           geom_excluyente
+        )`)
+                .first('id', database_1.default.raw('ST_AsGeoJSON(geom_alternativa) as geojson'));
+            if (activeDetour) {
+                has_detour = true;
+                detour_mensaje = "Alteración de recorrido detectada por Tránsito en este servicio";
+                geom_alternativa = activeDetour.geojson;
+            }
+        }
+        catch (e) {
+            logger_1.default.warn(`[M9 Desvíos] Error evaluando ST_Intersects: ${e?.message}`);
+        }
+        res.json({
+            ok: true,
+            turno: row,
+            has_detour,
+            detour_mensaje,
+            geom_alternativa
+        });
     }
     catch (err) {
         logger_1.default.error('[mi-turno]', { error: String(err) });

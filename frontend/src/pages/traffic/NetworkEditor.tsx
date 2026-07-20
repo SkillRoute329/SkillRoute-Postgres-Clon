@@ -3,6 +3,8 @@ import {
   MapContainer,
   TileLayer,
   Polyline,
+  CircleMarker,
+  Popup,
   useMap,
 } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -64,6 +66,9 @@ const CompetitiveAnalysis: React.FC = () => {
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
   const [competitorCoordinates, setCompetitorCoordinates] = useState<[number, number][]>([]);
   
+  const [routeStops, setRouteStops] = useState<any[]>([]);
+  const [competitorStops, setCompetitorStops] = useState<any[]>([]);
+  
   const [competitors, setCompetitors] = useState<CompetitorInfo[]>([]);
   const [selectedCompetitor, setSelectedCompetitor] = useState<CompetitorInfo | null>(null);
   
@@ -100,6 +105,7 @@ const CompetitiveAnalysis: React.FC = () => {
   useEffect(() => {
     if (!selectedLinea) {
       setRouteCoordinates([]);
+      setRouteStops([]);
       setCompetitors([]);
       setSelectedCompetitor(null);
       setTrends(null);
@@ -117,9 +123,11 @@ const CompetitiveAnalysis: React.FC = () => {
         if (lineData && lineData.recorrido) {
            const coords = lineData.recorrido.map((c: any) => [c.lat, c.lng]);
            setRouteCoordinates(coords);
+           setRouteStops(lineData.paradas || []);
            setBaseDistance(calculateTotalDistance(coords));
         } else {
           setRouteCoordinates([]);
+          setRouteStops([]);
           setBaseDistance(0);
         }
 
@@ -169,6 +177,7 @@ const CompetitiveAnalysis: React.FC = () => {
   useEffect(() => {
     if (!selectedLinea || !selectedCompetitor) {
       setCompetitorCoordinates([]);
+      setCompetitorStops([]);
       return;
     }
 
@@ -193,11 +202,13 @@ const CompetitiveAnalysis: React.FC = () => {
         if (compLineData && compLineData.recorrido) {
           const compCoords = compLineData.recorrido.map((c: any) => [c.lat, c.lng]);
           setCompetitorCoordinates(compCoords);
+          setCompetitorStops(compLineData.paradas || []);
           
           setCompDistance(calculateTotalDistance(compCoords));
           setSharedDistance(calculateSharedDistance(routeCoordinates, compCoords, 0.05));
         } else {
           setCompetitorCoordinates([]);
+          setCompetitorStops([]);
           setCompDistance(0);
           setSharedDistance(0);
         }
@@ -235,7 +246,7 @@ const CompetitiveAnalysis: React.FC = () => {
                   <option value="">-- Elija una línea y destino --</option>
                   {ucotLineas.map((l, index) => {
                     const rawCode = l.codigo.replace(/[ab]$/i, '');
-                    const dest = l.nombre.split('·')[1]?.trim() || l.nombre;
+                    const dest = l.destino || l.nombre.split('·')[1]?.trim() || l.nombre;
                     return (
                       <option key={`${l.id}_${index}`} value={l.codigo}>
                         Línea {rawCode} hacia {dest} ({l.sentido})
@@ -284,7 +295,7 @@ const CompetitiveAnalysis: React.FC = () => {
                 {competitors.filter((c: any) => c.shared_stops_count >= minOverlap).map((comp, idx) => {
                   const compId = comp.competitor_route_id + (comp.competitor_direction_id === 1 ? 'b' : 'a');
                   const compInfo = allLineas.find(l => l.codigo.toLowerCase() === compId.toLowerCase());
-                  const dest = compInfo ? (compInfo.nombre.split('·')[1]?.trim() || compInfo.nombre) : '';
+                  const dest = compInfo ? (compInfo.destino || compInfo.nombre.split('·')[1]?.trim() || compInfo.nombre) : '';
                   return (
                   <button
                     key={`${comp.competitor_route_id}-${comp.competitor_direction_id}`}
@@ -325,11 +336,45 @@ const CompetitiveAnalysis: React.FC = () => {
               {routeCoordinates.length > 0 && (
                 <>
                   <Polyline positions={routeCoordinates} color="#6366f1" weight={5} opacity={0.9} />
+                  {routeStops.map((stop, idx) => (
+                    <CircleMarker 
+                      key={`base-stop-${idx}`} 
+                      center={[stop.lat, stop.lng]} 
+                      radius={4} 
+                      color="#4f46e5" 
+                      fillColor="#6366f1" 
+                      fillOpacity={1}
+                      weight={2}
+                    >
+                      <Popup className="text-slate-900 font-sans">
+                        <div className="font-bold text-sm mb-1">{stop.nombre}</div>
+                        <div className="text-xs text-slate-500">Parada ID: {stop.id}</div>
+                      </Popup>
+                    </CircleMarker>
+                  ))}
                   <MapBoundsFitter bounds={routeCoordinates} />
                 </>
               )}
               {competitorCoordinates.length > 0 && (
-                <Polyline positions={competitorCoordinates} color="#f43f5e" weight={3} opacity={0.7} dashArray="10, 10" />
+                <>
+                  <Polyline positions={competitorCoordinates} color="#f43f5e" weight={3} opacity={0.7} dashArray="10, 10" />
+                  {competitorStops.map((stop, idx) => (
+                    <CircleMarker 
+                      key={`comp-stop-${idx}`} 
+                      center={[stop.lat, stop.lng]} 
+                      radius={3} 
+                      color="#be123c" 
+                      fillColor="#f43f5e" 
+                      fillOpacity={0.8}
+                      weight={1}
+                    >
+                      <Popup className="text-slate-900 font-sans">
+                        <div className="font-bold text-sm mb-1">{stop.nombre}</div>
+                        <div className="text-xs text-slate-500">Parada ID: {stop.id}</div>
+                      </Popup>
+                    </CircleMarker>
+                  ))}
+                </>
               )}
             </MapContainer>
             <div className="absolute top-4 right-4 z-[400] bg-slate-900/80 backdrop-blur border border-slate-700 rounded-lg p-3 shadow-lg pointer-events-none">

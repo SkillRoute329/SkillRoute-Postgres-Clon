@@ -14,6 +14,7 @@ exports.broadcastInspectorAlert = broadcastInspectorAlert;
 exports.broadcastFleetCheckCompleted = broadcastFleetCheckCompleted;
 exports.getConnectedUsers = getConnectedUsers;
 exports.getUserBySocket = getUserBySocket;
+exports.broadcastRouteDeviation = broadcastRouteDeviation;
 const logger_1 = __importDefault(require("../config/logger"));
 const index_1 = require("../types/index");
 // Mapeo de usuarios conectados
@@ -28,17 +29,7 @@ function initializeSocket(io) {
     io.use((socket, next) => {
         const user = socket.handshake.auth.user;
         if (!user) {
-            // En desarrollo, permitir conexión anónima
-            if (process.env.NODE_ENV === 'development') {
-                socket.handshake.auth.user = {
-                    id: 'dev-user',
-                    internalNumber: '0000',
-                    fullName: 'Developer',
-                    role: 'SuperAdmin',
-                };
-                return next();
-            }
-            return next(new index_1.AppError(401, 'Authentication required'));
+            return next(new index_1.AppError(401, 'Authentication required: Acceso denegado por políticas de AppSec'));
         }
         next();
     });
@@ -245,4 +236,11 @@ function getConnectedUsers() {
  */
 function getUserBySocket(socketId) {
     return socketUsers.get(socketId);
+}
+/**
+ * Emitir actualización de trazado dinámico a las tablets de navegación a bordo
+ */
+function broadcastRouteDeviation(io, lineaId, payload) {
+    io.to(`linea_${lineaId}`).emit('actualizarTrazadoNavegacion', payload);
+    logger_1.default.info(`[SOCKET] Navegación actualizada en caliente para la línea ${lineaId}`);
 }

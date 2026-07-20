@@ -20,6 +20,9 @@ exports.fetchBusesLive = fetchBusesLive;
 exports.agruparPorEmpresa = agruparPorEmpresa;
 const axios_1 = __importDefault(require("axios"));
 const logger_1 = require("../config/logger");
+const immEtaService_1 = require("./immEtaService");
+const API_BASE = 'https://api.montevideo.gub.uy/api/transportepublico/';
+// Mantenemos STM_ONLINE_URL como fallback extremo
 const STM_ONLINE_URL = 'https://www.montevideo.gub.uy/buses/rest/stm-online';
 exports.EMPRESA_CODES = {
     COETC: '10',
@@ -37,28 +40,73 @@ exports.EMPRESA_NAMES = {
 const httpClient = axios_1.default.create({
     timeout: 15000,
     headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-        'Content-Type': 'application/json',
-        Referer: 'https://www.montevideo.gub.uy/buses/',
-        Origin: 'https://www.montevideo.gub.uy',
+        'User-Agent': 'TransformaFacil/2.0 (Official IMM B2B API Client)',
+        'Content-Type': 'application/json'
     },
 });
 /**
- * Obtiene snapshot GPS en vivo de buses operando.
+ * Obtiene snapshot GPS en vivo de buses operando usando la API Oficial (OAuth2).
  * @param empresaCode Código de empresa o "-1" para todas
  */
 async function fetchBusesLive(empresaCode = exports.EMPRESA_CODES.TODAS) {
     const started = Date.now();
     try {
-        const response = await httpClient.post(STM_ONLINE_URL, { empresa: empresaCode });
+        const token = await (0, immEtaService_1.getImmToken)();
+        const response = await httpClient.get(`${API_BASE}buses`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const rawData = response.data || [];
+        const features = [];
+        for (const bus of rawData) {
+            let codigoEmpresa = 0;
+            if (bus.company === 'CUTCSA')
+                codigoEmpresa = 50;
+            else if (bus.company === 'UCOT')
+                codigoEmpresa = 70;
+            else if (bus.company === 'COETC')
+                codigoEmpresa = 10;
+            else if (bus.company === 'COME')
+                codigoEmpresa = 20;
+            // Filtrar por empresa si no es "-1"
+            if (empresaCode !== '-1' && codigoEmpresa.toString() !== empresaCode) {
+                continue;
+            }
+            features.push({
+                type: 'Feature',
+                geometry: bus.location, // Asume que es {"type":"Point","coordinates":[-56,-34]}
+                properties: {
+                    id: bus.busId?.toString() ?? '',
+                    codigoEmpresa,
+                    codigoBus: bus.busId,
+                    linea: bus.line,
+                    sublinea: bus.subline,
+                    variante: bus.lineVariantId,
+                    destinoDesc: bus.destination,
+                    velocidad: bus.speed,
+                }
+            });
+        }
         const ms = Date.now() - started;
-        const count = response.data?.features?.length ?? 0;
-        logger_1.logger.info(`[immRealtime] empresa=${empresaCode} buses=${count} ${ms}ms`);
-        return response.data;
+        logger_1.logger.info(`[immRealtime] API Oficial: empresa=${empresaCode} buses=${features.length} ${ms}ms`);
+        return { type: 'FeatureCollection', features };
     }
     catch (error) {
-        logger_1.logger.error(`[immRealtime] fetch falló empresa=${empresaCode}: ${error.message}`);
-        throw error;
+        logger_1.logger.warn(`[immRealtime] API Oficial falló, intentando Fallback (Scraper): ${error.message}`);
+        // Fallback al Scraper
+        try {
+            const fbResponse = await httpClient.post(STM_ONLINE_URL, { empresa: empresaCode }, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                    Referer: 'https://www.montevideo.gub.uy/buses/',
+                    Origin: 'https://www.montevideo.gub.uy',
+                }
+            });
+            return fbResponse.data;
+        }
+        catch (fbError) {
+            logger_1.logger.error(`[immRealtime] Ambos métodos fallaron: ${fbError.message}`);
+            throw fbError;
+        }
     }
 }
 function agruparPorEmpresa(coll) {

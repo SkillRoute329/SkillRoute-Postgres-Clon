@@ -18,7 +18,7 @@ exports.executeTool = executeTool;
 const fleetService_1 = require("./fleetService");
 const aiOrdersService_1 = require("./aiOrdersService");
 const stmPublicDataScraper_1 = require("./stmPublicDataScraper");
-const gtfsService_1 = require("./gtfsService");
+const gtfs_core_1 = require("../modules/gtfs-core");
 const axios_1 = __importDefault(require("axios"));
 const logger_1 = __importDefault(require("../config/logger"));
 // ─── Especificaciones (las que ve el modelo) ──────────────────────────────────
@@ -360,7 +360,7 @@ const handlers = {
     },
     async get_gtfs_infrastructure_stats() {
         try {
-            const stats = await gtfsService_1.gtfsService.getStats();
+            const stats = await gtfs_core_1.gtfsService.getStats();
             return {
                 status: 'online',
                 database: 'PostgreSQL (Local)',
@@ -379,7 +379,7 @@ const handlers = {
         if (!stopId)
             return { error: 'stop_id es requerido' };
         try {
-            const departures = await gtfsService_1.gtfsService.getNextDepartures(stopId, 5);
+            const departures = await gtfs_core_1.gtfsService.getNextDepartures(stopId, 5);
             return {
                 stop_id: stopId,
                 next_scheduled_departures: departures,
@@ -396,7 +396,7 @@ const handlers = {
         if (!lineId)
             return { error: 'line_id es requerido' };
         try {
-            const analysis = await gtfsService_1.gtfsService.getCompetitiveOverlaps(lineId);
+            const analysis = await gtfs_core_1.gtfsService.getCompetitiveOverlaps(lineId);
             if (!analysis || analysis.length === 0) {
                 return {
                     status: 'no_data',

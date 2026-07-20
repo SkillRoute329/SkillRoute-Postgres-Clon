@@ -36,7 +36,7 @@ function horaMvd() {
     });
     return Number(h.replace(/\D/g, '')) || 0;
 }
-function tick() {
+async function tick() {
     const [hIni, hFin] = (process.env.UCOT_DOWNLOADER_HORAS || '5-23')
         .split('-')
         .map((x) => Number(x));
@@ -44,7 +44,7 @@ function tick() {
     if (h < (hIni ?? 5) || h >= (hFin ?? 23)) {
         return; // fuera de horario de servicio
     }
-    const r = ucotIntranetService_1.ucotIntranetService.triggerDownloader();
+    const r = await ucotIntranetService_1.ucotIntranetService.syncWithImmApi();
     if (r.success)
         logger_1.default.info(`[ucotCartones] disparo programado: ${r.message}`);
     else
