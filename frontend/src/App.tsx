@@ -147,7 +147,6 @@ const AnalisisEtapas = lazy(() => import('./pages/traffic/AnalisisEtapas'));
 // Hubs unificados (wrapper de tabs — no reemplazan los componentes originales)
 const CumplimientoHub      = lazy(() => import('./pages/traffic/CumplimientoHub'));
 const IncidenciasHub       = lazy(() => import('./pages/traffic/IncidenciasHub'));
-const LiveOperationsConsole = lazy(() => import('./pages/traffic/LiveOperationsConsole'));
 const PlanificacionHub     = lazy(() => import('./pages/traffic/PlanificacionHub'));
 const FinancieroHub        = lazy(() => import('./pages/traffic/FinancieroHub'));
 const GestionFlotaHub      = lazy(() => import('./pages/fleet/GestionFlotaHub'));
@@ -313,7 +312,7 @@ function App() {
                     <Route path="traffic/navigation" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO','DRIVER','CONDUCTOR']}><NavigationModule /></PrivateRoute>} />
                     <Route path="traffic/map-hub" element={<PrivateRoute roles={['ADMIN','TRAFFIC','INSPECTOR']}><MapHub /></PrivateRoute>} />
                     <Route path="traffic/fleet-monitor" element={<Navigate to="/dashboard/traffic/map-hub?layer=buses" replace />} />
-                    <Route path="traffic/monitoreo" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><LiveOperationsConsole /></PrivateRoute>} />
+                    <Route path="traffic/monitoreo" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
                     <Route path="traffic/cutcsa-fleet" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><CUTCSAFleetDashboard /></PrivateRoute>} />
                     <Route path="traffic/listero" element={<PrivateRoute roles={['ADMIN','TRAFFIC','LISTERO']}><ListeroModule /></PrivateRoute>} />
                     <Route path="traffic/listero-cascada" element={<Navigate to="/dashboard/traffic/listero" replace />} />
