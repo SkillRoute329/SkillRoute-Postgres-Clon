@@ -240,7 +240,7 @@ export function useLiveOperations() {
       codigoBus: stringCoche,
       empresa: bus.empresa,
       empresaId: bus.codigoEmpresa,
-      linea: bus.linea,
+      linea: String(bus.linea).trim(),
       sublinea: bus.sublinea,
       destino: bus.destinoDesc,
       lat: bus.lat,
