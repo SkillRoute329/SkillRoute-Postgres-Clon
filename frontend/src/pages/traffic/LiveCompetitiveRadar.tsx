@@ -281,13 +281,34 @@ export default function LiveCompetitiveRadar() {
     } 
     
     // Nivel Macro: Filtrado a nivel corredor (Toda la línea)
-    // Mostramos todos los coches rivales cuya línea sea competidora de selectedLinea
+    // Mostramos coches rivales aplicando TODOS los filtros sobre el conjunto de nuestros buses
     const macroMatches: CompetitorInfo[] = [];
     for (const r of serviciosRivales) {
       const baseRivalLine = r.linea.replace(/[ab]$/i, '');
       const officialComp = officialCompetitors.find(c => String(c.competitor_route_id) === baseRivalLine);
+      const sharedStops = officialComp ? (officialComp.shared_stops_count || 0) : 0;
       
-      if (!officialComp) continue; // En vista Macro solo mostramos competidores comprobados
+      // Filtro de Solapamiento
+      if (sharedStops < minOverlap) continue;
+      
+      // Filtro de Estrategia
+      if (strategyMode === 'corredor' && !officialComp) continue;
+      
+      let isNearAny = false;
+      let minDistance = Infinity;
+
+      // Si no es un competidor oficial (o sea, es invasión de barrio), solo lo mostramos
+      // si está físicamente dentro del radar de al menos uno de nuestros coches activos
+      if (!officialComp) {
+        for (const miBus of busesDeLineaSeleccionada) {
+          const d = haversineMetros(miBus.lat, miBus.lng, r.lat, r.lng);
+          if (d <= searchRadius) {
+            isNearAny = true;
+            if (d < minDistance) minDistance = d;
+          }
+        }
+        if (!isNearAny) continue;
+      }
       
       macroMatches.push({
         id: r.id,
@@ -295,10 +316,10 @@ export default function LiveCompetitiveRadar() {
         empresa: r.empresa,
         linea: r.linea,
         destino: r.destino,
-        distanciaM: 0,
-        overlapPct: officialComp.shared_stops_count || 0,
-        comparteSentido: true,
-        threatScore: 0,
+        distanciaM: minDistance !== Infinity ? Math.round(minDistance) : 0,
+        overlapPct: sharedStops,
+        comparteSentido: !!officialComp,
+        threatScore: officialComp ? 50 + sharedStops * 2 : 30, // Puntuación base macro
         lat: r.lat,
         lng: r.lng,
         velocidad: r.velocidad,
@@ -306,7 +327,7 @@ export default function LiveCompetitiveRadar() {
       });
     }
     return macroMatches;
-  }, [selectedLinea, selectedBusId, serviciosPropios, serviciosRivales, officialCompetitors, searchRadius, minOverlap, strategyMode]);
+  }, [selectedLinea, selectedBusId, serviciosPropios, serviciosRivales, searchRadius, minOverlap, strategyMode, officialCompetitors, busesDeLineaSeleccionada]);
 
   const maxScore = rivalesVisibles.length > 0 ? rivalesVisibles[0].threatScore : 0;
   const nivelAmenaza = maxScore >= 80 ? 'CRÍTICA' : maxScore >= 45 ? 'MODERADA' : 'BAJA';
@@ -565,46 +586,44 @@ function MapCenterController({ center, zoom, isActive }: { center: [number, numb
           </div>
         </div>
 
-        {/* Derecha: Filtros Tácticos (Solo visibles si hay línea seleccionada) */}
-        {selectedLinea && (
-          <div className="flex items-center gap-6 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/50 shadow-inner">
-            
-            <div className="flex flex-col border-r border-slate-700/50 pr-6">
-               <span className="text-[9px] uppercase text-slate-500 font-bold mb-1">Estrategia</span>
-               <div className="flex bg-slate-800 rounded-md p-0.5 border border-slate-700/50">
-                 <button
-                   onClick={() => setStrategyMode('corredor')}
-                   className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${strategyMode === 'corredor' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-                 >
-                   Corredor
-                 </button>
-                 <button
-                   onClick={() => setStrategyMode('barrio')}
-                   className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${strategyMode === 'barrio' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-                 >
-                   Barrio
-                 </button>
-               </div>
-            </div>
-            
-            <div className="flex flex-col w-36 border-r border-slate-700/50 pr-6">
-              <div className="flex justify-between text-[9px] text-slate-400 font-bold mb-1.5">
-                <span>RADAR ACTIVO</span>
-                <span className="text-indigo-400 bg-indigo-500/10 px-1 rounded">{searchRadius}m</span>
-              </div>
-              <input type="range" min="100" max="3000" step="100" value={searchRadius} onChange={(e) => setSearchRadius(Number(e.target.value))} className="w-full accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer" />
-            </div>
-            
-            <div className="flex flex-col w-36">
-              <div className="flex justify-between text-[9px] text-slate-400 font-bold mb-1.5">
-                <span>TOLERANCIA (PARADAS)</span>
-                <span className="text-indigo-400 bg-indigo-500/10 px-1 rounded">≥ {minOverlap}</span>
-              </div>
-              <input type="range" min="0" max="40" step="1" value={minOverlap} onChange={(e) => setMinOverlap(Number(e.target.value))} className="w-full accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer" />
-            </div>
-            
+        {/* Derecha: Filtros Tácticos (Siempre visibles) */}
+        <div className="flex items-center gap-6 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/50 shadow-inner">
+          
+          <div className="flex flex-col border-r border-slate-700/50 pr-6">
+             <span className="text-[9px] uppercase text-slate-500 font-bold mb-1">Estrategia</span>
+             <div className="flex bg-slate-800 rounded-md p-0.5 border border-slate-700/50">
+               <button
+                 onClick={() => setStrategyMode('corredor')}
+                 className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${strategyMode === 'corredor' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+               >
+                 Corredor
+               </button>
+               <button
+                 onClick={() => setStrategyMode('barrio')}
+                 className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${strategyMode === 'barrio' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+               >
+                 Barrio
+               </button>
+             </div>
           </div>
-        )}
+          
+          <div className="flex flex-col w-36 border-r border-slate-700/50 pr-6">
+            <div className="flex justify-between text-[9px] text-slate-400 font-bold mb-1.5">
+              <span>RADAR ACTIVO</span>
+              <span className="text-indigo-400 bg-indigo-500/10 px-1 rounded">{searchRadius}m</span>
+            </div>
+            <input type="range" min="100" max="3000" step="100" value={searchRadius} onChange={(e) => setSearchRadius(Number(e.target.value))} className="w-full accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer" />
+          </div>
+          
+          <div className="flex flex-col w-36">
+            <div className="flex justify-between text-[9px] text-slate-400 font-bold mb-1.5">
+              <span>TOLERANCIA (PARADAS)</span>
+              <span className="text-indigo-400 bg-indigo-500/10 px-1 rounded">≥ {minOverlap}</span>
+            </div>
+            <input type="range" min="0" max="40" step="1" value={minOverlap} onChange={(e) => setMinOverlap(Number(e.target.value))} className="w-full accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer" />
+          </div>
+          
+        </div>
       </div>
 
       {/* ── ÁREA PRINCIPAL ── */}
