@@ -434,9 +434,11 @@ export default function MapHub() {
     
     if (selectedBusId === bus.id) {
        setSelectedBusId(null);
+       setLineFilter('todas');
     } else {
        setSelectedBusId(bus.id);
        setManualCocheId(bus.codigoBus);
+       setLineFilter(bus.linea);
     }
 
     setTimeout(() => {
