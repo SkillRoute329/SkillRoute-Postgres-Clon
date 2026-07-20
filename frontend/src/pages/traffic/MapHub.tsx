@@ -291,6 +291,15 @@ export default function MapHub() {
         if (!matchCoche && !matchConductor) return false;
       }
       return true;
+    }).sort((a, b) => {
+      // 1. Group by Linea
+      const lineaCmp = String(a.linea).localeCompare(String(b.linea), undefined, { numeric: true });
+      if (lineaCmp !== 0) return lineaCmp;
+      // 2. Group by Empresa
+      const empCmp = a.empresaId - b.empresaId;
+      if (empCmp !== 0) return empCmp;
+      // 3. Sort by Bus Number
+      return Number(a.codigoBus) - Number(b.codigoBus);
     });
   }, [allBusesCombined, operatorVisibility, lineFilter, searchQuery]);
 
@@ -355,7 +364,7 @@ export default function MapHub() {
         >
           <TileLayer
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
           />
 
           {/* Recenter Component */}
@@ -619,9 +628,9 @@ export default function MapHub() {
               onChange={(e) => setLineFilter(e.target.value)}
               className="bg-transparent text-xs text-white outline-none border-none pr-1"
             >
-              <option value="todas">Todas las líneas</option>
+              <option value="todas" className="bg-slate-900 text-white">Todas las líneas</option>
               {ownLines.map((l) => (
-                <option key={l} value={l}>L{l}</option>
+                <option key={l} value={l} className="bg-slate-900 text-white">L{l}</option>
               ))}
             </select>
           </div>

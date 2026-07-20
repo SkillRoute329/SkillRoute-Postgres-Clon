@@ -219,7 +219,7 @@ export function useLiveOperations() {
     );
 
     const servicio: ServicioActivo = {
-      id: stringCoche,
+      id: `${bus.codigoEmpresa}-${stringCoche}`, // Globally unique to prevent map marker collisions
       codigoBus: stringCoche,
       empresa: bus.empresa,
       empresaId: bus.codigoEmpresa,
