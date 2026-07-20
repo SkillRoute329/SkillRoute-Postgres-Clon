@@ -12,7 +12,7 @@ import 'leaflet/dist/leaflet.css';
 import { Activity, Crosshair, Sliders, DollarSign, ChevronLeft } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { useLiveOperations, type ServicioActivo } from '../../hooks/useLiveOperations';
-import { getNavigationLineaData } from '../../services/firebaseDataService';
+import { getNavigationLineaData } from '../../features/navigation/services/navigationDataService';
 import api from '../../services/api';
 
 // -- Tipos --
@@ -539,85 +539,115 @@ export default function LiveCompetitiveRadar() {
         </div>
       </div>
 
-      {/* ── MAPA PRINCIPAL ── */}
-      <div className="flex-1 relative bg-[#0e131f]">
-        <MapContainer center={[-34.8833, -56.1667]} zoom={13} style={{ height: '100%', width: '100%', background: '#0e131f' }} zoomControl={false}>
-          <TileLayer
-            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
-          />
-          <MapCenterController center={mapCenter} zoom={mapZoom} />
+      {/* ── MAPA PRINCIPAL (Pantalla Partida si hay línea seleccionada) ── */}
+      <div className="flex-1 relative bg-[#0e131f] flex">
+        {(() => {
+          if (!selectedLinea) {
+            return (
+              /* MAPA ÚNICO (Modo Flota Completa) */
+              <div className="flex-1 relative">
+                <MapContainer center={[-34.8833, -56.1667]} zoom={13} style={{ height: '100%', width: '100%', background: '#0e131f' }} zoomControl={false}>
+                  <TileLayer attribution='&copy; CARTO' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
+                  <MapCenterController center={mapCenter} zoom={mapZoom} />
+                  {serviciosPropios.map((b) => {
+                    let markerColor = EMPRESA_COLOR[String(b.empresaId)] ?? '#94a3b8';
+                    return (
+                      <Marker key={b.id} position={[b.lat, b.lng]} icon={makeBusDivIcon(markerColor, b.linea, b.codigoBus, b.velocidad, b.destino)} zIndexOffset={500}>
+                        <Popup><div className="text-xs font-sans p-1">Línea {b.linea} - #{b.codigoBus}</div></Popup>
+                      </Marker>
+                    );
+                  })}
+                </MapContainer>
+              </div>
+            );
+          }
 
-          {/* Polilíneas de Rutas (Macro y Micro) */}
-          {selectedLinea && (
+          // Lógica de separación Ida/Vuelta real por destino
+          const destinosSet = new Set(busesDeLineaSeleccionada.map(b => (b.destino || '').trim().toUpperCase()).filter(d => d !== ''));
+          const destinosArr = Array.from(destinosSet);
+          const destinoIda = destinosArr[0] || 'IDA';
+          
+          const isIda = (dest: string) => (dest || '').trim().toUpperCase() === destinoIda;
+
+          return (
             <>
-              {/* Ruta Propia Base */}
-              {baseRouteCoords.length > 0 && (
-                <Polyline
-                  positions={baseRouteCoords}
-                  pathOptions={{
-                    color: EMPRESA_COLOR[String(empresaPropia)] ?? '#3b82f6',
-                    weight: 5,
-                    opacity: 0.8,
-                  }}
-                />
-              )}
+              {/* MAPA 1: SENTIDO IDA */}
+              <div className="flex-1 border-r border-slate-700 relative">
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/90 text-white px-4 py-1.5 rounded-full font-bold text-sm border border-slate-700 shadow-xl flex items-center gap-2 backdrop-blur-sm">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                  HACIA: {destinoIda}
+                </div>
+                <MapContainer center={[-34.8833, -56.1667]} zoom={13} style={{ height: '100%', width: '100%', background: '#0e131f' }} zoomControl={false}>
+                  <TileLayer attribution='&copy; CARTO' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
+                  <MapCenterController center={mapCenter} zoom={mapZoom} />
+                  
+                  {baseRouteCoords.length > 0 && <Polyline positions={baseRouteCoords} pathOptions={{ color: EMPRESA_COLOR[String(empresaPropia)] ?? '#3b82f6', weight: 5, opacity: 0.8 }} />}
+                  {selectedCompetitor && compRouteCoords.length > 0 && <Polyline positions={compRouteCoords} pathOptions={{ color: EMPRESA_COLOR[String(selectedCompetitor.codigoEmpresa)] ?? '#f97316', weight: 4, opacity: 0.9, dashArray: '10, 10' }} />}
+                  
+                  {/* Coches Propios Ida */}
+                  {(selectedBusId ? [serviciosPropios.find(b => b.id === selectedBusId)!] : busesDeLineaSeleccionada).map((b) => {
+                    if (!b || (!isIda(b.destino) && !selectedBusId)) return null;
+                    let markerColor = EMPRESA_COLOR[String(b.empresaId)] ?? '#94a3b8';
+                    return (
+                      <Marker key={b.id} position={[b.lat, b.lng]} icon={makeBusDivIcon(markerColor, b.linea, b.codigoBus, b.velocidad, b.destino)} zIndexOffset={500}>
+                        <Popup><div className="text-xs font-sans p-1">Línea {b.linea} - #{b.codigoBus}</div></Popup>
+                      </Marker>
+                    );
+                  })}
 
-              {/* Ruta Ajena Seleccionada (cuando se hace clic en la mira) */}
-              {selectedCompetitor && compRouteCoords.length > 0 && (
-                <Polyline
-                  positions={compRouteCoords}
-                  pathOptions={{
-                    color: EMPRESA_COLOR[String(selectedCompetitor.codigoEmpresa)] ?? '#f97316',
-                    weight: 4,
-                    opacity: 0.9,
-                    dashArray: '10, 10'
-                  }}
-                />
-              )}
+                  {/* Rivales Ida */}
+                  {rivalesVisibles.map((r) => {
+                    if (!isIda(r.destino)) return null;
+                    let markerColor = EMPRESA_COLOR[String(r.codigoEmpresa)] ?? '#94a3b8';
+                    return (
+                      <Marker key={r.id} position={[r.lat, r.lng]} icon={makeBusDivIcon(markerColor, r.linea, r.codigoBus, r.velocidad, r.destino)} zIndexOffset={1000}>
+                        <Popup><div className="text-xs font-sans p-1">Línea {r.linea} (Rival)</div></Popup>
+                      </Marker>
+                    );
+                  })}
+                </MapContainer>
+              </div>
+
+              {/* MAPA 2: SENTIDO VUELTA */}
+              <div className="flex-1 relative">
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/90 text-white px-4 py-1.5 rounded-full font-bold text-sm border border-slate-700 shadow-xl flex items-center gap-2 backdrop-blur-sm">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                  HACIA: {destinosArr.length > 1 ? destinosArr.filter(d => d !== destinoIda).join(' / ') : 'VUELTA'}
+                </div>
+                <MapContainer center={[-34.8833, -56.1667]} zoom={13} style={{ height: '100%', width: '100%', background: '#0e131f' }} zoomControl={false}>
+                  <TileLayer attribution='&copy; CARTO' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
+                  <MapCenterController center={mapCenter} zoom={mapZoom} />
+                  
+                  {baseRouteCoords.length > 0 && <Polyline positions={baseRouteCoords} pathOptions={{ color: EMPRESA_COLOR[String(empresaPropia)] ?? '#3b82f6', weight: 5, opacity: 0.8 }} />}
+                  {selectedCompetitor && compRouteCoords.length > 0 && <Polyline positions={compRouteCoords} pathOptions={{ color: EMPRESA_COLOR[String(selectedCompetitor.codigoEmpresa)] ?? '#f97316', weight: 4, opacity: 0.9, dashArray: '10, 10' }} />}
+                  
+                  {/* Coches Propios Vuelta */}
+                  {(selectedBusId ? [serviciosPropios.find(b => b.id === selectedBusId)!] : busesDeLineaSeleccionada).map((b) => {
+                    if (!b || (isIda(b.destino) && !selectedBusId)) return null;
+                    let markerColor = EMPRESA_COLOR[String(b.empresaId)] ?? '#94a3b8';
+                    return (
+                      <Marker key={b.id} position={[b.lat, b.lng]} icon={makeBusDivIcon(markerColor, b.linea, b.codigoBus, b.velocidad, b.destino)} zIndexOffset={500}>
+                        <Popup><div className="text-xs font-sans p-1">Línea {b.linea} - #{b.codigoBus}</div></Popup>
+                      </Marker>
+                    );
+                  })}
+
+                  {/* Rivales Vuelta */}
+                  {rivalesVisibles.map((r) => {
+                    if (isIda(r.destino)) return null;
+                    let markerColor = EMPRESA_COLOR[String(r.codigoEmpresa)] ?? '#94a3b8';
+                    return (
+                      <Marker key={r.id} position={[r.lat, r.lng]} icon={makeBusDivIcon(markerColor, r.linea, r.codigoBus, r.velocidad, r.destino)} zIndexOffset={1000}>
+                        <Popup><div className="text-xs font-sans p-1">Línea {r.linea} (Rival)</div></Popup>
+                      </Marker>
+                    );
+                  })}
+                </MapContainer>
+              </div>
             </>
-          )}
-
-          {/* Marcadores Propios */}
-          {(selectedBusId 
-              ? [serviciosPropios.find(b => b.id === selectedBusId)!] 
-              : selectedLinea 
-                 ? busesDeLineaSeleccionada 
-                 : serviciosPropios
-          ).map((b) => {
-            if (!b) return null;
-            let markerColor = EMPRESA_COLOR[String(b.empresaId)] ?? '#94a3b8';
-            return (
-              <Marker
-                key={b.id}
-                position={[b.lat, b.lng]}
-                icon={makeBusDivIcon(markerColor, b.linea, b.codigoBus, b.velocidad, b.destino)}
-                zIndexOffset={500}
-              >
-                <Popup>
-                  <div className="text-xs font-sans p-1">Línea {b.linea} - #{b.codigoBus}</div>
-                </Popup>
-              </Marker>
-            );
-          })}
-
-          {/* Marcadores Rivales Visibles */}
-          {rivalesVisibles.map((r) => {
-            let markerColor = EMPRESA_COLOR[String(r.codigoEmpresa)] ?? '#94a3b8';
-            return (
-              <Marker
-                key={r.id}
-                position={[r.lat, r.lng]}
-                icon={makeBusDivIcon(markerColor, r.linea, r.codigoBus, r.velocidad, r.destino)}
-                zIndexOffset={1000}
-              >
-                <Popup>
-                  <div className="text-xs font-sans p-1">Línea {r.linea} (Rival)</div>
-                </Popup>
-              </Marker>
-            );
-          })}
-        </MapContainer>
+          );
+        })()}
+      </div>
       </div>
     </div>
   );
