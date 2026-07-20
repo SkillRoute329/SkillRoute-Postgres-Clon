@@ -33,6 +33,7 @@ import {
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import toast from 'react-hot-toast';
 
 /* ─── Component ───────────────────────────────────────── */
 
@@ -44,10 +45,17 @@ export default function ContingencyManagementPage() {
   const [result, setResult] = useState<ServiceInterruptionResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
-  const [today] = useState(() => new Date().toISOString().split('T')[0]);
+  
+  // Obtener fecha local en formato YYYY-MM-DD (Evita el salto de día por UTC a las 21hs de Uruguay)
+  const [today] = useState(() => {
+    const d = new Date();
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
+  });
 
   /* ── Load vehicles and drivers ── */
   useEffect(() => {
+    let isMounted = true;
     const load = async () => {
       setDataLoading(true);
       try {
@@ -60,15 +68,18 @@ export default function ContingencyManagementPage() {
             ),
           ),
         ]);
+        if (!isMounted) return;
         setVehicles(vSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Vehicle, 'id'>) })));
         setDrivers(dSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<User, 'id'>) })));
       } catch (e) {
         console.error('[Contingency] Load error:', e);
+        if (isMounted) toast.error('Fallo al cargar la base de datos de la flota');
       } finally {
-        setDataLoading(false);
+        if (isMounted) setDataLoading(false);
       }
     };
     void load();
+    return () => { isMounted = false; };
   }, []);
 
   /* ── Ejecutar análisis de contingencia ── */
@@ -87,9 +98,12 @@ export default function ContingencyManagementPage() {
         await import('../../services/firestore/programacionDiaria');
       const todayProg = await ProgramacionDiariaService.getByDate(today);
 
-      const d = new Date(`${today}T00:00:00`);
+      // Calcular ayer a las 12:00 local para asegurar que la resta de un día sea exacta y no salte por timezone
+      const d = new Date(`${today}T12:00:00`);
       d.setDate(d.getDate() - 1);
-      const yesterday = d.toISOString().split('T')[0];
+      const tzOffset = d.getTimezoneOffset() * 60000;
+      const yesterday = new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
+      
       const yesterdayProg = await ProgramacionDiariaService.getByDate(yesterday);
 
       const assignedVehicleIds = new Set<string>();
@@ -145,8 +159,10 @@ export default function ContingencyManagementPage() {
         lastEndByDriver,
       );
       setResult(res);
+      toast.success('Análisis completado');
     } catch (e) {
       console.error('[Contingency] Analysis error:', e);
+      toast.error('Error al ejecutar el cruce de datos de contingencia');
     } finally {
       setLoading(false);
     }

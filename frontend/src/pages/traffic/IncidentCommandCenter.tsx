@@ -6,7 +6,7 @@
  * Cero simulaciones — todos los datos son reales.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   collection,
   query,
@@ -33,6 +33,7 @@ import {
   X,
   GitMerge
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import PanelTrazabilidad360 from './PanelTrazabilidad360';
 
 /* ─── Types ───────────────────────────────────────────── */
@@ -120,18 +121,25 @@ export default function IncidentCommandCenter() {
 
   /* ── Firestore live listener ── */
   useEffect(() => {
+    let isMounted = true;
     const q = query(collection(db, 'incidencias'), orderBy('createdAt', 'desc'), limit(100));
     const unsub = onSnapshot(
       q,
       (snap) => {
+        if (!isMounted) return;
         setFirestoreInc(
           snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<FirestoreIncidencia, 'id'>) })),
         );
         setLoading(false);
       },
-      () => setLoading(false),
+      () => {
+        if (isMounted) setLoading(false);
+      },
     );
-    return unsub;
+    return () => {
+      isMounted = false;
+      unsub();
+    };
   }, []);
 
   /* ── Resolver incidencia Firestore ── */
@@ -142,31 +150,39 @@ export default function IncidentCommandCenter() {
         status: 'CERRADO',
         closedAt: serverTimestamp(),
       });
+      toast.success('Incidencia resuelta exitosamente');
+    } catch (e) {
+      console.error('Error resolviendo incidencia:', e);
+      toast.error('Error al intentar resolver la incidencia. Compruebe su conexión.');
     } finally {
       setResolving(null);
     }
   };
 
-  /* ── KPIs ── */
-  const totalAbiertas = firestoreInc.filter((i) => i.status === 'ABIERTO').length;
-  const totalProceso = firestoreInc.filter((i) => i.status === 'EN_PROCESO').length;
-  const totalCerradas = firestoreInc.filter((i) => i.status === 'CERRADO').length;
-  const altaPrioridad = firestoreInc.filter(
-    (i) => i.priority === 'ALTA' && i.status !== 'CERRADO',
-  ).length;
+  /* ── KPIs (Memoized) ── */
+  const { totalAbiertas, totalProceso, totalCerradas, altaPrioridad } = useMemo(() => {
+    return {
+      totalAbiertas: firestoreInc.filter((i) => i.status === 'ABIERTO').length,
+      totalProceso: firestoreInc.filter((i) => i.status === 'EN_PROCESO').length,
+      totalCerradas: firestoreInc.filter((i) => i.status === 'CERRADO').length,
+      altaPrioridad: firestoreInc.filter((i) => i.priority === 'ALTA' && i.status !== 'CERRADO').length,
+    };
+  }, [firestoreInc]);
 
-  /* ── Filtros firestore ── */
-  const filteredFirestore = firestoreInc.filter((i) => {
-    if (filtroEstado !== 'TODOS' && i.status !== filtroEstado) return false;
+  /* ── Filtros firestore (Memoized) ── */
+  const filteredFirestore = useMemo(() => {
+    return firestoreInc.filter((i) => {
+      if (filtroEstado !== 'TODOS' && i.status !== filtroEstado) return false;
 
-    if (filtroTipo === 'DRIVER_APP') {
-      if (i.source !== 'DRIVER_APP') return false;
-    } else if (filtroTipo !== 'TODOS') {
-      if (i.type !== filtroTipo) return false;
-    }
+      if (filtroTipo === 'DRIVER_APP') {
+        if (i.source !== 'DRIVER_APP') return false;
+      } else if (filtroTipo !== 'TODOS') {
+        if (i.type !== filtroTipo) return false;
+      }
 
-    return true;
-  });
+      return true;
+    });
+  }, [firestoreInc, filtroEstado, filtroTipo]);
 
   const totalVisible = filteredFirestore.length;
 
