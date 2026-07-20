@@ -78,7 +78,6 @@ import {
   PieChart,
   Pie,
 } from 'recharts';
-import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 
 // ─── Constantes Visuales del Mapa ──────────────────────────────────────────
@@ -166,8 +165,7 @@ export default function MarketIntelligenceConsole() {
   const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const { selectedLine, setSelectedLine } = useLiveData();
   
-  // Tabs: 'radar' | 'solapamiento' | 'simulador' | 'market'
-  const [activeTab, setActiveTab] = useState<'radar' | 'solapamiento' | 'simulador' | 'market'>('radar');
+  const [activeTab, setActiveTab] = useState<'radar'>('radar');
   
   // Data State
   const [shapes, setShapes] = useState<ShapeDoc[]>([]);
@@ -185,16 +183,6 @@ export default function MarketIntelligenceConsole() {
   const [mapOperators, setMapOperators] = useState<Set<string>>(new Set(['70', '50', '20', '10']));
   const [minDroPctMap, setMinDroPctMap] = useState<number>(10);
   const [showBusesOnMap, setShowBusesOnMap] = useState(true);
-  
-  // Filtros del Solapamiento
-  const [overlapKind, setOverlapKind] = useState<'all' | 'cross' | 'intra'>('all');
-  const [minDroFilter, setMinDroFilter] = useState<number>(10);
-  
-  // Simulador Táctico Financiero State
-  const [simFlotaDelta, setSimFlotaDelta] = useState<number>(0); // en % (-50% a +50%)
-  const [simTarifa, setSimTarifa] = useState<number>(45); // Tarifa boleto
-  const [simIva, setSimIva] = useState<number>(0.22); // IVA (22%)
-  const [simCostosFijos, setSimCostosFijos] = useState<number>(8500); // Costos fijos diarios
   
   // Disparo manual de alertas
   const [manualCocheId, setManualCocheId] = useState('');
@@ -249,7 +237,16 @@ export default function MarketIntelligenceConsole() {
     setLoadingBuses(true);
     try {
       const liveList = await fetchSTMPosiciones({ empresa: -1 });
-      setBuses(liveList);
+      
+      // Deduplicar buses para evitar colisión de keys y congelamiento
+      const uniqueBusesMap = new Map<string, BusSTM>();
+      liveList.forEach((bus) => {
+        const key = `${bus.codigoEmpresa}-${bus.codigoBus}`;
+        uniqueBusesMap.set(key, bus);
+      });
+      const deduplicatedBuses = Array.from(uniqueBusesMap.values());
+      
+      setBuses(deduplicatedBuses);
       setLastUpdate(new Date());
     } catch (err) {
       console.warn('[MarketConsole] Error cargando buses:', err);
@@ -367,146 +364,7 @@ export default function MarketIntelligenceConsole() {
     });
   }, [liveBusesMapped, empresaPropia, overlaps]);
 
-  // ─── SOLAPAMIENTOS Y COBERTURA (DRO) ──────────────────────────────────────
-  const filteredOverlaps = useMemo(() => {
-    return overlaps
-      .filter((o) => {
-        if (overlapKind === 'cross' && o.sameEmpresa) return false;
-        if (overlapKind === 'intra' && !o.sameEmpresa) return false;
-        if (searchFilter) {
-          const sLower = searchFilter.toLowerCase();
-          const matchA = o.lineaA.toLowerCase().includes(sLower) || o.empresaA.toLowerCase().includes(sLower);
-          const matchB = o.lineaB.toLowerCase().includes(sLower) || o.empresaB.toLowerCase().includes(sLower);
-          if (!matchA && !matchB) return false;
-        }
-        return o.pctAInB >= minDroFilter;
-      })
-      .sort((a, b) => b.sharedKm - a.sharedKm);
-  }, [overlaps, overlapKind, minDroFilter, searchFilter]);
 
-  const topCompetitiveCorridors = useMemo(() => {
-    return overlaps
-      .filter((o) => !o.sameEmpresa && o.pctAInB >= 20)
-      .sort((a, b) => b.sharedKm - a.sharedKm)
-      .slice(0, 15);
-  }, [overlaps]);
-
-  const intraCanibalizacion = useMemo(() => {
-    return overlaps
-      .filter((o) => o.sameEmpresa && o.pctAInB >= 15 && o.agencyA === String(empresaPropia))
-      .sort((a, b) => b.pctAInB - a.pctAInB)
-      .slice(0, 15);
-  }, [overlaps, empresaPropia]);
-
-  // ─── ESTADÍSTICAS ESTRATÉGICAS Y MARKET SHARE ─────────────────────────────
-  const marketShareStats = useMemo(() => {
-    const totalKm = overlaps.reduce((sum, o) => sum + o.sharedKm, 0);
-    const shares: Record<string, number> = {};
-    overlaps.forEach((o) => {
-      shares[o.empresaA] = (shares[o.empresaA] || 0) + o.sharedKm;
-      shares[o.empresaB] = (shares[o.empresaB] || 0) + o.sharedKm;
-    });
-    
-    return Object.entries(shares)
-      .map(([name, km]) => ({
-        name,
-        kmShared: Math.round(km * 10) / 10,
-        percentage: totalKm > 0 ? Math.round((km / totalKm) * 100) : 0,
-      }))
-      .sort((a, b) => b.kmShared - a.kmShared);
-  }, [overlaps]);
-
-  const statsResumen = useMemo(() => {
-    const total = overlaps.length;
-    const cross = overlaps.filter((o) => !o.sameEmpresa).length;
-    const intra = overlaps.filter((o) => o.sameEmpresa).length;
-    const avgDro = total > 0 ? overlaps.reduce((sum, o) => sum + o.pctAInB, 0) / total : 0;
-    return {
-      total,
-      cross,
-      intra,
-      avgDro: Math.round(avgDro * 10) / 10,
-    };
-  }, [overlaps]);
-
-  // ─── SIMULADOR TÁCTICO FINANCIERO ─────────────────────────────────────────
-  // Selección de línea activa para simulación: usa el selectedShape o la línea seleccionada
-  const activeSimLinea = selectedShape ? selectedShape.linea : '300';
-  
-  const simBaselineData = useMemo(() => {
-    // Buscar tramos de solapamiento para esta línea
-    const matches = overlaps.filter(
-      (o) =>
-        (o.agencyA === String(empresaPropia) && o.lineaA === activeSimLinea) ||
-        (o.agencyB === String(empresaPropia) && o.lineaB === activeSimLinea)
-    );
-    const totalComp = matches.filter((o) => !o.sameEmpresa).length;
-    
-    // Baselines simulados basados en promedios operativos de Montevideo
-    const viajesDia = 40;
-    const paxPromedio = 35; // Boletos por viaje promedio
-    const costoKmOperativo = 75; // pesos por km
-    const largoPromedioKm = selectedShape ? selectedShape.lengthMeters / 1000 : 12;
-    const costoViaje = largoPromedioKm * costoKmOperativo;
-    const costosVariablesDia = viajesDia * costoViaje;
-    
-    return {
-      viajesDia,
-      paxPromedio,
-      costosDia: costosVariablesDia + simCostosFijos,
-      competidores: totalComp,
-      largoKm: Math.round(largoPromedioKm * 10) / 10,
-    };
-  }, [overlaps, activeSimLinea, empresaPropia, selectedShape, simCostosFijos]);
-
-  const simResultados = useMemo(() => {
-    const { viajesDia, paxPromedio, costosDia } = simBaselineData;
-    
-    // Escenario Base
-    const baseIngresos = calcularIngresos(viajesDia, paxPromedio, simTarifa, simIva);
-    const baseBreakEven = breakEvenPax(costosDia, viajesDia, simTarifa, simIva);
-    const baseUtilidad = baseIngresos.netos - costosDia;
-    
-    // Escenario Simulado
-    // La elasticidad se estima asimétrica: una reducción de flota baja la demanda de pasajeros
-    const deltaFlotaFrac = simFlotaDelta / 100;
-    const penalizacion = penalizacionDemanda(deltaFlotaFrac * -1, 0.002);
-    
-    const simViajesDia = Math.round(viajesDia * (1 + deltaFlotaFrac));
-    const simPaxPromedio = Math.round(paxPromedio * penalizacion);
-    
-    const simIngresos = calcularIngresos(simViajesDia, simPaxPromedio, simTarifa, simIva);
-    
-    // Si la flota baja, los costos variables de viajes bajan proporcionalmente
-    const baseCostoVariables = viajesDia * (simBaselineData.largoKm * 75);
-    const simCostosDia = (baseCostoVariables * (1 + deltaFlotaFrac)) + simCostosFijos;
-    
-    const simBreakEven = breakEvenPax(simCostosDia, simViajesDia, simTarifa, simIva);
-    const simUtilidad = simIngresos.netos - simCostosDia;
-    
-    return {
-      base: {
-        viajes: viajesDia,
-        pax: paxPromedio,
-        costo: Math.round(costosDia),
-        bruto: Math.round(baseIngresos.brutos),
-        iva: Math.round(baseIngresos.iva),
-        neto: Math.round(baseIngresos.netos),
-        breakEven: baseBreakEven,
-        utilidad: Math.round(baseUtilidad),
-      },
-      sim: {
-        viajes: simViajesDia,
-        pax: simPaxPromedio,
-        costo: Math.round(simCostosDia),
-        bruto: Math.round(simIngresos.brutos),
-        iva: Math.round(simIngresos.iva),
-        neto: Math.round(simIngresos.netos),
-        breakEven: simBreakEven,
-        utilidad: Math.round(simUtilidad),
-      },
-    };
-  }, [simBaselineData, simFlotaDelta, simTarifa, simIva, simCostosFijos]);
 
   // ─── Disparo de Alerta Manual ─────────────────────────────────────────────
   const handleSendManualAlert = async () => {
@@ -519,7 +377,6 @@ export default function MarketIntelligenceConsole() {
       await addDoc(collection(db, 'alertas_regulacion'), {
         tipo: 'DISPARO_TACTICO',
         coche_id: manualCocheId,
-        linea_id: activeSimLinea,
         empresa_id: empresaPropia,
         instruccion: 'REGULACION_MARCHA',
         mensaje_chofer: manualMensaje,
@@ -536,32 +393,7 @@ export default function MarketIntelligenceConsole() {
     }
   };
 
-  // ─── Exportar a Excel ─────────────────────────────────────────────────────
-  const exportToExcel = () => {
-    const wb = XLSX.utils.book_new();
-    
-    // Hoja 1: Solapamientos
-    const sheet1Data = filteredOverlaps.map((o) => ({
-      'Empresa A': o.empresaA,
-      'Línea A': o.lineaA,
-      'Sentido A': o.sentidoA,
-      'Empresa B': o.empresaB,
-      'Línea B': o.lineaB,
-      'Sentido B': o.sentidoB,
-      'DRO %': o.pctAInB,
-      'Km Solapamiento': o.sharedKm,
-      'Mismo Operador': o.sameEmpresa ? 'SÍ' : 'NO',
-    }));
-    const ws1 = XLSX.utils.json_to_sheet(sheet1Data);
-    XLSX.utils.book_append_sheet(wb, ws1, 'Corredores Compartidos');
 
-    // Hoja 2: Resumen Market Share
-    const ws2 = XLSX.utils.json_to_sheet(marketShareStats);
-    XLSX.utils.book_append_sheet(wb, ws2, 'Cuotas por Km');
-
-    XLSX.writeFile(wb, `SkillRoute-Inteligencia-Red-${new Date().toISOString().slice(0, 10)}.xlsx`);
-    toast.success('Matriz exportada a Excel.');
-  };
 
   // ─── Filtro de shapes del mapa ────────────────────────────────────────────
   const visibleShapes = useMemo(() => {
@@ -704,7 +536,7 @@ export default function MarketIntelligenceConsole() {
               <Target className="w-5 h-5 text-indigo-400 animate-pulse" />
               <h1 className="text-lg font-black tracking-tight text-white uppercase">Market Intelligence Console</h1>
             </div>
-            <p className="text-xs text-slate-500">Unificación de Red, Solapamiento (DRO) y Simulación Táctica</p>
+            <p className="text-xs text-slate-500">Radar Geográfico y Unificación de Red</p>
           </div>
           <div className="flex items-center gap-2">
             {loadingBuses ? (
@@ -732,9 +564,6 @@ export default function MarketIntelligenceConsole() {
         <div className="flex border-b border-slate-800 bg-slate-950/20 p-1 gap-1">
           {[
             { id: 'radar', label: 'Radar de Disputas', icon: <Zap className="w-3.5 h-3.5" /> },
-            { id: 'solapamiento', label: 'Matriz DRO', icon: <Network className="w-3.5 h-3.5" /> },
-            { id: 'simulador', label: 'Simulador Financiero', icon: <Sliders className="w-3.5 h-3.5" /> },
-            { id: 'market', label: 'Market Share', icon: <PieIcon className="w-3.5 h-3.5" /> },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -864,357 +693,7 @@ export default function MarketIntelligenceConsole() {
             </div>
           )}
 
-          {/* ================= TAB 2: SOLAPAMIENTOS DRO ================= */}
-          {activeTab === 'solapamiento' && (
-            <div className="space-y-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/30 border border-slate-800 rounded-xl p-4">
-                <div>
-                  <h3 className="font-bold text-white text-sm">Direccional Route Overlap (DRO)</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Matriz de solapamiento geográfico real cross-operador</p>
-                </div>
-                <button
-                  onClick={exportToExcel}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs px-3 py-2 flex items-center gap-1.5 shadow shadow-emerald-900/30"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Excel
-                </button>
-              </div>
 
-              {/* Filtros Solapamiento */}
-              <div className="bg-slate-900/50 border border-slate-800/80 rounded-xl p-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <label className="flex flex-col gap-1">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase">Tipo de Solapamiento</span>
-                  <select
-                    value={overlapKind}
-                    onChange={(e) => setOverlapKind(e.target.value as typeof overlapKind)}
-                    className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 text-white"
-                  >
-                    <option value="all">Todos los tramos</option>
-                    <option value="cross">Cross-operador (Competencia)</option>
-                    <option value="intra">Intra-operador (Canibalización)</option>
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase">DRO mínimo %</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={minDroFilter}
-                    onChange={(e) => setMinDroFilter(Number(e.target.value) || 0)}
-                    className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 text-white"
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase">Filtrar por Línea/Empresa</span>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Ej: 104, CUTCSA..."
-                      value={searchFilter}
-                      onChange={(e) => setSearchFilter(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-7 pr-2.5 py-1.5 text-white"
-                    />
-                    <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
-                  </div>
-                </label>
-              </div>
-
-              {/* Contenedor Listado / Tabla */}
-              <div className="bg-slate-900/20 border border-slate-800 rounded-xl overflow-hidden">
-                <div className="max-h-[350px] overflow-y-auto">
-                  <table className="min-w-full text-xs text-left">
-                    <thead className="bg-slate-950 sticky top-0 text-slate-400 border-b border-slate-800 uppercase text-[9px] tracking-wider">
-                      <tr>
-                        <th className="px-4 py-2.5">Operador A</th>
-                        <th className="px-4 py-2.5">Línea A</th>
-                        <th className="px-4 py-2.5">Operador B</th>
-                        <th className="px-4 py-2.5">Línea B</th>
-                        <th className="px-4 py-2.5 text-right">DRO %</th>
-                        <th className="px-4 py-2.5 text-right">Km Compartido</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/40">
-                      {filteredOverlaps.slice(0, 150).map((o, idx) => (
-                        <tr
-                          key={idx}
-                          onClick={() => {
-                            const match = shapes.find(s => s.linea === o.lineaA && s.agencyId === o.agencyA);
-                            if (match) setSelectedShape(match);
-                          }}
-                          className="hover:bg-slate-800/40 cursor-pointer transition"
-                        >
-                          <td className="px-4 py-2 font-semibold text-slate-200">{o.empresaA}</td>
-                          <td className="px-4 py-2 text-slate-400">{o.lineaA} <span className="text-[10px] text-slate-600">({o.sentidoA})</span></td>
-                          <td className="px-4 py-2 font-semibold text-slate-200">{o.empresaB}</td>
-                          <td className="px-4 py-2 text-slate-400">{o.lineaB} <span className="text-[10px] text-slate-600">({o.sentidoB})</span></td>
-                          <td className="px-4 py-2 text-right font-bold text-amber-400">{Math.round(o.pctAInB)}%</td>
-                          <td className="px-4 py-2 text-right font-mono text-emerald-400">{o.sharedKm.toFixed(2)} km</td>
-                        </tr>
-                      ))}
-                      {filteredOverlaps.length === 0 && (
-                        <tr>
-                          <td colSpan={6} className="px-4 py-6 text-center text-slate-500 italic">Ningún tramo coincide con los criterios de filtrado</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ================= TAB 3: SIMULADOR TÁCTICO FINANCIERO ================= */}
-          {activeTab === 'simulador' && (
-            <div className="space-y-4">
-              <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-1">
-                <div className="flex items-center gap-1.5 text-white font-bold text-sm">
-                  <Sliders className="w-4 h-4 text-indigo-400" />
-                  <span>Simulación Operativa y de Ingresos</span>
-                </div>
-                <p className="text-xs text-slate-400">
-                  Línea de análisis: <strong className="text-indigo-300 font-bold">Línea {activeSimLinea}</strong>. Evaluando el impacto financiero de cambiar frecuencia/flota o desviar ruta.
-                </p>
-              </div>
-
-              {/* Sliders del simulador */}
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <div className="space-y-3">
-                  <div>
-                    <label className="flex justify-between font-bold text-slate-300 mb-1">
-                      <span>Variación de Frecuencia / Flota:</span>
-                      <span className={simFlotaDelta >= 0 ? 'text-emerald-400' : 'text-red-400'}>{simFlotaDelta}%</span>
-                    </label>
-                    <input
-                      type="range"
-                      min={-50}
-                      max={50}
-                      step={5}
-                      value={simFlotaDelta}
-                      onChange={(e) => setSimFlotaDelta(Number(e.target.value))}
-                      className="w-full accent-indigo-500"
-                    />
-                    <span className="text-[10px] text-slate-500 block mt-1">
-                      Aplica penalización de demanda del 0.2% por cada 1% de reducción de flota
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="flex justify-between font-bold text-slate-300 mb-1">
-                      <span>Tarifa del Boleto:</span>
-                      <span className="text-white">${simTarifa} UYU</span>
-                    </label>
-                    <input
-                      type="range"
-                      min={10}
-                      max={100}
-                      step={1}
-                      value={simTarifa}
-                      onChange={(e) => setSimTarifa(Number(e.target.value))}
-                      className="w-full accent-indigo-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div>
-                    <label className="flex justify-between font-bold text-slate-300 mb-1">
-                      <span>Tasa de IVA del Boleto:</span>
-                      <span className="text-white">{(simIva * 100).toFixed(0)}%</span>
-                    </label>
-                    <input
-                      type="range"
-                      min={0}
-                      max={0.30}
-                      step={0.01}
-                      value={simIva}
-                      onChange={(e) => setSimIva(Number(e.target.value))}
-                      className="w-full accent-indigo-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="flex justify-between font-bold text-slate-300 mb-1">
-                      <span>Costo Fijo Diario (Amortización + Personal):</span>
-                      <span className="text-white">${simCostosFijos} UYU</span>
-                    </label>
-                    <input
-                      type="range"
-                      min={1000}
-                      max={20000}
-                      step={500}
-                      value={simCostosFijos}
-                      onChange={(e) => setSimCostosFijos(Number(e.target.value))}
-                      className="w-full accent-indigo-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* KPIs de Resultados */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3">
-                  <span className="text-[10px] text-slate-500 font-bold block uppercase">Viajes Diarios</span>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-lg font-black text-white">{simResultados.sim.viajes}</span>
-                    <span className="text-[10px] text-slate-400">vs {simResultados.base.viajes}</span>
-                  </div>
-                </div>
-
-                <div className="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3">
-                  <span className="text-[10px] text-slate-500 font-bold block uppercase">Ingreso Neto (sin IVA)</span>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-lg font-black text-emerald-400">${simResultados.sim.neto}</span>
-                    <span className="text-[10px] text-slate-400">vs ${simResultados.base.neto}</span>
-                  </div>
-                </div>
-
-                <div className="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3">
-                  <span className="text-[10px] text-slate-500 font-bold block uppercase">Break-Even (Pax/viaje)</span>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-lg font-black text-amber-400">{simResultados.sim.breakEven}</span>
-                    <span className="text-[10px] text-slate-400">vs {simResultados.base.breakEven}</span>
-                  </div>
-                </div>
-
-                <div className="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3">
-                  <span className="text-[10px] text-slate-500 font-bold block uppercase">Retorno Neto (Utilidad)</span>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    <span className={`text-lg font-black ${simResultados.sim.utilidad >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      ${simResultados.sim.utilidad}
-                    </span>
-                    <span className="text-[10px] text-slate-400">vs ${simResultados.base.utilidad}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Gráfica Recharts de Comparación Financiera */}
-              <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-4 h-[240px]">
-                <span className="text-xs text-slate-400 font-bold block mb-3 uppercase">Análisis Comparativo Escenarios</span>
-                <ResponsiveContainer width="100%" height="90%">
-                  <BarChart
-                    data={[
-                      { name: 'Costo Operativo', Base: simResultados.base.costo, Simulado: simResultados.sim.costo },
-                      { name: 'Ingreso Neto', Base: simResultados.base.neto, Simulado: simResultados.sim.neto },
-                      { name: 'Retorno Neto', Base: simResultados.base.utilidad, Simulado: simResultados.sim.utilidad },
-                    ]}
-                    margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
-                  >
-                    <XAxis dataKey="name" stroke="#64748b" fontSize={10} />
-                    <YAxis stroke="#64748b" fontSize={10} />
-                    <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#fff' }} />
-                    <Legend wrapperStyle={{ fontSize: 10 }} />
-                    <Bar dataKey="Base" fill="#475569" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Simulado" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-
-          {/* ================= TAB 4: MARKET SHARE / ANALYTICS ================= */}
-          {activeTab === 'market' && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Cuota de mercado por operador */}
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 h-[260px] flex flex-col">
-                  <span className="text-xs font-bold text-slate-300 block mb-2 uppercase">Market Share (Shared km)</span>
-                  <div className="flex-1">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={marketShareStats}
-                          dataKey="kmShared"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={65}
-                          fill="#8884d8"
-                          label={({ name, percentage }) => `${name} ${percentage}%`}
-                        >
-                          {marketShareStats.map((entry, idx) => (
-                            <Cell key={`cell-${idx}`} fill={EMPRESA_COLOR[entry.name === 'UCOT' ? '70' : entry.name === 'CUTCSA' ? '50' : entry.name === 'COME' ? '20' : '10'] || '#94a3b8'} />
-                          ))}
-                        </Pie>
-                        <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Coeficientes globales de la matriz */}
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-                  <div>
-                    <span className="text-xs font-bold text-slate-300 block mb-3 uppercase">Resumen Global de Corredores</span>
-                    <div className="space-y-3 text-xs">
-                      <div className="flex justify-between border-b border-slate-800 pb-1.5">
-                        <span className="text-slate-500">Total Tramos Analizados:</span>
-                        <span className="font-bold text-white">{statsResumen.total}</span>
-                      </div>
-                      <div className="flex justify-between border-b border-slate-800 pb-1.5">
-                        <span className="text-slate-500">Cruces Competitivos (Cross):</span>
-                        <span className="font-bold text-red-400">{statsResumen.cross}</span>
-                      </div>
-                      <div className="flex justify-between border-b border-slate-800 pb-1.5">
-                        <span className="text-slate-500">Superposición Interna (Intra):</span>
-                        <span className="font-bold text-amber-400">{statsResumen.intra}</span>
-                      </div>
-                      <div className="flex justify-between pb-1">
-                        <span className="text-slate-500">DRO Promedio:</span>
-                        <span className="font-bold text-indigo-400">{statsResumen.avgDro}%</span>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-slate-600 mt-4 leading-normal">
-                    Las métricas de solapamiento están basadas en el Directional Route Overlap (TCRP Report 195) calculado de forma soberana sobre el feed público del STM.
-                  </p>
-                </div>
-              </div>
-
-              {/* Secciones de Canibalización y Competencia Top */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Canibalización */}
-                <div className="bg-slate-900/20 border border-slate-800 rounded-xl p-4">
-                  <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2.5">
-                    Canibalización Interna UCOT (DRO ≥ 15%)
-                  </h4>
-                  <div className="space-y-1.5 max-h-[220px] overflow-y-auto text-xs">
-                    {intraCanibalizacion.map((o, idx) => (
-                      <div key={idx} className="flex justify-between items-center bg-slate-900/40 p-2 rounded-lg">
-                        <span className="text-slate-300">L{o.lineaA} ↔ L{o.lineaB}</span>
-                        <span className="font-semibold text-slate-400">
-                          <strong className="text-amber-400">{Math.round(o.pctAInB)}%</strong> · {o.sharedKm.toFixed(1)} km
-                        </span>
-                      </div>
-                    ))}
-                    {intraCanibalizacion.length === 0 && (
-                      <p className="text-slate-500 italic text-center py-4">No se detectó canibalización alta</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Top Competencia */}
-                <div className="bg-slate-900/20 border border-slate-800 rounded-xl p-4">
-                  <h4 className="text-xs font-bold text-red-400 uppercase tracking-wider mb-2.5">
-                    Cruces de Alta Competencia (DRO ≥ 20%)
-                  </h4>
-                  <div className="space-y-1.5 max-h-[220px] overflow-y-auto text-xs">
-                    {topCompetitiveCorridors.slice(0, 8).map((o, idx) => (
-                      <div key={idx} className="flex justify-between items-center bg-slate-900/40 p-2 rounded-lg">
-                        <span className="text-slate-300">
-                          {o.empresaA} L{o.lineaA} ↔ {o.empresaB} L{o.lineaB}
-                        </span>
-                        <span className="font-semibold text-slate-400">
-                          <strong className="text-red-400">{Math.round(o.pctAInB)}%</strong> · {o.sharedKm.toFixed(1)} km
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
         </div>
       </div>
