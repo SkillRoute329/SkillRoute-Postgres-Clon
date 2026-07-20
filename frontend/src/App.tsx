@@ -120,6 +120,7 @@ const Distribution = lazy(() => import('./pages/operations/Distribution'));
 const RotationMatrix = lazy(() => import('./pages/traffic/RotationMatrix'));
 const VehicleCheck = lazy(() => import('./pages/fleet/VehicleCheck'));
 // Intelligence Console merged into MapHub
+const LiveCompetitiveRadar = lazy(() => import('./pages/traffic/LiveCompetitiveRadar'));
 const AnalisisCriticoCompetencia = lazy(() => import('./pages/traffic/AnalisisCriticoCompetencia'));
 const DiagnosticoEjecutivo = lazy(() => import('./pages/traffic/DiagnosticoEjecutivo'));
 const ExecutiveCoverage = lazy(() => import('./pages/traffic/ExecutiveCoverage'));
@@ -333,6 +334,7 @@ function App() {
                      {/* Intelligence Console merged into MapHub */}
                     <Route path="traffic/intelligence" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
                     <Route path="intelligence/network-editor" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><NetworkEditor /></PrivateRoute>} />
+                    <Route path="intelligence/live-radar" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><LiveCompetitiveRadar /></PrivateRoute>} />
                     <Route path="traffic/live-map" element={<Navigate to="/dashboard/traffic/map-hub?layer=mapa" replace />} />
                     <Route path="traffic/shadow-radar" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
                     <Route path="traffic/competitor-intelligence" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
