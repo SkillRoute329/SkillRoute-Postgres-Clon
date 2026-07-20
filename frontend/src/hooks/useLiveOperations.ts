@@ -209,13 +209,18 @@ export function useLiveOperations() {
       choferLegajo = chofer?.internalNumber ?? chofer?.legajo ?? undefined;
     }
 
-    // Buscar desvío activo del coche
-    const desvio = desviosRaw.find(d => String(d.coche_id) === stringCoche && !d.resuelto);
+    // Buscar desvío activo del coche (Match por coche_id y linea_id para evitar colisión cruzada)
+    const desvio = desviosRaw.find(d => 
+      String(d.coche_id) === stringCoche && 
+      (d.linea_id ? String(d.linea_id) === bus.linea : true) &&
+      !d.resuelto
+    );
 
     // Buscar incidencia activa del coche o línea
     const incidencia = incidenciasRaw.find(
-      i => (String(i.coche_id) === stringCoche || (i.linea_id && String(i.linea_id) === bus.linea)) &&
-      i.estado !== 'cerrada'
+      i => i.estado !== 'cerrada' &&
+           ((String(i.coche_id) === stringCoche && (i.linea_id ? String(i.linea_id) === bus.linea : true)) || 
+           (i.linea_id && !i.coche_id && String(i.linea_id) === bus.linea))
     );
 
     const servicio: ServicioActivo = {

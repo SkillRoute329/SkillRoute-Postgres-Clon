@@ -38,6 +38,7 @@ import {
   Search,
   Wifi,
   Filter,
+  Building2,
   X,
   MapPin,
   Clock,
@@ -175,9 +176,9 @@ export default function MapHub() {
   const [sidebarTab, setSidebarTab] = useState<'alertas' | 'flota' | 'bunching' | 'dro'>('flota');
 
   // Filtros
+  const [operatorFilter, setOperatorFilter] = useState<string>(String(empresaPropia));
   const [lineFilter, setLineFilter] = useState<string>(selectedLine ?? 'todas');
   const [searchQuery, setSearchQuery] = useState('');
-  const [operatorVisibility, setOperatorVisibility] = useState<Set<string>>(new Set([String(empresaPropia)]));
   const [selectedShape, setSelectedShape] = useState<ShapeDoc | null>(null);
 
   // Mapa viewport focus
@@ -280,7 +281,7 @@ export default function MapHub() {
   const visibleBuses = useMemo(() => {
     return allBusesCombined.filter((bus) => {
       // Filtro de operador
-      if (!operatorVisibility.has(String(bus.empresaId))) return false;
+      if (operatorFilter !== 'todos' && String(bus.empresaId) !== operatorFilter) return false;
       // Filtro de línea
       if (lineFilter !== 'todas' && bus.linea !== lineFilter) return false;
       // Filtro de búsqueda textual
@@ -301,16 +302,16 @@ export default function MapHub() {
       // 3. Sort by Bus Number
       return Number(a.codigoBus) - Number(b.codigoBus);
     });
-  }, [allBusesCombined, operatorVisibility, lineFilter, searchQuery]);
+  }, [allBusesCombined, operatorFilter, lineFilter, searchQuery]);
 
-  // Líneas únicas basadas en los operadores actualmente visibles
+  // Líneas únicas basadas en el operador seleccionado
   const availableLines = useMemo(() => {
     const list = allBusesCombined
-      .filter(b => operatorVisibility.has(String(b.empresaId)))
+      .filter(b => operatorFilter === 'todos' || String(b.empresaId) === operatorFilter)
       .map((b) => b.linea)
       .filter(Boolean);
     return [...new Set(list)].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
-  }, [allBusesCombined, operatorVisibility]);
+  }, [allBusesCombined, operatorFilter]);
 
   // Enfocar un bus en el mapa y abrir su popup
   const focusBus = (bus: ServicioActivo) => {
@@ -540,32 +541,6 @@ export default function MapHub() {
             })}
           </div>
         </div>
-
-        {/* Flotante: Filtro de Operadores en el Mapa */}
-        <div className="absolute bottom-4 left-4 z-[1000] bg-slate-950/80 backdrop-blur-md border border-slate-800 rounded-xl p-3 shadow-xl">
-          <span className="text-[10px] text-slate-500 font-bold block mb-2 uppercase tracking-widest">Visualización Flota</span>
-          <div className="flex gap-2">
-            {(['70', '50', '20', '10'] as const).map((op) => (
-              <button
-                key={op}
-                onClick={() => {
-                  const next = new Set(operatorVisibility);
-                  if (next.has(op)) next.delete(op);
-                  else next.add(op);
-                  setOperatorVisibility(next);
-                }}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-black border transition ${
-                  operatorVisibility.has(op)
-                    ? 'bg-slate-800 text-white border-slate-700'
-                    : 'bg-slate-900/40 text-slate-600 border-transparent'
-                }`}
-              >
-                <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: EMPRESA_COLOR[op] }} />
-                {EMPRESA_NAME[op]}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* ================= LADO DERECHO: PANEL DE DETALLES Y ALERTAS ================= */}
@@ -617,13 +592,34 @@ export default function MapHub() {
             <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
             <input
               type="text"
-              placeholder="Buscar interno o conductor..."
+              placeholder="Buscar coche o chofer..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-indigo-500"
             />
           </div>
 
+          {/* Filtro Operador */}
+          <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 shrink-0">
+            <Building2 className="w-3.5 h-3.5 text-slate-500" />
+            <select
+              value={operatorFilter}
+              onChange={(e) => {
+                setOperatorFilter(e.target.value);
+                setLineFilter('todas'); // Reset línea al cambiar operador
+              }}
+              className="bg-transparent text-xs font-bold text-white outline-none border-none pr-1"
+            >
+              <option value="todos" className="bg-slate-900 text-white">Todos los Operadores</option>
+              {Object.entries(EMPRESA_NAME).map(([id, nombre]) => (
+                <option key={id} value={id} className="bg-slate-900 text-white">
+                  {nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtro Línea */}
           <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 shrink-0">
             <Filter className="w-3.5 h-3.5 text-slate-500" />
             <select
@@ -733,7 +729,7 @@ export default function MapHub() {
                   <p className="text-xs text-slate-500 italic py-4 text-center">No hay alertas de desvíos pendientes.</p>
                 ) : (
                   desvios.filter((d) => !d.resuelto).map((d) => {
-                    const assoc = allBusesCombined.find((p) => p.codigoBus === String(d.coche_id));
+                    const assoc = allBusesCombined.find((p) => p.codigoBus === String(d.coche_id) && p.linea === String(d.linea_id));
                     return (
                       <div key={d.id} className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex flex-col gap-2">
                         <div className="flex justify-between items-start">
