@@ -159,16 +159,15 @@ export default function LiveCompetitiveRadar() {
     }
   };
 
-  // Carga de catálogo estático
+  // Carga de catálogo estático (solo shapes)
   const loadStatic = useCallback(async () => {
     setLoadingStatic(true);
     try {
-      const [s70, s50, s20, s10, oSnap] = await Promise.all([
-        getDocs(query(collection(db, 'shapes_cross_operator'), limit(250))),
-        getDocs(query(collection(db, 'shapes_cross_operator'), limit(250))),
-        getDocs(query(collection(db, 'shapes_cross_operator'), limit(250))),
-        getDocs(query(collection(db, 'shapes_cross_operator'), limit(250))),
-        getDocs(query(collection(db, 'corridor_overlap'), limit(500))),
+      const [s70, s50, s20, s10] = await Promise.all([
+        getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
+        getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
+        getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
+        getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
       ]);
       const loadedShapes: ShapeDoc[] = [];
       const rawDocs = [...s70.docs, ...s50.docs, ...s20.docs, ...s10.docs];
@@ -187,9 +186,8 @@ export default function LiveCompetitiveRadar() {
         }
       }
       setShapes(loadedShapes);
-      setOverlaps(oSnap.docs.map((doc) => doc.data() as OverlapDoc));
     } catch (err) {
-      console.warn('Error al precargar shapes/overlaps:', err);
+      console.warn('Error al precargar shapes:', err);
     } finally {
       setLoadingStatic(false);
     }
@@ -198,6 +196,32 @@ export default function LiveCompetitiveRadar() {
   useEffect(() => {
     loadStatic();
   }, [loadStatic]);
+
+  // Carga dinámica de overlaps solo para la línea seleccionada
+  useEffect(() => {
+    if (!selectedBusId) {
+      setOverlaps([]);
+      return;
+    }
+    const p = serviciosPropios.find(b => b.id === selectedBusId);
+    if (!p) return;
+
+    const fetchLineOverlaps = async () => {
+      try {
+        // Consultar explícitamente donde la línea seleccionada sea A o B
+        const [snapA, snapB] = await Promise.all([
+          getDocs(query(collection(db, 'corridor_overlap'), where('lineaA', '==', String(p.linea).trim()))),
+          getDocs(query(collection(db, 'corridor_overlap'), where('lineaB', '==', String(p.linea).trim())))
+        ]);
+        
+        const relevantOverlaps = [...snapA.docs, ...snapB.docs].map(d => d.data() as OverlapDoc);
+        setOverlaps(relevantOverlaps);
+      } catch (err) {
+        console.warn('Error fetching dynamic overlaps:', err);
+      }
+    };
+    fetchLineOverlaps();
+  }, [selectedBusId, serviciosPropios]);
 
   // Lógica del Radar Táctico (Reactiva a los filtros)
   const activeDisputas = useMemo(() => {
