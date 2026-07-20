@@ -283,7 +283,7 @@ export default function MapHub() {
       // Filtro de operador
       if (operatorFilter !== 'todos' && String(bus.empresaId) !== operatorFilter) return false;
       // Filtro de línea
-      if (lineFilter !== 'todas' && String(bus.linea).trim() !== String(lineFilter).trim()) return false;
+      if (lineFilter !== 'todas' && bus.linea !== lineFilter) return false;
       // Filtro de búsqueda textual
       if (searchQuery) {
         const queryLower = searchQuery.toLowerCase();
@@ -304,12 +304,13 @@ export default function MapHub() {
     });
   }, [allBusesCombined, operatorFilter, lineFilter, searchQuery]);
 
+  // Líneas únicas basadas en el operador seleccionado
   const availableLines = useMemo(() => {
     const list = allBusesCombined
       .filter(b => operatorFilter === 'todos' || String(b.empresaId) === operatorFilter)
-      .map((b) => String(b.linea).trim())
+      .map((b) => b.linea)
       .filter(Boolean);
-    return [...new Set(list)].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    return [...new Set(list)].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
   }, [allBusesCombined, operatorFilter]);
 
   // Enfocar un bus en el mapa y abrir su popup

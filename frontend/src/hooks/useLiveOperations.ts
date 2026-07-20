@@ -205,7 +205,13 @@ export function useLiveOperations() {
   const propios: ServicioActivo[] = [];
   const rivales: ServicioActivo[] = [];
   
+  // Deduplicar buses para evitar colisión de keys en React que congela la UI
+  const uniqueBuses = new Map<string, typeof busesRaw[0]>();
   busesRaw.forEach(bus => {
+    uniqueBuses.set(`${bus.codigoEmpresa}-${bus.codigoBus}`, bus);
+  });
+
+  Array.from(uniqueBuses.values()).forEach(bus => {
     const esPropio = bus.codigoEmpresa === empresaPropia;
     
     // Buscar listero/turno asignado
@@ -240,7 +246,7 @@ export function useLiveOperations() {
       codigoBus: stringCoche,
       empresa: bus.empresa,
       empresaId: bus.codigoEmpresa,
-      linea: String(bus.linea).trim(),
+      linea: bus.linea,
       sublinea: bus.sublinea,
       destino: bus.destinoDesc,
       lat: bus.lat,
