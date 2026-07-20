@@ -313,8 +313,15 @@ export default function LiveCompetitiveRadar() {
     } 
     
     // Nivel Macro: Filtrado a nivel corredor (Toda la línea)
-    // Mostramos coches rivales aplicando TODOS los filtros sobre el conjunto de nuestros buses
     const macroMatches: CompetitorInfo[] = [];
+    
+    // Calcular los destinos base para poder asignar los rivales por cercanía
+    const destinosSet = new Set(busesDeLineaSeleccionada.map(b => (b.destino || '').trim().toUpperCase()).filter(d => d !== ''));
+    const destinosArr = Array.from(destinosSet);
+    const destinoIda = destinosArr[0] || 'IDA';
+    const destinoVuelta = destinosArr.length > 1 ? destinosArr.filter(d => d !== destinoIda)[0] : 'VUELTA';
+    const isIda = (dest: string) => (dest || '').trim().toUpperCase() === destinoIda;
+
     for (const r of serviciosRivales) {
       const baseRivalLine = r.linea.replace(/[ab]$/i, '');
       const officialComp = officialCompetitors.find(c => String(c.competitor_route_id) === baseRivalLine);
@@ -326,28 +333,36 @@ export default function LiveCompetitiveRadar() {
       // Filtro de Estrategia
       if (strategyMode === 'corredor' && !officialComp) continue;
       
-      let isNearAny = false;
       let minDistance = Infinity;
+      let minIdaDist = Infinity;
+      let minVueltaDist = Infinity;
+
+      for (const miBus of busesDeLineaSeleccionada) {
+        const d = haversineMetros(miBus.lat, miBus.lng, r.lat, r.lng);
+        if (d < minDistance) minDistance = d;
+        if (isIda(miBus.destino)) {
+          if (d < minIdaDist) minIdaDist = d;
+        } else {
+          if (d < minVueltaDist) minVueltaDist = d;
+        }
+      }
 
       // Si no es un competidor oficial (o sea, es invasión de barrio), solo lo mostramos
       // si está físicamente dentro del radar de al menos uno de nuestros coches activos
-      if (!officialComp) {
-        for (const miBus of busesDeLineaSeleccionada) {
-          const d = haversineMetros(miBus.lat, miBus.lng, r.lat, r.lng);
-          if (d <= searchRadius) {
-            isNearAny = true;
-            if (d < minDistance) minDistance = d;
-          }
-        }
-        if (!isNearAny) continue;
+      if (!officialComp && minDistance > searchRadius) {
+        continue;
       }
+      
+      // Asignar al mapa correcto basado en proximidad física a nuestra flota
+      // Si está más cerca de un coche de Ida, va al mapa de Ida, sino al de Vuelta.
+      const assignedDestino = minIdaDist <= minVueltaDist ? destinoIda : destinoVuelta;
       
       macroMatches.push({
         id: r.id,
         codigoBus: r.codigoBus,
         empresa: r.empresa,
         linea: r.linea,
-        destino: r.destino,
+        destino: assignedDestino, // Sobreescribimos el destino crudo para que encaje perfecto en el split
         distanciaM: minDistance !== Infinity ? Math.round(minDistance) : 0,
         overlapPct: sharedStops,
         comparteSentido: !!officialComp,
