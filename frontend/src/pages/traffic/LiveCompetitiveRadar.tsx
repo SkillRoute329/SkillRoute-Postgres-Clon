@@ -125,8 +125,8 @@ export default function LiveCompetitiveRadar() {
   // Estados UI y Filtros
   const [selectedBusId, setSelectedBusId] = useState<string | null>(null);
   const [searchRadius, setSearchRadius] = useState<number>(1500); // Metros
-  const [minOverlap, setMinOverlap] = useState<number>(10); // Porcentaje
-  const [strategyMode, setStrategyMode] = useState<'corredor' | 'barrio'>('corredor');
+  const [minOverlap, setMinOverlap] = useState<number>(0); // Porcentaje permisivo por defecto
+  const [strategyMode, setStrategyMode] = useState<'corredor' | 'barrio'>('barrio');
   
   // Mapa
   const [mapCenter, setMapCenter] = useState<[number, number] | null>([-34.8833, -56.1667]);
