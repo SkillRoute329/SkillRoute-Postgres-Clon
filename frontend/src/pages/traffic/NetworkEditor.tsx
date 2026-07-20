@@ -45,8 +45,10 @@ interface MonthlyTrend {
 interface TrendData {
   base_line: {
     route_id: string;
-    direction_id: number;
-    trend: MonthlyTrend[];
+    selected_direction: number;
+    trend_ida: MonthlyTrend[];
+    trend_vuelta: MonthlyTrend[];
+    trend_total: MonthlyTrend[];
   };
   competitor_line: {
     route_id: string;
@@ -429,7 +431,7 @@ const CompetitiveAnalysis: React.FC = () => {
                       {ucotLineas.find(l => l.codigo === selectedLinea)?.nombre || ''}
                     </div>
                   </div>
-                  <div className="flex gap-4 mb-6 p-3 bg-slate-900/50 rounded-lg border border-slate-700/50">
+                  <div className="flex gap-4 mb-4 p-3 bg-slate-900/50 rounded-lg border border-slate-700/50">
                     <div className="flex-1 border-r border-slate-700/50 pr-4">
                       <div className="text-[10px] uppercase text-slate-500 font-semibold mb-1">Total Recorrido</div>
                       <div className="text-sm font-mono text-white flex items-center gap-1.5">
@@ -437,23 +439,66 @@ const CompetitiveAnalysis: React.FC = () => {
                         {baseDistance.toFixed(1)} km
                       </div>
                     </div>
-                    {renderEvolution(trends.base_line.trend)}
+                    {renderEvolution(trends.base_line.trend_total)}
                   </div>
-                  <div className="flex-1 flex flex-col justify-start gap-2">
-                    {[...trends.base_line.trend].reverse().map((t) => (
-                      <div key={t.month} className="w-full">
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-slate-400">{formatMonthName(t.month)}</span>
-                          <span className="font-mono text-indigo-400">{t.boarding.toLocaleString()} pax</span>
+                  
+                  {/* GLOBAL KPI (MACRO) */}
+                  <div className="mb-4 bg-slate-900/80 rounded-lg p-3 border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.05)]">
+                    <div className="text-[10px] uppercase text-indigo-400 font-bold mb-2">CONSOLIDADO GLOBAL (IDA + VUELTA)</div>
+                    <div className="flex flex-col gap-2">
+                      {[...trends.base_line.trend_total].reverse().map((t) => (
+                        <div key={`total-${t.month}`} className="w-full">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-slate-300 font-medium">{formatMonthName(t.month)}</span>
+                            <span className="font-mono text-white font-bold">{t.boarding.toLocaleString()} pax</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-indigo-400 rounded-full" 
+                              style={{ width: `${Math.min((t.boarding / 1000000) * 100, 100)}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-indigo-500 rounded-full" 
-                            style={{ width: `${(t.boarding / 60000) * 100}%` }}
-                          />
-                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* DESGLOSE DIRECCIONAL (MICRO) */}
+                  <div className="flex gap-4 mt-auto">
+                    {/* IDA */}
+                    <div className="flex-1 bg-slate-900/40 rounded-lg p-3 border border-slate-700/50">
+                      <div className="text-[10px] uppercase text-slate-500 font-bold mb-2">Sentido Ida</div>
+                      <div className="flex flex-col gap-2">
+                        {[...trends.base_line.trend_ida].reverse().map((t) => (
+                          <div key={`ida-${t.month}`} className="w-full">
+                            <div className="flex justify-between text-[10px] mb-1">
+                              <span className="text-slate-400">{formatMonthName(t.month).split(' ')[0]}</span>
+                              <span className="font-mono text-indigo-300">{t.boarding.toLocaleString()}</span>
+                            </div>
+                            <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+                              <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.min((t.boarding / 500000) * 100, 100)}%` }} />
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                    {/* VUELTA */}
+                    <div className="flex-1 bg-slate-900/40 rounded-lg p-3 border border-slate-700/50">
+                      <div className="text-[10px] uppercase text-slate-500 font-bold mb-2">Sentido Vuelta</div>
+                      <div className="flex flex-col gap-2">
+                        {[...trends.base_line.trend_vuelta].reverse().map((t) => (
+                          <div key={`vuelta-${t.month}`} className="w-full">
+                            <div className="flex justify-between text-[10px] mb-1">
+                              <span className="text-slate-400">{formatMonthName(t.month).split(' ')[0]}</span>
+                              <span className="font-mono text-indigo-300">{t.boarding.toLocaleString()}</span>
+                            </div>
+                            <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+                              <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.min((t.boarding / 500000) * 100, 100)}%` }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
 

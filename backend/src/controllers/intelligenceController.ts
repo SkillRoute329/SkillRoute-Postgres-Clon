@@ -210,7 +210,17 @@ export const getMonthlyTrends = async (req: Request, res: Response) => {
       }));
     };
 
-    const baseTrend = await fetchTrend(route_id as string, parseInt(direction_id as string, 10));
+    const baseTrendIda = await fetchTrend(route_id as string, 0);
+    const baseTrendVuelta = await fetchTrend(route_id as string, 1);
+    
+    // Calcular el total consolidado (macro) sumando ida y vuelta por mes
+    const totalMap = new Map<string, number>();
+    for (const t of baseTrendIda) totalMap.set(t.month, (totalMap.get(t.month) || 0) + t.boarding);
+    for (const t of baseTrendVuelta) totalMap.set(t.month, (totalMap.get(t.month) || 0) + t.boarding);
+    
+    const baseTrendTotal = Array.from(totalMap.entries())
+      .map(([month, boarding]) => ({ month, boarding }))
+      .sort((a, b) => a.month.localeCompare(b.month));
     
     let compTrend = null;
     if (competitor_route_id && competitor_direction_id !== undefined) {
@@ -225,11 +235,13 @@ export const getMonthlyTrends = async (req: Request, res: Response) => {
     const responseData = {
       base_line: {
         route_id,
-        direction_id: parseInt(direction_id as string, 10),
-        trend: baseTrend
+        selected_direction: parseInt(direction_id as string, 10),
+        trend_ida: baseTrendIda,
+        trend_vuelta: baseTrendVuelta,
+        trend_total: baseTrendTotal
       },
       competitor_line: compTrend,
-      message: baseTrend.length === 0 
+      message: baseTrendTotal.length === 0 
         ? 'Aún no hay datos cargados de la IMM para estas líneas.' 
         : 'Datos auditables procesados directamente del Catálogo Abierto IMM.'
     };
