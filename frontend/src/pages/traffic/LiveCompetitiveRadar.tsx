@@ -12,8 +12,7 @@ import 'leaflet/dist/leaflet.css';
 import { Activity, Crosshair, Sliders, DollarSign, ChevronLeft } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { useLiveOperations, type ServicioActivo } from '../../hooks/useLiveOperations';
-import { collection, getDocs, query, limit } from '../../config/firestoreShim';
-import { db } from '../../config/firebase';
+import { getNavigationLineaData } from '../../services/firebaseDataService';
 import api from '../../services/api';
 
 // -- Tipos --
@@ -113,9 +112,10 @@ export default function LiveCompetitiveRadar() {
     loading: loadingLive,
   } = useLiveOperations();
 
-  // Estados Estáticos
-  const [shapes, setShapes] = useState<ShapeDoc[]>([]);
-  const [loadingStatic, setLoadingStatic] = useState(true);
+  // Estados de Trazados de Ruta (Dinámicos)
+  const [baseRouteCoords, setBaseRouteCoords] = useState<[number, number][]>([]);
+  const [compRouteCoords, setCompRouteCoords] = useState<[number, number][]>([]);
+  const [selectedCompetitor, setSelectedCompetitor] = useState<CompetitorInfo | null>(null);
 
   // Estados UI y Jerarquía
   const [selectedLinea, setSelectedLinea] = useState<string | null>(null);
@@ -156,44 +156,49 @@ export default function LiveCompetitiveRadar() {
       setFugaData(prev => ({ ...prev, [rivalId]: { loading: false, pax: null } }));
     }
   };
-
-  // Carga de catálogo estático (solo shapes)
+  // Carga de ruta propia al seleccionar una línea
   useEffect(() => {
-    const loadStatic = async () => {
-      setLoadingStatic(true);
+    if (!selectedLinea) {
+      setBaseRouteCoords([]);
+      setCompRouteCoords([]);
+      setSelectedCompetitor(null);
+      return;
+    }
+    const loadBaseRoute = async () => {
       try {
-        const [s70, s50, s20, s10] = await Promise.all([
-          getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
-          getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
-          getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
-          getDocs(query(collection(db, 'shapes_cross_operator'), limit(500))),
-        ]);
-        const loadedShapes: ShapeDoc[] = [];
-        const rawDocs = [...s70.docs, ...s50.docs, ...s20.docs, ...s10.docs];
-        for (const d of rawDocs) {
-          const data = d.data();
-          if (Array.isArray(data.points) && data.points.length > 1) {
-            loadedShapes.push({
-              key: String(data.key),
-              agencyId: String(data.agencyId),
-              empresa: String(data.empresa),
-              linea: String(data.linea),
-              sentido: String(data.sentido || 'IDA'),
-              points: data.points as Array<{ lat: number; lon: number }>,
-              lengthMeters: Number(data.lengthMeters ?? 0),
-            });
-          }
+        const data = await getNavigationLineaData(empresaPropia, selectedLinea);
+        if (data && data.recorrido) {
+          setBaseRouteCoords(data.recorrido.map((c: any) => [c.lat, c.lng]));
+        } else {
+          setBaseRouteCoords([]);
         }
-        setShapes(loadedShapes);
       } catch (err) {
-        console.warn('Error al precargar shapes:', err);
-      } finally {
-        setLoadingStatic(false);
+        console.warn('Error loading base route', err);
       }
     };
-    loadStatic();
-  }, []);
+    loadBaseRoute();
+  }, [selectedLinea, empresaPropia]);
 
+  // Carga de ruta ajena al focalizar un competidor
+  useEffect(() => {
+    if (!selectedCompetitor) {
+      setCompRouteCoords([]);
+      return;
+    }
+    const loadCompRoute = async () => {
+      try {
+        const data = await getNavigationLineaData(selectedCompetitor.codigoEmpresa, selectedCompetitor.linea.toLowerCase());
+        if (data && data.recorrido) {
+          setCompRouteCoords(data.recorrido.map((c: any) => [c.lat, c.lng]));
+        } else {
+          setCompRouteCoords([]);
+        }
+      } catch (err) {
+        console.warn('Error loading competitor route', err);
+      }
+    };
+    loadCompRoute();
+  }, [selectedCompetitor]);
   // Carga topológica oficial desde API basada en la LÍNEA seleccionada (MACRO)
   useEffect(() => {
     if (!selectedLinea) {
@@ -328,8 +333,9 @@ export default function LiveCompetitiveRadar() {
     setSelectedBusId(null);
   };
 
-  const locateCompetitor = (lat: number, lng: number) => {
-    setMapCenter([lat, lng]);
+  const locateCompetitor = (r: CompetitorInfo) => {
+    setSelectedCompetitor(r);
+    setMapCenter([r.lat, r.lng]);
     setMapZoom(16);
   };
 
@@ -491,7 +497,7 @@ export default function LiveCompetitiveRadar() {
                               <div className="text-right">
                                 <div className="flex items-center justify-end gap-2">
                                   <div className="text-sm font-black font-mono text-white">{r.distanciaM}m</div>
-                                  <button onClick={() => locateCompetitor(r.lat, r.lng)} className="bg-slate-700/50 hover:bg-indigo-600 text-slate-300 hover:text-white rounded p-1 transition-colors" title="Localizar coche en el mapa">
+                                  <button onClick={() => locateCompetitor(r)} className="bg-slate-700/50 hover:bg-indigo-600 text-slate-300 hover:text-white rounded p-1 transition-colors" title="Localizar coche en el mapa">
                                     <Crosshair className="w-3 h-3" />
                                   </button>
                                 </div>
@@ -546,33 +552,29 @@ export default function LiveCompetitiveRadar() {
           {selectedLinea && (
             <>
               {/* Ruta Propia Base */}
-              {(() => {
-                const baseShape = shapes.find(s => String(s.linea).trim() === selectedLinea && String(s.agencyId) === String(empresaPropia));
-                if (baseShape) {
-                  return (
-                    <Polyline
-                      positions={baseShape.points.map(p => [p.lat, p.lon]) as [number, number][]}
-                      pathOptions={{ color: '#6366f1', weight: 6, opacity: 0.9 }}
-                    />
-                  );
-                }
-                return null;
-              })()}
-              
-              {/* Rutas Rivales */}
-              {officialCompetitors.map(comp => {
-                const rivalShape = shapes.find(s => String(s.linea).trim() === String(comp.competitor_route_id).trim());
-                if (rivalShape) {
-                  return (
-                    <Polyline
-                      key={`shape-${comp.competitor_route_id}`}
-                      positions={rivalShape.points.map(p => [p.lat, p.lon]) as [number, number][]}
-                      pathOptions={{ color: '#d97706', weight: 3, opacity: 0.5, dashArray: '5, 5' }}
-                    />
-                  );
-                }
-                return null;
-              })}
+              {baseRouteCoords.length > 0 && (
+                <Polyline
+                  positions={baseRouteCoords}
+                  pathOptions={{
+                    color: EMPRESA_COLOR[String(empresaPropia)] ?? '#3b82f6',
+                    weight: 5,
+                    opacity: 0.8,
+                  }}
+                />
+              )}
+
+              {/* Ruta Ajena Seleccionada (cuando se hace clic en la mira) */}
+              {selectedCompetitor && compRouteCoords.length > 0 && (
+                <Polyline
+                  positions={compRouteCoords}
+                  pathOptions={{
+                    color: EMPRESA_COLOR[String(selectedCompetitor.codigoEmpresa)] ?? '#f97316',
+                    weight: 4,
+                    opacity: 0.9,
+                    dashArray: '10, 10'
+                  }}
+                />
+              )}
             </>
           )}
 
