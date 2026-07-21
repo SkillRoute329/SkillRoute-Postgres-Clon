@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Train } from 'lucide-react';
 
 // Data types
-import { TabType, todasAfectadas } from './data/brtData';
+import type { TabType } from './data/brtData';
+import { todasAfectadas } from './data/brtData';
 
 // Tabs
 import TabCorredores from './components/BRT/TabCorredores';
