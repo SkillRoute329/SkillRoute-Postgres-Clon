@@ -1,22 +1,137 @@
-import React from 'react';
-import { Award, Star, BarChart3, Layers, CheckCircle, Building2 } from 'lucide-react';
-import { PROPUESTA_ASM } from '../../data/brtData';
+import React, { useState, useEffect } from 'react';
+import { Award, Star, BarChart3, Layers, CheckCircle, Building2, Edit2, Save, X } from 'lucide-react';
+import { PROPUESTA_ASM as FALLBACK } from '../../data/brtData';
 
 export default function TabPropuesta() {
+  const [propuesta, setPropuesta] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<any>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetchPropuesta();
+  }, []);
+
+  const fetchPropuesta = async () => {
+    try {
+      const res = await fetch('/api/brt/propuesta');
+      if (!res.ok) throw new Error();
+      const { data } = await res.json();
+      setPropuesta({
+        ...data,
+        ventajas_competitivas: typeof data.ventajas_competitivas === 'string' ? JSON.parse(data.ventajas_competitivas) : data.ventajas_competitivas,
+        modelo_comercial: typeof data.modelo_comercial === 'string' ? JSON.parse(data.modelo_comercial) : data.modelo_comercial,
+        kpis_internacionales: typeof data.kpis_internacionales === 'string' ? JSON.parse(data.kpis_internacionales) : data.kpis_internacionales,
+      });
+    } catch {
+      setPropuesta({
+        titulo: FALLBACK.titulo,
+        subtitulo: FALLBACK.subtitulo,
+        ventajas_competitivas: FALLBACK.ventajasCompetitivas,
+        modelo_comercial: FALLBACK.modeloComercial,
+        kpis_internacionales: FALLBACK.kpisInternacionales,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEdit = () => {
+    setEditForm({
+      titulo: propuesta.titulo,
+      subtitulo: propuesta.subtitulo,
+      ventajasStr: JSON.stringify(propuesta.ventajas_competitivas, null, 2),
+      modelosStr: JSON.stringify(propuesta.modelo_comercial, null, 2),
+      kpisStr: JSON.stringify(propuesta.kpis_internacionales, null, 2),
+    });
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const payload = {
+        titulo: editForm.titulo,
+        subtitulo: editForm.subtitulo,
+        ventajas_competitivas: JSON.parse(editForm.ventajasStr),
+        modelo_comercial: JSON.parse(editForm.modelosStr),
+        kpis_internacionales: JSON.parse(editForm.kpisStr),
+      };
+
+      const res = await fetch('/api/brt/propuesta', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error();
+      await fetchPropuesta();
+      setIsEditing(false);
+    } catch (err) {
+      console.error(err);
+      alert('Error guardando. Revise que el formato JSON sea válido.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (loading || !propuesta) return <div className="text-white">Cargando propuesta...</div>;
+
   return (
     <div className="space-y-5">
       {/* Hero */}
-      <div className="bg-gradient-to-r from-primary-900/40 to-slate-900 rounded-2xl border border-primary-700/40 p-6">
+      <div className="bg-gradient-to-r from-primary-900/40 to-slate-900 rounded-2xl border border-primary-700/40 p-6 relative group">
+        {!isEditing && (
+          <button onClick={handleEdit} className="absolute top-4 right-4 p-2 bg-primary-800 hover:bg-primary-700 text-white rounded-lg flex gap-2 items-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+            <Edit2 className="w-4 h-4" /> Editar Propuesta
+          </button>
+        )}
         <div className="flex items-start gap-4">
           <div className="w-14 h-14 rounded-2xl bg-primary-600/30 border border-primary-500/50 flex items-center justify-center shrink-0">
             <Award className="w-8 h-8 text-primary-400" />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-white">{PROPUESTA_ASM.titulo}</h2>
-            <p className="text-primary-300 mt-1">{PROPUESTA_ASM.subtitulo}</p>
+            <h2 className="text-2xl font-black text-white">{propuesta.titulo}</h2>
+            <p className="text-primary-300 mt-1">{propuesta.subtitulo}</p>
           </div>
         </div>
       </div>
+
+      {isEditing && (
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl">
+          <div className="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+            <h3 className="text-white font-bold">Editar Propuesta Estratégica</h3>
+            <button onClick={() => setIsEditing(false)}><X className="text-slate-400 w-5 h-5" /></button>
+          </div>
+          <div className="grid grid-cols-1 gap-4 mb-4">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Título</label>
+              <input type="text" value={editForm.titulo} onChange={e => setEditForm({...editForm, titulo: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white p-2 rounded text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Subtítulo</label>
+              <input type="text" value={editForm.subtitulo} onChange={e => setEditForm({...editForm, subtitulo: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white p-2 rounded text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Ventajas Competitivas (JSON Array)</label>
+              <textarea value={editForm.ventajasStr} onChange={e => setEditForm({...editForm, ventajasStr: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white p-2 rounded text-sm h-32 font-mono text-xs" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Modelos Comerciales (JSON Object)</label>
+              <textarea value={editForm.modelosStr} onChange={e => setEditForm({...editForm, modelosStr: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white p-2 rounded text-sm h-32 font-mono text-xs" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">KPIs Internacionales (JSON Array)</label>
+              <textarea value={editForm.kpisStr} onChange={e => setEditForm({...editForm, kpisStr: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white p-2 rounded text-sm h-32 font-mono text-xs" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-700">
+            <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-slate-400 hover:text-white">Cancelar</button>
+            <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded text-white flex gap-2"><Save className="w-4 h-4"/>Guardar</button>
+          </div>
+        </div>
+      )}
 
       {/* Ventajas competitivas */}
       <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
@@ -26,7 +141,7 @@ export default function TabPropuesta() {
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-slate-800">
-          {PROPUESTA_ASM.ventajasCompetitivas.map(v => (
+          {(propuesta.ventajas_competitivas || []).map((v: any) => (
             <div key={v.titulo} className="p-4 border-b border-slate-800/50">
               <p className="font-bold text-white text-sm flex items-center gap-2">
                 <span className="text-xl">{v.icono}</span> {v.titulo}
@@ -41,7 +156,7 @@ export default function TabPropuesta() {
       <div>
         <p className="text-xs text-slate-500 uppercase font-bold mb-3">3 modelos de participación posibles</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {Object.values(PROPUESTA_ASM.modeloComercial).map((op, i) => (
+          {Object.values(propuesta.modelo_comercial || {}).map((op: any, i) => (
             <div key={op.nombre} className={`bg-slate-900 rounded-xl border overflow-hidden ${
               i === 1 ? 'border-primary-600/60' : 'border-slate-700'
             }`}>
@@ -80,7 +195,7 @@ export default function TabPropuesta() {
           </p>
         </div>
         <div className="divide-y divide-slate-800/50">
-          {PROPUESTA_ASM.kpisInternacionales.map(k => (
+          {(propuesta.kpis_internacionales || []).map((k: any) => (
             <div key={k.kpi} className="px-4 py-3 grid grid-cols-1 md:grid-cols-4 gap-2 items-start">
               <p className="text-white text-sm font-medium">{k.kpi}</p>
               <div>
@@ -163,33 +278,6 @@ export default function TabPropuesta() {
               </div>
             ))}
           </div>
-
-          <div className="bg-amber-900/20 border border-amber-700/40 rounded-xl p-4">
-            <p className="text-amber-300 text-sm font-bold mb-1">💡 Visión de negocio SaaS</p>
-            <p className="text-amber-400/80 text-sm leading-relaxed">
-              Con 4 empresas operadoras (UCOT, COETC, COME, CUTCSA) + la ASM como cliente,
-              la plataforma genera ingresos por licencia de uso (~US$2,000-5,000/empresa/mes).
-              UCOT no solo opera buses — también vende tecnología al sistema.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Llamada a acción */}
-      <div className="bg-emerald-900/20 border border-emerald-700/40 rounded-2xl p-6 text-center">
-        <Building2 className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
-        <h3 className="text-xl font-black text-white mb-2">UCOT ya tiene la plataforma. Solo falta el contrato.</h3>
-        <p className="text-emerald-300/80 text-sm max-w-2xl mx-auto mb-4">
-          SkillRoute monitorea GPS en tiempo real, gestiona desvíos, genera boletines, distribuye coches y conductores
-          automáticamente, y genera reportes KPI para el regulador. Es exactamente lo que la ASM necesitará operar un sistema BRT.
-          Ninguna otra empresa operadora en Uruguay tiene esto hoy.
-        </p>
-        <div className="flex flex-wrap justify-center gap-3">
-          {['GPS integrado en tiempo real', 'Multi-empresa listo', 'Gestión de contingencias digital', 'KPIs automáticos para regulador', '691 empleados gestionados', '29 líneas activas'].map(item => (
-            <span key={item} className="bg-emerald-900/40 border border-emerald-700/50 text-emerald-300 px-3 py-1 rounded-full text-xs font-medium">
-              ✓ {item}
-            </span>
-          ))}
         </div>
       </div>
     </div>
