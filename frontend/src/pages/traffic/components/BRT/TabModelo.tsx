@@ -26,9 +26,27 @@ export default function TabModelo() {
         setFormData(data.data);
         setTarifaKmSlider(Number(data.data.tarifa_km_brt_uyus));
         setKmDiaSlider(Number(data.data.km_promedio_dia));
+      } else {
+        throw new Error('Fallback to static data');
       }
     } catch (e) {
-      console.error('Error fetching BRT config:', e);
+      console.warn('Error fetching BRT config, using fallback:', e);
+      const m = MODELO_FINANCIERO;
+      const fallbackConfig = {
+        tarifa_actual_uyus: m.actual.tarifa,
+        costo_dia_actual_uyus: m.actual.costoDia,
+        tarifa_km_brt_uyus: m.brt.tarifaKm,
+        brt_costo_dia: m.brt.costoDia,
+        km_promedio_dia: m.actual.kmPromDia,
+        pasajeros_prom_dia: m.actual.pasajerosPromDia,
+        captacion_empresa: m.actual.captacionEmpresa,
+        brt_bonus_nocturno: m.brt.bonusNocturno,
+        brt_riesgo_kpi_min: m.brt.riesgoMin
+      };
+      setConfig(fallbackConfig);
+      setFormData(fallbackConfig);
+      setTarifaKmSlider(Number(fallbackConfig.tarifa_km_brt_uyus));
+      setKmDiaSlider(Number(fallbackConfig.km_promedio_dia));
     } finally {
       setLoading(false);
     }
