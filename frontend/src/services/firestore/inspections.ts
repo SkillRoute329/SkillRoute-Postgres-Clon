@@ -4,7 +4,23 @@ import type { Inspection, InspectionCreate } from '../../types/inspections';
 
 const COL = 'inspections';
 
+import { Timestamp } from '../../config/firestoreShim';
+
 function mapDoc(id: string, data: Record<string, unknown>): Inspection {
+  let actualPassedAt: any = data.actualPassedAt;
+  if (typeof actualPassedAt === 'string') {
+    actualPassedAt = Timestamp.fromDate(new Date(actualPassedAt));
+  } else if (actualPassedAt && typeof actualPassedAt.seconds === 'number') {
+    actualPassedAt = new Timestamp(actualPassedAt.seconds, actualPassedAt.nanoseconds);
+  }
+
+  let createdAt: any = data.createdAt;
+  if (typeof createdAt === 'string') {
+    createdAt = Timestamp.fromDate(new Date(createdAt));
+  } else if (createdAt && typeof createdAt.seconds === 'number') {
+    createdAt = new Timestamp(createdAt.seconds, createdAt.nanoseconds);
+  }
+
   return {
     id,
     cartonServiceId: data.cartonServiceId as string,
@@ -12,11 +28,11 @@ function mapDoc(id: string, data: Record<string, unknown>): Inspection {
     controlPointId: data.controlPointId as string,
     serviceDate: data.serviceDate as string,
     scheduledTime: data.scheduledTime as string,
-    actualPassedAt: data.actualPassedAt as Inspection['actualPassedAt'],
+    actualPassedAt: actualPassedAt as Inspection['actualPassedAt'],
     timeDeltaMinutes: data.timeDeltaMinutes as number,
     passengerLoad: data.passengerLoad as Inspection['passengerLoad'],
     inspectorId: data.inspectorId as string | undefined,
-    createdAt: data.createdAt as Inspection['createdAt'],
+    createdAt: createdAt as Inspection['createdAt'],
   };
 }
 

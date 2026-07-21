@@ -249,7 +249,7 @@ const InspectorDashboard = () => {
     header: { id: string },
   ) => {
     const schedTime = row.times[header.id];
-    if (!schedTime) return;
+    if (!schedTime || schedTime === '--:--' || schedTime === '--') return;
 
     const now = new Date();
     const currentHHMM =
@@ -296,7 +296,7 @@ const InspectorDashboard = () => {
         controlPointId: header.id,
         serviceDate,
         scheduledTime: schedTime,
-        actualPassedAt: Timestamp.now(),
+        actualPassedAt: new Date().toISOString(),
         timeDeltaMinutes,
         passengerLoad: 'MEDIO',
         inspectorId: (user as { uid?: string })?.uid,
@@ -530,7 +530,7 @@ const InspectorDashboard = () => {
                           key={h.id}
                           className="p-2 text-center border-r border-slate-800/50 align-top"
                         >
-                          {sched ? (
+                          {sched && sched !== '--:--' && sched !== '--' ? (
                             <div className="flex flex-col items-center gap-2">
                               <span className="font-mono text-slate-400 text-xs">{sched}</span>
 
