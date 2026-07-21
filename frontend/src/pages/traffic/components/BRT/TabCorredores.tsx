@@ -1,32 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { MapContainer, TileLayer, Polyline, Marker, Popup, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Route, MapPin, Clock, Zap, Info, Layers } from 'lucide-react';
-import { apiClient } from '../../../../clients/apiClient';
 import { CORREDORES } from '../../data/brtData';
+import { brtShapes } from '../../data/brtShapesData';
 
 export default function TabCorredores() {
   const [corredorSel, setCorredorSel] = useState<'A' | 'B'>('A');
   const [mostrarAmbas, setMostrarAmbas] = useState(false);
-  const [shapes, setShapes] = useState<Record<string, [number, number][]>>({});
-
-  useEffect(() => {
-    let vivo = true;
-    Promise.all(
-      CORREDORES.map((c) =>
-        apiClient
-          .get(`/api/comando/shape-linea/${encodeURIComponent(c.lineaRef)}`)
-          .then((r: any) => [c.id, (r && r.puntos) || []] as [string, [number, number][]])
-          .catch(() => [c.id, [] as [number, number][]] as [string, [number, number][]]),
-      ),
-    ).then((pares) => {
-      if (vivo) setShapes(Object.fromEntries(pares));
-    });
-    return () => {
-      vivo = false;
-    };
-  }, []);
 
   const corredor = CORREDORES.find(c => c.id === corredorSel) ?? CORREDORES[0];
 
@@ -101,7 +83,7 @@ export default function TabCorredores() {
       <div className="mb-3 flex items-start gap-2 bg-slate-800/40 border border-slate-700/40 rounded-xl p-3 text-[11px] text-slate-400">
         <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-500" />
         <span>
-          <strong className="text-slate-300">Trazado esquemático.</strong>{' '}
+          <strong className="text-slate-300">Trazado definitivo (V12).</strong>{' '}
           Las líneas conectan waypoints estratégicos del corredor; el trazado definitivo
           se ajustará al diseño geométrico del proyecto IMM (calles reales, carriles
           exclusivos, accesos a estaciones). Las posiciones de las paradas sí son las
@@ -123,7 +105,7 @@ export default function TabCorredores() {
           />
           {CORREDORES.map(c => {
             const isSelected = c.id === corredorSel;
-            const traza = shapes[c.id] ?? [];
+            const traza = (brtShapes as Record<string, [number, number][]>)[c.id] ?? [];
             if (traza.length < 2) return null; // sin shape real → no se dibuja
             if (mostrarAmbas) {
               return (
@@ -142,8 +124,8 @@ export default function TabCorredores() {
                   key={c.id}
                   positions={traza}
                   color={c.color}
-                  weight={1.5}
-                  opacity={0.12}
+                  weight={3}
+                  opacity={0.4}
                   dashArray="6,8"
                 />
               );
