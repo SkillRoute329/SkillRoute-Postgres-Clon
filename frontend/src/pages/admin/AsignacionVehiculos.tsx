@@ -11,15 +11,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  doc,
-} from '../../config/firestoreShim';
-import { db } from '../../config/firebase';
+import { apiClient } from '../../clients/apiClient';
 import {
   Bus,
   Search,
@@ -41,6 +33,8 @@ interface DriverUser {
   uid: string;
   nombre: string;
   email: string;
+  internalNumber: string;
+  telefono: string;
   role: string;
   cocheId: string | null;
   ultimoLogin: string | null;
@@ -68,39 +62,54 @@ export default function AsignacionVehiculos() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [conductores, setConductores] = useState<DriverUser[]>([]);
-  const [buscar, setBuscar] = useState('');
+  const [buscarConductor, setBuscarConductor] = useState('');
+  const [buscarCoche, setBuscarCoche] = useState('');
   const [filtroSinCoche, setFiltroSinCoche] = useState(false);
   const [editandoUid, setEditandoUid] = useState<string | null>(null);
   const [valorEdit, setValorEdit] = useState('');
+  const [vehiculosList, setVehiculosList] = useState<string[]>([]);
   const [guardando, setGuardando] = useState(false);
   const [guardadoOk, setGuardadoOk] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLSelectElement>(null);
 
   const cargar = async () => {
     setCargando(true);
     setError(null);
     try {
-      const q = query(
-        collection(db, 'users'),
-        where('role', 'in', ['DRIVER', 'CONDUCTOR']),
-      );
-      const snap = await getDocs(q);
-      const lista: DriverUser[] = snap.docs.map((d) => {
-        const data = d.data();
-        return {
-          uid: d.id,
-          nombre: limpiarNombre(data.nombre ?? data.displayName ?? data.name),
-          email: data.email ?? '—',
-          role: data.role ?? '—',
-          cocheId: data.coche_id ?? data.cocheId ?? data.vehicle ?? null,
-          ultimoLogin: data.lastLogin ?? data.lastSignIn ?? null,
-        };
-      }).sort((a, b) => {
-        // Sin coche primero, luego por nombre
-        if (!a.cocheId && b.cocheId) return -1;
-        if (a.cocheId && !b.cocheId) return 1;
-        return a.nombre.localeCompare(b.nombre);
-      });
+      // 1. Cargar vehículos reales
+      const resVehicles = await apiClient.get<any[]>('/api/db/vehiculos');
+      const vList = (resVehicles.data || [])
+        .map((v) => String(v.internal_number || v.id_bus || v.id))
+        .filter(Boolean)
+        .sort();
+      setVehiculosList(vList);
+
+      // 2. Cargar conductores desde PostgreSQL (personal)
+      const resPersonal = await apiClient.get<any[]>('/api/db/personal');
+      
+      const lista: DriverUser[] = (resPersonal.data || [])
+        .filter((d: any) => {
+          const r = String(d.role || '').toUpperCase();
+          return r === 'CONDUCTOR' || r === 'DRIVER';
+        })
+        .map((d: any) => {
+          return {
+            uid: String(d.id),
+            nombre: limpiarNombre(d.full_name ?? d.nombre ?? d.displayName ?? d.name),
+            email: d.email ?? '—',
+            internalNumber: d.internal_number ?? '—',
+            telefono: d.telefono ?? '—',
+            role: d.role ?? '—',
+            cocheId: d.coche_id ?? d.cocheId ?? d.vehicle ?? null,
+            ultimoLogin: d.hora_ultimo_servicio ?? d.lastLogin ?? d.lastSignIn ?? null,
+          };
+        })
+        .sort((a, b) => {
+          // Sin coche primero, luego por nombre
+          if (!a.cocheId && b.cocheId) return -1;
+          if (a.cocheId && !b.cocheId) return 1;
+          return a.nombre.localeCompare(b.nombre);
+        });
       setConductores(lista);
     } catch {
       setError('No se pudo cargar la lista de conductores.');
@@ -129,7 +138,7 @@ export default function AsignacionVehiculos() {
     const nuevo = valorEdit.trim();
     setGuardando(true);
     try {
-      await updateDoc(doc(db, 'users', uid), { coche_id: nuevo || null });
+      await apiClient.put(`/api/db/personal/${uid}`, { coche_id: nuevo || null });
       setConductores((prev) =>
         prev.map((c) =>
           c.uid === uid ? { ...c, cocheId: nuevo || null } : c,
@@ -148,13 +157,18 @@ export default function AsignacionVehiculos() {
   /* ─── Derived ────────────────────────────── */
 
   const filtrados = conductores.filter((c) => {
-    const texto =
-      buscar === '' ||
-      c.nombre.toLowerCase().includes(buscar.toLowerCase()) ||
-      c.email.toLowerCase().includes(buscar.toLowerCase()) ||
-      (c.cocheId ?? '').toLowerCase().includes(buscar.toLowerCase());
+    const textoConductor =
+      buscarConductor === '' ||
+      c.nombre.toLowerCase().includes(buscarConductor.toLowerCase()) ||
+      c.email.toLowerCase().includes(buscarConductor.toLowerCase()) ||
+      c.internalNumber.toLowerCase().includes(buscarConductor.toLowerCase());
+
+    const textoCoche =
+      buscarCoche === '' ||
+      (c.cocheId ?? '').toLowerCase().includes(buscarCoche.toLowerCase());
+
     const sinCoche = !filtroSinCoche || !c.cocheId;
-    return texto && sinCoche;
+    return textoConductor && textoCoche && sinCoche;
   });
 
   const totalSinCoche = conductores.filter((c) => !c.cocheId).length;
@@ -257,15 +271,28 @@ export default function AsignacionVehiculos() {
 
           {/* Filtros */}
           <div className="flex items-center gap-3 mb-4 flex-wrap">
-            <div className="relative flex-1 max-w-sm">
+            <div className="relative flex-1 max-w-[260px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input
                 type="text"
-                value={buscar}
-                onChange={(e) => setBuscar(e.target.value)}
-                placeholder="Buscar por nombre, email o coche…"
+                value={buscarConductor}
+                onChange={(e) => setBuscarConductor(e.target.value)}
+                placeholder="Buscar personal (nombre, legajo)..."
                 className="w-full pl-9 pr-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
               />
+            </div>
+            <div className="relative flex-1 max-w-[200px]">
+              <Bus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <select
+                value={buscarCoche}
+                onChange={(e) => setBuscarCoche(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 appearance-none"
+              >
+                <option value="">Todos los coches...</option>
+                {vehiculosList.map((v) => (
+                  <option key={v} value={v}>Coche {v}</option>
+                ))}
+              </select>
             </div>
             <button
               onClick={() => setFiltroSinCoche((v) => !v)}
@@ -278,7 +305,7 @@ export default function AsignacionVehiculos() {
               <UserX className="w-3.5 h-3.5" />
               Solo sin asignar
             </button>
-            {(buscar || filtroSinCoche) && (
+            {(buscarConductor || buscarCoche || filtroSinCoche) && (
               <span className="text-xs text-slate-500">
                 {filtrados.length} de {conductores.length}
               </span>
@@ -312,8 +339,18 @@ export default function AsignacionVehiculos() {
                     <tr key={c.uid} className="hover:bg-slate-800/30 transition-colors">
                       {/* Conductor */}
                       <td className="px-4 py-3">
-                        <p className="font-semibold text-slate-200 text-sm">{c.nombre}</p>
-                        <p className="text-xs text-slate-500">{c.email}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-slate-200 text-sm">{c.nombre}</p>
+                          {c.internalNumber !== '—' && (
+                            <span className="bg-slate-700/50 text-slate-300 text-[10px] px-1.5 py-0.5 rounded border border-slate-600">
+                              #{c.internalNumber}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 flex gap-2">
+                          {c.email !== '—' && <span>{c.email}</span>}
+                          {c.telefono !== '—' && <span>📱 {c.telefono}</span>}
+                        </p>
                       </td>
 
                       {/* Rol */}
@@ -327,18 +364,21 @@ export default function AsignacionVehiculos() {
                       <td className="px-4 py-3">
                         {editandoUid === c.uid ? (
                           <div className="flex items-center gap-2">
-                            <input
+                            <select
                               ref={inputRef}
-                              type="text"
                               value={valorEdit}
                               onChange={(e) => setValorEdit(e.target.value)}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') guardar(c.uid);
                                 if (e.key === 'Escape') cancelarEdicion();
                               }}
-                              placeholder="Nro. de coche"
                               className="w-28 px-2 py-1 text-sm bg-slate-700 border border-blue-500 rounded-lg text-white focus:outline-none"
-                            />
+                            >
+                              <option value="">-- Quitar --</option>
+                              {vehiculosList.map((v) => (
+                                <option key={v} value={v}>Coche {v}</option>
+                              ))}
+                            </select>
                             <button
                               onClick={() => guardar(c.uid)}
                               disabled={guardando}
