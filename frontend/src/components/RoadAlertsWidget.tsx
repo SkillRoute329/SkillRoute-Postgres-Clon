@@ -77,20 +77,20 @@ const RoadAlertsWidget = ({ hideTitle = false }: { hideTitle?: boolean }) => {
   // if (alerts.length === 0 && !canCreate) return null;
 
   return (
-    <div id="road-alerts-widget" className="mb-6 space-y-4">
+    <div id="road-alerts-widget" className="mb-2 md:mb-4 space-y-2">
       {/* Header / Title */}
       {!hideTitle && (
-        <div className="flex justify-between items-center px-2">
-          <h3 className="text-white font-bold flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5 text-yellow-500" />
+        <div className="flex justify-between items-center px-1">
+          <h3 className="text-white text-sm md:text-base font-bold flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 md:w-5 md:h-5 text-yellow-500" />
             <span>Alertas Viales</span>
           </h3>
           {canCreate && !showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="hidden md:block text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
+              className="hidden md:block text-xs bg-slate-800 hover:bg-slate-700 text-white px-2 py-1 rounded-md border border-slate-700 transition-colors"
             >
-              + Reportar Novedad
+              + Reportar
             </button>
           )}
         </div>
@@ -98,10 +98,10 @@ const RoadAlertsWidget = ({ hideTitle = false }: { hideTitle?: boolean }) => {
 
       {/* Empty State */}
       {alerts.length === 0 && !showForm && (
-        <div className="glass-panel p-4 rounded-xl border border-slate-800/50 flex items-center gap-3 opacity-60">
-          <Info className="w-5 h-5 text-slate-400" />
-          <span className="text-sm text-slate-400">
-            No hay alertas viales activas en este momento.
+        <div className="glass-panel py-2 px-3 rounded-lg border border-slate-800/50 flex items-center gap-2 opacity-60">
+          <Info className="w-4 h-4 text-slate-400" />
+          <span className="text-xs md:text-sm text-slate-400">
+            No hay alertas viales activas.
           </span>
         </div>
       )}

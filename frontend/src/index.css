@@ -10,6 +10,16 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  
+  /* Auto-escalado global para pantallas pequeñas (Laptops). 
+     Al reducir el font-size de html, todas las clases de Tailwind basadas en 'rem' (p-4, w-64, text-sm) 
+     se reducen proporcionalmente, adaptando toda la app a pantallas más chicas sin romper nada. */
+  @media (max-width: 1440px) {
+    html { font-size: 14px; } /* ~87.5% de tamaño */
+  }
+  @media (max-width: 1280px) {
+    html { font-size: 13px; } /* ~81% de tamaño */
+  }
 
   body {
     @apply bg-slate-950 text-slate-100;

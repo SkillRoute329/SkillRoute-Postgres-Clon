@@ -255,8 +255,8 @@ const DashboardLayoutInner = () => {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-x-hidden overflow-y-auto bg-slate-900/50 custom-scrollbar relative">
-          <div className="p-4 md:p-8 min-h-full flex flex-col flex-1 max-w-[100vw] w-full">
+        <div className="flex-1 flex flex-col min-h-0 overflow-x-auto overflow-y-auto bg-slate-900/50 custom-scrollbar relative">
+          <div className="p-2 md:p-4 min-h-full flex flex-col flex-1 max-w-[100vw] w-full">
             <RoadAlertsWidget />
             <div className="flex-1 min-h-0 relative w-full max-w-full">
               <RouteErrorBoundary key={location.pathname} module="Módulo">

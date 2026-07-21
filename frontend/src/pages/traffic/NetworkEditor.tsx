@@ -284,15 +284,15 @@ const CompetitiveAnalysis: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-slate-900 text-slate-200">
-      <div className="flex-none p-6 border-b border-slate-700 bg-slate-800/50 backdrop-blur flex justify-between items-center">
+      <div className="flex-none px-4 py-3 md:px-6 md:py-4 border-b border-slate-700 bg-slate-800/50 backdrop-blur flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2 lg:gap-4">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-indigo-500/20 rounded-lg">
-              <Network className="w-6 h-6 text-indigo-400" />
+          <div className="flex items-center gap-3 mb-1">
+            <div className="p-1.5 bg-indigo-500/20 rounded-lg">
+              <Network className="w-5 h-5 text-indigo-400" />
             </div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Inteligencia Competitiva</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Inteligencia Competitiva</h1>
           </div>
-          <p className="text-sm text-slate-400">Análisis de solapamiento espacial y carga de boletos mensual entre operadores del STM.</p>
+          <p className="text-xs md:text-sm text-slate-400">Análisis de solapamiento espacial y carga de boletos mensual entre operadores del STM.</p>
         </div>
 
         {trends && (
@@ -303,9 +303,9 @@ const CompetitiveAnalysis: React.FC = () => {
         )}
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-1/3 min-w-[350px] max-w-[450px] border-r border-slate-700 bg-slate-800/30 flex flex-col overflow-y-auto">
-          <div className="p-6 border-b border-slate-700/50 space-y-4">
+      <div className="flex-1 flex overflow-hidden flex-col md:flex-row">
+        <div className="w-full md:w-1/3 md:min-w-[280px] md:max-w-[350px] border-b md:border-b-0 md:border-r border-slate-700 bg-slate-800/30 flex flex-col overflow-y-auto max-h-[300px] md:max-h-full">
+          <div className="p-4 border-b border-slate-700/50 space-y-3">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">1. Seleccionar Línea y Destino</h2>
             <div className="flex gap-2">
               <div className="flex-1">
@@ -345,8 +345,8 @@ const CompetitiveAnalysis: React.FC = () => {
             )}
           </div>
 
-          <div className="p-6 flex-1 flex flex-col">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">2. Competidores Detectados (Mismo Sentido)</h2>
+          <div className="p-4 flex-1 flex flex-col">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3">2. Competidores Detectados (Mismo Sentido)</h2>
             {isLoading ? (
               <div className="flex-1 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
@@ -401,7 +401,7 @@ const CompetitiveAnalysis: React.FC = () => {
         </div>
 
         <div className="flex-1 flex flex-col relative bg-[#1a1c23] min-h-0">
-          <div className="flex-none h-[40%] min-h-[300px] relative">
+          <div className="flex-none h-[30%] lg:h-[40%] min-h-[200px] relative">
             <MapContainer center={[-34.8833, -56.1667]} zoom={13} zoomControl={false} className="h-full w-full">
               <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
               {routeCoordinates.length > 0 && (
@@ -463,7 +463,7 @@ const CompetitiveAnalysis: React.FC = () => {
             </h2>
 
             {trends ? (
-              <div className="flex flex-col xl:flex-row gap-6 min-h-min pb-6">
+              <div className="flex flex-col lg:flex-row gap-6 min-h-min pb-6">
                 <div className="flex-1 bg-slate-800/50 rounded-xl border border-slate-700 p-6 flex flex-col">
                   <div className="text-sm text-slate-400 mb-1">Impacto en Nuestra Línea</div>
                   <div className="text-2xl font-bold text-white mb-4">
