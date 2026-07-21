@@ -111,22 +111,32 @@ export const CartonService = {
       const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${SERVICE_DEFINITIONS}`, { query: { limit: 5000 } });
       (Array.isArray(res.data) ? res.data : []).forEach((d) => {
         const lineCode = (d.lineCode as string) || (d.linea as string);
-        if (lineCode) seen.add(String(lineCode).trim());
+        if (lineCode) {
+          const str = String(lineCode).trim();
+          if (!(str.length > 5 && !isNaN(Number(str)))) seen.add(str);
+        }
       });
     } catch { /* ignore */ }
 
     try {
       const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${CARTONES}`, { query: { limit: 5000 } });
       (Array.isArray(res.data) ? res.data : []).forEach((d) => {
-        const linea = d.linea as string;
-        if (linea) seen.add(String(linea).trim());
+        const linea = (d.lineCode as string) || (d.linea as string);
+        if (linea) {
+          const str = String(linea).trim();
+          if (!(str.length > 5 && !isNaN(Number(str)))) seen.add(str);
+        }
       });
     } catch { /* ignore */ }
 
     try {
       const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${LINEAS}`, { query: { limit: 5000 } });
       (Array.isArray(res.data) ? res.data : []).forEach((d) => {
-        if (d.id) seen.add(d.id as string);
+        const linea = (d.nombre as string) || (d.linea as string) || (d.lineCode as string);
+        if (linea) {
+          const clean = String(linea).replace('Linea ', '').trim();
+          if (!(clean.length > 5 && !isNaN(Number(clean)))) seen.add(clean);
+        }
       });
     } catch { /* ignore */ }
 
