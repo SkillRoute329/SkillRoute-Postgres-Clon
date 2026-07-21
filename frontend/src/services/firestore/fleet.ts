@@ -188,21 +188,22 @@ export const FleetService = {
   },
 
   async getLastInspection(vehicleId: string): Promise<unknown> {
-    // Subcollection vehiculos/{vehicleId}/inspections → tabla vehiculos_inspections
-    // TODO: confirmar tabla subcollection
     try {
-      const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/vehiculos_inspections`, {
-        query: { where: `vehicleId:${vehicleId}`, orderBy: 'date:desc', limit: 1 },
+      const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/inspections`, {
+        query: { where: `vehiculo_id:${vehicleId}`, orderBy: 'fecha_inspeccion:desc', limit: 1 },
       });
-      const docs = Array.isArray(res.data) ? res.data : [];
+      const docs = Array.isArray(res.data) ? res.data : (Array.isArray(res as any) ? (res as any) : []);
       return docs.length > 0 ? docs[0] : null;
     } catch { return null; }
   },
 
   async createInspection(data: { vehicleId: string; [k: string]: unknown }) {
-    // Subcollection vehiculos/{vehicleId}/inspections → tabla vehiculos_inspections
-    // TODO: confirmar tabla subcollection
-    const res = await apiClient.post<{ id: string }>(`/api/db/vehiculos_inspections`, data);
-    return { id: res.data?.id ?? String(Date.now()), ...data };
+    const payload = {
+      ...data,
+      vehiculo_id: data.vehicleId,
+      fecha_inspeccion: new Date().toISOString()
+    };
+    const res = await apiClient.post<{ id: string }>(`/api/db/inspections`, payload);
+    return { id: res.data?.id ?? (res as any).id ?? String(Date.now()), ...payload };
   },
 };

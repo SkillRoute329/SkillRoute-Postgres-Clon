@@ -16,15 +16,24 @@ export interface EamWorkOrder {
 }
 
 class EamServiceClass {
-  private COL_WO = 'eam_work_orders';
+  private COL_WO = 'work_orders';
 
   async getWorkOrders(vehicleId?: string): Promise<EamWorkOrder[]> {
-    const query: Record<string, unknown> = { orderBy: 'createdAt:desc', limit: 500 };
+    const query: Record<string, unknown> = { orderBy: 'created_at:desc', limit: 500 };
     if (vehicleId) {
-      query.where = `vehicleId:${vehicleId}`;
+      query.where = `coche_id:${vehicleId}`;
     }
-    const res = await apiClient.get<EamWorkOrder[]>(`/api/db/${this.COL_WO}`, { query });
-    return Array.isArray(res) ? res : [];
+    const res = await apiClient.get<any[]>(`/api/db/${this.COL_WO}`, { query });
+    const arr = Array.isArray(res) ? res : (Array.isArray((res as any).data) ? (res as any).data : []);
+    return arr.map(wo => ({
+      ...wo,
+      vehicleId: wo.vehicleId || wo.coche_id || wo.cocheId,
+      type: wo.type || wo.tipo,
+      status: wo.status || wo.estado,
+      priority: wo.priority || wo.prioridad || 'MEDIA',
+      createdAt: wo.createdAt || wo.created_at || wo.fecha,
+      completedAt: wo.completedAt || wo.completed_at
+    })) as EamWorkOrder[];
   }
 
   async createWorkOrder(data: Omit<EamWorkOrder, 'id' | 'createdAt'>): Promise<EamWorkOrder> {
