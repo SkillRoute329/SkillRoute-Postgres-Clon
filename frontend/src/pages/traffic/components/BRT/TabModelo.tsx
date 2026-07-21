@@ -1,31 +1,136 @@
-import React, { useState } from 'react';
-import { Bus, DollarSign, TrendingUp, CheckCircle, AlertTriangle, Info } from 'lucide-react';
-import { MODELO_FINANCIERO } from '../../data/brtData';
+import React, { useState, useEffect } from 'react';
+import { Bus, DollarSign, TrendingUp, CheckCircle, AlertTriangle, Info, Edit2, Save, X } from 'lucide-react';
+import { MODELO_FINANCIERO } from '../../data/brtData'; // Usado solo como fallback de riesgos/ventajas estáticas
 
 export default function TabModelo() {
+  const [config, setConfig] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [formData, setFormData] = useState<any>({});
+
+  // Sliders for dynamic projection
   const [tarifaKmSlider, setTarifaKmSlider] = useState(420);
   const [kmDiaSlider, setKmDiaSlider] = useState(220);
 
-  const m = MODELO_FINANCIERO;
-  const margenActual = m.actual.ingresoDia - m.actual.costoDia;
+  useEffect(() => {
+    fetchConfig();
+  }, []);
+
+  const fetchConfig = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('http://localhost:3001/api/brt/config');
+      const data = await res.json();
+      if (data.ok && data.data) {
+        setConfig(data.data);
+        setFormData(data.data);
+        setTarifaKmSlider(Number(data.data.tarifa_km_brt_uyus));
+        setKmDiaSlider(Number(data.data.km_promedio_dia));
+      }
+    } catch (e) {
+      console.error('Error fetching BRT config:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      const res = await fetch('http://localhost:3001/api/brt/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setConfig(data.data);
+        setEditMode(false);
+      }
+    } catch (e) {
+      console.error('Error saving BRT config:', e);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: Number(e.target.value) });
+  };
+
+  if (loading) return <div className="p-10 text-center text-slate-400">Cargando modelo financiero...</div>;
+  if (!config) return <div className="p-10 text-center text-red-400">Error al cargar la configuración de la base de datos.</div>;
+
+  const actualCosto = Number(config.costo_dia_actual_uyus);
+  const actualIngreso = Number(config.tarifa_actual_uyus) * Number(config.pasajeros_prom_dia) * Number(config.captacion_empresa);
+  const margenActual = actualIngreso - actualCosto;
+
+  const brtCosto = Number(config.brt_costo_dia);
+  const brtIngreso = Number(config.tarifa_km_brt_uyus) * Number(config.km_promedio_dia);
+  const margenBRT = brtIngreso - brtCosto;
+
   const ingresoBRTCalc = tarifaKmSlider * kmDiaSlider;
-  const margenBRTCalc = ingresoBRTCalc - m.brt.costoDia;
-  const margenBRT = m.brt.ingresoDia - m.brt.costoDia;
+  const margenBRTCalc = ingresoBRTCalc - brtCosto;
   const mejoraPct = margenActual !== 0 ? Math.round((margenBRT / margenActual - 1) * 100) : 0;
   const mejoraPctCalc = margenActual !== 0 ? Math.round((margenBRTCalc / margenActual - 1) * 100) : 0;
 
   return (
     <div className="space-y-5">
-      <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
-        <p className="text-xs text-slate-500 uppercase font-bold mb-3">Contexto del cambio</p>
-        <p className="text-slate-300 text-sm leading-relaxed">
-          El nuevo modelo de concesión BRT establece que las empresas operadoras cobran por <strong>kilómetro recorrido</strong>,
-          no por pasajero transportado. El Estado (a través de la Agencia del Sistema Metropolitano — ASM)
-          fija la tarifa por km y paga directamente a los operadores. Los usuarios pagan al Estado.
-          Esto <strong>elimina el riesgo de demanda</strong> para los operadores pero introduce
-          KPIs de calidad con descuentos por incumplimiento.
-        </p>
+      <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 flex justify-between items-start">
+        <div>
+          <p className="text-xs text-slate-500 uppercase font-bold mb-3">Contexto del cambio</p>
+          <p className="text-slate-300 text-sm leading-relaxed max-w-3xl">
+            El nuevo modelo de concesión BRT establece que las empresas operadoras cobran por <strong>kilómetro recorrido</strong>,
+            no por pasajero transportado. El Estado fija la tarifa por km y paga directamente a los operadores.
+            Esto elimina el riesgo de demanda para los operadores pero introduce KPIs de calidad.
+          </p>
+        </div>
+        <button 
+          onClick={() => { setEditMode(!editMode); setFormData(config); }}
+          className="bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2"
+        >
+          {editMode ? <X className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+          {editMode ? 'Cancelar Edición' : 'Editar Parámetros'}
+        </button>
       </div>
+
+      {editMode && (
+        <div className="bg-slate-800 rounded-xl border border-slate-600 p-5 mb-6">
+          <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Edit2 className="w-4 h-4"/> Configuración Financiera (Conexión a BD)</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Tarifa Actual ($)</label>
+              <input type="number" name="tarifa_actual_uyus" value={formData.tarifa_actual_uyus} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Costo Actual/Bus/Día ($)</label>
+              <input type="number" name="costo_dia_actual_uyus" value={formData.costo_dia_actual_uyus} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Tarifa BRT/Km ($)</label>
+              <input type="number" name="tarifa_km_brt_uyus" value={formData.tarifa_km_brt_uyus} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Costo BRT/Bus/Día ($)</label>
+              <input type="number" name="brt_costo_dia" value={formData.brt_costo_dia} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Km Promedio/Día</label>
+              <input type="number" name="km_promedio_dia" value={formData.km_promedio_dia} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Pasajeros Prom/Día</label>
+              <input type="number" name="pasajeros_prom_dia" value={formData.pasajeros_prom_dia} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Captación (%)</label>
+              <input type="number" step="0.01" name="captacion_empresa" value={formData.captacion_empresa} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" />
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
+              <Save className="w-4 h-4" /> Guardar en BD
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Comparativa modelo */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -34,33 +139,29 @@ export default function TabModelo() {
             <p className="font-bold text-white flex items-center gap-2">
               <Bus className="w-4 h-4 text-slate-400" /> Modelo ACTUAL (por pasajero)
             </p>
-            <p className="text-slate-400 text-xs mt-0.5">Referencia: bus promedio UCOT hoy</p>
+            <p className="text-slate-400 text-xs mt-0.5">Métricas dinámicas desde BD</p>
           </div>
           <div className="p-4 space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-slate-400">Tarifa por pasajero</span>
-              <span className="font-mono text-white">${m.actual.tarifa} UYU</span>
+              <span className="font-mono text-white">${config.tarifa_actual_uyus} UYU</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Pasajeros/bus/día</span>
-              <span className="font-mono text-white">{m.actual.pasajerosPromDia}</span>
+              <span className="font-mono text-white">{config.pasajeros_prom_dia}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Captación empresa</span>
-              <span className="font-mono text-white">{m.actual.captacionEmpresa * 100}%</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Km recorridos/día</span>
-              <span className="font-mono text-white">{m.actual.kmPromDia} km</span>
+              <span className="font-mono text-white">{Number(config.captacion_empresa) * 100}%</span>
             </div>
             <div className="border-t border-slate-700 pt-3">
               <div className="flex justify-between">
                 <span className="text-slate-400">Ingreso/bus/día</span>
-                <span className="font-mono text-emerald-400 font-bold">${Math.round(m.actual.ingresoDia).toLocaleString()} UYU</span>
+                <span className="font-mono text-emerald-400 font-bold">${Math.round(actualIngreso).toLocaleString()} UYU</span>
               </div>
               <div className="flex justify-between mt-1">
                 <span className="text-slate-400">Costo/bus/día</span>
-                <span className="font-mono text-red-400">${m.actual.costoDia.toLocaleString()} UYU</span>
+                <span className="font-mono text-red-400">${Math.round(actualCosto).toLocaleString()} UYU</span>
               </div>
               <div className="flex justify-between mt-1 pt-2 border-t border-slate-700">
                 <span className="text-white font-bold">Margen/bus/día</span>
@@ -81,38 +182,34 @@ export default function TabModelo() {
             <p className="font-bold text-white flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-emerald-400" /> Nuevo Modelo BRT (por km)
             </p>
-            <p className="text-emerald-400/70 text-xs mt-0.5">Estimación basada en contratos MTOP existentes</p>
+            <p className="text-emerald-400/70 text-xs mt-0.5">Estimación basada en parámetros guardados</p>
           </div>
           <div className="p-4 space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-slate-400">Tarifa por km</span>
-              <span className="font-mono text-white">${m.brt.tarifaKm} UYU/km</span>
+              <span className="font-mono text-white">${config.tarifa_km_brt_uyus} UYU/km</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Km operados/bus/día</span>
-              <span className="font-mono text-white">{m.brt.kmPromDia} km</span>
+              <span className="font-mono text-white">{config.km_promedio_dia} km</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Factor nocturno</span>
-              <span className="font-mono text-white">×{m.brt.bonusNocturno}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Penalización KPI min</span>
-              <span className="font-mono text-amber-400">×{m.brt.riesgoMin} si incumple</span>
+              <span className="text-slate-400">Factor nocturno / Penalización</span>
+              <span className="font-mono text-white">x{config.brt_bonus_nocturno} / x{config.brt_riesgo_kpi_min}</span>
             </div>
             <div className="border-t border-emerald-700/30 pt-3">
               <div className="flex justify-between">
                 <span className="text-slate-400">Ingreso/bus/día</span>
-                <span className="font-mono text-emerald-400 font-bold">${m.brt.ingresoDia.toLocaleString()} UYU</span>
+                <span className="font-mono text-emerald-400 font-bold">${Math.round(brtIngreso).toLocaleString()} UYU</span>
               </div>
               <div className="flex justify-between mt-1">
                 <span className="text-slate-400">Costo/bus/día</span>
-                <span className="font-mono text-red-400">${m.brt.costoDia.toLocaleString()} UYU</span>
+                <span className="font-mono text-red-400">${Math.round(brtCosto).toLocaleString()} UYU</span>
               </div>
               <div className="flex justify-between mt-1 pt-2 border-t border-emerald-700/30">
                 <span className="text-white font-bold">Margen/bus/día</span>
                 <span className="font-mono font-black text-lg text-emerald-400">
-                  ${margenBRT.toLocaleString()} UYU
+                  ${Math.round(margenBRT).toLocaleString()} UYU
                 </span>
               </div>
             </div>
@@ -137,41 +234,15 @@ export default function TabModelo() {
           </p>
           <p className="text-slate-400 text-sm mt-0.5">
             Con la flota actual de 257 coches y migrando al modelo BRT, el margen total mensual estimado sería de
-            <strong className="text-white"> ${Math.round(margenBRT * 26 * 257 / 1_000_000).toFixed(1)}M UYU/mes</strong> vs
-            <strong className="text-white"> ${Math.round(margenActual * 26 * 257 / 1_000_000).toFixed(1)}M UYU/mes</strong> actual.
+            <strong className="text-white"> ${(margenBRT * 26 * 257 / 1_000_000).toFixed(1)}M UYU/mes</strong> vs
+            <strong className="text-white"> ${(margenActual * 26 * 257 / 1_000_000).toFixed(1)}M UYU/mes</strong> actual.
           </p>
-        </div>
-      </div>
-
-      {/* Ventajas y riesgos */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-slate-900 rounded-xl border border-emerald-800/40 p-4">
-          <p className="text-xs text-emerald-400 uppercase font-bold mb-3">Ventajas del nuevo modelo</p>
-          <div className="space-y-2">
-            {m.brt.ventajas.map(v => (
-              <div key={v} className="flex items-start gap-2 text-sm text-emerald-300">
-                <CheckCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                <span>{v}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="bg-slate-900 rounded-xl border border-amber-800/40 p-4">
-          <p className="text-xs text-amber-400 uppercase font-bold mb-3">Riesgos a gestionar</p>
-          <div className="space-y-2">
-            {m.brt.riesgos.map(r => (
-              <div key={r} className="flex items-start gap-2 text-sm text-amber-300">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                <span>{r}</span>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
       {/* Simulador Interactivo */}
       <div className="bg-slate-900 rounded-xl border border-primary-800/40 p-5 mt-6">
-        <p className="text-sm text-primary-400 uppercase font-bold mb-4">Simulador interactivo de escenarios</p>
+        <p className="text-sm text-primary-400 uppercase font-bold mb-4">Simulador interactivo de escenarios (Proyección)</p>
         
         <div className="grid md:grid-cols-2 gap-6">
           <div>
@@ -209,8 +280,8 @@ export default function TabModelo() {
 
         <div className="mt-5 grid grid-cols-3 gap-3">
           {[
-            { l: 'Ingreso/bus/día', v: `$${ingresoBRTCalc.toLocaleString()} UYU`, color: 'text-emerald-400' },
-            { l: 'Margen/bus/día', v: `$${margenBRTCalc.toLocaleString()} UYU`, color: margenBRTCalc > 0 ? 'text-emerald-400' : 'text-red-400' },
+            { l: 'Ingreso/bus/día', v: `$${Math.round(ingresoBRTCalc).toLocaleString()} UYU`, color: 'text-emerald-400' },
+            { l: 'Margen/bus/día', v: `$${Math.round(margenBRTCalc).toLocaleString()} UYU`, color: margenBRTCalc > 0 ? 'text-emerald-400' : 'text-red-400' },
             { l: 'vs modelo actual', v: `${mejoraPctCalc > 0 ? '+' : ''}${mejoraPctCalc}%`, color: mejoraPctCalc > 0 ? 'text-emerald-400' : 'text-red-400' },
           ].map(({ l, v, color }) => (
             <div key={l} className="bg-slate-800 rounded-xl p-3 text-center">
@@ -218,11 +289,6 @@ export default function TabModelo() {
               <p className={`font-black text-lg ${color}`}>{v}</p>
             </div>
           ))}
-        </div>
-
-        <div className="mt-3 text-xs text-slate-600 flex items-center gap-1">
-          <Info className="w-3 h-3" />
-          <span>Ingreso total flota (257 buses): ${Math.round(ingresoBRTCalc * 257 / 1_000_000).toFixed(1)}M UYU/día · ${Math.round(ingresoBRTCalc * 257 * 26 / 1_000_000).toFixed(0)}M UYU/mes</span>
         </div>
       </div>
     </div>

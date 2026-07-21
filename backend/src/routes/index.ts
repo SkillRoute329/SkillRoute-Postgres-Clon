@@ -57,6 +57,7 @@ import predictionsRoutes from './predictions.routes';
 import planningRoutes from './planning.routes';
 import storageRoutes from './storage.routes';
 import inteligenciaRouter from './intelligenceRoutes';
+import brtRoutes from './brt.routes';
 
 const router = Router();
 
@@ -537,6 +538,9 @@ router.use('/storage', storageRoutes);
 
 // FASE 7: Inteligencia Competitiva
 router.use('/intelligence', verifyAuth, inteligenciaRouter);
+
+// BRT Module
+router.use('/brt', brtRoutes);
 
 /**
  * FASE 5 (2026-05-13) — Stubs honestos para CEODashboardV7 que consume
