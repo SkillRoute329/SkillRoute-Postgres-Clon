@@ -18,7 +18,7 @@ import {
   serverTimestamp,
 } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
-import { INCIDENCIA_META } from '../../services/incidenciasService';
+
 import {
   AlertTriangle,
   CheckCircle,
@@ -31,8 +31,19 @@ import {
   Bus,
   Shield,
   X,
-  GitMerge
+  GitMerge,
+  Plus,
+  Edit2,
+  Trash2
 } from 'lucide-react';
+import {
+  INCIDENCIA_META,
+  tiempoRelativo,
+  crearIncidenciaManual,
+  actualizarIncidencia,
+  eliminarIncidencia,
+  type TipoIncidencia
+} from '../../services/incidenciasService';
 import toast from 'react-hot-toast';
 import PanelTrazabilidad360 from './PanelTrazabilidad360';
 
@@ -65,15 +76,6 @@ const PRIORIDAD_COLOR: Record<string, string> = {
   BAJA: 'text-slate-400 bg-slate-500/10',
 };
 
-function tiempoRelativo(ts: number | string): string {
-  const ms = typeof ts === 'number' ? ts * 1000 : new Date(ts).getTime();
-  const diff = Math.floor((Date.now() - ms) / 1000);
-  if (diff < 60) return `${diff}s`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}min`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-  return `${Math.floor(diff / 86400)}d`;
-}
-
 const HEX_TO_TW: Record<string, string> = {
   '#f97316': 'text-orange-400 bg-orange-500/10 border-orange-500/20',
   '#ef4444': 'text-red-400 bg-red-500/10 border-red-500/20',
@@ -94,7 +96,6 @@ function resolveMeta(type: string | undefined): {
     if (meta.color.startsWith('text-')) {
       return { label: meta.label, emoji: meta.emoji, colorClass: meta.color };
     }
-    // Map hex to generic Tailwind classes if it exists
     const mapped = HEX_TO_TW[meta.color] || 'text-slate-400 bg-slate-500/10 border-slate-500/20';
     return {
       label: meta.label,
@@ -119,6 +120,12 @@ export default function IncidentCommandCenter() {
   const [docLimit, setDocLimit] = useState(20);
   const [selected, setSelected] = useState<string | null>(null);
   const [resolving, setResolving] = useState<string | null>(null);
+  
+  // CRUD States
+  const [crudModalOpen, setCrudModalOpen] = useState(false);
+  const [crudMode, setCrudMode] = useState<'CREATE'|'EDIT'>('CREATE');
+  const [crudData, setCrudData] = useState<any>({});
+  const [crudSaving, setCrudSaving] = useState(false);
 
   /* ── Firestore live listener ── */
   useEffect(() => {
@@ -142,6 +149,55 @@ export default function IncidentCommandCenter() {
       unsub();
     };
   }, [docLimit]);
+
+  /* ── CRUD Handlers ── */
+  const handleOpenCreate = () => {
+    setCrudMode('CREATE');
+    setCrudData({ type: 'otro', description: '', priority: 'MEDIA', vehicleId: '' });
+    setCrudModalOpen(true);
+  };
+
+  const handleOpenEdit = (inc: FirestoreIncidencia) => {
+    setCrudMode('EDIT');
+    setCrudData({ 
+      id: inc.id,
+      type: inc.type, 
+      description: inc.description || '', 
+      priority: inc.priority || 'MEDIA', 
+      vehicleId: inc.vehicleId || '' 
+    });
+    setCrudModalOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('¿Anular permanentemente esta incidencia?')) return;
+    try {
+      await eliminarIncidencia(id);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSaveCrud = async () => {
+    setCrudSaving(true);
+    try {
+      if (crudMode === 'CREATE') {
+        await crearIncidenciaManual(crudData.type, crudData.description, crudData.priority, crudData.vehicleId);
+      } else {
+        await actualizarIncidencia(crudData.id, {
+          type: crudData.type,
+          description: crudData.description,
+          priority: crudData.priority,
+          vehicleId: crudData.vehicleId
+        });
+      }
+      setCrudModalOpen(false);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setCrudSaving(false);
+    }
+  };
 
   /* ── Resolver incidencia Firestore ── */
   const resolveFirestore = async (id: string) => {
@@ -259,12 +315,13 @@ export default function IncidentCommandCenter() {
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2">
-        {/* Estado */}
-        <div className="flex items-center gap-1 bg-slate-800/40 rounded-xl p-1 border border-white/5">
-          <Filter className="w-3.5 h-3.5 text-slate-500 ml-1.5" />
-          {(['TODOS', 'ABIERTO', 'EN_PROCESO', 'CERRADO'] as FiltroEstado[]).map((f) => (
+      {/* Filters & Actions */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap gap-2">
+          {/* Estado */}
+          <div className="flex items-center gap-1 bg-slate-800/40 rounded-xl p-1 border border-white/5">
+            <Filter className="w-3.5 h-3.5 text-slate-500 ml-1.5" />
+            {(['TODOS', 'ABIERTO', 'EN_PROCESO', 'CERRADO', 'ANULADO'] as FiltroEstado[]).map((f) => (
             <button
               key={f}
               onClick={() => setFiltroEstado(f)}
@@ -302,6 +359,16 @@ export default function IncidentCommandCenter() {
           ))}
         </div>
       </div>
+      <div>
+        <button
+          onClick={handleOpenCreate}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-all shadow-lg shadow-emerald-500/20"
+        >
+          <Plus className="w-4 h-4" />
+          Nueva Incidencia
+        </button>
+      </div>
+    </div>
 
       {/* Content */}
       {loading ? (
@@ -318,7 +385,7 @@ export default function IncidentCommandCenter() {
           {/* Firestore incidents */}
           {filteredFirestore.map((inc) => {
             const meta = resolveMeta(inc.type);
-            const isOpen = inc.status !== 'CERRADO';
+            const isOpen = inc.status === 'ABIERTO' || inc.status === 'EN_PROCESO';
             const isDriverApp = inc.source === 'DRIVER_APP';
 
             return (
@@ -396,25 +463,46 @@ export default function IncidentCommandCenter() {
                     </span>
 
                     {isOpen && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void resolveFirestore(inc.id);
-                        }}
-                        disabled={resolving === inc.id}
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 text-xs font-bold hover:bg-emerald-500/25 transition-all disabled:opacity-50"
-                      >
-                        {resolving === inc.id ? (
-                          <RefreshCw className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <CheckCircle className="w-3 h-3" />
-                        )}
-                        Resolver
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleOpenEdit(inc); }}
+                          className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-all"
+                          title="Editar"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(inc.id); }}
+                          className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition-all"
+                          title="Anular (Soft-Delete)"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void resolveFirestore(inc.id);
+                          }}
+                          disabled={resolving === inc.id}
+                          className="flex items-center gap-1 px-2 py-1 ml-1 rounded-lg bg-emerald-500/15 text-emerald-400 text-xs font-bold hover:bg-emerald-500/25 transition-all disabled:opacity-50"
+                        >
+                          {resolving === inc.id ? (
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <CheckCircle className="w-3 h-3" />
+                          )}
+                          Resolver
+                        </button>
+                      </div>
                     )}
-                    {!isOpen && (
+                    {!isOpen && inc.status !== 'ANULADO' && (
                       <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-700/40 text-slate-500 text-xs">
                         <X className="w-3 h-3" /> Cerrada
+                      </span>
+                    )}
+                    {!isOpen && inc.status === 'ANULADO' && (
+                      <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-500/10 text-rose-500 text-xs font-bold">
+                        <Trash2 className="w-3 h-3" /> Anulada
                       </span>
                     )}
                   </div>
@@ -460,6 +548,84 @@ export default function IncidentCommandCenter() {
           {totalAbiertas} pendientes · {totalCerradas} resueltas
         </span>
       </div>
+
+      {/* CRUD Modal */}
+      {crudModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="flex justify-between items-center p-4 border-b border-white/5">
+              <h3 className="text-lg font-bold text-white">
+                {crudMode === 'CREATE' ? 'Crear Incidencia' : 'Editar Incidencia'}
+              </h3>
+              <button onClick={() => setCrudModalOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Tipo</label>
+                <select 
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                  value={crudData.type}
+                  onChange={e => setCrudData({...crudData, type: e.target.value})}
+                >
+                  {Object.keys(INCIDENCIA_META).map(k => (
+                    <option key={k} value={k}>{INCIDENCIA_META[k].label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Prioridad</label>
+                <select 
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                  value={crudData.priority}
+                  onChange={e => setCrudData({...crudData, priority: e.target.value})}
+                >
+                  <option value="BAJA">Baja</option>
+                  <option value="MEDIA">Media</option>
+                  <option value="ALTA">Alta</option>
+                  <option value="CRITICA">Crítica</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Nº Vehículo (Opcional)</label>
+                <input 
+                  type="text" 
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                  placeholder="Ej: 35"
+                  value={crudData.vehicleId}
+                  onChange={e => setCrudData({...crudData, vehicleId: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Descripción</label>
+                <textarea 
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 min-h-[80px]"
+                  placeholder="Detalles de la incidencia..."
+                  value={crudData.description}
+                  onChange={e => setCrudData({...crudData, description: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 p-4 border-t border-white/5 bg-slate-900/50">
+              <button 
+                onClick={() => setCrudModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleSaveCrud}
+                disabled={crudSaving}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold transition-all disabled:opacity-50"
+              >
+                {crudSaving && <RefreshCw className="w-4 h-4 animate-spin" />}
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

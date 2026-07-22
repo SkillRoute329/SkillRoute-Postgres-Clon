@@ -106,6 +106,40 @@ export async function reportarIncidencia(
   };
 }
 
+export async function crearIncidenciaManual(
+  tipo: TipoIncidencia,
+  descripcion: string,
+  prioridad: string,
+  vehicleId?: string
+): Promise<string> {
+  const reporterUid = getCurrentUid();
+  const payload: Record<string, unknown> = {
+    type: tipo,
+    status: 'ABIERTO',
+    priority: prioridad,
+    description: descripcion,
+    reportedBy: { uid: reporterUid, name: 'Operador de Despacho' },
+    source: 'DESPACHO',
+    createdAt: new Date().toISOString(),
+  };
+  if (vehicleId) payload.vehicleId = vehicleId;
+
+  const result = await apiClient.post(`/api/db/${COL}`, payload) as { id: string };
+  return result.id;
+}
+
+export async function actualizarIncidencia(
+  id: string,
+  data: {
+    type?: TipoIncidencia;
+    description?: string;
+    priority?: string;
+    vehicleId?: string;
+  }
+): Promise<void> {
+  await apiClient.put(`/api/db/${COL}/` + encodeURIComponent(id), data);
+}
+
 export async function getIncidencias(filtros?: {
   lineaCodigo?: string;
   soloAbiertas?: boolean;
@@ -151,9 +185,10 @@ export async function marcarResuelta(id: string): Promise<void> {
 }
 
 export async function eliminarIncidencia(id: string): Promise<void> {
-  // En producción, es preferible no borrar duro (Hard Delete), sino cambiar estado.
+  // Soft Delete: mantenemos el registro para auditoría
   await apiClient.put(`/api/db/${COL}/` + encodeURIComponent(id), {
-    status: 'CERRADO',
+    status: 'ANULADO',
+    closedAt: new Date().toISOString(),
   });
 }
 
