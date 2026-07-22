@@ -763,6 +763,14 @@ export async function listCollection(req: Request, res: Response): Promise<void>
     // FASE 5.38 (2026-05-22): autodetect ahora se aplica a TODAS las tablas
     // (no solo las hardcoded). Cache de 5min en information_schema.
     const knownCols = await getRealColumns(cfg.table);
+    
+    // RLS Multi-Tenant dinámico
+    const agencyId = (req as any).user?.agencyId;
+    const role = (req as any).user?.role?.toLowerCase();
+    if (knownCols.has('agency_id') && agencyId && role !== 'superadmin' && role !== 'admin') {
+      q = q.where('agency_id', agencyId);
+    }
+
     const droppedFilters: string[] = [];
     for (const w of wheres) {
       const mapped = mapCol(w.field, cfg.table);
@@ -826,6 +834,15 @@ export async function getDoc(req: Request, res: Response): Promise<void> {
         q = q.where(col, val as any);
       }
     }
+    
+    // RLS Multi-Tenant dinámico
+    const knownCols = await getRealColumns(cfg.table);
+    const agencyId = (req as any).user?.agencyId;
+    const role = (req as any).user?.role?.toLowerCase();
+    if (knownCols.has('agency_id') && agencyId && role !== 'superadmin' && role !== 'admin') {
+      q = q.where('agency_id', agencyId);
+    }
+
     const row = await q.first();
     if (!row) return fail(res, 404, 'Documento no encontrado');
     ok(res, addCamelCaseAliases(maskHidden(flattenDataJsonb(row), cfg.hiddenColumns) as Record<string, unknown>, cfg.table));
@@ -853,6 +870,15 @@ export async function createDoc(req: Request, res: Response): Promise<void> {
 
   try {
     const row = await prepareRowForWrite(cfg, body, id, false);
+    
+    // RLS Multi-Tenant dinámico
+    const knownCols = await getRealColumns(cfg.table);
+    const agencyId = (req as any).user?.agencyId;
+    const role = (req as any).user?.role?.toLowerCase();
+    if (knownCols.has('agency_id') && agencyId && role !== 'superadmin' && role !== 'admin') {
+      row['agency_id'] = agencyId;
+    }
+
     await sqlDb(cfg.table).insert(row).onConflict(cfg.pkCol).merge();
     // FASE 5.30 (2026-05-21): emit al bus para que el frontend reciba la
     // propagación en vivo sin polling.
@@ -885,8 +911,22 @@ export async function updateDoc(req: Request, res: Response): Promise<void> {
         checkQuery = checkQuery.where(col, val as any);
       }
     }
+
+    // RLS Multi-Tenant dinámico
+    const knownCols = await getRealColumns(cfg.table);
+    const agencyId = (req as any).user?.agencyId;
+    const role = (req as any).user?.role?.toLowerCase();
+    if (knownCols.has('agency_id') && agencyId && role !== 'superadmin' && role !== 'admin') {
+      checkQuery = checkQuery.where('agency_id', agencyId);
+    }
+
     const exists = await checkQuery.first();
     const row = await prepareRowForWrite(cfg, body, id, !!exists);
+    
+    // Forzar el agencyId en el registro si no viene en el body
+    if (knownCols.has('agency_id') && agencyId && role !== 'superadmin' && role !== 'admin') {
+      row['agency_id'] = agencyId;
+    }
     if (exists) {
       await sqlDb(cfg.table).where(cfg.pkCol, id).update(row);
     } else {
@@ -933,6 +973,15 @@ export async function deleteDoc(req: Request, res: Response): Promise<void> {
         deleteQuery = deleteQuery.where(col, val as any);
       }
     }
+
+    // RLS Multi-Tenant dinámico
+    const knownCols = await getRealColumns(cfg.table);
+    const agencyId = (req as any).user?.agencyId;
+    const role = (req as any).user?.role?.toLowerCase();
+    if (knownCols.has('agency_id') && agencyId && role !== 'superadmin' && role !== 'admin') {
+      deleteQuery = deleteQuery.where('agency_id', agencyId);
+    }
+
     const deleted = await deleteQuery.delete();
     if (deleted === 0) return fail(res, 404, 'Documento no encontrado');
     busDbEvent(collectionName, 'deleted', { id, table: cfg.table });

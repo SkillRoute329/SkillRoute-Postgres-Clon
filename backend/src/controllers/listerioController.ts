@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { AuthenticatedRequest } from '../middlewares/authMiddleware';
+import { AuthRequest as AuthenticatedRequest } from '../types/index';
 import sqlDb from '../config/database';
 import { writeAuditLog } from '../utils/logger';
 

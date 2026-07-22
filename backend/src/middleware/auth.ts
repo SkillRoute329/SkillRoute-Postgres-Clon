@@ -38,6 +38,7 @@ export const verifyAuth = async (req: AuthRequest, res: Response, next: NextFunc
       internalNumber: decodedUser.internalNumber || decodedUser.id,
       fullName: decodedUser.fullName || 'Usuario Soberano',
       role: (decodedUser.role || Config.Roles.USER) as any,
+      agencyId: decodedUser.agencyId,
     };
 
     next();

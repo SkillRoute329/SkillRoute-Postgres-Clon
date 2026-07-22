@@ -10,6 +10,7 @@ export interface AuthUser {
   internalNumber: string;
   fullName: string;
   role: 'SuperAdmin' | 'Admin' | 'Inspector' | 'Driver' | 'User';
+  agencyId?: string;
 }
 
 export interface AuthRequest extends Request {
