@@ -611,11 +611,24 @@ export async function prepareRowForWrite(cfg: CollectionMap, body: Record<string
   const extraFields: Record<string, unknown> = { ...existingDataJsonb };
 
   for (const [key, val] of Object.entries(body)) {
+    // Manejar __sentinel de FirestoreShim (ej. serverTimestamp)
+    let finalVal = val;
+    if (val && typeof val === 'object' && '__sentinel' in val) {
+      const sentinel = (val as any).__sentinel;
+      if (sentinel === 'serverTimestamp') {
+        finalVal = new Date().toISOString(); // Resolviendo el timestamp en el backend
+      } else if (sentinel === 'delete') {
+        // En un upsert/update, si nos mandan delete, idealmente lo borramos
+        // Para data_jsonb es un poco más complejo pero por ahora no lo incluimos
+        continue; 
+      }
+    }
+
     const colName = mapCol(key, cfg.table);
     if (knownCols.has(colName)) {
-      row[colName] = val;
+      row[colName] = finalVal;
     } else if (knownCols.has('data_jsonb')) {
-      extraFields[key] = val;
+      extraFields[key] = finalVal;
     }
   }
 

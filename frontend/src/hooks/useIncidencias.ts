@@ -121,6 +121,7 @@ export function useIncidencias(docLimit: number = 20) {
           name: String(user?.fullName || user?.firstName || 'Operador de Despacho') 
         },
         source: 'DESPACHO',
+        agency_id: agencyId,
         createdAt: serverTimestamp()
       };
 
