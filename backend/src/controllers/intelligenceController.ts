@@ -144,7 +144,14 @@ export const getCompetitors = async (req: Request, res: Response) => {
     
     const targetRouteIds = targetRoutes.map(r => r.route_id);
 
-    // 2. Buscar competidores y hacer JOIN para obtener el route_short_name del competidor
+    // 2. Obtener viajes (trips) para la ruta base como un proxy de su frecuencia (oferta total)
+    const baseTripsRes = await sqlDb('gtfs.trips')
+      .whereIn('route_id', targetRouteIds)
+      .andWhere('direction_id', parseInt(direction_id as string, 10))
+      .count('* as count');
+    const baseTrips = Number(baseTripsRes[0]?.count || 1); // fallback a 1 para evitar division by zero
+
+    // 3. Buscar competidores y hacer JOIN para obtener el route_short_name del competidor
     const allCompetitors = await sqlDb('gtfs.competitor_overlap as co')
       .join('gtfs.routes as r', 'co.competitor_route_id', 'r.route_id')
       .whereIn('co.base_route_id', targetRouteIds)
@@ -152,30 +159,59 @@ export const getCompetitors = async (req: Request, res: Response) => {
       .select('co.*', 'r.route_short_name as competitor_short_name')
       .orderBy('co.shared_stops_count', 'desc');
 
-    // 3. Deduplicar por short_name (para no mostrar variantes de la misma línea rival múltiples veces)
-    //    y filtrar variantes propias de la misma línea base.
+    // 4. Deduplicar por short_name y calcular asimetría de frecuencias y CTI
     const uniqueCompetitors: any[] = [];
     const seen = new Set();
     
+    // Obtenemos todos los competitor_route_id para una sola consulta masiva de trips
+    const allCompetitorRouteIds = allCompetitors.map(c => c.competitor_route_id);
+    
+    let compTripsMap: Record<string, number> = {};
+    if (allCompetitorRouteIds.length > 0) {
+      const tripsData = await sqlDb('gtfs.trips')
+        .whereIn('route_id', allCompetitorRouteIds)
+        .groupBy('route_id', 'direction_id')
+        .select('route_id', 'direction_id')
+        .count('* as count');
+        
+      for (const row of tripsData) {
+        compTripsMap[`${row.route_id}_${row.direction_id}`] = Number(row.count || 0);
+      }
+    }
+
+    const MAX_THEORETICAL_STOPS = 90; // Paradas promedio máximas para normalizar solapamiento (100% solapado)
+
     for (const comp of allCompetitors) {
       // Evitar considerar a sí misma (o sus variantes) como competidor
       if (targetRouteIds.includes(comp.competitor_route_id)) continue;
-      // Evitar competidores con el mismo short_name que la base
       if (comp.competitor_short_name === route_id) continue;
 
       const key = `${comp.competitor_short_name}_${comp.competitor_direction_id}`;
       if (!seen.has(key)) {
         seen.add(key);
-        // Sobreescribimos competitor_route_id con el short_name para que el frontend 
-        // pueda buscar la geometría y cargar la empresa correcta en base al catálogo de UI.
+        
+        const compTrips = compTripsMap[`${comp.competitor_route_id}_${comp.competitor_direction_id}`] || 1;
+        
+        const frequencyAsymmetry = Math.min(compTrips / baseTrips, 3); // Tope a 3x
+        const spatialOverlapPct = Math.min(comp.shared_stops_count / MAX_THEORETICAL_STOPS, 1);
+        
+        // CTI (0-100) = 60% Solapamiento + 40% Asimetría de Frecuencias
+        const cannibalizationScore = Math.round((spatialOverlapPct * 60) + ((frequencyAsymmetry / 3) * 40));
+
         uniqueCompetitors.push({
           ...comp,
-          competitor_route_id: comp.competitor_short_name
+          competitor_route_id: comp.competitor_short_name,
+          base_daily_trips: baseTrips,
+          competitor_daily_trips: compTrips,
+          cannibalization_score: Math.min(cannibalizationScore, 100)
         });
       }
       
       if (uniqueCompetitors.length >= 20) break;
     }
+
+    // Reordenar por cannibalization_score
+    uniqueCompetitors.sort((a, b) => b.cannibalization_score - a.cannibalization_score);
 
     return res.json(uniqueCompetitors);
   } catch (error: any) {

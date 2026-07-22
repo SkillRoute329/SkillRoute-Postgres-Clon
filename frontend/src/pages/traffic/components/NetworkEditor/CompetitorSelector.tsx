@@ -93,30 +93,67 @@ export const CompetitorSelector: React.FC<CompetitorSelectorProps> = ({
               const compId = comp.competitor_route_id + (comp.competitor_direction_id === 1 ? 'b' : 'a');
               const compInfo = allLineas.find(l => l.codigo.toLowerCase() === compId.toLowerCase());
               const dest = compInfo ? (compInfo.destino || compInfo.nombre.split('·')[1]?.trim() || compInfo.nombre) : '';
+              
+              const isSelected = selectedCompetitor?.competitor_route_id === comp.competitor_route_id && selectedCompetitor?.competitor_direction_id === comp.competitor_direction_id;
+              
+              const cti = comp.cannibalization_score || 0;
+              let badgeColor = 'bg-slate-700 text-slate-300';
+              let badgeText = 'Bajo';
+              if (cti > 70) {
+                badgeColor = 'bg-rose-500/20 text-rose-400 border border-rose-500/30';
+                badgeText = 'Crítico';
+              } else if (cti > 40) {
+                badgeColor = 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+                badgeText = 'Medio';
+              }
+
               return (
               <button
                 key={`${comp.competitor_route_id}-${comp.competitor_direction_id}`}
                 onClick={() => setSelectedCompetitor(comp)}
                 className={`w-full text-left p-4 rounded-xl border transition-all duration-200 ${
-                  selectedCompetitor?.competitor_route_id === comp.competitor_route_id
-                    ? 'bg-indigo-900/40 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.1)]'
-                    : 'bg-slate-900/50 border-slate-700/50 hover:border-slate-600 hover:bg-slate-800'
+                  isSelected
+                    ? 'bg-indigo-500/10 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.1)]' 
+                    : 'bg-slate-800/50 border-slate-700 hover:bg-slate-700/50 hover:border-slate-600'
                 }`}
               >
                 <div className="flex justify-between items-start mb-2">
-                  <div className="flex flex-col gap-1 pr-2">
-                    <span className="px-2 py-0.5 bg-slate-700 rounded text-xs font-bold font-mono w-max">
-                      Línea {comp.competitor_route_id}
+                  <div className="flex items-center gap-2">
+                    <span className={`font-bold text-lg ${isSelected ? 'text-indigo-400' : 'text-slate-200'}`}>
+                      {comp.competitor_route_id}
                     </span>
-                    <span className="text-xs text-slate-400 leading-tight">
-                      hacia {dest || 'Destino desconocido'}
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-400">
+                      {compInfo?.empresa || 'N/A'}
                     </span>
                   </div>
-                  <span className="text-2xl font-bold text-white leading-none">#{idx + 1}</span>
+                  {comp.cannibalization_score !== undefined && (
+                    <div className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${badgeColor}`} title={`Índice de Fuga: ${cti}/100`}>
+                      Amenaza {badgeText} ({cti})
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2 text-sm text-slate-400">
-                  <MapPin className="w-4 h-4 text-rose-400" />
-                  <span>{comp.shared_stops_count} paradas compartidas</span>
+                <div className="text-sm text-slate-400 mb-3 truncate flex items-center gap-1">
+                  <MapPin className="w-3 h-3" /> Hacia {dest || (comp.competitor_direction_id === 1 ? 'Vuelta' : 'Ida')}
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-slate-900/50 rounded-lg p-2 flex flex-col justify-center border border-slate-700/50">
+                    <span className="text-slate-500 font-medium">Solapamiento</span>
+                    <span className="font-bold text-slate-200 font-mono text-sm">{comp.shared_stops_count} p.</span>
+                  </div>
+                  {comp.competitor_daily_trips ? (
+                    <div className="bg-slate-900/50 rounded-lg p-2 flex flex-col justify-center border border-slate-700/50">
+                      <span className="text-slate-500 font-medium">Frecuencia (Base | Rival)</span>
+                      <span className="font-bold text-slate-200 font-mono text-xs mt-0.5">
+                        <span className="text-indigo-400">{comp.base_daily_trips}</span> vs <span className="text-rose-400">{comp.competitor_daily_trips}</span> v/d
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-900/50 rounded-lg p-2 flex flex-col justify-center border border-slate-700/50">
+                      <span className="text-slate-500 font-medium">Overl. Score</span>
+                      <span className="font-bold text-slate-200 font-mono text-sm">{comp.overlap_score ? comp.overlap_score.toFixed(2) : 'N/A'}</span>
+                    </div>
+                  )}
                 </div>
               </button>
               );

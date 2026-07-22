@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 
 function MapBoundsFitter({ bounds }: { bounds: [number, number][] | null }) {
   const map = useMap();
@@ -16,6 +17,7 @@ interface CompetitiveMapProps {
   routeStops: any[];
   competitorCoordinates: [number, number][];
   competitorStops: any[];
+  sharedSegments?: [number, number][][];
   selectedLinea: string;
 }
 
@@ -24,6 +26,7 @@ export const CompetitiveMap: React.FC<CompetitiveMapProps> = ({
   routeStops,
   competitorCoordinates,
   competitorStops,
+  sharedSegments = [],
   selectedLinea
 }) => {
   return (
@@ -31,6 +34,10 @@ export const CompetitiveMap: React.FC<CompetitiveMapProps> = ({
       <div className="flex-none h-[30%] lg:h-[40%] min-h-[200px] relative">
         <MapContainer center={[-34.8833, -56.1667]} zoom={13} zoomControl={false} className="h-full w-full">
           <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+          
+          {sharedSegments.map((segment, idx) => (
+            <Polyline key={`shared-${idx}`} positions={segment} color="#eab308" weight={8} opacity={1} />
+          ))}
           
           {routeCoordinates.length > 0 && (
             <>

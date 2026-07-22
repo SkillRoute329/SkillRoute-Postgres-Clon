@@ -3,7 +3,7 @@ import { Network } from 'lucide-react';
 import api from '../../services/api';
 import { getNavigationLineas, getNavigationLineaData } from '../../features/navigation/services/navigationDataService';
 import { useAuth } from '../../context/AuthContext';
-import { calculateTotalDistance, calculateSharedDistance } from '../../utils/geoUtils';
+import { calculateTotalDistance, calculateSharedDistance, getSharedCoordinates } from '../../utils/geoUtils';
 import toast from 'react-hot-toast';
 
 import type { CompetitorInfo, TrendData, LineaCatalogInfo } from './components/NetworkEditor/types';
@@ -17,6 +17,7 @@ const CompetitiveAnalysis: React.FC = () => {
 
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
   const [competitorCoordinates, setCompetitorCoordinates] = useState<[number, number][]>([]);
+  const [sharedSegments, setSharedSegments] = useState<[number, number][][]>([]);
   
   const [routeStops, setRouteStops] = useState<any[]>([]);
   const [competitorStops, setCompetitorStops] = useState<any[]>([]);
@@ -180,11 +181,13 @@ const CompetitiveAnalysis: React.FC = () => {
           
           setCompDistance(calculateTotalDistance(compCoords));
           setSharedDistance(calculateSharedDistance(routeCoordinates, compCoords, OVERLAP_THRESHOLD_KM));
+          setSharedSegments(getSharedCoordinates(routeCoordinates, compCoords, OVERLAP_THRESHOLD_KM));
         } else {
           setCompetitorCoordinates([]);
           setCompetitorStops([]);
           setCompDistance(0);
           setSharedDistance(0);
+          setSharedSegments([]);
         }
       } catch (err) {
         toast.error('Error cargando detalles del competidor');
@@ -240,6 +243,7 @@ const CompetitiveAnalysis: React.FC = () => {
             routeStops={routeStops}
             competitorCoordinates={competitorCoordinates}
             competitorStops={competitorStops}
+            sharedSegments={sharedSegments}
             selectedLinea={selectedLinea}
           />
 

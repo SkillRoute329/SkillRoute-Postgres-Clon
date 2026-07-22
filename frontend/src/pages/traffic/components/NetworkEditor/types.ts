@@ -5,6 +5,9 @@ export interface CompetitorInfo {
   competitor_direction_id: number;
   shared_stops_count: number;
   overlap_score: number | null;
+  base_daily_trips?: number;
+  competitor_daily_trips?: number;
+  cannibalization_score?: number;
 }
 
 export interface MonthlyTrend {
