@@ -330,19 +330,7 @@ export default function MapHub() {
     };
   }, [selectedBusId, sidebarTab, serviciosPropios, serviciosRivales, overlaps, empresaPropia]);
 
-  // Inteligencia Táctica APC (Acelerar y Absorber)
-  useEffect(() => {
-    if (activeDisputas && activeDisputas.rivales.length > 0) {
-      const topRival = activeDisputas.rivales[0];
-      const rivalConApc = visibleBuses.find(b => b.id === topRival.id);
-      
-      if (rivalConApc && (rivalConApc.ocupacion_pct ?? 0) > 90) {
-         setManualMensaje(`⚡ ACELERAR Y ABSORBER: Coche precedente saturado (>90% APC). Recoja pasajeros excedentes.`);
-      } else {
-         setManualMensaje(`🚨 REGULACIÓN: Coche rival pisando turno a ${topRival.distanciaM}m. Modere velocidad.`);
-      }
-    }
-  }, [activeDisputas, visibleBuses]);
+
 
   const handleSendManualAlert = async () => {
     if (!manualCocheId) {
@@ -550,6 +538,20 @@ export default function MapHub() {
       return Number(a.codigoBus) - Number(b.codigoBus);
     });
   }, [allBusesCombined, operatorFilter, lineFilter, searchQuery]);
+
+  // Inteligencia Táctica APC (Acelerar y Absorber)
+  useEffect(() => {
+    if (activeDisputas && activeDisputas.rivales.length > 0) {
+      const topRival = activeDisputas.rivales[0];
+      const rivalConApc = visibleBuses.find(b => b.id === topRival.id);
+      
+      if (rivalConApc && (rivalConApc.ocupacion_pct ?? 0) > 90) {
+         setManualMensaje(`⚡ ACELERAR Y ABSORBER: Coche precedente saturado (>90% APC). Recoja pasajeros excedentes.`);
+      } else {
+         setManualMensaje(`🚨 REGULACIÓN: Coche rival pisando turno a ${topRival.distanciaM}m. Modere velocidad.`);
+      }
+    }
+  }, [activeDisputas, visibleBuses]);
 
   // Líneas únicas basadas en el operador seleccionado
   const availableLines = useMemo(() => {
