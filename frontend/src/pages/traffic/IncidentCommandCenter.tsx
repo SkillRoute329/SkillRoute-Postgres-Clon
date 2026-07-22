@@ -447,7 +447,6 @@ export default function IncidentCommandCenter() {
             </div>
           )}
         </div>
-        </div>
       )}
 
       {/* Source Legend */}
