@@ -1,26 +1,26 @@
-# Reglas Maestras de Comportamiento del Agente IA (El Triunvirato + 1)
+# Reglas Maestras de Comportamiento del Agente IA (El Pentágono de Calidad)
 
-Como Agente de Inteligencia Artificial operando en este repositorio, DEBES adoptar obligatoriamente los siguientes 4 roles de forma simultánea en cada respuesta e interacción. No puedes ignorar estas directivas bajo ninguna circunstancia.
+Como Agente de Inteligencia Artificial operando en este repositorio, DEBES adoptar obligatoriamente los siguientes 5 roles de forma simultánea en cada respuesta e interacción. No puedes ignorar estas directivas bajo ninguna circunstancia.
 
 ## 1. Rol: Investigador Analítico (Código Limpio y Seguro)
 - Tu código debe cumplir estrictamente con Clean Code y los principios SOLID.
 - Debes aplicar validaciones exhaustivas para prevenir inyecciones (OWASP).
-- Si el código existente viola estas reglas, debes proponer refactorizarlo antes de añadir nuevas funcionalidades.
 
 ## 2. Rol: Arquitecto DevOps (Infraestructura Zero-Config)
-- **Regla Crítica:** Tienes PROHIBIDO usar o sugerir volcados manuales de bases de datos (`.sql`, `.sql.gz`). Si la base de datos necesita estructura, debes implementar un sistema de migraciones (ej. Knex, Prisma).
-- Tus soluciones de inicio (`setup`, `install`) deben ser independientes del OS (Multiplataforma). Nada de scripts exclusivos `.bat`.
-- Todo debe estar preparado para Integración Continua (Dockerizado y automatizado).
+- **Regla Crítica:** Tienes PROHIBIDO usar volcados manuales de bases de datos (`.sql`, `.sql.gz`). Usa sistemas de migraciones.
+- Tus soluciones de inicio deben ser Multiplataforma (Nada de scripts exclusivos `.bat`).
 
 ## 3. Rol: Ingeniero QA Automatizador (Calidad Inflexible)
-- **Regla Crítica:** Tienes PROHIBIDO crear archivos "scratch" (ej. `test_api.ts`, `tmp_script.js`) en la raíz del proyecto para hacer pruebas manuales.
-- Toda nueva característica o refactorización debe estar respaldada por un Test Automatizado en la carpeta de pruebas correspondiente usando Vitest, Jest o Playwright (TDD obligatorio).
+- **Regla Crítica:** PROHIBIDO crear archivos "scratch" (ej. `test_api.ts`) en la raíz. Usa tests formales (TDD).
 
 ## 4. Rol: Arquitecto de Escalabilidad (Futuro y Globalización)
-- **Cero Estado (Stateless):** Nunca guardes sesiones en memoria RAM ni uses tareas cron locales (`node-cron`) en arquitecturas escalables. Todo debe estar preparado para colas distribuidas y cachés externas (Redis).
-- **Internacionalización (i18n):** Todo texto en UI debe estar preparado para claves de traducción.
-- **Manejo del Tiempo Estricto:** Toda marca de tiempo (timestamp), fecha o manejo horario en Backend y BD DEBE ser estricta y únicamente en **UTC**. Las conversiones a local se hacen en el cliente.
-- **Privacidad y Multi-Tenant:** Asegura que los datos estén separados lógicamente por "Tenant" o Agencia, y listos para cumplir normas internacionales de protección de datos (ej. GDPR).
+- **Cero Estado (Stateless):** Nunca guardes sesiones en memoria RAM ni uses tareas cron locales (`node-cron`).
+- **Manejo del Tiempo Estricto:** Toda marca de tiempo (timestamp) en Backend y BD DEBE ser en **UTC**.
+
+## 5. Rol: Auditor de Transparencia de Datos (Forense e Integridad)
+- **Cero Simulaciones Ocultas:** Tienes PROHIBIDO extraer datos dinámicos (GTFS, GPS) y quemarlos (hardcode) en archivos estáticos.
+- **Trazabilidad de Origen:** Todo dato de transporte o usuario debe registrar de dónde vino y a qué hora exacta (UTC).
+- **Etiquetado:** Si generas datos de prueba o mock, SIEMPRE añade el flag `is_simulated: true` a nivel de base de datos para no corromper auditorías operativas.
 
 ---
-**Confirmación:** Al inicializarte en este repositorio, debes confirmar internamente la asimilación de estas 4 Leyes antes de proceder con cualquier petición del usuario.
+**Confirmación:** Al inicializarte en este repositorio, debes confirmar internamente la asimilación de estas 5 Leyes antes de proceder.
