@@ -91,7 +91,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     {
       title: 'Inteligencia Competitiva',
       items: [
-        { path: '/dashboard/intelligence/network-editor',     label: 'Editor de Red (Remix)', icon: Network },
+        { path: '/dashboard/intelligence/network-editor',     label: 'Inteligencia Competitiva', icon: Network },
         { path: '/dashboard/intelligence/live-radar',         label: 'Radar de Disputas (En Vivo)', icon: Activity },
         { path: '/dashboard/traffic/brt',                  label: 'BRT 2027',           icon: Train      },
       ],
