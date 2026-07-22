@@ -58,8 +58,8 @@ function generateId(): string {
 export async function getDesviosPorLinea(lineaCodigo: string): Promise<DesvioGuardado[]> {
   const raw = await apiClient.get(`/api/db/${COL}`, {
     query: { where: `lineaCodigo:${lineaCodigo}`, limit: 500 },
-  }) as DesvioGuardado[];
-  return Array.isArray(raw) ? raw : [];
+  }) as any[];
+  return Array.isArray(raw) ? raw.map(d => ({ ...d, tipo: d.tipoDesvio ?? d.tipo })) : [];
 }
 
 /** Escucha los desvíos de una línea con polling cada 10s. */
@@ -98,7 +98,8 @@ export async function crearDesvio(
     creadoEn: now,
     actualizadoEn: now,
   };
-  await apiClient.put(`/api/db/${COL}/` + encodeURIComponent(nuevo.id), nuevo);
+  const payload = { ...nuevo, tipoDesvio: nuevo.tipo, tipo: 'desvio_guardado' };
+  await apiClient.put(`/api/db/${COL}/` + encodeURIComponent(nuevo.id), payload);
   return nuevo;
 }
 
@@ -107,10 +108,15 @@ export async function actualizarDesvio(
   id: string,
   changes: Partial<Omit<DesvioGuardado, 'id' | 'creadoEn'>>,
 ): Promise<void> {
-  await apiClient.put(`/api/db/${COL}/` + encodeURIComponent(id), {
+  const payload: any = {
     ...changes,
     actualizadoEn: new Date().toISOString(),
-  });
+  };
+  if (payload.tipo) {
+    payload.tipoDesvio = payload.tipo;
+    payload.tipo = 'desvio_guardado';
+  }
+  await apiClient.put(`/api/db/${COL}/` + encodeURIComponent(id), payload);
 }
 
 /** Elimina un desvío. */

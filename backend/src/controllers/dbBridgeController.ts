@@ -147,7 +147,7 @@ const COLLECTIONS: Record<string, CollectionMap> = {
   // FASE 4.9 (2026-05-13): Soporte completo para auditoría del ente regulador
   corridor_overlap:           { table: 'corridor_overlap',           pkCol: 'id', idAuto: true },
   shapes_cross_operator:      { table: 'shapes_cross_operator',      pkCol: 'id', idAuto: true },
-  incidencias:                { table: 'logs_incidencias',           pkCol: 'id', idAuto: true },
+  incidencias:                { table: 'logs_incidencias',           pkCol: 'id', idAuto: true, fixedFilter: { tipo: 'incidencia' } },
   gtfs_timetable:             { table: 'gtfs_timetable',             pkCol: 'id', idAuto: false },
   alertas:                    { table: 'alertas',                    pkCol: 'id', idAuto: true },
 
@@ -229,7 +229,7 @@ const COLLECTIONS: Record<string, CollectionMap> = {
   //   - `lineas_servicios`: cruce de líneas con servicios → `service_matrix`.
   gtfs_horarios:              { table: 'cartones_completados',       pkCol: 'id', idAuto: false },
   service_definitions:        { table: 'cartones_completados',       pkCol: 'id', idAuto: false },
-  desvios_guardados:          { table: 'logs_incidencias',           pkCol: 'id', idAuto: true },
+  desvios_guardados:          { table: 'logs_incidencias',           pkCol: 'id', idAuto: true, fixedFilter: { tipo: 'desvio_guardado' } },
   tarifario_stm:              { table: 'tarifario_stm',              pkCol: 'id', idAuto: false },
   lineas_servicios:           { table: 'service_matrix',             pkCol: 'id', idAuto: true },
 
