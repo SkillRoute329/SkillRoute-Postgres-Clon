@@ -136,9 +136,23 @@ export default function IncidentCommandCenter() {
       q,
       (snap) => {
         if (!isMounted) return;
-        setFirestoreInc(
-          snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<FirestoreIncidencia, 'id'>) })),
-        );
+        // Fusionar los datos que vienen del server con los que ya tenemos en modo optimista.
+        // Si el estado local dice que una incidencia está CERRADO o ANULADO, pero
+        // el server todavía manda ABIERTO (por lag del onSnapshot / polling), priorizamos el local.
+        setFirestoreInc((prev) => {
+          const prevMap = new Map(prev.map(p => [p.id, p]));
+          return snap.docs.map((d) => {
+            const serverData = { id: d.id, ...(d.data() as Omit<FirestoreIncidencia, 'id'>) };
+            const localData = prevMap.get(d.id);
+            if (localData && (localData.status === 'ANULADO' || localData.status === 'CERRADO') && serverData.status === 'ABIERTO') {
+               // El servidor todavía no se enteró del cambio optimista, mantenemos el nuestro
+               return localData;
+            }
+            // Para ediciones de texto, si guardamos algo, mantenemos lo local si existe para evitar parpadeos
+            // hasta que recarguemos la página, o simplemente confiamos en el server una vez que cambie.
+            return { ...serverData, ...localData };
+          });
+        });
         setLoading(false);
       },
       () => {
