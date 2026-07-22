@@ -1,23 +1,24 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import IncidentCommandCenter from '../pages/traffic/IncidentCommandCenter';
 import { useIncidencias } from '../hooks/useIncidencias';
 
 // Mock del custom hook (TDD / BDD - Ingeniero QA)
-jest.mock('../hooks/useIncidencias', () => ({
-  useIncidencias: jest.fn(),
+vi.mock('../hooks/useIncidencias', () => ({
+  useIncidencias: vi.fn(),
 }));
 
 describe('IncidentCommandCenter', () => {
-  const mockCreateIncidencia = jest.fn();
-  const mockUpdateIncidencia = jest.fn();
-  const mockAnularIncidencia = jest.fn();
-  const mockResolverIncidencia = jest.fn();
+  const mockCreateIncidencia = vi.fn();
+  const mockUpdateIncidencia = vi.fn();
+  const mockAnularIncidencia = vi.fn();
+  const mockResolverIncidencia = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (useIncidencias as jest.Mock).mockReturnValue({
+    vi.clearAllMocks();
+    (useIncidencias as any).mockReturnValue({
       incidencias: [
         {
           id: 'test-inc-1',
@@ -67,6 +68,11 @@ describe('IncidentCommandCenter', () => {
 
   it('muestra las incidencias en la lista', () => {
     render(<IncidentCommandCenter />);
+    
+    // Cambiamos a filtro TODOS para poder ver la cerrada
+    const btnTodos = screen.getAllByText('TODOS')[0];
+    fireEvent.click(btnTodos);
+
     expect(screen.getByText('Falla de motor')).toBeInTheDocument();
     expect(screen.getByText('Choque leve')).toBeInTheDocument();
   });
