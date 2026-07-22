@@ -111,18 +111,24 @@ export function useIncidencias(docLimit: number = 20) {
       return;
     }
     try {
-      const payload = {
-        ...data,
+      const payload: Record<string, any> = {
+        type: data.type || 'otro',
         status: 'ABIERTO',
+        priority: data.priority || 'MEDIA',
+        description: data.description || '',
         reportedBy: { 
           uid: String(user?.uid || user?.id || 'op-1'), 
           name: String(user?.fullName || user?.firstName || 'Operador de Despacho') 
         },
         source: 'DESPACHO',
-        agency_id: agencyId,
-        createdAt: serverTimestamp(),
-        is_simulated: isSimulated,
+        createdAt: serverTimestamp()
       };
+
+      // Si hay vehicleId y no es vacío, lo agregamos (el backend falla si se envía un string vacío o nulo)
+      if (data.vehicleId && data.vehicleId.trim() !== '') {
+        payload.vehicleId = data.vehicleId.trim();
+      }
+
       const docRef = await addDoc(collection(db, 'incidencias'), payload);
       await logAudit('CREATE', docRef.id, payload);
       toast.success('Incidencia creada al instante');
