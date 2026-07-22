@@ -33,8 +33,6 @@ functions/.env.*
 
 # === AI / Agent Tooling ===
 .augment/
-.agent/
-.agents/
 .claude/
 
 # === Firebase ===
@@ -100,8 +98,6 @@ functions/.env.*
 
 # === AI / Agent Tooling ===
 .augment/
-.agent/
-.agents/
 .claude/
 
 # === Firebase ===
