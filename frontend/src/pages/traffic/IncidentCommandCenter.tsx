@@ -15,6 +15,7 @@ import {
   onSnapshot,
   doc,
   updateDoc,
+  addDoc,
   serverTimestamp,
 } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
@@ -172,9 +173,14 @@ export default function IncidentCommandCenter() {
   const handleDelete = async (id: string) => {
     if (!confirm('¿Anular permanentemente esta incidencia?')) return;
     try {
-      await eliminarIncidencia(id);
+      await updateDoc(doc(db, 'incidencias', id), {
+        status: 'ANULADO',
+        closedAt: serverTimestamp(),
+      });
+      toast.success('Incidencia anulada');
     } catch (e) {
       console.error(e);
+      toast.error('Error al anular incidencia');
     }
   };
 
@@ -182,18 +188,31 @@ export default function IncidentCommandCenter() {
     setCrudSaving(true);
     try {
       if (crudMode === 'CREATE') {
-        await crearIncidenciaManual(crudData.type, crudData.description, crudData.priority, crudData.vehicleId);
+        const payload = {
+          type: crudData.type,
+          status: 'ABIERTO',
+          priority: crudData.priority,
+          description: crudData.description,
+          reportedBy: { uid: 'op-1', name: 'Operador de Despacho' },
+          source: 'DESPACHO',
+          createdAt: serverTimestamp(),
+          ...(crudData.vehicleId ? { vehicleId: crudData.vehicleId } : {})
+        };
+        await addDoc(collection(db, 'incidencias'), payload);
+        toast.success('Incidencia creada al instante');
       } else {
-        await actualizarIncidencia(crudData.id, {
+        await updateDoc(doc(db, 'incidencias', crudData.id), {
           type: crudData.type,
           description: crudData.description,
           priority: crudData.priority,
-          vehicleId: crudData.vehicleId
+          ...(crudData.vehicleId ? { vehicleId: crudData.vehicleId } : {})
         });
+        toast.success('Incidencia actualizada');
       }
       setCrudModalOpen(false);
     } catch (e) {
       console.error(e);
+      toast.error('Error al guardar incidencia');
     } finally {
       setCrudSaving(false);
     }
