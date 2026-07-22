@@ -80,6 +80,7 @@ const COLLECTIONS: Record<string, CollectionMap> = {
   bus_delays:             { table: 'bus_delays',           pkCol: 'id', idAuto: true },
   bus_last_pos:           { table: 'bus_last_pos',         pkCol: 'id_bus', idAuto: false },
   empresas:               { table: 'empresas',             pkCol: 'agency_id', idAuto: false },
+  control_zones:          { table: 'control_zones',        pkCol: 'id', idAuto: true },
 
   // FASE 4 EXTENDED — tablas que el frontend usa vía services/firestore/*
   // Aplicar schema_fase4_extended.sql para que estas existan.

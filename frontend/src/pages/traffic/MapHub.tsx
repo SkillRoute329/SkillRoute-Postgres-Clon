@@ -26,7 +26,7 @@ import 'leaflet.heat';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { useLiveData } from '../../context/LiveDataContext';
 import { useLiveOperations, type ServicioActivo, type DesvioReportado, type IncidenciaReportada } from '../../hooks/useLiveOperations';
-import { collection, getDocs, query, limit, addDoc } from '../../config/firestoreShim';
+import { collection, getDocs, query, limit, addDoc, deleteDoc, doc, updateDoc } from '../../config/firestoreShim';
 import { db } from '../../config/firebase';
 import {
   Map as MapIcon,
@@ -170,19 +170,13 @@ function isPointInPolygon(point: [number, number], vs: [number, number][]) {
   return inside;
 }
 
-const CONTROL_ZONES = [
-  {
-    id: 'z1',
-    name: 'Zona Control (Max 45km/h)',
-    polygon: [
-      [-34.908, -56.195],
-      [-34.908, -56.185],
-      [-34.895, -56.185],
-      [-34.895, -56.195]
-    ] as [number, number][],
-    maxSpeed: 45
-  }
-];
+export interface ControlZone {
+  id?: string;
+  name: string;
+  maxSpeed: number;
+  polygon: [number, number][];
+  active?: boolean;
+}
 
 export default function MapHub() {
   const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
@@ -220,8 +214,15 @@ export default function MapHub() {
   const [loadingStatic, setLoadingStatic] = useState(true);
   const [mapBbox, setMapBbox] = useState<string | null>(null);
 
-  // Tab lateral: 'alertas' | 'flota' | 'bunching' | 'dro' | 'marey'
-  const [sidebarTab, setSidebarTab] = useState<'alertas' | 'flota' | 'bunching' | 'dro' | 'marey'>('flota');
+  // Tab lateral: 'alertas' | 'flota' | 'bunching' | 'dro' | 'marey' | 'geofencing'
+  const [sidebarTab, setSidebarTab] = useState<'alertas' | 'flota' | 'bunching' | 'dro' | 'marey' | 'geofencing'>('flota');
+
+  // Geofencing State
+  const [controlZones, setControlZones] = useState<ControlZone[]>([]);
+  const [isDrawingZone, setIsDrawingZone] = useState(false);
+  const [draftPolygon, setDraftPolygon] = useState<[number, number][]>([]);
+  const [draftZoneName, setDraftZoneName] = useState('Nueva Zona');
+  const [draftMaxSpeed, setDraftMaxSpeed] = useState(45);
 
   // Filtros
   const [operatorFilter, setOperatorFilter] = useState<string>(String(empresaPropia));
@@ -420,9 +421,20 @@ export default function MapHub() {
       .catch((err) => console.warn('[MapHub] Error cargando paradas:', err));
   }, [layers.paradas, mapBbox]);
 
+  const fetchZones = useCallback(async () => {
+    try {
+      const snap = await getDocs(collection(db, 'control_zones'));
+      const zones = snap.docs.map(d => ({ id: d.id, ...d.data() } as ControlZone));
+      setControlZones(zones.filter(z => z.active !== false));
+    } catch (err) {
+      console.warn('[MapHub] Error cargando control_zones:', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadStatic();
-  }, [loadStatic]);
+    fetchZones();
+  }, [loadStatic, fetchZones]);
 
   // Carga bajo demanda del Heatmap (Lazy load con datos reales de stm_validaciones_mensual)
   useEffect(() => {
@@ -772,8 +784,8 @@ export default function MapHub() {
             const hasAlert = !!(b.desvio || b.incidencia);
             
             // Ray-Casting Check para Geocercas
-            const isInControlZone = CONTROL_ZONES.some(z => isPointInPolygon([b.lat, b.lng], z.polygon));
-            const isSpeeding = isInControlZone && (b.velocidad || 0) > CONTROL_ZONES[0].maxSpeed;
+            const activeZone = controlZones.find(z => isPointInPolygon([b.lat, b.lng], z.polygon));
+            const isSpeeding = activeZone && (b.velocidad || 0) > activeZone.maxSpeed;
             
             // FMS Health color overlay
             let markerColor = EMPRESA_COLOR[String(b.empresaId)] ?? '#94a3b8';
@@ -823,7 +835,7 @@ export default function MapHub() {
           })}
 
           {/* Geocercas de Control */}
-          {layers.vehicles && CONTROL_ZONES.map(z => (
+          {layers.vehicles && controlZones.map(z => (
             <Polygon 
               key={z.id} 
               positions={z.polygon} 
@@ -834,6 +846,16 @@ export default function MapHub() {
               </LeafletTooltip>
             </Polygon>
           ))}
+          {/* Zona en dibujo (Draft) */}
+          {isDrawingZone && draftPolygon.length > 0 && (
+            <Polygon 
+              positions={draftPolygon}
+              pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.3, dashArray: '5, 5', weight: 2 }}
+            />
+          )}
+
+          {/* Eventos de Mapa para Geofencing */}
+          <DrawEvents isDrawing={isDrawingZone} onAddPoint={(pt) => setDraftPolygon(prev => [...prev, pt])} />
 
           {/* Capa 4: Radar Táctico (Radio visual del bus seleccionado) */}
           {layers.vehicles && activeDisputas?.rivales.map((r) => {
@@ -1365,6 +1387,111 @@ export default function MapHub() {
             </div>
           )}
 
+          {/* ================= TAB 6: GEOFENCING (ZONAS DE CONTROL) ================= */}
+          {sidebarTab === 'geofencing' && (
+            <div className="space-y-4">
+              <div className="text-xs text-slate-400 mb-2 border-b border-slate-800 pb-2">
+                Zonas de Control de Velocidad
+              </div>
+
+              {!isDrawingZone ? (
+                <div className="space-y-3">
+                  <button
+                    onClick={() => {
+                      setIsDrawingZone(true);
+                      setDraftPolygon([]);
+                      setDraftZoneName('Nueva Zona ' + (controlZones.length + 1));
+                    }}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-3 rounded-lg text-xs transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span>➕ Crear Nueva Zona</span>
+                  </button>
+
+                  <div className="space-y-2 mt-4">
+                    {controlZones.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic text-center">No hay zonas configuradas</p>
+                    ) : (
+                      controlZones.map(z => (
+                        <div key={z.id} className="bg-slate-900 border border-slate-700 p-2 rounded-lg flex items-center justify-between">
+                          <div>
+                            <p className="text-xs font-bold text-slate-200">{z.name}</p>
+                            <p className="text-[10px] text-red-400 font-semibold">Max: {z.maxSpeed} km/h</p>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              if (!z.id || !confirm('¿Eliminar zona?')) return;
+                              try {
+                                await deleteDoc(doc(db, 'control_zones', z.id));
+                                setControlZones(prev => prev.filter(x => x.id !== z.id));
+                              } catch (err) {
+                                console.error(err);
+                              }
+                            }}
+                            className="text-red-500 hover:text-red-400 text-xs px-2"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-900 border border-slate-700 p-3 rounded-lg space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                    <span className="text-xs font-bold text-indigo-400 animate-pulse">🖌️ Modo Dibujo Activo</span>
+                    <button 
+                      onClick={() => setIsDrawingZone(false)}
+                      className="text-slate-400 hover:text-white text-xs"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                  
+                  <p className="text-[10px] text-slate-400">
+                    Haz clic en el mapa para trazar el perímetro. Al menos 3 puntos requeridos.
+                    ({draftPolygon.length} puntos)
+                  </p>
+
+                  <input
+                    type="text"
+                    value={draftZoneName}
+                    onChange={(e) => setDraftZoneName(e.target.value)}
+                    className="w-full bg-slate-800 text-white border border-slate-600 rounded p-1.5 text-xs"
+                    placeholder="Nombre de la zona"
+                  />
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">Max Speed (km/h):</span>
+                    <input
+                      type="number"
+                      value={draftMaxSpeed}
+                      onChange={(e) => setDraftMaxSpeed(Number(e.target.value))}
+                      className="w-20 bg-slate-800 text-white border border-slate-600 rounded p-1 text-xs"
+                    />
+                  </div>
+
+                  <button
+                    disabled={draftPolygon.length < 3 || !draftZoneName}
+                    onClick={async () => {
+                      try {
+                        const newZone = { name: draftZoneName, maxSpeed: draftMaxSpeed, polygon: draftPolygon, active: true };
+                        const res = await addDoc(collection(db, 'control_zones'), newZone);
+                        setControlZones(prev => [...prev, { id: res.id, ...newZone }]);
+                        setIsDrawingZone(false);
+                      } catch (err) {
+                        console.error('Error saving zone', err);
+                      }
+                    }}
+                    className={`w-full py-1.5 rounded text-xs font-bold text-white transition-colors ${draftPolygon.length < 3 ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'}`}
+                  >
+                    Guardar Zona
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
     </div>
@@ -1461,4 +1588,16 @@ function StopPopupContent({ stopId, stopName, stopCode }: { stopId: string; stop
       </div>
     </div>
   );
+}
+
+// ─── Lógica para Dibujo en Mapa ──────────────────────────────────────────────
+function DrawEvents({ isDrawing, onAddPoint }: { isDrawing: boolean, onAddPoint: (pt: [number, number]) => void }) {
+  useMapEvents({
+    click(e) {
+      if (isDrawing) {
+        onAddPoint([e.latlng.lat, e.latlng.lng]);
+      }
+    }
+  });
+  return null;
 }
