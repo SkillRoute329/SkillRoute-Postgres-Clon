@@ -1079,6 +1079,7 @@ export default function MapHub() {
             { id: 'bunching', label: 'Bunching' },
             { id: 'dro', label: 'DRO' },
             { id: 'marey', label: 'Marey' },
+            { id: 'geofencing', label: 'Zonas' },
           ].map((tab) => (
             <button
               key={tab.id}
