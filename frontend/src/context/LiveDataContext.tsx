@@ -93,7 +93,6 @@ const LiveDataContext = createContext<LiveDataState | null>(null);
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const AGENCIES = [70, 50, 20, 10]; // UCOT, CUTCSA, COME, COETC
 const AGENCY_NAMES: Record<number, string> = {
   70: 'UCOT',
   50: 'CUTCSA',
@@ -101,30 +100,11 @@ const AGENCY_NAMES: Record<number, string> = {
   10: 'COETC',
 };
 
-function calcBunchingPairs(buses: BusLive[], agencyId: number): number {
-  const propios = buses.filter((b) => b.empresaId === agencyId);
-  let count = 0;
-  for (let i = 0; i < propios.length; i++) {
-    for (let j = i + 1; j < propios.length; j++) {
-      if (propios[i]!.linea !== propios[j]!.linea) continue;
-      const R = 6371;
-      const dLat = ((propios[j]!.lat - propios[i]!.lat) * Math.PI) / 180;
-      const dLng = ((propios[j]!.lng - propios[i]!.lng) * Math.PI) / 180;
-      const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos((propios[i]!.lat * Math.PI) / 180) *
-          Math.cos((propios[j]!.lat * Math.PI) / 180) *
-          Math.sin(dLng / 2) ** 2;
-      if (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) < 0.8) count++;
-    }
-  }
-  return count;
-}
-
 interface BusActiveResponse {
   agency: string;
   ventana_minutos: number;
   total_buses_activos: number;
+  bunching_pares?: number;
   buses: Array<{
     id_bus: string;
     linea: string;
@@ -133,6 +113,7 @@ interface BusActiveResponse {
     velocidad: number;
     estado_cumplimiento: string;
     timestamp_gps: string;
+    agency_id: number;
   }>;
 }
 
@@ -160,8 +141,6 @@ export function LiveDataProvider({ children }: { children: ReactNode }): JSX.Ele
   const [otpSeries, setOtpSeries] = useState<OtpPoint[]>([]);
 
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
-  // FASE 5.35 (2026-05-22): persistir el operador seleccionado en localStorage
-  // para que el filtro se recuerde entre pantallas y entre sesiones.
   const [selectedOperator, setSelectedOperatorRaw] = useState<string>(() => {
     try { return localStorage.getItem('skillroute_selected_operator') || '70'; }
     catch { return '70'; }
@@ -175,39 +154,29 @@ export function LiveDataProvider({ children }: { children: ReactNode }): JSX.Ele
   const otpIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const alertasIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── Fetch buses (clon, 4 agencias en paralelo) ─────────────────────────
+  // ── Fetch buses (clon, 1 peticion consolidada) ─────────────────────────
 
   const fetchBuses = useCallback(async () => {
     try {
-      const responses = await Promise.allSettled(
-        AGENCIES.map((agency) =>
-          apiClient.get<BusActiveResponse>('/api/audit/buses-active', {
-            query: { agency, minutes: 5 },
-          }),
-        ),
-      );
+      const res = await apiClient.get<BusActiveResponse>('/api/audit/buses-active', {
+        query: { agency: 'all', minutes: 5 },
+      });
 
-      const allBuses: BusLive[] = [];
-      for (let i = 0; i < AGENCIES.length; i++) {
-        const r = responses[i];
-        if (r.status !== 'fulfilled' || !r.value.data) continue;
-        const agencyNum = AGENCIES[i]!;
-        const empresa = AGENCY_NAMES[agencyNum] ?? String(agencyNum);
-        for (const b of r.value.data.buses) {
-          allBuses.push({
-            idBus: b.id_bus,
-            codigoBus: b.id_bus,
-            linea: b.linea ?? '',
-            sublinea: null,
-            destino: '',
-            lat: b.lat,
-            lng: b.lon,
-            empresaId: agencyNum,
-            empresa,
-            timestamp: b.timestamp_gps,
-          });
-        }
-      }
+      const data = res.data;
+      if (!data) return;
+
+      const allBuses: BusLive[] = data.buses.map((b) => ({
+        idBus: b.id_bus,
+        codigoBus: b.id_bus,
+        linea: b.linea ?? '',
+        sublinea: null,
+        destino: '',
+        lat: b.lat,
+        lng: b.lon,
+        empresaId: b.agency_id,
+        empresa: AGENCY_NAMES[b.agency_id] ?? String(b.agency_id),
+        timestamp: b.timestamp_gps,
+      }));
 
       setBuses(allBuses);
       setBusesLastUpdate(new Date());
@@ -225,7 +194,7 @@ export function LiveDataProvider({ children }: { children: ReactNode }): JSX.Ele
         totalPropios: propios.length,
         totalRivales: allBuses.length - propios.length,
         lineasActivas,
-        bunchingPares: calcBunchingPairs(allBuses, agencyId),
+        bunchingPares: data.bunching_pares ?? 0,
         perEmpresa,
         totalRed: allBuses.length,
       });

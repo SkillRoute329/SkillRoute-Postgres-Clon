@@ -108,15 +108,41 @@ export async function getCoverageHandler(req: Request, res: Response): Promise<v
  */
 export async function getActiveBusesHandler(req: Request, res: Response): Promise<void> {
   try {
-    const agency = (req.query.agency as string) || '70';
+    const agency = (req.query.agency as string) || 'all';
     const minutes = Math.min(60, Math.max(1, parseInt((req.query.minutes as string) || '5', 10)));
-
     const since = new Date(Date.now() - minutes * 60_000);
-    const rows = await sqlDb('bus_last_pos')
-      .where('agency_id', agency)
+
+    let q = sqlDb('bus_last_pos')
       .where('timestamp_gps', '>=', since)
       .orderBy('timestamp_gps', 'desc')
-      .limit(500);
+      .limit(2000);
+      
+    if (agency !== 'all') {
+      q = q.where('agency_id', agency);
+    }
+
+    const rows = await q;
+
+    // Calcular bunching_pares (usando Haversine)
+    let bunchingPares = 0;
+    for (let i = 0; i < rows.length; i++) {
+      for (let j = i + 1; j < rows.length; j++) {
+        if (rows[i].linea !== rows[j].linea || rows[i].agency_id !== rows[j].agency_id) continue;
+        const R = 6371;
+        const lat1 = rows[i].lat; const lon1 = rows[i].lon;
+        const lat2 = rows[j].lat; const lon2 = rows[j].lon;
+        if (!lat1 || !lon1 || !lat2 || !lon2) continue;
+        
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLng = ((lon2 - lon1) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos((lat1 * Math.PI) / 180) *
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLng / 2) ** 2;
+        if (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) < 0.8) bunchingPares++;
+      }
+    }
 
     res.json({
       ok: true,
@@ -124,6 +150,7 @@ export async function getActiveBusesHandler(req: Request, res: Response): Promis
         agency,
         ventana_minutos: minutes,
         total_buses_activos: rows.length,
+        bunching_pares: bunchingPares,
         buses: rows.map((r: any) => ({
           id_bus: r.id_bus,
           linea: r.linea,
@@ -132,6 +159,7 @@ export async function getActiveBusesHandler(req: Request, res: Response): Promis
           velocidad: r.velocidad,
           estado_cumplimiento: r.estado_cumplimiento,
           timestamp_gps: r.timestamp_gps,
+          agency_id: r.agency_id
         })),
       },
     });
