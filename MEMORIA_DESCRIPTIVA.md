@@ -21,8 +21,6 @@
 - Todo dato debe contener un sello de origen (`source`) y tiempo en **UTC**.
 
 ## 5. Tareas Pendientes (Roadmap / To-Do)
-1. Escribir la primera suite de pruebas automatizadas (TDD) para el core del backend.
-2. Limpiar el backend de scripts temporales (ej. `extract_gtfs.js`) e implementar verdaderos WebSockets o APIs de consumo en tiempo real para las coordenadas.
-
----
-> **Nota para Agentes IA:** Es obligatorio actualizar este documento al finalizar cualquier tarea mayor para mantener la persistencia de la memoria.
+1. **[HECHO]** Limpiar el backend de scripts temporales. Se archivaron ~40 scripts basura en `/archived_scripts` (Frontend/Backend) sin borrar lógica operativa (Cero Regresiones).
+2. Escribir la primera suite de pruebas automatizadas (TDD) instalando Vitest/Supertest en el backend.
+3. Eliminar `extract_gtfs.js` y crear API real en vivo para mapas.
