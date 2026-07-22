@@ -321,6 +321,7 @@ exports.seed = async function (knex) {
           data_jsonb: JSON.stringify({
             ...metaData,
             fuente: fuenteVehiculos,
+            is_simulated: fuenteVehiculos === 'referencia',
             seed_at: new Date().toISOString()
           })
         };

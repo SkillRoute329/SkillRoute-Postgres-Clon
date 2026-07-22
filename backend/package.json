@@ -12,7 +12,8 @@
     "db:migrate": "knex migrate:latest",
     "db:seed": "knex seed:run",
     "db:setup": "npm run db:migrate && npm run db:seed",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -59,9 +60,12 @@
     "@types/multer": "^2.2.0",
     "@types/node": "^20.0.0",
     "@types/node-cron": "^3.0.11",
+    "@types/supertest": "^7.2.1",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
+    "supertest": "^7.2.2",
     "tsx": "^4.21.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.10"
   }
 }

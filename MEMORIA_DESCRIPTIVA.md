@@ -22,5 +22,6 @@
 
 ## 5. Tareas Pendientes (Roadmap / To-Do)
 1. **[HECHO]** Limpiar el backend de scripts temporales. Se archivaron ~40 scripts basura en `/archived_scripts` (Frontend/Backend) sin borrar lógica operativa (Cero Regresiones).
-2. Escribir la primera suite de pruebas automatizadas (TDD) instalando Vitest/Supertest en el backend.
-3. Eliminar `extract_gtfs.js` y crear API real en vivo para mapas.
+2. **[HECHO]** Escribir la primera suite de pruebas automatizadas (TDD) instalando Vitest/Supertest en el backend.
+3. **[HECHO]** Adaptar el script de carga de demostración (Seed) para etiquetar los datos simulados y cumplir la Ley 5 de Transparencia.
+4. Eliminar `extract_gtfs.js` y crear API real en vivo para mapas (Post-Presentación).
