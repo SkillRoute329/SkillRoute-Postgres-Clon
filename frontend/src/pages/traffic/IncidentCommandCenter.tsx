@@ -172,6 +172,10 @@ export default function IncidentCommandCenter() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('¿Anular permanentemente esta incidencia?')) return;
+    // Optimistic UI
+    setFirestoreInc((prev) =>
+      prev.map((inc) => (inc.id === id ? { ...inc, status: 'ANULADO' } : inc))
+    );
     try {
       await updateDoc(doc(db, 'incidencias', id), {
         status: 'ANULADO',
@@ -181,6 +185,7 @@ export default function IncidentCommandCenter() {
     } catch (e) {
       console.error(e);
       toast.error('Error al anular incidencia');
+      // Podríamos revertir el cambio aquí
     }
   };
 
@@ -198,9 +203,16 @@ export default function IncidentCommandCenter() {
           createdAt: serverTimestamp(),
           ...(crudData.vehicleId ? { vehicleId: crudData.vehicleId } : {})
         };
+        // Optimistic UI no es tan simple en CREATE sin un ID, pero cerramos rápido el modal
+        setCrudModalOpen(false);
         await addDoc(collection(db, 'incidencias'), payload);
         toast.success('Incidencia creada al instante');
       } else {
+        // Optimistic UI
+        setFirestoreInc((prev) =>
+          prev.map((inc) => (inc.id === crudData.id ? { ...inc, ...crudData } : inc))
+        );
+        setCrudModalOpen(false);
         await updateDoc(doc(db, 'incidencias', crudData.id), {
           type: crudData.type,
           description: crudData.description,
@@ -209,7 +221,6 @@ export default function IncidentCommandCenter() {
         });
         toast.success('Incidencia actualizada');
       }
-      setCrudModalOpen(false);
     } catch (e) {
       console.error(e);
       toast.error('Error al guardar incidencia');
@@ -220,6 +231,10 @@ export default function IncidentCommandCenter() {
 
   /* ── Resolver incidencia Firestore ── */
   const resolveFirestore = async (id: string) => {
+    // Optimistic UI
+    setFirestoreInc((prev) =>
+      prev.map((inc) => (inc.id === id ? { ...inc, status: 'CERRADO' } : inc))
+    );
     setResolving(id);
     try {
       await updateDoc(doc(db, 'incidencias', id), {
