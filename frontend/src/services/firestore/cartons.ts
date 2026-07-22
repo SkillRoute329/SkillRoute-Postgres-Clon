@@ -107,6 +107,7 @@ export const CartonService = {
     fromMaster.forEach((id) => seen.add(id));
 
     // 2. Cargar desde el backend (Extensiones dinámicas)
+    /* Desactivado para evitar mezclar líneas de otros operadores en la BD unificada.
     try {
       const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${SERVICE_DEFINITIONS}`, { query: { limit: 5000 } });
       (Array.isArray(res.data) ? res.data : []).forEach((d) => {
@@ -116,7 +117,7 @@ export const CartonService = {
           if (!(str.length > 5 && !isNaN(Number(str)))) seen.add(str);
         }
       });
-    } catch { /* ignore */ }
+    } catch { }
 
     try {
       const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${CARTONES}`, { query: { limit: 5000 } });
@@ -127,7 +128,7 @@ export const CartonService = {
           if (!(str.length > 5 && !isNaN(Number(str)))) seen.add(str);
         }
       });
-    } catch { /* ignore */ }
+    } catch { }
 
     try {
       const res = await apiClient.get<Record<string, unknown>[]>(`/api/db/${LINEAS}`, { query: { limit: 5000 } });
@@ -138,7 +139,8 @@ export const CartonService = {
           if (!(clean.length > 5 && !isNaN(Number(clean)))) seen.add(clean);
         }
       });
-    } catch { /* ignore */ }
+    } catch { }
+    */
 
     return Array.from(seen).filter(Boolean).sort();
   },
@@ -202,6 +204,7 @@ export const CartonService = {
       });
 
       // 1b. Extender/Sobrescribir desde el backend
+      /* Desactivado para evitar servicios de otros operadores
       try {
         const whereStr = dayType
           ? `linea:${lineId},tipo_dia:${dayType}`
@@ -213,7 +216,7 @@ export const CartonService = {
           const data = mapCartonDocToShape((d.id as string) ?? '', d);
           mergedMap.set(data.id, { ...mergedMap.get(data.id), ...data, source: 'backend' });
         });
-      } catch { /* ignore */ }
+      } catch { }
 
       if (mergedMap.size > 0) {
         return Array.from(mergedMap.values());
@@ -227,6 +230,9 @@ export const CartonService = {
         });
         return (Array.isArray(res.data) ? res.data : []).map((s) => ({ ...s, linea: lineId }));
       } catch { return []; }
+      */
+
+      return Array.from(mergedMap.values());
     }
 
     // 2. Global Seasonal/DayType Filter

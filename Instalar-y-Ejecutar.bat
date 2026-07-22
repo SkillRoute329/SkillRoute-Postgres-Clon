@@ -14,6 +14,7 @@ echo   2. Levanta la Base de Datos con todos tus datos (Docker).
 echo   3. Inicia el servidor Backend y Frontend.
 echo.
 echo  [1/4] Instalando dependencias del proyecto (Puede demorar)...
+call npm install
 call npm run install:all
 
 echo.
