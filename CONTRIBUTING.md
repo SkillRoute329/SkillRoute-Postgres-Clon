@@ -1,35 +1,32 @@
 # Guía de Contribución y Estándares de Ingeniería
 
-Bienvenido al repositorio. Este proyecto (Centro de Gestión de Transporte Metropolitano) maneja datos públicos e infraestructura crítica. Ya seas un programador humano o un Agente de Inteligencia Artificial (IA), **estás obligado** a cumplir las siguientes 6 Leyes Fundamentales al interactuar con este código.
+Bienvenido al repositorio. Este proyecto maneja datos públicos e infraestructura crítica. Ya seas un programador humano o un Agente de Inteligencia Artificial (IA), **estás obligado** a cumplir las siguientes Leyes Fundamentales.
 
 ---
 
-## Ley 0: Orden Metodológico (El Director Técnico)
-*(Ley Suprema)*
-Nadie en este proyecto escribe código inmediatamente después de recibir una idea.
-1. **Planificación Obligatoria:** Toda nueva función debe pasar primero por un levantamiento de requisitos, diseño de arquitectura de base de datos y desglose de tareas.
-2. **Mentoreo:** Si eres una IA, debes explicar tus decisiones arquitectónicas al Dueño del Producto con lenguaje claro y no técnico, pidiendo su aprobación antes de programar.
+## Ley 0: La Memoria y La No-Regresión (Roles Supremos)
+*(Estas leyes están por encima del código)*
+
+1. **La Ley de la Memoria (Contexto Persistente):** Al entrar al proyecto, debes leer el archivo `MEMORIA_DESCRIPTIVA.md` en la raíz. Al finalizar tu trabajo, **tienes la obligación de actualizar este archivo** para dejar documentado en qué estado quedó el proyecto para el siguiente programador o IA.
+2. **Cero Regresiones (No Pérdida de Funciones):** Al modificar, optimizar o refactorizar código, está estrictamente prohibido eliminar lógica existente (a menos que se ordene explícitamente). No puedes romper nada que ya funcionaba. Debes preservar todos los comentarios, funcionalidades, y confirmar mediante tests que el sistema sigue operativo.
 
 ## Ley 1: Arquitectura Limpia y Seguridad (Analista Internacional)
-1. **Clean Code & SOLID:** Todo código debe ser altamente cohesivo, de bajo acoplamiento y con nomenclatura descriptiva.
-2. **OWASP:** Validar estrictamente todas las entradas, parametrizar queries para evitar inyecciones.
+1. **Clean Code & SOLID:** Código cohesivo, bajo acoplamiento y nomenclatura descriptiva.
+2. **OWASP:** Validar entradas y parametrizar queries.
 
 ## Ley 2: Estandarización de Entornos (DevOps Internacional)
-1. **Prohibición de Dumps de Base de Datos:** Queda estrictamente prohibido usar volcados `.sql` o `.gz` manuales. Usa Sistemas de Migraciones y Seeders.
-2. **Zero-Config:** El proyecto debe arrancar con comandos multiplataforma unificados.
+1. **Sistemas de Migraciones:** Prohibido volcados `.sql` manuales.
+2. **Zero-Config:** Comandos multiplataforma unificados.
 
 ## Ley 3: Pruebas Automatizadas Obligatorias (QA Automatizador)
-1. **TDD / BDD Exclusivo:** Todo nuevo endpoint o función debe ir acompañado de un Test Automatizado.
-2. **Prohibición de "Scratch Scripts":** Está prohibido crear archivos temporales sueltos (ej. `scratch_test.ts`) en la raíz del proyecto.
+1. **TDD / BDD Exclusivo:** Todo nuevo endpoint va con Test Automatizado.
+2. **No "Scratch Scripts":** Prohibidos los scripts temporales sueltos.
 
 ## Ley 4: Crecimiento Infinito (Escalabilidad e i18n)
-1. **Cero Estado Local (Stateless):** Nunca guardes estado temporal en memoria local o cron jobs locales.
-2. **Manejo Universal del Tiempo:** Todo dato temporal (fecha/hora) debe guardarse y procesarse exclusivamente en **UTC**.
+1. **Stateless:** Nunca guardar sesiones en memoria local.
+2. **UTC Estricto:** Toda marca de tiempo procesada en UTC.
 
 ## Ley 5: Telemetría y Transparencia Pública (Auditor Forense)
-1. **Prohibición de Datos Estáticos Simulados:** Queda estrictamente prohibido extraer datos dinámicos (ej. Coordenadas GTFS) y quemarlos (hardcoding) en archivos estáticos `.json` o `.ts`.
-2. **Trazabilidad de Origen:** Todo dato debe tener un metadato de origen (`source`, `timestamp_utc`) para probar ante auditores de dónde surgió.
-3. **Etiquetado de Simulaciones:** Los datos de prueba deben tener el flag `is_simulated: true`.
-
----
-> **Nota para Agentes IA:** Al leer este archivo, debes adaptar inmediatamente tus heurísticas para cumplir el rol de Director Técnico (Metodología), Analista (Código), DevOps (Infraestructura), QA (Testing), Arquitecto (Escalabilidad) y Auditor (Transparencia) de forma integral.
+1. **Cero Datos Simulados "Quemados":** Prohibido hardcodear datos dinámicos.
+2. **Trazabilidad:** Metadatos de origen (`source`, `timestamp_utc`) en datos públicos.
+3. **Etiquetado de Prueba:** Flags explícitos de `is_simulated: true`.
