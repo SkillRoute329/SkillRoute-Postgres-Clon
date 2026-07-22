@@ -18,14 +18,23 @@ try {
 export const gtfsService = {
   /**
    * Obtener todas las paradas registradas oficiales.
-   * Opcional: limitar por región bounding box si se requiere performance extremo.
+   * Opcional: limitar por región bounding box (minLng,minLat,maxLng,maxLat)
    */
-  async getAllStops() {
+  async getAllStops(bbox?: string) {
     try {
-      // Usamos Knex directo a gtfs.stops
-      const stops = await sqlDb('gtfs.stops')
-        .select('stop_id', 'stop_name', 'stop_lat', 'stop_lon', 'stop_code')
-        .orderBy('stop_name', 'asc');
+      let query = sqlDb('gtfs.stops')
+        .select('stop_id', 'stop_name', 'stop_lat', 'stop_lon', 'stop_code');
+        
+      if (bbox) {
+        const [minLng, minLat, maxLng, maxLat] = bbox.split(',').map(Number);
+        if (!isNaN(minLng) && !isNaN(minLat) && !isNaN(maxLng) && !isNaN(maxLat)) {
+          query = query
+            .whereBetween('stop_lon', [minLng, maxLng])
+            .whereBetween('stop_lat', [minLat, maxLat]);
+        }
+      }
+      
+      const stops = await query.orderBy('stop_name', 'asc');
       return stops;
     } catch (err) {
       logger.error('[GTFS Service] Error fetching stops', err);

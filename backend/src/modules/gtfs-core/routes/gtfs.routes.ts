@@ -14,7 +14,8 @@ router.use(requireAuth);
  */
 router.get('/stops', async (req, res) => {
   try {
-    const stops = await gtfsService.getAllStops();
+    const { bbox } = req.query;
+    const stops = await gtfsService.getAllStops(bbox as string);
     res.json({ success: true, count: stops.length, data: stops });
   } catch (err: any) {
     logger.error(`[GTFS Route] Error listing stops: ${err.message}`);

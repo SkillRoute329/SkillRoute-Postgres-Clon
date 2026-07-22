@@ -15,9 +15,10 @@ import {
   Marker,
   Popup,
   Polyline,
-  CircleMarker,
   Tooltip as LeafletTooltip,
   useMap,
+  useMapEvents,
+  Polygon,
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -58,6 +59,19 @@ import {
 import { haversineMetros } from '../../utils/geomath';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import toast from 'react-hot-toast';
+import { apiClient } from '../../clients/apiClient';
+
+// Componente para escuchar cambios de límites del mapa (Bounding Box)
+function MapBoundsObserver({ onBoundsChanged }: { onBoundsChanged: (bbox: string) => void }) {
+  const map = useMapEvents({
+    moveend: () => {
+      const b = map.getBounds();
+      // Formato: minLng,minLat,maxLng,maxLat
+      onBoundsChanged(`${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`);
+    }
+  });
+  return null;
+}
 
 // ─── Constantes Visuales del Mapa ──────────────────────────────────────────
 const MONTEVIDEO_CENTER: [number, number] = [-34.8941, -56.1880];
@@ -143,6 +157,33 @@ function makeBusDivIcon(color: string, label: string, isOwn = false, hasAlert = 
   });
 }
 
+// ─── Utilidades Zero-Config: Geocercas (Ray-Casting) ─────────────────────────
+function isPointInPolygon(point: [number, number], vs: [number, number][]) {
+  const x = point[0], y = point[1];
+  let inside = false;
+  for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+      const xi = vs[i][0], yi = vs[i][1];
+      const xj = vs[j][0], yj = vs[j][1];
+      const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+const CONTROL_ZONES = [
+  {
+    id: 'z1',
+    name: 'Zona Control (Max 45km/h)',
+    polygon: [
+      [-34.908, -56.195],
+      [-34.908, -56.185],
+      [-34.895, -56.185],
+      [-34.895, -56.195]
+    ] as [number, number][],
+    maxSpeed: 45
+  }
+];
+
 export default function MapHub() {
   const { empresaPropia, setEmpresaPropia, empresaCfg } = useEmpresaPropia();
   const { selectedLine, setSelectedLine } = useLiveData();
@@ -177,6 +218,7 @@ export default function MapHub() {
   const [stops, setStops] = useState<GTFSStop[]>([]);
   const [demandPoints, setDemandPoints] = useState<[number, number, number][]>([]);
   const [loadingStatic, setLoadingStatic] = useState(true);
+  const [mapBbox, setMapBbox] = useState<string | null>(null);
 
   // Tab lateral: 'alertas' | 'flota' | 'bunching' | 'dro'
   const [sidebarTab, setSidebarTab] = useState<'alertas' | 'flota' | 'bunching' | 'dro'>('flota');
@@ -249,6 +291,11 @@ export default function MapHub() {
       if (comparteSentido) threatScore += 50;
       if (dist < 400) threatScore += 30;
 
+      let etaSeconds = 0;
+      const speed = Math.max(10, r.velocidad || 10); // Asumir 10km/h mínimo para no dividir por 0
+      etaSeconds = Math.round(dist / (speed * 0.277778));
+      const etaStr = etaSeconds < 60 ? `${etaSeconds}s` : `${Math.floor(etaSeconds/60)}m ${etaSeconds%60}s`;
+
       matches.push({
         id: r.id,
         codigoBus: r.codigoBus,
@@ -262,6 +309,7 @@ export default function MapHub() {
         lat: r.lat,
         lng: r.lng,
         codigoEmpresa: r.empresaId,
+        etaStr,
       });
     }
 
@@ -283,7 +331,8 @@ export default function MapHub() {
     }
     setSendingManual(true);
     try {
-      await addDoc(collection(db, 'alertas_regulacion'), {
+      // CERO BYPASS: Se ataca la API de base de datos directa (PostgreSQL + Firebase Sync)
+      await apiClient.post('/api/db/alertas_regulacion', {
         tipo: 'DISPARO_TACTICO',
         coche_id: manualCocheId,
         empresa_id: empresaPropia,
@@ -295,7 +344,7 @@ export default function MapHub() {
       toast.success(`Alerta de regulación enviada al chofer del Coche #${manualCocheId}`);
     } catch (err) {
       console.error(err);
-      toast.error('Error al emitir directiva manual.');
+      toast.error('Error al emitir directiva manual (Verifique conexión).');
     } finally {
       setSendingManual(false);
     }
@@ -348,9 +397,10 @@ export default function MapHub() {
 
   // Carga bajo demanda de paradas GTFS (Lazy load)
   useEffect(() => {
-    if (!layers.paradas || stops.length > 0) return;
+    if (!layers.paradas) return;
     const token = localStorage.getItem('tf_token');
-    fetch('/api/gtfs/stops', {
+    const url = mapBbox ? `/api/gtfs/stops?bbox=${mapBbox}` : '/api/gtfs/stops';
+    fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())
@@ -360,7 +410,7 @@ export default function MapHub() {
         }
       })
       .catch((err) => console.warn('[MapHub] Error cargando paradas:', err));
-  }, [layers.paradas, stops]);
+  }, [layers.paradas, mapBbox]);
 
   useEffect(() => {
     loadStatic();
@@ -368,9 +418,10 @@ export default function MapHub() {
 
   // Carga bajo demanda del Heatmap (Lazy load con datos reales de stm_validaciones_mensual)
   useEffect(() => {
-    if (!layers.demanda || demandPoints.length > 0) return;
+    if (!layers.demanda) return;
     const token = localStorage.getItem('tf_token');
-    fetch('/api/stm-demanda/mapa-global?top=1000', {
+    const url = mapBbox ? `/api/stm-demanda/mapa-global?top=1000&bbox=${mapBbox}` : '/api/stm-demanda/mapa-global?top=1000';
+    fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())
@@ -389,7 +440,7 @@ export default function MapHub() {
         }
       })
       .catch((err) => console.warn('[MapHub] Error cargando demanda:', err));
-  }, [layers.demanda, demandPoints]);
+  }, [layers.demanda, mapBbox]);
 
   // Filtrado de Buses
   const allBusesCombined = useMemo(() => {
@@ -511,6 +562,7 @@ export default function MapHub() {
 
           {/* Recenter Component */}
           <MapCenterController center={mapCenter} zoom={mapZoom} />
+          <MapBoundsObserver onBoundsChanged={setMapBbox} />
 
           {/* Capa 1: Corredores DRO */}
           {layers.droCorridors && shapes.map((s) => {
@@ -639,10 +691,17 @@ export default function MapHub() {
             const isOwn = b.empresaId === empresaPropia;
             const hasAlert = !!(b.desvio || b.incidencia);
             
+            // Ray-Casting Check para Geocercas
+            const isInControlZone = CONTROL_ZONES.some(z => isPointInPolygon([b.lat, b.lng], z.polygon));
+            const isSpeeding = isInControlZone && (b.velocidad || 0) > CONTROL_ZONES[0].maxSpeed;
+            
             // FMS Health color overlay
             let markerColor = EMPRESA_COLOR[String(b.empresaId)] ?? '#94a3b8';
             if (layers.fmsHealth) {
               markerColor = hasAlert ? '#ef4444' : '#10b981'; // Rojo con alerta, verde saludable
+            }
+            if (isSpeeding) {
+              markerColor = '#dc2626'; // Rojo si viola Geocerca (Speeding)
             }
 
             return (
@@ -683,7 +742,20 @@ export default function MapHub() {
             );
           })}
 
-          {/* Capa 6: Radar Táctico Rivales */}
+          {/* Geocercas de Control */}
+          {layers.vehicles && CONTROL_ZONES.map(z => (
+            <Polygon 
+              key={z.id} 
+              positions={z.polygon} 
+              pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.1, dashArray: '5, 5', weight: 1 }}
+            >
+              <LeafletTooltip direction="center" permanent className="bg-transparent border-0 shadow-none text-red-500 font-bold opacity-50">
+                {z.name}
+              </LeafletTooltip>
+            </Polygon>
+          ))}
+
+          {/* Capa 4: Radar Táctico (Radio visual del bus seleccionado) */}
           {layers.vehicles && activeDisputas?.rivales.map((r) => {
             let markerColor = EMPRESA_COLOR[String(r.codigoEmpresa)] ?? '#94a3b8';
             return (
@@ -951,6 +1023,7 @@ export default function MapHub() {
                                         </div>
                                         <div className="text-right">
                                            <span className="font-mono font-bold text-white block">{r.distanciaM}m</span>
+                                           <span className="text-[10px] text-red-400 font-bold block mt-0.5">ETA: {r.etaStr}</span>
                                            <span className="text-[9px] text-slate-500 font-mono">Score: {r.threatScore}</span>
                                         </div>
                                       </div>

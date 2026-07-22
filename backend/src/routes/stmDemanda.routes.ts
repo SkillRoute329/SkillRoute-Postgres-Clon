@@ -313,7 +313,8 @@ router.get('/mapa-global', async (req: Request, res: Response) => {
     const top = Math.min(2000, Math.max(20, parseInt((req.query.top as string) || '500', 10)));
     const minViajes = Math.max(0, parseInt((req.query.minViajes as string) || '100', 10));
     const conUcot = String(req.query.conUcot || '').toLowerCase() === 'true';
-    const cacheKey = `stm-demanda:mapa-global:${mes}:${top}:${minViajes}:${conUcot}`;
+    const bbox = req.query.bbox as string | undefined;
+    const cacheKey = `stm-demanda:mapa-global:${mes}:${top}:${minViajes}:${conUcot}:${bbox || 'all'}`;
 
     const payload = await cached(cacheKey, 120_000, async () => {
       // Si no se pidió mes, usar el último ingestado
@@ -383,18 +384,29 @@ router.get('/mapa-global', async (req: Request, res: Response) => {
         const hhi = shares.reduce((s, x) => s + x * x, 0);
         const nOperadores = shares.filter((s) => s > 0).length;
         const stop = stops.get(cod);
-        items.push({
-          codigoParada: cod,
-          nombre: stop?.name ?? null,
-          lat: stop?.lat ?? null,
-          lon: stop?.lon ?? null,
-          ucot: c.ucot, cutcsa: c.cutcsa, coetc: c.coetc, come: c.come,
-          total,
-          dominante,
-          cuotaDominante,
-          hhi,
-          nOperadores,
-        });
+        
+        let inBounds = true;
+        if (bbox && stop?.lat && stop?.lon) {
+          const [minLng, minLat, maxLng, maxLat] = bbox.split(',').map(Number);
+          if (stop.lon < minLng || stop.lon > maxLng || stop.lat < minLat || stop.lat > maxLat) {
+            inBounds = false;
+          }
+        }
+        
+        if (inBounds) {
+          items.push({
+            codigoParada: cod,
+            nombre: stop?.name ?? null,
+            lat: stop?.lat ?? null,
+            lon: stop?.lon ?? null,
+            ucot: c.ucot, cutcsa: c.cutcsa, coetc: c.coetc, come: c.come,
+            total,
+            dominante,
+            cuotaDominante,
+            hhi,
+            nOperadores,
+          });
+        }
       }
       items.sort((a, b) => b.total - a.total);
 
