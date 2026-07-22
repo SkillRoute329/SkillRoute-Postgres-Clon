@@ -94,8 +94,8 @@ export function useIncidencias(docLimit: number = 20) {
         entity: 'incidencia',
         entityId,
         details,
-        user_id: user.uid || user.id,
-        user_name: user.fullName || user.firstName,
+        user_id: String(user?.uid || user?.id || 'op-1'),
+        user_name: String(user?.fullName || user?.firstName || 'Operador de Despacho'),
         agency_id: agencyId,
         source_system: 'WEB_DESPACHO',
         timestamp_utc: serverTimestamp(), // Ensures server time (UTC by db)
@@ -114,7 +114,10 @@ export function useIncidencias(docLimit: number = 20) {
       const payload = {
         ...data,
         status: 'ABIERTO',
-        reportedBy: { uid: user.uid || user.id, name: user.fullName || user.firstName },
+        reportedBy: { 
+          uid: String(user?.uid || user?.id || 'op-1'), 
+          name: String(user?.fullName || user?.firstName || 'Operador de Despacho') 
+        },
         source: 'DESPACHO',
         agency_id: agencyId,
         createdAt: serverTimestamp(),
