@@ -14,6 +14,7 @@ import {
   getCoverageHandler,
   getActiveBusesHandler,
   getEtaSnapshotHandler,
+  getDvrPlaybackHandler,
 } from '../controllers/auditController';
 
 const router = Router();
@@ -29,6 +30,9 @@ router.get('/buses-active', verifyAuth, getActiveBusesHandler);
 
 // GET /api/audit/eta-snapshot?agency=70&limit=50
 router.get('/eta-snapshot', verifyAuth, getEtaSnapshotHandler);
+
+// GET /api/audit/dvr-playback?fecha=YYYY-MM-DD&linea=L1
+router.get('/dvr-playback', verifyAuth, getDvrPlaybackHandler);
 
 /**
  * FASE 5.12 (2026-05-13)

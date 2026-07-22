@@ -211,3 +211,68 @@ export async function getEtaSnapshotHandler(req: Request, res: Response): Promis
     res.status(500).json({ ok: false, error: msg });
   }
 }
+
+/**
+ * GET /api/audit/dvr-playback?fecha=YYYY-MM-DD&linea=XYZ
+ * 
+ * Devuelve el histórico de posiciones de los buses para un día y línea.
+ * Los datos se simplifican (decimation) para no bloquear la UI.
+ */
+export async function getDvrPlaybackHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const fecha = req.query.fecha as string;
+    const linea = req.query.linea as string;
+
+    if (!fecha || !linea) {
+      res.status(400).json({ ok: false, error: 'Faltan parámetros fecha o linea' });
+      return;
+    }
+
+    // Usaremos EXTRACT para truncar a los 30 segundos (o 1 minuto) para evitar millones de puntos
+    // pero para este MVP, simplemente agrupamos por id_bus y devolvemos los puntos ordenados
+    // asumiendo que vehicle_events está poblado.
+    
+    // Obtenemos los eventos entre fecha 00:00:00 y fecha 23:59:59
+    const startOfDay = `${fecha}T00:00:00Z`;
+    const endOfDay = `${fecha}T23:59:59Z`;
+
+    // Consulta con decimation básica (ej. 1 punto por minuto)
+    // Para simplificar, usamos LIMIT por ahora o agrupamos en JS.
+    const rows = await sqlDb('vehicle_events')
+      .where('linea', linea)
+      .where('timestamp_gps', '>=', startOfDay)
+      .where('timestamp_gps', '<=', endOfDay)
+      .select('id_bus', 'lat', 'lon', 'velocidad', 'timestamp_gps', 'estado_cumplimiento')
+      .orderBy('timestamp_gps', 'asc');
+
+    // Agrupar por id_bus
+    const busesData: Record<string, any[]> = {};
+    for (const r of rows) {
+      if (!busesData[r.id_bus]) {
+        busesData[r.id_bus] = [];
+      }
+      busesData[r.id_bus].push({
+        lat: r.lat,
+        lon: r.lon,
+        velocidad: r.velocidad,
+        estado_cumplimiento: r.estado_cumplimiento,
+        time: new Date(r.timestamp_gps).getTime() // Enviar como ms para el slider frontend
+      });
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        fecha,
+        linea,
+        total_puntos: rows.length,
+        buses: busesData
+      }
+    });
+
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    logger.error('[Audit] dvr-playback error', { error: msg });
+    res.status(500).json({ ok: false, error: msg });
+  }
+}

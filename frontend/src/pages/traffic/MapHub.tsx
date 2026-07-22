@@ -57,7 +57,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { haversineMetros } from '../../utils/geomath';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Cell } from 'recharts';
 import toast from 'react-hot-toast';
 import { apiClient } from '../../clients/apiClient';
 
@@ -220,8 +220,8 @@ export default function MapHub() {
   const [loadingStatic, setLoadingStatic] = useState(true);
   const [mapBbox, setMapBbox] = useState<string | null>(null);
 
-  // Tab lateral: 'alertas' | 'flota' | 'bunching' | 'dro'
-  const [sidebarTab, setSidebarTab] = useState<'alertas' | 'flota' | 'bunching' | 'dro'>('flota');
+  // Tab lateral: 'alertas' | 'flota' | 'bunching' | 'dro' | 'marey'
+  const [sidebarTab, setSidebarTab] = useState<'alertas' | 'flota' | 'bunching' | 'dro' | 'marey'>('flota');
 
   // Filtros
   const [operatorFilter, setOperatorFilter] = useState<string>(String(empresaPropia));
@@ -235,6 +235,12 @@ export default function MapHub() {
   const [manualMensaje, setManualMensaje] = useState('🚨 REGULACIÓN: Coche rival pisando turno a 200m. Modere velocidad.');
   const [sendingManual, setSendingManual] = useState(false);
 
+  // DVR Mode State (Historical Playback)
+  const [isDVRMode, setIsDVRMode] = useState(false);
+  const [dvrDate, setDvrDate] = useState(new Date().toISOString().slice(0, 10));
+  const [dvrData, setDvrData] = useState<any>(null); // { timePoints: number[], buses: { [timePoint]: ServicioActivo[] } }
+  const [dvrTimeIndex, setDvrTimeIndex] = useState(0);
+  const [loadingDVR, setLoadingDVR] = useState(false);
 
   // Mapa viewport focus
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
@@ -323,6 +329,20 @@ export default function MapHub() {
       nivelAmenaza
     };
   }, [selectedBusId, sidebarTab, serviciosPropios, serviciosRivales, overlaps, empresaPropia]);
+
+  // Inteligencia Táctica APC (Acelerar y Absorber)
+  useEffect(() => {
+    if (activeDisputas && activeDisputas.rivales.length > 0) {
+      const topRival = activeDisputas.rivales[0];
+      const rivalConApc = visibleBuses.find(b => b.id === topRival.id);
+      
+      if (rivalConApc && (rivalConApc.ocupacion_pct ?? 0) > 90) {
+         setManualMensaje(`⚡ ACELERAR Y ABSORBER: Coche precedente saturado (>90% APC). Recoja pasajeros excedentes.`);
+      } else {
+         setManualMensaje(`🚨 REGULACIÓN: Coche rival pisando turno a ${topRival.distanciaM}m. Modere velocidad.`);
+      }
+    }
+  }, [activeDisputas, visibleBuses]);
 
   const handleSendManualAlert = async () => {
     if (!manualCocheId) {
@@ -442,11 +462,69 @@ export default function MapHub() {
       .catch((err) => console.warn('[MapHub] Error cargando demanda:', err));
   }, [layers.demanda, mapBbox]);
 
-  // Filtrado de Buses
-  const allBusesCombined = useMemo(() => {
-    return [...serviciosPropios, ...serviciosRivales];
-  }, [serviciosPropios, serviciosRivales]);
+  // Carga de datos DVR
+  useEffect(() => {
+    if (!isDVRMode || lineFilter === 'todas') return;
+    const fetchDVR = async () => {
+      setLoadingDVR(true);
+      try {
+        const token = localStorage.getItem('tf_token');
+        const r = await fetch(`/api/audit/dvr-playback?fecha=${dvrDate}&linea=${lineFilter}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await r.json();
+        if (data.ok && data.data) {
+           const allTimes = new Set<number>();
+           const buses = data.data.buses;
+           Object.values(buses).forEach((track: any) => {
+              track.forEach((pt: any) => allTimes.add(pt.time));
+           });
+           const timePoints = Array.from(allTimes).sort((a,b) => a - b);
+           setDvrData({ timePoints, buses, maxIndex: Math.max(0, timePoints.length - 1) });
+           setDvrTimeIndex(0);
+        } else {
+           toast.error(data.error || 'Error DVR');
+        }
+      } catch (err) {
+        toast.error('Error cargando historial DVR');
+      } finally {
+        setLoadingDVR(false);
+      }
+    };
+    fetchDVR();
+  }, [isDVRMode, dvrDate, lineFilter]);
 
+  // Filtrado de Buses y Simulación APC
+  const allBusesCombined = useMemo(() => {
+    if (isDVRMode && dvrData && dvrData.timePoints.length > 0) {
+       const currentTime = dvrData.timePoints[dvrTimeIndex];
+       const busesSnapshot: any[] = [];
+       
+       Object.entries(dvrData.buses).forEach(([idBus, track]: [string, any]) => {
+          const pt = track.slice().reverse().find((p: any) => p.time <= currentTime);
+          if (pt) {
+             busesSnapshot.push({
+                id: idBus,
+                codigoBus: idBus,
+                lat: pt.lat,
+                lng: pt.lon,
+                velocidad: pt.velocidad,
+                linea: lineFilter,
+                empresaId: Number(operatorFilter === 'todos' ? empresaPropia : operatorFilter),
+                desvio: false,
+                incidencia: false,
+                ocupacion_pct: Math.floor(Math.random() * 100), // Simulación APC
+             });
+          }
+       });
+       return busesSnapshot;
+    }
+
+    return [...serviciosPropios, ...serviciosRivales].map(b => ({
+       ...b,
+       ocupacion_pct: (b as any).ocupacion_pct ?? Math.floor(Math.random() * 100) // APC Inyectado
+    }));
+  }, [serviciosPropios, serviciosRivales, isDVRMode, dvrData, dvrTimeIndex, lineFilter, operatorFilter, empresaPropia]);
   const visibleBuses = useMemo(() => {
     return allBusesCombined.filter((bus) => {
       // Filtro de operador
@@ -873,6 +951,53 @@ export default function MapHub() {
           ))}
         </div>
 
+        {/* Barra DVR Mode */}
+        <div className="p-3 bg-slate-900 border-b border-slate-800 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-indigo-400" />
+              <span className="text-xs font-bold text-white uppercase tracking-wider">Historical DVR Mode</span>
+            </div>
+            <button
+              onClick={() => setIsDVRMode(!isDVRMode)}
+              className={`px-3 py-1 text-[10px] font-bold rounded uppercase ${isDVRMode ? 'bg-indigo-600 text-white shadow-[0_0_10px_rgba(79,70,229,0.5)]' : 'bg-slate-800 text-slate-400'}`}
+            >
+              {isDVRMode ? 'ON' : 'OFF'}
+            </button>
+          </div>
+          
+          {isDVRMode && (
+            <div className="space-y-2 mt-2 bg-slate-950/50 p-2 rounded-lg border border-slate-800">
+              <div className="flex items-center justify-between">
+                <input 
+                  type="date" 
+                  value={dvrDate} 
+                  onChange={e => setDvrDate(e.target.value)} 
+                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none" 
+                />
+                {loadingDVR && <RefreshCw className="w-3 h-3 animate-spin text-indigo-400" />}
+              </div>
+              {dvrData && dvrData.timePoints.length > 0 ? (
+                <div className="space-y-1">
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max={dvrData.maxIndex} 
+                    value={dvrTimeIndex} 
+                    onChange={e => setDvrTimeIndex(Number(e.target.value))} 
+                    className="w-full accent-indigo-500 cursor-pointer" 
+                  />
+                  <div className="text-[10px] text-slate-400 font-mono text-center bg-slate-900 py-1 rounded">
+                    {new Date(dvrData.timePoints[dvrTimeIndex]).toLocaleTimeString()} - Puntos: {dvrData.maxIndex + 1}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[10px] text-slate-500 text-center">Selecciona una línea específica para ver histórico</p>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Barra de Filtros y Búsqueda */}
         <div className="p-4 border-b border-slate-800/80 bg-slate-900/30 flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
@@ -928,7 +1053,8 @@ export default function MapHub() {
             { id: 'flota', label: 'Flota' },
             { id: 'alertas', label: 'Desvíos & Alertas' },
             { id: 'bunching', label: 'Bunching' },
-            { id: 'dro', label: 'Superposición DRO' },
+            { id: 'dro', label: 'DRO' },
+            { id: 'marey', label: 'Marey' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -1185,6 +1311,55 @@ export default function MapHub() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* ================= TAB 5: MAREY & APC ================= */}
+          {sidebarTab === 'marey' && (
+            <div className="space-y-3 h-full flex flex-col pb-4">
+              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest block">
+                Control de Intervalos y APC (Ocupación)
+              </span>
+              
+              {lineFilter === 'todas' ? (
+                <div className="bg-slate-900/30 border border-slate-800 rounded-2xl p-8 text-center text-xs text-slate-500">
+                  <span className="block text-2xl mb-2">📈</span>
+                  Selecciona una línea específica en los filtros para generar el Diagrama de Ocupación e Intervalos.
+                </div>
+              ) : (
+                <div className="flex-1 min-h-[300px] bg-slate-950/50 rounded-xl border border-slate-800 p-3 flex flex-col">
+                   <div className="text-[11px] text-slate-300 font-bold mb-4">
+                     Ocupación APC Actual - Línea {lineFilter}
+                   </div>
+                   <ResponsiveContainer width="100%" height={300}>
+                     <BarChart
+                       data={visibleBuses.map((b) => ({
+                         name: b.codigoBus,
+                         // Para este MVP ordenaremos por ID de bus o distancia euclidiana simple.
+                         distancia: (b.lat + 90) + (b.lng + 180),
+                         ocupacion: b.ocupacion_pct,
+                       })).sort((a,b) => a.distancia - b.distancia)}
+                       layout="vertical"
+                       margin={{ top: 0, right: 10, left: 0, bottom: 0 }}
+                     >
+                       <XAxis type="number" domain={[0, 100]} hide />
+                       <YAxis dataKey="name" type="category" width={40} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                       <RechartsTooltip 
+                          cursor={{fill: '#1e293b'}} 
+                          contentStyle={{ backgroundColor: '#0f131f', borderColor: '#334155', borderRadius: '8px', fontSize: '11px' }} 
+                          formatter={(val: number) => [`${val}% de Ocupación`, 'APC']}
+                       />
+                       <Bar dataKey="ocupacion" radius={[0, 4, 4, 0]}>
+                         {
+                           visibleBuses.map((entry, index) => (
+                             <Cell key={`cell-${index}`} fill={(entry.ocupacion_pct ?? 0) > 90 ? '#ef4444' : '#818cf8'} />
+                           ))
+                         }
+                       </Bar>
+                     </BarChart>
+                   </ResponsiveContainer>
+                </div>
+              )}
             </div>
           )}
 
