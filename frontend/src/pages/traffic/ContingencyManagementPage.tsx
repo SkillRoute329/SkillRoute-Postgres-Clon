@@ -34,6 +34,7 @@ import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
+import { format, subDays } from 'date-fns';
 
 /* ─── Component ───────────────────────────────────────── */
 
@@ -46,12 +47,8 @@ export default function ContingencyManagementPage() {
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   
-  // Obtener fecha local en formato YYYY-MM-DD (Evita el salto de día por UTC a las 21hs de Uruguay)
-  const [today] = useState(() => {
-    const d = new Date();
-    const tzOffset = d.getTimezoneOffset() * 60000;
-    return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
-  });
+  // Obtener fecha local en formato YYYY-MM-DD usando date-fns para resolver problemas de Timezone
+  const [today] = useState(() => format(new Date(), 'yyyy-MM-dd'));
 
   /* ── Load vehicles and drivers ── */
   useEffect(() => {
@@ -98,11 +95,8 @@ export default function ContingencyManagementPage() {
         await import('../../services/firestore/programacionDiaria');
       const todayProg = await ProgramacionDiariaService.getByDate(today);
 
-      // Calcular ayer a las 12:00 local para asegurar que la resta de un día sea exacta y no salte por timezone
-      const d = new Date(`${today}T12:00:00`);
-      d.setDate(d.getDate() - 1);
-      const tzOffset = d.getTimezoneOffset() * 60000;
-      const yesterday = new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
+      // Calcular ayer usando date-fns
+      const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
       
       const yesterdayProg = await ProgramacionDiariaService.getByDate(yesterday);
 

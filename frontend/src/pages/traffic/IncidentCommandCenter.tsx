@@ -116,13 +116,14 @@ export default function IncidentCommandCenter() {
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('ABIERTO');
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>('TODOS');
   const [loading, setLoading] = useState(true);
+  const [docLimit, setDocLimit] = useState(20);
   const [selected, setSelected] = useState<string | null>(null);
   const [resolving, setResolving] = useState<string | null>(null);
 
   /* ── Firestore live listener ── */
   useEffect(() => {
     let isMounted = true;
-    const q = query(collection(db, 'incidencias'), orderBy('createdAt', 'desc'), limit(100));
+    const q = query(collection(db, 'incidencias'), orderBy('createdAt', 'desc'), limit(docLimit));
     const unsub = onSnapshot(
       q,
       (snap) => {
@@ -140,7 +141,7 @@ export default function IncidentCommandCenter() {
       isMounted = false;
       unsub();
     };
-  }, []);
+  }, [docLimit]);
 
   /* ── Resolver incidencia Firestore ── */
   const resolveFirestore = async (id: string) => {
@@ -433,6 +434,19 @@ export default function IncidentCommandCenter() {
               </div>
             );
           })}
+          {/* Botón Cargar Más */}
+          {firestoreInc.length >= docLimit && (
+            <div className="flex justify-center pt-4">
+              <button
+                onClick={() => setDocLimit(prev => prev + 20)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold border border-slate-700 transition-colors flex items-center gap-2"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Cargar más registros antiguos
+              </button>
+            </div>
+          )}
+        </div>
         </div>
       )}
 

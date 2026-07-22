@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { doc, getDoc, collection, query, where, getDocs, limit } from '../../config/firestoreShim';
+import { db } from '../../config/firebase';
 import {
   GitMerge,
   AlertTriangle,
@@ -9,17 +11,123 @@ import {
   Search,
   ArrowRight,
   ShieldAlert,
-  ClipboardList
+  ClipboardList,
+  RefreshCw
 } from 'lucide-react';
+import { INCIDENCIA_META } from '../../services/incidenciasService';
+import type { User as DriverUser, Vehicle } from '../../services/firestore/types';
 
 interface PanelTrazabilidad360Props {
   incidentId?: string;
 }
 
 export default function PanelTrazabilidad360({ incidentId }: PanelTrazabilidad360Props) {
-  const [searchQuery, setSearchQuery] = useState(incidentId || 'INC-4592');
+  const [searchQuery, setSearchQuery] = useState(incidentId || '');
+  const [loading, setLoading] = useState(!!incidentId);
+  const [incidencia, setIncidencia] = useState<any>(null);
+  const [chofer, setChofer] = useState<DriverUser | null>(null);
+  const [vehiculo, setVehiculo] = useState<Vehicle | null>(null);
+  const [error, setError] = useState('');
 
   const isEmbedded = !!incidentId;
+
+  // Lógica de Veredicto determinista basada en el tipo de incidencia
+  const generarVeredicto = () => {
+    if (!incidencia) return { texto: 'Esperando datos...', accion: '' };
+    const t = (incidencia.type || '').toUpperCase();
+    
+    if (t === 'MECANICA' || t === 'ROTURA') {
+      return {
+        texto: `Fallo detectado en el componente motriz. Revisión de taller sugerida.`,
+        accion: 'Derivar unidad a taller central (Retén sugerido).'
+      };
+    } else if (t === 'ACCIDENTE' || t === 'EVASION') {
+      return {
+        texto: `Incidencia asociada al factor humano o externo.`,
+        accion: 'Protocolo de seguros activo. Citar a declaración (Scoring afectado).'
+      };
+    } else if (t === 'DEMORA' || t === 'CONGESTION') {
+      return {
+        texto: `Afectación estructural de la vía.`,
+        accion: 'Ajuste de algoritmo Headway necesario (Intervalos dinámicos).'
+      };
+    }
+    return {
+      texto: `Traza sin anomalías graves. Factor ambiental probable.`,
+      accion: 'Monitorear unidad en los próximos 15 minutos.'
+    };
+  };
+
+  useEffect(() => {
+    const idToFetch = incidentId || searchQuery;
+    if (!idToFetch) return;
+
+    let isMounted = true;
+    setLoading(true);
+    setError('');
+
+    const fetchData = async () => {
+      try {
+        const incDoc = await getDoc(doc(db, 'incidencias', idToFetch));
+        if (!incDoc.exists()) {
+          if (isMounted) setError('Incidencia no encontrada.');
+          return;
+        }
+        const incData = incDoc.data();
+        if (isMounted) setIncidencia({ id: incDoc.id, ...incData });
+
+        // Fetch driver si existe
+        if (incData.reportedBy?.uid) {
+          const uDoc = await getDoc(doc(db, 'users', incData.reportedBy.uid));
+          if (uDoc.exists() && isMounted) setChofer(uDoc.data() as DriverUser);
+        }
+
+        // Fetch vehículo si existe
+        if (incData.vehicleId) {
+          const vQuery = query(collection(db, 'vehiculos'), where('internalNumber', '==', incData.vehicleId), limit(1));
+          const vSnap = await getDocs(vQuery);
+          if (!vSnap.empty && isMounted) {
+            setVehiculo(vSnap.docs[0].data() as Vehicle);
+          } else {
+             // fallback buscar por ID
+             const vDoc = await getDoc(doc(db, 'vehiculos', incData.vehicleId));
+             if (vDoc.exists() && isMounted) setVehiculo(vDoc.data() as Vehicle);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        if (isMounted) setError('Error obteniendo trazabilidad 360');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    void fetchData();
+
+    return () => { isMounted = false; };
+  }, [incidentId, searchQuery]);
+
+  if (loading) {
+    return (
+      <div className={`flex flex-col items-center justify-center bg-slate-950 ${isEmbedded ? 'p-10' : 'h-screen'}`}>
+        <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mb-4" />
+        <p className="text-slate-400 font-bold">Rastreando traza 360° en BD...</p>
+      </div>
+    );
+  }
+
+  if (error || !incidencia) {
+    return (
+      <div className={`flex flex-col h-full bg-slate-950 overflow-y-auto ${isEmbedded ? 'p-4' : 'p-6'}`}>
+         <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-xl text-center">
+            {error || 'Ingresa un ID para comenzar el análisis.'}
+         </div>
+      </div>
+    );
+  }
+
+  const meta = INCIDENCIA_META[incidencia.type ?? 'otro'] || { label: incidencia.type || 'Otro' };
+  const veredicto = generarVeredicto();
 
   return (
     <div className={`flex flex-col h-full bg-slate-950 overflow-y-auto ${isEmbedded ? 'p-2' : 'p-6'}`}>
@@ -30,10 +138,10 @@ export default function PanelTrazabilidad360({ incidentId }: PanelTrazabilidad36
           <div>
             <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
               <GitMerge className="w-7 h-7 text-indigo-400" />
-              Trazabilidad Operativa 360° (Auditoría en Cascada)
+              Trazabilidad Operativa 360°
             </h1>
             <p className="text-slate-400 mt-1 text-sm">
-              Rastrea el origen y el impacto en cadena de cualquier incidencia del sistema.
+              Datos obtenidos de Firebase en tiempo real.
             </p>
           </div>
           
@@ -42,7 +150,7 @@ export default function PanelTrazabilidad360({ incidentId }: PanelTrazabilidad36
               type="text" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ID Incidencia o Matrícula..."
+              placeholder="ID Incidencia..."
               className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-2 text-slate-200 focus:outline-none focus:border-indigo-500"
             />
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -67,11 +175,11 @@ export default function PanelTrazabilidad360({ incidentId }: PanelTrazabilidad36
               <div>
                 <h3 className="text-rose-400 font-bold uppercase tracking-wider text-xs mb-1">El Hecho Detectado</h3>
                 <p className="text-slate-200 font-medium text-lg leading-tight mb-2">
-                  Rotura de Caja de Cambios en Pleno Recorrido
+                  {meta.label} - {incidencia.description || 'Sin descripción adicional'}
                 </p>
                 <div className="flex gap-4 text-sm text-slate-400">
-                  <span className="flex items-center gap-1"><Bus className="w-4 h-4" /> Coche 35</span>
-                  <span className="flex items-center gap-1"><ArrowRight className="w-4 h-4" /> Línea 17 (Pza. Independencia)</span>
+                  <span className="flex items-center gap-1"><Bus className="w-4 h-4" /> Coche {incidencia.vehicleId || 'N/A'}</span>
+                  <span className="flex items-center gap-1"><ArrowRight className="w-4 h-4" /> Línea {incidencia.lineaNombre || 'N/A'}</span>
                 </div>
               </div>
             </div>
@@ -91,12 +199,14 @@ export default function PanelTrazabilidad360({ incidentId }: PanelTrazabilidad36
                 </div>
                 <div>
                   <h3 className="text-blue-400 font-bold uppercase tracking-wider text-xs mb-1">Actor Humano (RRHH)</h3>
-                  <p className="text-slate-200 font-medium text-base mb-1">Chofer: Juan Pérez (Legajo #4230)</p>
-                  <p className="text-xs text-slate-400">Turno asignado por: Listero A. Martínez</p>
-                  <div className="mt-3 bg-slate-900 border border-slate-800 p-2 rounded text-xs text-slate-400">
-                    <span className="text-rose-400 font-medium block mb-1">⚠️ Historial de Conducción:</span>
-                    3 incidencias de caja de cambios en los últimos 6 meses. (Scoring Severo).
-                  </div>
+                  {chofer ? (
+                     <>
+                      <p className="text-slate-200 font-medium text-base mb-1">Chofer: {chofer.name || 'Desconocido'}</p>
+                      <p className="text-xs text-slate-400">Legajo UID: {chofer.id}</p>
+                     </>
+                  ) : (
+                    <p className="text-slate-400 italic text-sm">No hay un chofer vinculado de forma explícita a este reporte.</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -109,12 +219,17 @@ export default function PanelTrazabilidad360({ incidentId }: PanelTrazabilidad36
                 </div>
                 <div>
                   <h3 className="text-emerald-400 font-bold uppercase tracking-wider text-xs mb-1">Actor Técnico (Taller)</h3>
-                  <p className="text-slate-200 font-medium text-base mb-1">Coche 35 - Volvo B215</p>
-                  <p className="text-xs text-slate-400">Último Service: Hace 14 horas</p>
-                  <div className="mt-3 bg-slate-900 border border-slate-800 p-2 rounded text-xs text-slate-400">
-                    <span className="text-emerald-400 font-medium block mb-1">✓ Reporte Mecánico:</span>
-                    Mecánico responsable: M. Silva. Estado reportado como "Óptimo". Piezas nuevas instaladas.
-                  </div>
+                  {vehiculo ? (
+                     <>
+                       <p className="text-slate-200 font-medium text-base mb-1">Coche {vehiculo.internalNumber || 'S/N'}</p>
+                       <p className="text-xs text-slate-400">Placa: {vehiculo.plate || 'S/N'}</p>
+                       <div className="mt-3 bg-slate-900 border border-slate-800 p-2 rounded text-xs text-slate-400">
+                         Estado en BD: {vehiculo.status || 'OPERATIVO'}
+                       </div>
+                     </>
+                  ) : (
+                     <p className="text-slate-400 italic text-sm">No se pudo vincular la unidad en la base de datos.</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -128,23 +243,23 @@ export default function PanelTrazabilidad360({ incidentId }: PanelTrazabilidad36
                 <TrendingDown className="w-6 h-6 text-orange-400" />
               </div>
               <div className="w-full">
-                <h3 className="text-orange-400 font-bold uppercase tracking-wider text-xs mb-1">Impacto Táctico y Económico</h3>
+                <h3 className="text-orange-400 font-bold uppercase tracking-wider text-xs mb-1">Impacto Táctico</h3>
                 
                 <div className="grid grid-cols-2 gap-4 mt-3">
                   <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                    <span className="text-xs text-slate-500 block">Pérdida de Boletos (Est.)</span>
-                    <span className="text-lg font-bold text-rose-400">- 45 Boletos</span>
+                    <span className="text-xs text-slate-500 block">Pérdida (Est.)</span>
+                    <span className="text-lg font-bold text-rose-400">Calculando...</span>
                   </div>
                   <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                    <span className="text-xs text-slate-500 block">Multa IMM (Horario)</span>
-                    <span className="text-lg font-bold text-rose-400">20 UR</span>
+                    <span className="text-xs text-slate-500 block">Prioridad BD</span>
+                    <span className="text-lg font-bold text-orange-400">{incidencia.priority || 'NORMAL'}</span>
                   </div>
                   <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 col-span-2">
                     <span className="text-xs text-slate-500 block mb-1">Fuga de Mercado</span>
                     <div className="flex items-center gap-2">
                       <ShieldAlert className="w-4 h-4 text-orange-400" />
                       <span className="text-sm font-medium text-slate-300">
-                        Pasaje capturado por: <span className="text-orange-400">Línea 121 (CUTCSA)</span>
+                        Evaluando superposición con flota rival.
                       </span>
                     </div>
                   </div>
@@ -158,12 +273,12 @@ export default function PanelTrazabilidad360({ incidentId }: PanelTrazabilidad36
           <div className="relative z-10 bg-indigo-950/40 border border-indigo-500/50 rounded-xl p-5 w-full max-w-lg mt-8 text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
               <ClipboardList className="w-5 h-5 text-indigo-400" />
-              <h3 className="text-indigo-400 font-bold text-sm uppercase tracking-wider">Veredicto del Motor IA</h3>
+              <h3 className="text-indigo-400 font-bold text-sm uppercase tracking-wider">Veredicto del Motor IA (Simulado)</h3>
             </div>
             <p className="text-slate-300 text-sm">
-              La trazabilidad indica que el fallo del <strong>Coche 35</strong> no es un problema de taller (mantenimiento reciente al día), sino de <strong>mala praxis del chofer</strong> (historial recurrente). 
+              {veredicto.texto}
               <br/><br/>
-              <strong>Acción Correctiva Sugerida:</strong> Derivar chofer a capacitación (Scoring actualizado) y despachar coche de reserva.
+              <strong>Acción Correctiva Sugerida:</strong> {veredicto.accion}
             </p>
           </div>
 
