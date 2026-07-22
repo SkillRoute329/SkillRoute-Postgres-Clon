@@ -59,6 +59,8 @@ import type { DesvioGuardado } from '../../services/desviosService';
 import { contarDesviosLocal, getDesviosPorLinea } from '../../services/desviosService';
 import { contarIncidenciasAbiertas } from '../../services/incidenciasService';
 import { filterDesviosVigentes } from '../../services/desviosService';
+import { apiClient } from '../../clients/apiClient';
+import { MensajesInternosService, type MensajeInternoEntry } from '../../services/firestore/mensajesInternos';
 const VIAJES_ACTIVOS_COL = 'viajes_activos';
 const PROXIMITY_METERS = 100;
 
@@ -142,6 +144,15 @@ export default function NavigationModule() {
   // Desvíos completos para renderizar en el mapa como líneas punteadas
   const [desviosEnMapa, setDesviosEnMapa] = useState<DesvioGuardado[]>([]);
 
+  // ── Mensajería y SOS ──
+  const [mensajesActivos, setMensajesActivos] = useState<MensajeInternoEntry[]>([]);
+  const [lastReadMessageId, setLastReadMessageId] = useState<string | null>(null);
+  const [sosSent, setSosSent] = useState(false);
+
+  // ── Headway Management ──
+  const [headwayStatus, setHeadwayStatus] = useState<'green' | 'yellow' | 'red' | 'none'>('none');
+  const [headwayDistance, setHeadwayDistance] = useState<number | null>(null);
+
   const [navigationPosition, setNavigationPosition] = useState<{
     lat: number;
     lng: number;
@@ -181,6 +192,89 @@ export default function NavigationModule() {
   const { user } = useAuth();
   const conductorMode = isConductorMode();
 
+  // ── Efectos CAD/AVL (Estándar Internacional) ──
+  
+  useEffect(() => {
+    if (!user?.uid) return;
+    const unsub = MensajesInternosService.subscribeByUser(user.uid, (items) => {
+      setMensajesActivos(items.filter(i => !i.readAt));
+    });
+    return unsub;
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!voiceEnabled) return;
+    const unread = mensajesActivos.filter(m => m.id !== lastReadMessageId);
+    if (unread.length > 0) {
+      const msg = unread[0];
+      speak(`Atención. Mensaje de central: ${msg.mensaje}`);
+      setLastReadMessageId(msg.id || null);
+    }
+  }, [mensajesActivos, lastReadMessageId, voiceEnabled]);
+
+  useEffect(() => {
+    if (!viajeIniciado || !userPosition || !selectedCodigo) {
+       setHeadwayStatus('none');
+       return;
+    }
+    
+    let isSubscribed = true;
+    const fetchBuses = async () => {
+      try {
+        const res = await apiClient.get<any>(`/api/audit/buses-active?agency=${empresaPropia}&minutes=5`);
+        if (!isSubscribed) return;
+        const buses = res.data?.data?.buses || [];
+        
+        // Filtramos buses de la misma línea (excluyendo el actual aprox por coords cercanas)
+        const sameLine = buses.filter((b: any) => 
+            String(b.linea).trim().toLowerCase() === String(selectedCodigo).trim().toLowerCase()
+        );
+        
+        let closestDist = Infinity;
+        sameLine.forEach((b: any) => {
+           if (b.lat && b.lon) {
+              const dist = geoHaversineMetros(userPosition.lat, userPosition.lng, b.lat, b.lon);
+              // Si la distancia es muy chica (menor a 50m), probablemente seamos nosotros mismos
+              if (dist > 50 && dist < closestDist) closestDist = dist;
+           }
+        });
+
+        if (closestDist === Infinity) {
+          setHeadwayStatus('none');
+          setHeadwayDistance(null);
+        } else {
+          setHeadwayDistance(Math.round(closestDist));
+          if (closestDist < 600) setHeadwayStatus('red');
+          else if (closestDist > 1500) setHeadwayStatus('yellow');
+          else setHeadwayStatus('green');
+        }
+      } catch (err) {
+         // ignorar error de red en polling
+      }
+    };
+    
+    fetchBuses();
+    const interval = setInterval(fetchBuses, 10000);
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, [viajeIniciado, userPosition, selectedCodigo, empresaPropia]);
+
+  const handleSOS = async () => {
+    if (!user?.uid || sosSent) return;
+    try {
+      await MensajesInternosService.create({
+        fromUserId: user.uid,
+        toUserId: 'listero',
+        tipo: 'aviso',
+        titulo: 'ALERTA SILENCIOSA',
+        mensaje: `SOS enviado desde Navegador. Posición: ${userPosition ? userPosition.lat + ',' + userPosition.lng : 'Desconocida'}`,
+      });
+      setSosSent(true);
+      setTimeout(() => setSosSent(false), 30000); // cooldown de 30 seg
+    } catch(e) {}
+  };
   voiceEnabledRef.current = voiceEnabled;
   paradasRef.current = linea?.paradas ?? [];
 
@@ -601,7 +695,10 @@ export default function NavigationModule() {
   ]);
 
   return (
-    <div className="flex flex-col h-full min-h-0 w-full max-w-full overflow-x-hidden">
+    <div className={`flex flex-col h-full min-h-0 w-full max-w-full overflow-x-hidden transition-all duration-1000
+      ${headwayStatus === 'red' ? 'shadow-[inset_0_0_30px_rgba(239,68,68,0.5)] border-4 border-red-500/50' : 
+        headwayStatus === 'green' ? 'shadow-[inset_0_0_30px_rgba(34,197,94,0.3)] border-4 border-green-500/50' : 
+        headwayStatus === 'yellow' ? 'shadow-[inset_0_0_30px_rgba(234,179,8,0.4)] border-4 border-yellow-500/50' : ''}`}>
       <header className="relative z-10 shrink-0 p-4 border-b border-slate-800 bg-slate-900/95 w-full max-w-full">
         <h1 className="text-xl font-bold flex items-center gap-2 text-white">
           <Map className="w-6 h-6 text-primary-500" />
@@ -891,6 +988,15 @@ export default function NavigationModule() {
                 >
                   {voiceEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
                   <span className="text-sm">{voiceEnabled ? 'Voz on' : 'Voz off'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSOS}
+                  className={`flex items-center justify-center gap-2 min-h-[44px] px-3 py-3 rounded-xl border border-slate-600 transition-colors touch-manipulation ${sosSent ? 'bg-slate-700/50 opacity-50 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600'}`}
+                  title="Alarma Silenciosa"
+                >
+                  <AlertTriangle className={`w-5 h-5 ${sosSent ? 'text-slate-500' : 'text-red-900/40'}`} />
+                  <span className="text-sm text-slate-400">SOS</span>
                 </button>
                 <button
                   type="button"
