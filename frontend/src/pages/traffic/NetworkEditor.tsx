@@ -30,11 +30,18 @@ const CompetitiveAnalysis: React.FC = () => {
   const { user } = useAuth();
   
   const isAdmin = user?.role === 'ADMIN' || user?.rol === 'ADMIN';
-  const userEmpresaStr = (user?.empresa as string) || (localStorage.getItem('skillroute.empresaPropia') as string) || 'UCOT';
+  const rawEmpresaStr = (user?.empresa as string) || (localStorage.getItem('skillroute.empresaPropia') as string) || 'UCOT';
+  
+  const AGENCY_ID_TO_NAME: Record<string, string> = {
+    '10': 'COETC', '20': 'COME', '50': 'CUTCSA', '70': 'UCOT',
+    'COETC': 'COETC', 'COME': 'COME', 'CUTCSA': 'CUTCSA', 'UCOT': 'UCOT'
+  };
+  
+  const userEmpresaStr = AGENCY_ID_TO_NAME[rawEmpresaStr.toUpperCase()] || 'UCOT';
   
   const allowedLineas = useMemo(() => {
     if (isAdmin) return allLineas;
-    return allLineas.filter(l => l.empresa?.toUpperCase() === userEmpresaStr.toUpperCase());
+    return allLineas.filter(l => l.empresa?.toUpperCase() === userEmpresaStr);
   }, [allLineas, isAdmin, userEmpresaStr]);
 
   const [minOverlap, setMinOverlap] = useState<number>(10);
