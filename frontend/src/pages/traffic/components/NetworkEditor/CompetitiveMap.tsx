@@ -12,6 +12,8 @@ function MapBoundsFitter({ bounds }: { bounds: [number, number][] | null }) {
   return null;
 }
 
+import type { HotspotOptimizationData } from './types';
+
 interface CompetitiveMapProps {
   routeCoordinates: [number, number][];
   routeStops: any[];
@@ -19,6 +21,7 @@ interface CompetitiveMapProps {
   competitorStops: any[];
   sharedSegments?: [number, number][][];
   selectedLinea: string;
+  hotspotData?: HotspotOptimizationData | null;
 }
 
 export const CompetitiveMap: React.FC<CompetitiveMapProps> = ({
@@ -27,8 +30,19 @@ export const CompetitiveMap: React.FC<CompetitiveMapProps> = ({
   competitorCoordinates,
   competitorStops,
   sharedSegments = [],
-  selectedLinea
+  selectedLinea,
+  hotspotData
 }) => {
+  // Find hotspot coordinates
+  let hotspotCoords: [number, number] | null = null;
+  if (hotspotData?.hotspot && routeStops.length > 0) {
+    // Attempt to match by id or name
+    const foundStop = routeStops.find(s => s.id === hotspotData.hotspot?.stop_id || s.nombre === hotspotData.hotspot?.stop_name);
+    if (foundStop) {
+      hotspotCoords = [foundStop.lat, foundStop.lng];
+    }
+  }
+
   return (
     <div className="flex-1 flex flex-col relative bg-[#1a1c23] min-h-0">
       <div className="flex-none h-[30%] lg:h-[40%] min-h-[200px] relative">
@@ -39,6 +53,27 @@ export const CompetitiveMap: React.FC<CompetitiveMapProps> = ({
             <Polyline key={`shared-${idx}`} positions={segment} color="#eab308" weight={8} opacity={1} />
           ))}
           
+          {hotspotCoords && (
+            <CircleMarker 
+              center={hotspotCoords} 
+              radius={12} 
+              color="#f43f5e" 
+              fillColor="#fb7185" 
+              fillOpacity={0.8}
+              weight={3}
+              className="animate-pulse"
+            >
+              <Popup className="text-slate-900 font-sans">
+                <div className="font-bold text-sm mb-1 text-rose-600 flex items-center gap-1">
+                  🔥 EPICENTRO: {hotspotData?.hotspot?.stop_name}
+                </div>
+                <div className="text-xs text-slate-700">
+                  Volumen: {hotspotData?.hotspot?.total_boardings.toLocaleString()} pasajeros
+                </div>
+              </Popup>
+            </CircleMarker>
+          )}
+
           {routeCoordinates.length > 0 && (
             <>
               <Polyline positions={routeCoordinates} color="#6366f1" weight={5} opacity={0.9} />

@@ -327,4 +327,182 @@ export const getMonthlyTrends = async (req: Request, res: Response) => {
   }
 };
 
+// ─── /api/intelligence/schedules/optimization ──────────────────────────────
+//
+// Análisis predictivo de Bunching (Horarios) en el Hotspot de la ruta.
+export const getScheduleOptimization = async (req: Request, res: Response) => {
+  try {
+    const { base_route, base_dir, comp_route, comp_dir } = req.query;
+
+    if (!base_route || base_dir === undefined || !comp_route || comp_dir === undefined) {
+      return res.status(400).json({ error: 'Faltan parámetros de ambas líneas.' });
+    }
+
+    const baseDirId = parseInt(base_dir as string, 10);
+    const compDirId = parseInt(comp_dir as string, 10);
+
+    // 1. Buscar Hotspot (Stop ID)
+    // Intentamos buscar en stop_ridership_history primero
+    let hotspotRows = await sqlDb.raw(`
+      SELECT sh.stop_id, s.stop_name, SUM(sh.boarding_count) as total_boardings
+      FROM gtfs.stop_ridership_history sh
+      JOIN gtfs.stops s ON sh.stop_id = s.stop_id
+      WHERE (sh.route_id = ? AND sh.direction_id = ?) 
+         OR (sh.route_id = ? AND sh.direction_id = ?)
+      GROUP BY sh.stop_id, s.stop_name
+      HAVING count(DISTINCT sh.route_id) = 2
+      ORDER BY total_boardings DESC
+      LIMIT 1
+    `, [base_route, baseDirId, comp_route, compDirId]);
+
+    let hotspot = hotspotRows.rows[0];
+
+    // Fallback Geométrico: Si no hay historial de carga, buscar la primera parada que compartan físicamente
+    if (!hotspot) {
+      const fallbackRows = await sqlDb.raw(`
+        SELECT st1.stop_id, s.stop_name, 0 as total_boardings
+        FROM gtfs.stop_times st1
+        JOIN gtfs.trips t1 ON st1.trip_id = t1.trip_id
+        JOIN gtfs.stop_times st2 ON st1.stop_id = st2.stop_id
+        JOIN gtfs.trips t2 ON st2.trip_id = t2.trip_id
+        JOIN gtfs.stops s ON st1.stop_id = s.stop_id
+        WHERE t1.route_id = ? AND t1.direction_id = ?
+          AND t2.route_id = ? AND t2.direction_id = ?
+        LIMIT 1
+      `, [base_route, baseDirId, comp_route, compDirId]);
+      
+      hotspot = fallbackRows.rows[0];
+    }
+
+    if (!hotspot) {
+      return res.json({ 
+        ok: true, 
+        message: 'No comparten paradas o no hay datos suficientes', 
+        hotspot: null, 
+        scheduleCrossings: [] 
+      });
+    }
+
+    // 2. Extraer todos los horarios (departures) en el hotspot
+    // Extraemos las salidas de ambas líneas en esa parada
+    const fetchDepartures = async (routeId: string, dirId: number) => {
+      const rows = await sqlDb.raw(`
+        SELECT t.trip_id, st.departure_time, st.stop_sequence
+        FROM gtfs.stop_times st
+        JOIN gtfs.trips t ON st.trip_id = t.trip_id
+        WHERE t.route_id = ? AND t.direction_id = ? AND st.stop_id = ?
+        ORDER BY st.departure_time ASC
+      `, [routeId, dirId, hotspot.stop_id]);
+      
+      return rows.rows;
+    };
+
+    const baseDepartures = await fetchDepartures(base_route as string, baseDirId);
+    const compDepartures = await fetchDepartures(comp_route as string, compDirId);
+
+    // 3. Cruzar horarios y calcular Vulnerability Windows y Offset
+    // Para simplificar: Buscamos para cada salida nuestra, la salida del competidor más cercana (hacia atrás)
+    const crossings = [];
+
+    // Función auxiliar para convertir HH:MM:SS a minutos desde medianoche
+    const timeToMins = (t: string) => {
+      if (!t) return 0;
+      const parts = t.split(':').map(Number);
+      return parts[0] * 60 + parts[1] + (parts[2] / 60);
+    };
+
+    // Función auxiliar para recuperar el tiempo de viaje desde el Origen (stop_sequence = 1) al Hotspot
+    // Asumimos un promedio basado en el primer viaje encontrado
+    let baseTravelTimeToHotspot = 0;
+    if (baseDepartures.length > 0) {
+       const firstTripId = baseDepartures[0].trip_id;
+       const originRow = await sqlDb.raw(`
+          SELECT departure_time 
+          FROM gtfs.stop_times 
+          WHERE trip_id = ? AND stop_sequence = 1
+       `, [firstTripId]);
+       if (originRow.rows.length > 0 && baseDepartures[0].departure_time) {
+          const originMins = timeToMins(originRow.rows[0].departure_time);
+          const hotspotMins = timeToMins(baseDepartures[0].departure_time);
+          baseTravelTimeToHotspot = Math.max(0, hotspotMins - originMins);
+       }
+    }
+
+    // Mapeamos
+    for (const bDep of baseDepartures) {
+      if (!bDep.departure_time) continue;
+      const bMins = timeToMins(bDep.departure_time);
+      
+      // Buscar competidor que pasa antes que nosotros (0 a 15 mins antes)
+      let nearestComp = null;
+      let minGap = Infinity;
+
+      for (const cDep of compDepartures) {
+        if (!cDep.departure_time) continue;
+        const cMins = timeToMins(cDep.departure_time);
+        const gap = bMins - cMins;
+        
+        if (gap > 0 && gap <= 15) { // Competidor pasa antes
+          if (gap < minGap) {
+            minGap = gap;
+            nearestComp = cDep;
+          }
+        }
+      }
+
+      // Si encontramos un rival que nos roba la parada (pasa de 1 a 10 min antes)
+      if (nearestComp && minGap <= 10) {
+         // Calculamos la Jugada Sugerida (Offset)
+         // Queremos llegar 2 minutos ANTES que el competidor al hotspot.
+         // El competidor llega a `nearestComp.departure_time`.
+         const targetHotspotMins = timeToMins(nearestComp.departure_time) - 2;
+         const recommendedOriginMins = targetHotspotMins - baseTravelTimeToHotspot;
+         
+         const formatTime = (mins: number) => {
+            if (mins < 0) mins += 24 * 60;
+            const h = Math.floor(mins / 60).toString().padStart(2, '0');
+            const m = Math.floor(mins % 60).toString().padStart(2, '0');
+            return `${h}:${m}:00`;
+         };
+
+         // Buscamos a qué hora salimos originariamente
+         const currentOriginRow = await sqlDb.raw(`
+            SELECT departure_time 
+            FROM gtfs.stop_times 
+            WHERE trip_id = ? AND stop_sequence = 1
+         `, [bDep.trip_id]);
+         
+         const currentOrigin = currentOriginRow.rows.length > 0 ? currentOriginRow.rows[0].departure_time : 'Desconocido';
+
+         crossings.push({
+            base_arrival: bDep.departure_time,
+            comp_arrival: nearestComp.departure_time,
+            gap_minutes: Math.round(minGap * 10) / 10, // Un decimal
+            status: 'VULNERABILITY', // Riesgo crítico
+            tactical_advice: {
+               current_origin_departure: currentOrigin,
+               recommended_origin_departure: formatTime(recommendedOriginMins),
+               offset_minutes: Math.round((recommendedOriginMins - timeToMins(currentOrigin)) * 10) / 10
+            }
+         });
+      }
+    }
+
+    return res.json({
+      ok: true,
+      hotspot: {
+        stop_id: hotspot.stop_id,
+        stop_name: hotspot.stop_name,
+        total_boardings: Number(hotspot.total_boardings)
+      },
+      baseTravelTimeMinutes: Math.round(baseTravelTimeToHotspot),
+      scheduleCrossings: crossings
+    });
+
+  } catch (error: any) {
+    logger.error('[IntelligenceController] Error en getScheduleOptimization', error.message);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
 

@@ -39,3 +39,27 @@ export interface LineaCatalogInfo {
   empresa: string;
   destino?: string;
 }
+
+export interface ScheduleCrossing {
+  base_arrival: string;
+  comp_arrival: string;
+  gap_minutes: number;
+  status: 'VULNERABILITY' | 'ADVANTAGE' | 'NEUTRAL';
+  tactical_advice?: {
+    current_origin_departure: string;
+    recommended_origin_departure: string;
+    offset_minutes: number;
+  };
+}
+
+export interface HotspotOptimizationData {
+  ok: boolean;
+  hotspot: {
+    stop_id: string;
+    stop_name: string;
+    total_boardings: number;
+  } | null;
+  baseTravelTimeMinutes: number;
+  scheduleCrossings: ScheduleCrossing[];
+  message?: string;
+}

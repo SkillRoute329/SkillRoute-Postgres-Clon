@@ -6,10 +6,11 @@ import { useAuth } from '../../context/AuthContext';
 import { calculateTotalDistance, calculateSharedDistance, getSharedCoordinates } from '../../utils/geoUtils';
 import toast from 'react-hot-toast';
 
-import type { CompetitorInfo, TrendData, LineaCatalogInfo } from './components/NetworkEditor/types';
+import type { CompetitorInfo, TrendData, LineaCatalogInfo, HotspotOptimizationData } from './components/NetworkEditor/types';
 import { CompetitiveMap } from './components/NetworkEditor/CompetitiveMap';
 import { TrendCharts, renderHeaderEvolution } from './components/NetworkEditor/TrendCharts';
 import { CompetitorSelector } from './components/NetworkEditor/CompetitorSelector';
+import { HotspotInterleaving } from './components/NetworkEditor/HotspotInterleaving';
 
 const CompetitiveAnalysis: React.FC = () => {
   const [allLineas, setAllLineas] = useState<LineaCatalogInfo[]>([]);
@@ -18,6 +19,8 @@ const CompetitiveAnalysis: React.FC = () => {
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
   const [competitorCoordinates, setCompetitorCoordinates] = useState<[number, number][]>([]);
   const [sharedSegments, setSharedSegments] = useState<[number, number][][]>([]);
+  const [hotspotData, setHotspotData] = useState<HotspotOptimizationData | null>(null);
+  const [isHotspotLoading, setIsHotspotLoading] = useState<boolean>(false);
   
   const [routeStops, setRouteStops] = useState<any[]>([]);
   const [competitorStops, setCompetitorStops] = useState<any[]>([]);
@@ -168,6 +171,20 @@ const CompetitiveAnalysis: React.FC = () => {
         );
         setTrends(trendRes.data);
 
+        // Fetch Hotspot Optimization
+        setIsHotspotLoading(true);
+        try {
+          const hotspotRes = await api.get(
+            `/intelligence/schedules/optimization?base_route=${baseRouteId}&base_dir=${directionId}&comp_route=${selectedCompetitor.competitor_route_id}&comp_dir=${selectedCompetitor.competitor_direction_id}`
+          );
+          setHotspotData(hotspotRes.data);
+        } catch (e) {
+          console.error(e);
+          setHotspotData(null);
+        } finally {
+          setIsHotspotLoading(false);
+        }
+
         const compId = selectedCompetitor.competitor_route_id + (selectedCompetitor.competitor_direction_id === 1 ? 'b' : 'a');
         const compInfo = allLineas.find(l => l.codigo.toLowerCase() === compId.toLowerCase());
         
@@ -245,6 +262,7 @@ const CompetitiveAnalysis: React.FC = () => {
             competitorStops={competitorStops}
             sharedSegments={sharedSegments}
             selectedLinea={selectedLinea}
+            hotspotData={hotspotData}
           />
 
           <div className="flex-1 border-t border-slate-700 bg-slate-900 p-6 flex flex-col overflow-y-auto custom-scrollbar">
@@ -262,6 +280,8 @@ const CompetitiveAnalysis: React.FC = () => {
               selectedLinea={selectedLinea}
               allLineas={allLineas}
             />
+
+            <HotspotInterleaving hotspotData={hotspotData} isLoading={isHotspotLoading} />
           </div>
         </div>
       </div>
