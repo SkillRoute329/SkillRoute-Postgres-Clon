@@ -341,19 +341,40 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
     const baseDirId = parseInt(base_dir as string, 10);
     const compDirId = parseInt(comp_dir as string, 10);
 
+    console.log(`[getScheduleOptimization] base_route: ${base_route}, base_dir: ${baseDirId}, comp_route: ${comp_route}, comp_dir: ${compDirId}`);
+
+    // Resolver route_short_name a route_id reales (por si '17' es el nombre corto y el real es '17-1')
+    const getActualRouteIds = async (shortName: string) => {
+      const routes = await sqlDb('gtfs.routes')
+        .where('route_short_name', shortName)
+        .orWhere('route_id', shortName)
+        .select('route_id');
+      return routes.map(r => r.route_id);
+    };
+
+    const baseRouteIds = await getActualRouteIds(base_route as string);
+    const compRouteIds = await getActualRouteIds(comp_route as string);
+
+    console.log(`[getScheduleOptimization] baseRouteIds: ${baseRouteIds.length}, compRouteIds: ${compRouteIds.length}`);
+
+    if (baseRouteIds.length === 0 || compRouteIds.length === 0) {
+      console.log(`[getScheduleOptimization] No se encontraron rutas reales en GTFS!`);
+      return res.json({ ok: true, message: 'No se encontraron las rutas en GTFS', hotspot: null, scheduleCrossings: [] });
+    }
+
     // 1. Buscar Hotspot (Stop ID)
     // Intentamos buscar en stop_ridership_history primero
     let hotspotRows = await sqlDb.raw(`
       SELECT sh.stop_id, s.stop_name, SUM(sh.boarding_count) as total_boardings
       FROM gtfs.stop_ridership_history sh
       JOIN gtfs.stops s ON sh.stop_id = s.stop_id
-      WHERE (sh.route_id = ? AND sh.direction_id = ?) 
-         OR (sh.route_id = ? AND sh.direction_id = ?)
+      WHERE (sh.route_id = ANY(?) AND sh.direction_id = ?) 
+         OR (sh.route_id = ANY(?) AND sh.direction_id = ?)
       GROUP BY sh.stop_id, s.stop_name
-      HAVING count(DISTINCT sh.route_id) = 2
+      HAVING count(DISTINCT sh.route_id) >= 2
       ORDER BY total_boardings DESC
       LIMIT 1
-    `, [base_route, baseDirId, comp_route, compDirId]);
+    `, [baseRouteIds, baseDirId, compRouteIds, compDirId]);
 
     let hotspot = hotspotRows.rows[0];
 
@@ -366,10 +387,10 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
         JOIN gtfs.stop_times st2 ON st1.stop_id = st2.stop_id
         JOIN gtfs.trips t2 ON st2.trip_id = t2.trip_id
         JOIN gtfs.stops s ON st1.stop_id = s.stop_id
-        WHERE t1.route_id = ? AND t1.direction_id = ?
-          AND t2.route_id = ? AND t2.direction_id = ?
+        WHERE t1.route_id = ANY(?) AND t1.direction_id = ?
+          AND t2.route_id = ANY(?) AND t2.direction_id = ?
         LIMIT 1
-      `, [base_route, baseDirId, comp_route, compDirId]);
+      `, [baseRouteIds, baseDirId, compRouteIds, compDirId]);
       
       hotspot = fallbackRows.rows[0];
     }
@@ -385,20 +406,20 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
 
     // 2. Extraer todos los horarios (departures) en el hotspot
     // Extraemos las salidas de ambas líneas en esa parada
-    const fetchDepartures = async (routeId: string, dirId: number) => {
+    const fetchDepartures = async (routeIds: string[], dirId: number) => {
       const rows = await sqlDb.raw(`
         SELECT t.trip_id, st.departure_time, st.stop_sequence
         FROM gtfs.stop_times st
         JOIN gtfs.trips t ON st.trip_id = t.trip_id
-        WHERE t.route_id = ? AND t.direction_id = ? AND st.stop_id = ?
+        WHERE t.route_id = ANY(?) AND t.direction_id = ? AND st.stop_id = ?
         ORDER BY st.departure_time ASC
-      `, [routeId, dirId, hotspot.stop_id]);
+      `, [routeIds, dirId, hotspot.stop_id]);
       
       return rows.rows;
     };
 
-    const baseDepartures = await fetchDepartures(base_route as string, baseDirId);
-    const compDepartures = await fetchDepartures(comp_route as string, compDirId);
+    const baseDepartures = await fetchDepartures(baseRouteIds, baseDirId);
+    const compDepartures = await fetchDepartures(compRouteIds, compDirId);
 
     // 3. Cruzar horarios y calcular Vulnerability Windows y Offset
     // Para simplificar: Buscamos para cada salida nuestra, la salida del competidor más cercana (hacia atrás)

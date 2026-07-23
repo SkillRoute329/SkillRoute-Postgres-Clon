@@ -57,9 +57,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
   const { logout, user: _user } = useAuth();
 
   const handleNavClick = () => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      onClose?.();
-    }
+    onClose?.();
   };
 
   const menuGroups = [
@@ -91,7 +89,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     {
       title: 'Inteligencia Competitiva',
       items: [
-        { path: '/dashboard/intelligence/network-editor',     label: 'Inteligencia Competitiva', icon: Network },
+
         { path: '/dashboard/intelligence/live-radar',         label: 'Radar de Disputas (En Vivo)', icon: Activity },
         { path: '/dashboard/traffic/brt',                  label: 'BRT 2027',           icon: Train      },
       ],

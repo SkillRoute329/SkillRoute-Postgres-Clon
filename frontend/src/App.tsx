@@ -167,7 +167,7 @@ const LandingPage = lazy(() => import('./pages/public/LandingPage'));
 const CentroMandoUnificado = lazy(() => import('./pages/traffic/CentroMandoUnificado'));
 // Gantt Red Metropolitana — solo SUPERADMIN
 const GanttRedMetropolitana = lazy(() => import('./pages/traffic/GanttRedMetropolitana'));
-const NetworkEditor = lazy(() => import('./pages/traffic/NetworkEditor'));
+
 
 
 // Loading Component
@@ -331,7 +331,7 @@ function App() {
                     <Route path="traffic/posicion" element={<Navigate to="/dashboard/traffic/map-hub?layer=buses" replace />} />
                      {/* Intelligence Console merged into MapHub */}
                     <Route path="traffic/intelligence" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />
-                    <Route path="intelligence/network-editor" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><NetworkEditor /></PrivateRoute>} />
+
                     <Route path="intelligence/live-radar" element={<PrivateRoute roles={['ADMIN','TRAFFIC']}><LiveCompetitiveRadar /></PrivateRoute>} />
                     <Route path="traffic/live-map" element={<Navigate to="/dashboard/traffic/map-hub?layer=mapa" replace />} />
                     <Route path="traffic/shadow-radar" element={<Navigate to="/dashboard/traffic/map-hub" replace />} />

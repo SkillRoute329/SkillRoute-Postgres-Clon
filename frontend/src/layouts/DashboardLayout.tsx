@@ -182,10 +182,10 @@ const DashboardLayoutInner = () => {
     <div className="flex h-screen w-full max-w-[100vw] bg-slate-900 overflow-hidden relative">
       {/* Simulation Banner REMOVED per user request */}
 
-      {/* Mobile Sidebar Overlay */}
+      {/* Sidebar Overlay */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[40] md:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998]"
           onClick={() => setIsSidebarOpen(false)}
           aria-hidden="true"
         />
@@ -194,21 +194,20 @@ const DashboardLayoutInner = () => {
       {/* Sidebar Component */}
       <div
         className={clsx(
-          'transition-transform duration-300 fixed md:static top-0 left-0 z-[50] h-full flex-shrink-0 w-72 md:w-64 bg-slate-950 border-r border-slate-800',
-          !isSidebarOpen && '-translate-x-full md:translate-x-0',
+          'transition-transform duration-300 fixed top-0 left-0 z-[9999] h-full flex-shrink-0 w-72 md:w-64 bg-slate-950 border-r border-slate-800',
+          !isSidebarOpen && '-translate-x-full',
         )}
       >
         <Sidebar onClose={() => setIsSidebarOpen(false)} />
       </div>
 
       {/* Main Content */}
-      {/* Main Content */}
       <main className="flex-1 flex flex-col h-full relative lg:ml-0">
         {/* Top Header */}
         <header className="h-16 flex items-center justify-between px-6 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 z-10">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-lg hover:bg-slate-800 active:bg-slate-700 text-slate-400 md:hidden touch-manipulation"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-lg hover:bg-slate-800 active:bg-slate-700 text-slate-400 touch-manipulation"
             aria-label={isSidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
           >
             {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}

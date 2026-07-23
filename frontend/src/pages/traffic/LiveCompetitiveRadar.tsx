@@ -9,11 +9,15 @@ import {
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Activity, Crosshair, Sliders, DollarSign, ChevronLeft } from 'lucide-react';
+import { Activity, Crosshair, Sliders, DollarSign, ChevronLeft, X } from 'lucide-react';
 import { useEmpresaPropia } from '../../hooks/useEmpresaPropia';
 import { useLiveOperations, type ServicioActivo } from '../../hooks/useLiveOperations';
 import { getNavigationLineaData } from '../../features/navigation/services/navigationDataService';
 import api from '../../services/api';
+import { TrendCharts } from './components/NetworkEditor/TrendCharts';
+import { HotspotInterleaving } from './components/NetworkEditor/HotspotInterleaving';
+import type { TrendData, HotspotOptimizationData } from './components/NetworkEditor/types';
+import { calculateTotalDistance, calculateSharedDistance, getSharedCoordinates } from '../../utils/geoUtils';
 
 // -- Tipos --
 interface ShapeDoc {
@@ -39,6 +43,8 @@ interface CompetitorInfo {
   lng: number;
   velocidad: number;
   codigoEmpresa: number;
+  officialRouteId?: number;
+  officialDirectionId?: number;
 }
 
 const EMPRESA_COLOR: Record<string, string> = {
@@ -117,6 +123,11 @@ export default function LiveCompetitiveRadar() {
   const [compRouteCoords, setCompRouteCoords] = useState<[number, number][]>([]);
   const [selectedCompetitor, setSelectedCompetitor] = useState<CompetitorInfo | null>(null);
 
+  const [sharedSegments, setSharedSegments] = useState<[number, number][][]>([]);
+  const [baseDistance, setBaseDistance] = useState<number>(0);
+  const [compDistance, setCompDistance] = useState<number>(0);
+  const [sharedDistance, setSharedDistance] = useState<number>(0);
+
   // Estados UI y Jerarquía
   const [selectedLinea, setSelectedLinea] = useState<string | null>(null);
   const [selectedBusId, setSelectedBusId] = useState<string | null>(null);
@@ -137,10 +148,22 @@ export default function LiveCompetitiveRadar() {
   const [officialCompetitors, setOfficialCompetitors] = useState<Array<any>>([]);
   const [loadingCompetitors, setLoadingCompetitors] = useState(false);
 
+  // Estados del Bottom Drawer (Análisis Táctico)
+  const [isTacticalPanelOpen, setIsTacticalPanelOpen] = useState(false);
+  const [isTacticalDrawerExpanded, setIsTacticalDrawerExpanded] = useState(true);
+  const [tacticalTab, setTacticalTab] = useState<'trends' | 'bunching'>('trends');
+  const [selectedRivalForAnalysis, setSelectedRivalForAnalysis] = useState<CompetitorInfo | null>(null);
+  const [tacticalLoading, setTacticalLoading] = useState(false);
+  const [trendsData, setTrendsData] = useState<{ida: TrendData | null, vuelta: TrendData | null}>({ida: null, vuelta: null});
+  const [hotspotData, setHotspotData] = useState<{ida: HotspotOptimizationData | null, vuelta: HotspotOptimizationData | null}>({ida: null, vuelta: null});
+
+  const [baseRouteStops, setBaseRouteStops] = useState<any[]>([]);
+
   // Carga de ruta propia al seleccionar una línea
   useEffect(() => {
     if (!selectedLinea) {
       setBaseRouteCoords([]);
+      setBaseRouteStops([]);
       setCompRouteCoords([]);
       setSelectedCompetitor(null);
       return;
@@ -150,8 +173,10 @@ export default function LiveCompetitiveRadar() {
         const data = await getNavigationLineaData(empresaPropia, selectedLinea);
         if (data && data.recorrido) {
           setBaseRouteCoords(data.recorrido.map((c: any) => [c.lat, c.lng]));
+          setBaseRouteStops(data.paradas || []);
         } else {
           setBaseRouteCoords([]);
+          setBaseRouteStops([]);
         }
       } catch (err) {
         console.warn('Error loading base route', err);
@@ -180,6 +205,26 @@ export default function LiveCompetitiveRadar() {
     };
     loadCompRoute();
   }, [selectedCompetitor]);
+
+  // Calcular distancias y segmentos compartidos para los gráficos
+  useEffect(() => {
+    if (baseRouteCoords.length > 0) {
+      setBaseDistance(calculateTotalDistance(baseRouteCoords));
+    } else {
+      setBaseDistance(0);
+    }
+    
+    if (baseRouteCoords.length > 0 && compRouteCoords.length > 0) {
+      setCompDistance(calculateTotalDistance(compRouteCoords));
+      setSharedDistance(calculateSharedDistance(baseRouteCoords, compRouteCoords, 0.05));
+      setSharedSegments(getSharedCoordinates(baseRouteCoords, compRouteCoords, 0.05));
+    } else {
+      setCompDistance(0);
+      setSharedDistance(0);
+      setSharedSegments([]);
+    }
+  }, [baseRouteCoords, compRouteCoords]);
+
   // Carga topológica oficial desde API basada en la LÍNEA seleccionada (MACRO)
   useEffect(() => {
     if (!selectedLinea) {
@@ -189,7 +234,7 @@ export default function LiveCompetitiveRadar() {
     
     let isActive = true;
     
-    const fetchOfficialCompetitors = async () => {
+      const fetchOfficialCompetitors = async () => {
       setLoadingCompetitors(true);
       try {
         const baseRouteId = selectedLinea.replace(/[ab]$/i, '');
@@ -210,10 +255,21 @@ export default function LiveCompetitiveRadar() {
         // Combinamos ambas respuestas para tener la topología de la línea entera en ambos sentidos
         const combined = [...(resIda.data || []), ...(resVuelta.data || [])];
         
-        // Deduplicar por si un competidor aparece idéntico en ambos (aunque intelligenceController usa keys)
-        const unique = Array.from(new Map(combined.map(c => [`${c.competitor_route_id}_${c.competitor_direction_id}`, c])).values());
+        // Deduplicar para que cada línea competidora aparezca solo una vez en los botones del Drawer
+        const unique = Array.from(new Map(combined.map(c => [c.competitor_route_id, c])).values());
 
         setOfficialCompetitors(unique);
+
+        // AUTO-SELECT EL PRIMER COMPETIDOR PARA QUE EL DRAWER MUESTRE INFO INMEDIATAMENTE
+        if (unique.length > 0) {
+           const first = unique[0];
+           const rivalInfo = {
+             id: '', codigoBus: '', empresa: first.competitor_short_name || '', linea: first.competitor_route_id, destino: '', distanciaM: 0, overlapPct: first.shared_stops_count, comparteSentido: true, threatScore: 0, lat: 0, lng: 0, velocidad: 0, codigoEmpresa: first.competitor_route_id
+           };
+           setSelectedRivalForAnalysis(rivalInfo);
+           setSelectedCompetitor(rivalInfo);
+        }
+
       } catch (err) {
         if (!isActive) return;
         console.error('Error fetching official competitors from API:', err);
@@ -226,9 +282,89 @@ export default function LiveCompetitiveRadar() {
     };
     
     fetchOfficialCompetitors();
-    
     return () => { isActive = false; };
   }, [selectedLinea]);
+
+  // Carga de Datos Analíticos Tácticos (TrendCharts + HotspotInterleaving)
+  useEffect(() => {
+    if (!selectedLinea || !selectedRivalForAnalysis || !isTacticalPanelOpen) {
+      setTrendsData({ ida: null, vuelta: null });
+      setHotspotData({ ida: null, vuelta: null });
+      return;
+    }
+
+    let isActive = true;
+    const fetchAnalytics = async () => {
+      setTacticalLoading(true);
+      try {
+        const baseRouteId = selectedLinea.replace(/[ab]$/i, '');
+        const compRouteId = selectedRivalForAnalysis.linea;
+
+        const [trendIda, hotspotIda, trendVuelta, hotspotVuelta] = await Promise.allSettled([
+          api.get(`/intelligence/trends?route_id=${baseRouteId}&direction_id=0&competitor_route_id=${compRouteId}&competitor_direction_id=0`),
+          api.get(`/intelligence/schedules/optimization?base_route=${baseRouteId}&base_dir=0&comp_route=${compRouteId}&comp_dir=0`),
+          api.get(`/intelligence/trends?route_id=${baseRouteId}&direction_id=1&competitor_route_id=${compRouteId}&competitor_direction_id=1`),
+          api.get(`/intelligence/schedules/optimization?base_route=${baseRouteId}&base_dir=1&comp_route=${compRouteId}&comp_dir=1`)
+        ]);
+
+        if (isActive) {
+          setTrendsData({
+            ida: trendIda.status === 'fulfilled' ? trendIda.value.data : null,
+            vuelta: trendVuelta.status === 'fulfilled' ? trendVuelta.value.data : null
+          });
+          setHotspotData({
+            ida: hotspotIda.status === 'fulfilled' ? hotspotIda.value.data : null,
+            vuelta: hotspotVuelta.status === 'fulfilled' ? hotspotVuelta.value.data : null
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching tactical analytics:', err);
+      } finally {
+        if (isActive) {
+          setTacticalLoading(false);
+        }
+      }
+    };
+    
+    fetchAnalytics();
+    
+    return () => { isActive = false; };
+  }, [selectedLinea, selectedRivalForAnalysis, isTacticalPanelOpen]);
+
+  const globalTrendData = useMemo(() => {
+    if (!trendsData.ida && !trendsData.vuelta) return null;
+    const base = trendsData.ida || trendsData.vuelta;
+    if (!base) return null;
+    
+    // For competitor line, sum Ida and Vuelta trends
+    const compTrendsMap = new Map<string, any>();
+    
+    if (trendsData.ida?.competitor_line?.trend) {
+      trendsData.ida.competitor_line.trend.forEach(t => {
+        compTrendsMap.set(t.month, { ...t });
+      });
+    }
+    
+    if (trendsData.vuelta?.competitor_line?.trend) {
+      trendsData.vuelta.competitor_line.trend.forEach(t => {
+        if (compTrendsMap.has(t.month)) {
+          compTrendsMap.get(t.month).boarding += t.boarding;
+        } else {
+          compTrendsMap.set(t.month, { ...t });
+        }
+      });
+    }
+
+    const globalCompTrend = Array.from(compTrendsMap.values()).sort((a, b) => a.month.localeCompare(b.month));
+
+    return {
+      ...base,
+      competitor_line: base.competitor_line ? {
+        ...base.competitor_line,
+        trend: globalCompTrend
+      } : undefined
+    };
+  }, [trendsData]);
 
   // Derivados para UI
   const lineasActivas = useMemo(() => {
@@ -340,9 +476,16 @@ export default function LiveCompetitiveRadar() {
           lng: r.lng,
           velocidad: r.velocidad,
           codigoEmpresa: r.empresaId,
+          officialRouteId: officialComp?.competitor_route_id,
+          officialDirectionId: officialComp?.competitor_direction_id,
         });
       }
       matches.sort((a, b) => a.distanciaM - b.distanciaM);
+      
+      if (isTacticalPanelOpen && selectedRivalForAnalysis) {
+        return matches.filter(m => String(m.codigoEmpresa) === String(selectedRivalForAnalysis.codigoEmpresa) || String(m.linea) === String(selectedRivalForAnalysis.linea));
+      }
+      
       return matches;
     } 
     
@@ -403,10 +546,17 @@ export default function LiveCompetitiveRadar() {
         lng: r.lng,
         velocidad: r.velocidad,
         codigoEmpresa: r.empresaId,
+        officialRouteId: officialComp?.competitor_route_id,
+        officialDirectionId: officialComp?.competitor_direction_id,
       });
     }
+    
+    if (isTacticalPanelOpen && selectedRivalForAnalysis) {
+      return macroMatches.filter(m => String(m.codigoEmpresa) === String(selectedRivalForAnalysis.codigoEmpresa) || String(m.linea) === String(selectedRivalForAnalysis.linea));
+    }
+    
     return macroMatches;
-  }, [selectedLinea, selectedBusId, serviciosPropios, serviciosRivales, searchRadius, minOverlap, strategyMode, officialCompetitors, busesDeLineaSeleccionada, isIda, destinoIda, destinoVuelta]);
+  }, [selectedLinea, selectedBusId, serviciosPropios, serviciosRivales, searchRadius, minOverlap, strategyMode, officialCompetitors, busesDeLineaSeleccionada, isIda, destinoIda, destinoVuelta, isTacticalPanelOpen, selectedRivalForAnalysis]);
 
   const maxScore = rivalesVisibles.length > 0 ? rivalesVisibles[0].threatScore : 0;
   const nivelAmenaza = maxScore >= 80 ? 'CRÍTICA' : maxScore >= 45 ? 'MODERADA' : 'BAJA';
@@ -462,14 +612,14 @@ function MapCenterController({ center, zoom, isActive }: { center: [number, numb
 // ... (El resto del componente, desde los imports hasta antes del return, se mantiene)
 
 
-  // Helper para renderizar paneles laterales
+  // Helper para renderizar paneles laterales (AHORA COMO OVERLAYS)
   const renderSidebar = (buses: ServicioActivo[], destinoName: string, isIdaSidebar: boolean) => {
     const isSelectedSide = selectedBusId && buses.some(b => b.id === selectedBusId);
     
     return (
-      <div className={`w-72 flex-none bg-[#111827]/95 flex flex-col z-[1001] shadow-2xl overflow-y-auto custom-scrollbar ${isIdaSidebar ? 'border-r border-slate-800' : 'border-l border-slate-800'}`}>
+      <div className={`absolute top-4 bottom-4 w-64 flex-none bg-[#111827]/90 backdrop-blur-md flex flex-col z-[1001] shadow-2xl overflow-y-auto custom-scrollbar rounded-xl border border-slate-700/50 ${isIdaSidebar ? 'left-4' : 'right-4'}`}>
          {/* Cabecera del panel de sentido */}
-         <div className={`p-3 text-center border-b shadow-inner ${isIdaSidebar ? 'border-emerald-500/30 bg-emerald-900/20' : 'border-blue-500/30 bg-blue-900/20'}`}>
+         <div className={`p-3 text-center border-b shadow-inner ${isIdaSidebar ? 'border-emerald-500/30 bg-emerald-900/20 rounded-t-xl' : 'border-blue-500/30 bg-blue-900/20 rounded-t-xl'}`}>
            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
              <div className={`w-2 h-2 rounded-full animate-pulse ${isIdaSidebar ? 'bg-emerald-500' : 'bg-blue-500'}`}></div>
              SENTIDO HACIA
@@ -586,7 +736,74 @@ function MapCenterController({ center, zoom, isActive }: { center: [number, numb
            <MapCenterController center={mapCenter} zoom={mapZoom} isActive={!selectedBusId || !!isSelectedSide} />
            
            {baseRouteCoords.length > 0 && <Polyline positions={baseRouteCoords} pathOptions={{ color: EMPRESA_COLOR[String(empresaPropia)] ?? '#3b82f6', weight: 5, opacity: 0.8 }} />}
-           {selectedCompetitor && isSelectedSide && compRouteCoords.length > 0 && <Polyline positions={compRouteCoords} pathOptions={{ color: EMPRESA_COLOR[String(selectedCompetitor.codigoEmpresa)] ?? '#f97316', weight: 4, opacity: 0.9, dashArray: '10, 10' }} />}
+           
+           {( (selectedCompetitor && isSelectedSide) || (isTacticalPanelOpen && selectedRivalForAnalysis) ) && compRouteCoords.length > 0 && (
+             <Polyline positions={compRouteCoords} pathOptions={{ color: EMPRESA_COLOR[String(selectedCompetitor?.codigoEmpresa || selectedRivalForAnalysis?.codigoEmpresa)] ?? '#f97316', weight: 4, opacity: 0.9, dashArray: '10, 10' }} />
+           )}
+
+           {( (selectedCompetitor && isSelectedSide) || (isTacticalPanelOpen && selectedRivalForAnalysis) ) && sharedSegments.length > 0 && sharedSegments.map((segment, idx) => (
+              <Polyline
+                key={`shared-${idx}`}
+                positions={segment}
+                pathOptions={{
+                  color: '#10b981', // emerald-500
+                  weight: 8,
+                  opacity: 0.6,
+                }}
+              />
+           ))}
+
+           {(() => {
+              const hsData = isIda ? hotspotData?.ida : hotspotData?.vuelta;
+              if (isTacticalPanelOpen && hsData && hsData.hotspot) {
+                let hotspotCoords: [number, number] | null = null;
+                
+                // 1. Try to use direct coordinates if valid
+                if (typeof hsData.hotspot.lat === 'number' && typeof hsData.hotspot.lon === 'number' && !isNaN(hsData.hotspot.lat) && !isNaN(hsData.hotspot.lon)) {
+                  hotspotCoords = [hsData.hotspot.lat, hsData.hotspot.lon];
+                } 
+                // 2. Fallback to finding in baseRouteStops
+                else if (baseRouteStops.length > 0) {
+                  const foundStop = baseRouteStops.find(s => s.id === hsData.hotspot?.stop_id || s.nombre === hsData.hotspot?.stop_name);
+                  if (foundStop && typeof foundStop.lat === 'number' && typeof foundStop.lng === 'number') {
+                    hotspotCoords = [foundStop.lat, foundStop.lng];
+                  }
+                }
+
+                if (hotspotCoords) {
+                  return (
+                    <Marker
+                      position={hotspotCoords}
+                      icon={L.divIcon({
+                        html: `
+                          <div class="relative flex items-center justify-center w-8 h-8">
+                            <div class="absolute inset-0 bg-rose-500 rounded-full animate-ping opacity-75"></div>
+                            <div class="relative bg-rose-600 border-2 border-white rounded-full w-4 h-4 shadow-lg"></div>
+                          </div>
+                        `,
+                        className: 'custom-div-icon',
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 16],
+                      })}
+                    >
+                      <Popup className="custom-popup">
+                        <div className="p-2 min-w-[200px]">
+                          <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5 mb-2">
+                            <Activity className="w-4 h-4 text-rose-600" />
+                            Punto Caliente (${isIda ? 'Ida' : 'Vuelta'})
+                          </h3>
+                          <div className="text-xs text-slate-600 space-y-1">
+                            <p><span className="font-semibold text-slate-500">Parada:</span> {hsData.hotspot.stop_name}</p>
+                            <p><span className="font-semibold text-slate-500">Volumen:</span> {hsData.hotspot.total_boardings.toLocaleString()} ascensos</p>
+                          </div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  );
+                }
+              }
+              return null;
+           })()}
 
            {/* Coches Propios */}
            {buses.map(b => {
@@ -624,8 +841,9 @@ function MapCenterController({ center, zoom, isActive }: { center: [number, numb
     )
   };
 
+
   return (
-    <div className="flex flex-col h-screen bg-[#0b0f19] text-slate-200 overflow-hidden font-sans">
+    <div className="flex flex-col h-full w-full bg-[#0b0f19] text-slate-200 overflow-hidden font-sans">
       
       {/* ── BARRA SUPERIOR (HEADER TÁCTICO) ── */}
       <div className="h-20 bg-[#111827]/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 shrink-0 shadow-lg z-[1002]">
@@ -704,46 +922,214 @@ function MapCenterController({ center, zoom, isActive }: { center: [number, numb
         </div>
       </div>
 
-      {/* ── ÁREA PRINCIPAL ── */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Modo 1: Sin línea seleccionada (Mapa Único Fullscreen) */}
-        {!selectedLinea && (
-           <div className="flex-1 relative">
-             <MapContainer center={[-34.8833, -56.1667]} zoom={13} style={{ height: '100%', width: '100%', background: '#0e131f' }} zoomControl={false}>
-               <TileLayer attribution='&copy; CARTO' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
-               <MapCenterController center={mapCenter} zoom={mapZoom} isActive={true} />
-               {serviciosPropios.map((b) => (
-                 <Marker key={b.id} position={[b.lat, b.lng]} icon={makeBusDivIcon(EMPRESA_COLOR[String(b.empresaId)] ?? '#3b82f6', b.linea, b.codigoBus, b.velocidad, b.destino)} zIndexOffset={500}>
-                   <Popup><div className="text-xs font-sans p-1">Línea {b.linea} - #{b.codigoBus}</div></Popup>
-                 </Marker>
-               ))}
-             </MapContainer>
-             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div className="bg-slate-900/80 backdrop-blur-md px-6 py-4 rounded-2xl border border-slate-700 shadow-2xl flex flex-col items-center">
-                   <Crosshair className="w-12 h-12 text-indigo-500 mb-3 opacity-80" />
-                   <h2 className="text-xl font-bold text-white">Seleccione un Corredor</h2>
-                   <p className="text-sm text-slate-400 mt-1">Utilice la barra superior para desplegar el panel táctico.</p>
-                </div>
+      {/* ── ÁREA PRINCIPAL Y DRAWER TÁCTICO ── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        
+        {/* MAPAS EN VIVO */}
+        <div className="flex-1 flex overflow-hidden relative">
+          {/* Modo 1: Sin línea seleccionada (Mapa Único Fullscreen) */}
+          {!selectedLinea && (
+             <div className="flex-1 relative">
+               <MapContainer center={[-34.8833, -56.1667]} zoom={13} style={{ height: '100%', width: '100%', background: '#0e131f' }} zoomControl={false}>
+                 <TileLayer attribution='&copy; CARTO' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
+                 <MapCenterController center={mapCenter} zoom={mapZoom} isActive={true} />
+                 {serviciosPropios.map((b) => (
+                   <Marker key={b.id} position={[b.lat, b.lng]} icon={makeBusDivIcon(EMPRESA_COLOR[String(b.empresaId)] ?? '#3b82f6', b.linea, b.codigoBus, b.velocidad, b.destino)} zIndexOffset={500}>
+                     <Popup><div className="text-xs font-sans p-1">Línea {b.linea} - #{b.codigoBus}</div></Popup>
+                   </Marker>
+                 ))}
+               </MapContainer>
+               <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                  <div className="bg-slate-900/80 backdrop-blur-md px-6 py-4 rounded-2xl border border-slate-700 shadow-2xl flex flex-col items-center">
+                     <Crosshair className="w-12 h-12 text-indigo-500 mb-3 opacity-80" />
+                     <h2 className="text-xl font-bold text-white">Seleccione un Corredor</h2>
+                     <p className="text-sm text-slate-400 mt-1">Utilice la barra superior para desplegar el panel táctico.</p>
+                  </div>
+               </div>
              </div>
-           </div>
-        )}
+          )}
 
-        {/* Modo 2: Línea Seleccionada (4 Columnas Simétricas) */}
-        {selectedLinea && (
-          <>
-             {/* COLUMNA 1: Coches Ida */}
-             {renderSidebar(busesIda, destinoIda, true)}
-             
-             {/* COLUMNA 2: Mapa Ida */}
-             {renderMap(busesIda, destinoIda, true)}
-             
-             {/* COLUMNA 3: Mapa Vuelta */}
-             {renderMap(busesVuelta, destinoVuelta, false)}
-             
-             {/* COLUMNA 4: Coches Vuelta */}
-             {renderSidebar(busesVuelta, destinoVuelta, false)}
-          </>
-        )}
+          {/* Modo 2: Línea Seleccionada (Mapas Divididos + Overlays) */}
+          {selectedLinea && (
+            <>
+               {/* Mapa Ida */}
+               {renderMap(busesIda, destinoIda, true)}
+               
+               {/* Mapa Vuelta */}
+               {renderMap(busesVuelta, destinoVuelta, false)}
+
+               {/* Overlays Laterales */}
+               {renderSidebar(busesIda, destinoIda, true)}
+               {renderSidebar(busesVuelta, destinoVuelta, false)}
+            </>
+          )}
+
+          {/* Botón Flotante para abrir Drawer */}
+          {selectedLinea && !isTacticalPanelOpen && (
+            <button
+              onClick={() => {
+                setIsTacticalPanelOpen(true);
+                setIsTacticalDrawerExpanded(true);
+                setTimeout(() => window.dispatchEvent(new Event('resize')), 300); // Trigger Leaflet redraw
+              }}
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-800/90 hover:bg-slate-700 text-white backdrop-blur px-6 py-2 rounded-full font-bold text-xs shadow-xl border border-slate-600/50 transition-all z-[2000] flex items-center gap-2"
+            >
+              <Sliders className="w-4 h-4" />
+              Desplegar Análisis Táctico
+            </button>
+          )}
+        </div>
+
+        {/* DRAWER TÁCTICO (BOTTOM SHEET) - AHORA COMO OVERLAY PARA NO DEFORMAR EL MAPA */}
+        <div className={`absolute bottom-0 left-0 right-0 transition-all duration-300 ease-in-out bg-[#0f172a]/95 backdrop-blur-xl border-t border-slate-700 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col z-[2000] ${!isTacticalPanelOpen ? 'h-0 border-transparent' : isTacticalDrawerExpanded ? 'h-[65%] sm:h-[60%]' : 'h-14'}`}>
+          {/* Drawer Header */}
+          <div className="h-14 bg-slate-900/95 flex items-center justify-between px-4 shrink-0 shadow-md border-b border-slate-700/50 z-[2001] w-full">
+            <div className="flex items-center gap-4 flex-1 min-w-0 mr-4">
+              <span className="text-sm font-bold text-white whitespace-nowrap hidden sm:block">Análisis Táctico</span>
+              {/* Selector de Competidor Integrado */}
+              <div className="flex items-center gap-2 bg-slate-800/80 rounded-md p-1 border border-slate-700/50 overflow-x-auto custom-scrollbar flex-1">
+                {officialCompetitors.filter(c => c.shared_stops_count >= minOverlap).map(c => {
+                  const isSel = selectedRivalForAnalysis?.codigoEmpresa === c.competitor_route_id;
+                  return (
+                    <button
+                      key={c.competitor_route_id}
+                      onClick={() => {
+                        const rivalInfo = {
+                          id: '', codigoBus: '', empresa: c.competitor_short_name || '', linea: c.competitor_route_id, destino: '', distanciaM: 0, overlapPct: c.shared_stops_count, comparteSentido: true, threatScore: 0, lat: 0, lng: 0, velocidad: 0, codigoEmpresa: c.competitor_route_id
+                        };
+                        setSelectedRivalForAnalysis(rivalInfo);
+                        setSelectedCompetitor(rivalInfo);
+                      }}
+                      className={`px-3 py-1.5 text-xs font-bold rounded transition-all flex-shrink-0 whitespace-nowrap ${isSel ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                    >
+                      Línea {c.competitor_route_id}
+                    </button>
+                  );
+                })}
+                {officialCompetitors.length === 0 && (
+                   <span className="text-xs text-slate-500 px-2 italic whitespace-nowrap">Sin rivales</span>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 flex-shrink-0">
+               {/* Pestañas de Análisis */}
+               {selectedRivalForAnalysis && (
+                 <div className="flex bg-slate-800/80 rounded-lg p-1 border border-slate-700/50 mr-2">
+                   <button onClick={() => setTacticalTab('trends')} className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${tacticalTab === 'trends' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
+                     <DollarSign className="w-3.5 h-3.5 hidden sm:block" /> Rentabilidad
+                   </button>
+                   <button onClick={() => setTacticalTab('bunching')} className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${tacticalTab === 'bunching' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
+                     <Activity className="w-3.5 h-3.5 hidden sm:block" /> Anti-Bunching
+                   </button>
+                 </div>
+               )}
+               <button
+                 onClick={() => {
+                   setIsTacticalDrawerExpanded(!isTacticalDrawerExpanded);
+                   setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
+                 }}
+                 title={isTacticalDrawerExpanded ? "Minimizar panel (ver mapa)" : "Expandir panel (ver gráficas)"}
+                 className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-indigo-500 transition-colors border border-slate-700 shadow-md flex-shrink-0"
+               >
+                 {isTacticalDrawerExpanded ? (
+                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                 ) : (
+                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                 )}
+               </button>
+               <button
+                 onClick={() => {
+                   setIsTacticalPanelOpen(false);
+                 }}
+                 title="Cerrar análisis (limpiar mapa)"
+                 className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-rose-500 transition-colors border border-slate-700 shadow-md flex-shrink-0"
+               >
+                 <X className="w-5 h-5" />
+               </button>
+            </div>
+          </div>
+
+          {/* Drawer Body */}
+          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-gradient-to-b from-transparent to-slate-900/50">
+            {!selectedRivalForAnalysis ? (
+              <div className="h-full flex flex-col items-center justify-center text-slate-500 text-sm p-6 text-center">
+                <Activity className="w-12 h-12 mb-4 opacity-20" />
+                {officialCompetitors.length === 0 ? (
+                  <>
+                    <p className="text-lg text-slate-400 font-bold mb-1">Sin rivales directos mapeados</p>
+                    <p>No se han detectado rutas de empresas competidoras superpuestas a este corredor en la base de datos de inteligencia.</p>
+                  </>
+                ) : (
+                  "Seleccione un competidor en la barra superior del panel para analizar."
+                )}
+              </div>
+            ) : tacticalLoading ? (
+              <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+                Cargando métricas de Inteligencia Competitiva...
+              </div>
+            ) : (
+              <div className="flex flex-col lg:flex-row gap-2 min-h-full w-full">
+                {/* Columna IDA */}
+                <div className="flex-1 min-w-0 flex flex-col min-h-0 bg-slate-900/50 rounded-xl border border-slate-700/50 p-2">
+                  <h3 className="text-sm uppercase tracking-wider font-bold text-indigo-400 mb-2 border-b border-slate-700/50 pb-2 px-1">Sentido Ida</h3>
+                  <div className="flex-1 overflow-hidden">
+                    {tacticalTab === 'trends' && trendsData.ida ? (
+                      <TrendCharts 
+                        trends={trendsData.ida} 
+                        baseDistance={baseDistance}
+                        compDistance={compDistance}
+                        sharedDistance={sharedDistance}
+                        direction="ida"
+                      />
+                    ) : tacticalTab === 'bunching' && hotspotData.ida ? (
+                      <HotspotInterleaving optimizationData={hotspotData.ida} isLoading={false} />
+                    ) : (
+                      <div className="text-center text-slate-500 mt-10 text-sm">No hay datos suficientes para Ida.</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Columna GLOBAL (CENTRO) - Solo visible para Trends */}
+                {tacticalTab === 'trends' && globalTrendData && (
+                  <div className="flex-1 min-w-0 flex flex-col min-h-0 bg-slate-800/40 rounded-xl border border-slate-700/50 p-2">
+                    <h3 className="text-sm uppercase tracking-wider font-bold text-slate-400 mb-2 border-b border-slate-700/50 pb-2 px-1">Consolidado Global</h3>
+                    <div className="flex-1 overflow-hidden">
+                      <TrendCharts 
+                        trends={globalTrendData} 
+                        baseDistance={baseDistance}
+                        compDistance={compDistance}
+                        sharedDistance={sharedDistance}
+                        direction="global"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Columna VUELTA */}
+                <div className="flex-1 min-w-0 flex flex-col min-h-0 bg-slate-900/50 rounded-xl border border-slate-700/50 p-2">
+                  <h3 className="text-sm uppercase tracking-wider font-bold text-teal-400 mb-2 border-b border-slate-700/50 pb-2 px-1">Sentido Vuelta</h3>
+                  <div className="flex-1 overflow-hidden">
+                    {tacticalTab === 'trends' && trendsData.vuelta ? (
+                      <TrendCharts 
+                        trends={trendsData.vuelta} 
+                        baseDistance={baseDistance}
+                        compDistance={compDistance}
+                        sharedDistance={sharedDistance}
+                        direction="vuelta"
+                      />
+                    ) : tacticalTab === 'bunching' && hotspotData.vuelta ? (
+                      <HotspotInterleaving optimizationData={hotspotData.vuelta} isLoading={false} />
+                    ) : (
+                      <div className="text-center text-slate-500 mt-10 text-sm">No hay datos suficientes para Vuelta.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   );
