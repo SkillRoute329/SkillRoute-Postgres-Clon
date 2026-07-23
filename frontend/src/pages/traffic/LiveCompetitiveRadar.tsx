@@ -1082,27 +1082,42 @@ export default function LiveCompetitiveRadar() {
               <span className="text-sm font-bold text-white whitespace-nowrap hidden sm:block">Análisis Táctico</span>
               {/* Selector de Competidor Integrado */}
               <div className="flex items-center gap-2 bg-slate-800/80 rounded-md p-1 border border-slate-700/50 overflow-x-auto custom-scrollbar flex-1">
-                {officialCompetitors.filter(c => c.shared_stops_count >= minOverlap).map(c => {
-                  const isSel = selectedRivalForAnalysis?.codigoEmpresa === c.competitor_route_id;
-                  return (
-                    <button
-                      key={c.competitor_route_id}
-                      onClick={() => {
-                        const rivalInfo = {
-                          id: '', codigoBus: '', empresa: c.competitor_short_name || '', linea: c.competitor_route_id, destino: '', distanciaM: 0, overlapPct: c.shared_stops_count, comparteSentido: true, threatScore: 0, lat: 0, lng: 0, velocidad: 0, codigoEmpresa: c.competitor_route_id
-                        };
-                        setSelectedRivalForAnalysis(rivalInfo);
-                        setSelectedCompetitor(rivalInfo);
-                      }}
-                      className={`px-3 py-1.5 text-xs font-bold rounded transition-all flex-shrink-0 whitespace-nowrap ${isSel ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
-                    >
-                      Línea {c.competitor_route_id}
-                    </button>
-                  );
-                })}
-                {officialCompetitors.length === 0 && (
-                   <span className="text-xs text-slate-500 px-2 italic whitespace-nowrap">Sin rivales</span>
-                )}
+                {(() => {
+                  const uniqueTacticalCompetitors = Array.from(
+                    officialCompetitors.reduce((map, comp) => {
+                      const existing = map.get(comp.competitor_route_id);
+                      if (!existing || comp.shared_stops_count > existing.shared_stops_count) {
+                        map.set(comp.competitor_route_id, comp);
+                      }
+                      return map;
+                    }, new Map()).values()
+                  ) as typeof officialCompetitors;
+
+                  const filteredCompetitors = uniqueTacticalCompetitors.filter(c => c.shared_stops_count >= minOverlap);
+
+                  if (filteredCompetitors.length === 0) {
+                    return <span className="text-xs text-slate-500 px-2 italic whitespace-nowrap">Sin rivales</span>;
+                  }
+
+                  return filteredCompetitors.map(c => {
+                    const isSel = selectedRivalForAnalysis?.codigoEmpresa === c.competitor_route_id;
+                    return (
+                      <button
+                        key={c.competitor_route_id}
+                        onClick={() => {
+                          const rivalInfo = {
+                            id: '', codigoBus: '', empresa: c.competitor_short_name || '', linea: c.competitor_route_id, destino: '', distanciaM: 0, overlapPct: c.shared_stops_count, comparteSentido: true, threatScore: 0, lat: 0, lng: 0, velocidad: 0, codigoEmpresa: c.competitor_route_id
+                          };
+                          setSelectedRivalForAnalysis(rivalInfo);
+                          setSelectedCompetitor(rivalInfo);
+                        }}
+                        className={`px-3 py-1.5 text-xs font-bold rounded transition-all flex-shrink-0 whitespace-nowrap ${isSel ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                      >
+                        Línea {c.competitor_route_id}
+                      </button>
+                    );
+                  });
+                })()}
               </div>
             </div>
             
