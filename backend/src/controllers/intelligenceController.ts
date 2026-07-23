@@ -449,6 +449,20 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
        }
     }
 
+    // Pre-cargar todos los orígenes de una vez (Solución N+1)
+    const baseTripIds = baseDepartures.map((d: any) => d.trip_id).filter(Boolean);
+    const originTimesMap: Record<string, string> = {};
+    if (baseTripIds.length > 0) {
+      const originRows = await sqlDb.raw(`
+        SELECT trip_id, departure_time 
+        FROM gtfs.stop_times 
+        WHERE trip_id = ANY(?) AND stop_sequence = 1
+      `, [baseTripIds]);
+      for (const row of originRows.rows) {
+        originTimesMap[row.trip_id] = row.departure_time;
+      }
+    }
+
     // Mapeamos
     for (const bDep of baseDepartures) {
       if (!bDep.departure_time) continue;
@@ -486,14 +500,8 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
             return `${h}:${m}:00`;
          };
 
-         // Buscamos a qué hora salimos originariamente
-         const currentOriginRow = await sqlDb.raw(`
-            SELECT departure_time 
-            FROM gtfs.stop_times 
-            WHERE trip_id = ? AND stop_sequence = 1
-         `, [bDep.trip_id]);
-         
-         const currentOrigin = currentOriginRow.rows.length > 0 ? currentOriginRow.rows[0].departure_time : 'Desconocido';
+         // Buscamos a qué hora salimos originariamente (Desde el mapa en memoria)
+         const currentOrigin = originTimesMap[bDep.trip_id] || 'Desconocido';
 
          crossings.push({
             base_arrival: bDep.departure_time,

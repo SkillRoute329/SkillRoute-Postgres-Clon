@@ -1,0 +1,1 @@
+const { Client } = require('pg'); const client = new Client('postgresql://postgres:I0SAv9zhoQDUfTPc7L+KmkAw@127.0.0.1:5433/skillroute_master'); client.connect().then(() => client.query('SELECT * FROM personal WHERE role = ''conductor'' LIMIT 1').then(res => { console.log(res.rows[0]); client.end(); })).catch(console.error);

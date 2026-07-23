@@ -100,13 +100,23 @@ const haversineMetros = (lat1: number, lon1: number, lat2: number, lon2: number)
   return R * c;
 };
 
-function MapCenterController({ center, zoom }: { center: [number, number] | null; zoom: number }) {
+function MapCenterController({ center, zoom, isActive }: { center: [number, number] | null; zoom: number, isActive: boolean }) {
   const map = useMap();
+  
+  // Solución a "Baldosas Grises" de Leaflet
   useEffect(() => {
-    if (center) {
-      map.flyTo(center, zoom, { animate: true, duration: 1.5 });
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [map]);
+
+  useEffect(() => {
+    if (isActive && center) {
+      map.setView(center, zoom, { animate: true });
     }
-  }, [center, zoom, map]);
+  }, [center, zoom, map, isActive]);
+  
   return null;
 }
 
@@ -143,6 +153,7 @@ export default function LiveCompetitiveRadar() {
 
   // Direcciones Oficiales de Variantes (GTFS)
   const [variantDirections, setVariantDirections] = useState<Record<number, number>>({});
+  const [competitorVariantMaps, setCompetitorVariantMaps] = useState<Record<string, Record<string, number>>>({});
   
   // Lista Blanca Oficial de Competidores (BI API)
   const [officialCompetitors, setOfficialCompetitors] = useState<Array<any>>([]);
@@ -255,8 +266,8 @@ export default function LiveCompetitiveRadar() {
         // Combinamos ambas respuestas para tener la topología de la línea entera en ambos sentidos
         const combined = [...(resIda.data || []), ...(resVuelta.data || [])];
         
-        // Deduplicar para que cada línea competidora aparezca solo una vez en los botones del Drawer
-        const unique = Array.from(new Map(combined.map(c => [c.competitor_route_id, c])).values());
+        // Deduplicar para que cada línea competidora y su sentido aparezca (clave compuesta)
+        const unique = Array.from(new Map(combined.map(c => [`${c.competitor_route_id}_${c.competitor_direction_id}`, c])).values());
 
         setOfficialCompetitors(unique);
 
@@ -264,10 +275,26 @@ export default function LiveCompetitiveRadar() {
         if (unique.length > 0) {
            const first = unique[0];
            const rivalInfo = {
-             id: '', codigoBus: '', empresa: first.competitor_short_name || '', linea: first.competitor_route_id, destino: '', distanciaM: 0, overlapPct: first.shared_stops_count, comparteSentido: true, threatScore: 0, lat: 0, lng: 0, velocidad: 0, codigoEmpresa: first.competitor_route_id
+             id: '', codigoBus: '', empresa: first.competitor_short_name || '', linea: first.competitor_route_id, destino: '', distanciaM: 0, overlapPct: first.shared_stops_count, comparteSentido: true, threatScore: 0, lat: 0, lng: 0, velocidad: 0, codigoEmpresa: first.competitor_route_id,
+             officialDirectionId: first.competitor_direction_id
            };
            setSelectedRivalForAnalysis(rivalInfo);
            setSelectedCompetitor(rivalInfo);
+        }
+
+        // Pre-cargar los mappings de variantes de TODOS los competidores para resolver su sentido real
+        const uniqueCompIds = Array.from(new Set(unique.map(c => c.competitor_route_id)));
+        const compVariantPromises = uniqueCompIds.map(compId => api.get(`/intelligence/variants/${compId}`).catch(() => null));
+        const compVariantResults = await Promise.all(compVariantPromises);
+        
+        const newCompVarMaps: Record<string, Record<string, number>> = {};
+        compVariantResults.forEach(res => {
+          if (res && res.data && res.data.ok && res.data.route) {
+            newCompVarMaps[res.data.route] = res.data.mapping;
+          }
+        });
+        if (isActive) {
+           setCompetitorVariantMaps(newCompVarMaps);
         }
 
       } catch (err) {
@@ -300,11 +327,19 @@ export default function LiveCompetitiveRadar() {
         const baseRouteId = selectedLinea.replace(/[ab]$/i, '');
         const compRouteId = selectedRivalForAnalysis.linea;
 
+        // Buscar en officialCompetitors el registro que corresponde a este compRouteId para Ida y Vuelta
+        const compForIda = officialCompetitors.find(c => String(c.competitor_short_name || c.competitor_route_id) === compRouteId && c.base_direction_id === 0);
+        const compForVuelta = officialCompetitors.find(c => String(c.competitor_short_name || c.competitor_route_id) === compRouteId && c.base_direction_id === 1);
+        
+        // Si no lo encuentra para un sentido, asume el mismo que el base para no romper retrocompatibilidad
+        const compDirForIda = compForIda ? compForIda.competitor_direction_id : 0;
+        const compDirForVuelta = compForVuelta ? compForVuelta.competitor_direction_id : 1;
+
         const [trendIda, hotspotIda, trendVuelta, hotspotVuelta] = await Promise.allSettled([
-          api.get(`/intelligence/trends?route_id=${baseRouteId}&direction_id=0&competitor_route_id=${compRouteId}&competitor_direction_id=0`),
-          api.get(`/intelligence/schedules/optimization?base_route=${baseRouteId}&base_dir=0&comp_route=${compRouteId}&comp_dir=0`),
-          api.get(`/intelligence/trends?route_id=${baseRouteId}&direction_id=1&competitor_route_id=${compRouteId}&competitor_direction_id=1`),
-          api.get(`/intelligence/schedules/optimization?base_route=${baseRouteId}&base_dir=1&comp_route=${compRouteId}&comp_dir=1`)
+          api.get(`/intelligence/trends?route_id=${baseRouteId}&direction_id=0&competitor_route_id=${compRouteId}&competitor_direction_id=${compDirForIda}`),
+          api.get(`/intelligence/schedules/optimization?base_route=${baseRouteId}&base_dir=0&comp_route=${compRouteId}&comp_dir=${compDirForIda}`),
+          api.get(`/intelligence/trends?route_id=${baseRouteId}&direction_id=1&competitor_route_id=${compRouteId}&competitor_direction_id=${compDirForVuelta}`),
+          api.get(`/intelligence/schedules/optimization?base_route=${baseRouteId}&base_dir=1&comp_route=${compRouteId}&comp_dir=${compDirForVuelta}`)
         ]);
 
         if (isActive) {
@@ -395,14 +430,20 @@ export default function LiveCompetitiveRadar() {
       if (variantDirections[bus.variante] !== undefined) {
         return variantDirections[bus.variante] === 0;
       }
-      return (bus.destino || '').trim().toUpperCase() === destinoIdaFallback;
+      const d = (bus.destino || '').trim().toUpperCase();
+      if (d === destinoIdaFallback) return true;
+      if (d === destinoVueltaFallback) return false;
+      return true; // Fallback contra coches fantasma (forzar visualización en Ida)
     };
     
     const isVueltaFn = (bus: ServicioActivo) => {
       if (variantDirections[bus.variante] !== undefined) {
         return variantDirections[bus.variante] === 1;
       }
-      return (bus.destino || '').trim().toUpperCase() === destinoVueltaFallback;
+      const d = (bus.destino || '').trim().toUpperCase();
+      if (d === destinoVueltaFallback) return true;
+      if (d === destinoIdaFallback) return false;
+      return false; // Fallback contra coches fantasma (no duplicar en Vuelta)
     };
 
     const destCounts: Record<string, number> = {};
@@ -437,26 +478,67 @@ export default function LiveCompetitiveRadar() {
     };
   }, [busesDeLineaSeleccionada, variantDirections]);
 
-  // Lógica de filtrado de Rivales (MACRO vs MICRO)
-  const rivalesVisibles = useMemo(() => {
-    if (!selectedLinea) return []; // Si no hay línea, no dibujamos rivales para no saturar
+  // Lógica de filtrado de Rivales (MICRO)
+  const microMatchesVisible = useMemo(() => {
+    if (!selectedLinea || !selectedBusId) return [];
     
     // Nivel Micro: Filtrado de Radar sobre un coche específico
-    if (selectedBusId) {
-      const p = serviciosPropios.find(b => b.id === selectedBusId);
-      if (!p) return [];
+    const p = serviciosPropios.find(b => b.id === selectedBusId);
+    if (!p) return [];
 
-      const matches: CompetitorInfo[] = [];
+    const matches: CompetitorInfo[] = [];
       for (const r of serviciosRivales) {
         const dist = haversineMetros(p.lat, p.lng, r.lat, r.lng);
         if (dist > searchRadius) continue;
 
         const baseRivalLine = r.linea.replace(/[ab]$/i, '');
-        const officialComp = officialCompetitors.find(c => String(c.competitor_route_id) === baseRivalLine);
+        
+        // Intentar descubrir el direction_id real de este coche usando GTFS
+        const rivalVariantMap = competitorVariantMaps[baseRivalLine];
+        let rivalActualDirId = -1;
+        if (rivalVariantMap && r.variante !== undefined && rivalVariantMap[r.variante] !== undefined) {
+           rivalActualDirId = rivalVariantMap[r.variante];
+        }
+
+        // Buscar el officialComp exacto que empareja este sentido rival
+        let officialComp = undefined;
+        if (rivalActualDirId !== -1) {
+           officialComp = officialCompetitors.find(c => String(c.competitor_short_name || c.competitor_route_id) === baseRivalLine && c.competitor_direction_id === rivalActualDirId);
+        }
+        
+        if (!officialComp) {
+           // Fallback si no pudimos resolver la variante
+           officialComp = officialCompetitors.find(c => String(c.competitor_short_name || c.competitor_route_id) === baseRivalLine);
+        }
         
         const sharedStops = officialComp ? (officialComp.shared_stops_count || 0) : 0;
         if (sharedStops < minOverlap) continue;
         if (strategyMode === 'corredor' && !officialComp) continue;
+
+        // FILTRO DE SENTIDO: Determinar destino asignado por GTFS
+        const pDestino = isIda(p) ? destinoIda : destinoVuelta;
+        let assignedDestino = undefined;
+        
+        if (rivalActualDirId !== -1 && officialComp) {
+           assignedDestino = officialComp.base_direction_id === 0 ? destinoIda : destinoVuelta;
+        } else if (officialComp && officialComp.base_direction_id !== undefined) {
+           assignedDestino = officialComp.base_direction_id === 0 ? destinoIda : destinoVuelta;
+        } else {
+           // Fallback proximidad
+           let minIdaDist = Infinity;
+           let minVueltaDist = Infinity;
+           for (const miBus of busesDeLineaSeleccionada) {
+             const d2 = haversineMetros(miBus.lat, miBus.lng, r.lat, r.lng);
+             if (isIda(miBus)) { if (d2 < minIdaDist) minIdaDist = d2; }
+             else { if (d2 < minVueltaDist) minVueltaDist = d2; }
+           }
+           assignedDestino = minIdaDist <= minVueltaDist ? destinoIda : destinoVuelta;
+        }
+
+        // Si el bus rival no va en el mismo sentido que nuestro coche seleccionado, lo ignoramos.
+        if (assignedDestino !== pDestino) {
+           continue;
+        }
 
         let threatScore = sharedStops * 2; 
         if (officialComp) threatScore += 50; 
@@ -467,7 +549,7 @@ export default function LiveCompetitiveRadar() {
           codigoBus: r.codigoBus,
           empresa: r.empresa,
           linea: r.linea,
-          destino: r.destino,
+          destino: assignedDestino,
           distanciaM: Math.round(dist),
           overlapPct: sharedStops,
           comparteSentido: !!officialComp,
@@ -487,14 +569,35 @@ export default function LiveCompetitiveRadar() {
       }
       
       return matches;
-    } 
+  }, [selectedLinea, selectedBusId, serviciosPropios, serviciosRivales, searchRadius, minOverlap, strategyMode, officialCompetitors, competitorVariantMaps, isTacticalPanelOpen, selectedRivalForAnalysis, busesDeLineaSeleccionada, isIda, destinoIda, destinoVuelta]);
+
+  // Lógica de filtrado de Rivales (MACRO)
+  const macroMatchesVisible = useMemo(() => {
+    if (!selectedLinea) return []; // Si no hay línea, no dibujamos rivales para no saturar
     
     // Nivel Macro: Filtrado a nivel corredor (Toda la línea)
     const macroMatches: CompetitorInfo[] = [];
 
     for (const r of serviciosRivales) {
       const baseRivalLine = r.linea.replace(/[ab]$/i, '');
-      const officialComp = officialCompetitors.find(c => String(c.competitor_short_name || c.competitor_route_id) === baseRivalLine);
+      
+      // Intentar descubrir el direction_id real de este coche usando GTFS
+      const rivalVariantMap = competitorVariantMaps[baseRivalLine];
+      let rivalActualDirId = -1;
+      if (rivalVariantMap && r.variante !== undefined && rivalVariantMap[r.variante] !== undefined) {
+         rivalActualDirId = rivalVariantMap[r.variante];
+      }
+
+      // Buscar el officialComp exacto que empareja este sentido rival
+      let officialComp = undefined;
+      if (rivalActualDirId !== -1) {
+         officialComp = officialCompetitors.find(c => String(c.competitor_short_name || c.competitor_route_id) === baseRivalLine && c.competitor_direction_id === rivalActualDirId);
+      }
+      
+      if (!officialComp) {
+         // Fallback si no pudimos resolver la variante
+         officialComp = officialCompetitors.find(c => String(c.competitor_short_name || c.competitor_route_id) === baseRivalLine);
+      }
       const sharedStops = officialComp ? (officialComp.shared_stops_count || 0) : 0;
       
       // Filtro de Solapamiento
@@ -523,12 +626,14 @@ export default function LiveCompetitiveRadar() {
         continue;
       }
       
-      // Asignar al mapa correcto basado en proximidad física a nuestra flota
-      // Si está más cerca de un coche de Ida, va al mapa de Ida, sino al de Vuelta.
+      // Asignar al mapa correcto basado en proximidad física a nuestra flota como fallback... 
+      // pero idealmente usamos GTFS!
       let assignedDestino = minIdaDist <= minVueltaDist ? destinoIda : destinoVuelta;
       
-      // Si no pudimos determinarlo por cercanía (ej: no hay coches propios activos), usamos el sentido base de la competencia oficial si existe
-      if (minIdaDist === Infinity && minVueltaDist === Infinity && officialComp && officialComp.base_direction_id !== undefined) {
+      if (rivalActualDirId !== -1 && officialComp) {
+         // RESOLUCIÓN PERFECTA GTFS: Sabemos en qué sentido va el rival y a cuál de nuestros sentidos corresponde.
+         assignedDestino = officialComp.base_direction_id === 0 ? destinoIda : destinoVuelta;
+      } else if (minIdaDist === Infinity && minVueltaDist === Infinity && officialComp && officialComp.base_direction_id !== undefined) {
         assignedDestino = officialComp.base_direction_id === 0 ? destinoIda : destinoVuelta;
       }
       
@@ -556,9 +661,10 @@ export default function LiveCompetitiveRadar() {
     }
     
     return macroMatches;
-  }, [selectedLinea, selectedBusId, serviciosPropios, serviciosRivales, searchRadius, minOverlap, strategyMode, officialCompetitors, busesDeLineaSeleccionada, isIda, destinoIda, destinoVuelta, isTacticalPanelOpen, selectedRivalForAnalysis]);
+  }, [selectedLinea, serviciosPropios, serviciosRivales, searchRadius, minOverlap, strategyMode, officialCompetitors, competitorVariantMaps, busesDeLineaSeleccionada, isIda, destinoIda, destinoVuelta, isTacticalPanelOpen, selectedRivalForAnalysis]);
 
-  const maxScore = rivalesVisibles.length > 0 ? rivalesVisibles[0].threatScore : 0;
+  const currentMatches = selectedBusId ? microMatchesVisible : macroMatchesVisible;
+  const maxScore = currentMatches.length > 0 ? currentMatches[0].threatScore : 0;
   const nivelAmenaza = maxScore >= 80 ? 'CRÍTICA' : maxScore >= 45 ? 'MODERADA' : 'BAJA';
 
   const focusLinea = (linea: string) => {
@@ -589,25 +695,7 @@ export default function LiveCompetitiveRadar() {
     setMapZoom(16);
   };
 
-function MapCenterController({ center, zoom, isActive }: { center: [number, number], zoom: number, isActive: boolean }) {
-  const map = useMap();
-  
-  // Solución a "Baldosas Grises" de Leaflet: Forzar el recálculo del tamaño del mapa cuando se monta o cambia el contenedor
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [map]);
 
-  useEffect(() => {
-    if (isActive) {
-      map.setView(center, zoom, { animate: true });
-    }
-  }, [center, zoom, map, isActive]);
-  
-  return null;
-}
 
 // ... (El resto del componente, desde los imports hasta antes del return, se mantiene)
 
@@ -615,6 +703,12 @@ function MapCenterController({ center, zoom, isActive }: { center: [number, numb
   // Helper para renderizar paneles laterales (AHORA COMO OVERLAYS)
   const renderSidebar = (buses: ServicioActivo[], destinoName: string, isIdaSidebar: boolean) => {
     const isSelectedSide = selectedBusId && buses.some(b => b.id === selectedBusId);
+    
+    // Determine which list of matches to show for this specific sidebar
+    const sideMatches = isSelectedSide ? microMatchesVisible : macroMatchesVisible.filter(r => {
+      const rDest = (r.destino || '').trim().toUpperCase();
+      return rDest === (destinoName || '').toUpperCase();
+    });
     
     return (
       <div className={`absolute top-4 bottom-4 w-64 flex-none bg-[#111827]/90 backdrop-blur-md flex flex-col z-[1001] shadow-2xl overflow-y-auto custom-scrollbar rounded-xl border border-slate-700/50 ${isIdaSidebar ? 'left-4' : 'right-4'}`}>
@@ -624,7 +718,7 @@ function MapCenterController({ center, zoom, isActive }: { center: [number, numb
              <div className={`w-2 h-2 rounded-full animate-pulse ${isIdaSidebar ? 'bg-emerald-500' : 'bg-blue-500'}`}></div>
              SENTIDO HACIA
            </div>
-           <div className={`text-sm font-black truncate ${isIdaSidebar ? 'text-emerald-400' : 'text-blue-400'}`}>{destinoName}</div>
+           <div className={`text-sm font-black truncate ${isIdaSidebar ? 'text-emerald-400' : 'blue-400'}`}>{destinoName}</div>
          </div>
 
          {/* Contenido Dinámico: Micro (Radar) vs Macro (Lista) */}
@@ -652,8 +746,8 @@ function MapCenterController({ center, zoom, isActive }: { center: [number, numb
               </div>
               
               <div className="p-2 space-y-2 flex-1 overflow-y-auto custom-scrollbar">
-                 {rivalesVisibles.length > 0 ? (
-                   rivalesVisibles.map(r => (
+                 {sideMatches.length > 0 ? (
+                   sideMatches.map(r => (
                      <div key={r.id} className="bg-slate-800/80 border border-slate-700/50 rounded-lg p-3 relative overflow-hidden group hover:border-indigo-500/50 transition-colors">
                        <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: r.threatScore >= 80 ? '#ef4444' : r.threatScore >= 45 ? '#f59e0b' : '#10b981' }}></div>
                        
@@ -819,23 +913,23 @@ function MapCenterController({ center, zoom, isActive }: { center: [number, numb
            {/* Rivales */}
            {isSelectedSide ? (
              // MICRO: Mostrar todos los rivales del radar de este coche
-             rivalesVisibles.map(r => (
-               <Marker key={r.id} position={[r.lat, r.lng]} icon={makeBusDivIcon(EMPRESA_COLOR[String(r.codigoEmpresa)] ?? '#94a3b8', r.linea, r.codigoBus, r.velocidad, r.destino)} zIndexOffset={1000}>
-                 <Popup><div className="text-xs font-sans p-1">Línea {r.linea} (Rival)</div></Popup>
+             microMatchesVisible.map(r => (
+               <Marker key={`micro-${r.id}`} position={[r.lat, r.lng]} icon={makeBusDivIcon(EMPRESA_COLOR[String(r.codigoEmpresa)] ?? '#94a3b8', r.linea, r.codigoBus, r.velocidad, r.destino)} zIndexOffset={1000}>
+                 <Popup><div className="text-xs font-sans p-1">Línea {r.linea} (Rival)<br/><span className="text-[9px] text-slate-500 font-bold block mt-1 pt-1 border-t border-slate-200">🛡️ Sentido GTFS Resuelto: {r.officialDirectionId !== undefined ? (r.officialDirectionId === 0 ? '0 (Ida Rival)' : '1 (Vuelta Rival)') : 'No verificado'}</span></div></Popup>
                </Marker>
              ))
-           ) : !selectedBusId ? (
+           ) : (
              // MACRO: Mostrar rivales estrictamente filtrados por destino
-             rivalesVisibles.map(r => {
+             macroMatchesVisible.map(r => {
                const rDest = (r.destino || '').trim().toUpperCase();
                if (rDest !== (destinoName || '').toUpperCase()) return null;
                return (
-                 <Marker key={r.id} position={[r.lat, r.lng]} icon={makeBusDivIcon(EMPRESA_COLOR[String(r.codigoEmpresa)] ?? '#94a3b8', r.linea, r.codigoBus, r.velocidad, r.destino)} zIndexOffset={700}>
-                   <Popup><div className="text-xs font-sans p-1">Línea {r.linea} (Rival)</div></Popup>
+                 <Marker key={`macro-${r.id}`} position={[r.lat, r.lng]} icon={makeBusDivIcon(EMPRESA_COLOR[String(r.codigoEmpresa)] ?? '#94a3b8', r.linea, r.codigoBus, r.velocidad, r.destino)} zIndexOffset={700}>
+                   <Popup><div className="text-xs font-sans p-1">Línea {r.linea} (Rival)<br/><span className="text-[9px] text-slate-500 font-bold block mt-1 pt-1 border-t border-slate-200">🛡️ Sentido GTFS Resuelto: {r.officialDirectionId !== undefined ? (r.officialDirectionId === 0 ? '0 (Ida Rival)' : '1 (Vuelta Rival)') : 'No verificado'}</span></div></Popup>
                  </Marker>
                )
              })
-           ) : null}
+           )}
          </MapContainer>
       </div>
     )
