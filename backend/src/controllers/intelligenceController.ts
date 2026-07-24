@@ -325,6 +325,7 @@ export const getMonthlyTrends = async (req: Request, res: Response) => {
     logger.error('[IntelligenceController] Error en getMonthlyTrends', error.message);
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
+};
 // ─── /api/intelligence/schedules/optimization ──────────────────────────────
 //
 // Análisis predictivo de Bunching (Horarios) en el Hotspot de la ruta.
