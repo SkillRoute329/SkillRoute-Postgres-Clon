@@ -40,8 +40,15 @@ import swaggerJSDoc from 'swagger-jsdoc';
 import { IMMDataPipeline } from './modules/gtfs-core/jobs/immDataPipeline';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// INICIALIZACIÓN
+// INICIALIZACIÓN Y ESCUDO ANTI-APAGONES
 // ═══════════════════════════════════════════════════════════════════════════
+
+process.on('uncaughtException', (err) => {
+  logger.error('[CRITICAL] Uncaught Exception interceptada (El servidor NO se apagará):', { error: err.message, stack: err.stack });
+});
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('[CRITICAL] Unhandled Rejection interceptada (El servidor NO se apagará):', { reason });
+});
 
 const app = express();
 const PORT = Config.PORT;
