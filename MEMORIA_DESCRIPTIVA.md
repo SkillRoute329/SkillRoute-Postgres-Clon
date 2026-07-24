@@ -22,8 +22,9 @@
 - **Motor de Cumplimiento y Consecuencias:** (Fase 5 y 7 activas). Mapeo estricto del GTFS, simulación, detección automática de Bunching y Análisis Competitivo Operativo.
 
 ## 5. Tareas Pendientes y Estado (Roadmap / To-Do)
-1. **[HECHO]** Sistema anti-crash de Node.js implementado para garantizar resiliencia global.
-2. **[HECHO]** Despliegue completo de Schedulers autónomos (Conteo Vehicular, Cartones UCOT, Horarios STM, GTFS oficial).
-3. **[HECHO]** Fases 5.31 a 5.38 (Motor de consecuencias automático) evaluando velocidad anómala, baja cobertura GPS e incumplimiento de intervalos.
-4. **[HECHO]** Análisis Predictivo de Puntos Calientes (Hotspots) e Inteligencia Competitiva interactiva basada 100% en tabla `gtfs.stops`. Código compilando limpiamente sin errores sintácticos.
-5. **[ACTUAL]** Preservar la versión actual sin realizar más modificaciones a las directivas de control y la UI recuperada.
+1. **[HECHO]** Sistema anti-crash de Node.js (Escudo Anti-Apagones) implementado en `index.ts` para garantizar resiliencia total durante desconexiones a internet prolongadas (unhandledRejection/uncaughtException).
+2. **[HECHO]** Bypass en Frontend (DashboardOperacional) con `useLiveOperations()` para alimentar los mapas en vivo saltándose el Poller backend en caso de fallo, sin dañar la integridad de los Context.
+3. **[HECHO]** Despliegue completo de Schedulers autónomos (Conteo Vehicular, Cartones UCOT, Horarios STM, GTFS oficial).
+4. **[HECHO]** Fases 5.31 a 5.38 (Motor de consecuencias automático) evaluando velocidad anómala, baja cobertura GPS e incumplimiento de intervalos.
+5. **[HECHO]** Análisis Predictivo de Puntos Calientes (Hotspots) e Inteligencia Competitiva interactiva basada 100% en tabla `gtfs.stops`. Código compilando limpiamente sin errores sintácticos.
+6. **[ACTUAL]** Preservar la versión actual sin realizar más modificaciones a las directivas de control y la UI recuperada para presentación de mañana.
