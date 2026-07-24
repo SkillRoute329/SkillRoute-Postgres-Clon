@@ -368,8 +368,8 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
       SELECT sh.stop_id, s.stop_name, SUM(sh.boarding_count) as total_boardings
       FROM gtfs.stop_ridership_history sh
       JOIN gtfs.stops s ON sh.stop_id = s.stop_id
-      WHERE (sh.route_id = ANY(?) AND sh.direction_id = ?) 
-         OR (sh.route_id = ANY(?) AND sh.direction_id = ?)
+      WHERE (sh.route_id = ANY(?::text[]) AND sh.direction_id = ?) 
+         OR (sh.route_id = ANY(?::text[]) AND sh.direction_id = ?)
       GROUP BY sh.stop_id, s.stop_name
       HAVING count(DISTINCT sh.route_id) >= 2
       ORDER BY total_boardings DESC
@@ -387,8 +387,8 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
         JOIN gtfs.stop_times st2 ON st1.stop_id = st2.stop_id
         JOIN gtfs.trips t2 ON st2.trip_id = t2.trip_id
         JOIN gtfs.stops s ON st1.stop_id = s.stop_id
-        WHERE t1.route_id = ANY(?) AND t1.direction_id = ?
-          AND t2.route_id = ANY(?) AND t2.direction_id = ?
+        WHERE t1.route_id = ANY(?::text[]) AND t1.direction_id = ?
+          AND t2.route_id = ANY(?::text[]) AND t2.direction_id = ?
         LIMIT 1
       `, [baseRouteIds, baseDirId, compRouteIds, compDirId]);
       
@@ -411,7 +411,7 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
         SELECT t.trip_id, st.departure_time, st.stop_sequence
         FROM gtfs.stop_times st
         JOIN gtfs.trips t ON st.trip_id = t.trip_id
-        WHERE t.route_id = ANY(?) AND t.direction_id = ? AND st.stop_id = ?
+        WHERE t.route_id = ANY(?::text[]) AND t.direction_id = ? AND st.stop_id = ?
         ORDER BY st.departure_time ASC
       `, [routeIds, dirId, hotspot.stop_id]);
       
@@ -456,7 +456,7 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
       const originRows = await sqlDb.raw(`
         SELECT trip_id, departure_time 
         FROM gtfs.stop_times 
-        WHERE trip_id = ANY(?) AND stop_sequence = 1
+        WHERE trip_id = ANY(?::text[]) AND stop_sequence = 1
       `, [baseTripIds]);
       for (const row of originRows.rows) {
         originTimesMap[row.trip_id] = row.departure_time;
