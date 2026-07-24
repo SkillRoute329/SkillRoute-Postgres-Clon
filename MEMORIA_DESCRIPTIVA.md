@@ -1,5 +1,5 @@
 # Memoria Descriptiva (Contexto del Sistema)
-> **Última Actualización:** 2026-07-23 (Post-Auditoría de Fases)
+> **Última Actualización:** 2026-07-24 (Configuración de Autostart y Hard Reset)
 
 ## 1. Visión General (El Negocio)
 - **Proyecto:** Centro de Gestión de Transporte Metropolitano (SkillRoute).
@@ -27,4 +27,5 @@
 3. **[HECHO]** Despliegue completo de Schedulers autónomos (Conteo Vehicular, Cartones UCOT, Horarios STM, GTFS oficial).
 4. **[HECHO]** Fases 5.31 a 5.38 (Motor de consecuencias automático) evaluando velocidad anómala, baja cobertura GPS e incumplimiento de intervalos.
 5. **[HECHO]** Análisis Predictivo de Puntos Calientes (Hotspots) e Inteligencia Competitiva interactiva basada 100% en tabla `gtfs.stops`. Código compilando limpiamente sin errores sintácticos.
-6. **[ACTUAL]** Preservar la versión actual sin realizar más modificaciones a las directivas de control y la UI recuperada para presentación de mañana.
+6. **[HECHO]** Configuración de Autostart de Servidores (VBScript modo servicio) e integración del flujo "Hard Reset" (Limpieza Extrema Automática) mediante el script `npm run reset` para invalidación de cachés y terminación de procesos.
+7. **[ACTUAL]** Preservar la versión actual sin realizar más modificaciones a las directivas de control y la UI recuperada para presentación de mañana.

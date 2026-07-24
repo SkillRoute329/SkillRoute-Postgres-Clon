@@ -6,7 +6,8 @@
   "scripts": {
     "install:all": "cd frontend && npm install && cd ../backend && npm install",
     "build": "cd frontend && npm install && npm run build && cd ../backend && npm install && npm run build",
-    "start": "npm run install:all && concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"node scripts/open-browser.js\"",
+    "docker:up": "docker-compose up -d",
+    "start": "npm run docker:up && npm run install:all && concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"node scripts/open-browser.js\"",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run bridge\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
@@ -20,7 +21,9 @@
     "format": "prettier --write .",
     "db:migrate": "knex migrate:latest",
     "db:seed": "knex seed:run",
-    "db:setup": "npm run db:migrate && npm run db:seed"
+    "db:setup": "npm run db:migrate && npm run db:seed",
+    "clean": "powershell -ExecutionPolicy Bypass -File ./limpieza.ps1",
+    "reset": "npm run clean && npm run start"
   },
   "engines": {
     "node": ">=20.0.0"
