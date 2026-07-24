@@ -335,8 +335,8 @@ export default function LiveCompetitiveRadar() {
         const compDirForVuelta = compForVuelta ? compForVuelta.competitor_direction_id : 1;
 
         const [trendIda, trendVuelta] = await Promise.allSettled([
-          api.get(`/intelligence/trends?base_route=${baseRouteId}&comp_route=${compRouteId}&direction=0`),
-          api.get(`/intelligence/trends?base_route=${baseRouteId}&comp_route=${compRouteId}&direction=1`)
+          api.get(`/intelligence/trends?route_id=${baseRouteId}&direction_id=0&competitor_route_id=${compRouteId}&competitor_direction_id=${compDirForIda}`),
+          api.get(`/intelligence/trends?route_id=${baseRouteId}&direction_id=1&competitor_route_id=${compRouteId}&competitor_direction_id=${compDirForVuelta}`)
         ]);
 
         if (isActive) {
