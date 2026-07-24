@@ -29,27 +29,29 @@ const EMPRESAS_RED = [
 
 export default function DashboardOperacional() {
   const { fleetKPIs: rawFleetKPIs, busesLoading: fleetLoading, alertas: alertasVivas } = useLiveData();
-  const { busesRaw } = useLiveOperations();
+  const { serviciosPropios, serviciosRivales } = useLiveOperations();
 
   const fleetKPIs = useMemo(() => {
     if (rawFleetKPIs.totalRed > 0) return rawFleetKPIs;
     
+    const allBuses = [...(serviciosPropios || []), ...(serviciosRivales || [])];
+
     // Fallback: calcular KPIs localmente para este módulo (hace bypass a la BD local, viendo IMM)
     const perEmpresa: Record<number, number> = {};
-    for (const b of busesRaw) {
-      perEmpresa[b.codigoEmpresa] = (perEmpresa[b.codigoEmpresa] ?? 0) + 1;
+    for (const b of allBuses) {
+      perEmpresa[b.empresaId] = (perEmpresa[b.empresaId] ?? 0) + 1;
     }
-    const lineasActivas = new Set(busesRaw.map(b => b.linea).filter(Boolean)).size;
+    const lineasActivas = new Set(allBuses.map(b => b.linea).filter(Boolean)).size;
     
     return {
       ...rawFleetKPIs,
-      totalRed: busesRaw.length,
+      totalRed: allBuses.length,
       perEmpresa,
       lineasActivas,
-      totalRivales: busesRaw.length - (perEmpresa[70] ?? 0),
+      totalRivales: allBuses.length - (perEmpresa[70] ?? 0),
       totalPropios: perEmpresa[70] ?? 0
     };
-  }, [rawFleetKPIs, busesRaw]);
+  }, [rawFleetKPIs, serviciosPropios, serviciosRivales]);
 
   const [resumen, setResumen] = useState<ResumenDiario | null>(null);
   const [alertas, setAlertas] = useState<Array<{ id: string; urgencia: string; titulo: string; mensaje: string }>>([]);
