@@ -325,14 +325,12 @@ export const getMonthlyTrends = async (req: Request, res: Response) => {
     logger.error('[IntelligenceController] Error en getMonthlyTrends', error.message);
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
-};
-
 // ─── /api/intelligence/schedules/optimization ──────────────────────────────
 //
 // Análisis predictivo de Bunching (Horarios) en el Hotspot de la ruta.
 export const getScheduleOptimization = async (req: Request, res: Response) => {
   try {
-    const { base_route, base_dir, comp_route, comp_dir } = req.query;
+    const { base_route, base_dir, comp_route, comp_dir, stop_id } = req.query;
 
     if (!base_route || base_dir === undefined || !comp_route || comp_dir === undefined) {
       return res.status(400).json({ error: 'Faltan parámetros de ambas líneas.' });
@@ -343,7 +341,7 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
 
     console.log(`[getScheduleOptimization] base_route: ${base_route}, base_dir: ${baseDirId}, comp_route: ${comp_route}, comp_dir: ${compDirId}`);
 
-    // Resolver route_short_name a route_id reales (por si '17' es el nombre corto y el real es '17-1')
+    // Resolver route_short_name a route_id reales
     const getActualRouteIds = async (shortName: string) => {
       const routes = await sqlDb('gtfs.routes')
         .where('route_short_name', shortName)
@@ -355,16 +353,11 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
     const baseRouteIds = await getActualRouteIds(base_route as string);
     const compRouteIds = await getActualRouteIds(comp_route as string);
 
-    console.log(`[getScheduleOptimization] baseRouteIds: ${baseRouteIds.length}, compRouteIds: ${compRouteIds.length}`);
-
     if (baseRouteIds.length === 0 || compRouteIds.length === 0) {
-      console.log(`[getScheduleOptimization] No se encontraron rutas reales en GTFS!`);
       return res.json({ ok: true, message: 'No se encontraron las rutas en GTFS', hotspot: null, scheduleCrossings: [] });
     }
 
-    // 1. Buscar Hotspot (Stop ID)
-    // Intentamos buscar en stop_ridership_history primero
-    let hotspotRows = await sqlDb.raw(`
+    let sharedStopsRows = await sqlDb.raw(`
       SELECT sh.stop_id, s.stop_name, SUM(sh.boarding_count) as total_boardings
       FROM gtfs.stop_ridership_history sh
       JOIN gtfs.stops s ON sh.stop_id = s.stop_id
@@ -373,13 +366,12 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
       GROUP BY sh.stop_id, s.stop_name
       HAVING count(DISTINCT sh.route_id) >= 2
       ORDER BY total_boardings DESC
-      LIMIT 1
     `, [baseRouteIds, baseDirId, compRouteIds, compDirId]);
 
-    let hotspot = hotspotRows.rows[0];
+    let sharedStops = sharedStopsRows.rows;
 
-    // Fallback Geométrico: Si no hay historial de carga, buscar la primera parada que compartan físicamente
-    if (!hotspot) {
+    // Fallback Geométrico: Si no hay historial de carga, buscar paradas compartidas físicamente
+    if (sharedStops.length === 0) {
       const fallbackRows = await sqlDb.raw(`
         SELECT st1.stop_id, s.stop_name, 0 as total_boardings
         FROM gtfs.stop_times st1
@@ -389,29 +381,39 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
         JOIN gtfs.stops s ON st1.stop_id = s.stop_id
         WHERE t1.route_id = ANY(?::text[]) AND t1.direction_id = ?
           AND t2.route_id = ANY(?::text[]) AND t2.direction_id = ?
-        LIMIT 1
+        GROUP BY st1.stop_id, s.stop_name
       `, [baseRouteIds, baseDirId, compRouteIds, compDirId]);
       
-      hotspot = fallbackRows.rows[0];
+      sharedStops = fallbackRows.rows;
     }
 
-    if (!hotspot) {
+    if (sharedStops.length === 0) {
       return res.json({ 
         ok: true, 
         message: 'No comparten paradas o no hay datos suficientes', 
         hotspot: null, 
+        sharedStops: [],
         scheduleCrossings: [] 
       });
     }
 
+    // Determinar qué hotspot usar: el solicitado o el primero (mayor carga)
+    let hotspot = sharedStops[0];
+    if (stop_id) {
+      const requestedStop = sharedStops.find((s: any) => s.stop_id === stop_id);
+      if (requestedStop) {
+        hotspot = requestedStop;
+      }
+    }
+
     // 2. Extraer todos los horarios (departures) en el hotspot
-    // Extraemos las salidas de ambas líneas en esa parada
     const fetchDepartures = async (routeIds: string[], dirId: number) => {
       const rows = await sqlDb.raw(`
-        SELECT t.trip_id, st.departure_time, st.stop_sequence
+        SELECT MIN(t.trip_id) as trip_id, st.departure_time, MIN(st.stop_sequence) as stop_sequence
         FROM gtfs.stop_times st
         JOIN gtfs.trips t ON st.trip_id = t.trip_id
         WHERE t.route_id = ANY(?::text[]) AND t.direction_id = ? AND st.stop_id = ?
+        GROUP BY st.departure_time
         ORDER BY st.departure_time ASC
       `, [routeIds, dirId, hotspot.stop_id]);
       
@@ -422,18 +424,14 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
     const compDepartures = await fetchDepartures(compRouteIds, compDirId);
 
     // 3. Cruzar horarios y calcular Vulnerability Windows y Offset
-    // Para simplificar: Buscamos para cada salida nuestra, la salida del competidor más cercana (hacia atrás)
     const crossings = [];
 
-    // Función auxiliar para convertir HH:MM:SS a minutos desde medianoche
     const timeToMins = (t: string) => {
       if (!t) return 0;
       const parts = t.split(':').map(Number);
       return parts[0] * 60 + parts[1] + (parts[2] / 60);
     };
 
-    // Función auxiliar para recuperar el tiempo de viaje desde el Origen (stop_sequence = 1) al Hotspot
-    // Asumimos un promedio basado en el primer viaje encontrado
     let baseTravelTimeToHotspot = 0;
     if (baseDepartures.length > 0) {
        const firstTripId = baseDepartures[0].trip_id;
@@ -449,7 +447,6 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
        }
     }
 
-    // Pre-cargar todos los orígenes de una vez (Solución N+1)
     const baseTripIds = baseDepartures.map((d: any) => d.trip_id).filter(Boolean);
     const originTimesMap: Record<string, string> = {};
     if (baseTripIds.length > 0) {
@@ -463,12 +460,10 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
       }
     }
 
-    // Mapeamos
     for (const bDep of baseDepartures) {
       if (!bDep.departure_time) continue;
       const bMins = timeToMins(bDep.departure_time);
       
-      // Buscar competidor que pasa antes que nosotros (0 a 15 mins antes)
       let nearestComp = null;
       let minGap = Infinity;
 
@@ -477,7 +472,7 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
         const cMins = timeToMins(cDep.departure_time);
         const gap = bMins - cMins;
         
-        if (gap > 0 && gap <= 15) { // Competidor pasa antes
+        if (gap > 0 && gap <= 15) {
           if (gap < minGap) {
             minGap = gap;
             nearestComp = cDep;
@@ -485,11 +480,7 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
         }
       }
 
-      // Si encontramos un rival que nos roba la parada (pasa de 1 a 10 min antes)
       if (nearestComp && minGap <= 10) {
-         // Calculamos la Jugada Sugerida (Offset)
-         // Queremos llegar 2 minutos ANTES que el competidor al hotspot.
-         // El competidor llega a `nearestComp.departure_time`.
          const targetHotspotMins = timeToMins(nearestComp.departure_time) - 2;
          const recommendedOriginMins = targetHotspotMins - baseTravelTimeToHotspot;
          
@@ -500,14 +491,13 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
             return `${h}:${m}:00`;
          };
 
-         // Buscamos a qué hora salimos originariamente (Desde el mapa en memoria)
          const currentOrigin = originTimesMap[bDep.trip_id] || 'Desconocido';
 
          crossings.push({
             base_arrival: bDep.departure_time,
             comp_arrival: nearestComp.departure_time,
-            gap_minutes: Math.round(minGap * 10) / 10, // Un decimal
-            status: 'VULNERABILITY', // Riesgo crítico
+            gap_minutes: Math.round(minGap * 10) / 10,
+            status: 'VULNERABILITY',
             tactical_advice: {
                current_origin_departure: currentOrigin,
                recommended_origin_departure: formatTime(recommendedOriginMins),
@@ -519,6 +509,7 @@ export const getScheduleOptimization = async (req: Request, res: Response) => {
 
     return res.json({
       ok: true,
+      sharedStops,
       hotspot: {
         stop_id: hotspot.stop_id,
         stop_name: hotspot.stop_name,

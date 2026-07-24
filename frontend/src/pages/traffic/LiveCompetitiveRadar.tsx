@@ -331,15 +331,12 @@ export default function LiveCompetitiveRadar() {
         const compForIda = officialCompetitors.find(c => String(c.competitor_short_name || c.competitor_route_id) === compRouteId && c.base_direction_id === 0);
         const compForVuelta = officialCompetitors.find(c => String(c.competitor_short_name || c.competitor_route_id) === compRouteId && c.base_direction_id === 1);
         
-        // Si no lo encuentra para un sentido, asume el mismo que el base para no romper retrocompatibilidad
         const compDirForIda = compForIda ? compForIda.competitor_direction_id : 0;
         const compDirForVuelta = compForVuelta ? compForVuelta.competitor_direction_id : 1;
 
-        const [trendIda, hotspotIda, trendVuelta, hotspotVuelta] = await Promise.allSettled([
-          api.get(`/intelligence/trends?route_id=${baseRouteId}&direction_id=0&competitor_route_id=${compRouteId}&competitor_direction_id=${compDirForIda}`),
-          api.get(`/intelligence/schedules/optimization?base_route=${baseRouteId}&base_dir=0&comp_route=${compRouteId}&comp_dir=${compDirForIda}`),
-          api.get(`/intelligence/trends?route_id=${baseRouteId}&direction_id=1&competitor_route_id=${compRouteId}&competitor_direction_id=${compDirForVuelta}`),
-          api.get(`/intelligence/schedules/optimization?base_route=${baseRouteId}&base_dir=1&comp_route=${compRouteId}&comp_dir=${compDirForVuelta}`)
+        const [trendIda, trendVuelta] = await Promise.allSettled([
+          api.get(`/intelligence/trends?base_route=${baseRouteId}&comp_route=${compRouteId}&direction=0`),
+          api.get(`/intelligence/trends?base_route=${baseRouteId}&comp_route=${compRouteId}&direction=1`)
         ]);
 
         if (isActive) {
@@ -348,8 +345,8 @@ export default function LiveCompetitiveRadar() {
             vuelta: trendVuelta.status === 'fulfilled' ? trendVuelta.value.data : null
           });
           setHotspotData({
-            ida: hotspotIda.status === 'fulfilled' ? hotspotIda.value.data : null,
-            vuelta: hotspotVuelta.status === 'fulfilled' ? hotspotVuelta.value.data : null
+            ida: null,
+            vuelta: null
           });
         }
       } catch (err) {
@@ -1191,8 +1188,13 @@ export default function LiveCompetitiveRadar() {
                         sharedDistance={sharedDistance}
                         direction="ida"
                       />
-                    ) : tacticalTab === 'bunching' && hotspotData.ida ? (
-                      <HotspotInterleaving hotspotData={hotspotData.ida} isLoading={false} />
+                    ) : tacticalTab === 'bunching' ? (
+                      <HotspotInterleaving 
+                        baseRouteId={baseRouteId}
+                        baseDir={0}
+                        compRouteId={compRouteId}
+                        compDir={compDirForIda}
+                      />
                     ) : (
                       <div className="text-center text-slate-500 mt-10 text-sm">No hay datos suficientes para Ida.</div>
                     )}
@@ -1227,8 +1229,13 @@ export default function LiveCompetitiveRadar() {
                         sharedDistance={sharedDistance}
                         direction="vuelta"
                       />
-                    ) : tacticalTab === 'bunching' && hotspotData.vuelta ? (
-                      <HotspotInterleaving hotspotData={hotspotData.vuelta} isLoading={false} />
+                    ) : tacticalTab === 'bunching' ? (
+                      <HotspotInterleaving 
+                        baseRouteId={baseRouteId}
+                        baseDir={1}
+                        compRouteId={compRouteId}
+                        compDir={compDirForVuelta}
+                      />
                     ) : (
                       <div className="text-center text-slate-500 mt-10 text-sm">No hay datos suficientes para Vuelta.</div>
                     )}
