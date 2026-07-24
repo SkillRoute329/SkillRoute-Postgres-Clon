@@ -1192,7 +1192,7 @@ export default function LiveCompetitiveRadar() {
                         direction="ida"
                       />
                     ) : tacticalTab === 'bunching' && hotspotData.ida ? (
-                      <HotspotInterleaving optimizationData={hotspotData.ida} isLoading={false} />
+                      <HotspotInterleaving hotspotData={hotspotData.ida} isLoading={false} />
                     ) : (
                       <div className="text-center text-slate-500 mt-10 text-sm">No hay datos suficientes para Ida.</div>
                     )}
@@ -1228,7 +1228,7 @@ export default function LiveCompetitiveRadar() {
                         direction="vuelta"
                       />
                     ) : tacticalTab === 'bunching' && hotspotData.vuelta ? (
-                      <HotspotInterleaving optimizationData={hotspotData.vuelta} isLoading={false} />
+                      <HotspotInterleaving hotspotData={hotspotData.vuelta} isLoading={false} />
                     ) : (
                       <div className="text-center text-slate-500 mt-10 text-sm">No hay datos suficientes para Vuelta.</div>
                     )}
