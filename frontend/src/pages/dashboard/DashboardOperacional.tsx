@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLiveData } from '../../context/LiveDataContext';
 import { apiClient } from '../../clients/apiClient';
 import {
@@ -6,7 +6,7 @@ import {
   TrendingDown, Radio, ArrowRight, RefreshCw, Bell,
 } from 'lucide-react';
 import { formatTime } from '../../utils/dateFormatter';
-
+import { useLiveOperations } from '../../hooks/useLiveOperations';
 interface ResumenDiario {
   turnosTotal: number;
   turnosCubiertos: number;
@@ -28,7 +28,28 @@ const EMPRESAS_RED = [
 ] as const;
 
 export default function DashboardOperacional() {
-  const { fleetKPIs, busesLoading: fleetLoading, alertas: alertasVivas } = useLiveData();
+  const { fleetKPIs: rawFleetKPIs, busesLoading: fleetLoading, alertas: alertasVivas } = useLiveData();
+  const { busesRaw } = useLiveOperations();
+
+  const fleetKPIs = useMemo(() => {
+    if (rawFleetKPIs.totalRed > 0) return rawFleetKPIs;
+    
+    // Fallback: calcular KPIs localmente para este módulo (hace bypass a la BD local, viendo IMM)
+    const perEmpresa: Record<number, number> = {};
+    for (const b of busesRaw) {
+      perEmpresa[b.codigoEmpresa] = (perEmpresa[b.codigoEmpresa] ?? 0) + 1;
+    }
+    const lineasActivas = new Set(busesRaw.map(b => b.linea).filter(Boolean)).size;
+    
+    return {
+      ...rawFleetKPIs,
+      totalRed: busesRaw.length,
+      perEmpresa,
+      lineasActivas,
+      totalRivales: busesRaw.length - (perEmpresa[70] ?? 0),
+      totalPropios: perEmpresa[70] ?? 0
+    };
+  }, [rawFleetKPIs, busesRaw]);
 
   const [resumen, setResumen] = useState<ResumenDiario | null>(null);
   const [alertas, setAlertas] = useState<Array<{ id: string; urgencia: string; titulo: string; mensaje: string }>>([]);
