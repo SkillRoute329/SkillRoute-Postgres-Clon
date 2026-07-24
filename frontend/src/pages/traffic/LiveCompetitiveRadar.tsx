@@ -1190,10 +1190,10 @@ export default function LiveCompetitiveRadar() {
                       />
                     ) : tacticalTab === 'bunching' ? (
                       <HotspotInterleaving 
-                        baseRouteId={baseRouteId}
+                        baseRouteId={selectedLinea ? selectedLinea.replace(/[ab]$/i, '') : ''}
                         baseDir={0}
-                        compRouteId={compRouteId}
-                        compDir={compDirForIda}
+                        compRouteId={selectedRivalForAnalysis?.linea || ''}
+                        compDir={officialCompetitors.find(c => String(c.competitor_short_name || c.competitor_route_id) === selectedRivalForAnalysis?.linea && c.base_direction_id === 0)?.competitor_direction_id ?? 0}
                       />
                     ) : (
                       <div className="text-center text-slate-500 mt-10 text-sm">No hay datos suficientes para Ida.</div>
@@ -1231,10 +1231,10 @@ export default function LiveCompetitiveRadar() {
                       />
                     ) : tacticalTab === 'bunching' ? (
                       <HotspotInterleaving 
-                        baseRouteId={baseRouteId}
+                        baseRouteId={selectedLinea ? selectedLinea.replace(/[ab]$/i, '') : ''}
                         baseDir={1}
-                        compRouteId={compRouteId}
-                        compDir={compDirForVuelta}
+                        compRouteId={selectedRivalForAnalysis?.linea || ''}
+                        compDir={officialCompetitors.find(c => String(c.competitor_short_name || c.competitor_route_id) === selectedRivalForAnalysis?.linea && c.base_direction_id === 1)?.competitor_direction_id ?? 1}
                       />
                     ) : (
                       <div className="text-center text-slate-500 mt-10 text-sm">No hay datos suficientes para Vuelta.</div>
